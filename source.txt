@@ -1,0 +1,3 @@
+val str = String("hello world", 5) + '\n'
+println(str)
+println(str.size())
