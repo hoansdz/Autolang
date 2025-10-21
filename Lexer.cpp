@@ -126,7 +126,7 @@ std::string loadIdentifier(Context& context, int &i) {
 		char chr = context.line[i];
 		if (std::isblank(chr))
 			break;
-		if (std::isalnum(chr)) {
+		if (std::isalnum(chr) || chr == '_' || chr == '$') {
 			continue;
 		}
 		break;

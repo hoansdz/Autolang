@@ -91,10 +91,23 @@ struct HasClassIdNode : ExprNode {
 };
 
 struct UnknowNode : HasClassIdNode {
+	AClass* clazz;
 	std::string name;
-	UnknowNode(std::string name):
-		HasClassIdNode(NodeType::UNKNOW), name(std::move(name)){}
+	HasClassIdNode* correctNode;
+	UnknowNode(AClass* clazz, std::string name):
+		HasClassIdNode(NodeType::UNKNOW), clazz(clazz), name(std::move(name)), correctNode(nullptr){
+		}
+	~UnknowNode() {
+		if (correctNode)
+			delete correctNode;
+	}
 	void optimize(in_func) override;
+	inline void putBytecodes(in_func, std::vector<uint8_t>& bytecodes) {
+		correctNode->putBytecodes(in_data, bytecodes);
+	}
+	void rewrite(in_func, std::vector<uint8_t>& bytecodes) {
+		correctNode->rewrite(in_data, bytecodes);
+	}
 };
 
 struct AccessNode : HasClassIdNode {
@@ -114,7 +127,7 @@ struct ConstValueNode : HasClassIdNode {
 		AObject* obj;
 	};
 	bool isLoadPrimary = false;
-	uint32_t id;
+	uint32_t id = UINT32_MAX;
 	ConstValueNode(long long i): 
 		HasClassIdNode(NodeType::CONST, AutoLang::DefaultClass::INTCLASSID), i(i) {}
 	ConstValueNode(double f): 
@@ -214,10 +227,10 @@ struct WhileNode : CanBreakContinueNode {
 // detach = value
 struct SetNode : HasClassIdNode {
 	Lexer::TokenType op;
-	AccessNode* detach;
+	HasClassIdNode* detach;
 	HasClassIdNode* value;
 	bool isGetPointer = false;
-	SetNode(AccessNode* detach, HasClassIdNode* value, Lexer::TokenType op = Lexer::TokenType::EQUAL):
+	SetNode(HasClassIdNode* detach, HasClassIdNode* value, Lexer::TokenType op = Lexer::TokenType::EQUAL):
 		HasClassIdNode(NodeType::SET), op(op), detach(detach), value(value){}
 	void optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t>& bytecodes) override;

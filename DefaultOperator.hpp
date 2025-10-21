@@ -45,7 +45,7 @@ inline AObject* op_not_eq_pointer(NativeFuncInData);
 					return manager.create((obj1->i) op (obj2->f));\
 				default:\
 					if (obj2->type == AutoLang::DefaultClass::stringClassId)\
-						return manager.create((*static_cast<AString*>(obj2->ref)) op (obj1->i));\
+						return manager.create(AString::plus((obj1->i), (static_cast<AString*>(obj2->ref))));\
 					else\
 						break;\
 			}\
@@ -59,7 +59,7 @@ inline AObject* op_not_eq_pointer(NativeFuncInData);
 					return manager.create((obj1->f) op (obj2->f));\
 				default:\
 					if (obj2->type == AutoLang::DefaultClass::stringClassId)\
-						return manager.create((*static_cast<AString*>(obj2->ref)) op (obj1->f));\
+						return manager.create(AString::plus((obj1->f), (static_cast<AString*>(obj2->ref))));\
 					else\
 						break;\
 			}\

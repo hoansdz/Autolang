@@ -34,27 +34,27 @@ CreateClassNode* loadClass(in_func, size_t& i) {
 		"this", "", true, false
 	);
 	//Has PrimaryConstructor
-	CreateConstructorNode* primaryConstructor = nullptr;
 	if (expect(token, Lexer::TokenType::LPAREN)) {
 		if (!isDataClass)
 			throw std::runtime_error("Expected {}, did you want data class ?");
-		primaryConstructor = new CreateConstructorNode(clazz, name+"()", loadListDeclaration(in_data, i, true), true, 
+		context.currentClassInfo->primaryConstructor = new CreateConstructorNode(clazz, name+"()", loadListDeclaration(in_data, i, true), true, 
 			Lexer::TokenType::PUBLIC);
-		primaryConstructor->pushFunction(in_data);
-		primaryConstructor->func->maxDeclaration += primaryConstructor->arguments.size();
+		context.currentClassInfo->primaryConstructor->pushFunction(in_data);
+		context.currentClassInfo->primaryConstructor->func->maxDeclaration += context.currentClassInfo->primaryConstructor->arguments.size();
 	} else {
 		--i;
 	}
 	//Body
-	if (!nextToken(&token, context.tokens, i)) 
+	if (!nextToken(&token, context.tokens, i)) {
+		context.gotoClass(lastClass);
 		return node.release();
+	}
 	if (expect(token, Lexer::TokenType::LBRACE)) {
 		//'this' declaration
 		declarationNode->id = 0;
-		declarationNode->classId = node->classId;
+		declarationNode->classId = clazz->id;
 		
 		context.currentClassInfo->declarationThis = declarationNode;
-		context.currentClassInfo->primaryConstructor = primaryConstructor;
 
 		loadBody(in_data, node->body.nodes, i, false);
 
@@ -69,7 +69,10 @@ CreateClassNode* loadClass(in_func, size_t& i) {
 			context.currentClassInfo->secondaryConstructor.push_back(constructor);
 		}
 		context.gotoClass(lastClass);
-	} else --i;
+	} else {
+		context.gotoClass(lastClass);
+		--i;
+	}
 	return node.release();
 }
 

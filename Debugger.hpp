@@ -24,7 +24,7 @@ std::vector<DeclarationNode*> loadListDeclaration(in_func, size_t& i, bool allow
 HasClassIdNode* loadExpression(in_func, int minPrecedence, size_t& i);
 HasClassIdNode* loadDeclaration(in_func, size_t& i);
 HasClassIdNode* parsePrimary(in_func, size_t& i);
-HasClassIdNode* loadIdentifier(in_func, size_t& i);
+HasClassIdNode* loadIdentifier(in_func, size_t& i, bool allowAddThis = true);
 void loadBody(in_func, std::vector<ExprNode*>& nodes, size_t& i, bool createScope = true);
 IfNode* loadIf(in_func, size_t& i);
 ExprNode* loadFor(in_func, size_t& i);

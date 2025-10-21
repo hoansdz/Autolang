@@ -14,6 +14,7 @@
 #define DEBUGGER_DECLARATION_CPP
 
 #include "DebuggerDeclaration.hpp"
+#include "Utils.hpp"
 
 namespace AutoLang
 {
@@ -58,6 +59,11 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 		throw std::runtime_error("Expected name but not found");
 	}
 	std::string& name = context.lexerString[token->indexData];
+	if (context.currentClass) {
+		if (isMapExist(context.currentClass->memberMap, name) || 
+			isMapExist(context.currentClassInfo->staticMember, name))
+			throw std::runtime_error("Declaration: Redefination variable name \"" + name + "\"");
+	}
 	//Class name
 	if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
 		throw std::runtime_error("Expected class name but not found");
@@ -103,6 +109,7 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 	auto node = context.makeDeclarationNode(false, std::move(declarationName), 
 		std::move(className), isVal, isGlobal, (isInFunction || isStatic));
 	node->accessModifier = accessModifier;
+	printDebug((isVal ? "val " : "var ") + name + " has id " + std::to_string(node->id) + " " + (isGlobal ? "1 " : "0 " ) + (isStatic ? "1 " : "0 "));
 	if (isStatic) {
 		//Function
 		if (context.currentFunction != compile.main) {
@@ -124,10 +131,11 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 	}
 	//Non static
 	if (context.currentClass && context.currentFunction == compile.main) {
-		context.currentClass->memberMap[node->name] = context.currentClass->memberMap.size();
+		uint32_t nodeId = context.currentClass->memberMap.size();
+		context.currentClass->memberMap[node->name] = nodeId;
 		context.currentClass->memberId.push_back(0);
 		//Add member id
-		node->id = context.currentClassInfo->member.size();
+		node->id = nodeId;
 
 		//Add Member
 		context.currentClassInfo->member.push_back(node);
@@ -144,13 +152,6 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 			),
 			value
 		);
-		// if (context.currentClassInfo->primaryConstructor) {
-		// 	context.currentClassInfo->primaryConstructor->body.nodes.push_back(setNode);
-		// } else {
-		// 	for (auto constructor : context.currentClassInfo->secondaryConstructor) {
-		// 		constructor->body.nodes.push_back(setNode);
-		// 	}
-		// }
 		return setNode;
 	}
 	return new SetNode(new VarNode(

@@ -1,3 +1,23 @@
-val str = String("hello world", 5) + '\n'
-println(str)
-println(str.size())
+data class A(var name: String) {
+    
+    static var i: Int = 1
+    static var m = i + 5
+
+    
+    func getName(): String {
+        val str = (i + 5) + name
+        println("Size: " + str.size())
+        return str
+    }
+
+    func setName(name_: String) {
+        name = name_
+    }
+
+    var name__: String
+}
+
+val a = A("John")
+println(a.getName().size().toString().toInt())
+a.setName("Non")
+println(a.name)

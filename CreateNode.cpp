@@ -44,7 +44,7 @@ void CreateFuncNode::optimize(in_func) {
 	if (!returnClass.empty()) {
 		auto it = compile.classMap.find(returnClass);
 		if (it == compile.classMap.end())
-			throw std::runtime_error("Cannot find class name: "+returnClass);
+			throw std::runtime_error("CreateFuncNode: Cannot find class name: "+returnClass);
 		func->returnId = it->second;
 	} else
 		func->returnId = AutoLang::DefaultClass::nullClassId;
@@ -97,8 +97,10 @@ void CreateConstructorNode::optimize(in_func) {
 	for (size_t i=0; i<arguments.size(); ++i) {
 		auto& argument = arguments[i];
 		func->args.push_back(argument->classId);
-		if (isPrimary)
+		if (isPrimary) {
 			clazz->memberId[i]=argument->classId;
+			printDebug("Member: " + std::to_string(i) + " " + argument->name + " is " + compile.classes[argument->classId].name);
+		}
 	}
 	
 	//Check redefine

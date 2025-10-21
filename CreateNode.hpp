@@ -13,7 +13,7 @@ inline bool isDeclarationExist(in_func, std::string& name);
 
 //var val name: className = value
 struct DeclarationNode : HasClassIdNode {
-	Lexer::TokenType accessModifier;
+	Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC;
 	std::string name;
 	std::string className;
 	uint32_t id;

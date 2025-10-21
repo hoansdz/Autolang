@@ -223,12 +223,18 @@ void ForRangeNode::putBytecodes(in_func, std::vector<uint8_t>& bytecodes) {
 	breakPos = bytecodes.size();
 }
 
-#define operator_plus_case(type, op) case Lexer::TokenType::type:\
-			detach->isStore = false;\
-			detach->putBytecodes(in_data, bytecodes);\
+#define operator_plus_case(type, op) case Lexer::TokenType::type: {\
+			auto detach = this->detach;\
+			if (detach->kind == NodeType::UNKNOW) {\
+				detach = static_cast<UnknowNode*>(detach)->correctNode;\
+			}\
+			auto _node = static_cast<AccessNode*>(detach);\
+			_node->isStore = false;\
+			_node->putBytecodes(in_data, bytecodes);\
 			value->putBytecodes(in_data, bytecodes);\
 			bytecodes.emplace_back(Opcode::op);\
-			return;
+			return;\
+		}
 
 void SetNode::putBytecodes(in_func, std::vector<uint8_t>& bytecodes) {
 	if (!value) return;

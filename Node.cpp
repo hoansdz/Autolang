@@ -33,13 +33,14 @@ UnaryNode::~UnaryNode() {
 }
 
 BinaryNode::~BinaryNode() {
-	delete left;
-	delete right;
+	if (left)
+		delete left;
+	if (right)
+		delete right;
 }
 
 ConstValueNode::~ConstValueNode() {
-	if (classId == AutoLang::DefaultClass::stringClassId)
-		delete str;
+
 }
 
 CastNode::~CastNode() {

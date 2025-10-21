@@ -38,26 +38,39 @@ struct FunctionInfo {
 }; 
 
 struct ParserContext {
+	//Optimize ram because reuse std::string instead of new std::string in lexer
 	std::vector<std::string> lexerString;
 	std::unordered_map<std::string, uint32_t> lexerStringMap;
+	//Parse file to tokens
 	std::vector<Lexer::Token> tokens;
+	//Keywords , example public, private, static
 	std::vector<Lexer::TokenType> keywords;
+	//Declaration new functions by user
 	std::vector<CreateFuncNode*> newFunctions;
+	//Declaration new classes by user
 	std::vector<CreateClassNode*> newClasses;
 	int line;
 	bool canBreakContinue = false;
+	//Be used when it is static keywords, example static val a = ...
 	bool justFindStatic = false;
+	//Be used when put bytecodes with break or continue
 	size_t continuePos = 0;
 	size_t breakPos = 0;
+	//Function information in compiler time
 	std::unordered_map<Function*, FunctionInfo> functionInfo;
+	//Class information in compiler time
 	std::unordered_map<AClass*, ClassInfo> classInfo;
+	//All static variable will be here and put bytecodes to ".main" function
 	std::vector<ExprNode*> staticNode;
+
 	AClass* currentClass = nullptr;
 	ClassInfo* currentClassInfo;
 	Function *mainFunction;
 	FunctionInfo *mainFuncInfo;
 	Function *currentFunction;
 	FunctionInfo *currentFuncInfo;
+
+	//Constant value, example "null", "true", "false"
 	std::unordered_map<std::string, std::pair<AObject*, uint32_t>> constValue;
 	inline void gotoFunction(Function* func) {
 		currentFunction = func;

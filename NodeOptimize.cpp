@@ -185,6 +185,7 @@ void UnaryNode::optimize(in_func) {
 }
 
 void ConstValueNode::optimize(in_func) {
+	if (id != UINT32_MAX) return;
 	switch (classId) {
 		case AutoLang::DefaultClass::INTCLASSID:
 			id = compile.registerConstPool(compile.manager.create(i));
@@ -195,7 +196,8 @@ void ConstValueNode::optimize(in_func) {
 		default:
 			if (classId != AutoLang::DefaultClass::stringClassId)
 				break;
-			id = compile.registerConstPool(compile.manager.create(AString::from(std::move(*str))));
+			id = compile.registerConstPool(compile.manager.create(AString::from(*str)));
+			delete str;
 			return;
 	}
 }
@@ -236,17 +238,47 @@ void BlockNode::optimize(in_func) {
 
 void UnknowNode::optimize(in_func) {
 	auto it = compile.classMap.find(name);
-	if (it == compile.classMap.end())
-		throw std::runtime_error("Cannot find "+name);
+	if (it == compile.classMap.end()) {
+		if (clazz) {
+			AClass* lastClass = context.currentClass;
+			context.gotoClass(clazz);
+			correctNode = context.currentClassInfo->findDeclaration(in_data, name);
+			context.gotoClass(lastClass);
+			if (correctNode) {
+				correctNode->optimize(in_data);
+				classId = correctNode->classId;
+				switch (correctNode->kind) {
+					case NodeType::GET_PROP: {
+						classId = static_cast<GetPropNode*>(correctNode)->declaration->classId;
+						break;
+					}
+					case NodeType::VAR: {
+						classId = static_cast<VarNode*>(correctNode)->declaration->classId;
+						break;
+					}
+				}
+				return;
+			}
+		}
+		throw std::runtime_error("UnknowNode: Cannot find class name: "+name);
+	} else {
+
+	}
 	classId = it->second;
 }
 
 void GetPropNode::optimize(in_func) {
 	caller->optimize(in_data);
 	switch (caller->kind) {
-		case NodeType::GET_PROP:
+		case NodeType::CALL:
+		case NodeType::GET_PROP: {
 			break;
+		}
 		case NodeType::UNKNOW: {
+			auto node = static_cast<UnknowNode*>(caller)->correctNode;
+			if (node && node->kind == NodeType::VAR) {
+				static_cast<VarNode*>(node)->isStore = false;
+			}
 			break;
 		}
 		case NodeType::VAR: {
@@ -286,7 +318,11 @@ void GetPropNode::optimize(in_func) {
 		}
 		
 		id = it->second;
+		// for (int i = 0; i<clazz->memberId.size(); ++i) {
+		// 	printDebug("MemId: "+std::to_string(clazz->memberId[i]));
+		// }
 		classId = clazz->memberId[id];
+		printDebug("Class " + clazz->name + " GetProp: "+name+" "+" has id: "+std::to_string(id)+" "+std::to_string(classId)+" "+compile.classes[classId].name);
 	}
 }
 
@@ -320,44 +356,68 @@ void ForRangeNode::optimize(in_func) {
 }
 
 void SetNode::optimize(in_func) {
-	detach->isStore = true;
 	detach->optimize(in_data);
 	if (!value) return;
 	value->optimize(in_data);
+	classId = value->classId;
+	auto detach = this->detach;
+	new_detach:{}
 	switch (detach->kind) {
 		case NodeType::GET_PROP: {
 			if (detach->classId != AutoLang::DefaultClass::nullClassId &&
-				detach->classId != detach->declaration->classId) {
-				detach->classId = detach->declaration->classId;
+				detach->classId != value->classId) {
+				detach->classId = value->classId;
 			}
 			auto node = static_cast<GetPropNode*>(detach);
-			if (detach->isVal) {
+			node->isStore = true;
+			if (node->isVal) {
 				throw std::runtime_error("Cannot change "+
-					compile.classes[node->classId].name+"."+node->name+
+					compile.classes[node->caller->classId].name+"."+node->name+
 					" because it's val");
 			}
-			if (detach->declaration && detach->classId == AutoLang::DefaultClass::nullClassId) {
+			if (!node->declaration) {
 				auto clazz = &compile.classes[node->caller->classId];
-				clazz->memberId[detach->declaration->id] = value->classId;
-				detach->declaration->classId = value->classId;
-				detach->classId = value->classId;
+				auto classInfo = &context.classInfo[clazz];
+				for (auto* n:classInfo->member) {
+					if (n->name != node->name) continue;
+					node->declaration = n;
+					goto next_getprop;
+				}
+				auto it = classInfo->staticMember.find(node->name);
+				if (it != classInfo->staticMember.end()) {
+					node->declaration = it->second;
+					goto next_getprop;
+				}
+				throw std::runtime_error("Cannot find declaration "+clazz->name+"."+node->name);
+			}
+			next_getprop:{}
+			if (node->declaration) {
+				auto clazz = &compile.classes[node->caller->classId];
+				//clazz->memberId[detach->declaration->id] = value->classId;
+				node->declaration->classId = value->classId;
 			}
 			break;
 		}
 		case NodeType::VAR: {
+			auto node = static_cast<VarNode*>(detach);
+			node->isStore = true;
 			if (detach->classId != AutoLang::DefaultClass::nullClassId &&
-				detach->classId != detach->declaration->classId) {
-				detach->classId = detach->declaration->classId;
+				detach->classId != node->declaration->classId) {
+				detach->classId = node->declaration->classId;
 			}
 			if (detach->classId == AutoLang::DefaultClass::nullClassId) {
-				printDebug("" + compile.classes[detach->declaration->classId].name);
-				if (detach->declaration->classId == AutoLang::DefaultClass::nullClassId) {
-					detach->declaration->classId = value->classId;
-					printDebug(std::string("SetNode: Declaration ") + detach->declaration->name + " is " + compile.classes[value->classId].name);
+				if (node->declaration->classId == AutoLang::DefaultClass::nullClassId &&
+					value->classId != AutoLang::DefaultClass::nullClassId) {
+					node->declaration->classId = value->classId;
+					printDebug(std::string("SetNode: Declaration ") + node->declaration->name + " is " + compile.classes[value->classId].name);
 				}
 				detach->classId = value->classId;
 			}
 			break;
+		}
+		case NodeType::UNKNOW: {
+			detach = static_cast<UnknowNode*>(detach)->correctNode;
+			goto new_detach;
 		}
 		default: break;
 	}
@@ -430,11 +490,18 @@ void CallNode::optimize(in_func) {
 	std::string funcName;
 	bool allowPrefix = false;
 	if (caller) {
-		//Caller.funcName => Class.funcName
-		if (caller->kind == NodeType::VAR) {
-			static_cast<VarNode*>(caller)->isStore = false;
-		}
+		//Caller.funcName() => Class.funcName()
 		caller->optimize(in_data);
+		switch (caller->kind) {
+			case NodeType::VAR: {
+				auto node = static_cast<VarNode*>(caller);
+				node->isStore = false;
+				node->classId = node->declaration->classId;
+				break;
+			}
+			case NodeType::GET_PROP:
+				break;
+		}
 		funcName = compile.classes[caller->classId].name + '.' + name;
 		if (caller->kind == NodeType::CLASS) {
 			delete caller;
@@ -504,8 +571,18 @@ void CallNode::optimize(in_func) {
 		}
 		i = 0;
 	}
-	if (!found)
-		throw std::runtime_error(std::string("Cannot find function name with arguments : ") + funcName);
+	if (!found) {
+		std::string argumentsStr;
+		bool isFirst = true;
+		for (auto argument : arguments) {
+			if (isFirst)
+				isFirst = false; else
+				argumentsStr += ", ";
+			argumentsStr += compile.classes[argument->classId].name;
+		}
+		std::string detailFuncError = funcName.insert(funcName.size() - 1, argumentsStr);
+		throw std::runtime_error(std::string("Cannot find function name with arguments : ") + detailFuncError);
+	}
 	if (ambitiousCall)
 		throw std::runtime_error(std::string("Ambitious Call : ") + funcName);
 	funcId = first.id;
