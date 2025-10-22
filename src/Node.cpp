@@ -21,6 +21,10 @@ void put_opcode_u32(std::vector<uint8_t>& code, size_t pos, uint32_t value) {
 	code[pos + 3] = (value >> 24) & 0xFF;
 }
 
+UnknowNode::~UnknowNode() {
+	if (correctNode) delete correctNode;
+}
+
 ReturnNode::~ReturnNode() {
 	if (value)
 		delete value;
@@ -49,12 +53,14 @@ CastNode::~CastNode() {
 }
 
 ForRangeNode::~ForRangeNode() {
-	delete from;
-	delete to;
+	if (detach) delete detach;
+	if (from) delete from;
+	if (to) delete to;
 }
 
 GetPropNode::~GetPropNode() {
-	delete caller;
+	if (caller)
+		delete caller;
 }
 
 BlockNode::~BlockNode() {
@@ -64,17 +70,21 @@ BlockNode::~BlockNode() {
 }
 
 IfNode::~IfNode() {
-	delete condition;
+	if (condition) delete condition;
 	if (ifFalse) delete ifFalse;
 }
 
 WhileNode::~WhileNode() {
-	delete condition;
+	if (condition) delete condition;
+}
+
+SetNode::~SetNode() {
+	if (detach) delete detach;
+	if (value) delete value;
 }
 
 CallNode::~CallNode() {
-	if (caller)
-		delete caller;
+	if (caller) delete caller;
 	for (auto* argument:arguments) {
 		delete argument;
 	}

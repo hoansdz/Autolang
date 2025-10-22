@@ -112,6 +112,9 @@ ParserContext::~ParserContext() {
 	for (auto* node : newClasses) {
 		delete node;
 	}
+	for (auto* node : staticNode) {
+		delete node;
+	}
 }
 
 }

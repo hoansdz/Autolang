@@ -97,17 +97,14 @@ struct UnknowNode : HasClassIdNode {
 	UnknowNode(AClass* clazz, std::string name):
 		HasClassIdNode(NodeType::UNKNOW), clazz(clazz), name(std::move(name)), correctNode(nullptr){
 		}
-	~UnknowNode() {
-		if (correctNode)
-			delete correctNode;
-	}
 	void optimize(in_func) override;
 	inline void putBytecodes(in_func, std::vector<uint8_t>& bytecodes) {
 		correctNode->putBytecodes(in_data, bytecodes);
 	}
-	void rewrite(in_func, std::vector<uint8_t>& bytecodes) {
+	inline void rewrite(in_func, std::vector<uint8_t>& bytecodes) {
 		correctNode->rewrite(in_data, bytecodes);
 	}
+	~UnknowNode();
 };
 
 struct AccessNode : HasClassIdNode {
@@ -234,6 +231,7 @@ struct SetNode : HasClassIdNode {
 		HasClassIdNode(NodeType::SET), op(op), detach(detach), value(value){}
 	void optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t>& bytecodes) override;
+	~SetNode();
 };
 
 // for (detach in from..to) body
