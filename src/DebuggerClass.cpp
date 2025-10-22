@@ -49,12 +49,14 @@ CreateClassNode* loadClass(in_func, size_t& i) {
 		context.gotoClass(lastClass);
 		return node.release();
 	}
+
+	//Add declaration this
+	context.currentClassInfo->declarationThis = declarationNode;
+
 	if (expect(token, Lexer::TokenType::LBRACE)) {
 		//'this' declaration
 		declarationNode->id = 0;
 		declarationNode->classId = clazz->id;
-		
-		context.currentClassInfo->declarationThis = declarationNode;
 
 		loadBody(in_data, node->body.nodes, i, false);
 

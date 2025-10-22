@@ -477,25 +477,25 @@ HasClassIdNode* parsePrimary(in_func, size_t& i) {
 					throw std::runtime_error("Expected identifier after '.' but not found");
 				}
 				auto temp = loadIdentifier(in_data, i, false);
-				switch (temp->kind) {
-					case NodeType::VAR:
-						printDebug("VAR");
-						break;
-					case NodeType::UNKNOW:
-						printDebug("UNKNOW");
-						break;
-					case NodeType::GET_PROP:
-						printDebug("GET_PROP");
-						printDebug(static_cast<GetPropNode*>(temp)->name);
-						printDebug(static_cast<GetPropNode*>(temp)->caller ? static_cast<VarNode*>(static_cast<GetPropNode*>(temp)->caller)->declaration->name : "No caller");
-						break;
-					case NodeType::CONST:
-						printDebug("CONST");
-						break;
-					case NodeType::CALL:
-						printDebug("CALL");
-						break;
-				}
+				// switch (temp->kind) {
+				// 	case NodeType::VAR:
+				// 		printDebug("VAR");
+				// 		break;
+				// 	case NodeType::UNKNOW:
+				// 		printDebug("UNKNOW");
+				// 		break;
+				// 	case NodeType::GET_PROP:
+				// 		printDebug("GET_PROP");
+				// 		printDebug(static_cast<GetPropNode*>(temp)->name);
+				// 		printDebug(static_cast<GetPropNode*>(temp)->caller ? static_cast<VarNode*>(static_cast<GetPropNode*>(temp)->caller)->declaration->name : "No caller");
+				// 		break;
+				// 	case NodeType::CONST:
+				// 		printDebug("CONST");
+				// 		break;
+				// 	case NodeType::CALL:
+				// 		printDebug("CALL");
+				// 		break;
+				// }
 				
 				if (temp->kind == NodeType::VAR || temp->kind == NodeType::UNKNOW) {
 					node.reset(new GetPropNode(nullptr, context.currentClass, node.release(), context.lexerString[token->indexData], false));

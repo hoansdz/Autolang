@@ -11,7 +11,6 @@ namespace AutoLang {
 struct ClassInfo {
 	std::vector<DeclarationNode*> member;
 	std::unordered_map<std::string, DeclarationNode*> staticMember;
-	std::unordered_map<std::string, std::vector<uint32_t>> vtable;
 	CreateConstructorNode* primaryConstructor = nullptr;
 	std::vector<CreateConstructorNode*> secondaryConstructor;
 	DeclarationNode* declarationThis;

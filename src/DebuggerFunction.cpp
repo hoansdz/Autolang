@@ -76,9 +76,6 @@ CreateFuncNode* loadFunc(in_func, size_t& i) {
 		//Add "this"
 		scope["this"] = context.currentClassInfo->declarationThis;
 		node->arguments.insert(node->arguments.begin(), context.currentClassInfo->declarationThis);
-
-		//Add to vtable
-		context.currentClassInfo->vtable[node->name].push_back(node->id);
 	}
 	func->maxDeclaration += node->arguments.size();
 	for (auto& argument:node->arguments) {

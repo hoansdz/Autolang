@@ -1,4 +1,6 @@
-#include <iostream>
+#ifndef AUTOLANG_HPP
+#define AUTOLANG_HPP
+
 #include "Interpreter.cpp"
 #include "Debugger.cpp"
 #include "AObject.cpp"
@@ -19,12 +21,4 @@
 #include "StackAllocator.cpp"
 #include "libs/Math.cpp"
 
-int main(int argc, char *argv[])
-{
-	try{
-		AVM i = AVM("source.txt");
-	}
-	catch (const std::exception& e) {
-		std::cerr<<e.what();
-	}
-}
+#endif

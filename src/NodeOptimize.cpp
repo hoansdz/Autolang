@@ -321,7 +321,9 @@ void GetPropNode::optimize(in_func) {
 		// for (int i = 0; i<clazz->memberId.size(); ++i) {
 		// 	printDebug("MemId: "+std::to_string(clazz->memberId[i]));
 		// }
-		classId = clazz->memberId[id];
+		if (clazz->memberId[id] != declarationNode->classId)
+			clazz->memberId[id] = declarationNode->classId;
+		classId = declarationNode->classId;//clazz->memberId[id];
 		printDebug("Class " + clazz->name + " GetProp: "+name+" "+" has id: "+std::to_string(id)+" "+std::to_string(classId)+" "+compile.classes[classId].name);
 	}
 }

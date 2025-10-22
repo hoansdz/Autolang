@@ -1,8 +1,14 @@
-data class A(var name: String) {
+class A {
     
     static var i: Int = 1
     static var m = i + 5
+    
 
+    constructor(name: String) {
+        this.name = name
+    }
+
+    
     
     func getName(): String {
         val str = (i + 5) + name
@@ -13,7 +19,7 @@ data class A(var name: String) {
     func setName(name_: String) {
         name = name_
     }
-
+    var name: String
     var name__: String
 }
 

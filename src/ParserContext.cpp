@@ -64,27 +64,33 @@ AccessNode* FunctionInfo::findDeclaration(in_func, std::string& name, bool isSta
 
 AccessNode* ClassInfo::findDeclaration(in_func, std::string& name, bool isStatic) {
 	//Find static member
-	auto it = staticMember.find(name);
-	if (it != staticMember.end()) {
-		return new VarNode(
-			it->second,
-			false
-		);
-	}
-	for (auto* node : member) {
-		if (node->name != name) continue;
-		if (isStatic)
-			throw std::runtime_error(name + " is not static");
-		return new GetPropNode(
-			node,
-			&compile.classes[declarationThis->classId],
-			new VarNode(
-				declarationThis,
+	{
+		auto it = staticMember.find(name);
+		if (it != staticMember.end()) {
+			return new VarNode(
+				it->second,
 				false
-			),
-			name,
-			false
-		);
+			);
+		}
+	}
+	if (declarationThis) {
+		auto clazz = &compile.classes[declarationThis->classId];
+		auto it = clazz->memberMap.find(name);
+		if (it != clazz->memberMap.end()) {
+			auto node = member[it->second];
+			if (isStatic)
+				throw std::runtime_error(name + " is not static");
+			return new GetPropNode(
+				node,
+				&compile.classes[declarationThis->classId],
+				new VarNode(
+					declarationThis,
+					false
+				),
+				name,
+				false
+			);
+		}
 	}
 	return nullptr;
 }
