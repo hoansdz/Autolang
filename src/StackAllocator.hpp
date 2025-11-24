@@ -19,6 +19,14 @@ public:
 	StackAllocator(size_t maxSize = 256):
 		maxSize(maxSize), sizeNow(maxSize), top(0), args(new AObject*[maxSize]()){}
 	~StackAllocator() {
+		for (size_t i = 0; i < sizeNow; ++i) {
+			auto obj = args[i];
+			if (obj == nullptr) continue;
+			if (obj->refCount <= 9000) {
+				obj->free();
+				delete obj;
+			}
+		}
 		delete[] args;
 	}
 	

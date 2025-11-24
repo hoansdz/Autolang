@@ -48,7 +48,7 @@ void CreateFuncNode::optimize(in_func) {
 		func->returnId = it->second;
 	} else
 		func->returnId = AutoLang::DefaultClass::nullClassId;
-	for (int i=0; i<arguments.size(); ++i) {
+	for (size_t i=0; i<arguments.size(); ++i) {
 		auto& argument = arguments[i];
 		func->args.push_back(argument->classId);
 	}
@@ -117,7 +117,7 @@ void CreateConstructorNode::optimize(in_func) {
 
 	//Add return bytecodes
 	if (!isPrimary) {
-		auto funcInfo = &context.functionInfo[func];
+		// auto funcInfo = &context.functionInfo[func];
 		body.nodes.push_back(new ReturnNode(
 			func,
 			new VarNode(

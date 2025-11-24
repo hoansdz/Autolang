@@ -103,15 +103,14 @@ private:
 			inputArgument<index - 1>();
 		}
 	}
-	
+	bool allowDebug;
 	template <AObject* (*native)(NativeFuncInput), size_t size>
 	inline void operate(size_t currentTop);
 	AObject* run(Function* currentFunction, const size_t currentTop, size_t maxThisAreaSize);
 public:
-	explicit AVM(std::string path);
-	~AVM() {
-		delete[] globalVariables;
-	}
+	template <typename T>
+	explicit AVM(T& lineData, bool allowDebug);
+	~AVM();
 	void run();
 };
 

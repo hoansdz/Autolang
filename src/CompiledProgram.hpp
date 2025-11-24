@@ -58,6 +58,7 @@ struct CompiledProgram {
 	}
 	void addTypeResult(uint32_t first, uint32_t second, uint8_t op, uint32_t classId);
 	bool getTypeResult(uint32_t first, uint32_t second, uint8_t op, uint32_t& result);
+	~CompiledProgram();
 };
 
 #endif

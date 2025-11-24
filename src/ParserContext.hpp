@@ -48,7 +48,7 @@ struct ParserContext {
 	std::vector<CreateFuncNode*> newFunctions;
 	//Declaration new classes by user
 	std::vector<CreateClassNode*> newClasses;
-	int line;
+	uint32_t line;
 	bool canBreakContinue = false;
 	//Be used when it is static keywords, example static val a = ...
 	bool justFindStatic = false;

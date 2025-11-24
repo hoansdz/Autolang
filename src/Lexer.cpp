@@ -1,7 +1,8 @@
 #ifndef LEXER_CPP
 #define LEXER_CPP
 
-//#include "Lexer.hpp"
+#include <fstream>
+#include "Lexer.hpp"
 #include "ParserContext.hpp"
 
 #define TOKEN_CASE(ch, type) \
@@ -10,18 +11,35 @@
 namespace AutoLang {
 namespace Lexer {
 
-std::vector<Token> load(ParserContext* mainContext, std::string path) {
-	std::vector<Token> tokens;
-	Context context;
-	context.mainContext = mainContext;
-	context.reader.open(path);
-	if (!context.reader) {
-		throw std::runtime_error(path + " doesn't exists");
+std::vector<Token> load(ParserContext* mainContext, const char* path, Context& context) {
+	std::vector<char> lines;
+	std::ifstream file(path, std::ios::binary | std::ios::ate);
+	if (!file.is_open()) {
+		throw std::runtime_error(std::string("File ") + path + " doesn't exists");
 	}
+	std::streamsize size = file.tellg();
+	file.seekg(0, std::ios::beg);
+	lines.resize(size);
+	file.read(lines.data(), size);
+	if (!file) {
+		throw std::runtime_error(std::string(path) + ": An error occurred while reading the file");
+	}
+	file.close();
+	auto pair = std::pair<const char*, size_t>(reinterpret_cast<const char*>(lines.data()), lines.size());
+	return load(mainContext, pair, context);
+}
+
+std::vector<Token> load(ParserContext* mainContext, std::pair<const char*, size_t>& lineData, Context& context) {
+	std::vector<Token> tokens;
+	context.mainContext = mainContext;
+	context.totalSize = lineData.second;
+	context.absolutePos = 0;
 	context.linePos = 0;
-	while (nextLine(context)) {
-		int i=0;
-		while (i<context.line.length()) {
+	context.lineSize = 0;
+	context.nextLinePosition = 0;
+	uint32_t i = 0;
+	while (nextLine(context, lineData.first, i)) {
+		while (!isEndOfLine(context, i)) {
 			char chr = context.line[i];
 			if (std::isblank(chr)) {
 				++i;
@@ -70,7 +88,7 @@ std::vector<Token> load(ParserContext* mainContext, std::string path) {
 				TOKEN_CASE(',', COMMA)
 				TOKEN_CASE(':', COLON)
 				default:
-					throw std::runtime_error(std::string("Cannot find expression '")+chr+"'");
+					throw std::runtime_error(std::to_string(i) + std::string("Cannot find expression '")+chr+"'"+std::to_string((int)chr));
 			}
 			++i;
 		}
@@ -78,17 +96,17 @@ std::vector<Token> load(ParserContext* mainContext, std::string path) {
 	return tokens;
 }
 
-TokenType loadOp(Context& context, int &i) {
+TokenType loadOp(Context& context, uint32_t& i) {
 	char first = context.line[i++];
-	if (i == context.line.length() || !isOperator(context.line[i])) {
+	if (isEndOfLine(context, i) || !isOperator(context.line[i])) {
 		std::string str = {first};
 		auto it = CAST.find(str);
-		if (it == CAST.end()) 
+		if (it == CAST.end())
 			throw std::runtime_error("Cannot find " + str + " operator ");
 		return it->second;
 	}
 	char second = context.line[i++];
-	if (i == context.line.length() || second == '.' || second == '/' || !isOperator(context.line[i])) {
+	if (isEndOfLine(context, i) || second == '.' || second == '/' || !isOperator(context.line[i])) {
 		std::string str = {first, second};
 		auto it = CAST.find(str);
 		if (it == CAST.end()) 
@@ -104,7 +122,7 @@ TokenType loadOp(Context& context, int &i) {
 	return it->second;
 }
 
-void pushIdentifier(Context& context, std::vector<Token>& tokens, int &i) {
+void pushIdentifier(Context& context, std::vector<Token>& tokens, uint32_t& i) {
 	std::string identifier = loadIdentifier(context, i);
 	auto it = CAST.find(identifier);
 	if (it == CAST.end()) {
@@ -121,8 +139,8 @@ void pushIdentifier(Context& context, std::vector<Token>& tokens, int &i) {
 	);
 }
 
-std::string loadIdentifier(Context& context, int &i) {
-	for (; i<context.line.length(); ++i) {
+std::string loadIdentifier(Context& context, uint32_t& i) {
+	for (; !isEndOfLine(context, i); ++i) {
 		char chr = context.line[i];
 		if (std::isblank(chr))
 			break;
@@ -131,14 +149,14 @@ std::string loadIdentifier(Context& context, int &i) {
 		}
 		break;
 	}
-	return context.line.substr(context.pos, i - context.pos);
+	return std::string(context.line + context.pos, i - context.pos);
 }
 
-std::string loadNumber(Context& context, int &i) {
+std::string loadNumber(Context& context, uint32_t& i) {
 	bool hasDot = false;
 	bool scientific = false;
 	char chr;
-	for (; i<context.line.length(); ++i) {
+	for (; !isEndOfLine(context, i); ++i) {
 		chr = context.line[i];
 		if (std::isdigit(chr)) {
 			continue;
@@ -155,12 +173,12 @@ std::string loadNumber(Context& context, int &i) {
 				}
 				if (chr == '+' || chr == '-') continue;
 			}
-			throw std::runtime_error(std::string("Unexpected character after number here ")+context.line.substr(context.pos, i - context.pos));
+			throw std::runtime_error("Unexpected character after number here " + std::string(context.line + context.pos, i - context.pos));
 		}
 		if (chr == '.') {
 			if (hasDot) break;
 			++i;
-			if (i==context.line.length() || !std::isdigit(context.line[i])) {
+			if (isEndOfLine(context, i) || !std::isdigit(context.line[i])) {
 				--i;
 				break;
 			}
@@ -169,14 +187,14 @@ std::string loadNumber(Context& context, int &i) {
 		}
 		break;
 	}
-	return context.line.substr(context.pos, i - context.pos);
+	return std::string(context.line + context.pos, i - context.pos);
 }
 
-std::string loadQuote(Context& context, char quote, int &i) {
+std::string loadQuote(Context& context, char quote, uint32_t& i) {
 	bool isSpecialCase = false;
 	std::string newStr;
 	char chr;
-	for (; i<context.line.length(); ++i) {
+	for (; !isEndOfLine(context, i); ++i) {
 		chr = context.line[i];
 		if (!isSpecialCase) {
 			if (chr == '\\'){
@@ -239,14 +257,6 @@ bool isOperator(char chr) {
 		default:
 			return false;
 	}
-}
-
-bool nextLine(Context& context) {
-	if (std::getline(context.reader, context.line)) {
-		++context.linePos;
-		return true;
-	}
-	return false;
 }
 
 std::string Token::toString(ParserContext& context) {
@@ -359,6 +369,38 @@ uint32_t pushLexerString(Context& context, std::string&& str) {
 		return id;
 	}
 	return it->second;
+}
+
+bool nextLine(Context& context, const char* lines, uint32_t& i) {
+	context.absolutePos = context.nextLinePosition;
+	if (context.absolutePos >= context.totalSize)
+		return false;
+	context.line = lines + context.absolutePos;
+	context.lineSize = 0;
+	i = 0;
+	++context.linePos;
+	while (context.absolutePos + context.lineSize < context.totalSize) {
+		switch (context.line[context.lineSize]){
+			case '\n':
+				context.nextLinePosition = context.absolutePos + context.lineSize + 1;
+				goto out;
+			case '\r':
+				context.nextLinePosition = context.absolutePos + context.lineSize + 2;
+				goto out;
+		}
+		++context.lineSize;
+	}
+	if (context.absolutePos + context.lineSize >= context.totalSize) {
+		context.nextLinePosition = context.totalSize;
+	}
+	out:;
+	// printDebug(context.nextLinePosition);
+	// printDebug(std::to_string(context.linePos)+ ", " + std::to_string(context.absolutePos) + "] " + std::to_string(context.lineSize) + "} " + std::string(context.line, context.lineSize));
+	return true;
+}
+
+bool isEndOfLine(Context& context, uint32_t& i) {
+	return i >= context.lineSize;
 }
 
 }

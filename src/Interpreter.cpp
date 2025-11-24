@@ -8,7 +8,8 @@
 #include "Interpreter.hpp"
 #include "DefaultOperator.hpp"
 
-AVM::AVM(std::string path)
+template <typename T>
+AVM::AVM(T& lineData, bool allowDebug) : allowDebug(allowDebug)
 {
 	auto startCompiler = std::chrono::high_resolution_clock::now();
 	AutoLang::DefaultClass::init(data);
@@ -86,7 +87,7 @@ AVM::AVM(std::string path)
 			
 		};
 	}
-	AutoLang::build(data, path);
+	AutoLang::build(data, lineData);
 	initGlobalVariables();
 	log();
 	//log(&data.functions[data.funcMap["m()"][0]]);
@@ -94,7 +95,7 @@ AVM::AVM(std::string path)
 	auto end = std::chrono::high_resolution_clock::now();
 	auto durationCompiler = std::chrono::duration_cast<std::chrono::milliseconds>(end - startCompiler);
 	std::cout<<"Total time : "<<durationCompiler.count()<<" ms"<<std::endl;
-	while (true) {
+	while (allowDebug) {
 		std::string command;
 		std::getline(std::cin, command);
 		std::istringstream iss(command);
@@ -118,9 +119,6 @@ AVM::AVM(std::string path)
 					std::cout<<"Please log function"<<std::endl;
 					continue;
 				}
-			} else 
-			if (word == "run"){
-				run();
 			} else
 			if (word == "e") {
 				return; 
@@ -586,6 +584,10 @@ void AVM::log(Function* currentFunction) {
 				break;
 		}
 	}
+}
+
+AVM::~AVM() {
+	delete[] globalVariables;
 }
 
 template <typename K, typename V>

@@ -101,4 +101,11 @@ bool CompiledProgram::getTypeResult(uint32_t first, uint32_t second, uint8_t op,
 	return true;
 }
 
+CompiledProgram::~CompiledProgram() {
+	// for (auto* obj : constPool) {
+	// 	obj->free();
+	// 	delete obj;
+	// }
+}
+
 #endif

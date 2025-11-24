@@ -1,29 +1,7 @@
-class A {
-    
-    static var i: Int = 1
-    static var m = i + 5
-    
-
-    constructor(name: String) {
-        this.name = name
-    }
-
-    
-    
-    func getName(): String {
-        val str = (i + 5) + name
-        println("Size: " + str.size())
-        return str
-    }
-
-    func setName(name_: String) {
-        name = name_
-    }
-    var name: String
-    var name__: String
+var i = 0
+var a = 0
+while (i<10000) {
+a += i
+i += 1
 }
-
-val a = A("John")
-println(a.getName().size().toString().toInt())
-a.setName("Non")
-println(a.name)
+println(a)

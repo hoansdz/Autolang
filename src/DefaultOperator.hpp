@@ -2,6 +2,7 @@
 #define DEFAULT_OPERATOR_HPP
 
 #include <iostream>
+#include <cmath>
 #include "Debugger.hpp"
 #include "DefaultClass.hpp"
 

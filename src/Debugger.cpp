@@ -9,7 +9,8 @@
 namespace AutoLang
 {
 
-void build(CompiledProgram& compile, std::string path) {
+template <typename T>
+void build(CompiledProgram& compile, T& data) {
 	ParserContext context;
 	context.gotoFunction(compile.main);
 	context.mainFunction = compile.main;
@@ -20,17 +21,19 @@ void build(CompiledProgram& compile, std::string path) {
 	context.line = 0;
 	size_t i = 0;
 	try {
-		context.tokens = Lexer::load(&context, path);
-		Lexer::Token* token; 
-		while (i != context.tokens.size()) {
-			token = &context.tokens[i];
-			int line = token->line;
-			std::cout<<"["<<i<<"] "<<token->toString(context);
-			while (nextTokenSameLine(&token, context.tokens, i, line)) {
-				std::cout<<" "<<token->toString(context);
-			}
-			std::cout<<std::endl;
-		}
+		Lexer::Context lexerContext;
+		context.tokens = Lexer::load(&context, data, lexerContext);
+		//printDebug(context.tokens.size());
+		// Lexer::Token* token;
+		// while (i != context.tokens.size()) {
+		// 	token = &context.tokens[i];
+		// 	uint32_t line = token->line;
+		// 	std::cout<<"["<<i<<"] "<<token->toString(context);
+		// 	while (nextTokenSameLine(&token, context.tokens, i, line)) {
+		// 		std::cout<<" "<<token->toString(context);
+		// 	}
+		// 	std::cout<<std::endl;
+		// }
 		i=0;
 		while (i < context.tokens.size()) {
 			auto node = loadLine(in_data, i);

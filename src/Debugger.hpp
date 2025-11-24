@@ -16,7 +16,8 @@
 namespace AutoLang
 {
 
-void build(CompiledProgram& compile, std::string path);
+template <typename T>
+void build(CompiledProgram& compile, T& data);
 void resolve(in_func);
 ExprNode* loadLine(in_func, size_t& i);
 std::vector<HasClassIdNode*> loadListArgument(in_func, size_t& i);
@@ -53,7 +54,7 @@ inline bool expect(Lexer::Token* token, Lexer::TokenType type) {
 	return token->type == type;
 }
 
-inline bool expectSameLine(Lexer::Token* token, Lexer::TokenType type, int line) {
+inline bool expectSameLine(Lexer::Token* token, Lexer::TokenType type, uint32_t line) {
 	return token->type == type || token->line == line;
 }
 
@@ -64,7 +65,7 @@ inline bool nextToken(Lexer::Token** token, std::vector<Lexer::Token>& tokens, s
 	return true;
 }
 
-inline bool nextTokenSameLine(Lexer::Token** token, std::vector<Lexer::Token>& tokens, size_t& i, int line) {
+inline bool nextTokenSameLine(Lexer::Token** token, std::vector<Lexer::Token>& tokens, size_t& i, uint32_t line) {
 	++i;
 	if (i >= tokens.size()) return false;
 	*token = &tokens[i];

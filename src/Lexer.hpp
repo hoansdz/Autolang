@@ -163,20 +163,25 @@ struct Token {
 
 struct Context  {
 	ParserContext* mainContext;
-	std::string line;
-	int linePos;
-	int pos;
-	std::ifstream reader;
+	const char* line;
+	size_t lineSize;
+	size_t nextLinePosition = 0;
+	size_t totalSize;
+	uint32_t linePos;
+	uint32_t pos;
+	uint32_t absolutePos;
 };
 
-inline bool nextLine(Context& context);
+inline bool nextLine(Context& context, const char* lines, uint32_t& i);
 inline bool isOperator(char chr);
-std::vector<Token> load(ParserContext* mainContext, std::string path);
-std::string loadQuote(Context& context, char quote, int &i);
-std::string loadIdentifier(Context& context, int &i);
-std::string loadNumber(Context& context, int &i);
-TokenType loadOp(Context& context, int &i);
-void pushIdentifier(Context& context, std::vector<Token>& tokens, int &i);
+inline bool isEndOfLine(Context& context, uint32_t& i);
+std::vector<Token> load(ParserContext* mainContext, const char* path, Context& context);
+std::vector<Token> load(ParserContext* mainContext, std::pair<const char*, size_t>& lineData, Context& context);
+std::string loadQuote(Context& context, char quote, uint32_t& i);
+std::string loadIdentifier(Context& context, uint32_t& i);
+std::string loadNumber(Context& context, uint32_t& i);
+TokenType loadOp(Context& context, uint32_t& i);
+void pushIdentifier(Context& context, std::vector<Token>& tokens, uint32_t& i);
 uint32_t pushLexerString(Context& context, std::string&& str);
 
 }
