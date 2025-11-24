@@ -101,8 +101,12 @@ CreateFuncNode* loadFunc(in_func, size_t& i) {
 ReturnNode* loadReturn(in_func, size_t& i) {
 	Lexer::Token *token = &context.tokens[i];
 	if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
-		return new ReturnNode(context.currentFunction, nullptr);
+		--i;
+		auto value = context.currentFuncInfo->isConstructor ? new VarNode(context.currentClassInfo->declarationThis, false) : nullptr;
+		return new ReturnNode(context.currentFunction, value);
 	}
+	if (context.currentFuncInfo->isConstructor)
+		throw std::runtime_error("Cannot return value in constructor");
 	return new ReturnNode(context.currentFunction, loadExpression(in_data, 0, i));
 }
 

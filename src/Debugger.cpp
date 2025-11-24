@@ -150,6 +150,7 @@ ExprNode* loadLine(in_func, size_t& i) {
 		case Lexer::TokenType::STRING:
 		case Lexer::TokenType::IDENTIFIER: {
 			if (!isInFunction) {
+				throw std::runtime_error("Cannot");
 				goto err_call_func;
 			}
 			return parsePrimary(in_data, i);
@@ -219,7 +220,7 @@ ExprNode* loadLine(in_func, size_t& i) {
 		}
 		case Lexer::TokenType::RETURN: {
 			if (!isInFunction)
-				goto err_call_func;
+				throw std::runtime_error("Cannot call return outside function");
 			return loadReturn(in_data, i);
 		}
 		case Lexer::TokenType::PUBLIC:

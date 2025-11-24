@@ -202,12 +202,13 @@ AObject* AVM::run(Function* currentFunction, const size_t currentTop, size_t max
 			}
 			case AutoLang::Opcode::RETURN_LOCAL: {
 				AObject** last = &stackAllocator[get_u32(bytecodes, i)];
-				if (*last != nullptr) {
-					--(*last)->refCount;
+				AObject* obj = *last;
+				if (obj != nullptr) {
+					--obj->refCount;
 				}
-				stack.push(*last);
+				stack.push(obj);
 				*last = nullptr;
-				break;
+				return obj;
 			}
 			case AutoLang::Opcode::CREATE_OBJECT:
 				stack.push(new AObject(get_u32(bytecodes, i), get_u32(bytecodes, i)));
@@ -466,7 +467,7 @@ void AVM::log(Function* currentFunction) {
 		uint8_t b = bytecodes[i++];
 		switch (b) {
 			case AutoLang::Opcode::CALL_FUNCTION:
-				std::cerr<<"CALL_FUNCTION	 "<<get_u32(bytecodes, i)<<std::endl;
+				std::cerr<<"CALL_FUNCTION	 "<<data.functions[get_u32(bytecodes, i)].name<<std::endl;
 				break;
 			case AutoLang::Opcode::LOAD_CONST:
 				std::cerr<<"LOAD_CONST	 "<<get_u32(bytecodes, i)<<std::endl;

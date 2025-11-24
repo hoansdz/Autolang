@@ -261,10 +261,9 @@ void UnknowNode::optimize(in_func) {
 			}
 		}
 		throw std::runtime_error("UnknowNode: Cannot find class name: "+name);
-	} else {
-
 	}
 	classId = it->second;
+	correctNode = new ClassAccessNode(classId);
 }
 
 void GetPropNode::optimize(in_func) {
