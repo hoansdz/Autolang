@@ -294,16 +294,16 @@ AObject* AVM::run(Function* currentFunction, const size_t currentTop, size_t max
 				break;
 			}
 			case AutoLang::Opcode::PLUS_EQUAL:
-				operate<AutoLang::DefaultFunction::plus_eq, 2>(currentTop);
+				operateWithoutPush<AutoLang::DefaultFunction::plus_eq, 2>(currentTop);
 				break;
 			case AutoLang::Opcode::MINUS_EQUAL:
-				operate<AutoLang::DefaultFunction::minus_eq, 2>(currentTop);
+				operateWithoutPush<AutoLang::DefaultFunction::minus_eq, 2>(currentTop);
 				break;
 			case AutoLang::Opcode::MUL_EQUAL:
-				operate<AutoLang::DefaultFunction::mul_eq, 2>(currentTop);
+				operateWithoutPush<AutoLang::DefaultFunction::mul_eq, 2>(currentTop);
 				break;
 			case AutoLang::Opcode::DIVIDE_EQUAL:
-				operate<AutoLang::DefaultFunction::divide_eq, 2>(currentTop);
+				operateWithoutPush<AutoLang::DefaultFunction::divide_eq, 2>(currentTop);
 				break;
 			case AutoLang::Opcode::MOD: {
 				operate<AutoLang::DefaultFunction::mod, 2>(currentTop);
@@ -393,6 +393,15 @@ void AVM::operate(size_t currentTop) {
 	stackAllocator.top = 0;
 	inputArgument<size>();
 	stack.push(native(data.manager, stackAllocator, size));
+	stackAllocator.top = currentTop;
+	stackAllocator.clearTemp<size>(data.manager);
+}
+
+template <AObject* (*native)(NativeFuncInput), size_t size>
+void AVM::operateWithoutPush(size_t currentTop) {
+	stackAllocator.top = 0;
+	inputArgument<size>();
+	native(data.manager, stackAllocator, size);
 	stackAllocator.top = currentTop;
 	stackAllocator.clearTemp<size>(data.manager);
 }
