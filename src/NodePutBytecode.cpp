@@ -273,16 +273,18 @@ void ReturnNode::putBytecodes(in_func, std::vector<uint8_t>& bytecodes) {
 	if (value) {
 		if (value->kind == NodeType::VAR) {
 			auto node = static_cast<VarNode*>(value);
-			if (node->declaration->isGlobal) 
-				goto normal;
+			if (node->declaration->isGlobal)
+				goto return_global;
 			bytecodes.emplace_back(RETURN_LOCAL);
 			put_opcode_u32(bytecodes, node->declaration->id);
 			return;
 		}
+		return_global:;
+		value->putBytecodes(in_data, bytecodes);
+		bytecodes.emplace_back(Opcode::RETURN_VALUE);
+		return;
 	}
-	normal:;
-	value->putBytecodes(in_data, bytecodes);
-	bytecodes.emplace_back(value ? Opcode::RETURN_VALUE : Opcode::RETURN);
+	bytecodes.emplace_back(Opcode::RETURN);
 }
 
 void VarNode::putBytecodes(in_func, std::vector<uint8_t>& bytecodes) {

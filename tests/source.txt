@@ -1,9 +1,38 @@
-class A {
-    constructor () {
-        println("HI")
-        return
-        println("YEAL")
+data class Person(var name: String, var age: Int, val id: Float) 
+
+data class PersonNode(var prev: PersonNode, var currentPerson: Person, var next: PersonNode){
+    
+}
+//hi
+data class ListPerson() {
+	private var beginNode: PersonNode = null
+    public var size: Int = 0
+    func begin(): PersonNode {
+    	return beginNode
+    }
+    func addPerson(person: Person) {
+    	size += 1
+    	if (beginNode == null) {
+        	beginNode = PersonNode(null, person, null)
+            return
+        }
+        var currentNode = beginNode
+        while (currentNode.next != null) {
+        	currentNode = currentNode.next
+        }
+        currentNode.next = PersonNode(currentNode, person, null)
     }
 }
 
-A()
+val listPerson = ListPerson()
+
+listPerson.addPerson(Person("John", 18, 1.5))
+listPerson.addPerson(Person("Timmy", 18, 1.6))
+
+var currentNode = listPerson.begin()
+
+for (i in 0..<listPerson.size) {
+    val person = currentNode.currentPerson
+    println("User "+person.name+" has age: " + person.age)
+    currentNode = currentNode.next
+}

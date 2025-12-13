@@ -109,6 +109,24 @@ void BinaryNode::optimize(in_func) {
 			}
 			break;
 		}
+		case Lexer::TokenType::EQEQ: {
+			if (left->classId == AutoLang::DefaultClass::nullClassId || 
+				right->classId == AutoLang::DefaultClass::nullClassId) {
+				op = Lexer::TokenType::EQEQEQ;
+				classId = AutoLang::DefaultClass::boolClassId;
+				return;
+			}
+			break;
+		}
+		case Lexer::TokenType::NOTEQ: {
+			if (left->classId == AutoLang::DefaultClass::nullClassId || 
+				right->classId == AutoLang::DefaultClass::nullClassId) {
+				op = Lexer::TokenType::NOTEQEQ;
+				classId = AutoLang::DefaultClass::boolClassId;
+				return;
+			}
+			break;
+		}
 		case Lexer::TokenType::NOTEQEQ:
 		case Lexer::TokenType::EQEQEQ: {
 			return;
@@ -117,7 +135,7 @@ void BinaryNode::optimize(in_func) {
 			break;
 	}
 	if (compile.getTypeResult(left->classId, right->classId, static_cast<uint8_t>(op), classId)) return;
-	throw std::runtime_error(std::string("Cannot find use '")+Lexer::Token(0, op).toString(context)+"' between "+
+	throw std::runtime_error(std::string("Cannot use '")+Lexer::Token(0, op).toString(context)+"' between "+
 	compile.classes[left->classId].name+" and "+compile.classes[right->classId].name);
 }
 
@@ -239,7 +257,8 @@ void BlockNode::optimize(in_func) {
 void UnknowNode::optimize(in_func) {
 	auto it = compile.classMap.find(name);
 	if (it == compile.classMap.end()) {
-		if (clazz) {
+		if (contextCallClassId) {
+			AClass* clazz = contextCallClassId ? &compile.classes[*contextCallClassId] : nullptr;
 			AClass* lastClass = context.currentClass;
 			context.gotoClass(clazz);
 			correctNode = context.currentClassInfo->findDeclaration(in_data, name);
@@ -289,7 +308,7 @@ void GetPropNode::optimize(in_func) {
 		}
 	}
 	auto clazz = &compile.classes[caller->classId];
-	auto classInfo = &context.classInfo[clazz];
+	auto classInfo = &context.classInfo[clazz->id];
 	auto it = clazz->memberMap.find(name);
 	if (it == clazz->memberMap.end()) {
 		//Find static member
@@ -298,8 +317,8 @@ void GetPropNode::optimize(in_func) {
 			throw std::runtime_error("Cannot find member name: "+name);
 		auto declaration = it_->second;
 		if (declaration->accessModifier != Lexer::TokenType::PUBLIC &&
-			this->clazz != clazz) {
-			throw std::runtime_error("Cannot access private member name '"+name+"'");
+			(!contextCallClassId || *contextCallClassId != clazz->id)) {
+			throw std::runtime_error("Cannot access private -a member name '"+name+"'");
 		}
 		isStatic = true;
 		isVal = declaration->isVal;
@@ -311,15 +330,16 @@ void GetPropNode::optimize(in_func) {
 		auto declarationNode = classInfo->member[it->second];
 		isVal = !isInitial && declarationNode->isVal;
 		if (declarationNode->accessModifier != Lexer::TokenType::PUBLIC &&
-			this->clazz != clazz
+			(!contextCallClassId || *contextCallClassId != clazz->id)
 		) {
-			throw std::runtime_error("Cannot access private member name '"+name+"'");
+			throw std::runtime_error("Cannot access private member -b name '"+name+"'");
 		}
 		
 		id = it->second;
 		// for (int i = 0; i<clazz->memberId.size(); ++i) {
 		// 	printDebug("MemId: "+std::to_string(clazz->memberId[i]));
 		// }
+		// printDebug("Class " + clazz->name + " GetProp: "+name+" "+" has: "+std::to_string((uintptr_t)declarationNode));
 		if (clazz->memberId[id] != declarationNode->classId)
 			clazz->memberId[id] = declarationNode->classId;
 		classId = declarationNode->classId;//clazz->memberId[id];
@@ -330,7 +350,7 @@ void GetPropNode::optimize(in_func) {
 void IfNode::optimize(in_func) {
 	condition->optimize(in_data);
 	if (condition->classId != AutoLang::DefaultClass::boolClassId)
-		throw std::runtime_error("Cannot use expression of type '" + condition->getClassName(in_data) + "' as a condition — expected 'Bool'");
+		throw std::runtime_error("Cannot use expression of type '" + condition->getClassName(in_data) + "' as a condition, expected 'Bool'");
 	ifTrue.optimize(in_data);
 	if (ifFalse) ifFalse->optimize(in_data);
 }
@@ -338,7 +358,7 @@ void IfNode::optimize(in_func) {
 void WhileNode::optimize(in_func) {
 	condition->optimize(in_data);
 	if (condition->classId != AutoLang::DefaultClass::boolClassId)
-		throw std::runtime_error("Cannot use expression of type '" + condition->getClassName(in_data) + "' as a condition — expected 'Bool'");
+		throw std::runtime_error("Cannot use expression of type '" + condition->getClassName(in_data) + "' as a condition, expected 'Bool'");
 	body.optimize(in_data);
 }
 
@@ -378,7 +398,7 @@ void SetNode::optimize(in_func) {
 			}
 			if (!node->declaration) {
 				auto clazz = &compile.classes[node->caller->classId];
-				auto classInfo = &context.classInfo[clazz];
+				auto classInfo = &context.classInfo[clazz->id];
 				for (auto* n:classInfo->member) {
 					if (n->name != node->name) continue;
 					node->declaration = n;
@@ -392,7 +412,7 @@ void SetNode::optimize(in_func) {
 				throw std::runtime_error("Cannot find declaration "+clazz->name+"."+node->name);
 			}
 			next_getprop:{}
-			if (node->declaration) {
+			if (node->declaration && value->classId != AutoLang::DefaultClass::nullClassId) {
 				auto clazz = &compile.classes[node->caller->classId];
 				//clazz->memberId[detach->declaration->id] = value->classId;
 				node->declaration->classId = value->classId;
@@ -488,6 +508,7 @@ void SetNode::optimize(in_func) {
 }
 
 void CallNode::optimize(in_func) {
+	AClass* clazz = contextCallClassId ? &compile.classes[*contextCallClassId] : nullptr;
 	std::string funcName;
 	bool allowPrefix = false;
 	if (caller) {
@@ -591,12 +612,12 @@ void CallNode::optimize(in_func) {
 	auto func = &compile.functions[funcId];
 	auto funcInfo = &context.functionInfo[func];
 	if (funcInfo->accessModifier != Lexer::TokenType::PUBLIC &&
-		 this->clazz != funcInfo->clazz)
+		 (!contextCallClassId || *contextCallClassId != funcInfo->clazz->id))
 		throw std::runtime_error("Cannot access private function name '"+funcName+"'");
 	//Add this
 	if (allowPrefix && foundIndex == 0) {
 		caller = new VarNode(
-			context.classInfo[clazz].declarationThis,
+			context.classInfo[clazz->id].declarationThis,
 			false
 		);
 		caller->optimize(in_data);
@@ -659,6 +680,10 @@ bool CallNode::match(CompiledProgram& compile, MatchOverload& match, std::vector
 					++match.score;
 					continue;
 				}
+				if (inputClassId == AutoLang::DefaultClass::nullClassId) {
+					++match.score;
+					continue;
+				} else
 				if (inputClassId == AutoLang::DefaultClass::INTCLASSID &&
 					funcArgClassId == AutoLang::DefaultClass::FLOATCLASSID) {
 					++match.score;

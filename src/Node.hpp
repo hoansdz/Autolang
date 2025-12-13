@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <exception>
+#include <optional>
 #include "Interpreter.hpp"
 #include "DefaultClass.hpp"
 #include "Lexer.hpp"
@@ -91,11 +92,11 @@ struct HasClassIdNode : ExprNode {
 };
 
 struct UnknowNode : HasClassIdNode {
-	AClass* clazz;
 	std::string name;
+	std::optional<uint32_t> contextCallClassId;
 	HasClassIdNode* correctNode;
-	UnknowNode(AClass* clazz, std::string name):
-		HasClassIdNode(NodeType::UNKNOW), clazz(clazz), name(std::move(name)), correctNode(nullptr){
+	UnknowNode(std::optional<uint32_t> contextCallClassId, std::string name):
+		HasClassIdNode(NodeType::UNKNOW), name(std::move(name)), contextCallClassId(contextCallClassId), correctNode(nullptr){
 		}
 	void optimize(in_func) override;
 	inline void putBytecodes(in_func, std::vector<uint8_t>& bytecodes) {
@@ -164,7 +165,7 @@ struct UnaryNode : HasClassIdNode {
 
 //1 + 2 * 3 ...
 struct BinaryNode : HasClassIdNode {
-	const Lexer::TokenType op;
+	Lexer::TokenType op;
 	HasClassIdNode* left;
 	HasClassIdNode* right;
 	BinaryNode(Lexer::TokenType op, HasClassIdNode* left, HasClassIdNode* right):
@@ -187,14 +188,15 @@ struct CastNode : HasClassIdNode {
 
 //caller.name
 struct GetPropNode : AccessNode {
-	AClass* clazz;
+	std::optional<uint32_t> contextCallClassId;
 	HasClassIdNode* caller;
 	std::string name;
 	uint32_t id;
 	bool isInitial;
 	bool isStatic;
-	GetPropNode(DeclarationNode* declaration, AClass* clazz, HasClassIdNode* caller, std::string name, bool isInitial) :
-		AccessNode(NodeType::GET_PROP, declaration, AutoLang::DefaultClass::nullClassId), clazz(clazz), caller(caller), name(std::move(name)), isInitial(isInitial){}
+	GetPropNode(DeclarationNode* declaration, std::optional<uint32_t> contextCallClassId, HasClassIdNode* caller, std::string name, bool isInitial) :
+		AccessNode(NodeType::GET_PROP, declaration, AutoLang::DefaultClass::nullClassId), contextCallClassId(contextCallClassId), caller(caller), name(std::move(name)), isInitial(isInitial){
+		}
 	void optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t>& bytecodes) override;
 	~GetPropNode();
@@ -203,7 +205,7 @@ struct GetPropNode : AccessNode {
 struct IfNode : ExprNode {
 	HasClassIdNode* condition;
 	BlockNode ifTrue;
-	BlockNode* ifFalse;
+	BlockNode* ifFalse = nullptr;
 	IfNode():
 		ExprNode(NodeType::IF){}
 	void optimize(in_func);
@@ -270,7 +272,7 @@ struct MatchOverload {
 
 //caller.name(arguments)
 struct CallNode : HasClassIdNode {
-	AClass* clazz;
+	std::optional<uint32_t> contextCallClassId;
 	HasClassIdNode* caller;
 	std::string name;
 	std::vector<HasClassIdNode*> arguments;
@@ -278,8 +280,8 @@ struct CallNode : HasClassIdNode {
 	bool isConstructor = false;
 	bool justFindStatic;
 	bool addPopBytecode = false;
-	CallNode(AClass* clazz, HasClassIdNode* caller, std::string name, bool justFindStatic) : 
-		HasClassIdNode(NodeType::CALL), clazz(clazz), caller(caller), name(name), justFindStatic(justFindStatic){}
+	CallNode(std::optional<uint32_t> contextCallClassId, HasClassIdNode* caller, std::string name, bool justFindStatic) : 
+		HasClassIdNode(NodeType::CALL), caller(caller), contextCallClassId(contextCallClassId), name(name), justFindStatic(justFindStatic){}
 	void optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t>& bytecodes) override;
 	bool match(CompiledProgram& compile, MatchOverload& match, std::vector<uint32_t>& functions, int& i);

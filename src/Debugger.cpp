@@ -59,14 +59,15 @@ void build(CompiledProgram& compile, T& data) {
 
 void resolve(in_func) {
 	printDebug("Start optimize declaration nodes in functions");
-	for (auto& pair : context.functionInfo) {
-		for (auto& node : pair.second.declarationNodes) {
+	for (auto& [_, funcInfo] : context.functionInfo) {
+		for (auto& node : funcInfo.declarationNodes) {
 			node->optimize(in_data);
 		}
 	}
 	printDebug("Start optimize constructor nodes");
 	for (auto* node : context.newClasses) {
-		auto classInfo = &context.classInfo[&compile.classes[node->classId]];
+		auto clazz = &compile.classes[node->classId];
+		auto classInfo = &context.classInfo[clazz->id];
 		if (classInfo->primaryConstructor) {
 			classInfo->primaryConstructor->optimize(in_data);
 		} else {
@@ -89,16 +90,16 @@ void resolve(in_func) {
 	}
 	printDebug("Start put bytecodes constructor");
 	for (auto& node : context.newClasses) {
-		auto classInfo = &context.classInfo[&compile.classes[node->classId]];
+		auto classInfo = &context.classInfo[compile.classes[node->classId].id];
 		if (classInfo->primaryConstructor) {
 			//Put initial bytecodes, example val a = 5 => SetNode
-			node->body.optimize(in_data);
+			// node->body.optimize(in_data);
 			node->body.putBytecodes(in_data, classInfo->primaryConstructor->func->bytecodes);
 			node->body.rewrite(in_data, classInfo->primaryConstructor->func->bytecodes);
 		} else {
 			for (auto& constructor : classInfo->secondaryConstructor) {
 				//Put initial bytecodes, example val a = 5 => SetNode
-				node->body.optimize(in_data);
+				// node->body.optimize(in_data);
 				node->body.putBytecodes(in_data, constructor->func->bytecodes);
 				node->body.rewrite(in_data, constructor->func->bytecodes);
 				//Put constructor bytecodes
@@ -502,7 +503,7 @@ HasClassIdNode* parsePrimary(in_func, size_t& i) {
 				// }
 				
 				if (temp->kind == NodeType::VAR || temp->kind == NodeType::UNKNOW) {
-					node.reset(new GetPropNode(nullptr, context.currentClass, node.release(), context.lexerString[token->indexData], false));
+					node.reset(new GetPropNode(nullptr, context.getCurrentContextClassId(), node.release(), context.lexerString[token->indexData], false));
 					delete temp;
 					break;
 				}
@@ -557,13 +558,13 @@ HasClassIdNode* loadIdentifier(in_func, size_t& i, bool allowAddThis) {
 	Lexer::Token *token;
 	if (!nextToken(&token, context.tokens, i)) {
 		if (!allowAddThis) {
-			return new UnknowNode(context.currentClass, context.lexerString[identifier->indexData]);
+			return new UnknowNode(context.getCurrentContextClassId(), context.lexerString[identifier->indexData]);
 		}
 		return findIdentifierNode(in_data, context.lexerString[identifier->indexData]);
 	}
 	switch (token->type) {
 		case Lexer::TokenType::LPAREN: {
-			CallNode* temp = new CallNode(context.currentClass, nullptr, context.lexerString[identifier->indexData]+"()", context.justFindStatic);
+			CallNode* temp = new CallNode(context.getCurrentContextClassId(), nullptr, context.lexerString[identifier->indexData]+"()", context.justFindStatic);
 			temp->arguments = loadListArgument(in_data, i);
 			return temp;
 		}
@@ -571,7 +572,7 @@ HasClassIdNode* loadIdentifier(in_func, size_t& i, bool allowAddThis) {
 			auto varNode = findVarNode(in_data, context.lexerString[identifier->indexData]);
 			if (varNode->kind != AutoLang::NodeType::VAR)
 				throw std::runtime_error("Invalid assignment target");
-			CallNode* temp = new CallNode(context.currentClass, static_cast<AccessNode*>(varNode), "[]", context.justFindStatic);
+			CallNode* temp = new CallNode(context.getCurrentContextClassId(), static_cast<AccessNode*>(varNode), "[]", context.justFindStatic);
 			temp->arguments = loadListArgument(in_data, i);
 			return temp;
 		}
@@ -583,7 +584,7 @@ HasClassIdNode* loadIdentifier(in_func, size_t& i, bool allowAddThis) {
 	}
 	--i;
 	if (!allowAddThis) {
-		return new UnknowNode(context.currentClass, context.lexerString[identifier->indexData]);
+		return new UnknowNode(context.getCurrentContextClassId(), context.lexerString[identifier->indexData]);
 	}
 	return findIdentifierNode(in_data, context.lexerString[identifier->indexData]);
 }
@@ -622,7 +623,7 @@ IfNode* loadIf(in_func, size_t& i) {
 
 HasClassIdNode* findIdentifierNode(in_func, std::string& name) {
 	auto varNode = findVarNode(in_data, name);
-	return varNode ? varNode : new UnknowNode(context.currentClass, name);
+	return varNode ? varNode : new UnknowNode(context.getCurrentContextClassId(), name);
 }
 
 HasClassIdNode* findVarNode(in_func, std::string& name) {

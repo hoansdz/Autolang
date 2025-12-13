@@ -21,6 +21,7 @@ void DeclarationNode::optimize(in_func) {
 }
 
 void CreateFuncNode::pushFunction(in_func) {
+	AClass* clazz = contextCallClassId ? &compile.classes[*contextCallClassId] : nullptr;
 	id = compile.registerFunction(
 		clazz,
 		isStatic,
@@ -36,7 +37,7 @@ void CreateFuncNode::pushFunction(in_func) {
 }
 
 void CreateFuncNode::optimize(in_func) {
-	if (clazz == nullptr && isDeclarationExist(in_data, name))
+	if (!contextCallClassId && isDeclarationExist(in_data, name))
 		throw std::runtime_error("Cannot declare function with the same name as declaration name "+name);
 	if (isClassExist(in_data, name))
 		throw std::runtime_error("Cannot declare function with the same name as class name "+name);
@@ -66,6 +67,7 @@ void CreateFuncNode::optimize(in_func) {
 }
 
 void CreateConstructorNode::pushFunction(in_func) {
+	AClass* clazz = contextCallClassId ? &compile.classes[*contextCallClassId] : nullptr;
 	func = &compile.functions[compile.registerFunction(
 		clazz,
 		false,
@@ -81,7 +83,9 @@ void CreateConstructorNode::pushFunction(in_func) {
 	func->maxDeclaration = 1;
 	funcInfo->declaration = 1;
 	if (isPrimary) {
-		auto classInfo = &context.classInfo[clazz];
+		auto classInfo = &context.classInfo[clazz->id];
+		// printDebug(clazz->name);
+		// printDebug(arguments.size());
 		for (size_t i=0; i<arguments.size(); ++i) {
 			auto argument = arguments[i];
 			clazz->memberMap[argument->name] = i;
@@ -92,14 +96,18 @@ void CreateConstructorNode::pushFunction(in_func) {
 }
 
 void CreateConstructorNode::optimize(in_func) {
+	AClass* clazz = contextCallClassId ? &compile.classes[*contextCallClassId] : nullptr;
 	//Add argument class id
-	auto classInfo = &context.classInfo[clazz];
+	auto classInfo = &context.classInfo[clazz->id];
 	for (size_t i=0; i<arguments.size(); ++i) {
 		auto& argument = arguments[i];
 		func->args.push_back(argument->classId);
 		if (isPrimary) {
+			// printDebug((uintptr_t)clazz);
+			// printDebug(classInfo->declarationThis->className);
+			// printDebug(std::to_string(i) + " ... " + std::to_string(clazz->memberId.size()));
 			clazz->memberId[i]=argument->classId;
-			printDebug("Member: " + std::to_string(i) + " " + argument->name + " is " + compile.classes[argument->classId].name);
+			// printDebug("Member: " + std::to_string(i) + " " + argument->name + " is " + compile.classes[argument->classId].name);
 		}
 	}
 	

@@ -109,7 +109,8 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 	auto node = context.makeDeclarationNode(false, std::move(declarationName), 
 		std::move(className), isVal, isGlobal, (isInFunction || isStatic));
 	node->accessModifier = accessModifier;
-	printDebug((isVal ? "val " : "var ") + name + " has id " + std::to_string(node->id) + " " + (isGlobal ? "1 " : "0 " ) + (isStatic ? "1 " : "0 "));
+	//printDebug(node->name + " is " + (node->accessModifier == Lexer::TokenType::PUBLIC ? "public" : "private"));
+	//printDebug((isVal ? "val " : "var ") + name + " has id " + std::to_string(node->id) + " " + (isGlobal ? "1 " : "0 " ) + (isStatic ? "1 " : "0 "));
 	if (isStatic) {
 		//Function
 		if (context.currentFunction != compile.main) {
@@ -132,6 +133,8 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 	//Non static
 	if (context.currentClass && context.currentFunction == compile.main) {
 		uint32_t nodeId = context.currentClass->memberMap.size();
+		// printDebug(compile.classes[context.currentClassInfo->declarationThis->classId].name);
+		// printDebug((uintptr_t)context.currentClass);
 		context.currentClass->memberMap[node->name] = nodeId;
 		context.currentClass->memberId.push_back(0);
 		//Add member id
@@ -142,7 +145,7 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 		auto setNode = new SetNode(
 			new GetPropNode(
 				node,
-				context.currentClass,
+				context.getCurrentContextClassId(),
 				new VarNode(
 					context.currentClassInfo->declarationThis,
 					false

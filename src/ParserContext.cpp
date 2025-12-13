@@ -72,6 +72,7 @@ AccessNode* ClassInfo::findDeclaration(in_func, std::string& name, bool isStatic
 				false
 			);
 		}
+		//Not found
 	}
 	if (declarationThis) {
 		auto clazz = &compile.classes[declarationThis->classId];
@@ -82,7 +83,7 @@ AccessNode* ClassInfo::findDeclaration(in_func, std::string& name, bool isStatic
 				throw std::runtime_error(name + " is not static");
 			return new GetPropNode(
 				node,
-				&compile.classes[declarationThis->classId],
+				declarationThis->classId,
 				new VarNode(
 					declarationThis,
 					false

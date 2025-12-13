@@ -30,33 +30,37 @@ CreateClassNode* loadClass(in_func, size_t& i) {
 	auto lastClass = context.currentClass;
 	auto clazz = &compile.classes[node->classId];
 	context.gotoClass(clazz);
+
 	auto declarationNode = new DeclarationNode(
 		"this", "", true, false
 	);
+	declarationNode->classId = node->classId;
+	//Add declaration this
+	context.currentClassInfo->declarationThis = declarationNode;
 	//Has PrimaryConstructor
 	if (expect(token, Lexer::TokenType::LPAREN)) {
 		if (!isDataClass)
 			throw std::runtime_error("Expected {}, did you want data class ?");
-		context.currentClassInfo->primaryConstructor = new CreateConstructorNode(clazz, name+"()", loadListDeclaration(in_data, i, true), true, 
+		context.currentClassInfo->primaryConstructor = new CreateConstructorNode(context.getCurrentContextClassId(), name+"()", loadListDeclaration(in_data, i, true), true, 
 			Lexer::TokenType::PUBLIC);
 		context.currentClassInfo->primaryConstructor->pushFunction(in_data);
 		context.currentClassInfo->primaryConstructor->func->maxDeclaration += context.currentClassInfo->primaryConstructor->arguments.size();
 	} else {
+		if (isDataClass) {
+			throw std::runtime_error("Expected (), Data class must have () ?");
+		}
 		--i;
 	}
+
 	//Body
 	if (!nextToken(&token, context.tokens, i)) {
 		context.gotoClass(lastClass);
 		return node.release();
 	}
 
-	//Add declaration this
-	context.currentClassInfo->declarationThis = declarationNode;
-
 	if (expect(token, Lexer::TokenType::LBRACE)) {
 		//'this' declaration
 		declarationNode->id = 0;
-		declarationNode->classId = clazz->id;
 
 		loadBody(in_data, node->body.nodes, i, false);
 
@@ -64,7 +68,7 @@ CreateClassNode* loadClass(in_func, size_t& i) {
 		if (!context.currentClassInfo->primaryConstructor && 
 			context.currentClassInfo->secondaryConstructor.empty()) {
 			CreateConstructorNode* constructor = new CreateConstructorNode(
-				clazz, name+"()", {context.currentClassInfo->declarationThis}, false, 
+				clazz->id, name+"()", {context.currentClassInfo->declarationThis}, false, 
 				Lexer::TokenType::PUBLIC
 			);
 			constructor->pushFunction(in_data);
@@ -101,7 +105,7 @@ void loadConstructor(in_func, size_t& i) {
 		throw std::runtime_error("Expected body but not found");
 	}
 	//Create constructor
-	auto constructor = new CreateConstructorNode(context.currentClass, context.currentClass->name + "()", 
+	auto constructor = new CreateConstructorNode(context.getCurrentContextClassId(), context.currentClass->name + "()", 
 		std::move(listDeclarationNode), false, Lexer::TokenType::PUBLIC);
 	context.currentClassInfo->secondaryConstructor.push_back(constructor);
 	constructor->pushFunction(in_data);

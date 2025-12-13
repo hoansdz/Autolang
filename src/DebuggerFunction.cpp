@@ -65,7 +65,7 @@ CreateFuncNode* loadFunc(in_func, size_t& i) {
 		}
 	}
 	auto node = std::make_unique<CreateFuncNode>(
-		context.currentClass, name, std::move(returnClass), 
+		context.currentClass->id, name, std::move(returnClass), 
 		std::move(listDeclarationNode), isStatic, accessModifier
 	);
 	node->pushFunction(in_data);

@@ -58,7 +58,7 @@ struct ParserContext {
 	//Function information in compiler time
 	std::unordered_map<Function*, FunctionInfo> functionInfo;
 	//Class information in compiler time
-	std::unordered_map<AClass*, ClassInfo> classInfo;
+	std::unordered_map<uint32_t, ClassInfo> classInfo;
 	//All static variable will be here and put bytecodes to ".main" function
 	std::vector<ExprNode*> staticNode;
 
@@ -77,7 +77,15 @@ struct ParserContext {
 	}
 	inline void gotoClass(AClass* clazz) {
 		currentClass = clazz;
-		currentClassInfo = clazz ? &classInfo[clazz] : nullptr;
+		currentClassInfo = clazz ? &classInfo[clazz->id] : nullptr;
+	}
+	inline std::optional<uint32_t> getCurrentContextClassId() {
+		if (!currentClass) return std::nullopt;
+		return currentClass->id;
+	}
+	static inline std::optional<uint32_t> getClassId(AClass* clazz) {
+		if (!clazz) return std::nullopt;
+		return clazz->id;
 	}
 	HasClassIdNode* findDeclaration(in_func, std::string& name, bool inGlobal);
 	DeclarationNode* makeDeclarationNode(bool isTemp, std::string name, std::string className, bool isVal, bool isGlobal, bool pushToScope = true);
