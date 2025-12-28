@@ -50,6 +50,7 @@ inline AObject* op_not_eq_pointer(NativeFuncInData);
 					else\
 						break;\
 			}\
+			break;\
 		}\
 		case AutoLang::DefaultClass::FLOATCLASSID: {\
 			auto obj2 = stackAllocator[1];\
@@ -64,6 +65,7 @@ inline AObject* op_not_eq_pointer(NativeFuncInData);
 					else\
 						break;\
 			}\
+			break;\
 		}\
 		default: {\
 			auto obj2 = stackAllocator[1];\
@@ -99,6 +101,7 @@ inline AObject* op_not_eq_pointer(NativeFuncInData);
 				default:\
 					break;\
 			}\
+			break;\
 		}\
 		case AutoLang::DefaultClass::FLOATCLASSID: {\
 			auto obj2 = stackAllocator[1];\
@@ -110,6 +113,7 @@ inline AObject* op_not_eq_pointer(NativeFuncInData);
 				default:\
 					break;\
 			}\
+			break;\
 		}\
 		default: \
 			break;\
@@ -171,6 +175,7 @@ create_operator_number(divide, /);
 					obj1->i op obj2->b;\
 					return nullptr;\
 			}\
+			break;\
 		}\
 		case AutoLang::DefaultClass::FLOATCLASSID: {\
 			switch (obj2->type) {\
@@ -184,6 +189,7 @@ create_operator_number(divide, /);
 					obj1->f op obj2->b;\
 					return nullptr;\
 			}\
+			break;\
 		}\
 		default: {\
 			return nullptr;\
@@ -209,6 +215,7 @@ create_operator_number(divide, /);
 					obj1->i op obj2->b;\
 					return nullptr;\
 			}\
+			break;\
 		}\
 		case AutoLang::DefaultClass::FLOATCLASSID: {\
 			switch (obj2->type) {\
@@ -222,6 +229,7 @@ create_operator_number(divide, /);
 					obj1->f op obj2->b;\
 					return nullptr;\
 			}\
+			break;\
 		}\
 	}\
 	return nullptr;\

@@ -382,7 +382,7 @@ void SetNode::optimize(in_func) {
 	value->optimize(in_data);
 	classId = value->classId;
 	auto detach = this->detach;
-	new_detach:{}
+	new_detach:;
 	switch (detach->kind) {
 		case NodeType::GET_PROP: {
 			if (detach->classId != AutoLang::DefaultClass::nullClassId &&
@@ -440,7 +440,9 @@ void SetNode::optimize(in_func) {
 			detach = static_cast<UnknowNode*>(detach)->correctNode;
 			goto new_detach;
 		}
-		default: break;
+		default: {
+			throw std::runtime_error("Cannot detach ");
+		}
 	}
 	switch (value->kind) {
 		case NodeType::CONST: {

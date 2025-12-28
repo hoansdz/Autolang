@@ -229,6 +229,7 @@ ExprNode* loadLine(in_func, size_t& i) {
 		case Lexer::TokenType::PROTECTED: {
 			if (isInFunction)
 				throw std::runtime_error("Cannot call keyword '"+token->toString(context)+"'' in function, call it in class ");
+			//PUSH BACK IN NEXT
 		}
 		case Lexer::TokenType::DATA:
 		case Lexer::TokenType::STATIC: {

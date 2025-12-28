@@ -32,6 +32,7 @@ namespace AutoLang {
 						break;\
 					return new ConstValueNode((std::to_string(obj1->i)) op (*static_cast<std::string*>(obj2->str)));\
 			}\
+			break;\
 		}\
 		case AutoLang::DefaultClass::FLOATCLASSID: {\
 			switch (obj2->classId) {\
@@ -44,6 +45,7 @@ namespace AutoLang {
 						break;\
 					return new ConstValueNode((std::to_string(obj1->f)) op (*static_cast<std::string*>(obj2->str)));\
 			}\
+			break;\
 		}\
 		default: {\
 			std::string& str = *static_cast<std::string*>(obj1->str);\
@@ -57,6 +59,7 @@ namespace AutoLang {
 						break;\
 					return new ConstValueNode((str) op (*static_cast<std::string*>(obj2->str)));\
 			}\
+			break;\
 		}\
 	}\
 	throw std::runtime_error("");\
