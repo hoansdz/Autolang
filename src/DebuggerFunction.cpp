@@ -30,7 +30,7 @@ CreateFuncNode* loadFunc(in_func, size_t& i) {
 			}
 			throw std::runtime_error("Keyword '"+Lexer::Token(0, keyword).toString(context)+"' has declared");
 		}
-		if (hasAccessModifier && !context.currentClass) {
+		if (hasAccessModifier && !context.currentClassId) {
 			throw std::runtime_error("Cannot declare function with keyword '"+Lexer::Token(0, accessModifier).toString(context)+" outside class");
 		}
 	}
@@ -65,17 +65,17 @@ CreateFuncNode* loadFunc(in_func, size_t& i) {
 		}
 	}
 	auto node = std::make_unique<CreateFuncNode>(
-		context.currentClass->id, name, std::move(returnClass), 
+		context.currentClassId, name, std::move(returnClass), 
 		std::move(listDeclarationNode), isStatic, accessModifier
 	);
 	node->pushFunction(in_data);
 	auto func = &compile.functions[node->id];
 	context.gotoFunction(func);
 	auto& scope = context.currentFuncInfo->scopes.back();
-	if (!isStatic && context.currentClass) {
+	if (!isStatic && context.currentClassId) {
 		//Add "this"
-		scope["this"] = context.currentClassInfo->declarationThis;
-		node->arguments.insert(node->arguments.begin(), context.currentClassInfo->declarationThis);
+		scope["this"] = context.getCurrentClassInfo(in_data)->declarationThis;
+		node->arguments.insert(node->arguments.begin(), context.getCurrentClassInfo(in_data)->declarationThis);
 	}
 	func->maxDeclaration += node->arguments.size();
 	for (auto& argument:node->arguments) {
@@ -102,7 +102,7 @@ ReturnNode* loadReturn(in_func, size_t& i) {
 	Lexer::Token *token = &context.tokens[i];
 	if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 		--i;
-		auto value = context.currentFuncInfo->isConstructor ? new VarNode(context.currentClassInfo->declarationThis, false) : nullptr;
+		auto value = context.currentFuncInfo->isConstructor ? new VarNode(context.getCurrentClassInfo(in_data)->declarationThis, false) : nullptr;
 		return new ReturnNode(context.currentFunction, value);
 	}
 	if (context.currentFuncInfo->isConstructor)

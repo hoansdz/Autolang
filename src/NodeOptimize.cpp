@@ -259,9 +259,9 @@ void UnknowNode::optimize(in_func) {
 	if (it == compile.classMap.end()) {
 		if (contextCallClassId) {
 			AClass* clazz = contextCallClassId ? &compile.classes[*contextCallClassId] : nullptr;
-			AClass* lastClass = context.currentClass;
+			AClass* lastClass = context.getCurrentClass(in_data);
 			context.gotoClass(clazz);
-			correctNode = context.currentClassInfo->findDeclaration(in_data, name);
+			correctNode = context.getCurrentClassInfo(in_data)->findDeclaration(in_data, name);
 			context.gotoClass(lastClass);
 			if (correctNode) {
 				correctNode->optimize(in_data);

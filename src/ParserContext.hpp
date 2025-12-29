@@ -67,8 +67,7 @@ struct ParserContext {
 	//All static variable will be here and put bytecodes to ".main" function
 	std::vector<ExprNode*> staticNode;
 
-	AClass* currentClass = nullptr;
-	ClassInfo* currentClassInfo;
+	std::optional<uint32_t> currentClassId = std::nullopt;
 	Function *mainFunction;
 	FunctionInfo *mainFuncInfo;
 	Function *currentFunction;
@@ -81,12 +80,17 @@ struct ParserContext {
 		currentFuncInfo = &functionInfo[func];
 	}
 	inline void gotoClass(AClass* clazz) {
-		currentClass = clazz;
-		currentClassInfo = clazz ? &classInfo[clazz->id] : nullptr;
+		if (clazz == nullptr) {
+			currentClassId = std::nullopt;
+			return;
+		}
+		currentClassId = clazz->id;
 	}
-	inline std::optional<uint32_t> getCurrentContextClassId() {
-		if (!currentClass) return std::nullopt;
-		return currentClass->id;
+	inline AClass* getCurrentClass(in_func) {
+		return currentClassId ? &compile.classes[*currentClassId] : nullptr;
+	}
+	inline ClassInfo* getCurrentClassInfo(in_func) {
+		return currentClassId ? &classInfo[*currentClassId] : nullptr;
 	}
 	static inline std::optional<uint32_t> getClassId(AClass* clazz) {
 		if (!clazz) return std::nullopt;

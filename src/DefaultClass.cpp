@@ -12,6 +12,7 @@ uint32_t boolClassId;
 uint32_t stringClassId = 0;
 uint32_t nullClassId = 0;
 uint32_t anyClassId = 0;
+uint32_t voidClassId = 0;
 AObject* nullObject = nullptr;
 AObject* trueObject = nullptr;
 AObject* falseObject = nullptr;
@@ -23,6 +24,7 @@ void init(CompiledProgram& compile) {
 	nullClassId = compile.registerClass("Null");
 	stringClassId = compile.registerClass("String");
 	anyClassId = compile.registerClass("Any");
+	voidClassId = compile.registerClass("Void");
 	nullObject = new AObject(nullClassId);
 	nullObject->refCount = 9999;
 	compile.constPool.push_back(nullObject);

@@ -24,25 +24,29 @@ data class ListPerson() {
     }
 }
 
-val listPerson = ListPerson()
+func main() {
+    val listPerson = ListPerson()
 
-listPerson.addPerson(Person("John", 18, 1.5))
-listPerson.addPerson(Person("John", 18, 1.5))
-listPerson.addPerson(Person("John", 18, 1.5))
-listPerson.addPerson(Person("John", 18, 1.5))
-listPerson.addPerson(Person("John", 18, 1.5))
-listPerson.addPerson(Person("John", 18, 1.5))
-listPerson.addPerson(Person("John", 18, 1.5))
-listPerson.addPerson(Person("John", 18, 1.5))
-listPerson.addPerson(Person("John", 18, 1.5))
-listPerson.addPerson(Person("Timmy", 18, 1.6))
+    listPerson.addPerson(Person("John", 18, 1.5))
+    listPerson.addPerson(Person("John", 18, 1.5))
+    listPerson.addPerson(Person("John", 18, 1.5))
+    listPerson.addPerson(Person("John", 18, 1.5))
+    listPerson.addPerson(Person("John", 18, 1.5))
+    listPerson.addPerson(Person("John", 18, 1.5))
+    listPerson.addPerson(Person("John", 18, 1.5))
+    listPerson.addPerson(Person("John", 18, 1.5))
+    listPerson.addPerson(Person("John", 18, 1.5))
+    listPerson.addPerson(Person("Timmy", 18, 1.6))
 
-println(getRefCount(null))
+    println(getRefCount(null))
 
-var currentNode = listPerson.begin()
+    var currentNode = listPerson.begin()
 
-for (i in 0..<listPerson.size) {
-    val person = currentNode.currentPerson
-    println("User "+person.name+" has age: " + person.age)
-    currentNode = currentNode.next
+    for (i in 0..<listPerson.size) {
+        val person = currentNode.currentPerson
+        println("User "+person.name+" has age: " + person.age)
+        currentNode = currentNode.next
+    }
 }
+
+main()

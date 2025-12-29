@@ -152,7 +152,7 @@ ExprNode* loadLine(in_func, size_t& i) {
 	context.keywords.clear();
 	initial:;
 	context.line = token->line;
-	bool isInFunction = !context.currentClass || context.currentFunction != compile.main;
+	bool isInFunction = !context.currentClassId || context.currentFunction != compile.main;
 	switch (token->type) {
 		case Lexer::TokenType::LBRACE: {
 			if (context.keywords.size() == 1 && context.keywords[0] == Lexer::TokenType::STATIC) {
@@ -231,7 +231,7 @@ ExprNode* loadLine(in_func, size_t& i) {
 			return nullptr;
 		}
 		case Lexer::TokenType::CLASS: {
-			if (context.currentClass != nullptr) {
+			if (context.currentClassId) {
 				throw std::runtime_error("Cannot declare class in class");
 			}
 			auto node = loadClass(in_data, i);
@@ -264,7 +264,7 @@ ExprNode* loadLine(in_func, size_t& i) {
 	++i;
 	return nullptr;
 	err_call_func:;
-	printDebug(context.currentClass ? context.currentClass->name : "None");
+	printDebug(context.currentClassId ? compile.classes[*context.currentClassId].name : "None");
 	throw std::runtime_error("Cannot call outside function ");
 	err_call_class:;
 	throw std::runtime_error("Cannot call outside class ");
@@ -519,7 +519,7 @@ HasClassIdNode* parsePrimary(in_func, size_t& i) {
 				// }
 				
 				if (temp->kind == NodeType::VAR || temp->kind == NodeType::UNKNOW) {
-					node.reset(new GetPropNode(nullptr, context.getCurrentContextClassId(), node.release(), context.lexerString[token->indexData], false));
+					node.reset(new GetPropNode(nullptr, context.currentClassId, node.release(), context.lexerString[token->indexData], false));
 					delete temp;
 					break;
 				}
@@ -574,13 +574,13 @@ HasClassIdNode* loadIdentifier(in_func, size_t& i, bool allowAddThis) {
 	Lexer::Token *token;
 	if (!nextToken(&token, context.tokens, i)) {
 		if (!allowAddThis) {
-			return new UnknowNode(context.getCurrentContextClassId(), context.lexerString[identifier->indexData]);
+			return new UnknowNode(context.currentClassId, context.lexerString[identifier->indexData]);
 		}
 		return findIdentifierNode(in_data, context.lexerString[identifier->indexData]);
 	}
 	switch (token->type) {
 		case Lexer::TokenType::LPAREN: {
-			CallNode* temp = new CallNode(context.getCurrentContextClassId(), nullptr, context.lexerString[identifier->indexData]+"()", context.justFindStatic);
+			CallNode* temp = new CallNode(context.currentClassId, nullptr, context.lexerString[identifier->indexData]+"()", context.justFindStatic);
 			temp->arguments = loadListArgument(in_data, i);
 			return temp;
 		}
@@ -588,7 +588,7 @@ HasClassIdNode* loadIdentifier(in_func, size_t& i, bool allowAddThis) {
 			auto varNode = findVarNode(in_data, context.lexerString[identifier->indexData]);
 			if (varNode->kind != AutoLang::NodeType::VAR)
 				throw std::runtime_error("Invalid assignment target");
-			CallNode* temp = new CallNode(context.getCurrentContextClassId(), static_cast<AccessNode*>(varNode), "[]", context.justFindStatic);
+			CallNode* temp = new CallNode(context.currentClassId, static_cast<AccessNode*>(varNode), "[]", context.justFindStatic);
 			temp->arguments = loadListArgument(in_data, i);
 			return temp;
 		}
@@ -600,7 +600,7 @@ HasClassIdNode* loadIdentifier(in_func, size_t& i, bool allowAddThis) {
 	}
 	--i;
 	if (!allowAddThis) {
-		return new UnknowNode(context.getCurrentContextClassId(), context.lexerString[identifier->indexData]);
+		return new UnknowNode(context.currentClassId, context.lexerString[identifier->indexData]);
 	}
 	return findIdentifierNode(in_data, context.lexerString[identifier->indexData]);
 }
@@ -639,7 +639,7 @@ IfNode* loadIf(in_func, size_t& i) {
 
 HasClassIdNode* findIdentifierNode(in_func, std::string& name) {
 	auto varNode = findVarNode(in_data, name);
-	return varNode ? varNode : new UnknowNode(context.getCurrentContextClassId(), name);
+	return varNode ? varNode : new UnknowNode(context.currentClassId, name);
 }
 
 HasClassIdNode* findVarNode(in_func, std::string& name) {

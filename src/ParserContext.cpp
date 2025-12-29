@@ -9,8 +9,8 @@ namespace AutoLang {
 HasClassIdNode* ParserContext::findDeclaration(in_func, std::string& name, bool inGlobal) {
 	AccessNode* node = currentFuncInfo->findDeclaration(in_data, name, justFindStatic);
 	if (node) return node;
-	if (currentClass) {
-		node = currentClassInfo->findDeclaration(in_data, name, justFindStatic);
+	if (currentClassId) {
+		node = getCurrentClassInfo(in_data)->findDeclaration(in_data, name, justFindStatic);
 		//Static in function is VarNode, NonStatic is GetPropNode
 		if (currentFunction->isStatic && node && node->kind == NodeType::GET_PROP)
 			goto isNotStatic;
