@@ -64,24 +64,49 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 			isMapExist(context.currentClassInfo->staticMember, name))
 			throw std::runtime_error("Declaration: Redefination variable name \"" + name + "\"");
 	}
-	//Class name
+	//Nullable
+	bool nullable = false;
 	if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
 		throw std::runtime_error("Expected class name but not found");
+	}
+	if (expect(token, Lexer::TokenType::QMARK)) {
+		nullable = true;
+		//Class name
+		if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
+			throw std::runtime_error("Expected class name but not found");
+		}
 	}
 	HasClassIdNode* value = nullptr;
 	std::string className;
 	if (expect(token, Lexer::TokenType::COLON)) {
-		if (!nextTokenSameLine(&token, context.tokens, i, declaration->line) ||
-			 !expect(token, Lexer::TokenType::IDENTIFIER)) {
-			throw std::runtime_error("Expected class name but not found");
+		auto classDeclaration = loadClassDeclaration(in_data, i, declaration->line);
+		if (nullable) {
+			throw std::runtime_error(
+				std::string("Sugar syntax ") + (isVal ? "val " : "var ") + name + "? can be use when fast declare, cannot use with " + classDeclaration.className + "? " +
+				"use " + (isVal ? "val " : "var ") + name + ": " + classDeclaration.className + "? instead of"
+			);
 		}
-		className = context.lexerString[token->indexData];
-		if (className == "Null")
-			throw std::runtime_error(name + " cannot declarate variable of type Null");
+		nullable = classDeclaration.nullable;
+		className = std::move(classDeclaration.className);
 		if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
-			--i;
-			goto createNode;
+			if (nullable) {
+				--i;
+				value = new ConstValueNode(DefaultClass::nullObject, 0);
+				goto createNode;
+			}
+			throw std::runtime_error(className + " must have value");
 		}
+		// if (!nextTokenSameLine(&token, context.tokens, i, declaration->line) ||
+		// 	 !expect(token, Lexer::TokenType::IDENTIFIER)) {
+		// 	throw std::runtime_error("Expected class name but not found");
+		// }
+		// className = context.lexerString[token->indexData];
+		// if (className == "Null")
+		// 	throw std::runtime_error(name + " cannot declarate variable of type Null");
+		// if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
+		// 	--i;
+		// 	goto createNode;
+		// }
 	}
 	//Value
 	if (expect(token, Lexer::TokenType::EQUAL)) {
@@ -106,8 +131,19 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 		if (context.currentClass)
 			declarationName = context.currentClass->name + '.' + name;
 	} else declarationName = name;
+
+	if (value->kind == NodeType::CONST && static_cast<ConstValueNode*>(value)->id == 0) {
+		//0 is null const object position
+		if (!nullable) {
+			throw std::runtime_error(declarationName+ " must nullable to can detach null value");
+		}
+		if (className.empty()) {
+			throw std::runtime_error(std::string("Ambiguous call nullable ") + (isVal ? "val " : "var ") + name + "? = null");
+		}
+	}
+
 	auto node = context.makeDeclarationNode(false, std::move(declarationName), 
-		std::move(className), isVal, isGlobal, (isInFunction || isStatic));
+		std::move(className), isVal, isGlobal, nullable, (isInFunction || isStatic));
 	node->accessModifier = accessModifier;
 	//printDebug(node->name + " is " + (node->accessModifier == Lexer::TokenType::PUBLIC ? "public" : "private"));
 	//printDebug((isVal ? "val " : "var ") + name + " has id " + std::to_string(node->id) + " " + (isGlobal ? "1 " : "0 " ) + (isStatic ? "1 " : "0 "));
@@ -120,7 +156,6 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 			context.currentFuncInfo->scopes.back()[name] = node;
 		} else { //Class
 			context.currentClassInfo->staticMember[name] = node;
-			
 		}
 		context.staticNode.push_back(new SetNode(
 			new VarNode(

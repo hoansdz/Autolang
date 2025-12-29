@@ -5,7 +5,7 @@ data class PersonNode(var prev: PersonNode, var currentPerson: Person, var next:
 }
 //hi
 data class ListPerson() {
-	private var beginNode: PersonNode = null
+	private var beginNode: PersonNode? = null
     public var size: Int = 0
     func begin(): PersonNode {
     	return beginNode
@@ -27,7 +27,17 @@ data class ListPerson() {
 val listPerson = ListPerson()
 
 listPerson.addPerson(Person("John", 18, 1.5))
+listPerson.addPerson(Person("John", 18, 1.5))
+listPerson.addPerson(Person("John", 18, 1.5))
+listPerson.addPerson(Person("John", 18, 1.5))
+listPerson.addPerson(Person("John", 18, 1.5))
+listPerson.addPerson(Person("John", 18, 1.5))
+listPerson.addPerson(Person("John", 18, 1.5))
+listPerson.addPerson(Person("John", 18, 1.5))
+listPerson.addPerson(Person("John", 18, 1.5))
 listPerson.addPerson(Person("Timmy", 18, 1.6))
+
+println(getRefCount(null))
 
 var currentNode = listPerson.begin()
 

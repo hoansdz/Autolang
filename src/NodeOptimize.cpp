@@ -377,8 +377,8 @@ void ForRangeNode::optimize(in_func) {
 }
 
 void SetNode::optimize(in_func) {
+	//Detach has nullClassId because it was not evaluated
 	detach->optimize(in_data);
-	if (!value) return;
 	value->optimize(in_data);
 	classId = value->classId;
 	auto detach = this->detach;
@@ -412,11 +412,19 @@ void SetNode::optimize(in_func) {
 				throw std::runtime_error("Cannot find declaration "+clazz->name+"."+node->name);
 			}
 			next_getprop:{}
-			if (node->declaration && value->classId != AutoLang::DefaultClass::nullClassId) {
-				auto clazz = &compile.classes[node->caller->classId];
-				//clazz->memberId[detach->declaration->id] = value->classId;
-				node->declaration->classId = value->classId;
+			//Nullable
+			if (value->classId == AutoLang::DefaultClass::nullClassId) {
+				if (!node->declaration->nullable) {
+					throw std::runtime_error(node->declaration->name + " cannot detach null value, you must declare " + node->declaration->className+ "? to can detach null");
+				}
+				if (op != Lexer::TokenType::EQUAL) {
+					throw std::runtime_error(node->declaration->name + " cannot use operator" + Lexer::Token(0,op).toString(context) + " with null value");
+				}
+				return;
 			}
+			auto clazz = &compile.classes[node->caller->classId];
+			//clazz->memberId[detach->declaration->id] = value->classId;
+			node->declaration->classId = value->classId;
 			break;
 		}
 		case NodeType::VAR: {
@@ -434,6 +442,16 @@ void SetNode::optimize(in_func) {
 				}
 				detach->classId = value->classId;
 			}
+			// Nullable
+			if (value->classId == AutoLang::DefaultClass::nullClassId) {
+				if (!node->declaration->nullable) {
+					throw std::runtime_error(node->declaration->name + " cannot detach null value, you must declare " + node->declaration->className+ "? to can detach null");
+				}
+				if (op != Lexer::TokenType::EQUAL) {
+					throw std::runtime_error(node->declaration->name + " cannot use operator" + Lexer::Token(0,op).toString(context) + " with null value");
+				}
+				return;
+			}
 			break;
 		}
 		case NodeType::UNKNOW: {
@@ -447,6 +465,7 @@ void SetNode::optimize(in_func) {
 	switch (value->kind) {
 		case NodeType::CONST: {
 			if (op != Lexer::TokenType::EQUAL) {
+				//Optimize call primary instead of copies
 				static_cast<ConstValueNode*>(value)->isLoadPrimary = true;
 			}
 			break;
@@ -488,7 +507,7 @@ void SetNode::optimize(in_func) {
 					toFloat(static_cast<ConstValueNode*>(value));
 					return;
 				default:
-					throw std::runtime_error("");
+					throw std::runtime_error("What happen");
 			}
 		}
 		catch (const std::runtime_error& err) {

@@ -26,7 +26,7 @@ HasClassIdNode* ParserContext::findDeclaration(in_func, std::string& name, bool 
 	throw std::runtime_error(name + " is not static");
 }
 
-DeclarationNode* ParserContext::makeDeclarationNode(bool isTemp, std::string name, std::string className, bool isVal, bool isGlobal, bool pushToScope) {
+DeclarationNode* ParserContext::makeDeclarationNode(bool isTemp, std::string name, std::string className, bool isVal, bool isGlobal, bool nullable, bool pushToScope) {
 	auto func = isGlobal ? mainFunction : currentFunction;
 	auto funcInfo = isGlobal ? mainFuncInfo : currentFuncInfo;
 	if (pushToScope) {
@@ -34,7 +34,7 @@ DeclarationNode* ParserContext::makeDeclarationNode(bool isTemp, std::string nam
 		if (it != funcInfo->scopes.back().end())
 			throw std::runtime_error(name + " has exist");
 	}
-	DeclarationNode* node = new DeclarationNode(std::move(name), std::move(className), isVal, isGlobal);
+	DeclarationNode* node = new DeclarationNode(std::move(name), std::move(className), isVal, isGlobal, nullable);
 	node->classId = AutoLang::DefaultClass::nullClassId;
 	node->id = pushToScope ? funcInfo->declaration++ : 0;
 	funcInfo->declarationNodes.push_back(node);

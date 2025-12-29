@@ -77,8 +77,9 @@ ExprNode* loadFor(in_func, size_t& i) {
 		bool addedDeclarationNode = false;
 		if (declaration == nullptr) {
 			context.currentFuncInfo->scopes.emplace_back();
+			//Create temp declaration if not exists
 			auto declarationNode = context.makeDeclarationNode(
-				true, name, "", true, context.currentFunction == compile.main
+				true, name, "", true, context.currentFunction == compile.main, false
 			);
 			declarationNode->classId = AutoLang::DefaultClass::INTCLASSID;
 			addedDeclarationNode = true;

@@ -74,6 +74,7 @@ enum class TokenType : uint8_t {
 	DOT_DOT,
 	SEMICOLON,		//	Dấu chấm phẩy: ;
 	COLON,			//	Dấu hai chấm: :
+	QMARK,			//  Dấu hỏi chấm
 
 	// ===== Keywords =====
 	IF,				//	Câu lệnh điều kiện: if
@@ -126,6 +127,7 @@ static const std::unordered_map<std::string, TokenType> CAST = {
 	{"&&", TokenType::AND_AND },
 	{"||", TokenType::OR_OR },
 	{"//", TokenType::COMMENT_SINGLE_LINE },
+	{"?", TokenType::QMARK },
 	{".", TokenType::DOT },
 	{"..", TokenType::DOT_DOT },
 	{"+", TokenType::PLUS },

@@ -240,6 +240,7 @@ std::string loadQuote(Context& context, char quote, uint32_t& i) {
 
 bool isOperator(char chr) {
 	switch (chr) {
+		case '?':
 		case '&':
 		case '|':
 		case '.':
@@ -277,6 +278,8 @@ std::string Token::toString(ParserContext& context) {
 			return "continue";
 		case TokenType::IN:
 			return "in";
+		case TokenType::QMARK:
+			return "?";
 		case TokenType::RETURN:
 			return "return";
 		case TokenType::AND_AND:

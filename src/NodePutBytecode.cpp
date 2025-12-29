@@ -237,13 +237,15 @@ void ForRangeNode::putBytecodes(in_func, std::vector<uint8_t>& bytecodes) {
 		}
 
 void SetNode::putBytecodes(in_func, std::vector<uint8_t>& bytecodes) {
-	if (!value) return;
 	switch (op) {
 		operator_plus_case(PLUS_EQUAL, PLUS_EQUAL);
 		operator_plus_case(MINUS_EQUAL, MINUS_EQUAL);
 		operator_plus_case(STAR_EQUAL, MUL_EQUAL);
 		operator_plus_case(SLASH_EQUAL, DIVIDE_EQUAL);
-		default: break;
+		default: {
+			break;
+			// throw std::runtime_error("Unexpected op "+ Lexer::Token(0, op).toString(context));
+		}
 	}
 	value->putBytecodes(in_data, bytecodes);
 	detach->putBytecodes(in_data, bytecodes);

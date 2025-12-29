@@ -128,6 +128,25 @@ void resolve(in_func) {
 	context.mainFuncInfo->block.rewrite(in_data, context.mainFunction->bytecodes);
 }
 
+ClassDeclaration loadClassDeclaration(in_func, size_t& i, uint32_t line) { //Has check
+	ClassDeclaration result;
+	Lexer::Token* token;
+	if (!nextTokenSameLine(&token, context.tokens, i, line) ||
+		!expect(token, Lexer::TokenType::IDENTIFIER)) {
+		throw std::runtime_error("Expected class name but not found");
+	}
+	result.className = context.lexerString[token->indexData];
+	if (result.className == "Null")
+		throw std::runtime_error(result.className + " cannot declarate variable of type Null");
+	if (!nextTokenSameLine(&token, context.tokens, i, line) ||
+		!expect(token, Lexer::TokenType::QMARK)) {
+		--i;
+		return result;
+	}
+	result.nullable = true;
+	return result;
+}
+
 ExprNode* loadLine(in_func, size_t& i) {
 	Lexer::Token* token = &context.tokens[i];
 	context.keywords.clear();
@@ -401,14 +420,10 @@ std::vector<DeclarationNode*> loadListDeclaration(in_func, size_t& i, bool allow
 			 !expect(token, Lexer::TokenType::COLON)) {
 			throw std::runtime_error("Expected ':' but not found");
 		}
-		if (!nextToken(&token, context.tokens, i) ||
-			 !expect(token, Lexer::TokenType::IDENTIFIER)) {
-			throw std::runtime_error("Expected class name but not found");
-		}
-		std::string& className = context.lexerString[token->indexData];
+		auto classDeclaration = loadClassDeclaration(in_data, i, token->line);
 		if (!nextToken(&token, context.tokens, i))
 			break;
-		auto node = context.makeDeclarationNode(false, name, className, isVal, false, false);
+		auto node = context.makeDeclarationNode(false, name, std::move(classDeclaration.className), isVal, false, classDeclaration.nullable, false);
 		nodes.push_back(node);
 		switch (token->type){
 			using namespace Lexer;

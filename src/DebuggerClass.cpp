@@ -32,7 +32,7 @@ CreateClassNode* loadClass(in_func, size_t& i) {
 	context.gotoClass(clazz);
 
 	auto declarationNode = new DeclarationNode(
-		"this", "", true, false
+		"this", "", true, false, false
 	);
 	declarationNode->classId = node->classId;
 	//Add declaration this

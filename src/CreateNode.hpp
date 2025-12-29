@@ -21,8 +21,9 @@ namespace AutoLang
 		uint32_t id;
 		bool isGlobal;
 		bool isVal;
-		DeclarationNode(std::string name, std::string className, bool isVal, bool isGlobal) : HasClassIdNode(NodeType::DECLARATION), name(std::move(name)),
-																							  className(std::move(className)), isGlobal(isGlobal), isVal(isVal) {}
+		bool nullable;
+		DeclarationNode(std::string name, std::string className, bool isVal, bool isGlobal, bool nullable) : HasClassIdNode(NodeType::DECLARATION), name(std::move(name)),
+																							  className(std::move(className)), isGlobal(isGlobal), isVal(isVal), nullable(nullable) {}
 		void optimize(in_func) override;
 		~DeclarationNode() {}
 	};

@@ -8,6 +8,11 @@
 
 namespace AutoLang {
 
+struct ClassDeclaration {
+	std::string className;
+	bool nullable = false;
+};
+
 struct ClassInfo {
 	std::vector<DeclarationNode*> member;
 	std::unordered_map<std::string, DeclarationNode*> staticMember;
@@ -19,7 +24,7 @@ struct ClassInfo {
 };
 
 struct FunctionInfo {
-	AClass* clazz;
+	AClass* clazz; //Context class
 	Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC;
 	std::vector<std::unordered_map<std::string, DeclarationNode*>> scopes;
 	std::vector<DeclarationNode*> declarationNodes;
@@ -88,7 +93,7 @@ struct ParserContext {
 		return clazz->id;
 	}
 	HasClassIdNode* findDeclaration(in_func, std::string& name, bool inGlobal);
-	DeclarationNode* makeDeclarationNode(bool isTemp, std::string name, std::string className, bool isVal, bool isGlobal, bool pushToScope = true);
+	DeclarationNode* makeDeclarationNode(bool isTemp, std::string name, std::string className, bool isVal, bool isGlobal, bool nullable, bool pushToScope = true);
 	~ParserContext();
 };
 

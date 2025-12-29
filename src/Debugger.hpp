@@ -22,6 +22,7 @@ void resolve(in_func);
 ExprNode* loadLine(in_func, size_t& i);
 std::vector<HasClassIdNode*> loadListArgument(in_func, size_t& i);
 std::vector<DeclarationNode*> loadListDeclaration(in_func, size_t& i, bool allowVar = false);
+ClassDeclaration loadClassDeclaration(in_func, size_t& i, uint32_t line);
 HasClassIdNode* loadExpression(in_func, int minPrecedence, size_t& i);
 HasClassIdNode* loadDeclaration(in_func, size_t& i);
 HasClassIdNode* parsePrimary(in_func, size_t& i);
