@@ -46,39 +46,40 @@ uint32_t CompiledProgram::registerClass(
 	return id;
 }
 
-uint32_t CompiledProgram::registerConstPool(
-	AObject* obj
-) {
-	switch (obj->type) {
-		case AutoLang::DefaultClass::INTCLASSID: {
-			auto it = constIntMap.find(obj->i);
-			if (it == constIntMap.end()) {
-				constIntMap[obj->i] = constPool.size();
-				break;
-			}
-			return it->second;
-		}
-		case AutoLang::DefaultClass::FLOATCLASSID: {
-			auto it = constFloatMap.find(obj->f);
-			if (it == constFloatMap.end()) {
-				constFloatMap[obj->f] = constPool.size();
-				break;
-			}
-			return it->second;
-		}
-		default: {
-			if (obj->type == AutoLang::DefaultClass::stringClassId) {
-				auto it = constStringMap.find(static_cast<AString*>(obj->ref));
-				if (it == constStringMap.end()) {
-					constStringMap[static_cast<AString*>(obj->ref)] = constPool.size();
-					break;
-				}
-				return it->second;
-			}
-		}
+template<typename T>
+std::string toStr(T* value) {
+	return std::to_string((uintptr_t)value);
+}
+
+template<typename T>
+std::string toStr(T value) {
+	return std::to_string(value);
+}
+
+uint32_t CompiledProgram::registerConstPool(std::unordered_map<AString*, uint32_t, AString::Hash, AString::Equal>& map, AString* value) {
+	auto it = map.find(value);
+	if (it != map.end()) {
+		return it->second;
 	}
+	map[value] = constPool.size();
+	printDebug("Value : "+toStr(value)+" at "+std::to_string(constPool.size()));
+	AObject* obj = manager.create(value);
 	constPool.push_back(obj);
-	obj->refCount = 9999;
+	obj->refCount = 2'000'000;
+	return constPool.size() - 1;
+}
+
+template<typename T>
+uint32_t CompiledProgram::registerConstPool(std::unordered_map<T, uint32_t>& map, T value) {
+	auto it = map.find(value);
+	if (it != map.end()) {
+		return it->second;
+	}
+	map[value] = constPool.size();
+	printDebug("Value : "+toStr(value)+" at "+std::to_string(constPool.size()));
+	AObject* obj = manager.create(value);
+	constPool.push_back(obj);
+	obj->refCount = 2'000'000;
 	return constPool.size() - 1;
 }
 

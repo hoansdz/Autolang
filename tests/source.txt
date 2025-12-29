@@ -25,6 +25,8 @@ data class ListPerson() {
 }
 
 func main() {
+    stressTestListPerson()
+    return
     val listPerson = ListPerson()
 
     listPerson.addPerson(Person("John", 18, 1.5))
@@ -47,6 +49,34 @@ func main() {
         println("User "+person.name+" has age: " + person.age)
         currentNode = currentNode.next
     }
+}
+
+func stressTestListPerson() {
+    val listPerson = ListPerson()
+    val N = 1  // số lượng node lớn để stress test
+
+    // Thêm N Person
+    for (i in 0..<N) {
+        val name = "User" + i
+        val age = 18 + (i % 50)
+        val id = 1.0 + (i % 100) / 100.0
+        listPerson.addPerson(Person(name, age, id))
+    }
+
+    println("Added " + N + " persons. List size: " + listPerson.size)
+
+    // Duyệt toàn bộ list
+    var currentNode = listPerson.begin()
+    var sumAge = 0
+    var count = 0
+
+    while (currentNode != null) {
+        sumAge += currentNode.currentPerson.age
+        count += 1
+        currentNode = currentNode.next
+    }
+
+    println("Traversed "+count+" persons. Average age: " + (sumAge / count))
 }
 
 main()

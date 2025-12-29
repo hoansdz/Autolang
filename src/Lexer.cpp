@@ -154,38 +154,72 @@ std::string loadIdentifier(Context& context, uint32_t& i) {
 
 std::string loadNumber(Context& context, uint32_t& i) {
 	bool hasDot = false;
+	bool hasUnderscore = false;
 	bool scientific = false;
 	char chr;
 	for (; !isEndOfLine(context, i); ++i) {
 		chr = context.line[i];
+		switch (chr) {
+			case 'e':
+			case 'E': {
+				if (scientific)
+					throw std::runtime_error(std::string("Expected number but ")+chr+" was found ");
+				scientific = true;
+				if (isEndOfLine(context, ++i)) {
+					--i;
+					goto ended;
+				}
+				chr = context.line[i];
+				if (std::isdigit(chr) || chr == '+' || chr == '-') {
+					continue;
+				}
+				throw std::runtime_error(std::string("Expected number after e but ")+chr+" was found ");
+			}
+			case '_': {
+				hasUnderscore = true;
+				if (isEndOfLine(context, ++i)) {
+					--i;
+					goto ended;
+				}
+				chr = context.line[i];
+				if (!std::isdigit(chr)) {
+					throw std::runtime_error(std::string("Expected number after _ but ")+chr+" was found ");
+				}
+				continue;
+			}
+			case '.': {
+				if (hasDot) {
+					throw std::runtime_error(std::string("Expected number but . was found "));
+				}
+				if (isEndOfLine(context, ++i) || !std::isdigit(context.line[i])) {
+					--i;
+					goto ended;
+				}
+				hasDot = true;
+				continue;
+			}
+			default: break;
+		}
 		if (std::isdigit(chr)) {
 			continue;
 		}
 		if (std::isalpha(chr)) {
-			if (chr == 'e' || chr == 'E') {
-				if (scientific)
-					throw std::runtime_error(std::string("Expected number but e was found "));
-				scientific = true;
-				chr = context.line[++i];
-				if (std::isdigit(chr)) {
-					--i;
-					continue;
-				}
-				if (chr == '+' || chr == '-') continue;
-			}
-			throw std::runtime_error("Unexpected character after number here " + std::string(context.line + context.pos, i - context.pos));
-		}
-		if (chr == '.') {
-			if (hasDot) break;
-			++i;
-			if (isEndOfLine(context, i) || !std::isdigit(context.line[i])) {
-				--i;
-				break;
-			}
-			hasDot = true;
-			continue;
+			throw std::runtime_error("Unexpected character after number here " + std::string(context.line + context.pos, i - context.pos) + chr);
 		}
 		break;
+	}
+	ended:;
+	if (hasUnderscore) {
+		std::string newStr;
+		size_t size = i - context.pos;
+		newStr.reserve(size);
+		auto pos = context.line + context.pos;
+		for (int j = 0; j < size; ++j) {
+			char chr = pos[j];
+			if (chr == '_') continue;
+			newStr += chr;
+		}
+		return newStr;
 	}
 	return std::string(context.line + context.pos, i - context.pos);
 }

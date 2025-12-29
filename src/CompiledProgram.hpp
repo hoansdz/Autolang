@@ -34,7 +34,7 @@ struct CompiledProgram {
 	std::vector<AObject*> constPool;
 	std::unordered_map<long long, uint32_t> constIntMap;
 	std::unordered_map<double, uint32_t> constFloatMap;
-	std::unordered_map<AString*, uint32_t> constStringMap;
+	std::unordered_map<AString*, uint32_t, AString::Hash, AString::Equal> constStringMap;
 	uint32_t registerFunction(
 		AClass* clazz,
 		bool isStatic,
@@ -46,9 +46,11 @@ struct CompiledProgram {
 	uint32_t registerClass(
 		std::string name
 	);
-	uint32_t registerConstPool(
-		AObject* obj
-	);
+
+	uint32_t registerConstPool(std::unordered_map<AString*, uint32_t, AString::Hash, AString::Equal>& map, AString* value);
+	template<typename T>
+	uint32_t registerConstPool(std::unordered_map<T, uint32_t>& map, T value);
+	
 	inline static std::tuple<uint32_t, uint32_t, uint8_t> makeTuple(uint32_t first, uint32_t second, uint8_t op) {
 		return std::make_tuple(
 			std::min(first, second), 

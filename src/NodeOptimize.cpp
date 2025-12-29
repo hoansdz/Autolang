@@ -206,15 +206,15 @@ void ConstValueNode::optimize(in_func) {
 	if (id != UINT32_MAX) return;
 	switch (classId) {
 		case AutoLang::DefaultClass::INTCLASSID:
-			id = compile.registerConstPool(compile.manager.create(i));
+			id = compile.registerConstPool<long long>(compile.constIntMap, i);
 			return;
 		case AutoLang::DefaultClass::FLOATCLASSID:
-			id = compile.registerConstPool(compile.manager.create(f));
+			id = compile.registerConstPool<double>(compile.constFloatMap, f);
 			return;
 		default:
 			if (classId != AutoLang::DefaultClass::stringClassId)
 				break;
-			id = compile.registerConstPool(compile.manager.create(AString::from(*str)));
+			id = compile.registerConstPool(compile.constStringMap, AString::from(*str));
 			delete str;
 			return;
 	}
@@ -411,7 +411,7 @@ void SetNode::optimize(in_func) {
 				}
 				throw std::runtime_error("Cannot find declaration "+clazz->name+"."+node->name);
 			}
-			next_getprop:{}
+			next_getprop:;
 			//Nullable
 			if (value->classId == AutoLang::DefaultClass::nullClassId) {
 				if (!node->declaration->nullable) {

@@ -11,7 +11,7 @@ public:
 
     AString(char* data, size_t size): data(data), size(size){}
 
-    static AString* from(const std::string& value) {
+    inline static AString* from(const std::string& value) {
         char* str = new char[value.size() + 1];
         memcpy(str, value.c_str(), value.size());
         str[value.size()] = '\0';
@@ -19,7 +19,7 @@ public:
     }
 
     template<typename T>
-    static AString* from(T value) {
+    inline static AString* from(T value) {
         std::string val = std::to_string(value);
         char* str = new char[val.size() + 1];
         memcpy(str, val.c_str(), val.size());
@@ -27,13 +27,13 @@ public:
         return new AString(str, val.size());
     }
 
-    static AString* copy(AString* other) {
+    inline static AString* copy(AString* other) {
         char* newStr = new char[other->size + 1];
         memcpy(newStr, other->data, other->size + 1);
         return new AString(newStr, other->size);
     }
 
-    AString* operator+(AString* other) {
+    inline AString* operator+(AString* other) {
         size_t newSize = size + other->size;
         char* newStr = new char[newSize + 1];
         memcpy(newStr, data, size);
@@ -53,7 +53,7 @@ public:
         return new AString(newStr, newSize);
     }
 
-    inline bool operator==(AString* other) {
+    inline bool operator ==(const AString* other) const {
         return size == other->size && memcmp(data, other->data, size) == 0;
     }
 
@@ -71,6 +71,22 @@ public:
     ~AString() {
         delete[] data;
     }
+
+    struct Hash {
+        inline size_t operator()(const AString* s) const {
+            size_t h = 0;
+            for (size_t i = 0; i < s->size; ++i) {
+                h = h * 31 + (unsigned char)s->data[i];
+            }
+            return h;
+        }
+    };
+
+    struct Equal {
+        inline bool operator()(const AString* a, const AString* b) const {
+            return a->size == b->size && memcmp(a->data, b->data, a->size) == 0;
+        }
+    };
 };
 
 #endif
