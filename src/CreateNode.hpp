@@ -52,7 +52,7 @@ namespace AutoLang
 		std::optional<uint32_t> contextCallClassId;
 		Lexer::TokenType accessModifier;
 		std::string name;
-		Function *func;
+		uint32_t funcId;
 		BlockNode body;
 		std::vector<DeclarationNode *> arguments;
 		bool isPrimary;

@@ -438,7 +438,7 @@ void SetNode::optimize(in_func) {
 				if (node->declaration->classId == AutoLang::DefaultClass::nullClassId &&
 					value->classId != AutoLang::DefaultClass::nullClassId) {
 					node->declaration->classId = value->classId;
-					printDebug(std::string("SetNode: Declaration ") + node->declaration->name + " is " + compile.classes[value->classId].name);
+					// printDebug(std::string("SetNode: Declaration ") + node->declaration->name + " is " + compile.classes[value->classId].name);
 				}
 				detach->classId = value->classId;
 			}
@@ -631,7 +631,7 @@ void CallNode::optimize(in_func) {
 	funcId = first.id;
 	classId = first.func->returnId;
 	auto func = &compile.functions[funcId];
-	auto funcInfo = &context.functionInfo[func];
+	auto funcInfo = &context.functionInfo[funcId];
 	if (funcInfo->accessModifier != Lexer::TokenType::PUBLIC &&
 		 (!contextCallClassId || *contextCallClassId != funcInfo->clazz->id))
 		throw std::runtime_error("Cannot access private function name '"+funcName+"'");
@@ -681,6 +681,7 @@ bool CallNode::match(CompiledProgram& compile, MatchOverload& match, std::vector
 	for (; i<functions.size(); ++i) {
 		match.id = functions[i];
 		match.func = &compile.functions[match.id];
+		match.hasNull = false;
 		bool skip = false;
 		if (!match.func->isStatic) {
 			if (!caller || (justFindStatic && !isConstructor && 
@@ -703,6 +704,7 @@ bool CallNode::match(CompiledProgram& compile, MatchOverload& match, std::vector
 				}
 				if (inputClassId == AutoLang::DefaultClass::nullClassId) {
 					++match.score;
+					match.hasNull = true;
 					continue;
 				} else
 				if (inputClassId == AutoLang::DefaultClass::INTCLASSID &&

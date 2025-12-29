@@ -70,8 +70,8 @@ CreateFuncNode* loadFunc(in_func, size_t& i) {
 	);
 	node->pushFunction(in_data);
 	auto func = &compile.functions[node->id];
-	context.gotoFunction(func);
-	auto& scope = context.currentFuncInfo->scopes.back();
+	context.gotoFunction(node->id);
+	auto& scope = context.getCurrentFunctionInfo(in_data)->scopes.back();
 	if (!isStatic && context.currentClassId) {
 		//Add "this"
 		scope["this"] = context.getCurrentClassInfo(in_data)->declarationThis;
@@ -80,7 +80,7 @@ CreateFuncNode* loadFunc(in_func, size_t& i) {
 	func->maxDeclaration += node->arguments.size();
 	for (auto& argument:node->arguments) {
 		scope[argument->name] = argument;
-		argument->id = context.currentFuncInfo->declaration++;
+		argument->id = context.getCurrentFunctionInfo(in_data)->declaration++;
 	}
 	loadBody(in_data, node->body.nodes, i);
 	if (!node->returnClass.empty()) {
@@ -94,7 +94,7 @@ CreateFuncNode* loadFunc(in_func, size_t& i) {
 		if (!hasReturn)
 			throw std::runtime_error("Didn't declare return");
 	}
-	context.gotoFunction(compile.main);
+	context.gotoFunction(context.mainFunctionId);
 	return node.release();
 }
 
@@ -102,12 +102,12 @@ ReturnNode* loadReturn(in_func, size_t& i) {
 	Lexer::Token *token = &context.tokens[i];
 	if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 		--i;
-		auto value = context.currentFuncInfo->isConstructor ? new VarNode(context.getCurrentClassInfo(in_data)->declarationThis, false) : nullptr;
-		return new ReturnNode(context.currentFunction, value);
+		auto value = context.getCurrentFunctionInfo(in_data)->isConstructor ? new VarNode(context.getCurrentClassInfo(in_data)->declarationThis, false) : nullptr;
+		return new ReturnNode(context.getCurrentFunction(in_data), value);
 	}
-	if (context.currentFuncInfo->isConstructor)
+	if (context.getCurrentFunctionInfo(in_data)->isConstructor)
 		throw std::runtime_error("Cannot return value in constructor");
-	return new ReturnNode(context.currentFunction, loadExpression(in_data, 0, i));
+	return new ReturnNode(context.getCurrentFunction(in_data), loadExpression(in_data, 0, i));
 }
 
 }

@@ -23,9 +23,11 @@ struct PairHash {
 };
 
 struct CompiledProgram {
+	//Use when finished resize vector
+	Function* main;
 	CompiledProgram(){}
 	ObjectManager manager;
-	Function* main;
+	uint32_t mainFunctionId;
 	std::unordered_map<std::tuple<uint32_t, uint32_t, uint8_t>, uint32_t, PairHash> typeResult;
 	std::vector<Function> functions;
 	std::unordered_map<std::string, std::vector<uint32_t>> funcMap;

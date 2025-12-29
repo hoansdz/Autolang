@@ -7,17 +7,17 @@
 namespace AutoLang {
 	
 HasClassIdNode* ParserContext::findDeclaration(in_func, std::string& name, bool inGlobal) {
-	AccessNode* node = currentFuncInfo->findDeclaration(in_data, name, justFindStatic);
+	AccessNode* node = getCurrentFunctionInfo(in_data)->findDeclaration(in_data, name, justFindStatic);
 	if (node) return node;
 	if (currentClassId) {
 		node = getCurrentClassInfo(in_data)->findDeclaration(in_data, name, justFindStatic);
 		//Static in function is VarNode, NonStatic is GetPropNode
-		if (currentFunction->isStatic && node && node->kind == NodeType::GET_PROP)
+		if (getCurrentFunction(in_data)->isStatic && node && node->kind == NodeType::GET_PROP)
 			goto isNotStatic;
 		if (node) return node;
 	}
-	if (!inGlobal || currentFuncInfo == mainFuncInfo) return node;
-	node = mainFuncInfo->findDeclaration(in_data, name);
+	if (!inGlobal || currentFunctionId == mainFunctionId) return node;
+	node = getCurrentFunctionInfo(in_data)->findDeclaration(in_data, name);
 	if (node == nullptr) return node;
 	if (justFindStatic) 
 		goto isNotStatic;
@@ -26,18 +26,18 @@ HasClassIdNode* ParserContext::findDeclaration(in_func, std::string& name, bool 
 	throw std::runtime_error(name + " is not static");
 }
 
-DeclarationNode* ParserContext::makeDeclarationNode(bool isTemp, std::string name, std::string className, bool isVal, bool isGlobal, bool nullable, bool pushToScope) {
-	auto func = isGlobal ? mainFunction : currentFunction;
-	auto funcInfo = isGlobal ? mainFuncInfo : currentFuncInfo;
+DeclarationNode* ParserContext::makeDeclarationNode(in_func, bool isTemp, std::string name, std::string className, bool isVal, bool isGlobal, bool nullable, bool pushToScope) {
+	auto func = isGlobal ? getMainFunction(in_data) : getCurrentFunction(in_data);
+	auto funcInfo = isGlobal ? getMainFunctionInfo(in_data) : getCurrentFunctionInfo(in_data);
 	if (pushToScope) {
 		auto it = funcInfo->scopes.back().find(name);
 		if (it != funcInfo->scopes.back().end())
 			throw std::runtime_error(name + " has exist");
 	}
-	DeclarationNode* node = new DeclarationNode(std::move(name), std::move(className), isVal, isGlobal, nullable);
+	DeclarationNode* node = declarationNodePool.push(std::move(name), std::move(className), isVal, isGlobal, nullable);
 	node->classId = AutoLang::DefaultClass::nullClassId;
 	node->id = pushToScope ? funcInfo->declaration++ : 0;
-	funcInfo->declarationNodes.push_back(node);
+	// funcInfo->declarationNodes.push_back(node);
 	if (pushToScope) {
 		size_t newSize = funcInfo->declaration;
 		if (newSize > func->maxDeclaration)
@@ -97,9 +97,7 @@ AccessNode* ClassInfo::findDeclaration(in_func, std::string& name, bool isStatic
 }
 
 FunctionInfo::~FunctionInfo() {
-	for (auto node : declarationNodes) {
-		delete node;
-	}
+	
 }
 
 ClassInfo::~ClassInfo() {

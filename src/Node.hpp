@@ -268,6 +268,7 @@ struct MatchOverload {
 	Function* func;
 	uint8_t score;
 	uint32_t id;
+	bool hasNull;
 };
 
 //caller.name(arguments)

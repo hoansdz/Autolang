@@ -22,8 +22,8 @@ namespace AutoLang
 HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 	auto declaration = &context.tokens[i];
 	bool isVal = declaration->type == Lexer::TokenType::VAL;
-	bool isGlobal = !context.currentClassId && context.currentFunction == compile.main;
-	bool isInFunction = !context.currentClassId || context.currentFunction != context.mainFunction;
+	bool isGlobal = !context.currentClassId && context.currentFunctionId == context.mainFunctionId;
+	bool isInFunction = !context.currentClassId || context.currentFunctionId != context.mainFunctionId;
 	bool isStatic = false;
 	Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC;
 	if (!context.keywords.empty()) {
@@ -48,7 +48,7 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 			}
 			throw std::runtime_error("Keyword '"+Lexer::Token(0, keyword).toString(context)+"' has declared");
 		}
-		if (hasAccessModifier && (!context.currentClassId || context.currentFunction != compile.main)) {
+		if (hasAccessModifier && (!context.currentClassId || context.currentFunctionId != context.mainFunctionId)) {
 			throw std::runtime_error("Cannot declare keyword '"+Lexer::Token(0, accessModifier).toString(context)+"' in function");
 		}
 	}
@@ -126,8 +126,8 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 	createNode:;
 	std::string declarationName;
 	if (isStatic) {
-		if (context.currentFunction != context.mainFunction)
-			declarationName = context.currentFunction->name + '.' + name;
+		if (context.currentFunctionId != context.mainFunctionId)
+			declarationName = context.getCurrentFunction(in_data)->name + '.' + name;
 		if (context.currentClassId)
 			declarationName = context.getCurrentClass(in_data)->name + '.' + name;
 	} else declarationName = name;
@@ -142,18 +142,18 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 		}
 	}
 
-	auto node = context.makeDeclarationNode(false, std::move(declarationName), 
+	auto node = context.makeDeclarationNode(in_data, false, std::move(declarationName), 
 		std::move(className), isVal, isGlobal, nullable, (isInFunction || isStatic));
 	node->accessModifier = accessModifier;
 	//printDebug(node->name + " is " + (node->accessModifier == Lexer::TokenType::PUBLIC ? "public" : "private"));
 	//printDebug((isVal ? "val " : "var ") + name + " has id " + std::to_string(node->id) + " " + (isGlobal ? "1 " : "0 " ) + (isStatic ? "1 " : "0 "));
 	if (isStatic) {
 		//Function
-		if (context.currentFunction != compile.main) {
-			auto it = context.currentFuncInfo->scopes.back().find(name);
-			if (it != context.currentFuncInfo->scopes.back().end())
+		if (context.currentFunctionId != context.mainFunctionId) {
+			auto it = context.getCurrentFunctionInfo(in_data)->scopes.back().find(name);
+			if (it != context.getCurrentFunctionInfo(in_data)->scopes.back().end())
 				throw std::runtime_error(name + " has exist");
-			context.currentFuncInfo->scopes.back()[name] = node;
+			context.getCurrentFunctionInfo(in_data)->scopes.back()[name] = node;
 		} else { //Class
 			context.getCurrentClassInfo(in_data)->staticMember[name] = node;
 		}
@@ -166,7 +166,7 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 		return nullptr;
 	}
 	//Non static
-	if (context.currentClassId && context.currentFunction == compile.main) {
+	if (context.currentClassId && context.currentFunctionId == context.currentFunctionId) {
 		uint32_t nodeId = context.getCurrentClass(in_data)->memberMap.size();
 		// printDebug(compile.classes[context.currentClassInfo->declarationThis->classId].name);
 		// printDebug((uintptr_t)context.currentClass);

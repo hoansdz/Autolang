@@ -42,7 +42,7 @@ ExprNode* loadFor(in_func, size_t& i) {
 		throw std::runtime_error("Expected name but not found");
 	}
 	std::string& name = context.lexerString[token->indexData];
-	auto declaration = static_cast<AccessNode*>(context.currentFuncInfo->findDeclaration(in_data, name));
+	auto declaration = static_cast<AccessNode*>(context.getCurrentFunctionInfo(in_data)->findDeclaration(in_data, name));
 	if (!nextToken(&token, context.tokens, i) ||
 		!expect(token, Lexer::TokenType::IN)) {
 		throw std::runtime_error("Expected 'in' but not found");
@@ -76,10 +76,10 @@ ExprNode* loadFor(in_func, size_t& i) {
 		}
 		bool addedDeclarationNode = false;
 		if (declaration == nullptr) {
-			context.currentFuncInfo->scopes.emplace_back();
+			context.getCurrentFunctionInfo(in_data)->scopes.emplace_back();
 			//Create temp declaration if not exists
 			auto declarationNode = context.makeDeclarationNode(
-				true, name, "", true, context.currentFunction == compile.main, false
+				in_data, true, name, "", true, context.currentFunctionId == context.mainFunctionId, false
 			);
 			declarationNode->classId = AutoLang::DefaultClass::INTCLASSID;
 			addedDeclarationNode = true;
@@ -93,7 +93,7 @@ ExprNode* loadFor(in_func, size_t& i) {
 		);
 		loadBody(in_data, node->body.nodes, i);
 		if (addedDeclarationNode) {
-			context.currentFuncInfo->popBackScope();
+			context.getCurrentFunctionInfo(in_data)->popBackScope();
 		}
 		return node.release();
 	//}

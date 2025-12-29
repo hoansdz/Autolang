@@ -31,7 +31,7 @@ void CreateFuncNode::pushFunction(in_func) {
 		nullptr
 	);
 	auto func = &compile.functions[id];
-	auto funcInfo = &context.functionInfo[func];
+	auto funcInfo = &context.functionInfo[id];
 	funcInfo->clazz = clazz;
 	funcInfo->accessModifier = accessModifier;
 }
@@ -68,15 +68,16 @@ void CreateFuncNode::optimize(in_func) {
 
 void CreateConstructorNode::pushFunction(in_func) {
 	AClass* clazz = contextCallClassId ? &compile.classes[*contextCallClassId] : nullptr;
-	func = &compile.functions[compile.registerFunction(
+	funcId = compile.registerFunction(
 		clazz,
 		false,
 		name,
 		{},
 		clazz->id,
 		isPrimary ? AutoLang::DefaultFunction::data_constructor : nullptr
-	)];
-	auto funcInfo = &context.functionInfo[func];
+	);
+	auto func = &compile.functions[funcId];
+	auto funcInfo = &context.functionInfo[funcId];
 	funcInfo->clazz = clazz;
 	funcInfo->accessModifier = accessModifier;
 	funcInfo->isConstructor = true;
@@ -96,6 +97,7 @@ void CreateConstructorNode::pushFunction(in_func) {
 }
 
 void CreateConstructorNode::optimize(in_func) {
+	auto func = &compile.functions[funcId];
 	AClass* clazz = contextCallClassId ? &compile.classes[*contextCallClassId] : nullptr;
 	//Add argument class id
 	auto classInfo = &context.classInfo[clazz->id];

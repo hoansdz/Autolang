@@ -18,6 +18,7 @@ namespace AutoLang
 
 template <typename T>
 void build(CompiledProgram& compile, T& data);
+void estimate(in_func, Lexer::Context& lexerContext);
 void resolve(in_func);
 ExprNode* loadLine(in_func, size_t& i);
 std::vector<HasClassIdNode*> loadListArgument(in_func, size_t& i);

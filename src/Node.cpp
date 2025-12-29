@@ -65,6 +65,15 @@ GetPropNode::~GetPropNode() {
 
 BlockNode::~BlockNode() {
 	for (auto* node : nodes) {
+		switch (node->kind) {
+			case NodeType::IF:
+			case NodeType::FOR_RANGE: 
+			case NodeType::WHILE: 
+			{
+				continue;
+			}
+			default: break;
+		}
 		delete node;
 	}
 }

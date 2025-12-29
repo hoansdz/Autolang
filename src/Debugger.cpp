@@ -12,17 +12,18 @@ namespace AutoLang
 template <typename T>
 void build(CompiledProgram& compile, T& data) {
 	ParserContext context;
-	context.gotoFunction(compile.main);
-	context.mainFunction = compile.main;
-	context.mainFuncInfo = &context.functionInfo[compile.main];
-	context.constValue["null"] = std::pair(DefaultClass::nullObject, 0);
-	context.constValue["true"] = std::pair(DefaultClass::trueObject, 1);
-	context.constValue["false"] = std::pair(DefaultClass::falseObject, 2);
+	context.gotoFunction(compile.mainFunctionId);
+	context.mainFunctionId = compile.mainFunctionId;
 	context.line = 0;
 	size_t i = 0;
 	try {
 		Lexer::Context lexerContext;
 		context.tokens = Lexer::load(&context, data, lexerContext);
+		estimate(in_data, lexerContext);
+
+		context.constValue["null"] = std::pair(DefaultClass::nullObject, 0);
+		context.constValue["true"] = std::pair(DefaultClass::trueObject, 1);
+		context.constValue["false"] = std::pair(DefaultClass::falseObject, 2);
 		//printDebug(context.tokens.size());
 		// Lexer::Token* token;
 		// while (i != context.tokens.size()) {
@@ -42,7 +43,7 @@ void build(CompiledProgram& compile, T& data) {
 				
 				continue;
 			}
-			context.currentFuncInfo->block.nodes.push_back(node);
+			context.getCurrentFunctionInfo(in_data)->block.nodes.push_back(node);
 		}
 		/*context.currentFuncInfo->block.nodes.insert(
 			context.currentFuncInfo->block.nodes.begin(),
@@ -57,12 +58,49 @@ void build(CompiledProgram& compile, T& data) {
 	}
 }
 
+void estimate(in_func, Lexer::Context& lexerContext) {
+	uint32_t estimateNewClasses = lexerContext.estimate.classes;
+	uint32_t estimateNewFunctions = lexerContext.estimate.functions;
+	uint32_t estimateAllClasses = compile.classes.size() + lexerContext.estimate.classes;
+	uint32_t estimateAllFunctions = compile.functions.size() + lexerContext.estimate.functions + estimateNewClasses;
+	uint32_t estimateDeclaration = lexerContext.estimate.declaration + estimateNewClasses;
+	
+	context.keywords.reserve(5);
+
+	context.declarationNodePool.allocate(estimateDeclaration);
+	context.ifPool.allocate(lexerContext.estimate.ifNode);
+	context.whilePool.allocate(lexerContext.estimate.whileNode);
+	context.forPool.allocate(lexerContext.estimate.forNode);
+
+	context.constValue.reserve(
+		3 //Const
+	);
+
+	context.newClasses.reserve(estimateNewClasses);
+	context.newFunctions.reserve(estimateNewFunctions);
+	context.classInfo.reserve(estimateAllClasses);
+	context.functionInfo.reserve(estimateAllFunctions);
+
+	compile.classes.reserve(estimateAllClasses);
+	compile.classMap.reserve(estimateAllClasses);
+	compile.functions.reserve(estimateAllFunctions);
+	compile.funcMap.reserve(estimateAllFunctions);
+
+	printDebug("Estimate Declarations: " + std::to_string(estimateDeclaration));
+	printDebug("Estimate New classes: " + std::to_string(estimateNewClasses));
+	printDebug("Estimate New functions: " + std::to_string(estimateNewFunctions));
+	printDebug("Estimate All classes: " + std::to_string(estimateAllClasses));
+	printDebug("Estimate All functions: " + std::to_string(estimateAllFunctions));
+}
+
 void resolve(in_func) {
+	printDebug(context.getMainFunction(in_data)->bytecodes.size());
 	printDebug("Start optimize declaration nodes in functions");
-	for (auto& [_, funcInfo] : context.functionInfo) {
-		for (auto& node : funcInfo.declarationNodes) {
-			node->optimize(in_data);
-		}
+	for (int i = 0; i < context.declarationNodePool.index; ++i) {
+		context.declarationNodePool.objects[i].optimize(in_data);
+	}
+	for (auto* node : context.declarationNodePool.vecs) {
+		node->optimize(in_data);
 	}
 	printDebug("Start optimize constructor nodes");
 	for (auto* node : context.newClasses) {
@@ -94,27 +132,29 @@ void resolve(in_func) {
 		if (classInfo->primaryConstructor) {
 			//Put initial bytecodes, example val a = 5 => SetNode
 			// node->body.optimize(in_data);
-			node->body.putBytecodes(in_data, classInfo->primaryConstructor->func->bytecodes);
-			node->body.rewrite(in_data, classInfo->primaryConstructor->func->bytecodes);
+			auto func = &compile.functions[classInfo->primaryConstructor->funcId];
+			node->body.putBytecodes(in_data, func->bytecodes);
+			node->body.rewrite(in_data, func->bytecodes);
 		} else {
 			for (auto& constructor : classInfo->secondaryConstructor) {
+				auto func = &compile.functions[constructor->funcId];
 				//Put initial bytecodes, example val a = 5 => SetNode
 				// node->body.optimize(in_data);
-				node->body.putBytecodes(in_data, constructor->func->bytecodes);
-				node->body.rewrite(in_data, constructor->func->bytecodes);
+				node->body.putBytecodes(in_data, func->bytecodes);
+				node->body.rewrite(in_data, func->bytecodes);
 				//Put constructor bytecodes
 				constructor->body.optimize(in_data);
-				constructor->body.putBytecodes(in_data, constructor->func->bytecodes);
-				constructor->body.rewrite(in_data, constructor->func->bytecodes);
+				constructor->body.putBytecodes(in_data, func->bytecodes);
+				constructor->body.rewrite(in_data, func->bytecodes);
 			}
 		}
 	}
 	printDebug("Start put bytecodes static nodes");
 	for (auto& node : context.staticNode) {
-		node->putBytecodes(in_data, compile.main->bytecodes);
-		node->rewrite(in_data, compile.main->bytecodes);
+		node->putBytecodes(in_data, context.getMainFunction(in_data)->bytecodes);
+		node->rewrite(in_data, context.getMainFunction(in_data)->bytecodes);
 	}
-	context.mainFuncInfo->block.optimize(in_data);
+	context.getMainFunctionInfo(in_data)->block.optimize(in_data);
 	printDebug("Start put bytecodes in functions");
 	for (auto& node : context.newFunctions) {
 		auto func = &compile.functions[node->id];
@@ -123,9 +163,19 @@ void resolve(in_func) {
 		node->body.rewrite(in_data, func->bytecodes);
 	}
 	printDebug("Start put bytecodes in main");
-	printDebug(context.mainFuncInfo->block.nodes.size());
-	context.mainFuncInfo->block.putBytecodes(in_data, context.mainFunction->bytecodes);
-	context.mainFuncInfo->block.rewrite(in_data, context.mainFunction->bytecodes);
+	context.getMainFunctionInfo(in_data)->block.putBytecodes(in_data, context.getMainFunction(in_data)->bytecodes);
+	context.getMainFunctionInfo(in_data)->block.rewrite(in_data, context.getMainFunction(in_data)->bytecodes);
+
+	printDebug("Real Declarations: " + std::to_string(context.declarationNodePool.index + context.declarationNodePool.vecs.size()));
+	printDebug("Real New classes: " + std::to_string(context.newClasses.size()));
+	printDebug("Real New functions: " + std::to_string(context.newFunctions.size()));
+	printDebug("Real ClassInfo: " + std::to_string(context.classInfo.size()));
+	printDebug("Real FunctionInfo: " + std::to_string(context.functionInfo.size()));
+
+	printDebug("Real Classes: " + std::to_string(compile.classes.size()));
+	printDebug("Real Functions: " + std::to_string(compile.functions.size()));
+	printDebug("Real ClassMap: " + std::to_string(compile.classMap.size()));
+	printDebug("Real FuncMap: " + std::to_string(compile.funcMap.size()));
 }
 
 ClassDeclaration loadClassDeclaration(in_func, size_t& i, uint32_t line) { //Has check
@@ -152,7 +202,7 @@ ExprNode* loadLine(in_func, size_t& i) {
 	context.keywords.clear();
 	initial:;
 	context.line = token->line;
-	bool isInFunction = !context.currentClassId || context.currentFunction != compile.main;
+	bool isInFunction = !context.currentClassId || context.currentFunctionId != context.mainFunctionId;
 	switch (token->type) {
 		case Lexer::TokenType::LBRACE: {
 			if (context.keywords.size() == 1 && context.keywords[0] == Lexer::TokenType::STATIC) {
@@ -216,7 +266,7 @@ ExprNode* loadLine(in_func, size_t& i) {
 			return node;
 		}
 		case Lexer::TokenType::FUNC: {
-			if (context.currentFunction != compile.main) {
+			if (context.currentFunctionId != context.mainFunctionId) {
 				throw std::runtime_error("Cannot declare function in function");
 			}
 			auto node = loadFunc(in_data, i);
@@ -273,18 +323,18 @@ ExprNode* loadLine(in_func, size_t& i) {
 void loadBody(in_func, std::vector<ExprNode*>& nodes, size_t& i, bool createScope) {
 	Lexer::Token* token = &context.tokens[i];
 	if (createScope)
-		context.currentFuncInfo->scopes.emplace_back();
+		context.getCurrentFunctionInfo(in_data)->scopes.emplace_back();
 	if (token->type != Lexer::TokenType::LBRACE) {
 		nodes.push_back(loadLine(in_data, i));
 		if (createScope)
-			context.currentFuncInfo->popBackScope();
+			context.getCurrentFunctionInfo(in_data)->popBackScope();
 		return;
 	}
 	while (nextToken(&token, context.tokens, i)) {
 		switch (token->type) {
 			case Lexer::TokenType::RBRACE: {
 				if (createScope)
-					context.currentFuncInfo->popBackScope();
+					context.getCurrentFunctionInfo(in_data)->popBackScope();
 				return;
 			}
 			default:
@@ -423,7 +473,7 @@ std::vector<DeclarationNode*> loadListDeclaration(in_func, size_t& i, bool allow
 		auto classDeclaration = loadClassDeclaration(in_data, i, token->line);
 		if (!nextToken(&token, context.tokens, i))
 			break;
-		auto node = context.makeDeclarationNode(false, name, std::move(classDeclaration.className), isVal, false, classDeclaration.nullable, false);
+		auto node = context.makeDeclarationNode(in_data, false, name, std::move(classDeclaration.className), isVal, false, classDeclaration.nullable, false);
 		nodes.push_back(node);
 		switch (token->type){
 			using namespace Lexer;
@@ -608,7 +658,7 @@ HasClassIdNode* loadIdentifier(in_func, size_t& i, bool allowAddThis) {
 IfNode* loadIf(in_func, size_t& i) {
 	if (!context.keywords.empty())
 		throw std::runtime_error("Invalid keyword");
-	std::unique_ptr<IfNode> node = std::make_unique<IfNode>();
+	std::unique_ptr<IfNode> node(context.ifPool.push());
 	Lexer::Token* token;
 	if (!nextToken(&token, context.tokens, i) ||
 		 !expect(token, Lexer::TokenType::LPAREN)) {

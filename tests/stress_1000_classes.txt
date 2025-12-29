@@ -1,0 +1,125 @@
+class Class1 {
+    func func1() {
+        var x = 1 * 2
+        var y = x + 1
+    }
+}
+
+class Class2 {
+    func func2() {
+        var x = 2 * 2
+        var y = x + 2
+    }
+}
+
+class Class3 {
+    func func3() {
+        var x = 3 * 2
+        var y = x + 3
+    }
+}
+
+class Class4 {
+    func func4() {
+        var x = 4 * 2
+        var y = x + 4
+    }
+}
+
+class Class5 {
+    func func4() {
+        var x = 4 * 2
+        var y = x + 4
+    }
+}
+
+class Class6 {
+    func func4() {
+        var x = 4 * 2
+        var y = x + 4
+    }
+}
+
+
+
+func main() {
+var a? = 0
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+if (a == 1) {a = 2} else {}    
+for (a in 0..5) {}    
+}

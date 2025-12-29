@@ -12,11 +12,10 @@ template <typename T>
 AVM::AVM(T& lineData, bool allowDebug) : allowDebug(allowDebug)
 {
 	auto startCompiler = std::chrono::high_resolution_clock::now();
+
 	AutoLang::DefaultClass::init(data);
 	AutoLang::DefaultFunction::init(data);
-	data.main = &data.functions[
-		data.registerFunction(nullptr, false, ".main", {}, AutoLang::DefaultClass::nullClassId, nullptr)
-	];
+	data.mainFunctionId = data.registerFunction(nullptr, false, ".main", {}, AutoLang::DefaultClass::nullClassId, nullptr);
 	
 	{
 		using namespace AutoLang::DefaultClass;
@@ -88,6 +87,7 @@ AVM::AVM(T& lineData, bool allowDebug) : allowDebug(allowDebug)
 		};
 	}
 	AutoLang::build(data, lineData);
+	data.main = &data.functions[data.mainFunctionId];
 	initGlobalVariables();
 	log();
 	//log(&data.functions[data.funcMap["m()"][0]]);

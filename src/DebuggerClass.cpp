@@ -28,11 +28,10 @@ CreateClassNode* loadClass(in_func, size_t& i) {
 	auto node = std::make_unique<CreateClassNode>(isDataClass, name);
 	node->pushClass(in_data);
 	auto lastClass = context.getCurrentClass(in_data);
-	printDebug("Lastclass is "+(context.currentClassId ? lastClass->name : std::string("None")));
 	auto clazz = &compile.classes[node->classId];
 	context.gotoClass(clazz);
 
-	auto declarationNode = new DeclarationNode(
+	auto declarationNode = context.declarationNodePool.push(
 		"this", "", true, false, false
 	);
 	declarationNode->classId = node->classId;
@@ -45,7 +44,7 @@ CreateClassNode* loadClass(in_func, size_t& i) {
 		context.getCurrentClassInfo(in_data)->primaryConstructor = new CreateConstructorNode(context.currentClassId, name+"()", loadListDeclaration(in_data, i, true), true, 
 			Lexer::TokenType::PUBLIC);
 		context.getCurrentClassInfo(in_data)->primaryConstructor->pushFunction(in_data);
-		context.getCurrentClassInfo(in_data)->primaryConstructor->func->maxDeclaration += context.getCurrentClassInfo(in_data)->primaryConstructor->arguments.size();
+		compile.functions[context.getCurrentClassInfo(in_data)->primaryConstructor->funcId].maxDeclaration += context.getCurrentClassInfo(in_data)->primaryConstructor->arguments.size();
 	} else {
 		if (isDataClass) {
 			throw std::runtime_error("Expected (), Data class must have () ?");
@@ -110,20 +109,20 @@ void loadConstructor(in_func, size_t& i) {
 		std::move(listDeclarationNode), false, Lexer::TokenType::PUBLIC);
 	context.getCurrentClassInfo(in_data)->secondaryConstructor.push_back(constructor);
 	constructor->pushFunction(in_data);
-	constructor->func->maxDeclaration = constructor->arguments.size();
-	context.gotoFunction(constructor->func);
+	compile.functions[constructor->funcId].maxDeclaration = constructor->arguments.size();
+	context.gotoFunction(constructor->funcId);
 	
 	//Add to scope
-	auto& scope = context.currentFuncInfo->scopes.back();
+	auto& scope = context.getCurrentFunctionInfo(in_data)->scopes.back();
 	scope["this"] = context.getCurrentClassInfo(in_data)->declarationThis;
 
 	for (size_t j = 1; j < constructor->arguments.size(); ++j) {
 		auto* argument = constructor->arguments[j];
 		scope[argument->name] = argument;
-		argument->id = context.currentFuncInfo->declaration++;
+		argument->id = context.getCurrentFunctionInfo(in_data)->declaration++;
 	}
 	loadBody(in_data, constructor->body.nodes, i, false);
-	context.gotoFunction(context.mainFunction);
+	context.gotoFunction(context.mainFunctionId);
 }
 
 // void loadClassInit(in_func, size_t& i) {

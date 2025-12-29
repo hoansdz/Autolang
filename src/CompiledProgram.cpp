@@ -62,7 +62,7 @@ uint32_t CompiledProgram::registerConstPool(std::unordered_map<AString*, uint32_
 		return it->second;
 	}
 	map[value] = constPool.size();
-	printDebug("Value : "+toStr(value)+" at "+std::to_string(constPool.size()));
+	// printDebug("Value : "+toStr(value)+" at "+std::to_string(constPool.size()));
 	AObject* obj = manager.create(value);
 	constPool.push_back(obj);
 	obj->refCount = 2'000'000;
@@ -76,7 +76,7 @@ uint32_t CompiledProgram::registerConstPool(std::unordered_map<T, uint32_t>& map
 		return it->second;
 	}
 	map[value] = constPool.size();
-	printDebug("Value : "+toStr(value)+" at "+std::to_string(constPool.size()));
+	// printDebug("Value : "+toStr(value)+" at "+std::to_string(constPool.size()));
 	AObject* obj = manager.create(value);
 	constPool.push_back(obj);
 	obj->refCount = 2'000'000;

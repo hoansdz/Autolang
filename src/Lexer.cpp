@@ -31,6 +31,7 @@ std::vector<Token> load(ParserContext* mainContext, const char* path, Context& c
 
 std::vector<Token> load(ParserContext* mainContext, std::pair<const char*, size_t>& lineData, Context& context) {
 	std::vector<Token> tokens;
+	tokens.reserve(256);
 	context.mainContext = mainContext;
 	context.totalSize = lineData.second;
 	context.absolutePos = 0;
@@ -122,6 +123,8 @@ TokenType loadOp(Context& context, uint32_t& i) {
 	return it->second;
 }
 
+#define ESTIMATE_CASE_ADD(op, val) case TokenType::op: ++context.estimate.val; break;
+
 void pushIdentifier(Context& context, std::vector<Token>& tokens, uint32_t& i) {
 	std::string identifier = loadIdentifier(context, i);
 	auto it = CAST.find(identifier);
@@ -132,6 +135,17 @@ void pushIdentifier(Context& context, std::vector<Token>& tokens, uint32_t& i) {
 			pushLexerString(context, std::move(identifier))
 		);
 		return;
+	}
+	switch (it->second) {
+		ESTIMATE_CASE_ADD(CLASS, classes)
+		ESTIMATE_CASE_ADD(FUNC, functions)
+		ESTIMATE_CASE_ADD(CONSTRUCTOR, functions)
+		ESTIMATE_CASE_ADD(VAL, declaration)
+		ESTIMATE_CASE_ADD(VAR, declaration)
+		ESTIMATE_CASE_ADD(IF, ifNode)
+		ESTIMATE_CASE_ADD(WHILE, whileNode)
+		ESTIMATE_CASE_ADD(FOR, forNode)
+		default: break;
 	}
 	tokens.emplace_back(
 		context.linePos,

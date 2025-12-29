@@ -5,6 +5,8 @@
 #include "Lexer.hpp"
 #include "CreateNode.hpp"
 #include "Interpreter.hpp"
+#include "optimize/NonReallocatePool.hpp"
+#include "optimize/FixedPool.hpp"
 
 namespace AutoLang {
 
@@ -27,7 +29,6 @@ struct FunctionInfo {
 	AClass* clazz; //Context class
 	Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC;
 	std::vector<std::unordered_map<std::string, DeclarationNode*>> scopes;
-	std::vector<DeclarationNode*> declarationNodes;
 	uint32_t declaration;
 	BlockNode block;
 	bool isConstructor = false;
@@ -61,23 +62,25 @@ struct ParserContext {
 	size_t continuePos = 0;
 	size_t breakPos = 0;
 	//Function information in compiler time
-	std::unordered_map<Function*, FunctionInfo> functionInfo;
+	std::unordered_map<uint32_t, FunctionInfo> functionInfo;
 	//Class information in compiler time
 	std::unordered_map<uint32_t, ClassInfo> classInfo;
 	//All static variable will be here and put bytecodes to ".main" function
 	std::vector<ExprNode*> staticNode;
 
+	NonReallocatePool<DeclarationNode> declarationNodePool;
+	FixedPool<IfNode> ifPool;
+	FixedPool<IfNode> whilePool;
+	FixedPool<IfNode> forPool;
+
 	std::optional<uint32_t> currentClassId = std::nullopt;
-	Function *mainFunction;
-	FunctionInfo *mainFuncInfo;
-	Function *currentFunction;
-	FunctionInfo *currentFuncInfo;
+	uint32_t mainFunctionId;
+	uint32_t currentFunctionId;
 
 	//Constant value, example "null", "true", "false"
 	std::unordered_map<std::string, std::pair<AObject*, uint32_t>> constValue;
-	inline void gotoFunction(Function* func) {
-		currentFunction = func;
-		currentFuncInfo = &functionInfo[func];
+	inline void gotoFunction(uint32_t currentFunctionId) {
+		this->currentFunctionId = currentFunctionId;
 	}
 	inline void gotoClass(AClass* clazz) {
 		if (clazz == nullptr) {
@@ -85,6 +88,18 @@ struct ParserContext {
 			return;
 		}
 		currentClassId = clazz->id;
+	}
+	inline Function* getMainFunction(in_func) {
+		return &compile.functions[mainFunctionId];
+	}
+	inline FunctionInfo* getMainFunctionInfo(in_func) {
+		return &functionInfo[mainFunctionId];
+	}
+	inline Function* getCurrentFunction(in_func) {
+		return &compile.functions[currentFunctionId];
+	}
+	inline FunctionInfo* getCurrentFunctionInfo(in_func) {
+		return &functionInfo[currentFunctionId];
 	}
 	inline AClass* getCurrentClass(in_func) {
 		return currentClassId ? &compile.classes[*currentClassId] : nullptr;
@@ -97,7 +112,7 @@ struct ParserContext {
 		return clazz->id;
 	}
 	HasClassIdNode* findDeclaration(in_func, std::string& name, bool inGlobal);
-	DeclarationNode* makeDeclarationNode(bool isTemp, std::string name, std::string className, bool isVal, bool isGlobal, bool nullable, bool pushToScope = true);
+	DeclarationNode* makeDeclarationNode(in_func, bool isTemp, std::string name, std::string className, bool isVal, bool isGlobal, bool nullable, bool pushToScope = true);
 	~ParserContext();
 };
 

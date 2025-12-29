@@ -163,6 +163,15 @@ struct Token {
 	std::string toString(ParserContext& context);
 };
 
+struct Estimate {
+	uint32_t declaration = 0;
+	uint32_t classes = 0;
+	uint32_t functions = 0;
+	uint32_t ifNode = 0;
+	uint32_t whileNode = 0;
+	uint32_t forNode = 0;
+};
+
 struct Context  {
 	ParserContext* mainContext;
 	const char* line;
@@ -172,6 +181,8 @@ struct Context  {
 	uint32_t linePos;
 	uint32_t pos;
 	uint32_t absolutePos;
+
+	Estimate estimate;
 };
 
 inline bool nextLine(Context& context, const char* lines, uint32_t& i);
