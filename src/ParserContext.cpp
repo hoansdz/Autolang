@@ -17,7 +17,7 @@ HasClassIdNode* ParserContext::findDeclaration(in_func, std::string& name, bool 
 		if (node) return node;
 	}
 	if (!inGlobal || currentFunctionId == mainFunctionId) return node;
-	node = getCurrentFunctionInfo(in_data)->findDeclaration(in_data, name);
+	node = getMainFunctionInfo(in_data)->findDeclaration(in_data, name);
 	if (node == nullptr) return node;
 	if (justFindStatic) 
 		goto isNotStatic;

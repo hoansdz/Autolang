@@ -2,6 +2,7 @@
 #define INTERPRETER_HPP
 
 #include <string>
+#include "optimize/FixedArray.hpp"
 #include "CompiledProgram.hpp"
 
 namespace AutoLang
@@ -61,8 +62,8 @@ struct AClass
 	uint32_t id;
 	std::vector<AClass *> parent;
 	std::vector<uint32_t> memberId;
-	std::unordered_map<std::string, uint32_t> memberMap;
-	std::unordered_map<std::string, std::vector<uint32_t>> funcMap;
+	ankerl::unordered_dense::map<std::string, uint32_t> memberMap;
+	ankerl::unordered_dense::map<std::string, std::vector<uint32_t>> funcMap;
 	AClass(std::string name, uint32_t id) : name(std::move(name)), id(id) {}
 };
 
@@ -71,15 +72,17 @@ struct Function
 	std::string name;
 	AObject *(*native)(NativeFuncInput);
 	bool isStatic;
-	std::vector<uint32_t> args;
+	FixedArray<uint32_t> args;
+	FixedArray<bool> nullableArgs;
 	uint32_t returnId;
 	std::vector<uint8_t> bytecodes;
 	uint32_t maxDeclaration;
-	Function(std::string name, AObject *(*native)(NativeFuncInput), bool isStatic, std::vector<uint32_t> args, uint32_t returnId) : name(name), native(native), isStatic(isStatic), args(std::move(args)), returnId(returnId), maxDeclaration(native ? this->args.size() : 0) {}
+	uint32_t id;
+	Function(uint32_t id, std::string name, AObject *(*native)(NativeFuncInput), bool isStatic, std::vector<uint32_t> &args, std::vector<bool> &nullableArgs, uint32_t returnId) : name(name), native(native), isStatic(isStatic), args(args), nullableArgs(nullableArgs), returnId(returnId), maxDeclaration(native ? this->args.size : 0) {}
 };
 
 template <typename K, typename V>
-size_t estimateUnorderedMapSize(const std::unordered_map<K, V> &map);
+size_t estimateUnorderedMapSize(const ankerl::unordered_dense::map<K, V> &map);
 
 class AVM
 {
@@ -104,7 +107,7 @@ private:
 			AObject **last = &stackAllocator[std::integral_constant<size_t, index - 1>{}];
 			*last = stack.pop();
 			(*last)->retain();
-			// std::cerr<<"Input: "<<index-1<<", ref: "<<(*last)->refCount<<std::endl;
+			// std::cerr<<"Input: "<<index-1<<", ref: "<<(*last)->refCount<<'\n';
 			inputArgument<index - 1>();
 		}
 	}

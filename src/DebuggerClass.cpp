@@ -68,7 +68,7 @@ CreateClassNode* loadClass(in_func, size_t& i) {
 		if (!context.getCurrentClassInfo(in_data)->primaryConstructor && 
 			context.getCurrentClassInfo(in_data)->secondaryConstructor.empty()) {
 			CreateConstructorNode* constructor = new CreateConstructorNode(
-				clazz->id, name+"()", {context.getCurrentClassInfo(in_data)->declarationThis}, false, 
+				clazz->id, name+"()", {}, false, 
 				Lexer::TokenType::PUBLIC
 			);
 			constructor->pushFunction(in_data);

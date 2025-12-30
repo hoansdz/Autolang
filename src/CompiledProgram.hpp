@@ -1,9 +1,10 @@
 #ifndef COMPILED_PROGRAM_HPP
 #define COMPILED_PROGRAM_HPP
 
-#include <unordered_map>
 #include <vector>
 #include <tuple>
+#include <cstdint>
+#include "ankerl/unordered_dense.h"
 #include "AObject.hpp"
 #include "StackAllocator.hpp"
 
@@ -28,30 +29,32 @@ struct CompiledProgram {
 	CompiledProgram(){}
 	ObjectManager manager;
 	uint32_t mainFunctionId;
-	std::unordered_map<std::tuple<uint32_t, uint32_t, uint8_t>, uint32_t, PairHash> typeResult;
+	ankerl::unordered_dense::map<std::tuple<uint32_t, uint32_t, uint8_t>, uint32_t, PairHash> typeResult;
 	std::vector<Function> functions;
-	std::unordered_map<std::string, std::vector<uint32_t>> funcMap;
+	ankerl::unordered_dense::map<std::string, std::vector<uint32_t>> funcMap;
 	std::vector<AClass> classes;
-	std::unordered_map<std::string, uint32_t> classMap;
+	ankerl::unordered_dense::map<std::string, uint32_t> classMap;
 	std::vector<AObject*> constPool;
-	std::unordered_map<long long, uint32_t> constIntMap;
-	std::unordered_map<double, uint32_t> constFloatMap;
-	std::unordered_map<AString*, uint32_t, AString::Hash, AString::Equal> constStringMap;
+	ankerl::unordered_dense::map<long long, uint32_t> constIntMap;
+	ankerl::unordered_dense::map<double, uint32_t> constFloatMap;
+	ankerl::unordered_dense::map<AString*, uint32_t, AString::Hash, AString::Equal> constStringMap;
 	uint32_t registerFunction(
 		AClass* clazz,
 		bool isStatic,
 		std::string name,
 		std::vector<uint32_t> args,
+		std::vector<bool> nullableArgs,
 		uint32_t returnId,
 		AObject* (*native)(NativeFuncInput)
 	);
+
 	uint32_t registerClass(
 		std::string name
 	);
 
-	uint32_t registerConstPool(std::unordered_map<AString*, uint32_t, AString::Hash, AString::Equal>& map, AString* value);
+	uint32_t registerConstPool(ankerl::unordered_dense::map<AString*, uint32_t, AString::Hash, AString::Equal>& map, AString* value);
 	template<typename T>
-	uint32_t registerConstPool(std::unordered_map<T, uint32_t>& map, T value);
+	uint32_t registerConstPool(ankerl::unordered_dense::map<T, uint32_t>& map, T value);
 	
 	inline static std::tuple<uint32_t, uint32_t, uint8_t> makeTuple(uint32_t first, uint32_t second, uint8_t op) {
 		return std::make_tuple(

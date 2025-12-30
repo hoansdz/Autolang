@@ -13,6 +13,7 @@ void init(CompiledProgram& compile) {
 		true,
 		"print()",
 		{ AutoLang::DefaultClass::anyClassId },
+		{ true },
 		AutoLang::DefaultClass::nullClassId,
 		&print
 	);
@@ -20,7 +21,8 @@ void init(CompiledProgram& compile) {
 		nullptr,
 		true,
 		"println()",
-		{ AutoLang::DefaultClass::anyClassId }, 
+		{ AutoLang::DefaultClass::anyClassId },
+		{ true }, 
 		AutoLang::DefaultClass::nullClassId,
 		&println
 	);
@@ -29,6 +31,7 @@ void init(CompiledProgram& compile) {
 		true,
 		"getRefCount()",
 		{ AutoLang::DefaultClass::anyClassId }, 
+		{ true },
 		AutoLang::DefaultClass::INTCLASSID,
 		&get_refcount
 	);
@@ -38,6 +41,7 @@ void init(CompiledProgram& compile) {
 		false,
 		"toString()",
 		{  }, 
+		{  },
 		AutoLang::DefaultClass::stringClassId,
 		&to_string
 	);
@@ -46,6 +50,7 @@ void init(CompiledProgram& compile) {
 		false,
 		"toFloat()",
 		{  }, 
+		{  },
 		AutoLang::DefaultClass::FLOATCLASSID,
 		&AutoLang::DefaultFunction::to_float
 	);
@@ -55,6 +60,7 @@ void init(CompiledProgram& compile) {
 		false,
 		"toInt()",
 		{  }, 
+		{  },
 		AutoLang::DefaultClass::INTCLASSID,
 		&AutoLang::DefaultFunction::to_int
 	);
@@ -63,6 +69,7 @@ void init(CompiledProgram& compile) {
 		false,
 		"toString()",
 		{  }, 
+		{  },
 		AutoLang::DefaultClass::stringClassId,
 		&AutoLang::DefaultFunction::to_string
 	);
@@ -72,6 +79,7 @@ void init(CompiledProgram& compile) {
 		false,
 		"toInt()",
 		{  }, 
+		{  },
 		AutoLang::DefaultClass::INTCLASSID,
 		&AutoLang::DefaultFunction::to_int
 	);
@@ -80,6 +88,7 @@ void init(CompiledProgram& compile) {
 		false,
 		"size()",
 		{  }, 
+		{  },
 		AutoLang::DefaultClass::INTCLASSID,
 		&AutoLang::DefaultFunction::get_string_size
 	);
@@ -88,6 +97,7 @@ void init(CompiledProgram& compile) {
 		true,
 		"String()",
 		{ AutoLang::DefaultClass::stringClassId }, 
+		{ false },
 		AutoLang::DefaultClass::stringClassId,
 		&AutoLang::DefaultFunction::string_constructor
 	);
@@ -97,6 +107,7 @@ void init(CompiledProgram& compile) {
 		"String()",
 		{ AutoLang::DefaultClass::stringClassId,
 		   AutoLang::DefaultClass::INTCLASSID }, 
+		{ false, false },
 		AutoLang::DefaultClass::stringClassId,
 		&AutoLang::DefaultFunction::string_constructor
 	);

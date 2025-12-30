@@ -37,7 +37,7 @@ namespace AutoLang
 		std::string returnClass;
 		uint32_t id;
 		BlockNode body;
-		std::vector<DeclarationNode *> arguments;
+		const std::vector<DeclarationNode *> arguments;
 		bool isStatic;
 		CreateFuncNode(std::optional<uint32_t> contextCallClassId, std::string name, std::string returnClass, std::vector<DeclarationNode *> arguments,
 					   bool isStatic, Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC) : HasClassIdNode(NodeType::CREATE_FUNC), contextCallClassId(contextCallClassId), accessModifier(accessModifier), name(std::move(name)), returnClass(std::move(returnClass)),
@@ -54,7 +54,7 @@ namespace AutoLang
 		std::string name;
 		uint32_t funcId;
 		BlockNode body;
-		std::vector<DeclarationNode *> arguments;
+		const std::vector<DeclarationNode *> arguments;
 		bool isPrimary;
 		CreateConstructorNode(std::optional<uint32_t> contextCallClassId, std::string name, std::vector<DeclarationNode *> arguments, bool isPrimary,
 							  Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC) : HasClassIdNode(NodeType::CREATE_CONSTRUCTOR), contextCallClassId(contextCallClassId), accessModifier(accessModifier),

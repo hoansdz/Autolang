@@ -157,7 +157,7 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 		} else { //Class
 			context.getCurrentClassInfo(in_data)->staticMember[name] = node;
 		}
-		context.staticNode.push_back(new SetNode(
+		context.staticNode.push_back(context.setValuePool.push(
 			new VarNode(
 				node,
 				false
@@ -166,7 +166,7 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 		return nullptr;
 	}
 	//Non static
-	if (context.currentClassId && context.currentFunctionId == context.currentFunctionId) {
+	if (context.currentClassId && context.currentFunctionId == context.mainFunctionId) {
 		uint32_t nodeId = context.getCurrentClass(in_data)->memberMap.size();
 		// printDebug(compile.classes[context.currentClassInfo->declarationThis->classId].name);
 		// printDebug((uintptr_t)context.currentClass);
@@ -177,7 +177,7 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 
 		//Add Member
 		context.getCurrentClassInfo(in_data)->member.push_back(node);
-		auto setNode = new SetNode(
+		auto setNode = context.setValuePool.push(
 			new GetPropNode(
 				node,
 				context.currentClassId,
@@ -192,7 +192,7 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 		);
 		return setNode;
 	}
-	return new SetNode(new VarNode(
+	return context.setValuePool.push(new VarNode(
 		node,
 		true
 	), value);

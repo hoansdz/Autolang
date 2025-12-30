@@ -9,7 +9,7 @@ namespace AutoLang
 WhileNode* loadWhile(in_func, size_t& i) {
 	if (!context.keywords.empty())
 		throw std::runtime_error("Invalid keyword");
-	auto node = std::make_unique<WhileNode>();
+	WhileNode* node = context.whilePool.push(); //WhilePool managed
 	Lexer::Token* token;
 	//Condition
 	if (!nextToken(&token, context.tokens, i) ||
@@ -26,7 +26,7 @@ WhileNode* loadWhile(in_func, size_t& i) {
 	if (!nextToken(&token, context.tokens, i))
 		throw std::runtime_error("Expected command after while but not found");
 	loadBody(in_data, node->body.nodes, i);
-	return node.release();
+	return node;
 }
 
 ExprNode* loadFor(in_func, size_t& i) {

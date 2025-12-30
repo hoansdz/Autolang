@@ -17,7 +17,7 @@ void DeclarationNode::optimize(in_func) {
 			throw std::runtime_error(std::string("Cannot find class name : ") + className);
 		classId = clazz->id;
 	}
-	printDebug("DeclarationNode: " + name + " is " + compile.classes[classId].name);
+	// printDebug("DeclarationNode: " + name + " is " + compile.classes[classId].name);
 }
 
 void CreateFuncNode::pushFunction(in_func) {
@@ -26,7 +26,8 @@ void CreateFuncNode::pushFunction(in_func) {
 		clazz,
 		isStatic,
 		name+"()",
-		{},
+		std::vector<uint32_t>(arguments.size(), 0),
+		std::vector<bool>(arguments.size(), false),
 		clazz ? clazz->id : AutoLang::DefaultClass::nullClassId,
 		nullptr
 	);
@@ -51,14 +52,14 @@ void CreateFuncNode::optimize(in_func) {
 		func->returnId = AutoLang::DefaultClass::nullClassId;
 	for (size_t i=0; i<arguments.size(); ++i) {
 		auto& argument = arguments[i];
-		func->args.push_back(argument->classId);
+		func->args[i] = argument->classId;
+		func->nullableArgs[i] = argument->nullable;
 	}
-	
-	auto& listFunc = compile.funcMap[name];
+	auto& listFunc = compile.funcMap[name + "()"];
 	for (auto id:listFunc) {
 		auto f = &compile.functions[id];
-		if (f == func || f->args.size() != func->args.size()) continue;
-		for (size_t i=0; i<f->args.size(); ++i) {
+		if (f == func || f->args.size != func->args.size) continue;
+		for (size_t i=0; i<f->args.size; ++i) {
 			if (f->args[i] != func->args[i])
 				continue;
 		}
@@ -72,12 +73,14 @@ void CreateConstructorNode::pushFunction(in_func) {
 		clazz,
 		false,
 		name,
-		{},
+		std::vector<uint32_t>(arguments.size(), 0),
+		std::vector<bool>(arguments.size(), false),
 		clazz->id,
 		isPrimary ? AutoLang::DefaultFunction::data_constructor : nullptr
 	);
 	auto func = &compile.functions[funcId];
 	auto funcInfo = &context.functionInfo[funcId];
+	
 	funcInfo->clazz = clazz;
 	funcInfo->accessModifier = accessModifier;
 	funcInfo->isConstructor = true;
@@ -103,7 +106,8 @@ void CreateConstructorNode::optimize(in_func) {
 	auto classInfo = &context.classInfo[clazz->id];
 	for (size_t i=0; i<arguments.size(); ++i) {
 		auto& argument = arguments[i];
-		func->args.push_back(argument->classId);
+		func->args[i + 1] = argument->classId;
+		func->nullableArgs[i + 1] = argument->nullable;
 		if (isPrimary) {
 			// printDebug((uintptr_t)clazz);
 			// printDebug(classInfo->declarationThis->className);
@@ -114,11 +118,13 @@ void CreateConstructorNode::optimize(in_func) {
 	}
 	
 	//Check redefine
-	auto listFunc = compile.funcMap[func->name];
+	// printDebug("Name : "+func->name);
+	// printDebug(std::string("Has : ")+(compile.funcMap.find(func->name) != compile.funcMap.end() ? "Ok" : "No"));
+	auto& listFunc = compile.funcMap[func->name];
 	for (auto id:listFunc) {
 		auto f = &compile.functions[id];
-		if (f == func || f->args.size() != func->args.size()) continue;
-		for (size_t i=0; i<f->args.size(); ++i) {
+		if (f == func || f->args.size != func->args.size) continue;
+		for (size_t i=0; i<f->args.size; ++i) {
 			if (f->args[i] != func->args[i])
 				continue;
 		}
@@ -128,7 +134,7 @@ void CreateConstructorNode::optimize(in_func) {
 	//Add return bytecodes
 	if (!isPrimary) {
 		// auto funcInfo = &context.functionInfo[func];
-		body.nodes.push_back(new ReturnNode(
+		body.nodes.push_back(context.returnPool.push(
 			func,
 			new VarNode(
 				classInfo->declarationThis,

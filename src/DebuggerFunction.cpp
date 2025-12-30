@@ -64,6 +64,14 @@ CreateFuncNode* loadFunc(in_func, size_t& i) {
 			throw std::runtime_error("Expected body but not found");
 		}
 	}
+
+	//Add this
+	if (!isStatic && context.currentClassId) {
+		// scope["this"] = context.getCurrentClassInfo(in_data)->declarationThis;
+		// node->arguments.insert(node->arguments.begin(), context.getCurrentClassInfo(in_data)->declarationThis);
+		listDeclarationNode.insert(listDeclarationNode.begin(), context.getCurrentClassInfo(in_data)->declarationThis);
+	}
+
 	auto node = std::make_unique<CreateFuncNode>(
 		context.currentClassId, name, std::move(returnClass), 
 		std::move(listDeclarationNode), isStatic, accessModifier
@@ -72,11 +80,12 @@ CreateFuncNode* loadFunc(in_func, size_t& i) {
 	auto func = &compile.functions[node->id];
 	context.gotoFunction(node->id);
 	auto& scope = context.getCurrentFunctionInfo(in_data)->scopes.back();
+
+	//Add this
 	if (!isStatic && context.currentClassId) {
-		//Add "this"
 		scope["this"] = context.getCurrentClassInfo(in_data)->declarationThis;
-		node->arguments.insert(node->arguments.begin(), context.getCurrentClassInfo(in_data)->declarationThis);
 	}
+
 	func->maxDeclaration += node->arguments.size();
 	for (auto& argument:node->arguments) {
 		scope[argument->name] = argument;
@@ -103,11 +112,11 @@ ReturnNode* loadReturn(in_func, size_t& i) {
 	if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 		--i;
 		auto value = context.getCurrentFunctionInfo(in_data)->isConstructor ? new VarNode(context.getCurrentClassInfo(in_data)->declarationThis, false) : nullptr;
-		return new ReturnNode(context.getCurrentFunction(in_data), value);
+		return context.returnPool.push(context.getCurrentFunction(in_data), value);
 	}
 	if (context.getCurrentFunctionInfo(in_data)->isConstructor)
 		throw std::runtime_error("Cannot return value in constructor");
-	return new ReturnNode(context.getCurrentFunction(in_data), loadExpression(in_data, 0, i));
+	return context.returnPool.push(context.getCurrentFunction(in_data), loadExpression(in_data, 0, i));
 }
 
 }

@@ -16,6 +16,7 @@ void init(CompiledProgram& compile) {
 		true,
 		"round()",
 		{ AutoLang::DefaultClass::FLOATCLASSID }, 
+		{ false },
 		AutoLang::DefaultClass::INTCLASSID,
 		&round
 	);
@@ -24,6 +25,7 @@ void init(CompiledProgram& compile) {
 		true,
 		"floor()",
 		{ AutoLang::DefaultClass::FLOATCLASSID }, 
+		{ false },
 		AutoLang::DefaultClass::INTCLASSID,
 		&floor
 	);
@@ -32,6 +34,7 @@ void init(CompiledProgram& compile) {
 		true,
 		"ceil()",
 		{ AutoLang::DefaultClass::FLOATCLASSID }, 
+		{ false },
 		AutoLang::DefaultClass::INTCLASSID,
 		&ceil
 	);
@@ -40,6 +43,7 @@ void init(CompiledProgram& compile) {
 		true,
 		"trunc()",
 		{ AutoLang::DefaultClass::FLOATCLASSID }, 
+		{ false },
 		AutoLang::DefaultClass::INTCLASSID,
 		&trunc
 	);
@@ -48,6 +52,7 @@ void init(CompiledProgram& compile) {
 		true,
 		"pow()",
 		{ AutoLang::DefaultClass::INTCLASSID , AutoLang::DefaultClass::INTCLASSID }, 
+		{ false, false },
 		AutoLang::DefaultClass::INTCLASSID,
 		&pow
 	);
@@ -56,6 +61,7 @@ void init(CompiledProgram& compile) {
 		true,
 		"pow()",
 		{ AutoLang::DefaultClass::FLOATCLASSID , AutoLang::DefaultClass::FLOATCLASSID }, 
+		{ false, false },
 		AutoLang::DefaultClass::FLOATCLASSID,
 		&pow
 	);
@@ -64,6 +70,7 @@ void init(CompiledProgram& compile) {
 		true,
 		"abs()",
 		{ AutoLang::DefaultClass::INTCLASSID }, 
+		{ false },
 		AutoLang::DefaultClass::INTCLASSID,
 		&abs
 	);
@@ -72,6 +79,7 @@ void init(CompiledProgram& compile) {
 		true,
 		"abs()",
 		{ AutoLang::DefaultClass::FLOATCLASSID }, 
+		{ false },
 		AutoLang::DefaultClass::FLOATCLASSID,
 		&abs
 	);
@@ -80,6 +88,7 @@ void init(CompiledProgram& compile) {
 		true,
 		"sin()",
 		{ AutoLang::DefaultClass::FLOATCLASSID }, 
+		{ false },
 		AutoLang::DefaultClass::FLOATCLASSID,
 		&sin
 	);
@@ -88,6 +97,7 @@ void init(CompiledProgram& compile) {
 		true,
 		"cos()",
 		{ AutoLang::DefaultClass::FLOATCLASSID }, 
+		{ false },
 		AutoLang::DefaultClass::FLOATCLASSID,
 		&cos
 	);
@@ -96,6 +106,7 @@ void init(CompiledProgram& compile) {
 		true,
 		"tan()",
 		{ AutoLang::DefaultClass::FLOATCLASSID }, 
+		{ false },
 		AutoLang::DefaultClass::FLOATCLASSID,
 		&tan
 	);

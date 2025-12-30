@@ -8,6 +8,8 @@
 #define TOKEN_CASE(ch, type) \
     case ch: tokens.emplace_back(context.linePos, TokenType::type); break;
 
+#define ESTIMATE_CASE_ADD(op, val) case TokenType::op: ++context.estimate.val; break;
+
 namespace AutoLang {
 namespace Lexer {
 
@@ -76,6 +78,13 @@ std::vector<Token> load(ParserContext* mainContext, std::pair<const char*, size_
 				auto op = loadOp(context, i);
 				if (op == TokenType::COMMENT_SINGLE_LINE)
 					break;
+				switch (op) {
+					ESTIMATE_CASE_ADD(EQUAL, setNode)
+					ESTIMATE_CASE_ADD(PLUS_EQUAL, setNode)
+					ESTIMATE_CASE_ADD(MINUS_EQUAL, setNode)
+					ESTIMATE_CASE_ADD(STAR_EQUAL, setNode)
+					ESTIMATE_CASE_ADD(SLASH_EQUAL, setNode)
+				}
 				tokens.emplace_back(context.linePos, op);
 				continue;
 			}
@@ -123,8 +132,6 @@ TokenType loadOp(Context& context, uint32_t& i) {
 	return it->second;
 }
 
-#define ESTIMATE_CASE_ADD(op, val) case TokenType::op: ++context.estimate.val; break;
-
 void pushIdentifier(Context& context, std::vector<Token>& tokens, uint32_t& i) {
 	std::string identifier = loadIdentifier(context, i);
 	auto it = CAST.find(identifier);
@@ -139,12 +146,12 @@ void pushIdentifier(Context& context, std::vector<Token>& tokens, uint32_t& i) {
 	switch (it->second) {
 		ESTIMATE_CASE_ADD(CLASS, classes)
 		ESTIMATE_CASE_ADD(FUNC, functions)
-		ESTIMATE_CASE_ADD(CONSTRUCTOR, functions)
+		ESTIMATE_CASE_ADD(CONSTRUCTOR, constructorNode)
 		ESTIMATE_CASE_ADD(VAL, declaration)
 		ESTIMATE_CASE_ADD(VAR, declaration)
 		ESTIMATE_CASE_ADD(IF, ifNode)
 		ESTIMATE_CASE_ADD(WHILE, whileNode)
-		ESTIMATE_CASE_ADD(FOR, forNode)
+		ESTIMATE_CASE_ADD(RETURN, returnNode)
 		default: break;
 	}
 	tokens.emplace_back(

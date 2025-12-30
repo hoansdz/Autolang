@@ -266,9 +266,9 @@ struct ClassAccessNode : HasClassIdNode {
 
 struct MatchOverload {
 	Function* func;
-	uint8_t score;
 	uint32_t id;
-	bool hasNull;
+	uint8_t score;
+	bool errorNonNullIfMatch = false;
 };
 
 //caller.name(arguments)
@@ -285,7 +285,7 @@ struct CallNode : HasClassIdNode {
 		HasClassIdNode(NodeType::CALL), caller(caller), contextCallClassId(contextCallClassId), name(name), justFindStatic(justFindStatic){}
 	void optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t>& bytecodes) override;
-	bool match(CompiledProgram& compile, MatchOverload& match, std::vector<uint32_t>& functions, int& i);
+	bool match(in_func, MatchOverload& match, std::vector<uint32_t>& functions, int& i);
 	~CallNode();
 };
 

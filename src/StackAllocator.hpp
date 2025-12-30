@@ -2,7 +2,6 @@
 #define STACKALLOCATOR_HPP
 
 #include <string>
-#include <unordered_map>
 #include <vector>
 #include <cstring>
 #include "AObject.hpp"
@@ -35,7 +34,7 @@ public:
 		size_t i = sizeNow;
 		sizeNow = sizeNow + maxSize / 2;
 		AObject** newArgs = new AObject*[sizeNow];
-		std::memcpy(newArgs, args, sizeof(AObject*) * i);
+		memcpy(newArgs, args, sizeof(AObject*) * i);
 		for (; i < sizeNow; ++i)
 			newArgs[i] = nullptr;
 		delete[] args;
@@ -45,7 +44,7 @@ public:
 	inline void freeTo(size_t top) {
 		if (this->top > maxSize && top <= maxSize * 3 / 4) {
 			AObject** newArgs = new AObject*[maxSize];
-			std::memcpy(newArgs, args, sizeof(AObject*) * maxSize);
+			memcpy(newArgs, args, sizeof(AObject*) * maxSize);
 			sizeNow = maxSize;
 			delete[] args;
 			args = newArgs;
