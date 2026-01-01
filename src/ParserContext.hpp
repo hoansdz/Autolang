@@ -56,9 +56,9 @@ namespace AutoLang
 		// Keywords , example public, private, static
 		std::vector<Lexer::TokenType> keywords;
 		// Declaration new functions by user
-		std::vector<CreateFuncNode *> newFunctions;
+		NonReallocatePool<CreateFuncNode> newFunctions;
 		// Declaration new classes by user
-		std::vector<CreateClassNode *> newClasses;
+		NonReallocatePool<CreateClassNode> newClasses;
 		uint32_t line;
 		bool canBreakContinue = false;
 		// Be used when it is static keywords, example static val a = ...
@@ -76,6 +76,7 @@ namespace AutoLang
 		NonReallocatePool<DeclarationNode> declarationNodePool;
 		NonReallocatePool<ReturnNode> returnPool;
 		NonReallocatePool<SetNode> setValuePool;
+		FixedPool<CreateConstructorNode> createConstructorPool;
 		FixedPool<IfNode> ifPool;
 		FixedPool<WhileNode> whilePool;
 

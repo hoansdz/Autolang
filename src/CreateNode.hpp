@@ -39,9 +39,10 @@ namespace AutoLang
 		BlockNode body;
 		const std::vector<DeclarationNode *> arguments;
 		bool isStatic;
-		CreateFuncNode(std::optional<uint32_t> contextCallClassId, std::string name, std::string returnClass, std::vector<DeclarationNode *> arguments,
+		bool returnNullable;
+		CreateFuncNode(std::optional<uint32_t> contextCallClassId, std::string name, std::string returnClass, bool returnNullable, std::vector<DeclarationNode *> arguments,
 					   bool isStatic, Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC) : HasClassIdNode(NodeType::CREATE_FUNC), contextCallClassId(contextCallClassId), accessModifier(accessModifier), name(std::move(name)), returnClass(std::move(returnClass)),
-																									arguments(std::move(arguments)), isStatic(isStatic) {}
+																									arguments(std::move(arguments)), isStatic(isStatic), returnNullable(returnNullable) {}
 		void pushFunction(in_func);
 		void optimize(in_func) override;
 		~CreateFuncNode() {}

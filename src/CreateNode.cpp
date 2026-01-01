@@ -29,6 +29,7 @@ void CreateFuncNode::pushFunction(in_func) {
 		std::vector<uint32_t>(arguments.size(), 0),
 		std::vector<bool>(arguments.size(), false),
 		clazz ? clazz->id : AutoLang::DefaultClass::nullClassId,
+		returnNullable,
 		nullptr
 	);
 	auto func = &compile.functions[id];
@@ -76,6 +77,7 @@ void CreateConstructorNode::pushFunction(in_func) {
 		std::vector<uint32_t>(arguments.size(), 0),
 		std::vector<bool>(arguments.size(), false),
 		clazz->id,
+		false,
 		isPrimary ? AutoLang::DefaultFunction::data_constructor : nullptr
 	);
 	auto func = &compile.functions[funcId];

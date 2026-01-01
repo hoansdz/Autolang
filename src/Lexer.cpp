@@ -335,6 +335,10 @@ std::string Token::toString(ParserContext& context) {
 			return "in";
 		case TokenType::QMARK:
 			return "?";
+		case TokenType::QMARK_DOT:
+			return "?.";
+		case TokenType::EXMARK:
+			return "!";
 		case TokenType::RETURN:
 			return "return";
 		case TokenType::AND_AND:

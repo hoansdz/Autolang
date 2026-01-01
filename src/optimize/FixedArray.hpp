@@ -3,10 +3,8 @@
 
 #include <iostream>
 #include <vector>
-#include <cstring>
-#include <type_traits>
 #include <memory>
-#include <new>
+#include <algorithm> // Cần thư viện này cho std::copy
 #include <cassert>
 
 template<typename T>
@@ -17,23 +15,27 @@ struct FixedArray {
     FixedArray() : data(nullptr), size(0) {}
 
     // Constructor từ vector
-    FixedArray(const std::vector<T>& vecs) : size(vecs.size()), data(std::make_unique<T[]>(vecs.size())) {
-        if constexpr (std::is_trivial_v<T>) {
-            memcpy(data.get(), vecs.data(), sizeof(T) * size);
-        } else {
-            for (size_t i = 0; i < size; ++i)
-                new (&data[i]) T(vecs[i]);
+    FixedArray(const std::vector<T>& vecs) : size(vecs.size()) {
+        if (size > 0) {
+            // make_unique đã khởi tạo mặc định các phần tử
+            data = std::make_unique<T[]>(size);
+            // std::copy tự động xử lý việc gán giá trị an toàn
+            // Nó cũng tự động tối ưu thành memcpy nếu T là kiểu đơn giản (trivial)
+            // Và nó tự động xử lý luôn vector<bool> mà không cần specialization
+            std::copy(vecs.begin(), vecs.end(), data.get());
         }
     }
 
-    // Disable copy, enable move
+    // Disable copy
     FixedArray(const FixedArray&) = delete;
     FixedArray& operator=(const FixedArray&) = delete;
 
+    // Move constructor
     FixedArray(FixedArray&& other) noexcept : data(std::move(other.data)), size(other.size) {
         other.size = 0;
     }
 
+    // Move assignment
     FixedArray& operator=(FixedArray&& other) noexcept {
         if (this != &other) {
             data = std::move(other.data);
@@ -43,76 +45,41 @@ struct FixedArray {
         return *this;
     }
 
+    // Allocate theo kích thước mới
     void allocate(size_t newSize) {
-        data = std::make_unique<T[]>(newSize);
         size = newSize;
+        if (size > 0) {
+            data = std::make_unique<T[]>(size);
+        } else {
+            data.reset();
+        }
     }
 
+    // Allocate từ vector
     void allocate(const std::vector<T>& vecs) {
         allocate(vecs.size());
-        if constexpr (std::is_trivial_v<T>) {
-            memcpy(data.get(), vecs.data(), sizeof(T) * size);
-        } else {
-            for (size_t i = 0; i < size; ++i)
-                new (&data[i]) T(vecs[i]);
+        if (size > 0) {
+            std::copy(vecs.begin(), vecs.end(), data.get());
         }
     }
 
     T& operator[](size_t idx) { 
+        assert(idx < size);
         return data[idx]; 
     }
     const T& operator[](size_t idx) const { 
+        assert(idx < size);
         return data[idx]; 
     }
+    
+    // Thêm begin/end để hỗ trợ duyệt mảng (optional nhưng rất nên có)
+    T* begin() { return data.get(); }
+    T* end() { return data.get() + size; }
+    const T* begin() const { return data.get(); }
+    const T* end() const { return data.get() + size; }
 };
 
-// Specialization cho bool
-template<>
-struct FixedArray<bool> {
-    std::unique_ptr<bool[]> data;
-    size_t size = 0;
-
-    FixedArray() : data(nullptr), size(0) {}
-
-    FixedArray(const std::vector<bool>& vecs) : data(std::make_unique<bool[]>(vecs.size())), size(vecs.size()) {
-        for (size_t i = 0; i < size; ++i)
-            data[i] = vecs[i];
-    }
-
-    // Disable copy, enable move
-    FixedArray(const FixedArray&) = delete;
-    FixedArray& operator=(const FixedArray&) = delete;
-
-    FixedArray(FixedArray&& other) noexcept : data(std::move(other.data)), size(other.size) {
-        other.size = 0;
-    }
-
-    FixedArray& operator=(FixedArray&& other) noexcept {
-        if (this != &other) {
-            data = std::move(other.data);
-            size = other.size;
-            other.size = 0;
-        }
-        return *this;
-    }
-
-    void allocate(const std::vector<bool>& vecs) {
-        allocate(vecs.size());
-        for (size_t i = 0; i < size; ++i)
-            data[i] = vecs[i];
-    }
-
-    void allocate(size_t newSize) {
-        data = std::make_unique<bool[]>(newSize);
-        size = newSize;
-    }
-
-    bool& operator[](size_t idx) { 
-        return data[idx]; 
-    }
-    const bool& operator[](size_t idx) const {
-        return data[idx]; 
-    }
-};
+// Đã xóa specialization FixedArray<bool> vì template ở trên
+// đã xử lý được bool một cách hoàn hảo nhờ std::copy.
 
 #endif

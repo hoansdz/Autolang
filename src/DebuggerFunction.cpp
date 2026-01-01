@@ -52,12 +52,11 @@ CreateFuncNode* loadFunc(in_func, size_t& i) {
 		throw std::runtime_error("Expected body but not found");
 	}
 	std::string returnClass;
+	bool returnNullable = false;
 	if (token->type == Lexer::TokenType::COLON) {
-		if (!nextToken(&token, context.tokens, i) ||
-			!expect(token, Lexer::TokenType::IDENTIFIER)) {
-			throw std::runtime_error("Expected class name but not found");
-		}
-		returnClass = context.lexerString[token->indexData];
+		ClassDeclaration classDeclaration = loadClassDeclaration(in_data, i , token->line);
+		returnClass = std::move(classDeclaration.className);
+		returnNullable = classDeclaration.nullable;
 		if (returnClass == "Null")
 			throw std::runtime_error("Cannot return Null class");
 		if (!nextToken(&token, context.tokens, i)) {
@@ -72,8 +71,8 @@ CreateFuncNode* loadFunc(in_func, size_t& i) {
 		listDeclarationNode.insert(listDeclarationNode.begin(), context.getCurrentClassInfo(in_data)->declarationThis);
 	}
 
-	auto node = std::make_unique<CreateFuncNode>(
-		context.currentClassId, name, std::move(returnClass), 
+	CreateFuncNode* node = context.newFunctions.push(
+		context.currentClassId, name, std::move(returnClass), returnNullable,
 		std::move(listDeclarationNode), isStatic, accessModifier
 	);
 	node->pushFunction(in_data);
@@ -104,7 +103,7 @@ CreateFuncNode* loadFunc(in_func, size_t& i) {
 			throw std::runtime_error("Didn't declare return");
 	}
 	context.gotoFunction(context.mainFunctionId);
-	return node.release();
+	return node;
 }
 
 ReturnNode* loadReturn(in_func, size_t& i) {

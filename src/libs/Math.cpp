@@ -18,6 +18,7 @@ void init(CompiledProgram& compile) {
 		{ AutoLang::DefaultClass::FLOATCLASSID }, 
 		{ false },
 		AutoLang::DefaultClass::INTCLASSID,
+		false,
 		&round
 	);
 	compile.registerFunction( 
@@ -27,6 +28,7 @@ void init(CompiledProgram& compile) {
 		{ AutoLang::DefaultClass::FLOATCLASSID }, 
 		{ false },
 		AutoLang::DefaultClass::INTCLASSID,
+		false,
 		&floor
 	);
 	compile.registerFunction( 
@@ -36,6 +38,7 @@ void init(CompiledProgram& compile) {
 		{ AutoLang::DefaultClass::FLOATCLASSID }, 
 		{ false },
 		AutoLang::DefaultClass::INTCLASSID,
+		false,
 		&ceil
 	);
 	compile.registerFunction( 
@@ -45,6 +48,7 @@ void init(CompiledProgram& compile) {
 		{ AutoLang::DefaultClass::FLOATCLASSID }, 
 		{ false },
 		AutoLang::DefaultClass::INTCLASSID,
+		false,
 		&trunc
 	);
 	compile.registerFunction( 
@@ -54,6 +58,7 @@ void init(CompiledProgram& compile) {
 		{ AutoLang::DefaultClass::INTCLASSID , AutoLang::DefaultClass::INTCLASSID }, 
 		{ false, false },
 		AutoLang::DefaultClass::INTCLASSID,
+		false,
 		&pow
 	);
 	compile.registerFunction( 
@@ -63,6 +68,7 @@ void init(CompiledProgram& compile) {
 		{ AutoLang::DefaultClass::FLOATCLASSID , AutoLang::DefaultClass::FLOATCLASSID }, 
 		{ false, false },
 		AutoLang::DefaultClass::FLOATCLASSID,
+		false,
 		&pow
 	);
 	compile.registerFunction( 
@@ -72,6 +78,7 @@ void init(CompiledProgram& compile) {
 		{ AutoLang::DefaultClass::INTCLASSID }, 
 		{ false },
 		AutoLang::DefaultClass::INTCLASSID,
+		false,
 		&abs
 	);
 	compile.registerFunction( 
@@ -81,6 +88,7 @@ void init(CompiledProgram& compile) {
 		{ AutoLang::DefaultClass::FLOATCLASSID }, 
 		{ false },
 		AutoLang::DefaultClass::FLOATCLASSID,
+		false,
 		&abs
 	);
 	compile.registerFunction( 
@@ -90,6 +98,7 @@ void init(CompiledProgram& compile) {
 		{ AutoLang::DefaultClass::FLOATCLASSID }, 
 		{ false },
 		AutoLang::DefaultClass::FLOATCLASSID,
+		false,
 		&sin
 	);
 	compile.registerFunction( 
@@ -99,6 +108,7 @@ void init(CompiledProgram& compile) {
 		{ AutoLang::DefaultClass::FLOATCLASSID }, 
 		{ false },
 		AutoLang::DefaultClass::FLOATCLASSID,
+		false,
 		&cos
 	);
 	compile.registerFunction( 
@@ -108,6 +118,7 @@ void init(CompiledProgram& compile) {
 		{ AutoLang::DefaultClass::FLOATCLASSID }, 
 		{ false },
 		AutoLang::DefaultClass::FLOATCLASSID,
+		false,
 		&tan
 	);
 }

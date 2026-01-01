@@ -105,14 +105,8 @@ ClassInfo::~ClassInfo() {
 }
 
 ParserContext::~ParserContext() {
-	for (auto* node : newFunctions) {
-		delete node;
-	}
-	for (auto* node : newClasses) {
-		delete node;
-	}
 	for (auto* node : staticNode) {
-		delete node;
+		ExprNode::deleteNode(node);
 	}
 }
 

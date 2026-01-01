@@ -19,6 +19,8 @@
 #include "NodePutbytecode.cpp"
 #include "ParserContext.cpp"
 #include "StackAllocator.cpp"
+#include "ObjectManager.cpp"
+#include "AreaPool.cpp"
 #include "libs/Math.cpp"
 
 #endif

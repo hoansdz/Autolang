@@ -5,6 +5,7 @@
 #include <vector>
 #include <cstring>
 #include "AObject.hpp"
+#include "ObjectManager.hpp"
 
 class AVM;
 
@@ -18,14 +19,14 @@ public:
 	StackAllocator(size_t maxSize = 256):
 		maxSize(maxSize), sizeNow(maxSize), top(0), args(new AObject*[maxSize]()){}
 	~StackAllocator() {
-		for (size_t i = 0; i < sizeNow; ++i) {
-			auto obj = args[i];
-			if (obj == nullptr) continue;
-			if (obj->refCount <= 9000) {
-				obj->free();
-				delete obj;
-			}
-		}
+		// for (size_t i = 0; i < sizeNow; ++i) {
+		// 	AObject* obj = args[i];
+		// 	if (obj == nullptr) continue;
+		// 	if (obj->refCount > 0) --obj->refCount;
+		// 	if (obj->refCount != 0) continue;
+		// 	obj->free();
+		// 	delete obj;
+		// }
 		delete[] args;
 	}
 	

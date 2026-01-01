@@ -18,6 +18,8 @@ extern uint32_t anyClassId;
 extern AObject* nullObject;
 extern AObject* trueObject;
 extern AObject* falseObject;
+constexpr uint32_t builtInObjectSize = 3;
+constexpr uint32_t refCountForGlobal = 2'000'000;
 void init(CompiledProgram& compile);
 
 }

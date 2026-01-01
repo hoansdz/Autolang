@@ -14,33 +14,47 @@ void put_opcode_u32(std::vector<uint8_t>& code, uint32_t value) {
 	code.push_back((value >> 24) & 0xFF);
 }
 
-void put_opcode_u32(std::vector<uint8_t>& code, size_t pos, uint32_t value) {
+void rewrite_opcode_u32(std::vector<uint8_t>& code, size_t pos, uint32_t value) {
 	code[pos] = (value >> 0) & 0xFF;
 	code[pos + 1] = (value >> 8) & 0xFF;
 	code[pos + 2] = (value >> 16) & 0xFF;
 	code[pos + 3] = (value >> 24) & 0xFF;
 }
 
+void ExprNode::deleteNode(ExprNode* node) {
+	if (!node) return;
+	switch (node->kind) {
+		case NodeType::IF:
+		case NodeType::WHILE: 
+		case NodeType::RET:
+		case NodeType::SET:
+		case NodeType::DECLARATION:
+		case NodeType::CREATE_FUNC:
+		case NodeType::CREATE_CLASS:
+		{
+			return;
+		}
+		default: break;
+	}
+	// std::cerr<<std::to_string(node->kind)<<'\n';
+	delete node;
+}
+
 UnknowNode::~UnknowNode() {
-	if (correctNode) delete correctNode;
+	deleteNode(correctNode);
 }
 
 ReturnNode::~ReturnNode() {
-	if (value)
-		delete value;
+	deleteNode(value);
 }
 
 UnaryNode::~UnaryNode() {
-	if (value) {
-		delete value;
-	}
+	deleteNode(value);
 }
 
 BinaryNode::~BinaryNode() {
-	if (left)
-		delete left;
-	if (right)
-		delete right;
+	deleteNode(left);
+	deleteNode(right);
 }
 
 ConstValueNode::~ConstValueNode() {
@@ -48,55 +62,43 @@ ConstValueNode::~ConstValueNode() {
 }
 
 CastNode::~CastNode() {
-	if (value)
-		delete value;
+	deleteNode(value);
 }
 
 ForRangeNode::~ForRangeNode() {
-	if (detach) delete detach;
-	if (from) delete from;
-	if (to) delete to;
+	deleteNode(detach);
+	deleteNode(from);
+	deleteNode(to);
 }
 
 GetPropNode::~GetPropNode() {
-	if (caller)
-		delete caller;
+	deleteNode(caller);
 }
 
 BlockNode::~BlockNode() {
 	for (auto* node : nodes) {
-		switch (node->kind) {
-			case NodeType::IF:
-			case NodeType::WHILE: 
-			case NodeType::RET:
-			case NodeType::SET:
-			{
-				continue;
-			}
-			default: break;
-		}
-		delete node;
+		deleteNode(node);
 	}
 }
 
 IfNode::~IfNode() {
-	if (condition) delete condition;
-	if (ifFalse) delete ifFalse;
+	deleteNode(condition);
+	deleteNode(ifFalse);
 }
 
 WhileNode::~WhileNode() {
-	if (condition) delete condition;
+	deleteNode(condition);
 }
 
 SetNode::~SetNode() {
-	if (detach) delete detach;
-	if (value) delete value;
+	deleteNode(detach);
+	deleteNode(value);
 }
 
 CallNode::~CallNode() {
-	if (caller) delete caller;
+	deleteNode(caller);
 	for (auto* argument:arguments) {
-		delete argument;
+		deleteNode(argument);
 	}
 }
 

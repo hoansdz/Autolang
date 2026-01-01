@@ -34,11 +34,27 @@ public:
 		new (newObj) T(std::forward<Args>(args)...);
 		return newObj;
 	}
+	inline size_t getSize() {
+		return index + vecs.size();
+	}
+	inline T* operator[](size_t idx) {
+		return idx < size ? &objects[idx] : vecs[idx - size];
+	}
+	inline void refresh() {
+		if (objects) {
+			for (size_t i = 0; i < index; ++i)
+				objects[i].~T();
+			for (auto* object : vecs)
+				delete object;
+			::operator delete(objects);
+			objects = nullptr;
+		}
+	}
 	~NonReallocatePool() {
 		if (objects) {
 			for (size_t i = 0; i < index; ++i)
 				objects[i].~T();
-			for (auto& object : vecs)
+			for (auto* object : vecs)
 				delete object;
 			::operator delete(objects);
 		}

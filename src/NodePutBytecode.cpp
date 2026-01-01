@@ -10,11 +10,33 @@ namespace AutoLang
 
 	void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes)
 	{
+		if (left->classId == DefaultClass::nullClassId || right->classId == DefaultClass::nullClassId)
+		{
+			if (left->classId != DefaultClass::nullClassId)
+			{
+				left->putBytecodes(in_data, bytecodes);
+			}
+			else
+			{
+				right->putBytecodes(in_data, bytecodes);
+			}
+			switch (op)
+			{
+			case Lexer::TokenType::EQEQEQ:
+				bytecodes.emplace_back(AutoLang::Opcode::IS_NULL);
+				return;
+			case Lexer::TokenType::NOTEQEQ:
+				bytecodes.emplace_back(AutoLang::Opcode::IS_NON_NULL);
+				return;
+			default:
+				throw std::runtime_error("Wrong, this can't happen");
+			}
+			return;
+		}
 		left->putBytecodes(in_data, bytecodes);
 		right->putBytecodes(in_data, bytecodes);
 		switch (op)
 		{
-			using namespace AutoLang;
 		case Lexer::TokenType::PLUS:
 			bytecodes.emplace_back(AutoLang::Opcode::PLUS);
 			return;
@@ -98,10 +120,10 @@ namespace AutoLang
 		switch (type)
 		{
 		case Lexer::TokenType::CONTINUE:
-			put_opcode_u32(bytecodes, jumpBytePos, context.continuePos);
+			rewrite_opcode_u32(bytecodes, jumpBytePos, context.continuePos);
 			break;
 		case Lexer::TokenType::BREAK:
-			put_opcode_u32(bytecodes, jumpBytePos, context.breakPos);
+			rewrite_opcode_u32(bytecodes, jumpBytePos, context.breakPos);
 			break;
 		default:
 			break;
@@ -110,11 +132,15 @@ namespace AutoLang
 
 	void ConstValueNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes)
 	{
-		bytecodes.emplace_back((isLoadPrimary ||
-								classId == AutoLang::DefaultClass::nullClassId ||
-								classId == AutoLang::DefaultClass::boolClassId)
-								   ? Opcode::LOAD_CONST_PRIMARY
-								   : Opcode::LOAD_CONST);
+		if (classId == AutoLang::DefaultClass::nullClassId) {
+			bytecodes.emplace_back(Opcode::LOAD_NULL);
+			return;
+		}
+		if (classId == AutoLang::DefaultClass::boolClassId) {
+			bytecodes.emplace_back(obj->b ? Opcode::LOAD_TRUE : LOAD_FALSE);
+			return;
+		}
+		bytecodes.emplace_back(isLoadPrimary ? Opcode::LOAD_CONST_PRIMARY : Opcode::LOAD_CONST);
 		put_opcode_u32(bytecodes, id);
 	}
 
@@ -166,6 +192,19 @@ namespace AutoLang
 
 	void IfNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes)
 	{
+		if (condition->kind == NodeType::CONST)
+		{
+			// Is bool because optimize forbiddened others
+			if (static_cast<ConstValueNode *>(condition)->obj->b)
+			{
+				ifTrue.putBytecodes(in_data, bytecodes);
+			}
+			else if (ifFalse != nullptr)
+			{
+				ifFalse->putBytecodes(in_data, bytecodes);
+			}
+			return;
+		}
 		condition->putBytecodes(in_data, bytecodes);
 		bytecodes.emplace_back(Opcode::JUMP_IF_FALSE);
 		size_t jumpIfFalseByte = bytecodes.size();
@@ -176,18 +215,31 @@ namespace AutoLang
 			bytecodes.emplace_back(Opcode::JUMP);
 			size_t jumpIfTrueByte = bytecodes.size();
 			put_opcode_u32(bytecodes, 0);
-			put_opcode_u32(bytecodes, jumpIfFalseByte, bytecodes.size());
+			rewrite_opcode_u32(bytecodes, jumpIfFalseByte, bytecodes.size());
 			ifFalse->putBytecodes(in_data, bytecodes);
-			put_opcode_u32(bytecodes, jumpIfTrueByte, bytecodes.size());
+			rewrite_opcode_u32(bytecodes, jumpIfTrueByte, bytecodes.size());
 		}
 		else
 		{
-			put_opcode_u32(bytecodes, jumpIfFalseByte, bytecodes.size());
+			rewrite_opcode_u32(bytecodes, jumpIfFalseByte, bytecodes.size());
 		}
 	}
 
 	void IfNode::rewrite(in_func, std::vector<uint8_t> &bytecodes)
 	{
+		if (condition->kind == NodeType::CONST)
+		{
+			// Is bool because optimize forbiddened others
+			if (static_cast<ConstValueNode *>(condition)->obj->b)
+			{
+				ifTrue.rewrite(in_data, bytecodes);
+			}
+			else if (ifFalse != nullptr)
+			{
+				ifFalse->rewrite(in_data, bytecodes);
+			}
+			return;
+		}
 		ifTrue.rewrite(in_data, bytecodes);
 		if (ifFalse)
 			ifFalse->rewrite(in_data, bytecodes);
@@ -207,6 +259,22 @@ namespace AutoLang
 	void WhileNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes)
 	{
 		continuePos = bytecodes.size();
+
+		if (condition->kind == NodeType::CONST)
+		{
+			// Is bool because optimize forbiddened others
+			if (!static_cast<ConstValueNode *>(condition)->obj->b)
+			{
+				compile.warnings.push_back("While command won't never be called here");
+				return;
+			}
+			body.putBytecodes(in_data, bytecodes);
+			bytecodes.emplace_back(Opcode::JUMP);
+			put_opcode_u32(bytecodes, continuePos);
+			breakPos = bytecodes.size();
+			return;
+		}
+
 		condition->putBytecodes(in_data, bytecodes);
 		bytecodes.emplace_back(Opcode::JUMP_IF_FALSE);
 		size_t jumpIfFalseByte = bytecodes.size();
@@ -214,7 +282,7 @@ namespace AutoLang
 		body.putBytecodes(in_data, bytecodes);
 		bytecodes.emplace_back(Opcode::JUMP);
 		put_opcode_u32(bytecodes, continuePos);
-		put_opcode_u32(bytecodes, jumpIfFalseByte, bytecodes.size());
+		rewrite_opcode_u32(bytecodes, jumpIfFalseByte, bytecodes.size());
 		breakPos = bytecodes.size();
 	}
 
@@ -236,7 +304,7 @@ namespace AutoLang
 		continuePos = bytecodes.size();
 		detach->putBytecodes(in_data, bytecodes);
 		bytecodes.emplace_back(Opcode::PLUS_PLUS);
-		put_opcode_u32(bytecodes, firstSkipByte, bytecodes.size());
+		rewrite_opcode_u32(bytecodes, firstSkipByte, bytecodes.size());
 		// compare
 		to->putBytecodes(in_data, bytecodes);
 		bytecodes.emplace_back(isLessThanEq ? Opcode::LESS_THAN_EQ : Opcode::LESS_THAN);
@@ -247,7 +315,7 @@ namespace AutoLang
 		body.putBytecodes(in_data, bytecodes);
 		bytecodes.emplace_back(Opcode::JUMP);
 		put_opcode_u32(bytecodes, continuePos);
-		put_opcode_u32(bytecodes, jumpIfFalseByte, bytecodes.size());
+		rewrite_opcode_u32(bytecodes, jumpIfFalseByte, bytecodes.size());
 		breakPos = bytecodes.size();
 	}
 
@@ -287,7 +355,7 @@ namespace AutoLang
 
 	void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes)
 	{
-		// Function* func = &compile.functions[funcId];
+		Function* func = &compile.functions[funcId];
 		if (caller)
 		{
 			caller->putBytecodes(in_data, bytecodes);
@@ -304,7 +372,7 @@ namespace AutoLang
 		{
 			argument->putBytecodes(in_data, bytecodes);
 		}
-		bytecodes.emplace_back(Opcode::CALL_FUNCTION);
+		bytecodes.emplace_back(func->returnId == DefaultClass::nullClassId ? Opcode::CALL_VOID_FUNCTION : Opcode::CALL_FUNCTION);
 		put_opcode_u32(bytecodes, funcId);
 		// std::cout<<funcId<<'\n';
 	}

@@ -14,7 +14,6 @@ void init(CompiledProgram& compile) {
 		"print()",
 		{ AutoLang::DefaultClass::anyClassId },
 		{ true },
-		AutoLang::DefaultClass::nullClassId,
 		&print
 	);
 	compile.registerFunction( 
@@ -22,8 +21,7 @@ void init(CompiledProgram& compile) {
 		true,
 		"println()",
 		{ AutoLang::DefaultClass::anyClassId },
-		{ true }, 
-		AutoLang::DefaultClass::nullClassId,
+		{ true },
 		&println
 	);
 	compile.registerFunction( 
@@ -33,6 +31,7 @@ void init(CompiledProgram& compile) {
 		{ AutoLang::DefaultClass::anyClassId }, 
 		{ true },
 		AutoLang::DefaultClass::INTCLASSID,
+		false,
 		&get_refcount
 	);
 	auto integer= &compile.classes[AutoLang::DefaultClass::INTCLASSID];
@@ -43,6 +42,7 @@ void init(CompiledProgram& compile) {
 		{  }, 
 		{  },
 		AutoLang::DefaultClass::stringClassId,
+		false,
 		&to_string
 	);
 	compile.registerFunction( 
@@ -52,6 +52,7 @@ void init(CompiledProgram& compile) {
 		{  }, 
 		{  },
 		AutoLang::DefaultClass::FLOATCLASSID,
+		false,
 		&AutoLang::DefaultFunction::to_float
 	);
 	auto Float= &compile.classes[AutoLang::DefaultClass::FLOATCLASSID];
@@ -62,6 +63,7 @@ void init(CompiledProgram& compile) {
 		{  }, 
 		{  },
 		AutoLang::DefaultClass::INTCLASSID,
+		false,
 		&AutoLang::DefaultFunction::to_int
 	);
 	compile.registerFunction( 
@@ -71,6 +73,7 @@ void init(CompiledProgram& compile) {
 		{  }, 
 		{  },
 		AutoLang::DefaultClass::stringClassId,
+		false,
 		&AutoLang::DefaultFunction::to_string
 	);
 	auto string = &compile.classes[AutoLang::DefaultClass::stringClassId];
@@ -81,6 +84,7 @@ void init(CompiledProgram& compile) {
 		{  }, 
 		{  },
 		AutoLang::DefaultClass::INTCLASSID,
+		false,
 		&AutoLang::DefaultFunction::to_int
 	);
 	compile.registerFunction( 
@@ -90,6 +94,7 @@ void init(CompiledProgram& compile) {
 		{  }, 
 		{  },
 		AutoLang::DefaultClass::INTCLASSID,
+		false,
 		&AutoLang::DefaultFunction::get_string_size
 	);
 	compile.registerFunction( 
@@ -99,6 +104,7 @@ void init(CompiledProgram& compile) {
 		{ AutoLang::DefaultClass::stringClassId }, 
 		{ false },
 		AutoLang::DefaultClass::stringClassId,
+		false,
 		&AutoLang::DefaultFunction::string_constructor
 	);
 	compile.registerFunction( 
@@ -109,6 +115,7 @@ void init(CompiledProgram& compile) {
 		   AutoLang::DefaultClass::INTCLASSID }, 
 		{ false, false },
 		AutoLang::DefaultClass::stringClassId,
+		false,
 		&AutoLang::DefaultFunction::string_constructor
 	);
 }

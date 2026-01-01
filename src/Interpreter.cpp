@@ -4,6 +4,7 @@
 #include <chrono>
 #include <sstream>
 #include <iostream>
+#include <functional>
 #include "Debugger.hpp"
 #include "Interpreter.hpp"
 #include "DefaultOperator.hpp"
@@ -15,7 +16,7 @@ AVM::AVM(T &lineData, bool allowDebug) : allowDebug(allowDebug)
 
 	AutoLang::DefaultClass::init(data);
 	AutoLang::DefaultFunction::init(data);
-	data.mainFunctionId = data.registerFunction(nullptr, false, ".main", {}, {}, AutoLang::DefaultClass::nullClassId, nullptr);
+	data.mainFunctionId = data.registerFunction(nullptr, false, ".main", {}, {}, nullptr);
 
 	{
 		using namespace AutoLang::DefaultClass;
@@ -87,7 +88,9 @@ AVM::AVM(T &lineData, bool allowDebug) : allowDebug(allowDebug)
 		};
 	}
 	std::cout << "Init time : " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - startCompiler).count() << " ms" << '\n';
-	AutoLang::build(data, lineData);
+	AutoLang::build(data, lineData, [this](){
+		this->log();
+	});
 	data.main = &data.functions[data.mainFunctionId];
 	initGlobalVariables();
 	// log();
@@ -172,9 +175,8 @@ AObject *AVM::run(Function *currentFunction, const size_t currentTop, size_t max
 			Function *func = &data.functions[get_u32(bytecodes, i)];
 			stackAllocator.top += currentFunction->maxDeclaration;
 			uint32_t top = stackAllocator.top;
-			// printDebug("loading: ensure\n");
+			// Ensure
 			stackAllocator.ensure(func->maxDeclaration);
-			// std::cerr<<"loading: argument "<<stackAllocator.top<<" "<<func->args.size();
 			for (size_t size = func->args.size; size-- > 0;)
 			{
 				auto object = stack.pop();
@@ -182,9 +184,6 @@ AObject *AVM::run(Function *currentFunction, const size_t currentTop, size_t max
 					object->retain();
 				stackAllocator[size] = object;
 			}
-			// printDebug("loading: value\n");
-			// Prior
-
 			AObject *value;
 			if (func->bytecodes.size() != 0)
 			{
@@ -195,18 +194,35 @@ AObject *AVM::run(Function *currentFunction, const size_t currentTop, size_t max
 			{
 				value = func->native(data.manager, stackAllocator, func->args.size);
 			}
-
-			if (value != nullptr)
+			stack.push(value);
+			stackAllocator.clear(data.manager, top, top + func->maxDeclaration - 1);
+			stackAllocator.freeTo(currentTop);
+			break;
+		}
+		case AutoLang::Opcode::CALL_VOID_FUNCTION:
+		{
+			// std::cerr<<"loading: function"<<'\n';;
+			Function *func = &data.functions[get_u32(bytecodes, i)];
+			stackAllocator.top += currentFunction->maxDeclaration;
+			uint32_t top = stackAllocator.top;
+			// Ensure
+			stackAllocator.ensure(func->maxDeclaration);
+			for (size_t size = func->args.size; size-- > 0;)
 			{
-				// value->retain();
-				stack.push(value);
+				auto object = stack.pop();
+				if (object != nullptr)
+					object->retain();
+				stackAllocator[size] = object;
 			}
-			/*std::cerr<<"Start "<<func->maxDeclaration<<'\n';
-			for (int i = 0; i < func->maxDeclaration; ++i) {
-				AObject* obj = stackAllocator[i];
-				if (obj == nullptr) continue;
-				std::cerr<<"Before: "<<obj->refCount<<'\n';
-			}*/
+			if (func->bytecodes.size() != 0)
+			{
+				run(func, top, currentFunction->maxDeclaration);
+			}
+
+			if (func->native)
+			{
+				func->native(data.manager, stackAllocator, func->args.size);
+			}
 			stackAllocator.clear(data.manager, top, top + func->maxDeclaration - 1);
 			stackAllocator.freeTo(currentTop);
 			break;
@@ -239,8 +255,12 @@ AObject *AVM::run(Function *currentFunction, const size_t currentTop, size_t max
 			return obj;
 		}
 		case AutoLang::Opcode::CREATE_OBJECT:
-			stack.push(new AObject(get_u32(bytecodes, i), get_u32(bytecodes, i)));
+		{
+			uint32_t type = get_u32(bytecodes, i);
+			size_t count = static_cast<size_t>(get_u32(bytecodes, i));
+			stack.push(data.manager.get(type, count));
 			break;
+		}
 		case AutoLang::Opcode::LOAD_GLOBAL:
 		{
 			stack.push(globalVariables[get_u32(bytecodes, i)]);
@@ -263,12 +283,12 @@ AObject *AVM::run(Function *currentFunction, const size_t currentTop, size_t max
 		}
 		case AutoLang::Opcode::LOAD_MEMBER:
 		{
-			stack.push(stack.pop()->member[get_u32(bytecodes, i)]);
+			stack.push((*stack.pop()->member)[get_u32(bytecodes, i)]);
 			break;
 		}
 		case AutoLang::Opcode::STORE_MEMBER:
 		{
-			AObject **last = &stack.pop()->member[get_u32(bytecodes, i)];
+			AObject **last = &stack.pop()->member->data[get_u32(bytecodes, i)];
 			if (*last != nullptr)
 			{
 				data.manager.release(*last);
@@ -295,6 +315,20 @@ AObject *AVM::run(Function *currentFunction, const size_t currentTop, size_t max
 		case AutoLang::Opcode::JUMP:
 		{
 			i = get_u32(bytecodes, i);
+			break;
+		}
+		case AutoLang::Opcode::JUMP_IF_NULL:
+		{
+			uint32_t pos = get_u32(bytecodes, i);
+			if (stack.pop() == AutoLang::DefaultClass::nullObject)
+				i = pos;
+			break;
+		}
+		case AutoLang::Opcode::JUMP_IF_NON_NULL:
+		{
+			uint32_t pos = get_u32(bytecodes, i);
+			if (stack.pop() != AutoLang::DefaultClass::nullObject)
+				i = pos;
 			break;
 		}
 		case AutoLang::Opcode::TO_INT:
@@ -385,6 +419,31 @@ AObject *AVM::run(Function *currentFunction, const size_t currentTop, size_t max
 		case AutoLang::Opcode::NOTEQ_VALUE:
 			operate<AutoLang::DefaultFunction::op_not_eq, 2>(currentTop);
 			break;
+		case AutoLang::Opcode::IS_NULL:
+		{
+			stack.push(ObjectManager::create(stack.pop() == AutoLang::DefaultClass::nullObject));
+			break;
+		}
+		case AutoLang::Opcode::IS_NON_NULL:
+		{
+			stack.push(ObjectManager::create(stack.pop() != AutoLang::DefaultClass::nullObject));
+			break;
+		}
+		case AutoLang::Opcode::LOAD_NULL:
+		{
+			stack.push(AutoLang::DefaultClass::nullObject);
+			break;
+		}
+		case AutoLang::Opcode::LOAD_TRUE:
+		{
+			stack.push(AutoLang::DefaultClass::trueObject);
+			break;
+		}
+		case AutoLang::Opcode::LOAD_FALSE:
+		{
+			stack.push(AutoLang::DefaultClass::falseObject);
+			break;
+		}
 		case AutoLang::Opcode::EQUAL_POINTER:
 		{
 			operate<AutoLang::DefaultFunction::op_eq_pointer, 2>(currentTop);
@@ -426,17 +485,13 @@ AObject *AVM::getConstObject(uint32_t id)
 	default:
 		if (obj->type != AutoLang::DefaultClass::stringClassId)
 			return obj;
-		return data.manager.create(static_cast<AString *>(obj->ref));
+		return data.manager.create(AString::copy(static_cast<AString*>(obj->ref)));
 	}
 }
 
 void AVM::initGlobalVariables()
 {
-	globalVariables = new AObject *[data.main->maxDeclaration];
-	for (uint32_t i = 0; i < data.main->maxDeclaration; ++i)
-	{
-		globalVariables[i] = nullptr;
-	}
+	globalVariables = new AObject*[data.main->maxDeclaration]{};
 }
 
 void AVM::setGlobalVariables(uint32_t i, AObject *object)
@@ -480,44 +535,42 @@ uint32_t AVM::get_u32(uint8_t *code, size_t &ip)
 
 void AVM::log()
 {
-	log(data.main);
+	// log(data.main);
 	std::cerr << "-------------------" << '\n';
 	std::cerr << "ConstPool: " << data.constPool.size() << " elements" << '\n';
-	stackAllocator.top = 0;
-	for (int i = 0; i < data.constPool.size(); ++i)
-	{
-		stackAllocator[0] = data.constPool[i];
-		std::cerr << '[' << i << "] ";
-		AutoLang::DefaultFunction::println(data.manager, stackAllocator, 1);
-	}
-	std::cerr << "-------------------" << '\n';
-	std::cerr << "Function: " << data.functions.size() << " elements" << '\n';
-	for (auto pair : data.funcMap)
-	{
-		for (auto &funcId : pair.second)
-		{
-			bool isFirst = true;
-			Function *func = &data.functions[funcId];
-			std::cerr << "[" << funcId << "] [Declaration: " << func->maxDeclaration << "] " << pair.first << ": (";
-			for (int i = 0; i < func->args.size; ++i)
-			{
-				uint32_t classId = func->args[i];
-				if (isFirst)
-				{
-					isFirst = false;
-				}
-				else
-				{
-					std::cerr<<", ";
-				}
-				std::cerr<<data.classes[classId].name;
-				if (func->nullableArgs[i]) std::cerr<<"?";
-			}
-			std::cerr<<")->";
-			std::cerr<<data.classes[func->returnId].name<<'\n';
-			// if (!func->native) log(func);
-		}
-	}
+	// stackAllocator.top = 0;
+	// for (int i = 0; i < data.constPool.size(); ++i)
+	// {
+	// 	stackAllocator[0] = data.constPool[i];
+	// 	std::cerr << '[' << i << "] ";
+	// 	AutoLang::DefaultFunction::println(data.manager, stackAllocator, 1);
+	// }
+	// std::cerr << "-------------------" << '\n';
+	// std::cerr << "Function: " << data.functions.size() << " elements" << '\n';
+	// for (auto& func : data.functions)
+	// {
+	// 	bool isFirst = true;
+	// 	std::cerr << "[" << func.id << "] [Declaration: " << func.maxDeclaration << "] " << func.name << ": (";
+	// 	for (int i = 0; i < func.args.size; ++i)
+	// 	{
+	// 		uint32_t classId = func.args[i];
+	// 		if (isFirst)
+	// 		{
+	// 			isFirst = false;
+	// 		}
+	// 		else
+	// 		{
+	// 			std::cerr<<", ";
+	// 		}
+	// 		std::cerr<<data.classes[classId].name;
+	// 		if (func.nullableArgs[i]) std::cerr<<"?";
+	// 	}
+	// 	std::cerr<<")->";
+	// 	std::cerr<<data.classes[func.returnId].name;
+	// 	if (func.returnNullable) std::cerr<<"?";
+	// 	std::cerr<<'\n';
+	// 	// if (!func->native) log(func);
+	// }
 	/*uint32_t totalSize = bytecodes.size() +
 		sizeof(AVM) +
 		data.functions.size() * sizeof(Function) +
@@ -545,6 +598,9 @@ void AVM::log(Function *currentFunction)
 		{
 		case AutoLang::Opcode::CALL_FUNCTION:
 			std::cerr << "CALL_FUNCTION	 " << data.functions[get_u32(bytecodes, i)].name << '\n';
+			break;
+		case AutoLang::Opcode::CALL_VOID_FUNCTION:
+			std::cerr << "CALL_VOID_FUNCTION	 " << data.functions[get_u32(bytecodes, i)].name << '\n';
 			break;
 		case AutoLang::Opcode::LOAD_CONST:
 			std::cerr << "LOAD_CONST	 " << get_u32(bytecodes, i) << '\n';
@@ -588,6 +644,12 @@ void AVM::log(Function *currentFunction)
 		case AutoLang::Opcode::JUMP_IF_FALSE:
 			std::cerr << "JUMP_IF_FALSE	 " << get_u32(bytecodes, i) << '\n';
 			break;
+		case AutoLang::Opcode::JUMP_IF_NULL:
+			std::cerr << "JUMP_IF_NULL	 " << get_u32(bytecodes, i) << '\n';
+			break;
+		case AutoLang::Opcode::JUMP_IF_NON_NULL:
+			std::cerr << "JUMP_IF_NON_NULL	 " << get_u32(bytecodes, i) << '\n';
+			break;
 		case AutoLang::Opcode::JUMP:
 			std::cerr << "JUMP	 " << get_u32(bytecodes, i) << '\n';
 			break;
@@ -623,6 +685,21 @@ void AVM::log(Function *currentFunction)
 			break;
 		case AutoLang::Opcode::DIVIDE:
 			std::cerr << "DIVIDE	 " << '\n';
+			break;
+		case AutoLang::Opcode::IS_NULL:
+			std::cerr << "IS_NULL	 " << '\n';
+			break;
+		case AutoLang::Opcode::IS_NON_NULL:
+			std::cerr << "IS_NON_NULL	 " << '\n';
+			break;
+		case AutoLang::Opcode::LOAD_TRUE:
+			std::cerr << "LOAD_TRUE	 " << '\n';
+			break;
+		case AutoLang::Opcode::LOAD_FALSE:
+			std::cerr << "LOAD_FALSE	 " << '\n';
+			break;
+		case AutoLang::Opcode::LOAD_NULL:
+			std::cerr << "LOAD_NULL	 " << '\n';
 			break;
 		case AutoLang::Opcode::PLUS_EQUAL:
 			std::cerr << "PLUS_EQUAL	 " << '\n';

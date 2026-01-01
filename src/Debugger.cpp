@@ -6,12 +6,13 @@
 #include <cstdlib>
 #include <memory>
 #include "Debugger.hpp"
+#include <functional>
 
 namespace AutoLang
 {
 
 	template <typename T>
-	void build(CompiledProgram &compile, T &data)
+	void build(CompiledProgram &compile, T &data, std::function<void()> log)
 	{
 		auto startCompiler = std::chrono::high_resolution_clock::now();
 		ParserContext context;
@@ -41,6 +42,7 @@ namespace AutoLang
 			//  	}
 			//  	std::cout<<'\n';
 			//  }
+			log();
 			i = 0;
 			while (i < context.tokens.size())
 			{
@@ -62,6 +64,7 @@ namespace AutoLang
 			);*/
 			printDebug("-----------------AST Node-----------------\n");
 			resolve(in_data);
+			freeData(in_data);
 			auto resolveTime = std::chrono::high_resolution_clock::now();
 			std::cout << "Optimize and Putbytecode time : " << std::chrono::duration_cast<std::chrono::milliseconds>(resolveTime - parserTime).count() << " ms" << '\n';
 		}
@@ -71,9 +74,16 @@ namespace AutoLang
 		}
 	}
 
+	void freeData(in_func) {
+		context.createConstructorPool.refresh();
+		context.newClasses.refresh();
+		context.newFunctions.refresh();
+	}
+
 	void estimate(in_func, Lexer::Context &lexerContext)
 	{
 		uint32_t estimateNewClasses = lexerContext.estimate.classes;
+		uint32_t estimateNewConstructorNode = lexerContext.estimate.classes + lexerContext.estimate.constructorNode;
 		uint32_t estimateNewFunctions = lexerContext.estimate.functions + lexerContext.estimate.constructorNode;
 		uint32_t estimateAllClasses = compile.classes.size() + estimateNewClasses;
 		uint32_t estimateAllFunctions = compile.functions.size() + estimateNewFunctions + estimateNewClasses;
@@ -81,6 +91,7 @@ namespace AutoLang
 
 		context.keywords.reserve(5);
 
+		context.createConstructorPool.allocate(estimateNewConstructorNode);
 		context.declarationNodePool.allocate(estimateDeclaration);
 		context.ifPool.allocate(lexerContext.estimate.ifNode);
 		context.whilePool.allocate(lexerContext.estimate.whileNode);
@@ -91,8 +102,9 @@ namespace AutoLang
 			3 // Const
 		);
 
-		context.newClasses.reserve(estimateNewClasses);
-		context.newFunctions.reserve(estimateNewFunctions);
+		context.newClasses.allocate(estimateNewClasses);
+		context.newFunctions.allocate(estimateNewFunctions);
+
 		context.classInfo.reserve(estimateAllClasses);
 		context.functionInfo.reserve(estimateAllFunctions);
 
@@ -121,8 +133,10 @@ namespace AutoLang
 			node->optimize(in_data);
 		}
 		printDebug("Start optimize constructor nodes");
-		for (auto *node : context.newClasses)
+		size_t sizeNewClasses = context.newClasses.getSize();
+		for (int i = 0; i < sizeNewClasses; ++i)
 		{
+			auto* node = context.newClasses[i];
 			auto clazz = &compile.classes[node->classId];
 			auto classInfo = &context.classInfo[clazz->id];
 			if (classInfo->primaryConstructor)
@@ -138,23 +152,26 @@ namespace AutoLang
 			}
 		}
 		printDebug("Start optimize classes");
-		for (auto &node : context.newClasses)
+		for (int i = 0; i < sizeNewClasses; ++i)
 		{
-			node->optimize(in_data);
+			context.newClasses[i]->optimize(in_data);
 		}
+
 		printDebug("Start optimize static nodes");
 		for (auto &node : context.staticNode)
 		{
 			node->optimize(in_data);
 		}
 		printDebug("Start optimize functions");
-		for (auto &node : context.newFunctions)
+		size_t sizeNewFunctions = context.newFunctions.getSize();
+		for (int i = 0; i < sizeNewFunctions; ++i)
 		{
-			node->optimize(in_data);
+			context.newFunctions[i]->optimize(in_data);
 		}
 		printDebug("Start put bytecodes constructor");
-		for (auto &node : context.newClasses)
+		for (int i = 0; i < sizeNewClasses; ++i)
 		{
+			auto* node = context.newClasses[i];
 			auto classInfo = &context.classInfo[compile.classes[node->classId].id];
 			if (classInfo->primaryConstructor)
 			{
@@ -188,8 +205,9 @@ namespace AutoLang
 		}
 		context.getMainFunctionInfo(in_data)->block.optimize(in_data);
 		printDebug("Start put bytecodes in functions");
-		for (auto &node : context.newFunctions)
+		for (int i = 0; i < sizeNewFunctions; ++i)
 		{
+			auto* node = context.newFunctions[i];
 			auto func = &compile.functions[node->id];
 			node->body.optimize(in_data);
 			node->body.putBytecodes(in_data, func->bytecodes);
@@ -200,8 +218,8 @@ namespace AutoLang
 		context.getMainFunctionInfo(in_data)->block.rewrite(in_data, context.getMainFunction(in_data)->bytecodes);
 
 		printDebug("Real Declarations: " + std::to_string(context.declarationNodePool.index + context.declarationNodePool.vecs.size()));
-		printDebug("Real New classes: " + std::to_string(context.newClasses.size()));
-		printDebug("Real New functions: " + std::to_string(context.newFunctions.size()));
+		printDebug("Real New classes: " + std::to_string(context.newClasses.getSize()));
+		printDebug("Real New functions: " + std::to_string(context.newFunctions.getSize()));
 		printDebug("Real ClassInfo: " + std::to_string(context.classInfo.size()));
 		printDebug("Real FunctionInfo: " + std::to_string(context.functionInfo.size()));
 
@@ -325,7 +343,6 @@ namespace AutoLang
 				throw std::runtime_error("Cannot declare function in function");
 			}
 			auto node = loadFunc(in_data, i);
-			context.newFunctions.push_back(node);
 			return nullptr;
 		}
 		case Lexer::TokenType::CONSTRUCTOR:
@@ -344,7 +361,6 @@ namespace AutoLang
 				throw std::runtime_error("Cannot declare class in class");
 			}
 			auto node = loadClass(in_data, i);
-			context.newClasses.push_back(node);
 			return nullptr;
 		}
 		case Lexer::TokenType::RETURN:
@@ -451,7 +467,7 @@ namespace AutoLang
 				if (node != nullptr)
 				{
 					left = node;
-					delete binaryNode;
+					ExprNode::deleteNode(binaryNode);
 					continue;
 				}
 			}
@@ -614,7 +630,7 @@ namespace AutoLang
 			if (calculated == nullptr)
 				return unaryNode;
 			unaryNode->value = nullptr;
-			delete unaryNode;
+			ExprNode::deleteNode(unaryNode);
 			return calculated;
 		}
 		case Lexer::TokenType::NUMBER:
@@ -635,7 +651,7 @@ namespace AutoLang
 			if (list.size() != 1)
 			{
 				for (auto *i : list)
-					delete i;
+					ExprNode::deleteNode(i);
 				throw std::runtime_error("Expected value");
 			}
 			node.reset(list[0]);
@@ -681,7 +697,7 @@ namespace AutoLang
 				if (temp->kind == NodeType::VAR || temp->kind == NodeType::UNKNOW)
 				{
 					node.reset(new GetPropNode(nullptr, context.currentClassId, node.release(), context.lexerString[token->indexData], false));
-					delete temp;
+					ExprNode::deleteNode(temp);
 					break;
 				}
 				static_cast<CallNode *>(temp)->caller = node.release();
@@ -709,7 +725,7 @@ namespace AutoLang
 					auto varNode = static_cast<VarNode *>(node.release());
 					if (varNode->declaration->isVal)
 					{
-						delete value;
+						ExprNode::deleteNode(value);
 						throw std::runtime_error(varNode->declaration->name + " cannot be changed because val");
 					}
 					return context.setValuePool.push(varNode, value, op);
@@ -725,7 +741,7 @@ namespace AutoLang
 				default:
 					break;
 				}
-				delete value;
+				ExprNode::deleteNode(value);
 				throw std::runtime_error("Invalid assignment target...");
 			}
 			default:

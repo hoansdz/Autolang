@@ -23,11 +23,22 @@ public:
 	template<typename... Args>
 	inline T* push(Args&&... args) {
 		if (index == size) {
-			throw std::runtime_error("HAS ERROR IN ESTIMATE");
+			assert(index == size && "HAS ERROR IN ESTIMATE");
 		}
 		T* newObj = &objects[index++];
 		new (newObj) T(std::forward<Args>(args)...);
 		return newObj;
+	}
+	inline T* operator[](size_t idx) {
+		return &objects[idx];
+	}
+	inline void refresh() {
+		if (objects) {
+			for (size_t i = 0; i < index; ++i)
+				objects[i].~T();
+			::operator delete(objects);
+			objects = nullptr;
+		}
 	}
 	~FixedPool() {
 		if (objects) {

@@ -25,7 +25,7 @@ AObject* data_constructor(NativeFuncInData) {
 	AObject* obj = stackAllocator[0];
 	obj->refCount = 0;
 	for (size_t i=1; i<size; ++i) {
-		AObject** last = &obj->member[i - 1];
+		AObject** last = &obj->member->data[i - 1];
 		*last = stackAllocator[i];
 		(*last)->retain();
 	}

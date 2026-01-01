@@ -52,6 +52,14 @@ namespace AutoLang
 		MINUS_EQUAL = 39,
 		MUL_EQUAL = 40,
 		DIVIDE_EQUAL = 41,
+		JUMP_IF_NULL = 42,
+		JUMP_IF_NON_NULL = 43,
+		IS_NULL = 44,
+		IS_NON_NULL = 45,
+		LOAD_NULL = 46,
+		LOAD_TRUE = 47,
+		LOAD_FALSE = 48,
+		CALL_VOID_FUNCTION = 49,
 	};
 
 }
@@ -72,13 +80,14 @@ struct Function
 	std::string name;
 	AObject *(*native)(NativeFuncInput);
 	bool isStatic;
+	bool returnNullable;
 	FixedArray<uint32_t> args;
 	FixedArray<bool> nullableArgs;
 	uint32_t returnId;
 	std::vector<uint8_t> bytecodes;
 	uint32_t maxDeclaration;
 	uint32_t id;
-	Function(uint32_t id, std::string name, AObject *(*native)(NativeFuncInput), bool isStatic, std::vector<uint32_t> &args, std::vector<bool> &nullableArgs, uint32_t returnId) : name(name), native(native), isStatic(isStatic), args(args), nullableArgs(nullableArgs), returnId(returnId), maxDeclaration(native ? this->args.size : 0) {}
+	Function(uint32_t id, std::string name, AObject *(*native)(NativeFuncInput), bool isStatic, std::vector<uint32_t> &args, std::vector<bool> &nullableArgs, uint32_t returnId, bool returnNullable) : name(name), native(native), isStatic(isStatic), returnNullable(returnNullable), args(args), nullableArgs(nullableArgs), returnId(returnId), maxDeclaration(native ? this->args.size : 0) {}
 };
 
 template <typename K, typename V>

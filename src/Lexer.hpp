@@ -76,10 +76,12 @@ namespace AutoLang
 			RBRACKET, //	Đóng ngoặc vuông: ]
 			COMMA,	  //	Dấu phẩy: ,
 			DOT,	  //	Dấu chấm: .
+			QMARK_DOT,//    Dấu ?.
 			DOT_DOT,
 			SEMICOLON, //	Dấu chấm phẩy: ;
 			COLON,	   //	Dấu hai chấm: :
-			QMARK,	   //  Dấu hỏi chấm
+			QMARK,	   //   Dấu hỏi chấm
+			EXMARK,    //   Dấu chấm than
 
 			// ===== Keywords =====
 			IF,		  //	Câu lệnh điều kiện: if
@@ -142,6 +144,8 @@ namespace AutoLang
 			{"||", TokenType::OR_OR},
 			{"//", TokenType::COMMENT_SINGLE_LINE},
 			{"?", TokenType::QMARK},
+			{"?.", TokenType::QMARK_DOT},
+			{"!", TokenType::EXMARK},
 			{".", TokenType::DOT},
 			{"..", TokenType::DOT_DOT},
 			{"+", TokenType::PLUS},

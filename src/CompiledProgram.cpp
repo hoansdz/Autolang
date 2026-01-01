@@ -15,6 +15,7 @@ uint32_t CompiledProgram::registerFunction(
 	std::vector<uint32_t> args,
 	std::vector<bool> nullableArgs,
 	uint32_t returnId,
+	bool returnNullable,
 	AObject *(*native)(NativeFuncInput))
 {
 	if (args.size() != nullableArgs.size()) {
@@ -41,7 +42,9 @@ uint32_t CompiledProgram::registerFunction(
 		clazz ? isStatic : true,
 		args,
 		nullableArgs,
-		returnId);
+		returnId,
+		returnNullable
+	);
 	funcMap[name].push_back(id);
 	// printDebug("END SIZE FUNC: "+std::to_string(functions.size()) + " " + std::to_string(funcMap.size()));
 	return id;
@@ -78,13 +81,14 @@ uint32_t CompiledProgram::registerConstPool(ankerl::unordered_dense::map<AString
 	auto it = map.find(value);
 	if (it != map.end())
 	{
+		delete value;
 		return it->second;
 	}
 	map[value] = constPool.size();
 	// printDebug("Value : "+toStr(value)+" at "+std::to_string(constPool.size()));
 	AObject *obj = manager.create(value);
 	constPool.push_back(obj);
-	obj->refCount = 2'000'000;
+	obj->refCount = AutoLang::DefaultClass::refCountForGlobal;
 	return constPool.size() - 1;
 }
 
@@ -100,7 +104,7 @@ uint32_t CompiledProgram::registerConstPool(ankerl::unordered_dense::map<T, uint
 	// printDebug("Value : "+toStr(value)+" at "+std::to_string(constPool.size()));
 	AObject *obj = manager.create(value);
 	constPool.push_back(obj);
-	obj->refCount = 2'000'000;
+	obj->refCount = AutoLang::DefaultClass::refCountForGlobal;
 	return constPool.size() - 1;
 }
 
@@ -125,7 +129,18 @@ bool CompiledProgram::getTypeResult(uint32_t first, uint32_t second, uint8_t op,
 
 CompiledProgram::~CompiledProgram()
 {
-	
+	// for (auto [str, _] : constStringMap) {
+	// 	delete str;
+	// }
+	for (AObject* obj : constPool) {
+		if (obj->refCount <= AutoLang::DefaultClass::refCountForGlobal) {
+			obj->refCount = 0;
+			obj->free();
+			reinterpret_cast<AreaChunkSlot*>(obj)->isFree =true;
+			continue;
+		}
+		obj->refCount = obj->refCount - AutoLang::DefaultClass::refCountForGlobal;
+	}
 }
 
 #endif

@@ -18,6 +18,7 @@ AObject* trueObject = nullptr;
 AObject* falseObject = nullptr;
 
 void init(CompiledProgram& compile) {
+	static FixedPool<AObject> constObjects;
 	compile.registerClass("Int");
 	compile.registerClass("Float");
 	boolClassId = compile.registerClass("Bool");
@@ -25,17 +26,24 @@ void init(CompiledProgram& compile) {
 	stringClassId = compile.registerClass("String");
 	anyClassId = compile.registerClass("Any");
 	voidClassId = compile.registerClass("Void");
-	nullObject = new AObject(nullClassId);
-	nullObject->refCount = 9999;
-	compile.constPool.push_back(nullObject);
-	trueObject = new AObject(boolClassId);
-	trueObject->b = true;
-	trueObject->refCount = 9999;
-	compile.constPool.push_back(trueObject);
-	falseObject = new AObject(boolClassId);
-	falseObject->b = false;
-	falseObject->refCount = 9999;
-	compile.constPool.push_back(falseObject);
+
+	if (!constObjects.objects) {
+		constObjects.allocate(builtInObjectSize);
+		nullObject = constObjects.push(nullClassId);
+		nullObject->refCount = refCountForGlobal;
+
+		trueObject = constObjects.push(boolClassId);
+		trueObject->b = true;
+		trueObject->refCount = refCountForGlobal;
+
+		falseObject = constObjects.push(boolClassId);
+		falseObject->b = false;
+		falseObject->refCount = refCountForGlobal;
+	} else {
+		nullObject  = constObjects[0];
+		trueObject  = constObjects[1];
+		falseObject = constObjects[2];
+	}
 
 	AutoLang::Libs::Math::init(compile);
 }
