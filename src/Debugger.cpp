@@ -12,7 +12,7 @@ namespace AutoLang
 {
 
 	template <typename T>
-	void build(CompiledProgram &compile, T &data, std::function<void()> log)
+	void build(CompiledProgram &compile, T &data)
 	{
 		auto startCompiler = std::chrono::high_resolution_clock::now();
 		ParserContext context;
@@ -42,7 +42,6 @@ namespace AutoLang
 			//  	}
 			//  	std::cout<<'\n';
 			//  }
-			log();
 			i = 0;
 			while (i < context.tokens.size())
 			{

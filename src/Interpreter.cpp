@@ -88,12 +88,9 @@ AVM::AVM(T &lineData, bool allowDebug) : allowDebug(allowDebug)
 		};
 	}
 	std::cout << "Init time : " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - startCompiler).count() << " ms" << '\n';
-	AutoLang::build(data, lineData, [this](){
-		this->log();
-	});
 	data.main = &data.functions[data.mainFunctionId];
 	initGlobalVariables();
-	// log();
+	log();
 	// log(&data.functions[data.funcMap["m()"][0]]);
 	run();
 	auto end = std::chrono::high_resolution_clock::now();
@@ -538,39 +535,39 @@ void AVM::log()
 	// log(data.main);
 	std::cerr << "-------------------" << '\n';
 	std::cerr << "ConstPool: " << data.constPool.size() << " elements" << '\n';
-	// stackAllocator.top = 0;
-	// for (int i = 0; i < data.constPool.size(); ++i)
-	// {
-	// 	stackAllocator[0] = data.constPool[i];
-	// 	std::cerr << '[' << i << "] ";
-	// 	AutoLang::DefaultFunction::println(data.manager, stackAllocator, 1);
-	// }
-	// std::cerr << "-------------------" << '\n';
-	// std::cerr << "Function: " << data.functions.size() << " elements" << '\n';
-	// for (auto& func : data.functions)
-	// {
-	// 	bool isFirst = true;
-	// 	std::cerr << "[" << func.id << "] [Declaration: " << func.maxDeclaration << "] " << func.name << ": (";
-	// 	for (int i = 0; i < func.args.size; ++i)
-	// 	{
-	// 		uint32_t classId = func.args[i];
-	// 		if (isFirst)
-	// 		{
-	// 			isFirst = false;
-	// 		}
-	// 		else
-	// 		{
-	// 			std::cerr<<", ";
-	// 		}
-	// 		std::cerr<<data.classes[classId].name;
-	// 		if (func.nullableArgs[i]) std::cerr<<"?";
-	// 	}
-	// 	std::cerr<<")->";
-	// 	std::cerr<<data.classes[func.returnId].name;
-	// 	if (func.returnNullable) std::cerr<<"?";
-	// 	std::cerr<<'\n';
-	// 	// if (!func->native) log(func);
-	// }
+	stackAllocator.top = 0;
+	for (int i = 0; i < data.constPool.size(); ++i)
+	{
+		stackAllocator[0] = data.constPool[i];
+		std::cerr << '[' << i << "] ";
+		AutoLang::DefaultFunction::println(data.manager, stackAllocator, 1);
+	}
+	std::cerr << "-------------------" << '\n';
+	std::cerr << "Function: " << data.functions.size() << " elements" << '\n';
+	for (auto& func : data.functions)
+	{
+		bool isFirst = true;
+		std::cerr << "[" << func.id << "] [Declaration: " << func.maxDeclaration << "] " << func.name << ": (";
+		for (int i = 0; i < func.args.size; ++i)
+		{
+			uint32_t classId = func.args[i];
+			if (isFirst)
+			{
+				isFirst = false;
+			}
+			else
+			{
+				std::cerr<<", ";
+			}
+			std::cerr<<data.classes[classId].name;
+			if (func.nullableArgs[i]) std::cerr<<"?";
+		}
+		std::cerr<<")->";
+		std::cerr<<data.classes[func.returnId].name;
+		if (func.returnNullable) std::cerr<<"?";
+		std::cerr<<'\n';
+		// if (!func->native) log(func);
+	}
 	/*uint32_t totalSize = bytecodes.size() +
 		sizeof(AVM) +
 		data.functions.size() * sizeof(Function) +

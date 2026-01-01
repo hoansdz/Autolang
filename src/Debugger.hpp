@@ -17,7 +17,7 @@ namespace AutoLang
 {
 
 template <typename T>
-void build(CompiledProgram& compile, T& data, std::function<void()> log);
+void build(CompiledProgram& compile, T& data);
 void estimate(in_func, Lexer::Context& lexerContext);
 void freeData(in_func);
 void resolve(in_func);
