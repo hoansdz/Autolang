@@ -88,9 +88,10 @@ AVM::AVM(T &lineData, bool allowDebug) : allowDebug(allowDebug)
 		};
 	}
 	std::cout << "Init time : " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - startCompiler).count() << " ms" << '\n';
+	AutoLang::build(data, lineData);
 	data.main = &data.functions[data.mainFunctionId];
 	initGlobalVariables();
-	log();
+	// log();
 	// log(&data.functions[data.funcMap["m()"][0]]);
 	run();
 	auto end = std::chrono::high_resolution_clock::now();
