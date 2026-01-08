@@ -52,6 +52,12 @@ namespace AutoLang
 		case Lexer::TokenType::PERCENT:
 			bytecodes.emplace_back(AutoLang::Opcode::MOD);
 			return;
+		case Lexer::TokenType::AND:
+			bytecodes.emplace_back(AutoLang::Opcode::BITWISE_AND);
+			return;
+		case Lexer::TokenType::OR:
+			bytecodes.emplace_back(AutoLang::Opcode::BITWISE_OR);
+			return;
 		case Lexer::TokenType::AND_AND:
 			bytecodes.emplace_back(AutoLang::Opcode::AND_AND);
 			return;

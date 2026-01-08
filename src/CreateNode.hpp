@@ -22,6 +22,7 @@ namespace AutoLang
 		bool isGlobal;
 		bool isVal;
 		bool nullable;
+		bool mustInferenceNullable = false;
 		DeclarationNode(std::string name, std::string className, bool isVal, bool isGlobal, bool nullable) : HasClassIdNode(NodeType::DECLARATION), name(std::move(name)),
 																							  className(std::move(className)), isGlobal(isGlobal), isVal(isVal), nullable(nullable) {}
 		void optimize(in_func) override;
@@ -68,11 +69,10 @@ namespace AutoLang
 	// class name(arguments) { body }
 	struct CreateClassNode : HasClassIdNode
 	{
-		bool isDataClass;
 		std::string name;
 		BlockNode body;
 		CreateClassNode() : HasClassIdNode(NodeType::CREATE_CLASS) {}
-		CreateClassNode(bool isDataClass, std::string name) : HasClassIdNode(NodeType::CREATE_CLASS), isDataClass(isDataClass), name(std::move(name)) {}
+		CreateClassNode(std::string name) : HasClassIdNode(NodeType::CREATE_CLASS), name(std::move(name)) {}
 		void pushClass(in_func);
 		void optimize(in_func) override;
 		~CreateClassNode() {}

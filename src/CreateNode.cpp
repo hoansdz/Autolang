@@ -137,10 +137,11 @@ void CreateConstructorNode::optimize(in_func) {
 	if (!isPrimary) {
 		// auto funcInfo = &context.functionInfo[func];
 		body.nodes.push_back(context.returnPool.push(
-			func,
+			func->id,
 			new VarNode(
 				classInfo->declarationThis,
-				false
+				false,
+				true
 			)
 		));
 	}

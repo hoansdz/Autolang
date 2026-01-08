@@ -31,6 +31,8 @@ void ExprNode::deleteNode(ExprNode* node) {
 		case NodeType::DECLARATION:
 		case NodeType::CREATE_FUNC:
 		case NodeType::CREATE_CLASS:
+		case NodeType::CREATE_CONSTRUCTOR:
+		// case NodeType::BINARY:
 		{
 			return;
 		}
@@ -58,7 +60,8 @@ BinaryNode::~BinaryNode() {
 }
 
 ConstValueNode::~ConstValueNode() {
-
+	if (classId != AutoLang::DefaultClass::stringClassId || !str) return;
+	delete str;
 }
 
 CastNode::~CastNode() {
@@ -73,6 +76,13 @@ ForRangeNode::~ForRangeNode() {
 
 GetPropNode::~GetPropNode() {
 	deleteNode(caller);
+}
+
+void BlockNode::refresh() {
+	for (auto* node : nodes) {
+		ExprNode::deleteNode(node);
+	}
+	nodes.clear();
 }
 
 BlockNode::~BlockNode() {

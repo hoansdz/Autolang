@@ -101,7 +101,6 @@ namespace AutoLang
 			PUBLIC,
 			PRIVATE,
 			PROTECTED,
-			DATA,
 			CLASS,
 			CONSTRUCTOR,
 			STATIC,
@@ -132,7 +131,6 @@ namespace AutoLang
 			{"try", TokenType::TRY},
 			{"catch", TokenType::CATCH},
 			{"throw", TokenType::THROW},
-			{"data", TokenType::DATA},
 			{"class", TokenType::CLASS},
 			{"static", TokenType::STATIC},
 			{"private", TokenType::PRIVATE},
@@ -140,6 +138,8 @@ namespace AutoLang
 			{"protected", TokenType::PROTECTED},
 			{"constructor", TokenType::CONSTRUCTOR},
 
+			{"&", TokenType::AND},
+			{"|", TokenType::OR},
 			{"&&", TokenType::AND_AND},
 			{"||", TokenType::OR_OR},
 			{"//", TokenType::COMMENT_SINGLE_LINE},
@@ -190,6 +190,7 @@ namespace AutoLang
 			uint32_t whileNode = 0;
 			uint32_t returnNode = 0;
 			uint32_t setNode = 0;
+			uint32_t binaryNode = 0;
 		};
 
 		struct Context

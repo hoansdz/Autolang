@@ -56,7 +56,8 @@ AccessNode* FunctionInfo::findDeclaration(in_func, std::string& name, bool isSta
 			throw std::runtime_error(it->second->name + " is not static");
 		return new VarNode(
 			it->second,
-			false
+			false,
+			it->second->nullable
 		);
 	}
 	return nullptr;
@@ -69,7 +70,8 @@ AccessNode* ClassInfo::findDeclaration(in_func, std::string& name, bool isStatic
 		if (it != staticMember.end()) {
 			return new VarNode(
 				it->second,
-				false
+				false,
+				it->second->nullable
 			);
 		}
 		//Not found
@@ -86,10 +88,12 @@ AccessNode* ClassInfo::findDeclaration(in_func, std::string& name, bool isStatic
 				declarationThis->classId,
 				new VarNode(
 					declarationThis,
+					false,
 					false
 				),
 				name,
-				false
+				false,
+				node->nullable
 			);
 		}
 	}

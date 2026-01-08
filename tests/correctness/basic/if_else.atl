@@ -1,0 +1,9 @@
+var s = 0
+for (i in 1..10){
+    if (i > 5){
+        s += i
+    }
+}
+println(s)
+
+//Expected 40

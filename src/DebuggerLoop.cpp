@@ -37,12 +37,39 @@ ExprNode* loadFor(in_func, size_t& i) {
 		 !expect(token, Lexer::TokenType::LPAREN)) {
 		throw std::runtime_error("Expected ( but not found");
 	}
-	if (!nextToken(&token, context.tokens, i) ||
-		!expect(token, Lexer::TokenType::IDENTIFIER)) {
+	if (!nextToken(&token, context.tokens, i)) {
+		throw std::runtime_error("Expected name but not found");
+	}
+	uint8_t createNewDeclaration = 0; //None: 0, Var: 1, Val: 2
+	if (expect(token, Lexer::TokenType::VAR) || expect(token, Lexer::TokenType::VAL)) {
+		createNewDeclaration = expect(token, Lexer::TokenType::VAR) ? 1 : 2;
+		if (!nextToken(&token, context.tokens, i)) {
+			throw std::runtime_error("Expected name but not found");
+		}
+	}
+	if (!expect(token, Lexer::TokenType::IDENTIFIER)) {
 		throw std::runtime_error("Expected name but not found");
 	}
 	std::string& name = context.lexerString[token->indexData];
-	auto declaration = static_cast<AccessNode*>(context.getCurrentFunctionInfo(in_data)->findDeclaration(in_data, name));
+	std::unique_ptr<AccessNode> declaration;
+	if (createNewDeclaration) {
+		context.getCurrentFunctionInfo(in_data)->scopes.emplace_back();
+		//Create temp declaration
+		auto declarationNode = context.makeDeclarationNode(
+			in_data, true, name, "", createNewDeclaration == 2, context.currentFunctionId == context.mainFunctionId, false
+		);
+		declarationNode->classId = AutoLang::DefaultClass::INTCLASSID;
+		declaration.reset(new VarNode(
+			declarationNode,
+			false,
+			true
+		));
+	} else {
+		declaration.reset(static_cast<AccessNode*>(context.getCurrentFunctionInfo(in_data)->findDeclaration(in_data, name)));
+		if (!declaration) {
+			throw std::runtime_error("Cannot find variable name: "+name);
+		}
+	}
 	if (!nextToken(&token, context.tokens, i) ||
 		!expect(token, Lexer::TokenType::IN)) {
 		throw std::runtime_error("Expected 'in' but not found");
@@ -74,25 +101,11 @@ ExprNode* loadFor(in_func, size_t& i) {
 		if (!nextToken(&token, context.tokens, i)) {
 			throw std::runtime_error("Expected function body but not found");
 		}
-		bool addedDeclarationNode = false;
-		if (declaration == nullptr) {
-			context.getCurrentFunctionInfo(in_data)->scopes.emplace_back();
-			//Create temp declaration if not exists
-			auto declarationNode = context.makeDeclarationNode(
-				in_data, true, name, "", true, context.currentFunctionId == context.mainFunctionId, false
-			);
-			declarationNode->classId = AutoLang::DefaultClass::INTCLASSID;
-			addedDeclarationNode = true;
-			declaration = new VarNode(
-				declarationNode,
-				false
-			);
-		}
 		auto node = std::make_unique<ForRangeNode>(
-			declaration, first.release(), second.release(), isLessEqThan
+			declaration.release(), first.release(), second.release(), isLessEqThan
 		);
 		loadBody(in_data, node->body.nodes, i);
-		if (addedDeclarationNode) {
+		if (createNewDeclaration) {
 			context.getCurrentFunctionInfo(in_data)->popBackScope();
 		}
 		return node.release();

@@ -48,6 +48,7 @@ namespace AutoLang
 
 	struct ExprNode
 	{
+		uint32_t line;
 		NodeType kind;
 		ExprNode(NodeType kind) : kind(kind) {}
 		void throwError(std::string message) {}
@@ -78,13 +79,14 @@ namespace AutoLang
 			for (auto *node : nodes)
 				node->rewrite(in_data, bytecodes);
 		}
+		void refresh();
 		~BlockNode();
 	};
 
 	struct CanBreakContinueNode : ExprNode
 	{
-		size_t continuePos = 0; //Support "continue" command
-		size_t breakPos = 0; //Support "break" command
+		size_t continuePos = 0; // Support "continue" command
+		size_t breakPos = 0;	// Support "break" command
 		BlockNode body;
 		CanBreakContinueNode(NodeType kind) : ExprNode(kind) {}
 		void rewrite(in_func, std::vector<uint8_t> &bytecodes);
@@ -95,6 +97,7 @@ namespace AutoLang
 		uint32_t classId;
 		inline std::string &getClassName(in_func) { return compile.classes[classId].name; }
 		HasClassIdNode(NodeType kind, uint32_t classId = 0) : ExprNode(kind), classId(classId) {}
+		virtual ~HasClassIdNode() {}
 	};
 
 	struct UnknowNode : HasClassIdNode
@@ -102,9 +105,9 @@ namespace AutoLang
 		std::string name;
 		std::optional<uint32_t> contextCallClassId;
 		HasClassIdNode *correctNode;
-		UnknowNode(std::optional<uint32_t> contextCallClassId, std::string name) : HasClassIdNode(NodeType::UNKNOW), name(std::move(name)), contextCallClassId(contextCallClassId), correctNode(nullptr)
-		{
-		}
+		bool nullable;
+		UnknowNode(std::optional<uint32_t> contextCallClassId, std::string name, bool nullable) : 
+				HasClassIdNode(NodeType::UNKNOW), name(std::move(name)), contextCallClassId(contextCallClassId), correctNode(nullptr), nullable(nullable) {}
 		void optimize(in_func) override;
 		inline void putBytecodes(in_func, std::vector<uint8_t> &bytecodes)
 		{
@@ -120,9 +123,10 @@ namespace AutoLang
 	struct AccessNode : HasClassIdNode
 	{
 		DeclarationNode *declaration;
+		bool nullable;
 		bool isStore;
 		bool isVal;
-		AccessNode(NodeType kind, DeclarationNode *declaration, uint32_t classId = 0, bool isVal = false, bool isStore = false) : HasClassIdNode(kind, classId), declaration(declaration), isStore(isStore), isVal(isVal) {}
+		AccessNode(NodeType kind, DeclarationNode *declaration, bool nullable, uint32_t classId = 0, bool isVal = false, bool isStore = false) : HasClassIdNode(kind, classId), declaration(declaration), nullable(nullable), isStore(isStore), isVal(isVal) {}
 	};
 
 	//"7e5", 72, 1.6, 1e5, ...
@@ -131,28 +135,28 @@ namespace AutoLang
 		union
 		{
 			std::string *str;
-			long long i;
+			int64_t i;
 			double f;
 			AObject *obj;
 		};
 		bool isLoadPrimary = false;
 		uint32_t id = UINT32_MAX;
-		ConstValueNode(long long i) : HasClassIdNode(NodeType::CONST, AutoLang::DefaultClass::INTCLASSID), i(i) {}
+		ConstValueNode(int64_t i) : HasClassIdNode(NodeType::CONST, AutoLang::DefaultClass::INTCLASSID), i(i) {}
 		ConstValueNode(double f) : HasClassIdNode(NodeType::CONST, AutoLang::DefaultClass::FLOATCLASSID), f(f) {}
 		ConstValueNode(std::string str) : HasClassIdNode(NodeType::CONST, AutoLang::DefaultClass::stringClassId), str(new std::string(std::move(str))) {}
-		ConstValueNode(bool b) : HasClassIdNode(NodeType::CONST, AutoLang::DefaultClass::boolClassId), obj(ObjectManager::create(b)), id(b ? 1 : 2) {}
+		ConstValueNode(bool b) : HasClassIdNode(NodeType::CONST, AutoLang::DefaultClass::boolClassId), obj(ObjectManager::createBoolObject(b)), id(b ? 1 : 2) {}
 		ConstValueNode(AObject *obj, uint32_t id) : HasClassIdNode(NodeType::CONST, obj->type), obj(obj), id(id) {}
 		void optimize(in_func);
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes);
 		~ConstValueNode();
 	};
 
-	struct ReturnNode : HasClassIdNode
+	struct ReturnNode : ExprNode
 	{
 		// Current function
-		Function *func;
+		uint32_t funcId;
 		HasClassIdNode *value;
-		ReturnNode(Function *func, HasClassIdNode *value) : HasClassIdNode(NodeType::RET), func(func), value(value) {}
+		ReturnNode(uint32_t funcId, HasClassIdNode *value) : ExprNode(NodeType::RET), funcId(funcId), value(value) {}
 		void optimize(in_func) override;
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 		~ReturnNode();
@@ -201,8 +205,8 @@ namespace AutoLang
 		uint32_t id;
 		bool isInitial;
 		bool isStatic;
-		GetPropNode(DeclarationNode *declaration, std::optional<uint32_t> contextCallClassId, HasClassIdNode *caller, std::string name, bool isInitial) : 
-					AccessNode(NodeType::GET_PROP, declaration, AutoLang::DefaultClass::nullClassId), contextCallClassId(contextCallClassId), caller(caller), name(std::move(name)), isInitial(isInitial), isStatic(false) {}
+		GetPropNode(DeclarationNode *declaration, std::optional<uint32_t> contextCallClassId, HasClassIdNode *caller, std::string name, bool isInitial, bool nullable) : 
+					AccessNode(NodeType::GET_PROP, declaration, nullable, AutoLang::DefaultClass::nullClassId), contextCallClassId(contextCallClassId), caller(caller), name(std::move(name)), isInitial(isInitial), isStatic(false) {}
 		void optimize(in_func) override;
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 		~GetPropNode();
@@ -259,7 +263,8 @@ namespace AutoLang
 	// getName(id) => variable
 	struct VarNode : AccessNode
 	{
-		VarNode(DeclarationNode *declaration, bool isStore) : AccessNode(NodeType::VAR, declaration, AutoLang::DefaultClass::nullClassId, true, isStore) {}
+		VarNode(DeclarationNode *declaration, bool isStore, bool nullable) : 
+				AccessNode(NodeType::VAR, declaration, nullable, AutoLang::DefaultClass::nullClassId, true, isStore) {}
 		void optimize(in_func) override;
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	};
@@ -288,7 +293,9 @@ namespace AutoLang
 		bool isConstructor = false;
 		bool justFindStatic;
 		bool addPopBytecode = false;
-		CallNode(std::optional<uint32_t> contextCallClassId, HasClassIdNode *caller, std::string name, bool justFindStatic) : HasClassIdNode(NodeType::CALL), caller(caller), contextCallClassId(contextCallClassId), name(name), justFindStatic(justFindStatic) {}
+		bool nullable;
+		CallNode(std::optional<uint32_t> contextCallClassId, HasClassIdNode *caller, std::string name, std::vector<HasClassIdNode *> arguments, bool justFindStatic, bool nullable) : 
+				HasClassIdNode(NodeType::CALL), contextCallClassId(contextCallClassId), caller(caller), name(name), arguments(std::move(arguments)), justFindStatic(justFindStatic), nullable(nullable) {}
 		void optimize(in_func) override;
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 		bool match(in_func, MatchOverload &match, std::vector<uint32_t> &functions, int &i);

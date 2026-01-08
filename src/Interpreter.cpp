@@ -20,7 +20,7 @@ AVM::AVM(T &lineData, bool allowDebug) : allowDebug(allowDebug)
 
 	{
 		using namespace AutoLang::DefaultClass;
-		using TT = AutoLang::Lexer::TokenType; // Giả sử bạn đặt TokenType trong Lexer namespace
+		using TT = AutoLang::Lexer::TokenType;
 		data.typeResult = {
 			// int, float, bool
 			{CompiledProgram::makeTuple(INTCLASSID, INTCLASSID, (uint8_t)TT::PLUS), INTCLASSID},
@@ -28,6 +28,8 @@ AVM::AVM(T &lineData, bool allowDebug) : allowDebug(allowDebug)
 			{CompiledProgram::makeTuple(INTCLASSID, INTCLASSID, (uint8_t)TT::STAR), INTCLASSID},
 			{CompiledProgram::makeTuple(INTCLASSID, INTCLASSID, (uint8_t)TT::SLASH), INTCLASSID},
 			{CompiledProgram::makeTuple(INTCLASSID, INTCLASSID, (uint8_t)TT::PERCENT), INTCLASSID},
+			{CompiledProgram::makeTuple(INTCLASSID, INTCLASSID, (uint8_t)TT::AND), INTCLASSID},
+			{CompiledProgram::makeTuple(INTCLASSID, INTCLASSID, (uint8_t)TT::OR), INTCLASSID},
 			{CompiledProgram::makeTuple(INTCLASSID, INTCLASSID, (uint8_t)TT::LT), boolClassId},
 			{CompiledProgram::makeTuple(INTCLASSID, INTCLASSID, (uint8_t)TT::GT), boolClassId},
 			{CompiledProgram::makeTuple(INTCLASSID, INTCLASSID, (uint8_t)TT::LTE), boolClassId},
@@ -391,6 +393,16 @@ AObject *AVM::run(Function *currentFunction, const size_t currentTop, size_t max
 			operate<AutoLang::DefaultFunction::mod, 2>(currentTop);
 			break;
 		}
+		case AutoLang::Opcode::BITWISE_AND:
+		{
+			operate<AutoLang::DefaultFunction::bitwise_and, 2>(currentTop);
+			break;
+		}
+		case AutoLang::Opcode::BITWISE_OR:
+		{
+			operate<AutoLang::DefaultFunction::bitwise_or, 2>(currentTop);
+			break;
+		}
 		case AutoLang::Opcode::NEGATIVE:
 		{
 			operate<AutoLang::DefaultFunction::negative, 1>(currentTop);
@@ -419,12 +431,12 @@ AObject *AVM::run(Function *currentFunction, const size_t currentTop, size_t max
 			break;
 		case AutoLang::Opcode::IS_NULL:
 		{
-			stack.push(ObjectManager::create(stack.pop() == AutoLang::DefaultClass::nullObject));
+			stack.push(ObjectManager::createBoolObject(stack.pop() == AutoLang::DefaultClass::nullObject));
 			break;
 		}
 		case AutoLang::Opcode::IS_NON_NULL:
 		{
-			stack.push(ObjectManager::create(stack.pop() != AutoLang::DefaultClass::nullObject));
+			stack.push(ObjectManager::createBoolObject(stack.pop() != AutoLang::DefaultClass::nullObject));
 			break;
 		}
 		case AutoLang::Opcode::LOAD_NULL:
@@ -464,8 +476,26 @@ AObject *AVM::run(Function *currentFunction, const size_t currentTop, size_t max
 		case AutoLang::Opcode::GREATER_THAN:
 			operate<AutoLang::DefaultFunction::op_greater_than, 2>(currentTop);
 			break;
-		default:
+		case AutoLang::Opcode::FLOAT_TO_INT:
+			stack.push(data.manager.createIntObject(static_cast<int64_t>(stack.pop()->f)));
 			break;
+		case AutoLang::Opcode::INT_TO_FLOAT:
+			stack.push(data.manager.createFloatObject(static_cast<double>(stack.pop()->i)));
+			break;
+		case AutoLang::Opcode::BOOL_TO_INT:
+			stack.push(data.manager.createIntObject(static_cast<int64_t>(stack.pop()->b)));
+			break;
+		case AutoLang::Opcode::BOOL_TO_FLOAT:
+			stack.push(data.manager.createFloatObject(static_cast<double>(stack.pop()->b)));
+			break;
+		case AutoLang::Opcode::INT_TO_STRING:
+			stack.push(data.manager.create(AString::from(stack.pop()->i)));
+			break;
+		case AutoLang::Opcode::FLOAT_TO_STRING:
+			stack.push(data.manager.create(AString::from(stack.pop()->f)));
+			break;
+		default:
+			throw std::runtime_error("Bytecode not be defined");
 		}
 	}
 	return nullptr;
@@ -483,13 +513,13 @@ AObject *AVM::getConstObject(uint32_t id)
 	default:
 		if (obj->type != AutoLang::DefaultClass::stringClassId)
 			return obj;
-		return data.manager.create(AString::copy(static_cast<AString*>(obj->ref)));
+		return data.manager.create(static_cast<AString *>(obj->ref));
 	}
 }
 
 void AVM::initGlobalVariables()
 {
-	globalVariables = new AObject*[data.main->maxDeclaration]{};
+	globalVariables = new AObject *[data.main->maxDeclaration]{};
 }
 
 void AVM::setGlobalVariables(uint32_t i, AObject *object)
@@ -545,7 +575,7 @@ void AVM::log()
 	}
 	std::cerr << "-------------------" << '\n';
 	std::cerr << "Function: " << data.functions.size() << " elements" << '\n';
-	for (auto& func : data.functions)
+	for (auto &func : data.functions)
 	{
 		bool isFirst = true;
 		std::cerr << "[" << func.id << "] [Declaration: " << func.maxDeclaration << "] " << func.name << ": (";
@@ -558,15 +588,17 @@ void AVM::log()
 			}
 			else
 			{
-				std::cerr<<", ";
+				std::cerr << ", ";
 			}
-			std::cerr<<data.classes[classId].name;
-			if (func.nullableArgs[i]) std::cerr<<"?";
+			std::cerr << data.classes[classId].name;
+			if (func.nullableArgs[i])
+				std::cerr << "?";
 		}
-		std::cerr<<")->";
-		std::cerr<<data.classes[func.returnId].name;
-		if (func.returnNullable) std::cerr<<"?";
-		std::cerr<<'\n';
+		std::cerr << ")->";
+		std::cerr << data.classes[func.returnId].name;
+		if (func.returnNullable)
+			std::cerr << "?";
+		std::cerr << '\n';
 		// if (!func->native) log(func);
 	}
 	/*uint32_t totalSize = bytecodes.size() +
@@ -581,6 +613,11 @@ void AVM::log()
 		;
 	std::cerr<<"TotalSize: "<<static_cast<double>(totalSize) / 1024<<" kb\n";*/
 }
+
+#define BYTECODE_PRINT_SINGLE(bytecode) \
+	case AutoLang::Opcode::bytecode:    \
+		std::cerr << #bytecode << "\n"; \
+		break;
 
 void AVM::log(Function *currentFunction)
 {
@@ -606,9 +643,6 @@ void AVM::log(Function *currentFunction)
 		case AutoLang::Opcode::LOAD_CONST_PRIMARY:
 			std::cerr << "CONST_PRIMARY	 " << get_u32(bytecodes, i) << '\n';
 			break;
-		case AutoLang::Opcode::POP:
-			std::cerr << "POP	 " << '\n';
-			break;
 		case AutoLang::Opcode::RETURN_LOCAL:
 			std::cerr << "RETURN_LOCAL	 " << get_u32(bytecodes, i) << '\n';
 			break;
@@ -633,12 +667,9 @@ void AVM::log(Function *currentFunction)
 		case AutoLang::Opcode::STORE_MEMBER:
 			std::cerr << "STORE_MEMBER	 " << get_u32(bytecodes, i) << '\n';
 			break;
-		case AutoLang::Opcode::RETURN:
-			std::cerr << "RETURN	 " << '\n';
-			break;
-		case AutoLang::Opcode::RETURN_VALUE:
-			std::cerr << "RETURN_VALUE	 " << '\n';
-			break;
+			BYTECODE_PRINT_SINGLE(POP)
+			BYTECODE_PRINT_SINGLE(RETURN)
+			BYTECODE_PRINT_SINGLE(RETURN_VALUE)
 		case AutoLang::Opcode::JUMP_IF_FALSE:
 			std::cerr << "JUMP_IF_FALSE	 " << get_u32(bytecodes, i) << '\n';
 			break;
@@ -648,101 +679,52 @@ void AVM::log(Function *currentFunction)
 		case AutoLang::Opcode::JUMP_IF_NON_NULL:
 			std::cerr << "JUMP_IF_NON_NULL	 " << get_u32(bytecodes, i) << '\n';
 			break;
-		case AutoLang::Opcode::JUMP:
-			std::cerr << "JUMP	 " << get_u32(bytecodes, i) << '\n';
-			break;
-		case AutoLang::Opcode::TO_INT:
-			std::cerr << "TO_INT	 " << '\n';
-			break;
-		case AutoLang::Opcode::TO_FLOAT:
-			std::cerr << "TO_FLOAT	 " << '\n';
-			break;
-		case AutoLang::Opcode::TO_STRING:
-			std::cerr << "TO_STRING	 " << '\n';
-			break;
+			BYTECODE_PRINT_SINGLE(JUMP)
+			BYTECODE_PRINT_SINGLE(TO_INT)
+			BYTECODE_PRINT_SINGLE(TO_FLOAT)
+			BYTECODE_PRINT_SINGLE(TO_STRING)
+			BYTECODE_PRINT_SINGLE(PLUS_PLUS)
+			BYTECODE_PRINT_SINGLE(MINUS_MINUS)
 		case AutoLang::Opcode::AND_AND:
 			std::cerr << "AND	 " << '\n';
 			break;
 		case AutoLang::Opcode::OR_OR:
 			std::cerr << "OR	 " << '\n';
 			break;
-		case AutoLang::Opcode::PLUS_PLUS:
-			std::cerr << "PLUS_PLUS	 " << '\n';
-			break;
-		case AutoLang::Opcode::MINUS_MINUS:
-			std::cerr << "MINUS_MINUS	 " << '\n';
-			break;
-		case AutoLang::Opcode::PLUS:
-			std::cerr << "PLUS	 " << '\n';
-			break;
-		case AutoLang::Opcode::MINUS:
-			std::cerr << "MINUS	 " << '\n';
-			break;
-		case AutoLang::Opcode::MUL:
-			std::cerr << "MUL	 " << '\n';
-			break;
-		case AutoLang::Opcode::DIVIDE:
-			std::cerr << "DIVIDE	 " << '\n';
-			break;
-		case AutoLang::Opcode::IS_NULL:
-			std::cerr << "IS_NULL	 " << '\n';
-			break;
-		case AutoLang::Opcode::IS_NON_NULL:
-			std::cerr << "IS_NON_NULL	 " << '\n';
-			break;
-		case AutoLang::Opcode::LOAD_TRUE:
-			std::cerr << "LOAD_TRUE	 " << '\n';
-			break;
-		case AutoLang::Opcode::LOAD_FALSE:
-			std::cerr << "LOAD_FALSE	 " << '\n';
-			break;
-		case AutoLang::Opcode::LOAD_NULL:
-			std::cerr << "LOAD_NULL	 " << '\n';
-			break;
-		case AutoLang::Opcode::PLUS_EQUAL:
-			std::cerr << "PLUS_EQUAL	 " << '\n';
-			break;
-		case AutoLang::Opcode::MINUS_EQUAL:
-			std::cerr << "MINUS_EQUAL	 " << '\n';
-			break;
-		case AutoLang::Opcode::MUL_EQUAL:
-			std::cerr << "MUL_EQUAL	 " << '\n';
-			break;
-		case AutoLang::Opcode::DIVIDE_EQUAL:
-			std::cerr << "DIVIDE_EQUAL	 " << '\n';
-			break;
-		case AutoLang::Opcode::NEGATIVE:
-			std::cerr << "NEGATIVE	 " << '\n';
-			break;
-		case AutoLang::Opcode::MOD:
-			std::cerr << "MOD	 " << '\n';
-			break;
-		case AutoLang::Opcode::NOT:
-			std::cerr << "NOT	 " << '\n';
-			break;
-		case AutoLang::Opcode::EQUAL_VALUE:
-			std::cerr << "EQUAL_VALUE	 " << '\n';
-			break;
-		case AutoLang::Opcode::NOTEQ_VALUE:
-			std::cerr << "NOTEQ_VALUE	 " << '\n';
-			break;
-		case AutoLang::Opcode::EQUAL_POINTER:
-			std::cerr << "EQUAL_POINTER	 " << '\n';
-			break;
-		case AutoLang::Opcode::NOTEQ_POINTER:
-			std::cerr << "NOTEQ_POINTER	 " << '\n';
-			break;
-		case AutoLang::Opcode::LESS_THAN_EQ:
-			std::cerr << "LESS_THAN_EQ	 " << '\n';
-			break;
-		case AutoLang::Opcode::LESS_THAN:
-			std::cerr << "LESS_THAN	 " << '\n';
-			break;
-		case AutoLang::Opcode::GREATER_THAN_EQ:
-			std::cerr << "GREATER_THAN_EQ	 " << '\n';
-			break;
-		case AutoLang::Opcode::GREATER_THAN:
-			std::cerr << "GREATER_THAN	 " << '\n';
+			BYTECODE_PRINT_SINGLE(PLUS)
+			BYTECODE_PRINT_SINGLE(MINUS)
+			BYTECODE_PRINT_SINGLE(MUL)
+			BYTECODE_PRINT_SINGLE(DIVIDE)
+			BYTECODE_PRINT_SINGLE(IS_NULL)
+			BYTECODE_PRINT_SINGLE(IS_NON_NULL)
+			BYTECODE_PRINT_SINGLE(LOAD_TRUE)
+			BYTECODE_PRINT_SINGLE(LOAD_FALSE)
+			BYTECODE_PRINT_SINGLE(LOAD_NULL)
+			BYTECODE_PRINT_SINGLE(PLUS_EQUAL)
+			BYTECODE_PRINT_SINGLE(MINUS_EQUAL)
+			BYTECODE_PRINT_SINGLE(MUL_EQUAL)
+			BYTECODE_PRINT_SINGLE(DIVIDE_EQUAL)
+			BYTECODE_PRINT_SINGLE(NEGATIVE)
+			BYTECODE_PRINT_SINGLE(MOD)
+			BYTECODE_PRINT_SINGLE(BITWISE_AND)
+			BYTECODE_PRINT_SINGLE(BITWISE_OR)
+			BYTECODE_PRINT_SINGLE(NOT)
+			BYTECODE_PRINT_SINGLE(EQUAL_VALUE)
+			BYTECODE_PRINT_SINGLE(NOTEQ_VALUE)
+			BYTECODE_PRINT_SINGLE(EQUAL_POINTER)
+			BYTECODE_PRINT_SINGLE(NOTEQ_POINTER)
+			BYTECODE_PRINT_SINGLE(LESS_THAN_EQ)
+			BYTECODE_PRINT_SINGLE(LESS_THAN)
+			BYTECODE_PRINT_SINGLE(GREATER_THAN_EQ)
+			BYTECODE_PRINT_SINGLE(GREATER_THAN)
+			BYTECODE_PRINT_SINGLE(FLOAT_TO_INT)
+			BYTECODE_PRINT_SINGLE(INT_TO_FLOAT)
+			BYTECODE_PRINT_SINGLE(BOOL_TO_INT)
+			BYTECODE_PRINT_SINGLE(BOOL_TO_FLOAT)
+			BYTECODE_PRINT_SINGLE(INT_TO_STRING)
+			BYTECODE_PRINT_SINGLE(FLOAT_TO_STRING)
+		default:
+			throw std::runtime_error("Bytecode not defined " + std::to_string(b));
 			break;
 		}
 	}

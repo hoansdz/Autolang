@@ -1,10 +1,10 @@
-data class Person(var name: String, var age: Int, val id: Float) 
+class Person(var name: String, var age: Int, val id: Float) 
 
-data class PersonNode(var prev: PersonNode?, var currentPerson: Person, var next: PersonNode?){
+class PersonNode(var prev: PersonNode?, var currentPerson: Person, var next: PersonNode?){
     
 }
 //hi
-data class ListPerson() {
+class ListPerson() {
 	private var beginNode: PersonNode? = null
     public var size: Int = 0
     func begin(): PersonNode {
@@ -16,37 +16,55 @@ data class ListPerson() {
         	beginNode = PersonNode(null, person, null)
             return
         }
-        var currentNode = beginNode
+        var currentNode? = beginNode!
         while (currentNode.next != null) {
         	currentNode = currentNode.next
         }
         currentNode.next = PersonNode(currentNode, person, null)
+        currentNode.next.prev = currentNode
+    }
+    func deletePerson(index: Int) {
+    	if (index >= size) {
+        	return
+        }
+        size -= 1
+        if (index == 0) {
+        	beginNode = beginNode.next!
+            beginNode.prev = null
+            return
+        }
+        var currentNode = beginNode
+        for (val i in 0..<index - 1) {
+        	currentNode = currentNode.next
+        }
+        currentNode.next = currentNode.next.next
+        currentNode.next.prev = currentNode
     }
 }
 
-func main() {
-    val listPerson = ListPerson()
+func main(){
+  val listPerson = ListPerson()
 
-    listPerson.addPerson(Person("John", 18, 1.5))
-    listPerson.addPerson(Person("John", 18, 1.5))
-    listPerson.addPerson(Person("John", 18, 1.5))
-    listPerson.addPerson(Person("John", 18, 1.5))
-    listPerson.addPerson(Person("John", 18, 1.5))
-    listPerson.addPerson(Person("John", 18, 1.5))
-    listPerson.addPerson(Person("John", 18, 1.5))
-    listPerson.addPerson(Person("John", 18, 1.5))
-    listPerson.addPerson(Person("John", 18, 1.5))
-    listPerson.addPerson(Person("Timmy", 18, 1.6))
+  for (val i in 0..10) {
+      listPerson.addPerson(Person("John " + i, 18 + i, 1.5 + i))
+  }
+  listPerson.deletePerson(0)
+  for (val i in 0..<3) {
+  	listPerson.deletePerson(2)
+  }
 
-    println(getRefCount(null))
+  var currentNode = listPerson.begin()
 
-    var currentNode = listPerson.begin()
-
-    for (i in 0..<listPerson.size) {
-        val person = currentNode.currentPerson
-        println("User "+person.name+" has age: " + person.age)
-        currentNode = currentNode.next
-    }
+  for (val i in 0..<listPerson.size) {
+      val person = currentNode.currentPerson
+      println("User "+person.name+" has age: " + person.age)
+      currentNode = currentNode.next
+  }
 }
-
 main()
+val a? = 1
+val b = 2
+val c: Int? = 3
+val d: Int = 4
+val e! = 5
+var f? = c!

@@ -18,6 +18,8 @@ ConstValueNode* minus(ConstValueNode* left, ConstValueNode* right);
 ConstValueNode* mul(ConstValueNode* left, ConstValueNode* right);
 ConstValueNode* divide(ConstValueNode* left, ConstValueNode* right);
 ConstValueNode* mod(ConstValueNode* left, ConstValueNode* right);
+ConstValueNode* bitwise_and(ConstValueNode* left, ConstValueNode* right);
+ConstValueNode* bitwise_or(ConstValueNode* left, ConstValueNode* right);
 ConstValueNode* op_less_than(ConstValueNode* left, ConstValueNode* right);
 ConstValueNode* op_greater_than(ConstValueNode* left, ConstValueNode* right);
 ConstValueNode* op_less_than_eq(ConstValueNode* left, ConstValueNode* right);

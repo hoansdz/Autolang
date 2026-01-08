@@ -77,6 +77,7 @@ namespace AutoLang
 		NonReallocatePool<ReturnNode> returnPool;
 		NonReallocatePool<SetNode> setValuePool;
 		FixedPool<CreateConstructorNode> createConstructorPool;
+		// NonReallocatePool<BinaryNode> binaryNodePool;
 		FixedPool<IfNode> ifPool;
 		FixedPool<WhileNode> whilePool;
 

@@ -8,12 +8,8 @@ namespace AutoLang
 {
 
 CreateClassNode* loadClass(in_func, size_t& i) {
-	bool isDataClass = false;
 	if (!context.keywords.empty()) {
-		if (context.keywords[0] != Lexer::TokenType::DATA) {
-			throw std::runtime_error("Invalid keyword");
-		}
-		isDataClass = true;
+		throw std::runtime_error("Invalid keyword");
 	}
 	Lexer::Token *token;
 	//Name
@@ -25,7 +21,7 @@ CreateClassNode* loadClass(in_func, size_t& i) {
 	//Body class
 	if (!nextToken(&token, context.tokens, i))
 		throw std::runtime_error("Expected body but not found");
-	CreateClassNode* node = context.newClasses.push(isDataClass, name); //NewClasses managed
+	CreateClassNode* node = context.newClasses.push(name); //NewClasses managed
 	node->pushClass(in_data);
 	auto lastClass = context.getCurrentClass(in_data);
 	auto clazz = &compile.classes[node->classId];
@@ -38,18 +34,12 @@ CreateClassNode* loadClass(in_func, size_t& i) {
 	//Add declaration this
 	context.getCurrentClassInfo(in_data)->declarationThis = declarationNode;
 	//Has PrimaryConstructor
+	// bool hasPrimaryConstructor = false;
 	if (expect(token, Lexer::TokenType::LPAREN)) {
-		if (!isDataClass)
-			throw std::runtime_error("Expected {}, did you want data class ?");
 		context.getCurrentClassInfo(in_data)->primaryConstructor = context.createConstructorPool.push(context.currentClassId, name+"()", loadListDeclaration(in_data, i, true), true, 
 			Lexer::TokenType::PUBLIC);
 		context.getCurrentClassInfo(in_data)->primaryConstructor->pushFunction(in_data);
 		compile.functions[context.getCurrentClassInfo(in_data)->primaryConstructor->funcId].maxDeclaration += context.getCurrentClassInfo(in_data)->primaryConstructor->arguments.size();
-	} else {
-		if (isDataClass) {
-			throw std::runtime_error("Expected (), Data class must have () ?");
-		}
-		--i;
 	}
 
 	//Body

@@ -64,13 +64,22 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 			isMapExist(context.getCurrentClassInfo(in_data)->staticMember, name))
 			throw std::runtime_error("Declaration: Redefination variable name \"" + name + "\"");
 	}
-	//Nullable
-	bool nullable = false;
+	//Sugar syntax val a? = 1
+	bool nullable = true;
+	bool sugarSyntax = false;
 	if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
 		throw std::runtime_error("Expected class name but not found");
 	}
 	if (expect(token, Lexer::TokenType::QMARK)) {
-		nullable = true;
+		sugarSyntax = true;
+		//Class name
+		if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
+			throw std::runtime_error("Expected class name but not found");
+		}
+	} else
+	if (expect(token, Lexer::TokenType::EXMARK)) {
+		sugarSyntax = true;
+		nullable = false;
 		//Class name
 		if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
 			throw std::runtime_error("Expected class name but not found");
@@ -80,10 +89,10 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 	std::string className;
 	if (expect(token, Lexer::TokenType::COLON)) {
 		auto classDeclaration = loadClassDeclaration(in_data, i, declaration->line);
-		if (nullable) {
+		if (sugarSyntax) {
 			throw std::runtime_error(
-				std::string("Sugar syntax ") + (isVal ? "val " : "var ") + name + "? can be use when fast declare, cannot use with " + classDeclaration.className + "? " +
-				"use " + (isVal ? "val " : "var ") + name + ": " + classDeclaration.className + "? instead of"
+				std::string("Sugar syntax ") + (isVal ? "val " : "var ") + name + (nullable ? "?" : "!") + " can be use when fast declare, cannot use with " + classDeclaration.className + "? " +
+				"use " + (isVal ? "val " : "var ") + name + ": " + classDeclaration.className + (nullable ? "?" : "!") + " instead of"
 			);
 		}
 		nullable = classDeclaration.nullable;
@@ -141,10 +150,10 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 			throw std::runtime_error(std::string("Ambiguous call nullable ") + (isVal ? "val " : "var ") + name + "? = null");
 		}
 	}
-
 	auto node = context.makeDeclarationNode(in_data, false, std::move(declarationName), 
 		std::move(className), isVal, isGlobal, nullable, (isInFunction || isStatic));
 	node->accessModifier = accessModifier;
+	node->mustInferenceNullable = !sugarSyntax && node->className.empty();
 	//printDebug(node->name + " is " + (node->accessModifier == Lexer::TokenType::PUBLIC ? "public" : "private"));
 	//printDebug((isVal ? "val " : "var ") + name + " has id " + std::to_string(node->id) + " " + (isGlobal ? "1 " : "0 " ) + (isStatic ? "1 " : "0 "));
 	if (isStatic) {
@@ -160,7 +169,8 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 		context.staticNode.push_back(context.setValuePool.push(
 			new VarNode(
 				node,
-				false
+				false,
+				true
 			), value
 		));
 		return nullptr;
@@ -183,9 +193,11 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 				context.currentClassId,
 				new VarNode(
 					context.getCurrentClassInfo(in_data)->declarationThis,
-					false
+					false,
+					true
 				),
 				node->name,
+				true,
 				true
 			),
 			value
@@ -194,6 +206,7 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 	}
 	return context.setValuePool.push(new VarNode(
 		node,
+		true,
 		true
 	), value);
 }

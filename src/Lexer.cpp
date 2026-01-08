@@ -152,6 +152,24 @@ void pushIdentifier(Context& context, std::vector<Token>& tokens, uint32_t& i) {
 		ESTIMATE_CASE_ADD(IF, ifNode)
 		ESTIMATE_CASE_ADD(WHILE, whileNode)
 		ESTIMATE_CASE_ADD(RETURN, returnNode)
+
+		// ESTIMATE_CASE_ADD(PLUS, binaryNode)
+		// ESTIMATE_CASE_ADD(MINUS, binaryNode)
+		// ESTIMATE_CASE_ADD(STAR, binaryNode)
+		// ESTIMATE_CASE_ADD(SLASH, binaryNode)
+		// ESTIMATE_CASE_ADD(PERCENT, binaryNode)
+		// ESTIMATE_CASE_ADD(LT, binaryNode)
+		// ESTIMATE_CASE_ADD(GT, binaryNode)
+		// ESTIMATE_CASE_ADD(LTE, binaryNode)
+		// ESTIMATE_CASE_ADD(GTE, binaryNode)
+		// ESTIMATE_CASE_ADD(EQEQ, binaryNode)
+		// ESTIMATE_CASE_ADD(NOTEQ, binaryNode)
+		// ESTIMATE_CASE_ADD(EQEQEQ, binaryNode)
+		// ESTIMATE_CASE_ADD(NOTEQEQ, binaryNode)
+		// ESTIMATE_CASE_ADD(AND_AND, binaryNode)
+		// ESTIMATE_CASE_ADD(OR_OR, binaryNode)
+		// ESTIMATE_CASE_ADD(AND, binaryNode)
+		// ESTIMATE_CASE_ADD(OR, binaryNode)
 		default: break;
 	}
 	tokens.emplace_back(

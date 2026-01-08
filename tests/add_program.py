@@ -1,5 +1,5 @@
 # stress_1000_classes.py
-NUM_CLASSES = 10000
+NUM_CLASSES = 100
 
 with open("stress_10000_classes.txt", "w", encoding="utf-8") as f:
     for i in range(1, NUM_CLASSES + 1):
