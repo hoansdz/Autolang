@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <exception>
 #include "ankerl/unordered_dense.h"
 
 #define AUTOLANG_DEBUG_
@@ -22,6 +23,8 @@ inline void printDebug(long msg)
 #endif
 }
 
+struct AVMReadFileMode;
+
 namespace AutoLang
 {
 
@@ -37,6 +40,8 @@ namespace AutoLang
 			NUMBER,		//	Giá trị số: 123, 3.14
 			STRING,		//	Chuỗi: "abc"
 			IDENTIFIER, //	Tên biến, tên hàm: abc, foo
+
+			START_COMMENT,
 
 			// ===== Operators =====
 			PLUS, //	Toán tử cộng: +
@@ -138,6 +143,7 @@ namespace AutoLang
 			{"protected", TokenType::PROTECTED},
 			{"constructor", TokenType::CONSTRUCTOR},
 
+			{"/*", TokenType::START_COMMENT},
 			{"&", TokenType::AND},
 			{"|", TokenType::OR},
 			{"&&", TokenType::AND_AND},
@@ -180,6 +186,17 @@ namespace AutoLang
 			std::string toString(ParserContext &context);
 		};
 
+		class LexerError : std::exception {
+		public:
+			uint32_t line;
+			std::string message;
+			LexerError(uint32_t line, std::string msg)
+        		: line(line), message(std::move(msg)) {}
+			const char* what() const noexcept override {
+				return message.c_str();
+			}
+		};
+
 		struct Estimate
 		{
 			uint32_t declaration = 0;
@@ -203,6 +220,9 @@ namespace AutoLang
 			uint32_t linePos;
 			uint32_t pos;
 			uint32_t absolutePos;
+			std::vector<char> bracketStack;
+
+			bool hasError = false;
 
 			Estimate estimate;
 		};
@@ -210,16 +230,18 @@ namespace AutoLang
 		inline bool nextLine(Context &context, const char *lines, uint32_t &i);
 		inline bool isOperator(char chr);
 		inline bool isEndOfLine(Context &context, uint32_t &i);
-		std::vector<Token> load(ParserContext *mainContext, const char *path, Context &context);
-		std::vector<Token> load(ParserContext *mainContext, std::pair<const char *, size_t> &lineData, Context &context);
-		std::string loadQuote(Context &context, char quote, uint32_t &i);
+		std::vector<Token> load(ParserContext* mainContext, AVMReadFileMode& mode, Context &context);
+		void loadQuote(Context &context, std::vector<Token>& tokens, AVMReadFileMode& mode, char quote, uint32_t &i);
 		std::string loadIdentifier(Context &context, uint32_t &i);
 		std::string loadNumber(Context &context, uint32_t &i);
 		TokenType loadOp(Context &context, uint32_t &i);
+		bool loadNextTokenNoCloseBracket(Context &context, std::vector<Token>& tokens, AVMReadFileMode& mode, uint32_t &i);
+		void pushAndEnsureBracket(Context &context, std::vector<Token>& tokens, AVMReadFileMode& mode, uint32_t &i);
 		void pushIdentifier(Context &context, std::vector<Token> &tokens, uint32_t &i);
 		uint32_t pushLexerString(Context &context, std::string &&str);
+		char getCloseBracket(char chr);
 
-	}
+	}	
 }
 
 #endif

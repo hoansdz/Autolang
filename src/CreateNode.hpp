@@ -23,7 +23,7 @@ namespace AutoLang
 		bool isVal;
 		bool nullable;
 		bool mustInferenceNullable = false;
-		DeclarationNode(std::string name, std::string className, bool isVal, bool isGlobal, bool nullable) : HasClassIdNode(NodeType::DECLARATION), name(std::move(name)),
+		DeclarationNode(uint32_t line, std::string name, std::string className, bool isVal, bool isGlobal, bool nullable) : HasClassIdNode(NodeType::DECLARATION, 0, line), name(std::move(name)),
 																							  className(std::move(className)), isGlobal(isGlobal), isVal(isVal), nullable(nullable) {}
 		void optimize(in_func) override;
 		~DeclarationNode() {}
@@ -41,9 +41,9 @@ namespace AutoLang
 		const std::vector<DeclarationNode *> arguments;
 		bool isStatic;
 		bool returnNullable;
-		CreateFuncNode(std::optional<uint32_t> contextCallClassId, std::string name, std::string returnClass, bool returnNullable, std::vector<DeclarationNode *> arguments,
-					   bool isStatic, Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC) : HasClassIdNode(NodeType::CREATE_FUNC), contextCallClassId(contextCallClassId), accessModifier(accessModifier), name(std::move(name)), returnClass(std::move(returnClass)),
-																									arguments(std::move(arguments)), isStatic(isStatic), returnNullable(returnNullable) {}
+		CreateFuncNode(uint32_t line, std::optional<uint32_t> contextCallClassId, std::string name, std::string returnClass, bool returnNullable, std::vector<DeclarationNode *> arguments,
+					   bool isStatic, Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC) : HasClassIdNode(NodeType::CREATE_FUNC, 0, line), contextCallClassId(contextCallClassId), accessModifier(accessModifier), name(std::move(name)), returnClass(std::move(returnClass)),
+																									arguments(std::move(arguments)), isStatic(isStatic), returnNullable(returnNullable), body(line) {}
 		void pushFunction(in_func);
 		void optimize(in_func) override;
 		~CreateFuncNode() {}
@@ -51,16 +51,16 @@ namespace AutoLang
 
 	struct CreateConstructorNode : HasClassIdNode
 	{
-		std::optional<uint32_t> contextCallClassId;
+		uint32_t classId;
 		Lexer::TokenType accessModifier;
 		std::string name;
 		uint32_t funcId;
 		BlockNode body;
 		const std::vector<DeclarationNode *> arguments;
 		bool isPrimary;
-		CreateConstructorNode(std::optional<uint32_t> contextCallClassId, std::string name, std::vector<DeclarationNode *> arguments, bool isPrimary,
-							  Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC) : HasClassIdNode(NodeType::CREATE_CONSTRUCTOR), contextCallClassId(contextCallClassId), accessModifier(accessModifier),
-																							name(std::move(name)), arguments(std::move(arguments)), isPrimary(isPrimary) {}
+		CreateConstructorNode(uint32_t line, uint32_t classId, std::string name, std::vector<DeclarationNode *> arguments, bool isPrimary,
+							  Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC) : HasClassIdNode(NodeType::CREATE_CONSTRUCTOR, 0, line), classId(classId), accessModifier(accessModifier),
+																							name(std::move(name)), arguments(std::move(arguments)), isPrimary(isPrimary), body(line) {}
 		void pushFunction(in_func);
 		void optimize(in_func) override;
 		//~CreateConstructorNode(){}
@@ -71,8 +71,8 @@ namespace AutoLang
 	{
 		std::string name;
 		BlockNode body;
-		CreateClassNode() : HasClassIdNode(NodeType::CREATE_CLASS) {}
-		CreateClassNode(std::string name) : HasClassIdNode(NodeType::CREATE_CLASS), name(std::move(name)) {}
+		CreateClassNode(uint32_t line) : HasClassIdNode(NodeType::CREATE_CLASS, 0, line), body(line) {}
+		CreateClassNode(uint32_t line, std::string name) : HasClassIdNode(NodeType::CREATE_CLASS, 0, line), body(line), name(std::move(name)) {}
 		void pushClass(in_func);
 		void optimize(in_func) override;
 		~CreateClassNode() {}

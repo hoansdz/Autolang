@@ -43,16 +43,16 @@ namespace AutoLang
 			uint32_t type = obj->type;
 			switch (type)
 			{
-			case AutoLang::DefaultClass::INTCLASSID:
+			case AutoLang::DefaultClass::intClassId:
 				std::cout << obj->i;
 				break;
-			case AutoLang::DefaultClass::FLOATCLASSID:
+			case AutoLang::DefaultClass::floatClassId:
 				std::cout << obj->f;
 				break;
 			default:
 				if (type == DefaultClass::stringClassId)
 				{
-					std::cout << static_cast<AString *>(obj->ref)->data;
+					std::cout << obj->str->data;
 				}
 				else if (type == DefaultClass::nullClassId)
 				{
@@ -61,10 +61,6 @@ namespace AutoLang
 				else if (type == DefaultClass::boolClassId)
 				{
 					std::cout << (obj == DefaultClass::trueObject ? "true" : "false");
-				}
-				else
-				{
-					std::cout << obj->ref;
 				}
 				break;
 			}
@@ -90,9 +86,9 @@ namespace AutoLang
 			auto obj = stackAllocator[0];
 			switch (obj->type)
 			{
-			case AutoLang::DefaultClass::INTCLASSID:
+			case AutoLang::DefaultClass::intClassId:
 				return manager.createIntObject(obj->i);
-			case AutoLang::DefaultClass::FLOATCLASSID:
+			case AutoLang::DefaultClass::floatClassId:
 				return manager.createIntObject(static_cast<int64_t>(obj->f));
 			default:
 			{
@@ -100,7 +96,7 @@ namespace AutoLang
 					return manager.createIntObject(static_cast<int64_t>(obj->b));
 				// Check error but unused
 				char *end;
-				return manager.createIntObject(std::strtoll(static_cast<AString *>(obj->ref)->data, &end, 10));
+				return manager.createIntObject(std::strtoll(obj->str->data, &end, 10));
 			}
 			}
 		}
@@ -112,9 +108,9 @@ namespace AutoLang
 			auto obj = stackAllocator[0];
 			switch (obj->type)
 			{
-			case AutoLang::DefaultClass::INTCLASSID:
+			case AutoLang::DefaultClass::intClassId:
 				return manager.createFloatObject(static_cast<double>(obj->i));
-			case AutoLang::DefaultClass::FLOATCLASSID:
+			case AutoLang::DefaultClass::floatClassId:
 				return manager.createFloatObject(obj->f);
 			default:
 			{
@@ -122,7 +118,7 @@ namespace AutoLang
 					return manager.createFloatObject(static_cast<double>(obj->b));
 				// Check error but unused
 				char *end;
-				return manager.createFloatObject(std::strtod(static_cast<AString *>(obj->ref)->data, &end));
+				return manager.createFloatObject(std::strtod(obj->str->data, &end));
 			}
 			}
 		}
@@ -134,12 +130,12 @@ namespace AutoLang
 			auto obj = stackAllocator[0];
 			switch (obj->type)
 			{
-			case AutoLang::DefaultClass::INTCLASSID:
+			case AutoLang::DefaultClass::intClassId:
 				return manager.create(AString::from(obj->i));
-			case AutoLang::DefaultClass::FLOATCLASSID:
+			case AutoLang::DefaultClass::floatClassId:
 				return manager.create(AString::from(obj->f));
 			default:
-				return manager.create(AString::copy(static_cast<AString *>(obj->ref)));
+				return manager.create(AString::copy(obj->str));
 			}
 		}
 
@@ -154,7 +150,7 @@ namespace AutoLang
 			if (size == 2)
 			{
 				int64_t count = stackAllocator[1]->i;
-				AString *oldAStr = static_cast<AString *>(stackAllocator[0]->ref);
+				AString *oldAStr = stackAllocator[0]->str;
 				if (count <= 0 || oldAStr->size == 0)
 				{
 					char *newStr = new char[1];
@@ -175,7 +171,7 @@ namespace AutoLang
 
 		AObject *get_string_size(NativeFuncInData)
 		{
-			return manager.createIntObject(static_cast<int64_t>(static_cast<AString *>(stackAllocator[0]->ref)->size));
+			return manager.createIntObject(static_cast<int64_t>(stackAllocator[0]->str->size));
 		}
 
 	}

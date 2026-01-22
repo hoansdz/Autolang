@@ -4,7 +4,7 @@
 #include <iostream>
 #include <vector>
 #include "DefaultClass.hpp"
-#include "AString.hpp"
+#include "../vm/AString.hpp"
 
 template<typename T>
 class FixedPool {

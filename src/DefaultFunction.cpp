@@ -31,10 +31,10 @@ namespace AutoLang
 				"getRefCount()",
 				{AutoLang::DefaultClass::anyClassId},
 				{true},
-				AutoLang::DefaultClass::INTCLASSID,
+				AutoLang::DefaultClass::intClassId,
 				false,
 				&get_refcount);
-			auto integer = &compile.classes[AutoLang::DefaultClass::INTCLASSID];
+			auto integer = &compile.classes[AutoLang::DefaultClass::intClassId];
 			compile.registerFunction(
 				integer,
 				false,
@@ -50,17 +50,17 @@ namespace AutoLang
 				"toFloat()",
 				{},
 				{},
-				AutoLang::DefaultClass::FLOATCLASSID,
+				AutoLang::DefaultClass::floatClassId,
 				false,
 				&AutoLang::DefaultFunction::to_float);
-			auto Float = &compile.classes[AutoLang::DefaultClass::FLOATCLASSID];
+			auto Float = &compile.classes[AutoLang::DefaultClass::floatClassId];
 			compile.registerFunction(
 				Float,
 				false,
 				"toInt()",
 				{},
 				{},
-				AutoLang::DefaultClass::INTCLASSID,
+				AutoLang::DefaultClass::intClassId,
 				false,
 				&AutoLang::DefaultFunction::to_int);
 			compile.registerFunction(
@@ -79,7 +79,7 @@ namespace AutoLang
 				"toInt()",
 				{},
 				{},
-				AutoLang::DefaultClass::INTCLASSID,
+				AutoLang::DefaultClass::intClassId,
 				false,
 				&AutoLang::DefaultFunction::to_int);
 			compile.registerFunction(
@@ -88,7 +88,7 @@ namespace AutoLang
 				"size()",
 				{},
 				{},
-				AutoLang::DefaultClass::INTCLASSID,
+				AutoLang::DefaultClass::intClassId,
 				false,
 				&AutoLang::DefaultFunction::get_string_size);
 			compile.registerFunction(
@@ -105,7 +105,7 @@ namespace AutoLang
 				true,
 				"String()",
 				{AutoLang::DefaultClass::stringClassId,
-				 AutoLang::DefaultClass::INTCLASSID},
+				 AutoLang::DefaultClass::intClassId},
 				{false, false},
 				AutoLang::DefaultClass::stringClassId,
 				false,

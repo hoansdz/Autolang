@@ -17,99 +17,99 @@ namespace AutoLang
 					math,
 					true,
 					"round()",
-					{AutoLang::DefaultClass::FLOATCLASSID},
+					{AutoLang::DefaultClass::floatClassId},
 					{false},
-					AutoLang::DefaultClass::INTCLASSID,
+					AutoLang::DefaultClass::intClassId,
 					false,
 					&round);
 				compile.registerFunction(
 					math,
 					true,
 					"floor()",
-					{AutoLang::DefaultClass::FLOATCLASSID},
+					{AutoLang::DefaultClass::floatClassId},
 					{false},
-					AutoLang::DefaultClass::INTCLASSID,
+					AutoLang::DefaultClass::intClassId,
 					false,
 					&floor);
 				compile.registerFunction(
 					math,
 					true,
 					"ceil()",
-					{AutoLang::DefaultClass::FLOATCLASSID},
+					{AutoLang::DefaultClass::floatClassId},
 					{false},
-					AutoLang::DefaultClass::INTCLASSID,
+					AutoLang::DefaultClass::intClassId,
 					false,
 					&ceil);
 				compile.registerFunction(
 					math,
 					true,
 					"trunc()",
-					{AutoLang::DefaultClass::FLOATCLASSID},
+					{AutoLang::DefaultClass::floatClassId},
 					{false},
-					AutoLang::DefaultClass::INTCLASSID,
+					AutoLang::DefaultClass::intClassId,
 					false,
 					&trunc);
 				compile.registerFunction(
 					math,
 					true,
 					"pow()",
-					{AutoLang::DefaultClass::INTCLASSID, AutoLang::DefaultClass::INTCLASSID},
+					{AutoLang::DefaultClass::intClassId, AutoLang::DefaultClass::intClassId},
 					{false, false},
-					AutoLang::DefaultClass::INTCLASSID,
+					AutoLang::DefaultClass::intClassId,
 					false,
 					&pow);
 				compile.registerFunction(
 					math,
 					true,
 					"pow()",
-					{AutoLang::DefaultClass::FLOATCLASSID, AutoLang::DefaultClass::FLOATCLASSID},
+					{AutoLang::DefaultClass::floatClassId, AutoLang::DefaultClass::floatClassId},
 					{false, false},
-					AutoLang::DefaultClass::FLOATCLASSID,
+					AutoLang::DefaultClass::floatClassId,
 					false,
 					&pow);
 				compile.registerFunction(
 					math,
 					true,
 					"abs()",
-					{AutoLang::DefaultClass::INTCLASSID},
+					{AutoLang::DefaultClass::intClassId},
 					{false},
-					AutoLang::DefaultClass::INTCLASSID,
+					AutoLang::DefaultClass::intClassId,
 					false,
 					&abs);
 				compile.registerFunction(
 					math,
 					true,
 					"abs()",
-					{AutoLang::DefaultClass::FLOATCLASSID},
+					{AutoLang::DefaultClass::floatClassId},
 					{false},
-					AutoLang::DefaultClass::FLOATCLASSID,
+					AutoLang::DefaultClass::floatClassId,
 					false,
 					&abs);
 				compile.registerFunction(
 					math,
 					true,
 					"sin()",
-					{AutoLang::DefaultClass::FLOATCLASSID},
+					{AutoLang::DefaultClass::floatClassId},
 					{false},
-					AutoLang::DefaultClass::FLOATCLASSID,
+					AutoLang::DefaultClass::floatClassId,
 					false,
 					&sin);
 				compile.registerFunction(
 					math,
 					true,
 					"cos()",
-					{AutoLang::DefaultClass::FLOATCLASSID},
+					{AutoLang::DefaultClass::floatClassId},
 					{false},
-					AutoLang::DefaultClass::FLOATCLASSID,
+					AutoLang::DefaultClass::floatClassId,
 					false,
 					&cos);
 				compile.registerFunction(
 					math,
 					true,
 					"tan()",
-					{AutoLang::DefaultClass::FLOATCLASSID},
+					{AutoLang::DefaultClass::floatClassId},
 					{false},
-					AutoLang::DefaultClass::FLOATCLASSID,
+					AutoLang::DefaultClass::floatClassId,
 					false,
 					&tan);
 			}
@@ -121,9 +121,9 @@ namespace AutoLang
 				auto obj = stackAllocator[0];
 				switch (obj->type)
 				{
-				case AutoLang::DefaultClass::INTCLASSID:
+				case AutoLang::DefaultClass::intClassId:
 					return manager.create(static_cast<int64_t>(std::abs(obj->i)));
-				case AutoLang::DefaultClass::FLOATCLASSID:
+				case AutoLang::DefaultClass::floatClassId:
 					return manager.create(std::abs(obj->f));
 				default:
 					throw std::runtime_error("Cannot run with this type");
@@ -140,22 +140,22 @@ namespace AutoLang
 				auto obj2 = stackAllocator[1];
 				switch (obj1->type)
 				{
-				case AutoLang::DefaultClass::INTCLASSID:
+				case AutoLang::DefaultClass::intClassId:
 					switch (obj2->type)
 					{
-					case AutoLang::DefaultClass::INTCLASSID:
+					case AutoLang::DefaultClass::intClassId:
 						return manager.create(integer_pow(obj1->i, obj2->i));
-					case AutoLang::DefaultClass::FLOATCLASSID:
+					case AutoLang::DefaultClass::floatClassId:
 						return manager.create(std::pow(obj1->i, obj2->f));
 					default:
 						throw std::runtime_error("Cannot run with this type");
 					}
-				case AutoLang::DefaultClass::FLOATCLASSID:
+				case AutoLang::DefaultClass::floatClassId:
 					switch (obj2->type)
 					{
-					case AutoLang::DefaultClass::INTCLASSID:
+					case AutoLang::DefaultClass::intClassId:
 						return manager.create(std::pow(obj1->f, obj2->i));
-					case AutoLang::DefaultClass::FLOATCLASSID:
+					case AutoLang::DefaultClass::floatClassId:
 						return manager.create(std::pow(obj1->f, obj2->f));
 					default:
 						throw std::runtime_error("Cannot run with this type");
@@ -173,9 +173,9 @@ namespace AutoLang
 		auto obj = stackAllocator[0];                                  \
 		switch (obj->type)                                             \
 		{                                                              \
-		case AutoLang::DefaultClass::INTCLASSID:                       \
+		case AutoLang::DefaultClass::intClassId:                       \
 			return manager.create(static_cast<int64_t>(func(obj->i))); \
-		case AutoLang::DefaultClass::FLOATCLASSID:                     \
+		case AutoLang::DefaultClass::floatClassId:                     \
 			return manager.create(static_cast<int64_t>(func(obj->f))); \
 		default:                                                       \
 			throw std::runtime_error("Cannot run with this type");     \
@@ -190,9 +190,9 @@ namespace AutoLang
 		auto obj = stackAllocator[0];                                 \
 		switch (obj->type)                                            \
 		{                                                             \
-		case AutoLang::DefaultClass::INTCLASSID:                      \
+		case AutoLang::DefaultClass::intClassId:                      \
 			return manager.create(static_cast<double>(func(obj->i))); \
-		case AutoLang::DefaultClass::FLOATCLASSID:                    \
+		case AutoLang::DefaultClass::floatClassId:                    \
 			return manager.create(static_cast<double>(func(obj->f))); \
 		default:                                                      \
 			throw std::runtime_error("Cannot run with this type");    \
@@ -213,9 +213,9 @@ namespace AutoLang
 				auto obj = stackAllocator[0];
 				switch (obj->type)
 				{
-				case AutoLang::DefaultClass::INTCLASSID:
+				case AutoLang::DefaultClass::intClassId:
 					return manager.create(obj->i);
-				case AutoLang::DefaultClass::FLOATCLASSID:
+				case AutoLang::DefaultClass::floatClassId:
 					return manager.create(static_cast<int64_t>(std::trunc(obj->f)));
 				default:
 					throw std::runtime_error("Cannot run with this type");
@@ -232,22 +232,22 @@ namespace AutoLang
 				auto obj2 = stackAllocator[1];
 				switch (obj1->type)
 				{
-				case AutoLang::DefaultClass::INTCLASSID:
+				case AutoLang::DefaultClass::intClassId:
 					switch (obj1->type)
 					{
-					case AutoLang::DefaultClass::INTCLASSID:
+					case AutoLang::DefaultClass::intClassId:
 						return manager.create(static_cast<int64_t>(std::fmod(obj1->i, obj2->i)));
-					case AutoLang::DefaultClass::FLOATCLASSID:
+					case AutoLang::DefaultClass::floatClassId:
 						return manager.create(std::fmod(obj1->i, obj2->f));
 					default:
 						throw std::runtime_error("Cannot run with this type");
 					}
-				case AutoLang::DefaultClass::FLOATCLASSID:
+				case AutoLang::DefaultClass::floatClassId:
 					switch (obj1->type)
 					{
-					case AutoLang::DefaultClass::INTCLASSID:
+					case AutoLang::DefaultClass::intClassId:
 						return manager.create(std::fmod(obj1->f, obj2->i));
-					case AutoLang::DefaultClass::FLOATCLASSID:
+					case AutoLang::DefaultClass::floatClassId:
 						return manager.create(std::fmod(obj1->f, obj2->f));
 					default:
 						throw std::runtime_error("Cannot run with this type");

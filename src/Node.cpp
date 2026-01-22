@@ -21,6 +21,10 @@ void rewrite_opcode_u32(std::vector<uint8_t>& code, size_t pos, uint32_t value) 
 	code[pos + 3] = (value >> 24) & 0xFF;
 }
 
+void ExprNode::throwError(std::string message) {
+	throw ParserError(line, message);
+}
+
 void ExprNode::deleteNode(ExprNode* node) {
 	if (!node) return;
 	switch (node->kind) {

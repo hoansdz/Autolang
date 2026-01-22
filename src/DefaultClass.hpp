@@ -9,12 +9,12 @@ struct AObject;
 namespace AutoLang {
 namespace DefaultClass {
 
-constexpr uint32_t INTCLASSID = 0;
-constexpr uint32_t FLOATCLASSID = 1;
-extern uint32_t boolClassId;
-extern uint32_t stringClassId;
-extern uint32_t nullClassId;
-extern uint32_t anyClassId;
+constexpr uint32_t intClassId = 0;
+constexpr uint32_t floatClassId = 1;
+constexpr uint32_t boolClassId = 2;
+constexpr uint32_t stringClassId = 3;
+constexpr uint32_t nullClassId = 4;
+constexpr uint32_t anyClassId = 5;
 extern AObject* nullObject;
 extern AObject* trueObject;
 extern AObject* falseObject;

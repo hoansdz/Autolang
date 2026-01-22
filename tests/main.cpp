@@ -4,7 +4,13 @@
 int main(int argc, char *argv[])
 {
 	try{
-		AVM i = AVM("tests/source.txt", false);
+		AVMReadFileMode mode = {
+			"tests/source.txt",
+			nullptr,
+			0,
+			true
+		};
+		AVM i = AVM(mode, false);
 	}
 	catch (const std::exception& e) {
 		std::cerr << e.what() << '\n';

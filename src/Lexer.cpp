@@ -13,97 +13,183 @@
 namespace AutoLang {
 namespace Lexer {
 
-std::vector<Token> load(ParserContext* mainContext, const char* path, Context& context) {
+std::vector<Token> load(ParserContext* mainContext, AVMReadFileMode& mode, Context& context) {
 	std::vector<char> lines;
-	std::ifstream file(path, std::ios::binary | std::ios::ate);
-	if (!file.is_open()) {
-		throw std::runtime_error(std::string("File ") + path + " doesn't exists");
+	if (mode.data == nullptr) {
+		std::ifstream file(mode.path, std::ios::binary | std::ios::ate);
+		if (!file.is_open()) {
+			context.hasError = true;
+			std::cerr << (std::string("File ") + mode.path + " doesn't exists \n");
+			return {};
+		}
+		std::streamsize size = file.tellg();
+		file.seekg(0, std::ios::beg);
+		lines.resize(size);
+		file.read(lines.data(), size);
+		if (!file) {
+			context.hasError = true;
+			std::cerr << (std::string(mode.path) + ": An error occurred while reading the file\n");
+			return {};
+		}
+		file.close();
+		mode.data = reinterpret_cast<const char*>(lines.data());
+		mode.dataSize = lines.size();
 	}
-	std::streamsize size = file.tellg();
-	file.seekg(0, std::ios::beg);
-	lines.resize(size);
-	file.read(lines.data(), size);
-	if (!file) {
-		throw std::runtime_error(std::string(path) + ": An error occurred while reading the file");
-	}
-	file.close();
-	auto pair = std::pair<const char*, size_t>(reinterpret_cast<const char*>(lines.data()), lines.size());
-	return load(mainContext, pair, context);
-}
-
-std::vector<Token> load(ParserContext* mainContext, std::pair<const char*, size_t>& lineData, Context& context) {
 	std::vector<Token> tokens;
 	tokens.reserve(256);
 	context.mainContext = mainContext;
-	context.totalSize = lineData.second;
+	context.totalSize = lines.size();
 	context.absolutePos = 0;
 	context.linePos = 0;
 	context.lineSize = 0;
 	context.nextLinePosition = 0;
+	context.bracketStack.reserve(16);
 	uint32_t i = 0;
-	while (nextLine(context, lineData.first, i)) {
-		while (!isEndOfLine(context, i)) {
-			char chr = context.line[i];
-			if (std::isblank(chr)) {
-				++i;
-				continue;
+	while (nextLine(context, mode.data, i)) {
+		try {
+			while (!isEndOfLine(context, i)) {
+				loadNextTokenNoCloseBracket(context, tokens, mode, i);
 			}
-			if (std::isalpha(chr)) {
-				context.pos = i;
-				++i;
-				pushIdentifier(context, tokens, i);
-				continue;
-			}
-			if (std::isdigit(chr)) {
-				context.pos = i;
-				++i;
-				tokens.emplace_back(
-					context.linePos,
-					TokenType::NUMBER,
-					pushLexerString(context, loadNumber(context, i))
-				);
-				continue;
-			}
-			if (chr == '\"' || chr =='\'') {
-				context.pos = i + 1;
-				++i;
-				tokens.emplace_back(
-					context.linePos,
-					TokenType::STRING,
-					pushLexerString(context, loadQuote(context, chr, i))
-				);
-				continue;
-			}
-			if (isOperator(chr)) {
-				auto op = loadOp(context, i);
-				if (op == TokenType::COMMENT_SINGLE_LINE)
-					break;
-				switch (op) {
-					ESTIMATE_CASE_ADD(EQUAL, setNode)
-					ESTIMATE_CASE_ADD(PLUS_EQUAL, setNode)
-					ESTIMATE_CASE_ADD(MINUS_EQUAL, setNode)
-					ESTIMATE_CASE_ADD(STAR_EQUAL, setNode)
-					ESTIMATE_CASE_ADD(SLASH_EQUAL, setNode)
-				}
-				tokens.emplace_back(context.linePos, op);
-				continue;
-			}
-			switch (chr) {
-				TOKEN_CASE('(', LPAREN)
-				TOKEN_CASE(')', RPAREN)
-				TOKEN_CASE('[', LBRACKET)
-				TOKEN_CASE(']', RBRACKET)
-				TOKEN_CASE('{', LBRACE)
-				TOKEN_CASE('}', RBRACE)
-				TOKEN_CASE(',', COMMA)
-				TOKEN_CASE(':', COLON)
-				default:
-					throw std::runtime_error(std::to_string(i) + std::string("Cannot find expression '")+chr+"'"+std::to_string((int)chr));
-			}
-			++i;
+		}
+		catch (const LexerError& err) {
+			context.mainContext->logMessage(err.line, err.message);
+			while (!isEndOfLine(context, i)) { ++i; }
+			context.hasError = true;
 		}
 	}
 	return tokens;
+}
+
+bool loadNextTokenNoCloseBracket(Context &context, std::vector<Token>& tokens, AVMReadFileMode& mode, uint32_t &i) {
+	char chr = context.line[i];
+	if (std::isblank(chr)) {
+		++i;
+		return true;
+	}
+	if (std::isalpha((unsigned char)chr)) {
+		context.pos = i;
+		++i;
+		pushIdentifier(context, tokens, i);
+		return true;
+	}
+	if (std::isdigit(chr)) {
+		context.pos = i;
+		++i;
+		tokens.emplace_back(
+			context.linePos,
+			TokenType::NUMBER,
+			pushLexerString(context, loadNumber(context, i))
+		);
+		return true;
+	}
+	switch (chr) {
+		case '\"':
+		case '\'': {
+			context.pos = i + 1;
+			++i;
+			loadQuote(context, tokens, mode, chr, i);
+			return true;
+		}
+	}
+	if (isOperator(chr)) {
+		auto op = loadOp(context, i);
+		switch (op) {
+			ESTIMATE_CASE_ADD(EQUAL, setNode)
+			ESTIMATE_CASE_ADD(PLUS_EQUAL, setNode)
+			ESTIMATE_CASE_ADD(MINUS_EQUAL, setNode)
+			ESTIMATE_CASE_ADD(STAR_EQUAL, setNode)
+			ESTIMATE_CASE_ADD(SLASH_EQUAL, setNode)
+			case TokenType::COMMENT_SINGLE_LINE : {
+				while (!isEndOfLine(context, i)) { ++i; }
+				nextLine(context, mode.data, i);
+				return true;
+			}
+			case TokenType::START_COMMENT: {
+				start:;
+				uint32_t firstLine = context.linePos;
+				while (!isEndOfLine(context, i)) {
+					if (context.line[i++] != '*') continue;
+					if (isEndOfLine(context, i)) break;
+					if (context.line[i++] != '/') continue;
+					goto end;
+				}
+				if (!nextLine(context, mode.data, i)) {
+					throw LexerError(firstLine, std::string("Cannot found */"));
+				}
+				goto start;
+				end:;
+				return true;
+			}
+		}
+		tokens.emplace_back(context.linePos, op);
+		return true;
+	}
+	switch (chr) {
+		case '(':
+		case '{':
+		case '[': {
+			pushAndEnsureBracket(context, tokens, mode, i);
+			break;
+		}
+		case ')': {
+			if (context.bracketStack.empty() || context.bracketStack.back() != '(')
+				throw LexerError(context.linePos, "Unexpected ')', you must use '(' before");
+			context.bracketStack.pop_back();
+			tokens.emplace_back(context.linePos, TokenType::RPAREN);
+			// ++i;
+			return false;
+		}
+		case ']': {
+			if (context.bracketStack.empty() || context.bracketStack.back() != '[')
+				throw LexerError(context.linePos, "Unexpected ']', you must use '[' before");
+			context.bracketStack.pop_back();
+			tokens.emplace_back(context.linePos, TokenType::RBRACKET);
+			// ++i;
+			return false;
+		}
+		case '}': {
+			if (context.bracketStack.empty() || context.bracketStack.back() != '{')
+				throw LexerError(context.linePos, "Unexpected '{', you must use '}' before");
+			context.bracketStack.pop_back();
+			tokens.emplace_back(context.linePos, TokenType::RBRACE);
+			// ++i;
+			return false;
+		}
+		TOKEN_CASE(',', COMMA)
+		TOKEN_CASE(':', COLON)
+		default:
+			throw LexerError(context.linePos, std::string("Unknow character: '")+chr+"'");
+	}
+	++i;
+	return true;
+}
+
+void pushAndEnsureBracket(Context &context, std::vector<Token>& tokens, AVMReadFileMode& mode, uint32_t &i) {
+	char chr = context.line[i];
+	switch (chr) {
+		case '(':
+			tokens.emplace_back(context.linePos, TokenType::LPAREN);
+			break;
+		case '{':
+			tokens.emplace_back(context.linePos, TokenType::LBRACE);
+			break;
+		case '[': {
+			tokens.emplace_back(context.linePos, TokenType::LBRACKET);
+			break;
+		}
+	}
+	context.bracketStack.push_back(chr);
+	++i;
+	start:;
+	uint32_t firstLine = context.linePos;
+	while (!isEndOfLine(context, i)) {
+		if (loadNextTokenNoCloseBracket(context, tokens, mode ,i)) continue;
+		return;
+	}
+	if (!nextLine(context, mode.data, i)) {
+		throw LexerError(firstLine, std::string("Expected '") + getCloseBracket(chr) + "' but not found");
+	}
+	goto start;
 }
 
 TokenType loadOp(Context& context, uint32_t& i) {
@@ -112,7 +198,7 @@ TokenType loadOp(Context& context, uint32_t& i) {
 		std::string str = {first};
 		auto it = CAST.find(str);
 		if (it == CAST.end())
-			throw std::runtime_error("Cannot find " + str + " operator ");
+			throw LexerError(context.linePos, "Cannot find operator: " + str);
 		return it->second;
 	}
 	char second = context.line[i++];
@@ -120,15 +206,14 @@ TokenType loadOp(Context& context, uint32_t& i) {
 		std::string str = {first, second};
 		auto it = CAST.find(str);
 		if (it == CAST.end()) 
-			throw std::runtime_error("Cannot find " + str + " operator ");
+			throw LexerError(context.linePos, "Cannot find operator: " + str);
 		return it->second;
 	}
-	char third= context.line[i];
-	++i;
+	char third= context.line[i++];
 	std::string str = {first, second, third};
 	auto it = CAST.find(str);
 	if (it == CAST.end()) 
-		throw std::runtime_error("Cannot find " + str + " operator ");
+		throw LexerError(context.linePos, "Cannot find operator: " + str);
 	return it->second;
 }
 
@@ -202,17 +287,30 @@ std::string loadNumber(Context& context, uint32_t& i) {
 			case 'e':
 			case 'E': {
 				if (scientific)
-					throw std::runtime_error(std::string("Expected number but ")+chr+" was found ");
+					throw LexerError(context.linePos, "Unknow value: " + std::string(context.line + context.pos, i - context.pos));
 				scientific = true;
 				if (isEndOfLine(context, ++i)) {
 					--i;
 					goto ended;
 				}
 				chr = context.line[i];
-				if (std::isdigit(chr) || chr == '+' || chr == '-') {
+				if (std::isdigit(chr)) {
 					continue;
 				}
-				throw std::runtime_error(std::string("Expected number after e but ")+chr+" was found ");
+				if (chr == '+' || chr == '-') {
+					if (isEndOfLine(context, ++i)) {
+						--i;
+						goto ended;
+					}
+					chr = context.line[i];
+					if (!std::isdigit(chr)) {
+						std::string num = std::string(context.line + context.pos, i - context.pos);
+						throw LexerError(context.linePos, std::string("Expected digit after ") + num + " but '"+chr+"' was found");
+					}
+					continue;
+				}
+				std::string num = std::string(context.line + context.pos, i - context.pos);
+				throw LexerError(context.linePos, std::string("Expected digit after exponent '") + num + "' but '"+chr+"' was found, did you mean "+ num + "0 ?" );
 			}
 			case '_': {
 				hasUnderscore = true;
@@ -222,13 +320,19 @@ std::string loadNumber(Context& context, uint32_t& i) {
 				}
 				chr = context.line[i];
 				if (!std::isdigit(chr)) {
-					throw std::runtime_error(std::string("Expected number after _ but ")+chr+" was found ");
+					std::string num = std::string(context.line + context.pos, i - context.pos - 1);
+					throw LexerError(context.linePos, std::string("Expected digit after ") + num + "_ but '"+chr+"' was found, did you mean "+ num +" ?");
 				}
 				continue;
 			}
 			case '.': {
+				if (scientific) {
+					std::string num = std::string(context.line + context.pos, i - context.pos);
+					throw LexerError(context.linePos, "Expected integer exponent after " + num + ", but '.' was found");
+				}
 				if (hasDot) {
-					throw std::runtime_error(std::string("Expected number but . was found "));
+					std::string num = std::string(context.line + context.pos, i - context.pos);
+					throw LexerError(context.linePos, "Expected digit after " + num + " but '.' was found, did you mean " + num + "0 ?");
 				}
 				if (isEndOfLine(context, ++i) || !std::isdigit(context.line[i])) {
 					--i;
@@ -243,7 +347,7 @@ std::string loadNumber(Context& context, uint32_t& i) {
 			continue;
 		}
 		if (std::isalpha(chr)) {
-			throw std::runtime_error("Unexpected character after number here " + std::string(context.line + context.pos, i - context.pos) + chr);
+			throw LexerError(context.linePos, std::string("Unexpected character '") + chr + "' after numeric literal: " + std::string(context.line + context.pos, i - context.pos) + chr);
 		}
 		break;
 	}
@@ -263,20 +367,70 @@ std::string loadNumber(Context& context, uint32_t& i) {
 	return std::string(context.line + context.pos, i - context.pos);
 }
 
-std::string loadQuote(Context& context, char quote, uint32_t& i) {
+void loadQuote(Context& context, std::vector<Token>& tokens, AVMReadFileMode& mode, char quote, uint32_t& i) {
 	bool isSpecialCase = false;
 	std::string newStr;
 	char chr;
 	for (; !isEndOfLine(context, i); ++i) {
 		chr = context.line[i];
 		if (!isSpecialCase) {
-			if (chr == '\\'){
-				isSpecialCase = true;
-				continue;
+			switch (chr) {
+				case '\\': {
+					isSpecialCase = true;
+					continue;
+				}
+				//"Hello ${value + value}"
+				case '$': {
+					if (isEndOfLine(context, ++i))
+						throw LexerError(context.linePos, std::string("Expected ") + quote + " but not found");
+					if (!context.line[i] == '{') {
+						newStr += '$';
+						break;
+					}
+					tokens.emplace_back(
+						context.linePos,
+						TokenType::LPAREN
+					);
+					tokens.emplace_back(
+						context.linePos,
+						TokenType::STRING,
+						pushLexerString(context, std::move(newStr))
+					);
+					tokens.emplace_back(
+						context.linePos,
+						TokenType::PLUS
+					);
+					// '{' => '(' to support "Hello ${a}"  => ("Hello" + (a)) instead of ("Hello" + {a})
+					uint32_t bracketReplacePos = tokens.size(); 
+					pushAndEnsureBracket(context, tokens, mode, i);
+					tokens[bracketReplacePos].type = TokenType::LPAREN;
+					tokens.back().type = TokenType::RPAREN;
+					if (isEndOfLine(context, ++i))
+						throw LexerError(context.linePos, std::string("Expected ") + quote + " but not found");
+					if (context.line[i] == quote) {
+						++i;
+						tokens.emplace_back(
+							context.linePos,
+							TokenType::RPAREN
+						);
+						return;
+					}
+					loadQuote(context, tokens, mode, quote, i);
+					tokens.emplace_back(
+						context.linePos,
+						TokenType::RPAREN
+					);
+					break;
+				}
 			}
 			if (chr == quote) {
 				++i;
-				return newStr;
+				tokens.emplace_back(
+					context.linePos,
+					TokenType::STRING,
+					pushLexerString(context, std::move(newStr))
+				);
+				return;
 			}
 			newStr += chr;
 			continue;
@@ -304,11 +458,11 @@ std::string loadQuote(Context& context, char quote, uint32_t& i) {
 				newStr += '\0';
 				break;
 			default:
-				throw std::runtime_error(std::string("Unknown escape sequence '\\") + chr + '\'');
+				throw LexerError(context.linePos, std::string("Unknown escape sequence '\\") + chr + '\'');
 		}
 		isSpecialCase = false;
 	}
-	throw std::runtime_error(std::string("Expected ") + quote + " but not found");
+	throw LexerError(context.linePos, std::string("Expected ") + quote + " but not found");
 }
 
 bool isOperator(char chr) {
@@ -481,6 +635,22 @@ bool nextLine(Context& context, const char* lines, uint32_t& i) {
 
 bool isEndOfLine(Context& context, uint32_t& i) {
 	return i >= context.lineSize;
+}
+
+char getCloseBracket(char chr)
+{
+	switch (chr)
+	{
+	case '(':
+		return ')';
+	case '[':
+		return ']';
+	case '{':
+		return '}';
+	case '<':
+		return '>';
+	}
+	return '\0';
 }
 
 }

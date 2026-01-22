@@ -1,7 +1,7 @@
 #ifndef ARRAY_HPP
 #define ARRAY_HPP
 
-#include "../AObject.hpp"
+#include "../vm/AObject.hpp"
 
 template <size_t size, bool callFree = true>
 class Array {
@@ -23,7 +23,7 @@ public:
 			throw std::runtime_error("Floor");
 		return objects[--index];
 	}
-	inline void addOrDelete(AreaPool& areaPool, AObject* obj) {
+	inline void addOrDelete(AreaAllocator& areaPool, AObject* obj) {
 		if (index == size) {
 			areaPool.release(obj);
 			return;

@@ -8,11 +8,6 @@
 namespace AutoLang {
 namespace DefaultClass {
 
-uint32_t boolClassId;
-uint32_t stringClassId = 0;
-uint32_t nullClassId = 0;
-uint32_t anyClassId = 0;
-uint32_t voidClassId = 0;
 AObject* nullObject = nullptr;
 AObject* trueObject = nullptr;
 AObject* falseObject = nullptr;
@@ -21,11 +16,11 @@ void init(CompiledProgram& compile) {
 	static FixedPool<AObject> constObjects;
 	compile.registerClass("Int");
 	compile.registerClass("Float");
-	boolClassId = compile.registerClass("Bool");
-	nullClassId = compile.registerClass("Null");
-	stringClassId = compile.registerClass("String");
-	anyClassId = compile.registerClass("Any");
-	voidClassId = compile.registerClass("Void");
+	compile.registerClass("Bool");
+	compile.registerClass("String");
+	compile.registerClass("Null");
+	compile.registerClass("Any");
+	// voidClassId = compile.registerClass("Void");
 
 	if (!constObjects.objects) {
 		constObjects.allocate(builtInObjectSize);

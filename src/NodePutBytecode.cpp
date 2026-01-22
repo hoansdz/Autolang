@@ -29,7 +29,7 @@ namespace AutoLang
 				bytecodes.emplace_back(AutoLang::Opcode::IS_NON_NULL);
 				return;
 			default:
-				throw std::runtime_error("Wrong, this can't happen");
+				throwError("Wrong, this can't happen");
 			}
 			return;
 		}
@@ -90,7 +90,7 @@ namespace AutoLang
 			return;
 		default:
 			// std::cout<<this<<'\n';
-			throw std::runtime_error(std::string("Cannot find operator '") + Lexer::Token(0, op).toString(context) + "'");
+			throwError(std::string("Cannot find operator '") + Lexer::Token(0, op).toString(context) + "'");
 		}
 	}
 
@@ -155,13 +155,39 @@ namespace AutoLang
 		value->putBytecodes(in_data, bytecodes);
 		switch (classId)
 		{
-		case AutoLang::DefaultClass::INTCLASSID:
+		case AutoLang::DefaultClass::intClassId: {
+			if (value->classId == AutoLang::DefaultClass::floatClassId) {
+				bytecodes.emplace_back(Opcode::FLOAT_TO_INT);
+				return;
+			}
+			if (value->classId == AutoLang::DefaultClass::boolClassId) {
+				bytecodes.emplace_back(Opcode::BOOL_TO_INT);
+				return;
+			}
 			bytecodes.emplace_back(Opcode::TO_INT);
 			return;
-		case AutoLang::DefaultClass::FLOATCLASSID:
+		}
+		case AutoLang::DefaultClass::floatClassId: {
+			if (value->classId == AutoLang::DefaultClass::intClassId) {
+				bytecodes.emplace_back(Opcode::INT_TO_FLOAT);
+				return;
+			}
+			if (value->classId == AutoLang::DefaultClass::boolClassId) {
+				bytecodes.emplace_back(Opcode::BOOL_TO_FLOAT);
+				return;
+			}
 			bytecodes.emplace_back(Opcode::TO_FLOAT);
 			return;
+		}
 		default:
+			if (value->classId == AutoLang::DefaultClass::intClassId) {
+				bytecodes.emplace_back(Opcode::INT_TO_STRING);
+				return;
+			}
+			if (value->classId == AutoLang::DefaultClass::floatClassId) {
+				bytecodes.emplace_back(Opcode::FLOAT_TO_STRING);
+				return;
+			}
 			bytecodes.emplace_back(Opcode::TO_STRING);
 			return;
 		}
@@ -352,7 +378,7 @@ namespace AutoLang
 		default:
 		{
 			break;
-			// throw std::runtime_error("Unexpected op "+ Lexer::Token(0, op).toString(context));
+			// throwError("Unexpected op "+ Lexer::Token(0, op).toString(context));
 		}
 		}
 		value->putBytecodes(in_data, bytecodes);

@@ -95,11 +95,21 @@ struct Function
 	std::vector<uint8_t> bytecodes;
 	uint32_t maxDeclaration;
 	uint32_t id;
-	Function(uint32_t id, std::string name, AObject *(*native)(NativeFuncInput), bool isStatic, std::vector<uint32_t> &args, std::vector<bool> &nullableArgs, uint32_t returnId, bool returnNullable) : name(name), native(native), isStatic(isStatic), returnNullable(returnNullable), args(args), nullableArgs(nullableArgs), returnId(returnId), maxDeclaration(native ? this->args.size : 0) {}
+	//Support log
+	std::string toString(CompiledProgram& data);
+	Function(uint32_t id, std::string name, AObject *(*native)(NativeFuncInput), bool isStatic, std::vector<uint32_t> &args, std::vector<bool> &nullableArgs, uint32_t returnId, bool returnNullable) : 
+		id(id), name(name), native(native), isStatic(isStatic), returnNullable(returnNullable), args(args), nullableArgs(nullableArgs), returnId(returnId), maxDeclaration(native ? this->args.size : 0) {}
 };
 
 template <typename K, typename V>
 size_t estimateUnorderedMapSize(const ankerl::unordered_dense::map<K, V> &map);
+
+struct AVMReadFileMode {
+	const char* path;
+	const char* data;
+	uint32_t dataSize;
+	bool allowImportOtherFile;
+};
 
 class AVM
 {
@@ -136,8 +146,7 @@ private:
 	AObject *run(Function *currentFunction, const size_t currentTop, size_t maxThisAreaSize);
 
 public:
-	template <typename T>
-	explicit AVM(T &lineData, bool allowDebug);
+	explicit AVM(AVMReadFileMode& mode, bool allowDebug);
 	~AVM();
 	void run();
 };

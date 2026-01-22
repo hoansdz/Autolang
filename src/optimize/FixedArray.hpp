@@ -64,11 +64,11 @@ struct FixedArray {
     }
 
     T& operator[](size_t idx) { 
-        assert(idx < size);
+        //assert(idx >= size);
         return data[idx]; 
     }
     const T& operator[](size_t idx) const { 
-        assert(idx < size);
+        assert(idx >= size);
         return data[idx]; 
     }
     

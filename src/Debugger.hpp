@@ -16,11 +16,18 @@
 namespace AutoLang
 {
 
-template <typename T>
-void build(CompiledProgram& compile, T& data);
+struct ParserError : AutoLang::Lexer::LexerError {
+	ParserError(uint32_t line, std::string msg): AutoLang::Lexer::LexerError(line, msg){}
+};
+
+bool build(CompiledProgram& compile, AVMReadFileMode& mode);
+void lexerData(in_func, AVMReadFileMode& mode, Lexer::Context& lexerContext);
 void estimate(in_func, Lexer::Context& lexerContext);
 void freeData(in_func);
 void resolve(in_func);
+void ensureNoKeyword(in_func, size_t& i);
+Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t& i);
+void ensureEndline(in_func, size_t& i);
 ExprNode* loadLine(in_func, size_t& i);
 std::vector<HasClassIdNode*> loadListArgument(in_func, size_t& i);
 std::vector<DeclarationNode*> loadListDeclaration(in_func, size_t& i, bool allowVar = false);
@@ -40,10 +47,9 @@ CreateClassNode* loadClass(in_func, size_t& i);
 // void loadClassInit(in_func, size_t& i);
 ReturnNode* loadReturn(in_func, size_t& i);
 ConstValueNode* loadNumber(in_func, size_t& i);
-HasClassIdNode* findIdentifierNode(in_func, std::string& name, bool nullable);
-HasClassIdNode* findVarNode(in_func, std::string& name, bool nullable);
-ConstValueNode* findConstValueNode(in_func, std::string& name);
-char getCloseBracket(char chr);
+HasClassIdNode* findIdentifierNode(in_func, size_t& i, std::string& name, bool nullable);
+HasClassIdNode* findVarNode(in_func, size_t& i, std::string& name, bool nullable);
+ConstValueNode* findConstValueNode(in_func, size_t& i, std::string& name);
 char getOpenBracket(Lexer::TokenType type);
 bool isCloseBracket(char openBracket, Lexer::TokenType closeBracket);
 int getPrecedence(Lexer::TokenType type);
@@ -75,8 +81,6 @@ inline bool nextTokenSameLine(Lexer::Token** token, std::vector<Lexer::Token>& t
 	*token = &tokens[i];
 	return (*token)->line == line;
 }
-
-std::string logLine(Lexer::Token *token);
 
 }
 

@@ -8,6 +8,7 @@
 #include "Interpreter.hpp"
 #include "Lexer.hpp"
 
+template <bool isConstructor>
 uint32_t CompiledProgram::registerFunction(
 	AClass *clazz,
 	bool isStatic,
@@ -27,8 +28,13 @@ uint32_t CompiledProgram::registerFunction(
 	{
 		name = clazz->name + '.' + name;
 		clazz->funcMap[name].push_back(id);
-		if (native && !isStatic)
-		{
+		if constexpr (!isConstructor) {
+			if (native && !isStatic) //Auto insert "this" if native function in class
+			{
+				args.insert(args.begin(), clazz->id);
+				nullableArgs.insert(nullableArgs.begin(), false);
+			}
+		} else { //Auto insert "this" if function is constructor (User can create non native function)
 			args.insert(args.begin(), clazz->id);
 			nullableArgs.insert(nullableArgs.begin(), false);
 		}
@@ -108,25 +114,6 @@ uint32_t CompiledProgram::registerConstPool(ankerl::unordered_dense::map<T, uint
 	return constPool.size() - 1;
 }
 
-void CompiledProgram::addTypeResult(uint32_t first, uint32_t second, uint8_t op, uint32_t classId)
-{
-	typeResult[{
-		std::min(first, second),
-		std::max(first, second),
-		op}] = classId;
-}
-
-bool CompiledProgram::getTypeResult(uint32_t first, uint32_t second, uint8_t op, uint32_t &result)
-{
-	auto it = typeResult.find({std::min(first, second),
-							   std::max(first, second),
-							   op});
-	if (it == typeResult.end())
-		return false;
-	result = it->second;
-	return true;
-}
-
 CompiledProgram::~CompiledProgram()
 {
 	// for (auto [str, _] : constStringMap) {
@@ -141,6 +128,7 @@ CompiledProgram::~CompiledProgram()
 		}
 		obj->refCount = obj->refCount - AutoLang::DefaultClass::refCountForGlobal;
 	}
+	manager.destroy();
 }
 
 #endif

@@ -45,35 +45,35 @@ namespace AutoLang
 		auto obj1 = stackAllocator[0];                                                                                    \
 		switch (obj1->type)                                                                                               \
 		{                                                                                                                 \
-		case AutoLang::DefaultClass::INTCLASSID:                                                                          \
+		case AutoLang::DefaultClass::intClassId:                                                                          \
 		{                                                                                                                 \
 			auto obj2 = stackAllocator[1];                                                                                \
 			switch (obj2->type)                                                                                           \
 			{                                                                                                             \
-			case AutoLang::DefaultClass::INTCLASSID:                                                                      \
+			case AutoLang::DefaultClass::intClassId:                                                                      \
 				return manager.create((obj1->i)op(obj2->i));                                                              \
-			case AutoLang::DefaultClass::FLOATCLASSID:                                                                    \
+			case AutoLang::DefaultClass::floatClassId:                                                                    \
 				return manager.create((obj1->i)op(obj2->f));                                                              \
 			default:                                                                                                      \
 				if (obj2->type == AutoLang::DefaultClass::stringClassId)                                                  \
-					return manager.create(AString::plus((obj1->i), (static_cast<AString *>(obj2->ref))));                 \
+					return manager.create(AString::plus((obj1->i), (obj2->str)));                 \
 				else                                                                                                      \
 					break;                                                                                                \
 			}                                                                                                             \
 			break;                                                                                                        \
 		}                                                                                                                 \
-		case AutoLang::DefaultClass::FLOATCLASSID:                                                                        \
+		case AutoLang::DefaultClass::floatClassId:                                                                        \
 		{                                                                                                                 \
 			auto obj2 = stackAllocator[1];                                                                                \
 			switch (obj2->type)                                                                                           \
 			{                                                                                                             \
-			case AutoLang::DefaultClass::INTCLASSID:                                                                      \
+			case AutoLang::DefaultClass::intClassId:                                                                      \
 				return manager.create((obj1->f)op(obj2->i));                                                              \
-			case AutoLang::DefaultClass::FLOATCLASSID:                                                                    \
+			case AutoLang::DefaultClass::floatClassId:                                                                    \
 				return manager.create((obj1->f)op(obj2->f));                                                              \
 			default:                                                                                                      \
 				if (obj2->type == AutoLang::DefaultClass::stringClassId)                                                  \
-					return manager.create(AString::plus((obj1->f), (static_cast<AString *>(obj2->ref))));                 \
+					return manager.create(AString::plus((obj1->f), (obj2->str)));                 \
 				else                                                                                                      \
 					break;                                                                                                \
 			}                                                                                                             \
@@ -86,13 +86,13 @@ namespace AutoLang
 			{                                                                                                             \
 				switch (obj2->type)                                                                                       \
 				{                                                                                                         \
-				case AutoLang::DefaultClass::INTCLASSID:                                                                  \
-					return manager.create((*static_cast<AString *>(obj1->ref))op(obj2->i));                               \
-				case AutoLang::DefaultClass::FLOATCLASSID:                                                                \
-					return manager.create((*static_cast<AString *>(obj1->ref))op(obj2->f));                               \
+				case AutoLang::DefaultClass::intClassId:                                                                  \
+					return manager.create((*obj1->str)op(obj2->i));                               \
+				case AutoLang::DefaultClass::floatClassId:                                                                \
+					return manager.create((*obj1->str)op(obj2->f));                               \
 				default:                                                                                                  \
 					if (obj2->type == AutoLang::DefaultClass::stringClassId)                                              \
-						return manager.create((*static_cast<AString *>(obj1->ref))op(static_cast<AString *>(obj2->ref))); \
+						return manager.create((*obj1->str)op(obj2->str)); \
 					else                                                                                                  \
 						break;                                                                                            \
 				}                                                                                                         \
@@ -112,38 +112,89 @@ namespace AutoLang
 		auto obj1 = stackAllocator[0];                       \
 		switch (obj1->type)                                  \
 		{                                                    \
-		case AutoLang::DefaultClass::INTCLASSID:             \
+		case AutoLang::DefaultClass::intClassId:             \
 		{                                                    \
 			auto obj2 = stackAllocator[1];                   \
 			switch (obj2->type)                              \
 			{                                                \
-			case AutoLang::DefaultClass::INTCLASSID:         \
+			case AutoLang::DefaultClass::intClassId:         \
 				return manager.create((obj1->i)op(obj2->i)); \
-			case AutoLang::DefaultClass::FLOATCLASSID:       \
+			case AutoLang::DefaultClass::floatClassId:       \
 				return manager.create((obj1->i)op(obj2->f)); \
 			default:                                         \
 				break;                                       \
 			}                                                \
 			break;                                           \
 		}                                                    \
-		case AutoLang::DefaultClass::FLOATCLASSID:           \
+		case AutoLang::DefaultClass::floatClassId:           \
 		{                                                    \
 			auto obj2 = stackAllocator[1];                   \
 			switch (obj2->type)                              \
 			{                                                \
-			case AutoLang::DefaultClass::INTCLASSID:         \
+			case AutoLang::DefaultClass::intClassId:         \
 				return manager.create((obj1->f)op(obj2->i)); \
-			case AutoLang::DefaultClass::FLOATCLASSID:       \
+			case AutoLang::DefaultClass::floatClassId:       \
 				return manager.create((obj1->f)op(obj2->f)); \
 			default:                                         \
 				break;                                       \
 			}                                                \
 			break;                                           \
 		}                                                    \
-		default:                                             \
 			break;                                           \
 		}                                                    \
 		return nullptr;                                      \
+	}
+
+	#define create_operator_eq_value(name, op)                        \
+	AObject *name(NativeFuncInData)                          \
+	{                                                        \
+		if (size != 2)                                       \
+			return nullptr;                                  \
+		auto obj1 = stackAllocator[0];                       \
+		switch (obj1->type)                                  \
+		{                                                    \
+		case AutoLang::DefaultClass::intClassId:             \
+		{                                                    \
+			auto obj2 = stackAllocator[1];                   \
+			switch (obj2->type)                              \
+			{                                                \
+			case AutoLang::DefaultClass::intClassId:         \
+				return manager.create((obj1->i)op(obj2->i)); \
+			case AutoLang::DefaultClass::floatClassId:       \
+				return manager.create((obj1->i)op(obj2->f)); \
+			default:                                         \
+				break;                                       \
+			}                                                \
+			break;                                           \
+		}                                                    \
+		case AutoLang::DefaultClass::floatClassId:           \
+		{                                                    \
+			auto obj2 = stackAllocator[1];                   \
+			switch (obj2->type)                              \
+			{                                                \
+			case AutoLang::DefaultClass::intClassId:         \
+				return manager.create((obj1->f)op(obj2->i)); \
+			case AutoLang::DefaultClass::floatClassId:       \
+				return manager.create((obj1->f)op(obj2->f)); \
+			default:                                         \
+				break;                                       \
+			}                                                \
+			break;                                           \
+		}                                                    \
+			break;                                           \
+		}                                                    \
+		auto obj2 = stackAllocator[1];\
+		if (obj1->type == AutoLang::DefaultClass::boolClassId &&    \
+			obj2->type == AutoLang::DefaultClass::boolClassId)      \
+		{                                                              \
+			return manager.create((obj1->b)op(obj2->b)); \
+		}                                                              \
+		if (obj1->type == AutoLang::DefaultClass::stringClassId &&  \
+			obj2->type == AutoLang::DefaultClass::stringClassId)    \
+		{                                                              \
+			return manager.create((*obj1->str)op(obj2->str));         \
+		}                                                              \
+		return nullptr;                                                \
 	}
 
 		AObject *mod(NativeFuncInData)
@@ -152,26 +203,26 @@ namespace AutoLang
 			auto obj2 = stackAllocator[1];
 			switch (obj1->type)
 			{
-			case AutoLang::DefaultClass::INTCLASSID:
+			case AutoLang::DefaultClass::intClassId:
 			{
 				switch (obj2->type)
 				{
-				case AutoLang::DefaultClass::INTCLASSID:
+				case AutoLang::DefaultClass::intClassId:
 					return manager.create((obj1->i) % (obj2->i));
-				case AutoLang::DefaultClass::FLOATCLASSID:
+				case AutoLang::DefaultClass::floatClassId:
 					return manager.create(static_cast<double>(std::fmod((obj1->i), (obj2->f))));
 				default:
 					break;
 				}
 				break;
 			}
-			case AutoLang::DefaultClass::FLOATCLASSID:
+			case AutoLang::DefaultClass::floatClassId:
 			{
 				switch (obj2->type)
 				{
-				case AutoLang::DefaultClass::INTCLASSID:
+				case AutoLang::DefaultClass::intClassId:
 					return manager.create(static_cast<double>(std::fmod((obj1->f), (obj2->i))));
-				case AutoLang::DefaultClass::FLOATCLASSID:
+				case AutoLang::DefaultClass::floatClassId:
 					return manager.create(static_cast<double>(std::fmod((obj1->f), (obj2->f))));
 				default:
 					break;
@@ -190,11 +241,11 @@ namespace AutoLang
 			auto obj2 = stackAllocator[1];
 			switch (obj1->type)
 			{
-			case AutoLang::DefaultClass::INTCLASSID:
+			case AutoLang::DefaultClass::intClassId:
 			{
 				switch (obj2->type)
 				{
-				case AutoLang::DefaultClass::INTCLASSID:
+				case AutoLang::DefaultClass::intClassId:
 					return manager.create((obj1->i) & (obj2->i));
 				default:
 					break;
@@ -213,11 +264,11 @@ namespace AutoLang
 			auto obj2 = stackAllocator[1];
 			switch (obj1->type)
 			{
-			case AutoLang::DefaultClass::INTCLASSID:
+			case AutoLang::DefaultClass::intClassId:
 			{
 				switch (obj2->type)
 				{
-				case AutoLang::DefaultClass::INTCLASSID:
+				case AutoLang::DefaultClass::intClassId:
 					return manager.create((obj1->i) | (obj2->i));
 				default:
 					break;
@@ -244,14 +295,14 @@ namespace AutoLang
 		auto obj2 = stackAllocator[1];                 \
 		switch (obj1->type)                            \
 		{                                              \
-		case AutoLang::DefaultClass::INTCLASSID:       \
+		case AutoLang::DefaultClass::intClassId:       \
 		{                                              \
 			switch (obj2->type)                        \
 			{                                          \
-			case AutoLang::DefaultClass::INTCLASSID:   \
+			case AutoLang::DefaultClass::intClassId:   \
 				obj1->i op obj2->i;                    \
 				return nullptr;                        \
-			case AutoLang::DefaultClass::FLOATCLASSID: \
+			case AutoLang::DefaultClass::floatClassId: \
 				obj1->i op obj2->f;                    \
 				return nullptr;                        \
 			default:                                   \
@@ -260,14 +311,14 @@ namespace AutoLang
 			}                                          \
 			break;                                     \
 		}                                              \
-		case AutoLang::DefaultClass::FLOATCLASSID:     \
+		case AutoLang::DefaultClass::floatClassId:     \
 		{                                              \
 			switch (obj2->type)                        \
 			{                                          \
-			case AutoLang::DefaultClass::INTCLASSID:   \
+			case AutoLang::DefaultClass::intClassId:   \
 				obj1->f op obj2->i;                    \
 				return nullptr;                        \
-			case AutoLang::DefaultClass::FLOATCLASSID: \
+			case AutoLang::DefaultClass::floatClassId: \
 				obj1->f op obj2->f;                    \
 				return nullptr;                        \
 			default:                                   \
@@ -293,14 +344,14 @@ namespace AutoLang
 		auto obj2 = stackAllocator[1];                 \
 		switch (obj1->type)                            \
 		{                                              \
-		case AutoLang::DefaultClass::INTCLASSID:       \
+		case AutoLang::DefaultClass::intClassId:       \
 		{                                              \
 			switch (obj2->type)                        \
 			{                                          \
-			case AutoLang::DefaultClass::INTCLASSID:   \
+			case AutoLang::DefaultClass::intClassId:   \
 				obj1->i op obj2->i;                    \
 				return nullptr;                        \
-			case AutoLang::DefaultClass::FLOATCLASSID: \
+			case AutoLang::DefaultClass::floatClassId: \
 				obj1->i op obj2->f;                    \
 				return nullptr;                        \
 			default:                                   \
@@ -309,14 +360,14 @@ namespace AutoLang
 			}                                          \
 			break;                                     \
 		}                                              \
-		case AutoLang::DefaultClass::FLOATCLASSID:     \
+		case AutoLang::DefaultClass::floatClassId:     \
 		{                                              \
 			switch (obj2->type)                        \
 			{                                          \
-			case AutoLang::DefaultClass::INTCLASSID:   \
+			case AutoLang::DefaultClass::intClassId:   \
 				obj1->f op obj2->i;                    \
 				return nullptr;                        \
-			case AutoLang::DefaultClass::FLOATCLASSID: \
+			case AutoLang::DefaultClass::floatClassId: \
 				obj1->f op obj2->f;                    \
 				return nullptr;                        \
 			default:                                   \
@@ -339,10 +390,10 @@ namespace AutoLang
 			auto obj = stackAllocator[0];
 			switch (obj->type)
 			{
-			case AutoLang::DefaultClass::INTCLASSID:
+			case AutoLang::DefaultClass::intClassId:
 				++obj->i;
 				break;
-			case AutoLang::DefaultClass::FLOATCLASSID:
+			case AutoLang::DefaultClass::floatClassId:
 				++obj->f;
 				break;
 			default:
@@ -356,10 +407,10 @@ namespace AutoLang
 			auto obj = stackAllocator[0];
 			switch (obj->type)
 			{
-			case AutoLang::DefaultClass::INTCLASSID:
+			case AutoLang::DefaultClass::intClassId:
 				--obj->i;
 				break;
-			case AutoLang::DefaultClass::FLOATCLASSID:
+			case AutoLang::DefaultClass::floatClassId:
 				--obj->f;
 				break;
 			default:
@@ -373,9 +424,9 @@ namespace AutoLang
 			auto obj = stackAllocator[0];
 			switch (obj->type)
 			{
-			case AutoLang::DefaultClass::INTCLASSID:
+			case AutoLang::DefaultClass::intClassId:
 				return manager.create(-obj->i);
-			case AutoLang::DefaultClass::FLOATCLASSID:
+			case AutoLang::DefaultClass::floatClassId:
 				return manager.create(-obj->f);
 			default:
 				if (obj->type == AutoLang::DefaultClass::boolClassId)
@@ -418,8 +469,8 @@ namespace AutoLang
 		create_operator_number(op_greater_than, >);
 		create_operator_number(op_less_than_eq, <=);
 		create_operator_number(op_greater_than_eq, >=);
-		create_operator_number(op_eqeq, ==);
-		create_operator_number(op_not_eq, !=);
+		create_operator_eq_value(op_eqeq, ==);
+		create_operator_eq_value(op_not_eq, !=);
 
 	}
 }

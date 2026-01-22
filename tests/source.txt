@@ -1,13 +1,22 @@
-class Person(var name: String, var age: Int, val id: Float) 
+class Person(var name: String, var age: Int, val id: Float) {}
 
-class PersonNode(var prev: PersonNode?, var currentPerson: Person, var next: PersonNode?){
-    
+class PersonNode(var prev: PersonNode?, var currentPerson: Person, var next: PersonNode?) {
+
 }
 //hi
-class ListPerson() {
+class ListPerson {
 	private var beginNode: PersonNode? = null
     public var size: Int = 0
-    func begin(): PersonNode {
+    constructor (a: Int) {
+        println("hello "+a)
+        if (a == 5) {
+            return
+        }
+    }
+    constructor (a: String) {
+        println("hello ${a}")
+    }
+    func begin(): PersonNode? {
     	return beginNode
     }
     func addPerson(person: Person) {
@@ -16,7 +25,7 @@ class ListPerson() {
         	beginNode = PersonNode(null, person, null)
             return
         }
-        var currentNode? = beginNode!
+        var currentNode? = beginNode
         while (currentNode.next != null) {
         	currentNode = currentNode.next
         }
@@ -33,7 +42,7 @@ class ListPerson() {
             beginNode.prev = null
             return
         }
-        var currentNode = beginNode
+        var currentNode? = beginNode
         for (val i in 0..<index - 1) {
         	currentNode = currentNode.next
         }
@@ -42,8 +51,9 @@ class ListPerson() {
     }
 }
 
-func main(){
-  val listPerson = ListPerson()
+func main(): ListPerson {
+  val listPerson = ListPerson(5)
+  println(getRefCount(listPerson))
 
   for (val i in 0..10) {
       listPerson.addPerson(Person("John " + i, 18 + i, 1.5 + i))
@@ -53,18 +63,36 @@ func main(){
   	listPerson.deletePerson(2)
   }
 
-  var currentNode = listPerson.begin()
+  var currentNode? = listPerson.begin()
 
   for (val i in 0..<listPerson.size) {
       val person = currentNode.currentPerson
       println("User "+person.name+" has age: " + person.age)
       currentNode = currentNode.next
   }
+  return listPerson
 }
-main()
-val a? = 1
-val b = 2
-val c: Int? = 3
-val d: Int = 4
-val e! = 5
-var f? = c!
+val list = main()
+/*
+    OK
+*/
+
+func test() {
+    println(1e5)
+    println(1_000_000)
+    println(3)
+    println(1E+6)
+    println(1E-5)
+    println(1E-5/*5khiotrmgpwreklnfjnfmg wrgnreoi*/)
+    var a: Float? = null
+    val b: Int = a!
+    println(b)
+}
+val a = 5
+println("${"2".toInt() + "3".toInt() * 4}")   // precedence
+println("${!("1".toInt() == 2)}")             // not
+println("${(("5".toInt() > 3) && (2 < 4))}")    // logic
+
+println("2".toInt().toString())
+println(list.begin().next.currentPerson.name)
+println(Person("A", 1, 1.0).name)

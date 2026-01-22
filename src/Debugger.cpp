@@ -11,65 +11,75 @@
 namespace AutoLang
 {
 
-	template <typename T>
-	void build(CompiledProgram &compile, T &data)
+	bool build(CompiledProgram& compile, AVMReadFileMode& mode)
 	{
 		auto startCompiler = std::chrono::high_resolution_clock::now();
 		ParserContext context;
-		context.gotoFunction(compile.mainFunctionId);
-		context.mainFunctionId = compile.mainFunctionId;
+		context.init(compile, mode);
 		context.line = 0;
 		size_t i = 0;
-		try
-		{
-			Lexer::Context lexerContext;
-			context.tokens = Lexer::load(&context, data, lexerContext);
-			auto lexerTime = std::chrono::high_resolution_clock::now();
-			std::cout << "Lexer time : " << std::chrono::duration_cast<std::chrono::milliseconds>(lexerTime - startCompiler).count() << " ms" << '\n';
-			estimate(in_data, lexerContext);
+		Lexer::Context lexerContext;
+		lexerData(in_data, mode, lexerContext);
 
-			context.constValue["null"] = std::pair(DefaultClass::nullObject, 0);
-			context.constValue["true"] = std::pair(DefaultClass::trueObject, 1);
-			context.constValue["false"] = std::pair(DefaultClass::falseObject, 2);
-			// printDebug(context.tokens.size());
-			//  Lexer::Token* token;
-			//  while (i != context.tokens.size()) {
-			//  	token = &context.tokens[i];
-			//  	uint32_t line = token->line;
-			//  	std::cout<<"["<<i<<"] "<<token->toString(context);
-			//  	while (nextTokenSameLine(&token, context.tokens, i, line)) {
-			//  		std::cout<<" "<<token->toString(context);
-			//  	}
-			//  	std::cout<<'\n';
-			//  }
+		auto startParserTime = std::chrono::high_resolution_clock::now();
+		if (!lexerContext.hasError) {
 			i = 0;
 			while (i < context.tokens.size())
 			{
-				auto node = loadLine(in_data, i);
-				++i;
-				if (node == nullptr)
-				{
-					continue;
+				try {
+					auto node = loadLine(in_data, i);
+					ensureEndline(in_data, i);
+					++i;
+					if (node == nullptr) {
+						continue;
+					}
+					context.getCurrentFunctionInfo(in_data)->block.nodes.push_back(node);
 				}
-				context.getCurrentFunctionInfo(in_data)->block.nodes.push_back(node);
+				catch (const std::runtime_error& err) {
+					context.hasError = true;
+					std::cout << "Unexpected exception: " << err.what() << '\n';
+				}
+				catch (const ParserError& err) {
+					context.hasError = true;
+					context.logMessage(err.line, err.message);
+					if (i >= context.tokens.size()) break;
+					uint32_t line = context.tokens[i].line;
+					Lexer::Token* _;
+					while (nextTokenSameLine(&_, context.tokens, i, line));
+				}
 			}
-			auto parserTime = std::chrono::high_resolution_clock::now();
-			std::cout << "Parser time : " << std::chrono::duration_cast<std::chrono::milliseconds>(parserTime - lexerTime).count() << " ms" << '\n';
-			/*context.currentFuncInfo->block.nodes.insert(
-				context.currentFuncInfo->block.nodes.begin(),
-				context.staticNode.begin(),
-				context.staticNode.end()
-			);*/
-			printDebug("-----------------AST Node-----------------\n");
-			resolve(in_data);
-			auto resolveTime = std::chrono::high_resolution_clock::now();
-			std::cout << "Optimize and Putbytecode time : " << std::chrono::duration_cast<std::chrono::milliseconds>(resolveTime - parserTime).count() << " ms" << '\n';
 		}
-		catch (const std::exception &e)
+
+		try {
+			if (!context.hasError) {
+				auto parserTime = std::chrono::high_resolution_clock::now();
+				std::cerr << "Parser time : " << std::chrono::duration_cast<std::chrono::milliseconds>(parserTime - startParserTime).count() << " ms" << '\n';
+
+				printDebug("-----------------AST Node-----------------\n");
+				resolve(in_data);
+				auto resolveTime = std::chrono::high_resolution_clock::now();
+				std::cerr << "Optimize and Putbytecode time : " << std::chrono::duration_cast<std::chrono::milliseconds>(resolveTime - parserTime).count() << " ms" << '\n';
+			}
+		}
+		catch (const std::exception &err)
 		{
-			std::cout << "[" << context.line << ", " << i << "] : " << e.what() << '\n';
+			context.hasError = true;
+			std::cout << "Unexpected exception: " << err.what() << '\n';
+		}
+		catch (const ParserError& err) {
+			context.hasError = true;
+			context.logMessage(err.line, err.message);
 		}
 		freeData(in_data);
+		return !context.hasError;
+	}
+
+	void lexerData(in_func, AVMReadFileMode& mode, Lexer::Context& lexerContext) {
+		auto startLexer = std::chrono::high_resolution_clock::now();
+		context.tokens = Lexer::load(&context, mode, lexerContext);
+		auto lexerTime = std::chrono::high_resolution_clock::now();
+		std::cerr << "Lexer file " << mode.path << " in  " << std::chrono::duration_cast<std::chrono::milliseconds>(lexerTime - startLexer).count() << " ms" << '\n';
+		estimate(in_data, lexerContext);
 	}
 
 	void freeData(in_func)
@@ -77,6 +87,17 @@ namespace AutoLang
 		for (auto &[_, funcInfo] : context.functionInfo)
 		{
 			funcInfo.block.refresh();
+		}
+		// size_t sizeNewClasses = context.newClasses.getSize();
+		// for (size_t i = 0 ; i < sizeNewClasses; ++i) {
+		// 	context.newClasses[i]->body.refresh();
+		// 	context.newClasses[i]->body.nodes.clear();
+		// }
+		// for (size_t i = 0 ; i < context.createConstructorPool.size; ++i) {
+		// 	context.createConstructorPool[i]->body.refresh();
+		// }
+		for (auto* node : context.staticNode) {
+			ExprNode::deleteNode(node);
 		}
 		context.createConstructorPool.refresh();
 		context.newClasses.refresh();
@@ -94,7 +115,7 @@ namespace AutoLang
 		uint32_t estimateDeclaration = lexerContext.estimate.declaration + estimateNewClasses;
 		// uint32_t estimateBinaryNode = lexerContext.estimate.binaryNode;
 
-		context.keywords.reserve(5);
+		context.modifierflags = 0;
 
 		context.createConstructorPool.allocate(estimateNewConstructorNode);
 		context.declarationNodePool.allocate(estimateDeclaration);
@@ -192,7 +213,7 @@ namespace AutoLang
 				for (auto &constructor : classInfo->secondaryConstructor)
 				{
 					auto func = &compile.functions[constructor->funcId];
-					// Put initial bytecodes, example val a = 5 => SetNode
+					// Put initial bytecodes, example val a = 5 => SetNode a and value 5
 					//  node->body.optimize(in_data);
 					node->body.putBytecodes(in_data, func->bytecodes);
 					node->body.rewrite(in_data, func->bytecodes);
@@ -247,11 +268,12 @@ namespace AutoLang
 		if (!nextTokenSameLine(&token, context.tokens, i, line) ||
 			!expect(token, Lexer::TokenType::IDENTIFIER))
 		{
-			throw std::runtime_error("Expected class name but not found");
+			--i;
+			throw ParserError(context.tokens[i].line, "Expected class name but not found");
 		}
 		result.className = context.lexerString[token->indexData];
 		if (result.className == "Null")
-			throw std::runtime_error(result.className + " cannot declarate variable of type Null");
+			throw ParserError(token->line, "Null cannot used as a type for declaration '" + result.className + "'");
 		if (!nextTokenSameLine(&token, context.tokens, i, line) ||
 			!expect(token, Lexer::TokenType::QMARK))
 		{
@@ -265,25 +287,13 @@ namespace AutoLang
 	ExprNode *loadLine(in_func, size_t &i)
 	{
 		Lexer::Token *token = &context.tokens[i];
-		context.keywords.clear();
-	initial:;
+		context.modifierflags = 0;
+		initial:;
 		context.line = token->line;
 		bool isInFunction = !context.currentClassId || context.currentFunctionId != context.mainFunctionId;
 		switch (token->type)
 		{
 		case Lexer::TokenType::LBRACE:
-		{
-			if (context.keywords.size() == 1 && context.keywords[0] == Lexer::TokenType::STATIC)
-			{
-				if (isInFunction)
-				{
-					// std::cerr<<context.currentFunction->name<<'\n';
-					goto err_call_class;
-				}
-				// loadClassInit(in_data, i);
-				return nullptr;
-			}
-		}
 		case Lexer::TokenType::LPAREN:
 		case Lexer::TokenType::LBRACKET:
 		case Lexer::TokenType::NUMBER:
@@ -292,7 +302,6 @@ namespace AutoLang
 		{
 			if (!isInFunction)
 			{
-				throw std::runtime_error("Cannot");
 				goto err_call_func;
 			}
 			return parsePrimary(in_data, i);
@@ -301,10 +310,6 @@ namespace AutoLang
 		case Lexer::TokenType::VAL:
 		{
 			auto node = loadDeclaration(in_data, i);
-			/*if (context.currentClass != nullptr) {
-				context.currentClassInfo->constructor->body.nodes.push_back(node);
-				return nullptr;
-			}*/
 			return node;
 		}
 		case Lexer::TokenType::BREAK:
@@ -313,8 +318,8 @@ namespace AutoLang
 			if (!isInFunction)
 				goto err_call_func;
 			if (!context.canBreakContinue)
-				throw std::runtime_error("Cannot use " + Lexer::Token(0, token->type).toString(context) + " here");
-			return new SkipNode(token->type);
+				throw ParserError(token->line, "'" + Lexer::Token(0, token->type).toString(context) + "' only allowed inside a loop");
+			return new SkipNode(token->type, token->line);
 		}
 		case Lexer::TokenType::IF:
 		{
@@ -346,7 +351,7 @@ namespace AutoLang
 		{
 			if (context.currentFunctionId != context.mainFunctionId)
 			{
-				throw std::runtime_error("Cannot declare function in function");
+				throw ParserError(token->line, "Cannot declare function in function");
 			}
 			auto node = loadFunc(in_data, i);
 			return nullptr;
@@ -355,16 +360,15 @@ namespace AutoLang
 		{
 			if (isInFunction)
 			{
-				throw std::runtime_error("Cannot declare constructor in function");
+				throw ParserError(token->line, "Cannot declare constructor in function");
 			}
 			loadConstructor(in_data, i);
 			return nullptr;
 		}
 		case Lexer::TokenType::CLASS:
 		{
-			if (context.currentClassId)
-			{
-				throw std::runtime_error("Cannot declare class in class");
+			if (context.currentClassId) {
+				throw ParserError(token->line, "Cannot declare class in class");
 			}
 			auto node = loadClass(in_data, i);
 			return nullptr;
@@ -372,41 +376,87 @@ namespace AutoLang
 		case Lexer::TokenType::RETURN:
 		{
 			if (!isInFunction)
-				throw std::runtime_error("Cannot call return outside function");
+				throw ParserError(token->line, "Cannot call return outside function");
 			return loadReturn(in_data, i);
 		}
 		case Lexer::TokenType::PUBLIC:
+		{
+			if (isInFunction)
+				throw ParserError(token->line, "'public' can only be used for class members");
+			if (context.modifierflags & ModifierFlags::PUBLIC)
+				throw ParserError(token->line, "Duplicate modifier 'public'");
+			if (context.modifierflags & ModifierFlags::PRIVATE)
+				throw ParserError(token->line, "Invalid modifier combination: 'public' and 'private'");
+			if (context.modifierflags & ModifierFlags::PROTECTED)
+				throw ParserError(token->line, "Invalid modifier combination: 'public' and 'protected'");
+			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
+				--i;
+				throw ParserError(context.tokens[i].line, "'public' must be followed by a declaration");
+			}
+			context.modifierflags |= ModifierFlags::PUBLIC;
+			goto initial;
+		}
 		case Lexer::TokenType::PRIVATE:
+		{
+			if (isInFunction)
+				throw ParserError(token->line, "'private' can only be used for class members");
+			if (context.modifierflags & ModifierFlags::PRIVATE)
+				throw ParserError(token->line, "Duplicate modifier 'private'");
+			if (context.modifierflags & ModifierFlags::PUBLIC)
+				throw ParserError(token->line, "Invalid modifier combination: 'private' and 'public'");
+			if (context.modifierflags & ModifierFlags::PROTECTED)
+				throw ParserError(token->line, "Invalid modifier combination: 'private' and 'protected'");
+			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
+				--i;
+				throw ParserError(context.tokens[i].line, "'private' must be followed by a declaration");
+			}
+			context.modifierflags |= ModifierFlags::PRIVATE;
+			goto initial;
+		}
 		case Lexer::TokenType::PROTECTED:
 		{
 			if (isInFunction)
-				throw std::runtime_error("Cannot call keyword '" + token->toString(context) + "'' in function, call it in class ");
-			// PUSH BACK IN NEXT
+				throw ParserError(token->line, "'protected' can only be used for class members");
+			if (context.modifierflags & ModifierFlags::PROTECTED)
+				throw ParserError(token->line, "Duplicate modifier 'protected'");
+			if (context.modifierflags & ModifierFlags::PUBLIC)
+				throw ParserError(token->line, "Invalid modifier combination: 'protected' and 'public'");
+			if (context.modifierflags & ModifierFlags::PRIVATE)
+				throw ParserError(token->line, "Invalid modifier combination: 'protected' and 'private'");
+			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
+				--i;
+				throw ParserError(context.tokens[i].line, "'protected' must be followed by a declaration");
+			}
+			context.modifierflags |= ModifierFlags::PROTECTED;
+			goto initial;
 		}
 		case Lexer::TokenType::STATIC:
 		{
-			context.keywords.emplace_back(token->type);
-			if (!nextToken(&token, context.tokens, i))
-			{
-				throw std::runtime_error("Unexpeted keyword " + token->toString(context));
+			if (context.modifierflags & ModifierFlags::STATIC)
+				throw ParserError(token->line, "Duplicate modifier 'static'");
+			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
+				--i;
+				throw ParserError(context.tokens[i].line, "'static' must be followed by a declaration");
 			}
+			context.modifierflags |= ModifierFlags::STATIC;
 			goto initial;
 		}
 		default:
-			throw std::runtime_error("C1 Unexpected token " + token->toString(context));
+			throw ParserError(token->line, "C1 Unexpected token " + token->toString(context));
 		}
 		++i;
 		return nullptr;
 	err_call_func:;
 		printDebug(context.currentClassId ? compile.classes[*context.currentClassId].name : "None");
-		throw std::runtime_error("Cannot call outside function ");
+		throw ParserError(token->line, "Cannot call command outside function ");
 	err_call_class:;
-		throw std::runtime_error("Cannot call outside class ");
+		throw ParserError(token->line, "Cannot call command outside class ");
 	}
 
 	void loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i, bool createScope)
 	{
 		Lexer::Token *token = &context.tokens[i];
+		uint32_t firstLine = token->line;
 		if (createScope)
 			context.getCurrentFunctionInfo(in_data)->scopes.emplace_back();
 		if (token->type != Lexer::TokenType::LBRACE)
@@ -418,29 +468,54 @@ namespace AutoLang
 		}
 		while (nextToken(&token, context.tokens, i))
 		{
-			switch (token->type)
-			{
-			case Lexer::TokenType::RBRACE:
-			{
+			if (token->type == Lexer::TokenType::RBRACE) {
 				if (createScope)
 					context.getCurrentFunctionInfo(in_data)->popBackScope();
 				return;
 			}
-			default:
-				break;
+			try {
+				auto node = loadLine(in_data, i);
+				ensureEndline(in_data, i);
+				if (node == nullptr)
+					continue;
+				nodes.push_back(node);
 			}
-			auto node = loadLine(in_data, i);
-			if (node == nullptr)
-				continue;
-			nodes.push_back(node);
+			catch (const std::runtime_error& err) {
+				throw err;
+			}
+			catch (const ParserError& err) {
+				context.hasError = true;
+				context.logMessage(err.line, err.message);
+				Lexer::Token* token;
+				uint32_t countScope = 1;
+				while (nextToken(&token, context.tokens, i)) {
+					switch (token->type) {
+						case Lexer::TokenType::LBRACE: {
+							++countScope;
+							break;
+						}
+						case Lexer::TokenType::RBRACE: {
+							--countScope;
+							if (countScope == 0) {
+								if (createScope) {
+									context.getCurrentFunctionInfo(in_data)->popBackScope();
+								}
+								return;
+							}
+							break;
+						}
+					}
+				}
+			}
 		}
-		throw std::runtime_error("Expected }");
+		throw ParserError(firstLine, "Expected } but not found");
 	}
 
 	HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i)
 	{
 		std::unique_ptr<HasClassIdNode> left(parsePrimary(in_data, i));
-		Lexer::Token *token;
+		Lexer::Token *token = &context.tokens[i];
+		uint32_t firstLine = token->line;
 		while (nextToken(&token, context.tokens, i))
 		{
 			switch (token->type)
@@ -460,13 +535,14 @@ namespace AutoLang
 			if (precedence == -1 || precedence < minPrecedence)
 				break;
 			Lexer::TokenType op = token->type;
-			if (!nextToken(&token, context.tokens, i))
+			if (!nextTokenSameLine(&token, context.tokens, i, token->line))
 			{
-				throw std::runtime_error("Expected name but not found");
+				--i;
+				throw ParserError(context.tokens[i].line, "Expected expression after operator but not found");
 			}
 			HasClassIdNode *right = loadExpression(in_data, precedence + 1, i);
 			// auto binaryNode = context.binaryNodePool.push(op, left, right);
-			auto binaryNode = std::make_unique<BinaryNode>(op, left.release(), right);
+			auto binaryNode = std::make_unique<BinaryNode>(firstLine, op, left.release(), right);
 			if (minPrecedence == 0)
 			{
 				auto node = binaryNode->calculate(in_data);
@@ -490,8 +566,11 @@ namespace AutoLang
 		Lexer::Token *token = &context.tokens[i];
 		char openBracket = getOpenBracket(token->type);
 		if (openBracket == '\0')
-			throw std::runtime_error("C2Unexpected token " + token->toString(context));
-		nextToken(&token, context.tokens, i);
+			throw ParserError(token->line, "Unexpected token " + token->toString(context));
+		if (!nextToken(&token, context.tokens, i)) {
+			--i;
+			throw ParserError(0, "Bug: Lexer not ensure close bracket");
+		}
 		token = &context.tokens[i];
 		std::vector<HasClassIdNode *> nodes;
 		switch (token->type)
@@ -502,13 +581,12 @@ namespace AutoLang
 		{
 			if (!isCloseBracket(openBracket, token->type)) {
 				for (auto* node : nodes) delete node;
-				throw std::runtime_error(std::string("Expected token '") + getCloseBracket(openBracket));
+				throw ParserError(token->line, "Bug: Lexer not ensure close bracket");
 			}
 			return nodes;
 		}
 		default:
 			nodes.push_back(loadExpression(in_data, 0, i));
-			// std::cout<<"A "<<i<<'\n';
 			break;
 		}
 		while (nextToken(&token, context.tokens, i))
@@ -522,7 +600,7 @@ namespace AutoLang
 			{
 				if (!isCloseBracket(openBracket, token->type)) {
 					for (auto* node : nodes) delete node;
-					throw std::runtime_error(std::string("Expected token '") + getCloseBracket(openBracket));
+					throw ParserError(token->line, "Bug: Lexer not ensure close bracket");
 				}
 				return nodes;
 			}
@@ -539,7 +617,7 @@ namespace AutoLang
 		}
 		expectedCloseBracket:
 		for (auto* node : nodes) delete node;
-		throw std::runtime_error(std::string("Expected token '") + getCloseBracket(openBracket) + "'");
+		throw ParserError(token->line, "Bug: Lexer not ensure close bracket");
 	}
 
 	std::vector<DeclarationNode *> loadListDeclaration(in_func, size_t &i, bool allowVar)
@@ -558,7 +636,7 @@ namespace AutoLang
 		case Lexer::TokenType::VAL:
 		{
 			if (!allowVar)
-				throw std::runtime_error(token->toString(context) + " isn't allowed here");
+				throw ParserError(token->line, token->toString(context) + " can't be allowed here");
 		}
 		case Lexer::TokenType::IDENTIFIER:
 		{
@@ -566,7 +644,7 @@ namespace AutoLang
 			break;
 		}
 		default:
-			throw std::runtime_error("Expected name but not found");
+			throw ParserError(token->line, "Expected name but not found");
 		}
 		while (nextToken(&token, context.tokens, i))
 		{
@@ -576,26 +654,30 @@ namespace AutoLang
 				if (!expect(token, Lexer::TokenType::VAR) &&
 					!expect(token, Lexer::TokenType::VAL))
 				{
-					throw std::runtime_error("Expected var or val but not found");
+					--i;
+					throw ParserError(context.tokens[i].line, "Expected var or val but not found");
 				}
 				isVal = token->type == Lexer::TokenType::VAL;
-				if (!nextToken(&token, context.tokens, i))
-					throw std::runtime_error("Expected name but not found");
+				if (!nextToken(&token, context.tokens, i)) {
+					--i;
+					throw ParserError(context.tokens[i].line, "Expected name but not found");
+				}
 			}
 			if (!expect(token, Lexer::TokenType::IDENTIFIER))
 			{
-				throw std::runtime_error("Expected identifier but not found");
+				throw ParserError(token->line, "Expected identifier but not found");
 			}
 			std::string &name = context.lexerString[token->indexData];
 			if (!nextToken(&token, context.tokens, i) ||
 				!expect(token, Lexer::TokenType::COLON))
 			{
-				throw std::runtime_error("Expected ':' but not found");
+				--i;
+				throw ParserError(context.tokens[i].line, "Expected ':' but not found");
 			}
 			auto classDeclaration = loadClassDeclaration(in_data, i, token->line);
 			if (!nextToken(&token, context.tokens, i))
 				break;
-			auto node = context.makeDeclarationNode(in_data, false, name, std::move(classDeclaration.className), isVal, false, classDeclaration.nullable, false);
+			auto node = context.makeDeclarationNode(in_data, token->line, false, name, std::move(classDeclaration.className), isVal, false, classDeclaration.nullable, false);
 			nodes.push_back(node);
 			switch (token->type)
 			{
@@ -613,7 +695,8 @@ namespace AutoLang
 			}
 		}
 	expectedCloseBracket:
-		throw std::runtime_error("Expected token ')' but not found");
+		--i;
+		throw ParserError(0, "Bug: Lexer not ensure close bracket");
 	}
 
 	HasClassIdNode *parsePrimary(in_func, size_t &i)
@@ -626,18 +709,15 @@ namespace AutoLang
 			node.reset(loadIdentifier(in_data, i));
 			break;
 		case Lexer::TokenType::PLUS:
-		{
-			if (!nextToken(&token, context.tokens, i))
-				throw std::runtime_error(std::string("Expected value after '+'"));
-			return parsePrimary(in_data, i);
-		}
-		case Lexer::TokenType::NOT:
+		case Lexer::TokenType::EXMARK:
 		case Lexer::TokenType::MINUS:
 		{
 			auto op = token->type;
-			if (!nextToken(&token, context.tokens, i))
-				throw std::runtime_error(std::string("Expected value after ") + Lexer::Token(0, op).toString(context));
-			auto unaryNode = new UnaryNode(op, parsePrimary(in_data, i));
+			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
+				--i;
+				throw ParserError(context.tokens[i].line, "Expected value after '" + Lexer::Token(0, op).toString(context) + "'");
+			}
+			auto unaryNode = new UnaryNode(token->line, op == Lexer::TokenType::EXMARK ? Lexer::TokenType::NOT : op, parsePrimary(in_data, i));
 			auto calculated = unaryNode->calculate(in_data);
 			if (calculated == nullptr)
 				return unaryNode;
@@ -652,7 +732,7 @@ namespace AutoLang
 		}
 		case Lexer::TokenType::STRING:
 		{
-			node.reset(new ConstValueNode(context.lexerString[token->indexData]));
+			node.reset(new ConstValueNode(token->line, context.lexerString[token->indexData]));
 			break;
 		}
 		case Lexer::TokenType::LPAREN:
@@ -664,13 +744,15 @@ namespace AutoLang
 			{
 				for (auto *i : list)
 					ExprNode::deleteNode(i);
-				throw std::runtime_error("Expected value");
+				if (list.size() == 0) 
+					throw ParserError(token->line, "Expected value but empty bracket found");
+				throw ParserError(token->line, "Expected value but arguments found");
 			}
 			node.reset(list[0]);
 			break;
 		}
 		default:
-			throw std::runtime_error("Expected value");
+			throw ParserError(token->line, "Expected value but token '" + token->toString(context) + "' found" );
 		}
 		while (true)
 		{
@@ -683,32 +765,13 @@ namespace AutoLang
 				if (!nextToken(&token, context.tokens, i) ||
 					!expect(token, Lexer::TokenType::IDENTIFIER))
 				{
-					throw std::runtime_error("Expected identifier after '.' but not found");
+					--i;
+					throw ParserError(context.tokens[i].line, "Expected identifier after '.' but not found");
 				}
 				auto temp = loadIdentifier(in_data, i, false);
-				// switch (temp->kind) {
-				// 	case NodeType::VAR:
-				// 		printDebug("VAR");
-				// 		break;
-				// 	case NodeType::UNKNOW:
-				// 		printDebug("UNKNOW");
-				// 		break;
-				// 	case NodeType::GET_PROP:
-				// 		printDebug("GET_PROP");
-				// 		printDebug(static_cast<GetPropNode*>(temp)->name);
-				// 		printDebug(static_cast<GetPropNode*>(temp)->caller ? static_cast<VarNode*>(static_cast<GetPropNode*>(temp)->caller)->declaration->name : "No caller");
-				// 		break;
-				// 	case NodeType::CONST:
-				// 		printDebug("CONST");
-				// 		break;
-				// 	case NodeType::CALL:
-				// 		printDebug("CALL");
-				// 		break;
-				// }
-
 				if (temp->kind == NodeType::VAR || temp->kind == NodeType::UNKNOW)
 				{
-					node.reset(new GetPropNode(nullptr, context.currentClassId, node.release(), context.lexerString[token->indexData], false, !nextTokenIfMarkNonNull(in_data, i)));
+					node.reset(new GetPropNode(token->line, nullptr, context.currentClassId, node.release(), context.lexerString[token->indexData], false, !nextTokenIfMarkNonNull(in_data, i)));
 					ExprNode::deleteNode(temp);
 					break;
 				}
@@ -723,11 +786,10 @@ namespace AutoLang
 			case Lexer::TokenType::EQUAL:
 			{
 				Lexer::TokenType op = token->type;
-				if (!context.keywords.empty())
-					throw std::runtime_error("Invalid keyword");
 				if (!nextToken(&token, context.tokens, i))
 				{
-					throw std::runtime_error("Expected expression after '=' but not found");
+					--i;
+					throw ParserError(context.tokens[i].line, "Expected expression after '=' but not found");
 				}
 				auto value = loadExpression(in_data, 0, i);
 				switch (node->kind)
@@ -738,23 +800,23 @@ namespace AutoLang
 					if (varNode->declaration->isVal)
 					{
 						ExprNode::deleteNode(value);
-						throw std::runtime_error(varNode->declaration->name + " cannot be changed because val");
+						throw ParserError(token->line, varNode->declaration->name + " cannot be changed because val");
 					}
-					return context.setValuePool.push(varNode, value, op);
+					return context.setValuePool.push(token->line, varNode, value, op);
 				}
 				case NodeType::UNKNOW:
 				{
-					return context.setValuePool.push(node.release(), value, op);
+					return context.setValuePool.push(token->line, node.release(), value, op);
 				}
 				case NodeType::GET_PROP:
 				{
-					return context.setValuePool.push(node.release(), value, op);
+					return context.setValuePool.push(token->line, node.release(), value, op);
 				}
 				default:
 					break;
 				}
 				ExprNode::deleteNode(value);
-				throw std::runtime_error("Invalid assignment target...");
+				throw ParserError(token->line, "Invalid assignment target");
 			}
 			default:
 				goto ret;
@@ -783,30 +845,32 @@ namespace AutoLang
 		{
 			if (!allowAddThis)
 			{
-				return new UnknowNode(context.currentClassId, context.lexerString[identifier->indexData], true);
+				return new UnknowNode(token->line, context.currentClassId, context.lexerString[identifier->indexData], true);
 			}
-			return findIdentifierNode(in_data, context.lexerString[identifier->indexData], true);
+			return findIdentifierNode(in_data, i, context.lexerString[identifier->indexData], true);
 		}
 		bool nullable = true;
 		switch (token->type)
 		{
 		case Lexer::TokenType::LPAREN:
 		{
+			uint32_t firstLine = token->line;
 			auto arguments = loadListArgument(in_data, i);
 			return new CallNode(
-				context.currentClassId, nullptr, context.lexerString[identifier->indexData] + "()", std::move(arguments), context.justFindStatic, !nextTokenIfMarkNonNull(in_data, i)
+				firstLine, context.currentClassId, nullptr, context.lexerString[identifier->indexData] + "()", std::move(arguments), context.justFindStatic, !nextTokenIfMarkNonNull(in_data, i)
 			);
 		}
 		case Lexer::TokenType::LBRACKET:
 		{
-			auto varNode = findVarNode(in_data, context.lexerString[identifier->indexData], true);
+			auto varNode = findVarNode(in_data, i, context.lexerString[identifier->indexData], true);
 			if (varNode->kind != AutoLang::NodeType::VAR) {
 				delete varNode;
-				throw std::runtime_error("Invalid assignment target");
+				throw ParserError(token->line, "Invalid assignment target");
 			}
+			uint32_t firstLine = token->line;
 			auto arguments = loadListArgument(in_data, i);
 			return new CallNode(
-				context.currentClassId, static_cast<AccessNode *>(varNode), "[]", arguments, context.justFindStatic, !nextTokenIfMarkNonNull(in_data, i)
+				firstLine, context.currentClassId, static_cast<AccessNode *>(varNode), "[]", arguments, context.justFindStatic, !nextTokenIfMarkNonNull(in_data, i)
 			);
 		}
 		case Lexer::TokenType::LBRACE:
@@ -825,73 +889,76 @@ namespace AutoLang
 		--i;
 		if (!allowAddThis)
 		{
-			return new UnknowNode(context.currentClassId, context.lexerString[identifier->indexData], nullable);
+			return new UnknowNode(token->line, context.currentClassId, context.lexerString[identifier->indexData], nullable);
 		}
-		return findIdentifierNode(in_data, context.lexerString[identifier->indexData], nullable);
+		return findIdentifierNode(in_data, i, context.lexerString[identifier->indexData], nullable);
 	}
 
-	IfNode *loadIf(in_func, size_t &i)
+	HasClassIdNode *findIdentifierNode(in_func, size_t& i, std::string &name, bool nullable)
 	{
-		if (!context.keywords.empty())
-			throw std::runtime_error("Invalid keyword");
-		IfNode *node = context.ifPool.push(); // IfPool managed
-		Lexer::Token *token;
-		if (!nextToken(&token, context.tokens, i) ||
-			!expect(token, Lexer::TokenType::LPAREN))
-		{
-			throw std::runtime_error("Expected ( after if but not found");
-		}
-		if (!nextToken(&token, context.tokens, i))
-			throw std::runtime_error("Expected expression after if but not found");
-		node->condition = loadExpression(in_data, 0, i);
-		if (!nextToken(&token, context.tokens, i) ||
-			!expect(token, Lexer::TokenType::RPAREN))
-		{
-			throw std::runtime_error("Expected ) but not found");
-		}
-		if (!nextToken(&token, context.tokens, i))
-			throw std::runtime_error("Expected command after if but not found");
-		loadBody(in_data, node->ifTrue.nodes, i);
-		if (!nextToken(&token, context.tokens, i))
-			return node;
-		if (!expect(token, Lexer::TokenType::ELSE))
-		{
-			--i;
-			return node;
-		}
-		if (!nextToken(&token, context.tokens, i))
-			throw std::runtime_error("Expected command after else but not found");
-		node->ifFalse = new BlockNode();
-		loadBody(in_data, node->ifFalse->nodes, i);
-		return node;
+		auto varNode = findVarNode(in_data, i, name, nullable);
+		return varNode ? varNode : new UnknowNode(context.tokens[i].line, context.currentClassId, name, nullable);
 	}
 
-	HasClassIdNode *findIdentifierNode(in_func, std::string &name, bool nullable)
+	HasClassIdNode *findVarNode(in_func, size_t& i, std::string &name, bool nullable)
 	{
-		auto varNode = findVarNode(in_data, name, nullable);
-		return varNode ? varNode : new UnknowNode(context.currentClassId, name, nullable);
-	}
-
-	HasClassIdNode *findVarNode(in_func, std::string &name, bool nullable)
-	{
-		auto constValueNode = findConstValueNode(in_data, name);
+		auto constValueNode = findConstValueNode(in_data, i, name);
 		if (constValueNode != nullptr)
 			return constValueNode;
-		auto node = context.findDeclaration(in_data, name, true);
+		auto node = context.findDeclaration(in_data, context.tokens[i].line, name, true);
 		if (!node) return nullptr;
 		if (static_cast<AccessNode*>(node)->nullable) //#
 			static_cast<AccessNode*>(node)->nullable = nullable;
 		return node;
 	}
 
-	ConstValueNode *findConstValueNode(in_func, std::string &name)
+	ConstValueNode *findConstValueNode(in_func, size_t& i, std::string &name)
 	{
 		auto it = context.constValue.find(name);
 		if (it == context.constValue.end())
 		{
 			return nullptr;
 		}
-		return new ConstValueNode(it->second.first, it->second.second);
+		return new ConstValueNode(context.tokens[i].line, it->second.first, it->second.second);
+	}
+
+	void ensureNoKeyword(in_func, size_t& i) {
+		if (!context.modifierflags) return;
+		throw ParserError(context.tokens[i].line, "Command doesn't support any keyword");
+	}
+
+	Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t& i) {
+		//No keywords
+		if (!context.modifierflags) return Lexer::TokenType::PUBLIC;
+		if (context.modifierflags & ModifierFlags::STATIC)
+			throw ParserError(context.tokens[i].line, "Command doesn't support 'static' keyword");
+		switch (context.modifierflags) {
+			case ModifierFlags::PUBLIC:
+				return Lexer::TokenType::PUBLIC;
+			case ModifierFlags::PRIVATE:
+				return Lexer::TokenType::PRIVATE;
+			case ModifierFlags::PROTECTED:
+				return Lexer::TokenType::PROTECTED;
+			default: throw ParserError(0, "Bug: Parser not ensure one modifier");
+		}
+	}
+
+	void ensureEndline(in_func, size_t& i) {
+		Lexer::Token* token = &context.tokens[i];
+		if (nextTokenSameLine(&token, context.tokens, i, token->line)) {
+			std::string line = token->toString(context);
+			while (nextTokenSameLine(&token, context.tokens, i, token->line)) {
+				if (token->type == Lexer::TokenType::RBRACE) {
+					--i;
+					return;
+				}
+				line += " " + token->toString(context);
+				break;
+			}
+			--i;
+			throw ParserError(context.tokens[i].line, "Command not allowed here because cannot call multi command in a line: "+line);
+		}
+		--i;
 	}
 
 	char getOpenBracket(Lexer::TokenType type)
@@ -922,11 +989,6 @@ namespace AutoLang
 		default:
 			return false;
 		}
-	}
-
-	std::string logLine(Lexer::Token *token)
-	{
-		return std::string("In line ") + std::to_string(token->line) + " : ";
 	}
 
 	int getPrecedence(Lexer::TokenType type)
@@ -970,26 +1032,10 @@ namespace AutoLang
 		}
 	}
 
-	char getCloseBracket(char chr)
-	{
-		switch (chr)
-		{
-		case '(':
-			return ')';
-		case '[':
-			return ']';
-		case '{':
-			return '}';
-		case '<':
-			return '>';
-		}
-		return '\0';
-	}
-
 	ConstValueNode *loadNumber(in_func, size_t &i)
 	{
 		Lexer::Token *token = &context.tokens[i];
-		uint32_t type = AutoLang::DefaultClass::INTCLASSID;
+		uint32_t type = AutoLang::DefaultClass::intClassId;
 		std::string &data = context.lexerString[token->indexData];
 		const char *s = data.c_str();
 		while (*s)
@@ -1000,14 +1046,14 @@ namespace AutoLang
 			case 'e':
 			case 'E':
 			{
-				type = AutoLang::DefaultClass::FLOATCLASSID;
+				type = AutoLang::DefaultClass::floatClassId;
 				goto foundFlag;
 			}
 			}
 			++s;
 		}
 	foundFlag:
-		return type == AutoLang::DefaultClass::INTCLASSID ? new ConstValueNode(static_cast<int64_t>(std::stoll(data))) : new ConstValueNode(static_cast<double>(std::stod(data)));
+		return type == AutoLang::DefaultClass::intClassId ? new ConstValueNode(token->line, static_cast<int64_t>(std::stoll(data))) : new ConstValueNode(token->line, static_cast<double>(std::stod(data)));
 	}
 
 }

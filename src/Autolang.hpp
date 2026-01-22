@@ -1,10 +1,11 @@
 #ifndef AUTOLANG_HPP
 #define AUTOLANG_HPP
 
-#include "Interpreter.cpp"
+#include "./vm/Interpreter.cpp"
 #include "Debugger.cpp"
-#include "AObject.cpp"
-#include "CompiledProgram.cpp"
+#include "./vm/AObject.cpp"
+#include "./vm/CompiledProgram.cpp"
+#include "DebuggerConditionStatement.cpp"
 #include "DebuggerClass.cpp"
 #include "DebuggerDeclaration.cpp"
 #include "DebuggerFunction.cpp"
@@ -18,9 +19,9 @@
 #include "NodeOptimize.cpp"
 #include "NodePutbytecode.cpp"
 #include "ParserContext.cpp"
-#include "StackAllocator.cpp"
-#include "ObjectManager.cpp"
-#include "AreaPool.cpp"
+#include "./vm/StackAllocator.cpp"
+#include "./vm/ObjectManager.cpp"
+#include "./vm/AreaAllocator.cpp"
 #include "libs/Math.cpp"
 
 #endif

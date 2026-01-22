@@ -8,64 +8,72 @@ namespace AutoLang
 {
 
 CreateClassNode* loadClass(in_func, size_t& i) {
-	if (!context.keywords.empty()) {
-		throw std::runtime_error("Invalid keyword");
-	}
-	Lexer::Token *token;
+	ensureNoKeyword(in_data, i);
+	Lexer::Token* token = &context.tokens[i];
+	uint32_t firstLine = token->line;
 	//Name
-	if (!nextToken(&token, context.tokens, i) ||
+	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 		!expect(token, Lexer::TokenType::IDENTIFIER)) {
-		throw std::runtime_error("Expected name but not found");
+		--i;
+		throw ParserError(firstLine, "Expected name but not found");
 	}
 	std::string& name = context.lexerString[token->indexData];
 	//Body class
-	if (!nextToken(&token, context.tokens, i))
-		throw std::runtime_error("Expected body but not found");
-	CreateClassNode* node = context.newClasses.push(name); //NewClasses managed
+	if (!nextToken(&token, context.tokens, i)) {
+		--i;
+		throw ParserError(context.tokens[i].line, "Expected body but not found");
+	}
+	CreateClassNode* node = context.newClasses.push(firstLine, name); //NewClasses managed
 	node->pushClass(in_data);
 	auto lastClass = context.getCurrentClass(in_data);
 	auto clazz = &compile.classes[node->classId];
 	context.gotoClass(clazz);
 
-	auto declarationNode = context.declarationNodePool.push(
-		"this", "", true, false, false
+	auto declarationThis = context.declarationNodePool.push(
+		 firstLine, "this", "", true, false, false
 	);
-	declarationNode->classId = node->classId;
+	declarationThis->classId = node->classId;
+	//'this' is always input at first position
+	declarationThis->id = 0;
 	//Add declaration this
-	context.getCurrentClassInfo(in_data)->declarationThis = declarationNode;
+	context.getCurrentClassInfo(in_data)->declarationThis = declarationThis;
 	//Has PrimaryConstructor
 	// bool hasPrimaryConstructor = false;
 	if (expect(token, Lexer::TokenType::LPAREN)) {
-		context.getCurrentClassInfo(in_data)->primaryConstructor = context.createConstructorPool.push(context.currentClassId, name+"()", loadListDeclaration(in_data, i, true), true, 
+		context.getCurrentClassInfo(in_data)->primaryConstructor = context.createConstructorPool.push(
+			firstLine, *context.currentClassId, name+"()", loadListDeclaration(in_data, i, true), true, 
 			Lexer::TokenType::PUBLIC);
 		context.getCurrentClassInfo(in_data)->primaryConstructor->pushFunction(in_data);
 		compile.functions[context.getCurrentClassInfo(in_data)->primaryConstructor->funcId].maxDeclaration += context.getCurrentClassInfo(in_data)->primaryConstructor->arguments.size();
-	}
-
-	//Body
-	if (!nextToken(&token, context.tokens, i)) {
-		context.gotoClass(lastClass);
-		return node;
+		if (!nextToken(&token, context.tokens, i)) {
+			context.gotoClass(lastClass);
+			--i;
+		}
 	}
 
 	if (expect(token, Lexer::TokenType::LBRACE)) {
-		//'this' declaration
-		declarationNode->id = 0;
-
 		loadBody(in_data, node->body.nodes, i, false);
-
 		//Create constructor if it hasn't constructor
 		if (!context.getCurrentClassInfo(in_data)->primaryConstructor && 
 			context.getCurrentClassInfo(in_data)->secondaryConstructor.empty()) {
-			auto* constructor = context.createConstructorPool.push(
-				context.currentClassId, name+"()", std::vector<DeclarationNode*>{}, false,
+			context.getCurrentClassInfo(in_data)->primaryConstructor = context.createConstructorPool.push(
+				firstLine, *context.currentClassId, name+"()", std::vector<DeclarationNode*>{}, true,
 				Lexer::TokenType::PUBLIC
 			);
-			constructor->pushFunction(in_data);
-			context.getCurrentClassInfo(in_data)->secondaryConstructor.push_back(constructor);
+			context.getCurrentClassInfo(in_data)->primaryConstructor->pushFunction(in_data);
 		}
+
 		context.gotoClass(lastClass);
 	} else {
+		//Create constructor if it hasn't constructor
+		if (!context.getCurrentClassInfo(in_data)->primaryConstructor && 
+			context.getCurrentClassInfo(in_data)->secondaryConstructor.empty()) {
+			context.getCurrentClassInfo(in_data)->primaryConstructor = context.createConstructorPool.push(
+				firstLine, *context.currentClassId, name+"()", std::vector<DeclarationNode*>{}, true,
+				Lexer::TokenType::PUBLIC
+			);
+			context.getCurrentClassInfo(in_data)->primaryConstructor->pushFunction(in_data);
+		}
 		context.gotoClass(lastClass);
 		--i;
 	}
@@ -73,43 +81,49 @@ CreateClassNode* loadClass(in_func, size_t& i) {
 }
 
 void loadConstructor(in_func, size_t& i) {
-	if (!context.keywords.empty())
-		throw std::runtime_error("Invalid keyword");
 	if (context.getCurrentClassInfo(in_data)->primaryConstructor)
-		throw std::runtime_error("Cannot declare constructor in data class");
-	Lexer::Token *token;
+		throw ParserError(context.tokens[i].line, "Cannot declare constructor in data class");
+	Lexer::Token* token = &context.tokens[i];
+	uint32_t firstLine = token->line;
 	//Arguments
 	if (!nextToken(&token, context.tokens, i)) {
-		throw std::runtime_error("Expected ( but not found");
+		--i;
+		throw ParserError(context.tokens[i].line, "Expected ( but not found");
 	}
 	std::vector<DeclarationNode*> listDeclarationNode;
 	if (expect(token, Lexer::TokenType::LPAREN)) {
+		if (firstLine != token->line) {
+			throw ParserError(firstLine, "Expected ( but not found");
+		}
 		listDeclarationNode = loadListDeclaration(in_data, i);
 		if (!nextToken(&token, context.tokens, i)) {
-			throw std::runtime_error("Expected body but not found");
+			--i;
+			throw ParserError(context.tokens[i].line, "Expected body but not found");
 		}
 	}
-	listDeclarationNode.insert(listDeclarationNode.begin(), context.getCurrentClassInfo(in_data)->declarationThis);
+	// listDeclarationNode.insert(listDeclarationNode.begin(), context.getCurrentClassInfo(in_data)->declarationThis);
 	//Body
 	if (!expect(token, Lexer::TokenType::LBRACE)) {
-		throw std::runtime_error("Expected body but not found");
+		--i;
+		throw ParserError(context.tokens[i].line, "Expected body but not found");
 	}
 	//Create constructor
-	auto constructor = context.createConstructorPool.push(context.currentClassId, context.getCurrentClass(in_data)->name + "()", 
-		std::move(listDeclarationNode), false, Lexer::TokenType::PUBLIC);
+	auto constructor = context.createConstructorPool.push(firstLine, *context.currentClassId, context.getCurrentClass(in_data)->name + "()", 
+		std::move(listDeclarationNode), false, getAndEnsureOneAccessModifier(in_data, i));
 	context.getCurrentClassInfo(in_data)->secondaryConstructor.push_back(constructor);
 	constructor->pushFunction(in_data);
-	compile.functions[constructor->funcId].maxDeclaration = constructor->arguments.size();
+	compile.functions[constructor->funcId].maxDeclaration += constructor->arguments.size();
 	context.gotoFunction(constructor->funcId);
 	
 	//Add to scope
 	auto& scope = context.getCurrentFunctionInfo(in_data)->scopes.back();
 	scope["this"] = context.getCurrentClassInfo(in_data)->declarationThis;
 
-	for (size_t j = 1; j < constructor->arguments.size(); ++j) {
+	// context.getCurrentFunctionInfo(in_data)->declaration = 1;
+	for (size_t j = 0; j < constructor->arguments.size(); ++j) {
 		auto* argument = constructor->arguments[j];
 		scope[argument->name] = argument;
-		argument->id = context.getCurrentFunctionInfo(in_data)->declaration++;
+		argument->id = j + 1;
 	}
 	loadBody(in_data, constructor->body.nodes, i, false);
 	context.gotoFunction(context.mainFunctionId);
@@ -117,13 +131,13 @@ void loadConstructor(in_func, size_t& i) {
 
 // void loadClassInit(in_func, size_t& i) {
 // 	if (!context.keywords.empty())
-// 		throw std::runtime_error("Invalid keyword");
+// 		throw ParserError(token->line, "Invalid keyword");
 // 	context.gotoFunction(&compile.functions[context.getCurrentClassInfo(in_data)->initFunction->id]);
 // 	Lexer::Token *token;
 // 	//Body
 // 	if (!nextToken(&token, context.tokens, i) ||
 // 		!expect(token, Lexer::TokenType::LBRACE)) {
-// 		throw std::runtime_error("Expected body but not found");
+// 		throw ParserError(token->line, "Expected body but not found");
 // 	}
 // 	loadBody(in_data, context.getCurrentClassInfo(in_data)->initFunction->body.nodes, i, false);
 // 	context.gotoFunction(context.mainFunction);

@@ -8,13 +8,13 @@ namespace AutoLang {
 
 void DeclarationNode::optimize(in_func) {
 	if (isFunctionExist(in_data, name))
-		throw std::runtime_error("Cannot declare variable with the same name as function name "+name);
+		throwError("Cannot declare variable with the same name as function name "+name);
 	if (isClassExist(in_data, name))
-		throw std::runtime_error("Cannot declare variable with the same name as class name "+name);
+		throwError("Cannot declare variable with the same name as class name "+name);
 	if (!className.empty()) {
 		auto clazz = findClass(in_data, className);
 		if (!clazz)
-			throw std::runtime_error(std::string("Cannot find class name : ") + className);
+			throwError(std::string("Cannot find class name : ") + className);
 		classId = clazz->id;
 	}
 	// printDebug("DeclarationNode: " + name + " is " + compile.classes[classId].name);
@@ -40,14 +40,14 @@ void CreateFuncNode::pushFunction(in_func) {
 
 void CreateFuncNode::optimize(in_func) {
 	if (!contextCallClassId && isDeclarationExist(in_data, name))
-		throw std::runtime_error("Cannot declare function with the same name as declaration name "+name);
+		throwError("Cannot declare function with the same name as declaration name "+name);
 	if (isClassExist(in_data, name))
-		throw std::runtime_error("Cannot declare function with the same name as class name "+name);
+		throwError("Cannot declare function with the same name as class name "+name);
 	auto func = &compile.functions[id];
 	if (!returnClass.empty()) {
 		auto it = compile.classMap.find(returnClass);
 		if (it == compile.classMap.end())
-			throw std::runtime_error("CreateFuncNode: Cannot find class name: "+returnClass);
+			throwError("CreateFuncNode: Cannot find class name: "+returnClass);
 		func->returnId = it->second;
 	} else
 		func->returnId = AutoLang::DefaultClass::nullClassId;
@@ -59,24 +59,25 @@ void CreateFuncNode::optimize(in_func) {
 	auto& listFunc = compile.funcMap[name + "()"];
 	for (auto id:listFunc) {
 		auto f = &compile.functions[id];
-		if (f == func || f->args.size != func->args.size) continue;
+		//id >= func->id because functions[id] will be optimized in the future
+		if (id >= func->id || f->args.size != func->args.size) continue;
 		for (size_t i=0; i<f->args.size; ++i) {
 			if (f->args[i] != func->args[i])
 				continue;
 		}
-		throw std::runtime_error(std::string("Redefined function name : ") + name);
+		throwError("Redefined function : " + func->toString(compile));
 	}
 }
 
 void CreateConstructorNode::pushFunction(in_func) {
-	AClass* clazz = contextCallClassId ? &compile.classes[*contextCallClassId] : nullptr;
-	funcId = compile.registerFunction(
+	AClass* clazz = &compile.classes[classId];
+	funcId = compile.registerFunction<true>(
 		clazz,
 		false,
 		name,
 		std::vector<uint32_t>(arguments.size(), 0),
 		std::vector<bool>(arguments.size(), false),
-		clazz->id,
+		classId,
 		false,
 		isPrimary ? AutoLang::DefaultFunction::data_constructor : nullptr
 	);
@@ -103,9 +104,9 @@ void CreateConstructorNode::pushFunction(in_func) {
 
 void CreateConstructorNode::optimize(in_func) {
 	auto func = &compile.functions[funcId];
-	AClass* clazz = contextCallClassId ? &compile.classes[*contextCallClassId] : nullptr;
+	AClass* clazz = &compile.classes[classId];
 	//Add argument class id
-	auto classInfo = &context.classInfo[clazz->id];
+	auto classInfo = &context.classInfo[classId];
 	for (size_t i=0; i<arguments.size(); ++i) {
 		auto& argument = arguments[i];
 		func->args[i + 1] = argument->classId;
@@ -120,28 +121,30 @@ void CreateConstructorNode::optimize(in_func) {
 	}
 	
 	//Check redefine
-	// printDebug("Name : "+func->name);
-	// printDebug(std::string("Has : ")+(compile.funcMap.find(func->name) != compile.funcMap.end() ? "Ok" : "No"));
+
 	auto& listFunc = compile.funcMap[func->name];
 	for (auto id:listFunc) {
 		auto f = &compile.functions[id];
-		if (f == func || f->args.size != func->args.size) continue;
-		for (size_t i=0; i<f->args.size; ++i) {
+		//id >= funcId because functions[id] will be optimized in the future
+		if (id >= funcId || f->args.size != func->args.size) continue;
+		for (size_t i=1; i<f->args.size; ++i) {
 			if (f->args[i] != func->args[i])
-				continue;
+				goto next;
 		}
-		throw std::runtime_error(std::string("Redefined function name : ") + func->name);
+		throwError("Redefined constructor : "  + func->toString(compile));
+		next:;
 	}
 
 	//Add return bytecodes
 	if (!isPrimary) {
-		// auto funcInfo = &context.functionInfo[func];
 		body.nodes.push_back(context.returnPool.push(
-			func->id,
+			line,
+			funcId,
 			new VarNode(
+				line,
 				classInfo->declarationThis,
 				false,
-				true
+				false
 			)
 		));
 	}
@@ -155,9 +158,9 @@ void CreateClassNode::pushClass(in_func) {
 
 void CreateClassNode::optimize(in_func) {
 	if (isFunctionExist(in_data, name))
-		throw std::runtime_error("Cannot declare class with the same name as function name "+name);
+		throwError("Cannot declare class with the same name as function name "+name);
 	if (isDeclarationExist(in_data, name))
-		throw std::runtime_error("Cannot declare class with the same name as variable name "+name);
+		throwError("Cannot declare class with the same name as variable name "+name);
 	//auto clazz = &compile.classes[classId];
 	body.optimize(in_data);
 }
@@ -174,7 +177,7 @@ bool isClassExist(in_func, std::string& name) {
 }
 
 bool isDeclarationExist(in_func, std::string& name) {
-	return context.findDeclaration(in_data, name, true);
+	return context.findDeclaration(in_data, 0, name, true);
 }
 
 }

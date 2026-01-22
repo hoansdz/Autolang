@@ -82,32 +82,32 @@ namespace AutoLang
 					if (r->classId == AutoLang::DefaultClass::boolClassId)
 					{
 						const bool equal = (l->obj->b == r->obj->b);
-						return new ConstValueNode(result ? equal : !equal);
+						return new ConstValueNode(line, result ? equal : !equal);
 					}
 					else if (r->classId == AutoLang::DefaultClass::nullClassId)
-						return new ConstValueNode(!result);
+						return new ConstValueNode(line, !result);
 				}
 				else if (l->classId == AutoLang::DefaultClass::nullClassId)
 				{
 					if (r->classId == AutoLang::DefaultClass::nullClassId)
 					{
-						return new ConstValueNode(result);
+						return new ConstValueNode(line, result);
 					}
 					else if (r->classId == AutoLang::DefaultClass::boolClassId)
-						return new ConstValueNode(!result);
+						return new ConstValueNode(line, !result);
 				}
-				throw std::runtime_error("What happen");
+				throwError("What happen");
 			}
 			case Lexer::TokenType::AND_AND:
-				return new ConstValueNode(l->obj->b && r->obj->b);
+				return new ConstValueNode(line, l->obj->b && r->obj->b);
 			case Lexer::TokenType::OR_OR:
-				return new ConstValueNode(l->obj->b || r->obj->b);
-				default : throw std::runtime_error("What happen");
+				return new ConstValueNode(line, l->obj->b || r->obj->b);
+				default : throwError("What happen");
 			}
 		}
 		catch (const std::runtime_error &err)
 		{
-			throw std::runtime_error("Cannot use " + Lexer::Token(0, op).toString(context) + " operator with " +
+			throwError("Cannot use " + Lexer::Token(0, op).toString(context) + " operator with " +
 									 compile.classes[l->classId].name + " and " + compile.classes[r->classId].name);
 		}
 	}
@@ -129,13 +129,13 @@ namespace AutoLang
 		{
 			if (left->classId == AutoLang::DefaultClass::boolClassId)
 			{
-				left = CastNode::createAndOptimize(in_data, left, AutoLang::DefaultClass::INTCLASSID);
+				left = CastNode::createAndOptimize(in_data, left, AutoLang::DefaultClass::intClassId);
 			}
 			// std::cout<<compile.classes[left->classId].name<<'\n';
 
 			if (right->classId == AutoLang::DefaultClass::boolClassId)
 			{
-				right = CastNode::createAndOptimize(in_data, right, AutoLang::DefaultClass::INTCLASSID);
+				right = CastNode::createAndOptimize(in_data, right, AutoLang::DefaultClass::intClassId);
 			}
 			break;
 		}
@@ -169,53 +169,62 @@ namespace AutoLang
 		default:
 			break;
 		}
-		if (compile.getTypeResult(left->classId, right->classId, static_cast<uint8_t>(op), classId))
+		if (context.getTypeResult(left->classId, right->classId, static_cast<uint8_t>(op), classId))
 			return;
-		throw std::runtime_error(std::string("Cannot use '") + Lexer::Token(0, op).toString(context) + "' between " +
+		throwError(std::string("Cannot use '") + Lexer::Token(0, op).toString(context) + "' between " +
 								 compile.classes[left->classId].name + " and " + compile.classes[right->classId].name);
 	}
 
 	ConstValueNode *UnaryNode::calculate(in_func)
 	{
-		if (value->kind == NodeType::UNARY)
-		{
-			auto node = static_cast<UnaryNode *>(value);
-			if (node == nullptr || node->op != op)
-				return nullptr;
-			value = node->value;
-			node->value = nullptr;
-			ExprNode::deleteNode(node);
-		}
-		/*if (value->kind == NodeType::BINARY) {
-			auto node = static_cast<BinaryNode*>(value);
-			if (node == nullptr) return nullptr;
-			ExprNode::deleteNode(value);
-			value = node;
-		}*/
+		// if (value->kind == NodeType::UNARY)
+		// {
+		// 	auto node = static_cast<UnaryNode *>(value);
+		// 	if (node->op != op) {
+		// 		return nullptr;
+		// 	}
+		// 	value = node->value;
+		// 	node->value = nullptr;
+		// 	ExprNode::deleteNode(node);
+		// }
 		if (value->kind != NodeType::CONST)
 			return nullptr;
 		auto value = static_cast<ConstValueNode *>(this->value);
 		switch (op)
 		{
-			using namespace AutoLang;
+		using namespace AutoLang;
+		case Lexer::TokenType::PLUS:
+		{
+			switch (value->classId)
+			{
+			case AutoLang::DefaultClass::intClassId:
+			case AutoLang::DefaultClass::floatClassId: {
+				return value;
+			}
+			case AutoLang::DefaultClass::boolClassId: {
+				value->classId = AutoLang::DefaultClass::intClassId;
+				value->i = static_cast<int64_t>(value->obj->b);
+				return value;
+			}
+			default: break;
+			}
+			break;
+		}
 		case Lexer::TokenType::MINUS:
 		{
 			switch (value->classId)
 			{
-			case AutoLang::DefaultClass::INTCLASSID:
+			case AutoLang::DefaultClass::intClassId:
 				value->i = -value->i;
 				return value;
-			case AutoLang::DefaultClass::FLOATCLASSID:
+			case AutoLang::DefaultClass::floatClassId:
 				value->f = -value->f;
 				return value;
-			default:
-				if (value->classId == AutoLang::DefaultClass::boolClassId)
-				{
-					value->classId = AutoLang::DefaultClass::INTCLASSID;
-					value->i = static_cast<int64_t>(-value->obj->b);
-					return value;
-				}
-				break;
+			case AutoLang::DefaultClass::boolClassId:
+				value->classId = AutoLang::DefaultClass::intClassId;
+				value->i = static_cast<int64_t>(-value->obj->b);
+				return value;
+			default: break;
 			}
 			break;
 		}
@@ -224,22 +233,23 @@ namespace AutoLang
 			if (value->classId == AutoLang::DefaultClass::boolClassId)
 			{
 				value->obj = ObjectManager::create(!value->obj->b);
-				value->id = value->obj->b ? 1 : 2;
+				value->id = context.getBoolConstValuePosition(value->obj->b);
 				return value;
 			}
-			if (value->classId == AutoLang::DefaultClass::nullClassId)
-			{
-				value->classId = AutoLang::DefaultClass::boolClassId;
-				value->obj = ObjectManager::create(true);
-				value->id = 1;
-				return value;
-			}
+			// if (value->classId == AutoLang::DefaultClass::nullClassId)
+			// {
+			// 	value->classId = AutoLang::DefaultClass::boolClassId;
+			// 	value->obj = ObjectManager::create(true);
+			// 	value->id = context.getBoolConstValuePosition(true);
+			// 	return value;
+			// }
 			break;
 		}
 		default:
 			break;
 		}
-		throw std::runtime_error("Cannot find operator '" + Lexer::Token(0, op).toString(context) + "'");
+		throwError("Cannot find operator '" + Lexer::Token(0, op).toString(context) + "' with class " + compile.classes[value->classId].name);
+		return nullptr;
 	}
 
 	void UnaryNode::optimize(in_func)
@@ -247,6 +257,25 @@ namespace AutoLang
 		if (value->kind == NodeType::CONST)
 			static_cast<ConstValueNode *>(value)->isLoadPrimary = true;
 		value->optimize(in_data);
+		switch (op) {
+			case Lexer::TokenType::PLUS:
+			case Lexer::TokenType::MINUS: {
+				switch (value->classId) {
+					case DefaultClass::intClassId:
+					case DefaultClass::floatClassId:
+					case DefaultClass::boolClassId: {
+						break;
+					}
+					default: 
+						throwError("Cannot cast class " + compile.classes[value->classId].name + " to number");
+				}
+			}
+			case Lexer::TokenType::NOT: {
+				if (value->classId == DefaultClass::boolClassId) break;
+				throwError("Cannot cast class " + compile.classes[value->classId].name + " to Bool");
+			}
+			default: break;
+		}
 		classId = value->classId;
 	}
 
@@ -256,10 +285,10 @@ namespace AutoLang
 			return;
 		switch (classId)
 		{
-		case AutoLang::DefaultClass::INTCLASSID:
+		case AutoLang::DefaultClass::intClassId:
 			id = compile.registerConstPool<int64_t>(compile.constIntMap, i);
 			return;
-		case AutoLang::DefaultClass::FLOATCLASSID:
+		case AutoLang::DefaultClass::floatClassId:
 			id = compile.registerConstPool<double>(compile.constFloatMap, f);
 			return;
 		default:
@@ -284,10 +313,10 @@ namespace AutoLang
 			{
 				switch (classId)
 				{
-				case AutoLang::DefaultClass::INTCLASSID:
+				case AutoLang::DefaultClass::intClassId:
 					toInt(static_cast<ConstValueNode *>(value));
 					return value;
-				case AutoLang::DefaultClass::FLOATCLASSID:
+				case AutoLang::DefaultClass::floatClassId:
 					toFloat(static_cast<ConstValueNode *>(value));
 					return value;
 				default:
@@ -299,9 +328,9 @@ namespace AutoLang
 				break;
 			}
 		}
-		catch (const std::runtime_error &err)
+		catch (const ParserError &err)
 		{
-			throw std::runtime_error("Cannot cast " + compile.classes[value->classId].name + " to " + compile.classes[classId].name);
+			value->throwError("Cannot cast " + compile.classes[value->classId].name + " to " + compile.classes[classId].name);
 		}
 		return new CastNode(value, classId);
 	}
@@ -322,7 +351,7 @@ namespace AutoLang
 				AClass *clazz = &compile.classes[*contextCallClassId];
 				AClass *lastClass = context.getCurrentClass(in_data);
 				context.gotoClass(clazz);
-				correctNode = context.getCurrentClassInfo(in_data)->findDeclaration(in_data, name);
+				correctNode = context.getCurrentClassInfo(in_data)->findDeclaration(in_data, line, name);
 				context.gotoClass(lastClass);
 				if (correctNode)
 				{
@@ -344,11 +373,11 @@ namespace AutoLang
 					return;
 				}
 			}
-			throw std::runtime_error("UnknowNode: Variable name: " + name + " is not be declarated");
+			throwError("UnknowNode: Variable name: " + name + " is not be declarated");
 		}
 		//Founded class
 		classId = it->second;
-		correctNode = new ClassAccessNode(classId);
+		correctNode = new ClassAccessNode(line, classId);
 	}
 
 	void GetPropNode::optimize(in_func)
@@ -377,7 +406,7 @@ namespace AutoLang
 		}
 		default:
 		{
-			throw std::runtime_error("Cannot find caller");
+			throwError("Cannot find caller");
 		}
 		}
 		auto clazz = &compile.classes[caller->classId];
@@ -388,12 +417,12 @@ namespace AutoLang
 			// Find static member
 			auto it_ = classInfo->staticMember.find(name);
 			if (it_ == classInfo->staticMember.end())
-				throw std::runtime_error("Cannot find member name: " + name);
+				throwError("Cannot find member name: " + name);
 			declaration = it_->second;
 			if (declaration->accessModifier != Lexer::TokenType::PUBLIC &&
 				(!contextCallClassId || *contextCallClassId != clazz->id))
 			{
-				throw std::runtime_error("Cannot access private -a member name '" + name + "'");
+				throwError("Cannot access private -a member name '" + name + "'");
 			}
 			isStatic = true;
 			isVal = declaration->isVal;
@@ -408,9 +437,8 @@ namespace AutoLang
 			if (declaration->accessModifier != Lexer::TokenType::PUBLIC &&
 				(!contextCallClassId || *contextCallClassId != clazz->id))
 			{
-				throw std::runtime_error("Cannot access private member -b name '" + name + "'");
+				throwError("Cannot access private member -b name '" + name + "'");
 			}
-
 			id = it->second;
 			// for (int i = 0; i<clazz->memberId.size(); ++i) {
 			// 	printDebug("MemId: "+std::to_string(clazz->memberId[i]));
@@ -430,7 +458,7 @@ namespace AutoLang
 	{
 		condition->optimize(in_data);
 		if (condition->classId != AutoLang::DefaultClass::boolClassId)
-			throw std::runtime_error("Cannot use expression of type '" + condition->getClassName(in_data) + "' as a condition, expected 'Bool'");
+			throwError("Cannot use expression of type '" + condition->getClassName(in_data) + "' as a condition, expected 'Bool'");
 		ifTrue.optimize(in_data);
 		if (ifFalse)
 			ifFalse->optimize(in_data);
@@ -440,7 +468,7 @@ namespace AutoLang
 	{
 		condition->optimize(in_data);
 		if (condition->classId != AutoLang::DefaultClass::boolClassId)
-			throw std::runtime_error("Cannot use expression of type '" + condition->getClassName(in_data) + "' as a condition, expected 'Bool'");
+			throwError("Cannot use expression of type '" + condition->getClassName(in_data) + "' as a condition, expected 'Bool'");
 		body.optimize(in_data);
 	}
 
@@ -448,11 +476,11 @@ namespace AutoLang
 	{
 		detach->optimize(in_data);
 		// if (detach->isVal)
-		//	throw std::runtime_error("Cannot change because it's val");
+		//	throwError("Cannot change because it's val");
 		from->optimize(in_data);
-		from = CastNode::createAndOptimize(in_data, from, AutoLang::DefaultClass::INTCLASSID);
+		from = CastNode::createAndOptimize(in_data, from, AutoLang::DefaultClass::intClassId);
 		to->optimize(in_data);
-		to = CastNode::createAndOptimize(in_data, to, AutoLang::DefaultClass::INTCLASSID);
+		to = CastNode::createAndOptimize(in_data, to, AutoLang::DefaultClass::intClassId);
 		if (to->kind == NodeType::CONST)
 		{
 			static_cast<ConstValueNode *>(to)->isLoadPrimary = true;
@@ -485,7 +513,7 @@ namespace AutoLang
 			node->isStore = true;
 			if (node->isVal)
 			{
-				throw std::runtime_error("Cannot change " +
+				throwError("Cannot change " +
 										 compile.classes[node->caller->classId].name + "." + node->name +
 										 " because it's val");
 			}
@@ -495,11 +523,11 @@ namespace AutoLang
 			{
 				if (!node->declaration->nullable)
 				{
-					throw std::runtime_error(node->declaration->name + " cannot detach null value, you must declare " + node->declaration->className + "? to can detach null");
+					throwError(node->declaration->name + " cannot detach null value, you must declare " + node->declaration->className + "? to can detach null");
 				}
 				if (op != Lexer::TokenType::EQUAL)
 				{
-					throw std::runtime_error(node->declaration->name + " cannot use operator" + Lexer::Token(0, op).toString(context) + " with null value");
+					throwError(node->declaration->name + " cannot use operator" + Lexer::Token(0, op).toString(context) + " with null value");
 				}
 				return;
 			}
@@ -555,11 +583,11 @@ namespace AutoLang
 			{
 				if (!detachNullable)
 				{
-					throw std::runtime_error(node->declaration->name + " cannot detach null value, you must declare " + node->declaration->className + "? to can detach null");
+					throwError(node->declaration->name + " cannot detach null value, you must declare " + node->declaration->className + "? to can detach null");
 				}
 				if (op != Lexer::TokenType::EQUAL)
 				{
-					throw std::runtime_error(node->declaration->name + " cannot use operator" + Lexer::Token(0, op).toString(context) + " with null value");
+					throwError(node->declaration->name + " cannot use operator" + Lexer::Token(0, op).toString(context) + " with null value");
 				}
 				return;
 			}
@@ -572,7 +600,7 @@ namespace AutoLang
 		}
 		default:
 		{
-			throw std::runtime_error("This node cannot detach");
+			throwError("This node cannot detach");
 		}
 		}
 		switch (value->kind)
@@ -595,7 +623,7 @@ namespace AutoLang
 				} else {
 					detachName = static_cast<AccessNode*>(detach)->declaration->name;
 				}
-				throw std::runtime_error("Cannot detach nullable variable " + static_cast<AccessNode*>(value)->declaration->name + " to nonnull variable "+ detachName);
+				throwError("Cannot detach nullable variable " + static_cast<AccessNode*>(value)->declaration->name + " to nonnull variable "+ detachName);
 			}
 			break;
 		}
@@ -607,7 +635,7 @@ namespace AutoLang
 				} else {
 					detachName = static_cast<AccessNode*>(detach)->declaration->name;
 				}
-				throw std::runtime_error("Cannot detach nullable value " + static_cast<CallNode*>(value)->name + " to nonnull variable "+ detachName);
+				throwError("Cannot detach nullable value " + static_cast<CallNode*>(value)->name + " to nonnull variable "+ detachName);
 			}
 			break;
 		}
@@ -620,8 +648,8 @@ namespace AutoLang
 			{
 				switch (detach->classId)
 				{
-				case AutoLang::DefaultClass::INTCLASSID:
-				case AutoLang::DefaultClass::FLOATCLASSID:
+				case AutoLang::DefaultClass::intClassId:
+				case AutoLang::DefaultClass::floatClassId:
 					return;
 				default:
 					if (detach->classId == AutoLang::DefaultClass::stringClassId &&
@@ -629,15 +657,15 @@ namespace AutoLang
 						return;
 					break;
 				}
-				throw std::runtime_error("Cannot use " + Lexer::Token(0, op).toString(context) + " operator with " +
+				throwError("Cannot use " + Lexer::Token(0, op).toString(context) + " operator with " +
 										 compile.classes[detach->classId].name + " and " + compile.classes[value->classId].name);
 			}
 			return;
 		}
-		if ((detach->classId == AutoLang::DefaultClass::INTCLASSID ||
-			 detach->classId == AutoLang::DefaultClass::FLOATCLASSID) &&
-			(value->classId == AutoLang::DefaultClass::INTCLASSID ||
-			 value->classId == AutoLang::DefaultClass::FLOATCLASSID))
+		if ((detach->classId == AutoLang::DefaultClass::intClassId ||
+			 detach->classId == AutoLang::DefaultClass::floatClassId) &&
+			(value->classId == AutoLang::DefaultClass::intClassId ||
+			 value->classId == AutoLang::DefaultClass::floatClassId))
 		{
 			if (value->kind != NodeType::CONST)
 			{
@@ -649,35 +677,35 @@ namespace AutoLang
 			{
 				switch (detach->classId)
 				{
-				case AutoLang::DefaultClass::INTCLASSID:
+				case AutoLang::DefaultClass::intClassId:
 					toInt(static_cast<ConstValueNode *>(value));
 					return;
-				case AutoLang::DefaultClass::FLOATCLASSID:
+				case AutoLang::DefaultClass::floatClassId:
 					toFloat(static_cast<ConstValueNode *>(value));
 					return;
 				default:
-					throw std::runtime_error("What happen");
+					throwError("What happen");
 				}
 			}
 			catch (const std::runtime_error &err)
 			{
-				throw std::runtime_error("Cannot cast " + compile.classes[value->classId].name + " to " + compile.classes[detach->classId].name);
+				throwError("Cannot cast " + compile.classes[value->classId].name + " to " + compile.classes[detach->classId].name);
 			}
 		}
 		switch (detach->kind)
 		{
 		case NodeType::VAR:
 		{
-			throw std::runtime_error(static_cast<VarNode *>(detach)->declaration->name + " is declarated is " + compile.classes[detach->classId].name);
+			throwError(static_cast<VarNode *>(detach)->declaration->name + " is declarated is " + compile.classes[detach->classId].name);
 		}
 		case NodeType::GET_PROP:
 		{
 			auto detach_ = static_cast<GetPropNode *>(detach);
-			throw std::runtime_error(compile.classes[detach_->caller->classId].name +
+			throwError(compile.classes[detach_->caller->classId].name +
 									 +"." + detach_->name + " is declarated is " + compile.classes[detach->classId].name);
 		}
 		default:
-			throw std::runtime_error(",Wtf");
+			throwError(",Wtf");
 		}
 	}
 
@@ -722,7 +750,7 @@ namespace AutoLang
 			{
 				isConstructor = true;
 				// Return Id in putbytecode
-				caller = new ClassAccessNode(it->second);
+				caller = new ClassAccessNode(line, it->second);
 				funcName = compile.classes[it->second].name + '.' + name;
 			}
 		}
@@ -749,7 +777,7 @@ namespace AutoLang
 			}
 		}
 		if (count == 0)
-			throw std::runtime_error(std::string("Cannot find function name : ") + funcName);
+			throwError(std::string("Cannot find function name : ") + funcName);
 		bool ambitiousCall = false;
 		uint8_t foundIndex;
 		bool found = false;
@@ -800,26 +828,29 @@ namespace AutoLang
 				argumentsStr += compile.classes[argument->classId].name;
 			}
 			std::string detailFuncError = funcName.insert(funcName.size() - 1, argumentsStr);
-			throw std::runtime_error(std::string("Cannot find function name with arguments : ") + detailFuncError);
+			throwError(std::string("Cannot find function name with arguments : ") + detailFuncError);
 		}
 		if (ambitiousCall)
-			throw std::runtime_error(std::string("Ambitious Call : ") + funcName);
+			throwError(std::string("Ambitious Call : ") + funcName);
 		funcId = first.id;
 		classId = first.func->returnId;
 		auto func = &compile.functions[funcId];
 		auto funcInfo = &context.functionInfo[funcId];
+		
+		nullable = func->returnNullable;
 		if (first.errorNonNullIfMatch)
-			throw std::runtime_error(std::string("Cannot input null in non null arguments ") + funcName);
+			throwError(std::string("Cannot input null in non null arguments ") + funcName);
 		if (funcInfo->accessModifier != Lexer::TokenType::PUBLIC &&
 			(!contextCallClassId || *contextCallClassId != funcInfo->clazz->id))
-			throw std::runtime_error("Cannot access private function name '" + funcName + "'");
+			throwError("Cannot access private function name '" + funcName + "'");
 		// Add this
 		if (allowPrefix && foundIndex == 0)
 		{
 			caller = new VarNode(
+				line,
 				context.classInfo[clazz->id].declarationThis,
 				false,
-				true
+				false
 			);
 			caller->optimize(in_data);
 		}
@@ -831,7 +862,7 @@ namespace AutoLang
 			{
 				bool callerClassId = caller->classId;
 				ExprNode::deleteNode(caller);
-				caller = new ClassAccessNode(callerClassId);
+				caller = new ClassAccessNode(line, callerClassId);
 				break;
 			}
 			case NodeType::GET_PROP:
@@ -858,7 +889,7 @@ namespace AutoLang
 		}
 		if (caller && (caller->kind == NodeType::CLASS || caller->kind == NodeType::UNKNOW) &&
 			!isConstructor && !func->isStatic)
-			throw std::runtime_error(func->name + " is not static function");
+			throwError(func->name + " is not static function");
 	}
 
 	bool CallNode::match(in_func, MatchOverload &match, std::vector<uint32_t> &functions, int &i)
@@ -871,7 +902,7 @@ namespace AutoLang
 			bool skip = false;
 			if (!match.func->isStatic)
 			{
-				if (!caller || (justFindStatic && !isConstructor &&
+				if (!caller || (!isConstructor && justFindStatic &&
 								(caller->kind == NodeType::CLASS || caller->kind == NodeType::UNKNOW)))
 					continue;
 				if (caller->classId != match.func->args[0])
@@ -901,8 +932,8 @@ namespace AutoLang
 							match.errorNonNullIfMatch = !match.func->nullableArgs[j + skip];
 						continue;
 					}
-					else if (inputClassId == AutoLang::DefaultClass::INTCLASSID &&
-							 funcArgClassId == AutoLang::DefaultClass::FLOATCLASSID)
+					else if (inputClassId == AutoLang::DefaultClass::intClassId &&
+							 funcArgClassId == AutoLang::DefaultClass::floatClassId)
 					{
 						++match.score;
 						continue;
@@ -926,12 +957,15 @@ namespace AutoLang
 		auto func = &compile.functions[funcId];
 		if (value) {
 			if (func->returnId == AutoLang::DefaultClass::nullClassId) {
-				throw std::runtime_error("Cannot return value, function return Void");
+				throwError("Cannot return value, function return Void");
 			}
 			value->optimize(in_data);
-			if (value->classId == AutoLang::DefaultClass::nullClassId) {
-				if (!func->returnNullable) {
-					throw std::runtime_error("Cannot return null value");
+			if (!func->returnNullable) {
+				if (value->classId == AutoLang::DefaultClass::nullClassId) {
+					throwError("Cannot return null because functions returns nonnull value");
+				}
+				if (value->isNullable()) {
+					throwError("Cannot return nullable variable because functions returns nonnull value");
 				}
 				return;
 			}
@@ -940,7 +974,7 @@ namespace AutoLang
 			return;
 		}
 		if (func->returnId != AutoLang::DefaultClass::nullClassId) {
-			throw std::runtime_error("Must return value");
+			throwError("Must return value");
 		}
 	}
 
