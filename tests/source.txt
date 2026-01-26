@@ -26,11 +26,11 @@ class ListPerson {
             return
         }
         var currentNode? = beginNode
-        while (currentNode.next != null) {
-        	currentNode = currentNode.next
+        while (currentNode?.next != null) {
+        	currentNode = currentNode?.next
         }
-        currentNode.next = PersonNode(currentNode, person, null)
-        currentNode.next.prev = currentNode
+        currentNode!.next = PersonNode(currentNode, person, null)
+        currentNode!.next!.prev = currentNode
     }
     func deletePerson(index: Int) {
     	if (index >= size) {
@@ -38,16 +38,16 @@ class ListPerson {
         }
         size -= 1
         if (index == 0) {
-        	beginNode = beginNode.next!
-            beginNode.prev = null
+        	beginNode = beginNode?.next!
+            beginNode!.prev = null
             return
         }
         var currentNode? = beginNode
         for (val i in 0..<index - 1) {
-        	currentNode = currentNode.next
+        	currentNode = currentNode?.next
         }
-        currentNode.next = currentNode.next.next
-        currentNode.next.prev = currentNode
+        currentNode!.next = currentNode?.next?.next
+        currentNode!.next!.prev = currentNode
     }
 }
 
@@ -66,9 +66,9 @@ func main(): ListPerson {
   var currentNode? = listPerson.begin()
 
   for (val i in 0..<listPerson.size) {
-      val person = currentNode.currentPerson
-      println("User "+person.name+" has age: " + person.age)
-      currentNode = currentNode.next
+      val person = currentNode?.currentPerson
+      println("User "+person!.name+" has age: " + person!.age)
+      currentNode = currentNode?.next
   }
   return listPerson
 }
@@ -76,6 +76,34 @@ val list = main()
 /*
     OK
 */
+
+class OptionalAccess(var child: OptionalAccess?) {
+    static val a = 7
+	val x = 0
+	val m = 0
+    func hello(value: Int) {
+        println("Hello world nha ${value}")
+    }
+	func get(): Int? {
+		return null
+	}
+}
+
+func testOptionalAccess() {
+    var a: OptionalAccess?
+    a?.hello(1)
+	println(a?.get() ?? 100)
+    a = OptionalAccess(a?.child)
+    a?.hello(2)
+    a?.child?.hello(3)
+    a!.child = OptionalAccess(null)
+    a?.child?.hello(4)
+    println(a?.a)
+    val m:OptionalAccess? = null
+    println(m)
+}
+
+testOptionalAccess()
 
 func test() {
     println(1e5)
@@ -88,11 +116,38 @@ func test() {
     val b: Int = a!
     println(b)
 }
-val a = 5
+
+val x: Int? = null
+println(x ?? 5)
+
 println("${"2".toInt() + "3".toInt() * 4}")   // precedence
 println("${!("1".toInt() == 2)}")             // not
 println("${(("5".toInt() > 3) && (2 < 4))}")    // logic
 
 println("2".toInt().toString())
-println(list.begin().next.currentPerson.name)
+println(list.begin()?.next?.currentPerson.name)
 println(Person("A", 1, 1.0).name)
+
+func side(): Int {
+    println("SIDE")
+    return 10
+}
+
+
+func testqmarkqmark() {
+	var a: Int? = null
+	var b: Int? = 5
+	println(a ?? 1)          // 1
+	println(b ?? 1)          // 5
+	println(a ?? b ?? 7)     // 5
+	println(null ?? a ?? 9)  // 9
+
+	var x: Int? = 3
+	var y: Int? = null
+
+	println(x ?? side())   // 3 (KHÔNG in "SIDE")
+	println(y ?? side())   // SIDE \n 10
+
+}
+
+testqmarkqmark()
