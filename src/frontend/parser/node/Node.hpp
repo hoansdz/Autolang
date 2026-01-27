@@ -10,6 +10,7 @@
 #include "frontend/lexer/Lexer.hpp"
 #include "frontend/parser/node/OptimizeNode.hpp"
 #include "shared/CompiledProgram.hpp"
+#include "shared/Type.hpp"
 
 namespace AutoLang
 {
@@ -69,6 +70,7 @@ namespace AutoLang
 		[[noreturn]] inline void throwError(std::string message);
 		void warning(in_func, std::string message);
 		static void deleteNode(ExprNode *node);
+		virtual ExprNode* resolve(in_func) { return nullptr; }
 		virtual void optimize(in_func) {}
 		virtual void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {};
 		virtual void rewrite(in_func, std::vector<uint8_t> &bytecodes) {}
@@ -78,7 +80,7 @@ namespace AutoLang
 	struct SkipNode : ExprNode
 	{
 		Lexer::TokenType type;
-		uint32_t jumpBytePos;
+		BytecodePos jumpBytePos;
 		SkipNode(Lexer::TokenType type, uint32_t line) : ExprNode(NodeType::SKIP, line), type(type) {}
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes);
 		void rewrite(in_func, std::vector<uint8_t> &bytecodes);
@@ -90,41 +92,39 @@ namespace AutoLang
 		BlockNode(uint32_t line) : ExprNode(NodeType::BLOCK, line) {}
 		void optimize(in_func);
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes);
-		void rewrite(in_func, std::vector<uint8_t> &bytecodes)
-		{
-			for (auto *node : nodes)
-				node->rewrite(in_data, bytecodes);
-		}
+		ExprNode* resolve(in_func) override;
+		void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
 		void refresh();
 		~BlockNode();
 	};
 
 	struct CanBreakContinueNode : ExprNode
 	{
-		uint32_t continuePos = 0; // Support "continue" command
-		uint32_t breakPos = 0;	// Support "break" command
+		BytecodePos continuePos = 0; // Support "continue" command
+		BytecodePos breakPos = 0;	// Support "break" command
 		BlockNode body;
 		CanBreakContinueNode(NodeType kind, uint32_t line) : ExprNode(kind, line), body(line) {}
+		ExprNode* resolve(in_func) override { return body.resolve(in_data); };
 		void rewrite(in_func, std::vector<uint8_t> &bytecodes);
 	};
 
 	struct HasClassIdNode : ExprNode
 	{
-		uint32_t classId;
+		ClassId classId;
 		inline std::string &getClassName(in_func) { return compile.classes[classId].name; }
-		HasClassIdNode(NodeType kind, uint32_t classId, uint32_t line) : ExprNode(kind, line), classId(classId) {}
+		HasClassIdNode(NodeType kind, ClassId classId, uint32_t line) : ExprNode(kind, line), classId(classId) {}
 		virtual bool isNullable() { return false; }
 		virtual ~HasClassIdNode() {}
 	};
 
 	struct NullableNode : HasClassIdNode {
 		bool nullable;
-		NullableNode(NodeType kind, uint32_t classId, bool nullable, uint32_t line) : HasClassIdNode(kind, classId, line), nullable(nullable) {}
+		NullableNode(NodeType kind, ClassId classId, bool nullable, uint32_t line) : HasClassIdNode(kind, classId, line), nullable(nullable) {}
 		bool isNullable() { return nullable; }
 	};
 
 	struct JumpIfNullNode : NullableNode {
-		uint32_t jumpIfNullPos;
+		BytecodePos jumpIfNullPos;
 		bool returnNullIfNull = true;
 		JumpIfNullNode(NodeType kind, uint32_t line) : 
 				NullableNode(kind, 0, true, line) {}
@@ -134,6 +134,7 @@ namespace AutoLang
 		HasClassIdNode* value;
 		OptionalAccessNode(uint32_t line, HasClassIdNode* value) : 
 				JumpIfNullNode(NodeType::OPTIONAL_ACCESS, line), value(value) {}
+		ExprNode* resolve(in_func) override;
 		void optimize(in_func) override;
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 		void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
@@ -145,6 +146,7 @@ namespace AutoLang
 		HasClassIdNode* right;
 		NullCoalescingNode(uint32_t line, HasClassIdNode* left, HasClassIdNode* right) : 
 				JumpIfNullNode(NodeType::NULL_COALESCING, line), left(left), right(right) {}
+		ExprNode* resolve(in_func) override;
 		void optimize(in_func) override;
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 		void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
@@ -154,9 +156,9 @@ namespace AutoLang
 	struct UnknowNode : NullableNode
 	{
 		std::string name;
-		std::optional<uint32_t> contextCallClassId;
+		std::optional<ClassId> contextCallClassId;
 		HasClassIdNode *correctNode;
-		UnknowNode(uint32_t line, std::optional<uint32_t> contextCallClassId, std::string name, bool nullable) : 
+		UnknowNode(uint32_t line, std::optional<ClassId> contextCallClassId, std::string name, bool nullable) : 
 				NullableNode(NodeType::UNKNOW, 0, nullable, line), name(std::move(name)), contextCallClassId(contextCallClassId), correctNode(nullptr) {}
 		bool isNullable() override { return correctNode->isNullable(); }
 		void optimize(in_func) override;
@@ -176,7 +178,7 @@ namespace AutoLang
 		DeclarationNode *declaration;
 		bool isStore;
 		bool isVal;
-		AccessNode(NodeType kind, uint32_t line, DeclarationNode *declaration, bool nullable, uint32_t classId = 0, bool isVal = false, bool isStore = false) : 
+		AccessNode(NodeType kind, uint32_t line, DeclarationNode *declaration, bool nullable, ClassId classId = 0, bool isVal = false, bool isStore = false) : 
 				NullableNode(kind, classId, nullable, line), declaration(declaration), isStore(isStore), isVal(isVal) {}
 	};
 
@@ -206,9 +208,10 @@ namespace AutoLang
 	struct ReturnNode : ExprNode
 	{
 		// Current function
-		uint32_t funcId;
+		Offset funcId;
 		HasClassIdNode *value;
-		ReturnNode(uint32_t line, uint32_t funcId, HasClassIdNode *value) : ExprNode(NodeType::RET, line), funcId(funcId), value(value) {}
+		ReturnNode(uint32_t line, Offset funcId, HasClassIdNode *value) : ExprNode(NodeType::RET, line), funcId(funcId), value(value) {}
+		// ExprNode* resolve(in_func) override;
 		void optimize(in_func) override;
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 		inline void rewrite(in_func, std::vector<uint8_t> &bytecodes) override { if(value) value->rewrite(in_data, bytecodes); }
@@ -221,6 +224,7 @@ namespace AutoLang
 		Lexer::TokenType op;
 		UnaryNode(uint32_t line, Lexer::TokenType op, HasClassIdNode *value) : HasClassIdNode(NodeType::UNARY, 0, line), value(value), op(op) {}
 		ConstValueNode *calculate(in_func);
+		// ExprNode* resolve(in_func) override;
 		void optimize(in_func) override;
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 		inline void rewrite(in_func, std::vector<uint8_t> &bytecodes) override { value->rewrite(in_data, bytecodes); }
@@ -237,6 +241,7 @@ namespace AutoLang
 					HasClassIdNode(NodeType::BINARY, 0, line), op(op), left(left), right(right) {}
 		// Calculate
 		ConstValueNode *calculate(in_func);
+		// ExprNode* resolve(in_func) override;
 		void optimize(in_func);
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes);
 		inline void rewrite(in_func, std::vector<uint8_t> &bytecodes) override { left->rewrite(in_data, bytecodes); right->rewrite(in_data, bytecodes); }
@@ -246,8 +251,9 @@ namespace AutoLang
 	struct CastNode : NullableNode
 	{ //#
 		HasClassIdNode *value;
-		CastNode(HasClassIdNode *value, uint32_t classId) : NullableNode(NodeType::CAST, classId, false, value->line), value(value) {}
-		static HasClassIdNode *createAndOptimize(in_func, HasClassIdNode *value, uint32_t classId);
+		CastNode(HasClassIdNode *value, ClassId classId) : NullableNode(NodeType::CAST, classId, false, value->line), value(value) {}
+		static HasClassIdNode *createAndOptimize(in_func, HasClassIdNode *value, ClassId classId);
+		// ExprNode* resolve(in_func) override;
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes);
 		inline void rewrite(in_func, std::vector<uint8_t> &bytecodes) override { value->rewrite(in_data, bytecodes); }
 		~CastNode();
@@ -256,16 +262,17 @@ namespace AutoLang
 	// caller.name
 	struct GetPropNode : AccessNode
 	{
-		std::optional<uint32_t> contextCallClassId;
+		std::optional<ClassId> contextCallClassId;
 		HasClassIdNode *caller;
 		std::string name;
-		uint32_t id;
-		uint32_t jumpIfNullPos;
+		MemberOffset id;
+		BytecodePos jumpIfNullPos;
 		bool isInitial;
 		bool isStatic;
 		bool accessNullable;
-		GetPropNode(uint32_t line, DeclarationNode *declaration, std::optional<uint32_t> contextCallClassId, HasClassIdNode *caller, std::string name, bool isInitial, bool nullable, bool accessNullable) : 
+		GetPropNode(uint32_t line, DeclarationNode *declaration, std::optional<ClassId> contextCallClassId, HasClassIdNode *caller, std::string name, bool isInitial, bool nullable, bool accessNullable) : 
 					AccessNode(NodeType::GET_PROP, line, declaration, nullable, AutoLang::DefaultClass::nullClassId), contextCallClassId(contextCallClassId), caller(caller), name(std::move(name)), isInitial(isInitial), isStatic(false), accessNullable(accessNullable) {}
+		//ExprNode* resolve(in_func) override;
 		void optimize(in_func) override;
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 		void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
@@ -278,6 +285,7 @@ namespace AutoLang
 		BlockNode ifTrue;
 		BlockNode *ifFalse = nullptr;
 		IfNode(uint32_t line) : ExprNode(NodeType::IF, line), ifTrue(line) {}
+		//ExprNode* resolve(in_func) override;
 		void optimize(in_func);
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes);
 		void rewrite(in_func, std::vector<uint8_t> &bytecodes);
@@ -288,6 +296,7 @@ namespace AutoLang
 	{
 		HasClassIdNode *condition;
 		WhileNode(uint32_t line) : CanBreakContinueNode(NodeType::WHILE, line) {}
+		//ExprNode* resolve(in_func) override;
 		void optimize(in_func);
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes);
 		~WhileNode();
@@ -302,6 +311,7 @@ namespace AutoLang
 		bool isGetPointer = false;
 		SetNode(uint32_t line, HasClassIdNode *detach, HasClassIdNode *value, Lexer::TokenType op = Lexer::TokenType::EQUAL) : 
 				HasClassIdNode(NodeType::SET, 0, line), op(op), detach(detach), value(value) {}
+		//ExprNode* resolve(in_func) override;
 		void optimize(in_func) override;
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 		void rewrite(in_func, std::vector<uint8_t> &bytecodes) override {
@@ -319,6 +329,7 @@ namespace AutoLang
 		bool isLessThanEq;
 		// ForRangeNode(uint32_t line) : CanBreakContinueNode(NodeType::FOR_RANGE, line) {}
 		ForRangeNode(uint32_t line, AccessNode *detach, HasClassIdNode *from, HasClassIdNode *to, bool isLessThanEq) : CanBreakContinueNode(NodeType::FOR_RANGE, line), detach(detach), from(from), to(to), isLessThanEq(isLessThanEq) {}
+		//ExprNode* resolve(in_func) override;
 		void optimize(in_func);
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes);
 		inline void rewrite(in_func, std::vector<uint8_t> &bytecodes) override { from->rewrite(in_data, bytecodes); to->rewrite(in_data, bytecodes); }
@@ -342,7 +353,7 @@ namespace AutoLang
 	struct MatchOverload
 	{
 		Function *func;
-		uint32_t id;
+		Offset id;
 		uint8_t score;
 		bool errorNonNullIfMatch = false;
 	};
@@ -350,19 +361,20 @@ namespace AutoLang
 	// caller.name(arguments)
 	struct CallNode : NullableNode
 	{
-		std::optional<uint32_t> contextCallClassId;
+		std::optional<ClassId> contextCallClassId;
 		HasClassIdNode *caller;
 		std::string name;
 		std::vector<HasClassIdNode *> arguments;
-		uint32_t funcId;
-		uint32_t jumpIfNullPos;
-		bool isConstructor = false;
+		Offset funcId;
+		BytecodePos jumpIfNullPos;
 		bool justFindStatic;
 		bool addPopBytecode = false;
 		bool accessNullable;
-		CallNode(uint32_t line, std::optional<uint32_t> contextCallClassId, HasClassIdNode *caller, std::string name, std::vector<HasClassIdNode *> arguments, bool justFindStatic, bool nullable, bool accessNullable) : 
+		bool isSuper = false;
+		CallNode(uint32_t line, std::optional<ClassId> contextCallClassId, HasClassIdNode *caller, std::string name, std::vector<HasClassIdNode *> arguments, bool justFindStatic, bool nullable, bool accessNullable) : 
 				NullableNode(NodeType::CALL, 0, nullable, line), contextCallClassId(contextCallClassId), caller(caller), name(name), arguments(std::move(arguments)), justFindStatic(justFindStatic), accessNullable(accessNullable) {}
 		bool isNullable() override { return nullable; }
+		//ExprNode* resolve(in_func) override;
 		void optimize(in_func) override;
 		void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 		void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;

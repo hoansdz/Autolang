@@ -4,13 +4,14 @@
 #include <iostream>
 #include "shared/NormalArray.hpp"
 #include "shared/DefaultClass.hpp"
+#include "shared/Type.hpp"
 #include "AString.hpp"
 
 class AVM;
 
 struct AObject
 {
-	uint32_t type;
+	ClassId type;
 	uint32_t refCount;
 	union
 	{

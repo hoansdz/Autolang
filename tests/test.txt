@@ -1,0 +1,29 @@
+class Person extends T {
+	constructor() {
+		super()
+	}
+}
+
+class X extends Person {
+	val n: Int = 5
+	constructor() {
+		super()
+	}
+	func hm() {
+		println(name)
+		println(n)
+		printName()
+	}
+}
+
+val x = X()
+x.hm()
+//x.name
+//println(x.name)
+
+class T {
+	var name: String = "hi"
+	func printName() {
+		println(name)
+	}
+}

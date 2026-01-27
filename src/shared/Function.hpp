@@ -15,15 +15,15 @@ struct Function
 	AObject *(*native)(NativeFuncInput);
 	bool isStatic;
 	bool returnNullable;
-	FixedArray<uint32_t> args;
+	FixedArray<ClassId> args;
 	FixedArray<bool> nullableArgs;
-	uint32_t returnId;
+	ClassId returnId;
 	std::vector<uint8_t> bytecodes;
 	uint32_t maxDeclaration;
-	uint32_t id;
+	Offset id;
 	//Support log
 	std::string toString(CompiledProgram& data);
-	Function(uint32_t id, std::string name, AObject *(*native)(NativeFuncInput), bool isStatic, std::vector<uint32_t> &args, std::vector<bool> &nullableArgs, uint32_t returnId, bool returnNullable) : 
+	Function(ClassId id, std::string name, AObject *(*native)(NativeFuncInput), bool isStatic, std::vector<ClassId> &args, std::vector<bool> &nullableArgs, uint32_t returnId, bool returnNullable) : 
 		id(id), name(name), native(native), isStatic(isStatic), returnNullable(returnNullable), args(args), nullableArgs(nullableArgs), returnId(returnId), maxDeclaration(native ? this->args.size : 0) {}
 };
 

@@ -10,16 +10,16 @@ namespace AutoLang {
 void UnaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	value->putBytecodes(in_data, bytecodes);
 	switch (op) {
-	case Lexer::TokenType::MINUS: {
-		bytecodes.emplace_back(Opcode::NEGATIVE);
-		break;
-	}
-	case Lexer::TokenType::NOT: {
-		bytecodes.emplace_back(Opcode::NOT);
-		break;
-	}
-	default:
-		break;
+		case Lexer::TokenType::MINUS: {
+			bytecodes.emplace_back(Opcode::NEGATIVE);
+			break;
+		}
+		case Lexer::TokenType::NOT: {
+			bytecodes.emplace_back(Opcode::NOT);
+			break;
+		}
+		default:
+			break;
 	}
 }
 
@@ -31,14 +31,14 @@ void SkipNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 
 void SkipNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
 	switch (type) {
-	case Lexer::TokenType::CONTINUE:
-		rewrite_opcode_u32(bytecodes, jumpBytePos, context.continuePos);
-		break;
-	case Lexer::TokenType::BREAK:
-		rewrite_opcode_u32(bytecodes, jumpBytePos, context.breakPos);
-		break;
-	default:
-		break;
+		case Lexer::TokenType::CONTINUE:
+			rewrite_opcode_u32(bytecodes, jumpBytePos, context.continuePos);
+			break;
+		case Lexer::TokenType::BREAK:
+			rewrite_opcode_u32(bytecodes, jumpBytePos, context.breakPos);
+			break;
+		default:
+			break;
 	}
 }
 
@@ -59,84 +59,41 @@ void ConstValueNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 void CastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	value->putBytecodes(in_data, bytecodes);
 	switch (classId) {
-	case AutoLang::DefaultClass::intClassId: {
-		if (value->classId == AutoLang::DefaultClass::floatClassId) {
-			bytecodes.emplace_back(Opcode::FLOAT_TO_INT);
+		case AutoLang::DefaultClass::intClassId: {
+			if (value->classId == AutoLang::DefaultClass::floatClassId) {
+				bytecodes.emplace_back(Opcode::FLOAT_TO_INT);
+				return;
+			}
+			if (value->classId == AutoLang::DefaultClass::boolClassId) {
+				bytecodes.emplace_back(Opcode::BOOL_TO_INT);
+				return;
+			}
+			bytecodes.emplace_back(Opcode::TO_INT);
 			return;
 		}
-		if (value->classId == AutoLang::DefaultClass::boolClassId) {
-			bytecodes.emplace_back(Opcode::BOOL_TO_INT);
+		case AutoLang::DefaultClass::floatClassId: {
+			if (value->classId == AutoLang::DefaultClass::intClassId) {
+				bytecodes.emplace_back(Opcode::INT_TO_FLOAT);
+				return;
+			}
+			if (value->classId == AutoLang::DefaultClass::boolClassId) {
+				bytecodes.emplace_back(Opcode::BOOL_TO_FLOAT);
+				return;
+			}
+			bytecodes.emplace_back(Opcode::TO_FLOAT);
 			return;
 		}
-		bytecodes.emplace_back(Opcode::TO_INT);
-		return;
-	}
-	case AutoLang::DefaultClass::floatClassId: {
-		if (value->classId == AutoLang::DefaultClass::intClassId) {
-			bytecodes.emplace_back(Opcode::INT_TO_FLOAT);
+		default:
+			if (value->classId == AutoLang::DefaultClass::intClassId) {
+				bytecodes.emplace_back(Opcode::INT_TO_STRING);
+				return;
+			}
+			if (value->classId == AutoLang::DefaultClass::floatClassId) {
+				bytecodes.emplace_back(Opcode::FLOAT_TO_STRING);
+				return;
+			}
+			bytecodes.emplace_back(Opcode::TO_STRING);
 			return;
-		}
-		if (value->classId == AutoLang::DefaultClass::boolClassId) {
-			bytecodes.emplace_back(Opcode::BOOL_TO_FLOAT);
-			return;
-		}
-		bytecodes.emplace_back(Opcode::TO_FLOAT);
-		return;
-	}
-	default:
-		if (value->classId == AutoLang::DefaultClass::intClassId) {
-			bytecodes.emplace_back(Opcode::INT_TO_STRING);
-			return;
-		}
-		if (value->classId == AutoLang::DefaultClass::floatClassId) {
-			bytecodes.emplace_back(Opcode::FLOAT_TO_STRING);
-			return;
-		}
-		bytecodes.emplace_back(Opcode::TO_STRING);
-		return;
-	}
-}
-
-void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	for (auto *node : nodes) {
-		switch (node->kind) {
-		case NodeType::CALL: {
-			auto currentNode = static_cast<CallNode *>(node);
-			node->putBytecodes(in_data, bytecodes);
-			if (currentNode->classId != DefaultClass::nullClassId)
-				bytecodes.emplace_back(Opcode::POP);
-			break;
-		}
-		case NodeType::OPTIONAL_ACCESS: {
-			auto currentNode = static_cast<OptionalAccessNode *>(node);
-			currentNode->returnNullIfNull = false;
-			node->putBytecodes(in_data, bytecodes);
-			if (currentNode->value->kind != NodeType::CALL ||
-			    currentNode->value->classId != DefaultClass::nullClassId)
-				bytecodes.emplace_back(Opcode::POP);
-			currentNode->jumpIfNullPos = bytecodes.size();
-			break;
-		}
-		case NodeType::BINARY:
-		case NodeType::CAST:
-		case NodeType::GET_PROP: {
-			node->putBytecodes(in_data, bytecodes);
-			bytecodes.emplace_back(Opcode::POP);
-			break;
-		}
-		case NodeType::NULL_COALESCING:
-		case NodeType::UNKNOW:
-		case NodeType::UNARY:
-		case NodeType::CLASS_ACCESS:
-		case NodeType::CONST:
-		case NodeType::VAR: {
-			break;
-		}
-		default: {
-			node->putBytecodes(in_data, bytecodes);
-			break;
-		}
-		}
 	}
 }
 
@@ -145,7 +102,8 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		caller->putBytecodes(in_data, bytecodes);
 		if (isStore) {
 			if (accessNullable) {
-				throwError("Bug: Setnode not ensure store data is non nullable");
+				throwError(
+				    "Bug: Setnode not ensure store data is non nullable");
 			}
 			bytecodes.emplace_back(Opcode::STORE_MEMBER);
 			put_opcode_u32(bytecodes, id);
@@ -163,15 +121,15 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		return;
 	}
 	switch (caller->kind) {
-	case NodeType::VAR:
-	case NodeType::UNKNOW: {
-		break;
-	}
-	default: {
-		caller->putBytecodes(in_data, bytecodes);
-		bytecodes.emplace_back(Opcode::POP);
-		break;
-	}
+		case NodeType::VAR:
+		case NodeType::UNKNOW: {
+			break;
+		}
+		default: {
+			caller->putBytecodes(in_data, bytecodes);
+			bytecodes.emplace_back(Opcode::POP);
+			break;
+		}
 	}
 	if (accessNullable) {
 		if (isStore) {
@@ -330,17 +288,19 @@ void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		operator_plus_case(MINUS_EQUAL, MINUS_EQUAL);
 		operator_plus_case(STAR_EQUAL, MUL_EQUAL);
 		operator_plus_case(SLASH_EQUAL, DIVIDE_EQUAL);
-	default: {
-		break;
-		// throwError("Unexpected op "+ Lexer::Token(0, op).toString(context));
-	}
+		default: {
+			break;
+			// throwError("Unexpected op "+ Lexer::Token(0,
+			// op).toString(context));
+		}
 	}
 	value->putBytecodes(in_data, bytecodes);
 	detach->putBytecodes(in_data, bytecodes);
 }
 
 void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	Function *func = &compile.functions[funcId];
+	auto* func = &compile.functions[funcId];
+	auto* funcInfo = &context.functionInfo[funcId];
 	if (caller) {
 		caller->putBytecodes(in_data, bytecodes);
 		if (accessNullable) {
@@ -354,10 +314,16 @@ void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	}
 	if (addPopBytecode)
 		bytecodes.emplace_back(Opcode::POP);
-	if (isConstructor) {
-		bytecodes.emplace_back(Opcode::CREATE_OBJECT);
-		put_opcode_u32(bytecodes, classId);
-		put_opcode_u32(bytecodes, compile.classes[classId].memberMap.size());
+	if (funcInfo->isConstructor) {
+		if (isSuper) {
+			bytecodes.emplace_back(Opcode::LOAD_LOCAL);
+			put_opcode_u32(bytecodes, 0);
+		} else {
+			bytecodes.emplace_back(Opcode::CREATE_OBJECT);
+			put_opcode_u32(bytecodes, classId);
+			put_opcode_u32(bytecodes,
+			               compile.classes[classId].memberMap.size());
+		}
 	}
 	for (auto &argument : arguments) {
 		argument->putBytecodes(in_data, bytecodes);

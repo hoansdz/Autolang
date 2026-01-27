@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <cmath>
 #include "frontend/parser/node/Node.hpp"
 
 namespace AutoLang
@@ -18,7 +19,7 @@ namespace AutoLang
 		Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC;
 		std::string name;
 		std::string className;
-		uint32_t id;
+		Offset id;
 		bool isGlobal;
 		bool isVal;
 		bool nullable;
@@ -32,16 +33,16 @@ namespace AutoLang
 	// func name(arguments): returnClass { body }
 	struct CreateFuncNode : HasClassIdNode
 	{
-		std::optional<uint32_t> contextCallClassId;
+		std::optional<ClassId> contextCallClassId;
 		Lexer::TokenType accessModifier;
 		std::string name;
 		std::string returnClass;
-		uint32_t id;
+		Offset id;
 		BlockNode body;
 		const std::vector<DeclarationNode *> arguments;
 		bool isStatic;
 		bool returnNullable;
-		CreateFuncNode(uint32_t line, std::optional<uint32_t> contextCallClassId, std::string name, std::string returnClass, bool returnNullable, std::vector<DeclarationNode *> arguments,
+		CreateFuncNode(uint32_t line, std::optional<ClassId> contextCallClassId, std::string name, std::string returnClass, bool returnNullable, std::vector<DeclarationNode *> arguments,
 					   bool isStatic, Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC) : HasClassIdNode(NodeType::CREATE_FUNC, 0, line), contextCallClassId(contextCallClassId), accessModifier(accessModifier), name(std::move(name)), returnClass(std::move(returnClass)),
 																									arguments(std::move(arguments)), isStatic(isStatic), returnNullable(returnNullable), body(line) {}
 		void pushFunction(in_func);
@@ -51,14 +52,14 @@ namespace AutoLang
 
 	struct CreateConstructorNode : HasClassIdNode
 	{
-		uint32_t classId;
+		ClassId classId;
 		Lexer::TokenType accessModifier;
 		std::string name;
-		uint32_t funcId;
+		Offset funcId;
 		BlockNode body;
 		const std::vector<DeclarationNode *> arguments;
 		bool isPrimary;
-		CreateConstructorNode(uint32_t line, uint32_t classId, std::string name, std::vector<DeclarationNode *> arguments, bool isPrimary,
+		CreateConstructorNode(uint32_t line, ClassId classId, std::string name, std::vector<DeclarationNode *> arguments, bool isPrimary,
 							  Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC) : HasClassIdNode(NodeType::CREATE_CONSTRUCTOR, 0, line), classId(classId), accessModifier(accessModifier),
 																							name(std::move(name)), arguments(std::move(arguments)), isPrimary(isPrimary), body(line) {}
 		void pushFunction(in_func);
@@ -69,10 +70,11 @@ namespace AutoLang
 	// class name(arguments) { body }
 	struct CreateClassNode : HasClassIdNode
 	{
-		std::string name;
+		LexerStringId nameId;
+		std::optional<LexerStringId> superId;
 		BlockNode body;
-		CreateClassNode(uint32_t line) : HasClassIdNode(NodeType::CREATE_CLASS, 0, line), body(line) {}
-		CreateClassNode(uint32_t line, std::string name) : HasClassIdNode(NodeType::CREATE_CLASS, 0, line), body(line), name(std::move(name)) {}
+		bool optimized = false;
+		CreateClassNode(uint32_t line, LexerStringId nameId, std::optional<LexerStringId> superId) : HasClassIdNode(NodeType::CREATE_CLASS, 0, line), body(line), nameId(nameId), superId(superId) {}
 		void pushClass(in_func);
 		void optimize(in_func) override;
 		~CreateClassNode() {}

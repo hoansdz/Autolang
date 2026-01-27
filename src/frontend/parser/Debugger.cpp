@@ -19,6 +19,10 @@ bool build(CompiledProgram &compile, AVMReadFileMode &mode) {
 	Lexer::Context lexerContext;
 	lexerData(in_data, mode, lexerContext);
 
+	// for (auto& token : context.tokens) {
+	// 	std::cout<<token.toString(context)<<" ";
+	// }
+
 	auto startParserTime = std::chrono::high_resolution_clock::now();
 	if (!lexerContext.hasError) {
 		i = 0;
@@ -167,8 +171,15 @@ void resolve(in_func) {
 	for (auto *node : context.declarationNodePool.vecs) {
 		node->optimize(in_data);
 	}
+
+	printDebug("Start optimize classes");
+	size_t sizeNewClasses  = context.newClasses.getSize();
+	for (int i = 0; i < sizeNewClasses; ++i) {
+		context.newClasses[i]->optimize(in_data);
+		context.newClasses[i]->body.optimize(in_data);
+	}
+
 	printDebug("Start optimize constructor nodes");
-	size_t sizeNewClasses = context.newClasses.getSize();
 	for (int i = 0; i < sizeNewClasses; ++i) {
 		auto *node = context.newClasses[i];
 		auto clazz = &compile.classes[node->classId];
@@ -181,11 +192,6 @@ void resolve(in_func) {
 			}
 		}
 	}
-	printDebug("Start optimize classes");
-	for (int i = 0; i < sizeNewClasses; ++i) {
-		context.newClasses[i]->optimize(in_data);
-	}
-
 	printDebug("Start optimize static nodes");
 	for (auto &node : context.staticNode) {
 		node->optimize(in_data);
@@ -204,8 +210,9 @@ void resolve(in_func) {
 			//  node->body.optimize(in_data);
 			auto func =
 			    &compile.functions[classInfo->primaryConstructor->funcId];
-			node->body.putBytecodes(in_data, func->bytecodes);
-			node->body.rewrite(in_data, func->bytecodes);
+			auto& bytecodes = func->bytecodes;
+			node->body.putBytecodes(in_data, bytecodes);
+			node->body.rewrite(in_data, bytecodes);
 		} else {
 			for (auto &constructor : classInfo->secondaryConstructor) {
 				auto func = &compile.functions[constructor->funcId];

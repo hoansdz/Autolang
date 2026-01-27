@@ -23,7 +23,7 @@ inline AObject *get_string_size(NativeFuncInData);
 
 AObject *data_constructor(NativeFuncInData) {
 	AObject *obj = stackAllocator[0];
-	obj->refCount = 0;
+	obj->refCount -= 1;
 	for (size_t i = 1; i < size; ++i) {
 		AObject **last = &obj->member->data[i - 1];
 		*last = stackAllocator[i];

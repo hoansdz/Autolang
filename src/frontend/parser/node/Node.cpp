@@ -72,19 +72,6 @@ GetPropNode::~GetPropNode() {
 	deleteNode(caller);
 }
 
-void BlockNode::refresh() {
-	for (auto* node : nodes) {
-		ExprNode::deleteNode(node);
-	}
-	nodes.clear();
-}
-
-BlockNode::~BlockNode() {
-	for (auto* node : nodes) {
-		deleteNode(node);
-	}
-}
-
 IfNode::~IfNode() {
 	deleteNode(condition);
 	deleteNode(ifFalse);

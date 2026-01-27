@@ -2,6 +2,7 @@
 #define DEFAULT_CLASS_HPP
 
 #include <iostream>
+#include "shared/Type.hpp"
 
 struct CompiledProgram;
 struct AObject;
@@ -9,12 +10,12 @@ struct AObject;
 namespace AutoLang {
 namespace DefaultClass {
 
-constexpr uint32_t intClassId = 0;
-constexpr uint32_t floatClassId = 1;
-constexpr uint32_t boolClassId = 2;
-constexpr uint32_t stringClassId = 3;
-constexpr uint32_t nullClassId = 4;
-constexpr uint32_t anyClassId = 5;
+constexpr ClassId intClassId = 0;
+constexpr ClassId floatClassId = 1;
+constexpr ClassId boolClassId = 2;
+constexpr ClassId stringClassId = 3;
+constexpr ClassId nullClassId = 4;
+constexpr ClassId anyClassId = 5;
 extern AObject* nullObject;
 extern AObject* trueObject;
 extern AObject* falseObject;

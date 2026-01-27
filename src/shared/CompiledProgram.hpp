@@ -28,42 +28,42 @@ struct CompiledProgram
 	Function *main;
 	CompiledProgram() {}
 	ObjectManager manager;
-	uint32_t mainFunctionId;
+	Offset mainFunctionId;
 	std::vector<std::string> warnings;
 	std::vector<Function> functions;
-	ankerl::unordered_dense::map<std::string, std::vector<uint32_t>> funcMap;
+	ankerl::unordered_dense::map<std::string, std::vector<Offset>> funcMap;
 	std::vector<AClass> classes;
-	ankerl::unordered_dense::map<std::string, uint32_t> classMap;
+	ankerl::unordered_dense::map<std::string, Offset> classMap;
 	std::vector<AObject *> constPool;
-	ankerl::unordered_dense::map<int64_t, uint32_t> constIntMap;
-	ankerl::unordered_dense::map<double, uint32_t> constFloatMap;
-	ankerl::unordered_dense::map<AString *, uint32_t, AString::Hash, AString::Equal> constStringMap;
+	ankerl::unordered_dense::map<int64_t, Offset> constIntMap;
+	ankerl::unordered_dense::map<double, Offset> constFloatMap;
+	ankerl::unordered_dense::map<AString *, Offset, AString::Hash, AString::Equal> constStringMap;
 	template <bool isConstructor = false>
-	uint32_t registerFunction( // Return value
+	Offset registerFunction( // Return value
 		AClass *clazz,
 		bool isStatic,
 		std::string name,
-		std::vector<uint32_t> args,
+		std::vector<ClassId> args,
 		std::vector<bool> nullableArgs,
-		uint32_t returnId,
+		ClassId returnId,
 		bool returnNullable,
 		AObject *(*native)(NativeFuncInput));
-	inline uint32_t registerFunction( // No return value
+	inline Offset registerFunction( // No return value
 		AClass *clazz,
 		bool isStatic,
 		std::string name,
-		std::vector<uint32_t> args,
+		std::vector<ClassId> args,
 		std::vector<bool> nullableArgs,
 		AObject *(*native)(NativeFuncInput))
 	{
 		return registerFunction(clazz, isStatic, name, args, nullableArgs, AutoLang::DefaultClass::nullClassId, false, native);
 	}
-	uint32_t registerClass(
+	ClassId registerClass(
 		std::string name);
 
-	uint32_t registerConstPool(ankerl::unordered_dense::map<AString *, uint32_t, AString::Hash, AString::Equal> &map, AString *value);
+	Offset registerConstPool(ankerl::unordered_dense::map<AString *, uint32_t, AString::Hash, AString::Equal> &map, AString *value);
 	template <typename T>
-	uint32_t registerConstPool(ankerl::unordered_dense::map<T, uint32_t> &map, T value);
+	Offset registerConstPool(ankerl::unordered_dense::map<T, uint32_t> &map, T value);
 	~CompiledProgram();
 };
 

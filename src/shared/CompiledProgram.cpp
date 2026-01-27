@@ -9,13 +9,13 @@
 #include "frontend/lexer/Lexer.hpp"
 
 template <bool isConstructor>
-uint32_t CompiledProgram::registerFunction(
+Offset CompiledProgram::registerFunction(
 	AClass *clazz,
 	bool isStatic,
 	std::string name,
-	std::vector<uint32_t> args,
+	std::vector<ClassId> args,
 	std::vector<bool> nullableArgs,
-	uint32_t returnId,
+	ClassId returnId,
 	bool returnNullable,
 	AObject *(*native)(NativeFuncInput))
 {
@@ -26,8 +26,8 @@ uint32_t CompiledProgram::registerFunction(
 	uint32_t id = functions.size();
 	if (clazz != nullptr)
 	{
-		name = clazz->name + '.' + name;
 		clazz->funcMap[name].push_back(id);
+		name = clazz->name + '.' + name;
 		if constexpr (!isConstructor) {
 			if (native && !isStatic) //Auto insert "this" if native function in class
 			{
@@ -56,13 +56,13 @@ uint32_t CompiledProgram::registerFunction(
 	return id;
 }
 
-uint32_t CompiledProgram::registerClass(
+ClassId CompiledProgram::registerClass(
 	std::string name)
 {
 	auto it = classMap.find(name);
 	if (it != classMap.end())
 		throw std::runtime_error("Class " + name + " has exist");
-	uint32_t id = classes.size();
+	Offset id = classes.size();
 	classes.emplace_back(
 		name,
 		id);
@@ -82,7 +82,7 @@ std::string toStr(T value)
 	return std::to_string(value);
 }
 
-uint32_t CompiledProgram::registerConstPool(ankerl::unordered_dense::map<AString *, uint32_t, AString::Hash, AString::Equal> &map, AString *value)
+Offset CompiledProgram::registerConstPool(ankerl::unordered_dense::map<AString *, uint32_t, AString::Hash, AString::Equal> &map, AString *value)
 {
 	auto it = map.find(value);
 	if (it != map.end())
@@ -99,7 +99,7 @@ uint32_t CompiledProgram::registerConstPool(ankerl::unordered_dense::map<AString
 }
 
 template <typename T>
-uint32_t CompiledProgram::registerConstPool(ankerl::unordered_dense::map<T, uint32_t> &map, T value)
+Offset CompiledProgram::registerConstPool(ankerl::unordered_dense::map<T, uint32_t> &map, T value)
 {
 	auto it = map.find(value);
 	if (it != map.end())

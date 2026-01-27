@@ -129,7 +129,7 @@ bool loadNextTokenNoCloseBracket(Context &context, std::vector<Token>& tokens, A
 		case '{':
 		case '[': {
 			pushAndEnsureBracket(context, tokens, mode, i);
-			break;
+			return true;
 		}
 		case ')': {
 			if (context.bracketStack.empty() || context.bracketStack.back() != '(')
@@ -184,6 +184,7 @@ void pushAndEnsureBracket(Context &context, std::vector<Token>& tokens, AVMReadF
 	uint32_t firstLine = context.linePos;
 	while (!isEndOfLine(context, i)) {
 		if (loadNextTokenNoCloseBracket(context, tokens, mode ,i)) continue;
+		++i;
 		return;
 	}
 	if (!nextLine(context, mode.data, i)) {
@@ -411,7 +412,7 @@ void loadQuote(Context& context, std::vector<Token>& tokens, AVMReadFileMode& mo
 					pushAndEnsureBracket(context, tokens, mode, i);
 					tokens[bracketReplacePos].type = TokenType::LPAREN;
 					tokens.back().type = TokenType::RPAREN;
-					if (isEndOfLine(context, ++i))
+					if (isEndOfLine(context, i))
 						throw LexerError(context.linePos, std::string("Expected ") + quote + " but not found");
 					if (context.line[i] == quote) {
 						++i;
@@ -421,12 +422,16 @@ void loadQuote(Context& context, std::vector<Token>& tokens, AVMReadFileMode& mo
 						);
 						return;
 					}
+					tokens.emplace_back(
+						context.linePos,
+						TokenType::PLUS
+					);
 					loadQuote(context, tokens, mode, quote, i);
 					tokens.emplace_back(
 						context.linePos,
 						TokenType::RPAREN
 					);
-					break;
+					return;
 				}
 			}
 			if (chr == quote) {

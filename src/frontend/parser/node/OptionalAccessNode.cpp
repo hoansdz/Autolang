@@ -6,32 +6,46 @@
 
 namespace AutoLang {
 
-void OptionalAccessNode::optimize(in_func) {
-    value->optimize(in_data);
-    classId = value->classId;
-    nullable = value->isNullable();
+ExprNode *OptionalAccessNode::resolve(in_func) {
+	auto newValue = static_cast<HasClassIdNode *>(value->resolve(in_data));
+	if (!newValue)
+		return nullptr;
+	value = newValue;
+	switch (value->kind) {
+		case NodeType::VAR:
+		case NodeType::CONST:
+			return value;
+		default:
+			break;
+	};
+	return nullptr;
 }
 
-void OptionalAccessNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-    auto lastJumpIfNullNode = context.jumpIfNullNode;
-    context.jumpIfNullNode = this;
-    value->putBytecodes(in_data, bytecodes);
-    context.jumpIfNullNode = lastJumpIfNullNode;
+void OptionalAccessNode::optimize(in_func) {
+	value->optimize(in_data);
+	classId = value->classId;
+	nullable = value->isNullable();
+}
 
-    jumpIfNullPos = bytecodes.size();
+void OptionalAccessNode::putBytecodes(in_func,
+                                      std::vector<uint8_t> &bytecodes) {
+	auto lastJumpIfNullNode = context.jumpIfNullNode;
+	context.jumpIfNullNode = this;
+	value->putBytecodes(in_data, bytecodes);
+	context.jumpIfNullNode = lastJumpIfNullNode;
+
+	jumpIfNullPos = bytecodes.size();
 }
 
 void OptionalAccessNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
-    auto lastJumpIfNullNode = context.jumpIfNullNode;
-    context.jumpIfNullNode = this;
-    value->rewrite(in_data, bytecodes);
-    context.jumpIfNullNode = lastJumpIfNullNode;
+	auto lastJumpIfNullNode = context.jumpIfNullNode;
+	context.jumpIfNullNode = this;
+	value->rewrite(in_data, bytecodes);
+	context.jumpIfNullNode = lastJumpIfNullNode;
 }
 
-OptionalAccessNode::~OptionalAccessNode() {
-	ExprNode::deleteNode(value);
-}
+OptionalAccessNode::~OptionalAccessNode() { ExprNode::deleteNode(value); }
 
-}
+} // namespace AutoLang
 
 #endif

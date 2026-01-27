@@ -108,6 +108,7 @@ enum class TokenType : uint8_t {
   TRY,
   CATCH,
   THROW,
+  EXTENDS,
 
   // ===== Special =====
   END_OF_FILE, //	Kết thúc file
@@ -138,6 +139,7 @@ static const ankerl::unordered_dense::map<std::string, TokenType> CAST = {
     {"public", TokenType::PUBLIC},
     {"protected", TokenType::PROTECTED},
     {"constructor", TokenType::CONSTRUCTOR},
+	{"extends", TokenType::EXTENDS},
 
     {"/*", TokenType::START_COMMENT},
     {"&", TokenType::AND},

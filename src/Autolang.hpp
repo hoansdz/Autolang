@@ -16,6 +16,7 @@
 #include "frontend/parser/node/OptimizeNode.cpp"
 #include "frontend/lexer/Lexer.cpp"
 #include "frontend/parser/node/Node.cpp"
+#include "frontend/parser/node/BlockNode.cpp"
 #include "frontend/parser/node/CreateNode.cpp"
 #include "frontend/parser/node/NodeOptimize.cpp"
 #include "frontend/parser/node/NodePutbytecode.cpp"

@@ -1,5 +1,9 @@
 class Person(var name: String, var age: Int, val id: Float) {}
 
+class M extends Person {
+
+}
+
 class PersonNode(var prev: PersonNode?, var currentPerson: Person, var next: PersonNode?) {
 
 }
@@ -118,9 +122,9 @@ func test() {
 }
 
 val x: Int? = null
-println(x ?? 5)
+println("${x ?? 25} ")
 
-println("${"2".toInt() + "3".toInt() * 4}")   // precedence
+//println("${"2".toInt() + "3".toInt() * 4}  ")   // precedence
 println("${!("1".toInt() == 2)}")             // not
 println("${(("5".toInt() > 3) && (2 < 4))}")    // logic
 

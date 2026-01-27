@@ -75,6 +75,7 @@ namespace AutoLang
 		JUMP_AND_SET_IF_NULL = 59,
 		LOAD_MEMBER_IF_NNULL = 60,
 		LOAD_MEMBER_CAN_RET_NULL = 61,
+		POP_NO_RELEASE = 62,
 	};
 
 }

@@ -5,7 +5,7 @@ int main(int argc, char *argv[])
 {
 	try{
 		AVMReadFileMode mode = {
-			"tests/source.txt",
+			"tests/test.txt",
 			nullptr,
 			0,
 			true

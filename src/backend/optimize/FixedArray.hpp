@@ -4,7 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <memory>
-#include <algorithm> // Cần thư viện này cho std::copy
+#include <cmath>
 #include <cassert>
 
 template<typename T>

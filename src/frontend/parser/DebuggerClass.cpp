@@ -1,50 +1,99 @@
 #ifndef DEBUGGER_CLASS_CPP
 #define DEBUGGER_CLASS_CPP
 
-#include <memory>
 #include "frontend/parser/Debugger.hpp"
+#include <memory>
 
-namespace AutoLang
-{
+namespace AutoLang {
 
-CreateClassNode* loadClass(in_func, size_t& i) {
+CreateClassNode *loadClass(in_func, size_t &i) {
 	ensureNoKeyword(in_data, i);
-	Lexer::Token* token = &context.tokens[i];
+	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
-	//Name
+	// Name
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
-		!expect(token, Lexer::TokenType::IDENTIFIER)) {
+	    !expect(token, Lexer::TokenType::IDENTIFIER)) {
 		--i;
 		throw ParserError(firstLine, "Expected name but not found");
 	}
-	std::string& name = context.lexerString[token->indexData];
-	//Body class
+	LexerStringId nameId = token->indexData;
+	std::string &name = context.lexerString[nameId];
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
-		throw ParserError(context.tokens[i].line, "Expected body but not found");
+		auto n = context.newClasses.push(firstLine, nameId,
+		                                 std::nullopt); // NewClasses managed
+		n->pushClass(in_data);
+		context.newClassesMap[n->classId] = n;
+		auto lastClass = context.getCurrentClass(in_data);
+		auto clazz = &compile.classes[n->classId];
+		context.gotoClass(clazz);
+		auto declarationThis = context.declarationNodePool.push(
+		    firstLine, "this", "", true, false, false);
+		declarationThis->classId = n->classId;
+		//'this' is always input at first position
+		declarationThis->id = 0;
+		context.getCurrentClassInfo(in_data)->primaryConstructor =
+		    context.createConstructorPool.push(
+		        firstLine, *context.currentClassId, name + "()",
+		        std::vector<DeclarationNode *>{}, true,
+		        Lexer::TokenType::PUBLIC);
+		context.getCurrentClassInfo(in_data)->primaryConstructor->pushFunction(
+		    in_data);
+		context.gotoClass(lastClass);
+		return n;
 	}
-	CreateClassNode* node = context.newClasses.push(firstLine, name); //NewClasses managed
+	std::optional<LexerStringId> superStringId;
+	if (expect(token, Lexer::TokenType::EXTENDS)) {
+		if (!nextToken(&token, context.tokens, i) ||
+		    !expect(token, Lexer::TokenType::IDENTIFIER)) {
+			--i;
+			throw ParserError(context.tokens[i].line,
+			                  "Expected class name but not found");
+		}
+		superStringId = token->indexData;
+		if (!nextToken(&token, context.tokens, i)) {
+			--i;
+			throw ParserError(context.tokens[i].line,
+			                  "Extended class must have constructor");
+		}
+	}
+	// Body class
+	CreateClassNode *node = context.newClasses.push(
+	    firstLine, nameId, superStringId); // NewClasses managed
 	node->pushClass(in_data);
+	context.newClassesMap[node->classId] = node;
 	auto lastClass = context.getCurrentClass(in_data);
 	auto clazz = &compile.classes[node->classId];
 	context.gotoClass(clazz);
 
 	auto declarationThis = context.declarationNodePool.push(
-		 firstLine, "this", "", true, false, false
-	);
+	    firstLine, "this", "", true, false, false);
 	declarationThis->classId = node->classId;
 	//'this' is always input at first position
 	declarationThis->id = 0;
-	//Add declaration this
+	// Add declaration this
 	context.getCurrentClassInfo(in_data)->declarationThis = declarationThis;
-	//Has PrimaryConstructor
-	// bool hasPrimaryConstructor = false;
+	// Has PrimaryConstructor
+	//  bool hasPrimaryConstructor = false;
 	if (expect(token, Lexer::TokenType::LPAREN)) {
-		context.getCurrentClassInfo(in_data)->primaryConstructor = context.createConstructorPool.push(
-			firstLine, *context.currentClassId, name+"()", loadListDeclaration(in_data, i, true), true, 
-			Lexer::TokenType::PUBLIC);
-		context.getCurrentClassInfo(in_data)->primaryConstructor->pushFunction(in_data);
-		compile.functions[context.getCurrentClassInfo(in_data)->primaryConstructor->funcId].maxDeclaration += context.getCurrentClassInfo(in_data)->primaryConstructor->arguments.size();
+		if (superStringId) {
+			throw ParserError(context.tokens[i].line,
+			                  "Extended class doesn't support data class "
+			                  "constructor, you must "
+			                  "declare constructor and call super");
+		}
+		context.getCurrentClassInfo(in_data)->primaryConstructor =
+		    context.createConstructorPool.push(
+		        firstLine, *context.currentClassId, name + "()",
+		        loadListDeclaration(in_data, i, true), true,
+		        Lexer::TokenType::PUBLIC);
+		context.getCurrentClassInfo(in_data)->primaryConstructor->pushFunction(
+		    in_data);
+		compile
+		    .functions[context.getCurrentClassInfo(in_data)
+		                   ->primaryConstructor->funcId]
+		    .maxDeclaration += context.getCurrentClassInfo(in_data)
+		                           ->primaryConstructor->arguments.size();
 		if (!nextToken(&token, context.tokens, i)) {
 			context.gotoClass(lastClass);
 			--i;
@@ -53,26 +102,40 @@ CreateClassNode* loadClass(in_func, size_t& i) {
 
 	if (expect(token, Lexer::TokenType::LBRACE)) {
 		loadBody(in_data, node->body.nodes, i, false);
-		//Create constructor if it hasn't constructor
-		if (!context.getCurrentClassInfo(in_data)->primaryConstructor && 
-			context.getCurrentClassInfo(in_data)->secondaryConstructor.empty()) {
-			context.getCurrentClassInfo(in_data)->primaryConstructor = context.createConstructorPool.push(
-				firstLine, *context.currentClassId, name+"()", std::vector<DeclarationNode*>{}, true,
-				Lexer::TokenType::PUBLIC
-			);
-			context.getCurrentClassInfo(in_data)->primaryConstructor->pushFunction(in_data);
+		// Create constructor if it hasn't constructor
+		if (!context.getCurrentClassInfo(in_data)->primaryConstructor &&
+		    context.getCurrentClassInfo(in_data)
+		        ->secondaryConstructor.empty()) {
+			if (superStringId) {
+				throw ParserError(
+				    firstLine, "Extended class must be declarated constructor");
+			}
+			context.getCurrentClassInfo(in_data)->primaryConstructor =
+			    context.createConstructorPool.push(
+			        firstLine, *context.currentClassId, name + "()",
+			        std::vector<DeclarationNode *>{}, true,
+			        Lexer::TokenType::PUBLIC);
+			context.getCurrentClassInfo(in_data)
+			    ->primaryConstructor->pushFunction(in_data);
 		}
 
 		context.gotoClass(lastClass);
 	} else {
-		//Create constructor if it hasn't constructor
-		if (!context.getCurrentClassInfo(in_data)->primaryConstructor && 
-			context.getCurrentClassInfo(in_data)->secondaryConstructor.empty()) {
-			context.getCurrentClassInfo(in_data)->primaryConstructor = context.createConstructorPool.push(
-				firstLine, *context.currentClassId, name+"()", std::vector<DeclarationNode*>{}, true,
-				Lexer::TokenType::PUBLIC
-			);
-			context.getCurrentClassInfo(in_data)->primaryConstructor->pushFunction(in_data);
+		// Create constructor if it hasn't constructor
+		if (!context.getCurrentClassInfo(in_data)->primaryConstructor &&
+		    context.getCurrentClassInfo(in_data)
+		        ->secondaryConstructor.empty()) {
+			if (superStringId) {
+				throw ParserError(
+				    firstLine, "Extended class must be declarated constructor");
+			}
+			context.getCurrentClassInfo(in_data)->primaryConstructor =
+			    context.createConstructorPool.push(
+			        firstLine, *context.currentClassId, name + "()",
+			        std::vector<DeclarationNode *>{}, true,
+			        Lexer::TokenType::PUBLIC);
+			context.getCurrentClassInfo(in_data)
+			    ->primaryConstructor->pushFunction(in_data);
 		}
 		context.gotoClass(lastClass);
 		--i;
@@ -80,17 +143,18 @@ CreateClassNode* loadClass(in_func, size_t& i) {
 	return node;
 }
 
-void loadConstructor(in_func, size_t& i) {
+void loadConstructor(in_func, size_t &i) {
 	if (context.getCurrentClassInfo(in_data)->primaryConstructor)
-		throw ParserError(context.tokens[i].line, "Cannot declare constructor in data class");
-	Lexer::Token* token = &context.tokens[i];
+		throw ParserError(context.tokens[i].line,
+		                  "Cannot declare constructor in data class");
+	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
-	//Arguments
+	// Arguments
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		throw ParserError(context.tokens[i].line, "Expected ( but not found");
 	}
-	std::vector<DeclarationNode*> listDeclarationNode;
+	std::vector<DeclarationNode *> listDeclarationNode;
 	if (expect(token, Lexer::TokenType::LPAREN)) {
 		if (firstLine != token->line) {
 			throw ParserError(firstLine, "Expected ( but not found");
@@ -98,30 +162,42 @@ void loadConstructor(in_func, size_t& i) {
 		listDeclarationNode = loadListDeclaration(in_data, i);
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
-			throw ParserError(context.tokens[i].line, "Expected body but not found");
+			throw ParserError(context.tokens[i].line,
+			                  "Expected body but not found");
 		}
 	}
-	// listDeclarationNode.insert(listDeclarationNode.begin(), context.getCurrentClassInfo(in_data)->declarationThis);
-	//Body
+	// listDeclarationNode.insert(listDeclarationNode.begin(),
+	// context.getCurrentClassInfo(in_data)->declarationThis);
+	// Body
 	if (!expect(token, Lexer::TokenType::LBRACE)) {
 		--i;
-		throw ParserError(context.tokens[i].line, "Expected body but not found");
+		throw ParserError(context.tokens[i].line,
+		                  "Expected body but not found");
 	}
-	//Create constructor
-	auto constructor = context.createConstructorPool.push(firstLine, *context.currentClassId, context.getCurrentClass(in_data)->name + "()", 
-		std::move(listDeclarationNode), false, getAndEnsureOneAccessModifier(in_data, i));
-	context.getCurrentClassInfo(in_data)->secondaryConstructor.push_back(constructor);
+	// Create constructor
+	auto constructor = context.createConstructorPool.push(
+	    firstLine, *context.currentClassId,
+	    context.getCurrentClass(in_data)->name + "()",
+	    std::move(listDeclarationNode), false,
+	    getAndEnsureOneAccessModifier(in_data, i));
+	context.getCurrentClassInfo(in_data)->secondaryConstructor.push_back(
+	    constructor);
 	constructor->pushFunction(in_data);
-	compile.functions[constructor->funcId].maxDeclaration += constructor->arguments.size();
+	compile.functions[constructor->funcId].maxDeclaration +=
+	    constructor->arguments.size();
 	context.gotoFunction(constructor->funcId);
-	
-	//Add to scope
-	auto& scope = context.getCurrentFunctionInfo(in_data)->scopes.back();
+	// compile
+	//     .funcMap[compile.classes[*context.currentClassId].name + "." +
+	//              compile.classes[*context.currentClassId].name]
+	//     .push_back(constructor->funcId);
+
+	// Add to scope
+	auto &scope = context.getCurrentFunctionInfo(in_data)->scopes.back();
 	scope["this"] = context.getCurrentClassInfo(in_data)->declarationThis;
 
 	// context.getCurrentFunctionInfo(in_data)->declaration = 1;
 	for (size_t j = 0; j < constructor->arguments.size(); ++j) {
-		auto* argument = constructor->arguments[j];
+		auto *argument = constructor->arguments[j];
 		scope[argument->name] = argument;
 		argument->id = j + 1;
 	}
@@ -129,20 +205,6 @@ void loadConstructor(in_func, size_t& i) {
 	context.gotoFunction(context.mainFunctionId);
 }
 
-// void loadClassInit(in_func, size_t& i) {
-// 	if (!context.keywords.empty())
-// 		throw ParserError(token->line, "Invalid keyword");
-// 	context.gotoFunction(&compile.functions[context.getCurrentClassInfo(in_data)->initFunction->id]);
-// 	Lexer::Token *token;
-// 	//Body
-// 	if (!nextToken(&token, context.tokens, i) ||
-// 		!expect(token, Lexer::TokenType::LBRACE)) {
-// 		throw ParserError(token->line, "Expected body but not found");
-// 	}
-// 	loadBody(in_data, context.getCurrentClassInfo(in_data)->initFunction->body.nodes, i, false);
-// 	context.gotoFunction(context.mainFunction);
-// }
-
-}
+} // namespace AutoLang
 
 #endif

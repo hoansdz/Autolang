@@ -41,7 +41,7 @@ std::string Function::toString(CompiledProgram& data) {
 	std::string result = name + ": (";
 	for (int i = 0; i < args.size; ++i)
 	{
-		uint32_t classId = args[i];
+		ClassId classId = args[i];
 		if (isFirst)
 		{
 			isFirst = false;
@@ -121,6 +121,7 @@ void AVM::log(Function *currentFunction)
 			std::cerr << "STORE_MEMBER	 " << get_u32(bytecodes, i) << '\n';
 			break;
 			BYTECODE_PRINT_SINGLE(POP)
+			BYTECODE_PRINT_SINGLE(POP_NO_RELEASE)
 			BYTECODE_PRINT_SINGLE(RETURN)
 			BYTECODE_PRINT_SINGLE(RETURN_VALUE)
 		case AutoLang::Opcode::JUMP:

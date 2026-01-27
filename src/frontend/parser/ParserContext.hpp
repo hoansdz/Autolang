@@ -24,6 +24,7 @@ namespace AutoLang
 		CreateConstructorNode *primaryConstructor = nullptr;
 		std::vector<CreateConstructorNode *> secondaryConstructor;
 		DeclarationNode *declarationThis;
+		std::optional<ClassId> parent;
 		AccessNode *findDeclaration(in_func, uint32_t line, std::string &name, bool isStatic = false);
 		~ClassInfo();
 	};
@@ -57,9 +58,9 @@ namespace AutoLang
 	{
 		// Optimize ram because reuse std::string instead of new std::string in lexer
 		std::vector<std::string> lexerString;
-		ankerl::unordered_dense::map<std::string, uint32_t> lexerStringMap;
+		ankerl::unordered_dense::map<std::string, LexerStringId> lexerStringMap;
 		
-		ankerl::unordered_dense::map<std::tuple<uint32_t, uint32_t, uint8_t>, uint32_t, PairHash> binaryOpResultType;
+		ankerl::unordered_dense::map<std::tuple<ClassId, ClassId, uint8_t>, ClassId, PairHash> binaryOpResultType;
 		// Parse file to tokens
 		std::vector<Lexer::Token> tokens;
 		// Keywords , example public, private, static
@@ -68,6 +69,9 @@ namespace AutoLang
 		NonReallocatePool<CreateFuncNode> newFunctions;
 		// Declaration new classes by user
 		NonReallocatePool<CreateClassNode> newClasses;
+
+		ankerl::unordered_dense::map<uint32_t, CreateClassNode*> newClassesMap;
+
 		uint32_t line;
 		bool hasError = false;
 		bool canBreakContinue = false;
@@ -92,7 +96,7 @@ namespace AutoLang
 		FixedPool<IfNode> ifPool;
 		FixedPool<WhileNode> whilePool;
 
-		std::optional<uint32_t> currentClassId = std::nullopt;
+		std::optional<ClassId> currentClassId = std::nullopt;
 		uint32_t mainFunctionId;
 		uint32_t currentFunctionId;
 
@@ -103,14 +107,14 @@ namespace AutoLang
 		void init(CompiledProgram& compiler, AVMReadFileMode& mode);
 		void logMessage(uint32_t line, const std::string& message);
 		void warning(uint32_t line, const std::string& message);
-		inline static std::tuple<uint32_t, uint32_t, uint8_t> makeTuple(uint32_t first, uint32_t second, uint8_t op)
+		inline static std::tuple<ClassId, ClassId, uint8_t> makeTuple(ClassId first, ClassId second, uint8_t op)
 		{
 			return std::make_tuple(
 				std::min(first, second),
 				std::max(first, second),
 				op);
 		}
-		inline void addTypeResult(uint32_t first, uint32_t second, uint8_t op, uint32_t classId)
+		inline void addTypeResult(ClassId first, ClassId second, uint8_t op, ClassId classId)
 		{
 			binaryOpResultType[{
 				std::min(first, second),
@@ -118,7 +122,7 @@ namespace AutoLang
 				op}] = classId;
 		}
 
-		inline bool getTypeResult(uint32_t first, uint32_t second, uint8_t op, uint32_t &result)
+		inline bool getTypeResult(ClassId first, ClassId second, uint8_t op, ClassId &result)
 		{
 			auto it = binaryOpResultType.find({std::min(first, second),
 									std::max(first, second),

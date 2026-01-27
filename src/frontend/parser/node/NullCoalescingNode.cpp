@@ -6,6 +6,33 @@
 
 namespace AutoLang {
 
+ExprNode* NullCoalescingNode::resolve(in_func) {
+	auto newLeft = left->resolve(in_data);
+	auto newRight = right->resolve(in_data);
+	if (newLeft) {
+		left = static_cast<HasClassIdNode*>(newLeft);
+	}
+	if (newRight) {
+		right = static_cast<HasClassIdNode*>(newRight);
+	}
+	switch (left->kind) {
+		case NodeType::CONST: {
+			if (left->classId == DefaultClass::nullClassId) {
+				warning(in_data, "Left expression won't never be used");
+				auto result = right;
+				right = nullptr;
+				return result;
+			}
+			warning(in_data, "Right expression won't never be used");
+			auto result = left;
+			left = nullptr;
+			return result;
+		}
+		default: break;
+	}
+	return nullptr;
+}
+
 void NullCoalescingNode::optimize(in_func) {
 	left->optimize(in_data);
 	right->optimize(in_data);
@@ -36,7 +63,8 @@ void NullCoalescingNode::putBytecodes(in_func,
 	auto lastJumpIfNullNode = context.jumpIfNullNode;
 	context.jumpIfNullNode = this;
 	if (left->kind == NodeType::OPTIONAL_ACCESS) {
-		static_cast<OptionalAccessNode*>(left)->value->putBytecodes(in_data, bytecodes);
+		static_cast<OptionalAccessNode *>(left)->value->putBytecodes(in_data,
+		                                                             bytecodes);
 	} else {
 		left->putBytecodes(in_data, bytecodes);
 	}
@@ -62,7 +90,8 @@ void NullCoalescingNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
 	auto lastJumpIfNullNode = context.jumpIfNullNode;
 	context.jumpIfNullNode = this;
 	if (left->kind == NodeType::OPTIONAL_ACCESS) {
-		static_cast<OptionalAccessNode*>(left)->value->rewrite(in_data, bytecodes);
+		static_cast<OptionalAccessNode *>(left)->value->rewrite(in_data,
+		                                                        bytecodes);
 	} else {
 		left->rewrite(in_data, bytecodes);
 	}
