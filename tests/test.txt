@@ -1,29 +1,43 @@
+class T {
+    static val c: Int = 1
+
+    var name: String = "hi"
+
+    func printName() {
+        println(name)
+    }
+
+    func hm() {
+        println("ok")
+    }
+}
+
 class Person extends T {
-	constructor() {
-		super()
-	}
+    constructor() {
+        super()
+        println(name)
+    }
 }
 
 class X extends Person {
-	val n: Int = 5
-	constructor() {
-		super()
-	}
-	func hm() {
-		println(name)
-		println(n)
-		printName()
-	}
+    static val k: Int = 99
+    val n: Int = 5
+
+    constructor() {
+        super()
+    }
+
+    func hm() {
+        println(name)
+        println(n)
+        printName()
+        println(c)
+        println(k)
+    }
 }
+
+val t = T()
+t.hm()
 
 val x = X()
 x.hm()
-//x.name
-//println(x.name)
-
-class T {
-	var name: String = "hi"
-	func printName() {
-		println(name)
-	}
-}

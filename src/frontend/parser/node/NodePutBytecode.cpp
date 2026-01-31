@@ -136,7 +136,7 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			throwError("Bug: Setnode not ensure store data is non nullable");
 		}
 		warning(in_data, "Access static variables: we recommend call " +
-		                     compile.classes[caller->classId].name + "." +
+		                     compile.classes[caller->classId]->name + "." +
 		                     name);
 		accessNullable = false;
 	}
@@ -213,8 +213,7 @@ void WhileNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	if (condition->kind == NodeType::CONST) {
 		// Is bool because optimize forbiddened others
 		if (!static_cast<ConstValueNode *>(condition)->obj->b) {
-			compile.warnings.push_back(
-			    "While command won't never be called here");
+			warning(in_data, "While command won't never be called here");
 			return;
 		}
 		body.putBytecodes(in_data, bytecodes);
@@ -299,8 +298,8 @@ void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 }
 
 void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	auto* func = &compile.functions[funcId];
-	auto* funcInfo = &context.functionInfo[funcId];
+	auto *func = compile.functions[funcId];
+	auto *funcInfo = &context.functionInfo[funcId];
 	if (caller) {
 		caller->putBytecodes(in_data, bytecodes);
 		if (accessNullable) {
@@ -322,16 +321,28 @@ void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			bytecodes.emplace_back(Opcode::CREATE_OBJECT);
 			put_opcode_u32(bytecodes, classId);
 			put_opcode_u32(bytecodes,
-			               compile.classes[classId].memberMap.size());
+			               compile.classes[classId]->memberMap.size());
 		}
 	}
 	for (auto &argument : arguments) {
 		argument->putBytecodes(in_data, bytecodes);
 	}
-	bytecodes.emplace_back(func->returnId == DefaultClass::nullClassId
-	                           ? Opcode::CALL_VOID_FUNCTION
-	                           : Opcode::CALL_FUNCTION);
-	put_opcode_u32(bytecodes, funcId);
+	if (funcInfo->isVirtual) {
+		bytecodes.emplace_back(func->returnId == DefaultClass::nullClassId
+		                           ? Opcode::CALL_VTABLE_VOID_FUNCTION
+		                           : Opcode::CALL_VTABLE_FUNCTION);
+		put_opcode_u32(bytecodes, funcInfo->virtualPosition);
+		put_opcode_u32(bytecodes, func->nullableArgs.size);
+	} else {
+		// if (funcInfo->isConstructor) {
+		// 	if (!bytecodes.empty() && func->native)
+		// }
+		bytecodes.emplace_back(func->returnId == DefaultClass::nullClassId
+		                           ? Opcode::CALL_VOID_FUNCTION
+		                           : Opcode::CALL_FUNCTION);
+		put_opcode_u32(bytecodes, funcId);
+	}
+	// put_opcode_u32(bytecodes, func->args.size);
 	// std::cout<<funcId<<'\n';
 }
 

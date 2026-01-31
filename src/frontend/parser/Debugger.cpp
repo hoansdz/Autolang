@@ -78,7 +78,7 @@ bool build(CompiledProgram &compile, AVMReadFileMode &mode) {
 		context.logMessage(err.line, err.message);
 	}
 	freeData(in_data);
-	return !context.hasError;
+	return !lexerContext.hasError && !context.hasError;
 }
 
 void lexerData(in_func, AVMReadFileMode &mode, Lexer::Context &lexerContext) {
@@ -174,15 +174,14 @@ void resolve(in_func) {
 
 	printDebug("Start optimize classes");
 	size_t sizeNewClasses  = context.newClasses.getSize();
-	for (int i = 0; i < sizeNewClasses; ++i) {
+	for (size_t i = 0; i < sizeNewClasses; ++i) {
 		context.newClasses[i]->optimize(in_data);
-		context.newClasses[i]->body.optimize(in_data);
 	}
 
 	printDebug("Start optimize constructor nodes");
 	for (int i = 0; i < sizeNewClasses; ++i) {
 		auto *node = context.newClasses[i];
-		auto clazz = &compile.classes[node->classId];
+		auto clazz = compile.classes[node->classId];
 		auto classInfo = &context.classInfo[clazz->id];
 		if (classInfo->primaryConstructor) {
 			classInfo->primaryConstructor->optimize(in_data);
@@ -201,21 +200,28 @@ void resolve(in_func) {
 	for (int i = 0; i < sizeNewFunctions; ++i) {
 		context.newFunctions[i]->optimize(in_data);
 	}
+
+	printDebug("Start load virtual");
+	for (size_t i = 0; i < sizeNewClasses; ++i) {
+		context.newClasses[i]->loadSuper(in_data);
+		context.newClasses[i]->body.optimize(in_data);
+	}
+
 	printDebug("Start put bytecodes constructor");
 	for (int i = 0; i < sizeNewClasses; ++i) {
 		auto *node = context.newClasses[i];
-		auto classInfo = &context.classInfo[compile.classes[node->classId].id];
+		auto classInfo = &context.classInfo[compile.classes[node->classId]->id];
 		if (classInfo->primaryConstructor) {
 			// Put initial bytecodes, example val a = 5 => SetNode
 			//  node->body.optimize(in_data);
 			auto func =
-			    &compile.functions[classInfo->primaryConstructor->funcId];
+			    compile.functions[classInfo->primaryConstructor->funcId];
 			auto& bytecodes = func->bytecodes;
 			node->body.putBytecodes(in_data, bytecodes);
 			node->body.rewrite(in_data, bytecodes);
 		} else {
 			for (auto &constructor : classInfo->secondaryConstructor) {
-				auto func = &compile.functions[constructor->funcId];
+				auto func = compile.functions[constructor->funcId];
 				// Put initial bytecodes, example val a = 5 => SetNode a and
 				// value 5
 				//  node->body.optimize(in_data);
@@ -238,7 +244,7 @@ void resolve(in_func) {
 	printDebug("Start put bytecodes in functions");
 	for (int i = 0; i < sizeNewFunctions; ++i) {
 		auto *node = context.newFunctions[i];
-		auto func = &compile.functions[node->id];
+		auto func = compile.functions[node->id];
 		node->body.optimize(in_data);
 		node->body.putBytecodes(in_data, func->bytecodes);
 		node->body.rewrite(in_data, func->bytecodes);
@@ -467,7 +473,7 @@ initial:;
 	return nullptr;
 err_call_func:;
 	printDebug(context.currentClassId
-	               ? compile.classes[*context.currentClassId].name
+	               ? compile.classes[*context.currentClassId]->name
 	               : "None");
 	throw ParserError(token->line, "Cannot call command outside function ");
 err_call_class:;

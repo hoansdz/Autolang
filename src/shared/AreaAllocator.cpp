@@ -3,25 +3,28 @@
 
 #include "AreaAllocator.hpp"
 
-void AreaAllocator::destroy() {
-    //Free all slot
-    auto* currentChunk = head;
-    while (currentChunk != nullptr) {
-        for (size_t i = 0; i < AreaChunk::size; ++i) {
-            AreaChunkSlot& slot = currentChunk->data[i];
-            if (slot.isFree) continue;
-            slot.obj.free<true>();
-        }
-        currentChunk = currentChunk->next;
-    }
-    
-    //Free chunk
-    currentChunk = head;
-    while (currentChunk != nullptr) {
-        auto* nextChunk = currentChunk->next;
-        delete currentChunk;
-        currentChunk = nextChunk;
-    }
+template <typename T, size_t size> void AreaAllocator<T, size>::destroy() {
+	auto *currentChunk = head;
+	if constexpr (std::is_same_v<T, AObject>) {
+		// Free all slot
+		while (currentChunk != nullptr) {
+			for (size_t i = 0; i < size; ++i) {
+				auto &slot = currentChunk->data[i];
+				if (slot.isFree)
+					continue;
+				slot.obj.template free<true>();
+			}
+			currentChunk = currentChunk->next;
+		}
+		currentChunk = head;
+	}
+
+	// Free chunk
+	while (currentChunk != nullptr) {
+		auto *nextChunk = currentChunk->next;
+		delete currentChunk;
+		currentChunk = nextChunk;
+	}
 }
 
 #endif

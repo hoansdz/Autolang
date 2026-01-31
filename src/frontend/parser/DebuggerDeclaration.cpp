@@ -166,7 +166,7 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 	//Non static
 	if (context.currentClassId && context.currentFunctionId == context.mainFunctionId) {
 		uint32_t nodeId = context.getCurrentClass(in_data)->memberMap.size();
-		// printDebug(compile.classes[context.currentClassInfo->declarationThis->classId].name);
+		// printDebug(compile.classes[context.currentClassInfo->declarationThis->classId]->name);
 		// printDebug((uintptr_t)context.currentClass);
 		std::cout << nodeId << " is node id of " << name <<'\n';
 		context.getCurrentClass(in_data)->memberMap[node->name] = nodeId;

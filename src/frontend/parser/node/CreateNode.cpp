@@ -1,8 +1,10 @@
 #ifndef CREATE_NODE_CPP
 #define CREATE_NODE_CPP
 
+#include <functional>
 #include "frontend/parser/node/CreateNode.hpp"
 #include "shared/DefaultFunction.hpp"
+#include "shared/Type.hpp"
 
 namespace AutoLang {
 
@@ -21,68 +23,19 @@ void DeclarationNode::optimize(in_func) {
 		classId = clazz->id;
 	}
 	// printDebug("DeclarationNode: " + name + " is " +
-	// compile.classes[classId].name);
-}
-
-void CreateFuncNode::pushFunction(in_func) {
-	AClass *clazz =
-	    contextCallClassId ? &compile.classes[*contextCallClassId] : nullptr;
-	id = compile.registerFunction(clazz, isStatic, name + "()",
-	                              std::vector<uint32_t>(arguments.size(), 0),
-	                              std::vector<bool>(arguments.size(), false),
-	                              clazz ? clazz->id
-	                                    : AutoLang::DefaultClass::nullClassId,
-	                              returnNullable, nullptr);
-	auto func = &compile.functions[id];
-	auto funcInfo = &context.functionInfo[id];
-	funcInfo->clazz = clazz;
-	funcInfo->accessModifier = accessModifier;
-}
-
-void CreateFuncNode::optimize(in_func) {
-	if (!contextCallClassId && isDeclarationExist(in_data, name))
-		throwError(
-		    "Cannot declare function with the same name as declaration name " +
-		    name);
-	if (isClassExist(in_data, name))
-		throwError("Cannot declare function with the same name as class name " +
-		           name);
-	auto func = &compile.functions[id];
-	if (!returnClass.empty()) {
-		auto it = compile.classMap.find(returnClass);
-		if (it == compile.classMap.end())
-			throwError("CreateFuncNode: Cannot find class name: " +
-			           returnClass);
-		func->returnId = it->second;
-	} else
-		func->returnId = AutoLang::DefaultClass::nullClassId;
-	for (size_t i = 0; i < arguments.size(); ++i) {
-		auto &argument = arguments[i];
-		func->args[i] = argument->classId;
-		func->nullableArgs[i] = argument->nullable;
-	}
-	auto &listFunc = compile.funcMap[name + "()"];
-	for (auto id : listFunc) {
-		auto f = &compile.functions[id];
-		// id >= func->id because functions[id] will be optimized in the future
-		if (id >= func->id || f->args.size != func->args.size)
-			continue;
-		for (size_t i = 0; i < f->args.size; ++i) {
-			if (f->args[i] != func->args[i])
-				continue;
-		}
-		throwError("Redefined function : " + func->toString(compile));
-	}
+	// compile.classes[classId]->name);
 }
 
 void CreateConstructorNode::pushFunction(in_func) {
-	AClass *clazz = &compile.classes[classId];
+	AClass *clazz = compile.classes[classId];
 	funcId = compile.registerFunction<true>(
-	    clazz, false, name, std::vector<uint32_t>(arguments.size(), 0),
-	    std::vector<bool>(arguments.size(), false), classId, false,
-	    isPrimary ? AutoLang::DefaultFunction::data_constructor : nullptr);
-	auto func = &compile.functions[funcId];
+	    clazz, false, name, new ClassId[arguments.size() + 1]{},
+	    std::vector<bool>(arguments.size() + 1, false), classId, false,
+	    isPrimary && !arguments.empty() ? AutoLang::DefaultFunction::data_constructor : nullptr );
+	auto func = compile.functions[funcId];
 	auto funcInfo = &context.functionInfo[funcId];
+
+	func->args[0] = classId;
 
 	funcInfo->clazz = clazz;
 	funcInfo->accessModifier = accessModifier;
@@ -103,40 +56,44 @@ void CreateConstructorNode::pushFunction(in_func) {
 }
 
 void CreateConstructorNode::optimize(in_func) {
-	auto func = &compile.functions[funcId];
-	AClass *clazz = &compile.classes[classId];
+	auto func = compile.functions[funcId];
+	auto funcInfo = &context.functionInfo[funcId];
+	AClass *clazz = compile.classes[classId];
 	// Add argument class id
 	auto classInfo = &context.classInfo[classId];
+	auto *newClassNode = context.newClassesMap[classId];
 	for (size_t i = 0; i < arguments.size(); ++i) {
 		auto &argument = arguments[i];
 		func->args[i + 1] = argument->classId;
 		func->nullableArgs[i + 1] = argument->nullable;
 		if (isPrimary) {
+
 			// printDebug((uintptr_t)clazz);
 			// printDebug(classInfo->declarationThis->className);
 			// printDebug(std::to_string(i) + " ... " +
 			// std::to_string(clazz->memberId.size()));
+			// auto setNode = context.setValuePool.push(
+			//     line,
+			//     new GetPropNode(
+			//         line, nullptr, classId,
+			//         new VarNode(line, classInfo->declarationThis, false, false),
+			//         argument->name, true, true, false),
+			//     new VarNode(line, argument, false, true));
+			// body.nodes.push_back(setNode);
 			clazz->memberId[i] = argument->classId;
 			// printDebug("Member: " + std::to_string(i) + " " + argument->name
-			// + " is " + compile.classes[argument->classId].name);
+			// + " is " + compile.classes[argument->classId]->name);
 		}
 	}
 
 	// Check redefine
-
-	auto &listFunc = compile.funcMap[func->name];
-	for (auto id : listFunc) {
-		auto f = &compile.functions[id];
-		// id >= funcId because functions[id] will be optimized in the future
-		if (id >= funcId || f->args.size != func->args.size)
-			continue;
-		for (size_t i = 1; i < f->args.size; ++i) {
-			if (f->args[i] != func->args[i])
-				goto next;
-		}
-		throwError("Redefined constructor : " + func->toString(compile));
-	next:;
+	funcInfo->hash = func->loadHash();
+	auto &hash = classInfo->func[name];
+	auto it = hash.find(funcInfo->hash);
+	if (it != hash.end() && compile.functions[it->second]->name == func->name) {
+		throwError("Redefined function : " + func->toString(compile));
 	}
+	hash[funcInfo->hash] = func->id;
 
 	// Check super
 	if (classInfo->parent) {
@@ -154,7 +111,7 @@ void CreateConstructorNode::optimize(in_func) {
 					    "constructor.");
 				}
 				node->isSuper = true;
-				node->name = compile.classes[*classInfo->parent].name + "()";
+				node->name = compile.classes[*classInfo->parent]->name + "()";
 				break;
 			}
 			default:
@@ -176,9 +133,6 @@ void CreateClassNode::pushClass(in_func) {
 }
 
 void CreateClassNode::optimize(in_func) {
-	if (optimized) {
-		return;
-	}
 	auto &name = context.lexerString[nameId];
 	if (isFunctionExist(in_data, name))
 		throwError("Cannot declare class with the same name as function name " +
@@ -186,17 +140,23 @@ void CreateClassNode::optimize(in_func) {
 	if (isDeclarationExist(in_data, name))
 		throwError("Cannot declare class with the same name as variable name " +
 		           name);
-	optimized = true;
 	if (superId) {
 		auto &superClassName = context.lexerString[*superId];
 		auto it = compile.classMap.find(superClassName);
 		if (it == compile.classMap.end()) {
 			throwError("Cannot find class " + superClassName);
 		}
-		auto superClassId = it->second;
-		auto clazz = &compile.classes[classId];
 		auto classInfo = &context.classInfo[classId];
-		auto superClass = &compile.classes[superClassId];
+		classInfo->parent = it->second;
+	}
+}
+
+void CreateClassNode::loadSuper(in_func) {
+	if (!loadedSuper && superId) {
+		auto clazz = compile.classes[classId];
+		auto classInfo = &context.classInfo[classId];
+		auto superClassId = *classInfo->parent;
+		auto superClass = compile.classes[superClassId];
 		auto superClassInfo = &context.classInfo[superClassId];
 
 		switch (superClassId) {
@@ -211,14 +171,19 @@ void CreateClassNode::optimize(in_func) {
 				break;
 		}
 
-		context.newClassesMap[superClassId]->optimize(in_data);
+		loadedSuper = true;
+
+		{
+			auto it = context.newClassesMap.find(superClassId);
+			it->second->loadSuper(in_data);
+		}
+		
+
 		if (superClass->inheritance.get(classId)) {
 			throwError("Cyclic inheritance is not allowed.");
 		}
-		classInfo->parent = superClassId;
 
-		auto memberToFind =
-		    ankerl::unordered_dense::map<std::string_view, DeclarationNode *>();
+		auto memberToFind = HashMap<std::string_view, DeclarationNode *>();
 		memberToFind.reserve(classInfo->member.size());
 		for (auto *declaration : classInfo->member) {
 			memberToFind[declaration->name] = declaration;
@@ -241,21 +206,87 @@ void CreateClassNode::optimize(in_func) {
 		classInfo->member.insert(classInfo->member.begin(),
 		                         superClassInfo->member.begin(),
 		                         superClassInfo->member.end());
+		auto newStaticMember = superClassInfo->staticMember;
+		for (auto &[key, value] : classInfo->staticMember) {
+			newStaticMember[key] = value;
+		}
+		classInfo->staticMember = std::move(newStaticMember);
 		clazz->memberId.insert(clazz->memberId.begin(),
 		                       superClass->memberId.begin(),
 		                       superClass->memberId.end());
 		uint32_t maxSize = std::max<ClassId>(
 		    superClassId, superClass->inheritance.getSize() * 64);
 		clazz->inheritance.from(superClass->inheritance, maxSize);
+		clazz->parentId = superClassId;
 		clazz->inheritance.set(superClassId);
-		
-		for (auto& [key, value] : superClass->funcMap) {
-			auto& vecs = clazz->funcMap[key];
-			vecs.insert(vecs.end(), value.begin(), value.end());
+
+		// Static can be override without error
+		for (auto &[key, superStaticFuncHash] : superClassInfo->staticFunc) {
+			auto &hash = classInfo->staticFunc[key];
+			for (auto &[hashValue, offset] : superStaticFuncHash) {
+				hash[hashValue] = offset;
+			}
+		}
+
+		clazz->vtable = superClass->vtable;
+		InheritanceBitset funcOverride;
+
+		for (auto &[funcName, superFuncHash] : superClassInfo->func) {
+			auto &hash = classInfo->func[funcName];
+			for (auto &[hashValue, offset] : superFuncHash) {
+				auto it = hash.find(hashValue);
+				if (it != hash.end()) {
+					auto funcInfo = &context.functionInfo[it->second];
+					auto superFunc = compile.functions[offset];
+					auto superFuncInfo = &context.functionInfo[offset];
+					// Index virtual position : Three times override -> Twice
+					// override -> First override  -> parent
+					if (!superFuncInfo->isVirtual) {
+						ClassId parentId = *clazz->parentId;
+						while (true) {
+							auto parentClassInfo = &context.classInfo[parentId];
+							auto it1 = parentClassInfo->func.find(funcName);
+							if (it1 == parentClassInfo->func.end()) break;
+							auto& hashMap = it1->second;
+							auto it2 = hashMap.find(hashValue);
+							if (it2 == hashMap.end()) break;
+							auto parentClass = compile.classes[parentId];
+							parentClass->vtable.push_back(offset);
+							if (!parentClass->parentId) break;
+							parentId = *parentClass->parentId;
+						}
+						superFuncInfo->virtualPosition = clazz->vtable.size();
+						superFuncInfo->isVirtual = true;
+
+						funcInfo->virtualPosition =
+						    superFuncInfo->virtualPosition;
+						clazz->vtable.push_back(it->second);
+						funcInfo->isVirtual = true;
+					} else {
+						funcInfo->virtualPosition =
+						    superFuncInfo->virtualPosition;
+						clazz->vtable[funcInfo->virtualPosition] = it->second;
+						funcInfo->isVirtual = true;
+					}
+					std::cerr<<superFunc->name<<" ok\n";
+					funcOverride.resize(superFunc->id);
+					funcOverride.set(superFunc->id);
+				}
+				hash[hashValue] = offset;
+			}
+		}
+
+		for (auto &[key, value] : superClass->funcMap) {
+			auto &vecs = clazz->funcMap[key];
+			vecs.reserve(vecs.size() + value.size());
+			for (auto val : value) {
+				if (funcOverride.get(val)) {
+					continue;
+				}
+				vecs.push_back(val);
+			}
 		}
 	}
-	// auto clazz = &compile.classes[classId];
-	// body.optimize(in_data);
 }
 
 bool isFunctionExist(in_func, std::string &name) {

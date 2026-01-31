@@ -23,6 +23,7 @@ class InheritanceBitset {
 		other.bits = nullptr;
 	}
 	void resize(uint32_t maxSize) { // At compiler time
+		if (size * 64 >= maxSize) return;
 		uint32_t newSize = std::max((maxSize + 63) / 64, size);
 		uint64_t* newBits = new uint64_t[newSize]{};
 		std::memcpy(newBits, bits, sizeof(uint64_t) * size);
@@ -47,6 +48,34 @@ class InheritanceBitset {
 		if (bitPosition >= size)
 			return false;
 		return (bits[bitPosition]) & (static_cast<uint64_t>(1) << (index & 63));
+	}
+	bool empty() {
+		if (size == 0) return true;
+		for (int i = 0; i < size; ++i) {
+			if (bits[i]) return false;
+		}
+		return true;
+	}
+	template <typename Func>
+	void forEachSetBit(Func&& fn) {
+		// for (uint32_t block = 0; block < size; ++block) {
+		// 	uint64_t v = bits[block];
+		// 	while (v) {
+		// 		uint32_t lsb = __builtin_ctzll(v); // lowest bit
+		// 		uint32_t index = (block << 6) + lsb;
+		// 		fn(index);
+		// 		v &= v - 1; // clear lowest set bit
+		// 	}
+		// }
+		for (uint32_t block = size; block-- > 0;) {
+			uint64_t v = bits[block];
+			while (v) {
+				uint32_t lsb = 63 - __builtin_clzll(v); // highest bit
+				uint32_t index = (block << 6) + lsb;
+				fn(index);
+				v ^= (static_cast<uint64_t>(1) << lsb); // clear highest set bit
+			}
+		}
 	}
 	~InheritanceBitset() { if (bits) delete[] bits; }
 };

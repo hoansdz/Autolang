@@ -111,7 +111,7 @@ namespace AutoLang
 	struct HasClassIdNode : ExprNode
 	{
 		ClassId classId;
-		inline std::string &getClassName(in_func) { return compile.classes[classId].name; }
+		inline std::string &getClassName(in_func) { return compile.classes[classId]->name; }
 		HasClassIdNode(NodeType kind, ClassId classId, uint32_t line) : ExprNode(kind, line), classId(classId) {}
 		virtual bool isNullable() { return false; }
 		virtual ~HasClassIdNode() {}

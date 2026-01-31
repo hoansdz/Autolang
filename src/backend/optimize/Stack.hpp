@@ -1,36 +1,29 @@
-#ifndef ARRAY_HPP
-#define ARRAY_HPP
+#ifndef STACK_HPP
+#define STACK_HPP
 
 #include "shared/AObject.hpp"
 
-template <size_t size, bool callFree = true>
-class Array {
+template <typename T, uint32_t size>
+class Stack {
 public:
-	size_t index = 0;
-	AObject* objects[size];
-	inline AObject*& top() {
+	uint32_t index = 0;
+	T objects[size];
+	inline T& top() {
 		if (index == 0) 
 			throw std::runtime_error("Floor");
 		return objects[index - 1];
 	}
-	inline void push(AObject* object) {
+	inline void push(T object) {
 		if (index == size) 
 			throw std::runtime_error("Overflow");
 		objects[index++] = object;
 	}
-	inline AObject* pop() {
+	inline T pop() {
 		if (index == 0) 
 			throw std::runtime_error("Floor");
 		return objects[--index];
 	}
-	inline void addOrDelete(AreaAllocator& areaPool, AObject* obj) {
-		if (index == size) {
-			areaPool.release(obj);
-			return;
-		}
-		objects[index++] = obj;
-	}
-	~Array() {
+	~Stack() {
 		// for (size_t i = 0; i < index; ++i) {
 		// 	AObject* obj = objects[i];
 		// 	if (obj->refCount > 0) --obj->refCount;

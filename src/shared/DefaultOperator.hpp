@@ -38,8 +38,8 @@ inline AObject *op_not_eq_pointer(NativeFuncInData);
 AObject *plus(NativeFuncInData) {
   if (size != 2)
     return nullptr;
-  auto obj1 = stackAllocator[0];
-  auto obj2 = stackAllocator[1];
+  auto obj1 = args[0];
+  auto obj2 = args[1];
   switch (obj1->type) {
   case AutoLang::DefaultClass::intClassId: {
     switch (obj2->type) {
@@ -92,10 +92,10 @@ AObject *plus(NativeFuncInData) {
   AObject *name(NativeFuncInData) {                                            \
     if (size != 2)                                                             \
       return nullptr;                                                          \
-    auto obj1 = stackAllocator[0];                                             \
+    auto obj1 = args[0];                                             \
     switch (obj1->type) {                                                      \
     case AutoLang::DefaultClass::intClassId: {                                 \
-      auto obj2 = stackAllocator[1];                                           \
+      auto obj2 = args[1];                                           \
       switch (obj2->type) {                                                    \
       case AutoLang::DefaultClass::intClassId:                                 \
         return manager.create((obj1->i)op(obj2->i));                           \
@@ -107,7 +107,7 @@ AObject *plus(NativeFuncInData) {
       break;                                                                   \
     }                                                                          \
     case AutoLang::DefaultClass::floatClassId: {                               \
-      auto obj2 = stackAllocator[1];                                           \
+      auto obj2 = args[1];                                           \
       switch (obj2->type) {                                                    \
       case AutoLang::DefaultClass::intClassId:                                 \
         return manager.create((obj1->f)op(obj2->i));                           \
@@ -126,10 +126,10 @@ AObject *plus(NativeFuncInData) {
   AObject *name(NativeFuncInData) {                                            \
     if (size != 2)                                                             \
       return nullptr;                                                          \
-    auto obj1 = stackAllocator[0];                                             \
+    auto obj1 = args[0];                                             \
     switch (obj1->type) {                                                      \
     case AutoLang::DefaultClass::intClassId: {                                 \
-      auto obj2 = stackAllocator[1];                                           \
+      auto obj2 = args[1];                                           \
       switch (obj2->type) {                                                    \
       case AutoLang::DefaultClass::intClassId:                                 \
         return manager.create((obj1->i)op(obj2->i));                           \
@@ -141,7 +141,7 @@ AObject *plus(NativeFuncInData) {
       break;                                                                   \
     }                                                                          \
     case AutoLang::DefaultClass::floatClassId: {                               \
-      auto obj2 = stackAllocator[1];                                           \
+      auto obj2 = args[1];                                           \
       switch (obj2->type) {                                                    \
       case AutoLang::DefaultClass::intClassId:                                 \
         return manager.create((obj1->f)op(obj2->i));                           \
@@ -153,7 +153,7 @@ AObject *plus(NativeFuncInData) {
       break;                                                                   \
     } break;                                                                   \
     }                                                                          \
-    auto obj2 = stackAllocator[1];                                             \
+    auto obj2 = args[1];                                             \
     if (obj1->type == AutoLang::DefaultClass::boolClassId &&                   \
         obj2->type == AutoLang::DefaultClass::boolClassId) {                   \
       return manager.create((obj1->b)op(obj2->b));                             \
@@ -166,8 +166,8 @@ AObject *plus(NativeFuncInData) {
   }
 
 AObject *mod(NativeFuncInData) {
-  auto obj1 = stackAllocator[0];
-  auto obj2 = stackAllocator[1];
+  auto obj1 = args[0];
+  auto obj2 = args[1];
   switch (obj1->type) {
   case AutoLang::DefaultClass::intClassId: {
     switch (obj2->type) {
@@ -201,8 +201,8 @@ AObject *mod(NativeFuncInData) {
 }
 
 AObject *bitwise_and(NativeFuncInData) {
-  auto obj1 = stackAllocator[0];
-  auto obj2 = stackAllocator[1];
+  auto obj1 = args[0];
+  auto obj2 = args[1];
   switch (obj1->type) {
   case AutoLang::DefaultClass::intClassId: {
     switch (obj2->type) {
@@ -220,8 +220,8 @@ AObject *bitwise_and(NativeFuncInData) {
 }
 
 AObject *bitwise_or(NativeFuncInData) {
-  auto obj1 = stackAllocator[0];
-  auto obj2 = stackAllocator[1];
+  auto obj1 = args[0];
+  auto obj2 = args[1];
   switch (obj1->type) {
   case AutoLang::DefaultClass::intClassId: {
     switch (obj2->type) {
@@ -246,8 +246,8 @@ create_operator_number(divide, /);
   AObject *name(NativeFuncInData) {                                            \
     if (size != 2)                                                             \
       return nullptr;                                                          \
-    auto obj1 = stackAllocator[0];                                             \
-    auto obj2 = stackAllocator[1];                                             \
+    auto obj1 = args[0];                                             \
+    auto obj2 = args[1];                                             \
     switch (obj1->type) {                                                      \
     case AutoLang::DefaultClass::intClassId: {                                 \
       switch (obj2->type) {                                                    \
@@ -288,8 +288,8 @@ create_operator_number(divide, /);
   AObject *name(NativeFuncInData) {                                            \
     if (size != 2)                                                             \
       return nullptr;                                                          \
-    auto obj1 = stackAllocator[0];                                             \
-    auto obj2 = stackAllocator[1];                                             \
+    auto obj1 = args[0];                                             \
+    auto obj2 = args[1];                                             \
     switch (obj1->type) {                                                      \
     case AutoLang::DefaultClass::intClassId: {                                 \
       switch (obj2->type) {                                                    \
@@ -329,7 +329,7 @@ create_operator_func_number_equal(mul_eq, *=);
 create_operator_func_number_equal(divide_eq, /=);
 
 AObject *plus_plus(NativeFuncInData) {
-  auto obj = stackAllocator[0];
+  auto obj = args[0];
   switch (obj->type) {
   case AutoLang::DefaultClass::intClassId:
     ++obj->i;
@@ -344,7 +344,7 @@ AObject *plus_plus(NativeFuncInData) {
 }
 
 AObject *minus_minus(NativeFuncInData) {
-  auto obj = stackAllocator[0];
+  auto obj = args[0];
   switch (obj->type) {
   case AutoLang::DefaultClass::intClassId:
     --obj->i;
@@ -359,7 +359,7 @@ AObject *minus_minus(NativeFuncInData) {
 }
 
 AObject *negative(NativeFuncInData) {
-  auto obj = stackAllocator[0];
+  auto obj = args[0];
   switch (obj->type) {
   case AutoLang::DefaultClass::intClassId:
     return manager.create(-obj->i);
@@ -373,7 +373,7 @@ AObject *negative(NativeFuncInData) {
 }
 
 AObject *op_not(NativeFuncInData) {
-  auto obj = stackAllocator[0];
+  auto obj = args[0];
   if (obj->type == AutoLang::DefaultClass::boolClassId)
     return manager.createBoolObject(!obj->b);
   if (obj->type == AutoLang::DefaultClass::nullClassId)
@@ -382,23 +382,23 @@ AObject *op_not(NativeFuncInData) {
 }
 
 AObject *op_and_and(NativeFuncInData) {
-  return ObjectManager::createBoolObject(stackAllocator[0]->b &&
-                                         stackAllocator[1]->b);
+  return ObjectManager::createBoolObject(args[0]->b &&
+                                         args[1]->b);
 }
 
 AObject *op_or_or(NativeFuncInData) {
-  return ObjectManager::createBoolObject(stackAllocator[0]->b ||
-                                         stackAllocator[1]->b);
+  return ObjectManager::createBoolObject(args[0]->b ||
+                                         args[1]->b);
 }
 
 AObject *op_eq_pointer(NativeFuncInData) {
-  return ObjectManager::createBoolObject(stackAllocator[0] ==
-                                         stackAllocator[1]);
+  return ObjectManager::createBoolObject(args[0] ==
+                                         args[1]);
 }
 
 AObject *op_not_eq_pointer(NativeFuncInData) {
-  return ObjectManager::createBoolObject(stackAllocator[0] !=
-                                         stackAllocator[1]);
+  return ObjectManager::createBoolObject(args[0] !=
+                                         args[1]);
 }
 
 create_operator_number(op_less_than, <);

@@ -5,12 +5,12 @@
 
 void ObjectManager::destroy() {
     for (size_t i = 0; i < intObjects.index; ++i) {
-        reinterpret_cast<AreaChunkSlot*>(intObjects.objects[i])->isFree = true;
+        reinterpret_cast<AreaAllocator<AObject, 64>::AreaChunkSlot*>(intObjects.objects[i])->isFree = true;
     }
     for (size_t i = 0; i < floatObjects.index; ++i) {
-        reinterpret_cast<AreaChunkSlot*>(floatObjects.objects[i])->isFree = true;
+        reinterpret_cast<AreaAllocator<AObject, 64>::AreaChunkSlot*>(floatObjects.objects[i])->isFree = true;
     }
-    areaPool.destroy();
+    areaAllocator.destroy();
 }
 
 #endif

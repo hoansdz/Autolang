@@ -97,7 +97,7 @@ AClass* findClass(in_func, std::string name) {
 	auto it = compile.classMap.find(name);
 	if (it == compile.classMap.end())
 		return nullptr;
-	return &compile.classes[it->second];
+	return compile.classes[it->second];
 }
 
 }

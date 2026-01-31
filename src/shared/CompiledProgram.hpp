@@ -6,6 +6,7 @@
 #include <cstdint>
 #include "ankerl/unordered_dense.h"
 #include "shared/AObject.hpp"
+#include "shared/AString.hpp"
 #include "shared/AClass.hpp"
 #include "shared/Function.hpp"
 #include "shared/StackAllocator.hpp"
@@ -29,21 +30,22 @@ struct CompiledProgram
 	CompiledProgram() {}
 	ObjectManager manager;
 	Offset mainFunctionId;
-	std::vector<std::string> warnings;
-	std::vector<Function> functions;
-	ankerl::unordered_dense::map<std::string, std::vector<Offset>> funcMap;
-	std::vector<AClass> classes;
-	ankerl::unordered_dense::map<std::string, Offset> classMap;
+	AreaAllocator<Function, 64> functionAllocator;
+	std::vector<Function*> functions;
+	HashMap<std::string, std::vector<Offset>> funcMap;
+	AreaAllocator<AClass, 64> classAllocator;
+	std::vector<AClass*> classes;
+	HashMap<std::string, Offset> classMap;
 	std::vector<AObject *> constPool;
-	ankerl::unordered_dense::map<int64_t, Offset> constIntMap;
-	ankerl::unordered_dense::map<double, Offset> constFloatMap;
-	ankerl::unordered_dense::map<AString *, Offset, AString::Hash, AString::Equal> constStringMap;
+	HashMap<int64_t, Offset> constIntMap;
+	HashMap<double, Offset> constFloatMap;
+	HashMap<AString *, Offset, AString::Hash, AString::Equal> constStringMap;
 	template <bool isConstructor = false>
 	Offset registerFunction( // Return value
 		AClass *clazz,
 		bool isStatic,
 		std::string name,
-		std::vector<ClassId> args,
+		ClassId* args,
 		std::vector<bool> nullableArgs,
 		ClassId returnId,
 		bool returnNullable,
@@ -52,7 +54,7 @@ struct CompiledProgram
 		AClass *clazz,
 		bool isStatic,
 		std::string name,
-		std::vector<ClassId> args,
+		ClassId* args,
 		std::vector<bool> nullableArgs,
 		AObject *(*native)(NativeFuncInput))
 	{
@@ -61,9 +63,9 @@ struct CompiledProgram
 	ClassId registerClass(
 		std::string name);
 
-	Offset registerConstPool(ankerl::unordered_dense::map<AString *, uint32_t, AString::Hash, AString::Equal> &map, AString *value);
+	Offset registerConstPool(HashMap<AString *, uint32_t, AString::Hash, AString::Equal> &map, AString *value);
 	template <typename T>
-	Offset registerConstPool(ankerl::unordered_dense::map<T, uint32_t> &map, T value);
+	Offset registerConstPool(HashMap<T, uint32_t> &map, T value);
 	~CompiledProgram();
 };
 

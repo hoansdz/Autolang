@@ -86,8 +86,8 @@ ConstValueNode *BinaryNode::calculate(in_func) {
 		}
 	} catch (const std::runtime_error &err) {
 		throwError("Cannot use " + Lexer::Token(0, op).toString(context) +
-		           " operator with " + compile.classes[l->classId].name +
-		           " and " + compile.classes[r->classId].name);
+		           " operator with " + compile.classes[l->classId]->name +
+		           " and " + compile.classes[r->classId]->name);
 	}
 }
 
@@ -107,7 +107,7 @@ void BinaryNode::optimize(in_func) {
 			left = CastNode::createAndOptimize(
 			    in_data, left, AutoLang::DefaultClass::intClassId);
 		}
-		// std::cout<<compile.classes[left->classId].name<<'\n';
+		// std::cout<<compile.classes[left->classId]->name<<'\n';
 
 		if (right->classId == AutoLang::DefaultClass::boolClassId) {
 			right = CastNode::createAndOptimize(
@@ -153,8 +153,8 @@ void BinaryNode::optimize(in_func) {
 		return;
 	throwError(std::string("Cannot use '") +
 	           Lexer::Token(0, op).toString(context) + "' between " +
-	           compile.classes[left->classId].name + " and " +
-	           compile.classes[right->classId].name);
+	           compile.classes[left->classId]->name + " and " +
+	           compile.classes[right->classId]->name);
 }
 
 void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {

@@ -61,21 +61,18 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 	}
 
 	CreateFuncNode *node = context.newFunctions.push(
-	    firstLine, context.currentClassId, name, std::move(returnClass),
+	    firstLine, context.currentClassId, name + "()", std::move(returnClass),
 	    returnNullable, std::move(listDeclarationNode), isStatic,
 	    accessModifier);
 	node->pushFunction(in_data);
-	// compile.funcMap[compile.functions[node->id].name].push_back(node->id);
-	auto func = &compile.functions[node->id];
+	// compile.funcMap[compile.functions[node->id].name]->push_back(node->id);
+	auto func = compile.functions[node->id];
 	context.gotoFunction(node->id);
 	auto &scope = context.getCurrentFunctionInfo(in_data)->scopes.back();
 
 	if (!isStatic && context.currentClassId) {
 		// Add this
-		if (!isStatic) {
-			scope["this"] =
-			    context.getCurrentClassInfo(in_data)->declarationThis;
-		}
+		scope["this"] = context.getCurrentClassInfo(in_data)->declarationThis;
 	}
 
 	func->maxDeclaration += node->arguments.size();

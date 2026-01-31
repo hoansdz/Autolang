@@ -16,8 +16,9 @@ private:
 public:
 	size_t top;
 	AObject** args;
-	StackAllocator(size_t maxSize = 256):
-		maxSize(maxSize), sizeNow(maxSize), top(0), args(new AObject*[maxSize]()){}
+	AObject** currentPtr;
+	StackAllocator(size_t maxSize):
+		maxSize(maxSize), sizeNow(maxSize), top(0), args(new AObject*[maxSize]()), currentPtr(args){}
 	~StackAllocator() {
 		// for (size_t i = 0; i < sizeNow; ++i) {
 		// 	AObject* obj = args[i];
@@ -28,6 +29,15 @@ public:
 		// 	delete obj;
 		// }
 		delete[] args;
+	}
+
+	inline void setTop(size_t top) {
+		this->top = top;
+		currentPtr = args + top;
+	}
+
+	inline size_t getTop() {
+		return top;
 	}
 	
 	inline void ensure(size_t size) {
@@ -51,6 +61,7 @@ public:
 			args = newArgs;
 		}
 		this->top = top;
+		currentPtr = args + top;
 	}
 	
 	inline void clear(ObjectManager& manager, size_t from, size_t to) {
@@ -81,7 +92,7 @@ public:
 		object->retain();
 	}
 	
-	inline AObject*& operator[](size_t index){ return args[top + index]; }
+	inline AObject*& operator[](size_t index){ return currentPtr[index]; }
 };
 
 #endif

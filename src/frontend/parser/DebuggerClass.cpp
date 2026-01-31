@@ -25,20 +25,19 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 		n->pushClass(in_data);
 		context.newClassesMap[n->classId] = n;
 		auto lastClass = context.getCurrentClass(in_data);
-		auto clazz = &compile.classes[n->classId];
+		auto clazz = compile.classes[n->classId];
 		context.gotoClass(clazz);
 		auto declarationThis = context.declarationNodePool.push(
 		    firstLine, "this", "", true, false, false);
 		declarationThis->classId = n->classId;
 		//'this' is always input at first position
 		declarationThis->id = 0;
-		context.getCurrentClassInfo(in_data)->primaryConstructor =
-		    context.createConstructorPool.push(
-		        firstLine, *context.currentClassId, name + "()",
-		        std::vector<DeclarationNode *>{}, true,
-		        Lexer::TokenType::PUBLIC);
-		context.getCurrentClassInfo(in_data)->primaryConstructor->pushFunction(
-		    in_data);
+		auto *constructor = context.createConstructorPool.push(
+		    firstLine, *context.currentClassId, name + "()",
+		    std::vector<DeclarationNode *>{}, false, Lexer::TokenType::PUBLIC);
+		context.getCurrentClassInfo(in_data)->secondaryConstructor.push_back(
+		    constructor);
+		constructor->pushFunction(in_data);
 		context.gotoClass(lastClass);
 		return n;
 	}
@@ -63,7 +62,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 	node->pushClass(in_data);
 	context.newClassesMap[node->classId] = node;
 	auto lastClass = context.getCurrentClass(in_data);
-	auto clazz = &compile.classes[node->classId];
+	auto clazz = compile.classes[node->classId];
 	context.gotoClass(clazz);
 
 	auto declarationThis = context.declarationNodePool.push(
@@ -92,8 +91,8 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 		compile
 		    .functions[context.getCurrentClassInfo(in_data)
 		                   ->primaryConstructor->funcId]
-		    .maxDeclaration += context.getCurrentClassInfo(in_data)
-		                           ->primaryConstructor->arguments.size();
+		    ->maxDeclaration += context.getCurrentClassInfo(in_data)
+		                            ->primaryConstructor->arguments.size();
 		if (!nextToken(&token, context.tokens, i)) {
 			context.gotoClass(lastClass);
 			--i;
@@ -110,13 +109,13 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 				throw ParserError(
 				    firstLine, "Extended class must be declarated constructor");
 			}
-			context.getCurrentClassInfo(in_data)->primaryConstructor =
-			    context.createConstructorPool.push(
-			        firstLine, *context.currentClassId, name + "()",
-			        std::vector<DeclarationNode *>{}, true,
-			        Lexer::TokenType::PUBLIC);
+			auto *constructor = context.createConstructorPool.push(
+			    firstLine, *context.currentClassId, name + "()",
+			    std::vector<DeclarationNode *>{}, false,
+			    Lexer::TokenType::PUBLIC);
 			context.getCurrentClassInfo(in_data)
-			    ->primaryConstructor->pushFunction(in_data);
+			    ->secondaryConstructor.push_back(constructor);
+			constructor->pushFunction(in_data);
 		}
 
 		context.gotoClass(lastClass);
@@ -183,12 +182,12 @@ void loadConstructor(in_func, size_t &i) {
 	context.getCurrentClassInfo(in_data)->secondaryConstructor.push_back(
 	    constructor);
 	constructor->pushFunction(in_data);
-	compile.functions[constructor->funcId].maxDeclaration +=
+	compile.functions[constructor->funcId]->maxDeclaration +=
 	    constructor->arguments.size();
 	context.gotoFunction(constructor->funcId);
 	// compile
-	//     .funcMap[compile.classes[*context.currentClassId].name + "." +
-	//              compile.classes[*context.currentClassId].name]
+	//     .funcMap[compile.classes[*context.currentClassId]->name + "." +
+	//              compile.classes[*context.currentClassId]->name]
 	//     .push_back(constructor->funcId);
 
 	// Add to scope

@@ -76,7 +76,7 @@ ConstValueNode *UnaryNode::calculate(in_func) {
 	}
 	throwError("Cannot find operator '" +
 	           Lexer::Token(0, op).toString(context) + "' with class " +
-	           compile.classes[value->classId].name);
+	           compile.classes[value->classId]->name);
 	return nullptr;
 }
 
@@ -95,7 +95,7 @@ void UnaryNode::optimize(in_func) {
 				}
 				default:
 					throwError("Cannot cast class " +
-					           compile.classes[value->classId].name +
+					           compile.classes[value->classId]->name +
 					           " to number");
 			}
 		}
@@ -103,7 +103,7 @@ void UnaryNode::optimize(in_func) {
 			if (value->classId == DefaultClass::boolClassId)
 				break;
 			throwError("Cannot cast class " +
-			           compile.classes[value->classId].name + " to Bool");
+			           compile.classes[value->classId]->name + " to Bool");
 		}
 		default:
 			break;
@@ -159,8 +159,8 @@ HasClassIdNode *CastNode::createAndOptimize(in_func, HasClassIdNode *value,
 		}
 	} catch (const std::runtime_error &err) {
 		value->throwError("Cannot cast " +
-		                  compile.classes[value->classId].name + " to " +
-		                  compile.classes[classId].name);
+		                  compile.classes[value->classId]->name + " to " +
+		                  compile.classes[classId]->name);
 	}
 	return new CastNode(value, classId);
 }
@@ -169,7 +169,7 @@ void UnknowNode::optimize(in_func) {
 	auto it = compile.classMap.find(name);
 	if (it == compile.classMap.end()) {
 		if (contextCallClassId) {
-			AClass *clazz = &compile.classes[*contextCallClassId];
+			AClass *clazz = compile.classes[*contextCallClassId];
 			AClass *lastClass = context.getCurrentClass(in_data);
 			context.gotoClass(clazz);
 			correctNode = context.getCurrentClassInfo(in_data)->findDeclaration(
@@ -235,7 +235,7 @@ void GetPropNode::optimize(in_func) {
 			throwError("Cannot find caller");
 		}
 	}
-	auto clazz = &compile.classes[caller->classId];
+	auto clazz = compile.classes[caller->classId];
 	auto classInfo = &context.classInfo[clazz->id];
 	auto it = clazz->memberMap.find(name);
 	if (it == clazz->memberMap.end()) {
@@ -270,10 +270,10 @@ void GetPropNode::optimize(in_func) {
 		if (clazz->memberId[id] != declaration->classId)
 			clazz->memberId[id] = declaration->classId;
 		classId = declaration->classId; // clazz->memberId[id];
-		printDebug("Class " + clazz->name + " GetProp: " + name + " " +
-		           " has id: " + std::to_string(id) + " " +
-		           std::to_string(classId) + " " +
-		           compile.classes[classId].name);
+		// printDebug("Class " + clazz->name + " GetProp: " + name + " " +
+		//            " has id: " + std::to_string(id) + " " +
+		//            std::to_string(classId) + " " +
+		//            compile.classes[classId]->name);
 	}
 	if (nullable) {
 		nullable = declaration->nullable;
@@ -350,7 +350,7 @@ new_detach:;
 					}
 					detachNode->declaration->classId = value->classId;
 					compile.classes[detachNode->caller->classId]
-					    .memberId[detachNode->declaration->id] =
+					    ->memberId[detachNode->declaration->id] =
 					    detach->classId;
 					// Marked non null won't run example val a! = 1
 					if (detachNode->declaration->mustInferenceNullable) {
@@ -377,7 +377,7 @@ new_detach:;
 					}
 					// printDebug(std::string("SetNode: Declaration ") +
 					// node->declaration->name + " is " +
-					// compile.classes[value->classId].name);
+					// compile.classes[value->classId]->name);
 				}
 				detach->classId = value->classId;
 			}
@@ -387,7 +387,7 @@ new_detach:;
 			// }
 			if (detachNode->isVal) {
 				throwError("Cannot change " +
-				           compile.classes[detachNode->caller->classId].name +
+				           compile.classes[detachNode->caller->classId]->name +
 				           "." + detachNode->name + " because it's val");
 			}
 			// Nullable
@@ -406,7 +406,7 @@ new_detach:;
 				}
 				return;
 			}
-			auto clazz = &compile.classes[detachNode->caller->classId];
+			auto clazz = compile.classes[detachNode->caller->classId];
 			// clazz->memberId[detach->declaration->id] = value->classId;
 			detachNode->declaration->classId = value->classId;
 			break;
@@ -450,7 +450,7 @@ new_detach:;
 					}
 					// printDebug(std::string("SetNode: Declaration ") +
 					// node->declaration->name + " is " +
-					// compile.classes[value->classId].name);
+					// compile.classes[value->classId]->name);
 				}
 				detach->classId = value->classId;
 			}
@@ -554,8 +554,8 @@ new_detach:;
 			}
 			throwError("Cannot use " + Lexer::Token(0, op).toString(context) +
 			           " operator with " +
-			           compile.classes[detach->classId].name + " and " +
-			           compile.classes[value->classId].name);
+			           compile.classes[detach->classId]->name + " and " +
+			           compile.classes[value->classId]->name);
 		}
 		return;
 	}
@@ -580,21 +580,21 @@ new_detach:;
 					throwError("What happen");
 			}
 		} catch (const std::runtime_error &err) {
-			throwError("Cannot cast " + compile.classes[value->classId].name +
-			           " to " + compile.classes[detach->classId].name);
+			throwError("Cannot cast " + compile.classes[value->classId]->name +
+			           " to " + compile.classes[detach->classId]->name);
 		}
 	}
 	switch (detach->kind) {
 		case NodeType::VAR: {
 			throwError(static_cast<VarNode *>(detach)->declaration->name +
 			           " is declarated is " +
-			           compile.classes[detach->classId].name);
+			           compile.classes[detach->classId]->name);
 		}
 		case NodeType::GET_PROP: {
 			auto detach_ = static_cast<GetPropNode *>(detach);
-			throwError(compile.classes[detach_->caller->classId].name + +"." +
+			throwError(compile.classes[detach_->caller->classId]->name + +"." +
 			           detach_->name + " is declarated is " +
-			           compile.classes[detach->classId].name);
+			           compile.classes[detach->classId]->name);
 		}
 		default:
 			throwError(",Wtf");
@@ -603,7 +603,7 @@ new_detach:;
 
 void CallNode::optimize(in_func) {
 	AClass *clazz =
-	    contextCallClassId ? &compile.classes[*contextCallClassId] : nullptr;
+	    contextCallClassId ? compile.classes[*contextCallClassId] : nullptr;
 	std::string funcName;
 	ClassId callerCanCallId; // never be used if is static
 	uint8_t count = 0;
@@ -639,7 +639,7 @@ void CallNode::optimize(in_func) {
 				break;
 		}
 
-		auto callerClass = &compile.classes[caller->classId];
+		auto callerClass = compile.classes[caller->classId];
 		funcName = callerClass->name + "." + name;
 		auto it = callerClass->funcMap.find(name);
 		if (it != callerClass->funcMap.end()) {
@@ -654,7 +654,7 @@ void CallNode::optimize(in_func) {
 		if (it == compile.classMap.end()) {
 			funcName = name;
 			if (contextCallClassId) {
-				auto callerClass = &compile.classes[*contextCallClassId];
+				auto callerClass = compile.classes[*contextCallClassId];
 				auto it = callerClass->funcMap.find(name);
 				if (it != callerClass->funcMap.end()) {
 					funcVec[count++] = &it->second;
@@ -664,7 +664,7 @@ void CallNode::optimize(in_func) {
 			// allowPrefix = clazz != nullptr;
 		} else {
 			// Return Id in putbytecode
-			funcName = compile.classes[it->second].name + '.' + name;
+			funcName = compile.classes[it->second]->name + '.' + name;
 			caller = new ClassAccessNode(line, it->second);
 		}
 
@@ -724,13 +724,13 @@ void CallNode::optimize(in_func) {
 				isFirst = false;
 			else
 				currentFuncLog += ", ";
-			currentFuncLog += compile.classes[argument->classId].name;
+			currentFuncLog += compile.classes[argument->classId]->name;
 		}
 		for (int j = 0; j < count; ++j) {
 			auto &vecs = *funcVec[j];
 			if (vecs.empty()) printDebug("Empty");
 			for (auto v : vecs) {
-				printDebug("Founded " + compile.functions[v].toString(compile));
+				printDebug("Founded " + compile.functions[v]->toString(compile));
 			}
 		}
 		throwError(std::string("Cannot find function has arguments : ") +
@@ -740,14 +740,14 @@ void CallNode::optimize(in_func) {
 		for (int j = 0; j < count; ++j) {
 			auto &vecs = *funcVec[j];
 			for (auto v : vecs) {
-				printDebug("Founded " + compile.functions[v].toString(compile));
+				printDebug("Founded " + compile.functions[v]->toString(compile));
 			}
 		}
-		throwError(std::string("Ambitious Call : ") + funcName);
+		throwError(std::string("Ambiguous Call : ") + funcName);
 	}
 	funcId = first.id;
 	classId = first.func->returnId;
-	auto func = &compile.functions[funcId];
+	auto func = compile.functions[funcId];
 	auto funcInfo = &context.functionInfo[funcId];
 
 	nullable = func->returnNullable;
@@ -807,7 +807,7 @@ bool CallNode::match(in_func, MatchOverload &match,
 	match.score = 0;
 	for (; i < functions.size(); ++i) {
 		match.id = functions[i];
-		match.func = &compile.functions[match.id];
+		match.func = compile.functions[match.id];
 		auto funcInfo = &context.functionInfo[match.id];
 		bool skip = false;
 		if (!match.func->isStatic) {
@@ -815,15 +815,15 @@ bool CallNode::match(in_func, MatchOverload &match,
 				continue;
 			skip = true;
 		}
-		if (match.func->args.size != arguments.size() + skip)
+		if (match.func->nullableArgs.size != arguments.size() + skip)
 			continue;
 		bool matched = true;
 		match.errorNonNullIfMatch = false;
 		for (int j = 0; j < arguments.size(); ++j) {
 			uint32_t inputClassId = arguments[j]->classId;
 			uint32_t funcArgClassId = match.func->args[j + skip];
-			// printDebug(compile.classes[inputClassId].name + " and " +
-			// compile.classes[funcArgClassId].name);
+			// printDebug(compile.classes[inputClassId]->name + " and " +
+			// compile.classes[funcArgClassId]->name);
 			if (funcArgClassId != inputClassId) {
 				if (funcArgClassId == AutoLang::DefaultClass::anyClassId) {
 					++match.score;
@@ -855,7 +855,7 @@ bool CallNode::match(in_func, MatchOverload &match,
 }
 
 void ReturnNode::optimize(in_func) {
-	auto func = &compile.functions[funcId];
+	auto func = compile.functions[funcId];
 	if (value) {
 		if (func->returnId == AutoLang::DefaultClass::nullClassId) {
 			throwError("Cannot return value, function return Void");

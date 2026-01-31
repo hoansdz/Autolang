@@ -22,19 +22,19 @@ inline AObject *to_string(NativeFuncInData);
 inline AObject *get_string_size(NativeFuncInData);
 
 AObject *data_constructor(NativeFuncInData) {
-	AObject *obj = stackAllocator[0];
+	AObject *obj = args[0];
 	obj->refCount -= 1;
 	for (size_t i = 1; i < size; ++i) {
 		AObject **last = &obj->member->data[i - 1];
-		*last = stackAllocator[i];
+		*last = args[i];
 		(*last)->retain();
 	}
-	stackAllocator[0] = nullptr;
+	args[0] = nullptr;
 	return obj;
 }
 
 AObject *print(NativeFuncInData) {
-	AObject *obj = stackAllocator[0];
+	AObject *obj = args[0];
 	uint32_t type = obj->type;
 	switch (type) {
 	case AutoLang::DefaultClass::intClassId:
@@ -60,20 +60,20 @@ AObject *print(NativeFuncInData) {
 }
 
 AObject *println(NativeFuncInData) {
-	print(manager, stackAllocator, size);
+	print(manager, args, size);
 	std::cout << '\n';
 	return nullptr;
 }
 
 AObject *get_refcount(NativeFuncInData) {
 	return manager.createIntObject(
-	    static_cast<int64_t>(stackAllocator[0]->refCount - 1));
+	    static_cast<int64_t>(args[0]->refCount - 1));
 }
 
 AObject *to_int(NativeFuncInData) {
 	if (size != 1)
 		return nullptr;
-	auto obj = stackAllocator[0];
+	auto obj = args[0];
 	switch (obj->type) {
 	case AutoLang::DefaultClass::intClassId:
 		return manager.createIntObject(obj->i);
@@ -93,7 +93,7 @@ AObject *to_int(NativeFuncInData) {
 AObject *to_float(NativeFuncInData) {
 	if (size != 1)
 		return nullptr;
-	auto obj = stackAllocator[0];
+	auto obj = args[0];
 	switch (obj->type) {
 	case AutoLang::DefaultClass::intClassId:
 		return manager.createFloatObject(static_cast<double>(obj->i));
@@ -114,7 +114,7 @@ AObject *to_float(NativeFuncInData) {
 AObject *to_string(NativeFuncInData) {
 	if (size != 1)
 		return nullptr;
-	auto obj = stackAllocator[0];
+	auto obj = args[0];
 	switch (obj->type) {
 	case AutoLang::DefaultClass::intClassId:
 		return manager.create(AString::from(obj->i));
@@ -128,12 +128,12 @@ AObject *to_string(NativeFuncInData) {
 AObject *string_constructor(NativeFuncInData) {
 	// To string
 	if (size == 1) {
-		return to_string(manager, stackAllocator, size);
+		return to_string(manager, args, size);
 	}
 	//"hi",3 => "hihihi"
 	if (size == 2) {
-		int64_t count = stackAllocator[1]->i;
-		AString *oldAStr = stackAllocator[0]->str;
+		int64_t count = args[1]->i;
+		AString *oldAStr = args[0]->str;
 		if (count <= 0 || oldAStr->size == 0) {
 			char *newStr = new char[1];
 			newStr[0] = '\0';
@@ -152,7 +152,7 @@ AObject *string_constructor(NativeFuncInData) {
 
 AObject *get_string_size(NativeFuncInData) {
 	return manager.createIntObject(
-	    static_cast<int64_t>(stackAllocator[0]->str->size));
+	    static_cast<int64_t>(args[0]->str->size));
 }
 
 } // namespace DefaultFunction

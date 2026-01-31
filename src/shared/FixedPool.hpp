@@ -32,6 +32,9 @@ public:
 	inline T* operator[](size_t idx) {
 		return &objects[idx];
 	}
+	inline void pop() {
+		objects[index--].~T();
+	}
 	inline void refresh() {
 		if (objects) {
 			for (size_t i = 0; i < index; ++i)

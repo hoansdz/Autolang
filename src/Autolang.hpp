@@ -2,8 +2,12 @@
 #define AUTOLANG_HPP
 
 #include "backend/vm/AVM.cpp"
+#include "backend/vm/AVMLoader.cpp"
 #include "backend/vm/AVMLog.cpp"
+#include "frontend/ACompiler.cpp"
 #include "frontend/parser/Debugger.cpp"
+#include "frontend/parser/ClassInfo.cpp"
+#include "frontend/parser/FunctionInfo.cpp"
 #include "shared/AObject.cpp"
 #include "shared/CompiledProgram.cpp"
 #include "frontend/parser/DebuggerConditionStatement.cpp"
@@ -18,6 +22,7 @@
 #include "frontend/parser/node/Node.cpp"
 #include "frontend/parser/node/BlockNode.cpp"
 #include "frontend/parser/node/CreateNode.cpp"
+#include "frontend/parser/node/CreateFuncNode.cpp"
 #include "frontend/parser/node/NodeOptimize.cpp"
 #include "frontend/parser/node/NodePutbytecode.cpp"
 #include "frontend/parser/node/NullCoalescingNode.cpp"

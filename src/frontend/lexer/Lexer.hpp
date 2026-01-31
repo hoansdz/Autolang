@@ -115,7 +115,7 @@ enum class TokenType : uint8_t {
   INVALID      //	Token không hợp lệ
 };
 
-static const ankerl::unordered_dense::map<std::string, TokenType> CAST = {
+static const HashMap<std::string, TokenType> CAST = {
     {"var", TokenType::VAR},
     {"val", TokenType::VAL},
     {"not", TokenType::NOT},

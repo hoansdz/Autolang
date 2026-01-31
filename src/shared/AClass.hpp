@@ -8,16 +8,21 @@
 #include "shared/Type.hpp"
 #include "shared/InheritanceBitset.hpp"
 
+struct CompiledProgram;
+
 struct AClass
 {
 	std::string name;
-	uint32_t id;
-	std::vector<AClass *> parent;
+	ClassId id;
+	std::optional<ClassId> parentId;
 	std::vector<ClassId> memberId;
-	ankerl::unordered_dense::map<std::string, MemberOffset> memberMap;
-	ankerl::unordered_dense::map<std::string, std::vector<Offset>> funcMap;
+	std::vector<Offset> vtable; // Override function
+	HashMap<std::string, MemberOffset> memberMap;
+	HashMap<std::string, std::vector<Offset>> funcMap;
 	InheritanceBitset inheritance;
+	AClass(){}
 	AClass(std::string name, uint32_t id) : name(std::move(name)), id(id) {}
+	void log(CompiledProgram& data);
 };
 
 #endif

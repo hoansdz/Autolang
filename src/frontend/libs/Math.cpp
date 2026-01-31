@@ -12,12 +12,12 @@ namespace AutoLang
 
 			void init(CompiledProgram &compile)
 			{
-				auto math = &compile.classes[compile.registerClass("Math")];
+				auto math = compile.classes[compile.registerClass("Math")];
 				compile.registerFunction(
 					math,
 					true,
 					"round()",
-					{AutoLang::DefaultClass::floatClassId},
+					new ClassId[1]{AutoLang::DefaultClass::floatClassId},
 					{false},
 					AutoLang::DefaultClass::intClassId,
 					false,
@@ -26,7 +26,7 @@ namespace AutoLang
 					math,
 					true,
 					"floor()",
-					{AutoLang::DefaultClass::floatClassId},
+					new ClassId[1]{AutoLang::DefaultClass::floatClassId},
 					{false},
 					AutoLang::DefaultClass::intClassId,
 					false,
@@ -35,7 +35,7 @@ namespace AutoLang
 					math,
 					true,
 					"ceil()",
-					{AutoLang::DefaultClass::floatClassId},
+					new ClassId[1]{AutoLang::DefaultClass::floatClassId},
 					{false},
 					AutoLang::DefaultClass::intClassId,
 					false,
@@ -44,7 +44,7 @@ namespace AutoLang
 					math,
 					true,
 					"trunc()",
-					{AutoLang::DefaultClass::floatClassId},
+					new ClassId[1]{AutoLang::DefaultClass::floatClassId},
 					{false},
 					AutoLang::DefaultClass::intClassId,
 					false,
@@ -53,7 +53,7 @@ namespace AutoLang
 					math,
 					true,
 					"pow()",
-					{AutoLang::DefaultClass::intClassId, AutoLang::DefaultClass::intClassId},
+					new ClassId[2]{AutoLang::DefaultClass::intClassId, AutoLang::DefaultClass::intClassId},
 					{false, false},
 					AutoLang::DefaultClass::intClassId,
 					false,
@@ -62,7 +62,7 @@ namespace AutoLang
 					math,
 					true,
 					"pow()",
-					{AutoLang::DefaultClass::floatClassId, AutoLang::DefaultClass::floatClassId},
+					new ClassId[2]{AutoLang::DefaultClass::floatClassId, AutoLang::DefaultClass::floatClassId},
 					{false, false},
 					AutoLang::DefaultClass::floatClassId,
 					false,
@@ -71,7 +71,7 @@ namespace AutoLang
 					math,
 					true,
 					"abs()",
-					{AutoLang::DefaultClass::intClassId},
+					new ClassId[1]{AutoLang::DefaultClass::intClassId},
 					{false},
 					AutoLang::DefaultClass::intClassId,
 					false,
@@ -80,7 +80,7 @@ namespace AutoLang
 					math,
 					true,
 					"abs()",
-					{AutoLang::DefaultClass::floatClassId},
+					new ClassId[1]{AutoLang::DefaultClass::floatClassId},
 					{false},
 					AutoLang::DefaultClass::floatClassId,
 					false,
@@ -89,7 +89,7 @@ namespace AutoLang
 					math,
 					true,
 					"sin()",
-					{AutoLang::DefaultClass::floatClassId},
+					new ClassId[1]{AutoLang::DefaultClass::floatClassId},
 					{false},
 					AutoLang::DefaultClass::floatClassId,
 					false,
@@ -98,7 +98,7 @@ namespace AutoLang
 					math,
 					true,
 					"cos()",
-					{AutoLang::DefaultClass::floatClassId},
+					new ClassId[1]{AutoLang::DefaultClass::floatClassId},
 					{false},
 					AutoLang::DefaultClass::floatClassId,
 					false,
@@ -107,7 +107,7 @@ namespace AutoLang
 					math,
 					true,
 					"tan()",
-					{AutoLang::DefaultClass::floatClassId},
+					new ClassId[1]{AutoLang::DefaultClass::floatClassId},
 					{false},
 					AutoLang::DefaultClass::floatClassId,
 					false,
@@ -118,7 +118,7 @@ namespace AutoLang
 			{
 				if (size != 1)
 					return nullptr;
-				auto obj = stackAllocator[0];
+				auto obj = args[0];
 				switch (obj->type)
 				{
 				case AutoLang::DefaultClass::intClassId:
@@ -135,9 +135,9 @@ namespace AutoLang
 				if (size != 2)
 					return nullptr;
 				// base
-				auto obj1 = stackAllocator[0];
+				auto obj1 = args[0];
 				// input
-				auto obj2 = stackAllocator[1];
+				auto obj2 = args[1];
 				switch (obj1->type)
 				{
 				case AutoLang::DefaultClass::intClassId:
@@ -170,7 +170,7 @@ namespace AutoLang
 	{                                                                  \
 		if (size != 1)                                                 \
 			return nullptr;                                            \
-		auto obj = stackAllocator[0];                                  \
+		auto obj = args[0];                                  \
 		switch (obj->type)                                             \
 		{                                                              \
 		case AutoLang::DefaultClass::intClassId:                       \
@@ -187,7 +187,7 @@ namespace AutoLang
 	{                                                                 \
 		if (size != 1)                                                \
 			return nullptr;                                           \
-		auto obj = stackAllocator[0];                                 \
+		auto obj = args[0];                                 \
 		switch (obj->type)                                            \
 		{                                                             \
 		case AutoLang::DefaultClass::intClassId:                      \
@@ -210,7 +210,7 @@ namespace AutoLang
 			{
 				if (size != 1)
 					return nullptr;
-				auto obj = stackAllocator[0];
+				auto obj = args[0];
 				switch (obj->type)
 				{
 				case AutoLang::DefaultClass::intClassId:
@@ -227,9 +227,9 @@ namespace AutoLang
 				if (size != 2)
 					return nullptr;
 				// base
-				auto obj1 = stackAllocator[0];
+				auto obj1 = args[0];
 				// input
-				auto obj2 = stackAllocator[1];
+				auto obj2 = args[1];
 				switch (obj1->type)
 				{
 				case AutoLang::DefaultClass::intClassId:

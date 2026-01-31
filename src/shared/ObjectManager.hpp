@@ -1,36 +1,43 @@
 #ifndef OBJECTMANAGER_HPP
 #define OBJECTMANAGER_HPP
 
+#include "backend/optimize/Stack.hpp"
 #include "shared/AreaAllocator.hpp"
-#include "backend/optimize/Array.hpp"
 
-class ObjectManager
-{
-private:
-	static constexpr size_t size = 8;
-	AreaAllocator areaPool;
-	Array<size, false> intObjects;
-	Array<size, false> floatObjects;
-	inline void add(AObject *obj)
-	{
-		switch (obj->type)
-		{
-		case AutoLang::DefaultClass::intClassId:
-			intObjects.addOrDelete(areaPool, obj);
-			return;
-		case AutoLang::DefaultClass::floatClassId:
-			floatObjects.addOrDelete(areaPool, obj);
-			return;
-		default:
-			areaPool.release(obj);
-			return;
+
+class ObjectManager {
+  private:
+	static constexpr uint32_t size = 8;
+	AreaAllocator<AObject, 64> areaAllocator;
+	Stack<AObject*, size> intObjects;
+	Stack<AObject*, size> floatObjects;
+	inline void add(AObject *obj) {
+		switch (obj->type) {
+			case AutoLang::DefaultClass::intClassId: {
+				if (intObjects.index == size) {
+					areaAllocator.release(obj);
+					return;
+				}
+				intObjects.objects[intObjects.index++] = obj;
+				return;
+			}
+			case AutoLang::DefaultClass::floatClassId:{
+				if (floatObjects.index == size) {
+					areaAllocator.release(obj);
+					return;
+				}
+				floatObjects.objects[floatObjects.index++] = obj;
+				return;
+			}
+			default: {
+				areaAllocator.release(obj);
+				return;
+			}
 		}
 	}
-	inline AObject *get(int64_t i)
-	{
-		if (intObjects.index == 0)
-		{
-			AObject *obj = areaPool.getObject();
+	inline AObject *get(int64_t i) {
+		if (intObjects.index == 0) {
+			AObject *obj = areaAllocator.getObject();
 			obj->type = AutoLang::DefaultClass::intClassId;
 			obj->i = i;
 			return obj;
@@ -39,11 +46,9 @@ private:
 		obj->i = i;
 		return obj;
 	}
-	inline AObject *get(double f)
-	{
-		if (floatObjects.index == 0)
-		{
-			AObject *obj = areaPool.getObject();
+	inline AObject *get(double f) {
+		if (floatObjects.index == 0) {
+			AObject *obj = areaAllocator.getObject();
 			obj->type = AutoLang::DefaultClass::floatClassId;
 			obj->f = f;
 			return obj;
@@ -52,38 +57,31 @@ private:
 		obj->f = f;
 		return obj;
 	}
-	inline AObject *get(AString *str)
-	{
-		auto obj = areaPool.getObject();
+	inline AObject *get(AString *str) {
+		auto obj = areaAllocator.getObject();
 		obj->type = AutoLang::DefaultClass::stringClassId;
 		obj->str = str;
 		return obj;
 	}
-	inline void freeObjectData(AObject *obj)
-	{ // As free but it push again
-		switch (obj->type)
-		{
-		case AutoLang::DefaultClass::intClassId:
-		case AutoLang::DefaultClass::floatClassId:
-		{
-			return;
+	inline void freeObjectData(AObject *obj) { // As free but it push again
+		switch (obj->type) {
+			case AutoLang::DefaultClass::intClassId:
+			case AutoLang::DefaultClass::floatClassId: {
+				return;
+			}
+			case AutoLang::DefaultClass::nullClassId:
+			case AutoLang::DefaultClass::boolClassId: {
+				assert("Critial Bug");
+				return;
+			}
+			case AutoLang::DefaultClass::stringClassId: {
+				delete obj->str;
+				return;
+			}
+			default:
+				break;
 		}
-		case AutoLang::DefaultClass::nullClassId:
-		case AutoLang::DefaultClass::boolClassId:
-		{
-			assert("Critial Bug");
-			return;
-		}
-		case AutoLang::DefaultClass::stringClassId:
-		{
-			delete obj->str;
-			return;
-		}
-		default:
-			break;
-		}
-		for (int i = 0; i < obj->member->size; ++i)
-		{
+		for (int i = 0; i < obj->member->size; ++i) {
 			auto *mem = (*obj->member)[i];
 			if (!mem)
 				continue;
@@ -92,12 +90,9 @@ private:
 		delete obj->member;
 	}
 
-public:
-	ObjectManager()
-	{
-	}
-	inline void release(AObject *obj)
-	{
+  public:
+	ObjectManager() {}
+	inline void release(AObject *obj) {
 		if (obj->refCount > 0)
 			--obj->refCount;
 		if (obj->refCount != 0)
@@ -106,12 +101,12 @@ public:
 		add(obj);
 	}
 	static inline AObject *create(bool b) {
-		return b ? AutoLang::DefaultClass::trueObject : AutoLang::DefaultClass::falseObject;
+		return b ? AutoLang::DefaultClass::trueObject
+		         : AutoLang::DefaultClass::falseObject;
 	}
 	static inline AObject *createBoolObject(bool b) { return create(b); }
-	inline AObject *get(uint32_t type, size_t memberCount)
-	{
-		AObject *obj = areaPool.getObject();
+	inline AObject *get(uint32_t type, size_t memberCount) {
+		AObject *obj = areaAllocator.getObject();
 		obj->type = type;
 		obj->member = new NormalArray<AObject *>(memberCount);
 		return obj;

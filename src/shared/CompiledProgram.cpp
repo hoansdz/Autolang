@@ -13,45 +13,42 @@ Offset CompiledProgram::registerFunction(
 	AClass *clazz,
 	bool isStatic,
 	std::string name,
-	std::vector<ClassId> args,
+	ClassId* args,
 	std::vector<bool> nullableArgs,
 	ClassId returnId,
 	bool returnNullable,
 	AObject *(*native)(NativeFuncInput))
 {
-	if (args.size() != nullableArgs.size()) {
-		printDebug(name);
-		assert (args.size() != nullableArgs.size() && "Args and nullable args is not same , check ");
-	}
 	uint32_t id = functions.size();
 	if (clazz != nullptr)
 	{
 		clazz->funcMap[name].push_back(id);
 		name = clazz->name + '.' + name;
-		if constexpr (!isConstructor) {
-			if (native && !isStatic) //Auto insert "this" if native function in class
-			{
-				args.insert(args.begin(), clazz->id);
-				nullableArgs.insert(nullableArgs.begin(), false);
-			}
-		} else { //Auto insert "this" if function is constructor (User can create non native function)
-			args.insert(args.begin(), clazz->id);
-			nullableArgs.insert(nullableArgs.begin(), false);
-		}
+		// if constexpr (!isConstructor) {
+		// 	if (native && !isStatic) //Auto insert "this" if native function in class
+		// 	{
+		// 		args.insert(args.begin(), clazz->id);
+		// 		nullableArgs.insert(nullableArgs.begin(), false);
+		// 	}
+		// } else { //Auto insert "this" if function is constructor (User can create non native function)
+		// 	args.insert(args.begin(), clazz->id);
+		// 	nullableArgs.insert(nullableArgs.begin(), false);
+		// }
 	}
 	// printDebug(name);
 	// printDebug("BEGIN SIZE FUNC: "+std::to_string(functions.size()) + " " + std::to_string(funcMap.size()));
-	functions.emplace_back(
-		id,
-		name,
-		native,
-		clazz ? isStatic : true,
-		args,
-		nullableArgs,
-		returnId,
-		returnNullable
-	);
-	funcMap[name].push_back(id);
+	auto* func = functionAllocator.getObject();
+	func->id = id;
+	func->name = std::move(name);
+	func->native = native;
+	func->isStatic = clazz ? isStatic : true;
+	func->returnNullable = returnNullable;
+	func->args = args;
+	func->returnId = returnId;
+	func->maxDeclaration = native ? nullableArgs.size() : 0;
+	func->nullableArgs = nullableArgs;
+	functions.push_back(func);
+	funcMap[func->name].push_back(id);
 	// printDebug("END SIZE FUNC: "+std::to_string(functions.size()) + " " + std::to_string(funcMap.size()));
 	return id;
 }
@@ -63,10 +60,11 @@ ClassId CompiledProgram::registerClass(
 	if (it != classMap.end())
 		throw std::runtime_error("Class " + name + " has exist");
 	Offset id = classes.size();
-	classes.emplace_back(
-		name,
-		id);
-	classMap[name] = id;
+	AClass* clazz = classAllocator.getObject();
+	clazz->name = std::move(name);
+	clazz->id = id;
+	classes.push_back(clazz);
+	classMap[clazz->name] = id;
 	return id;
 }
 
@@ -82,7 +80,7 @@ std::string toStr(T value)
 	return std::to_string(value);
 }
 
-Offset CompiledProgram::registerConstPool(ankerl::unordered_dense::map<AString *, uint32_t, AString::Hash, AString::Equal> &map, AString *value)
+Offset CompiledProgram::registerConstPool(HashMap<AString *, uint32_t, AString::Hash, AString::Equal> &map, AString *value)
 {
 	auto it = map.find(value);
 	if (it != map.end())
@@ -99,7 +97,7 @@ Offset CompiledProgram::registerConstPool(ankerl::unordered_dense::map<AString *
 }
 
 template <typename T>
-Offset CompiledProgram::registerConstPool(ankerl::unordered_dense::map<T, uint32_t> &map, T value)
+Offset CompiledProgram::registerConstPool(HashMap<T, uint32_t> &map, T value)
 {
 	auto it = map.find(value);
 	if (it != map.end())
@@ -119,15 +117,14 @@ CompiledProgram::~CompiledProgram()
 	// for (auto [str, _] : constStringMap) {
 	// 	delete str;
 	// }
-	for (AObject* obj : constPool) {
-		if (obj->refCount <= AutoLang::DefaultClass::refCountForGlobal) {
-			obj->refCount = 0;
-			obj->free();
-			reinterpret_cast<AreaChunkSlot*>(obj)->isFree =true;
-			continue;
-		}
-		obj->refCount = obj->refCount - AutoLang::DefaultClass::refCountForGlobal;
-	}
+	// for (AObject* obj : constPool) {
+	// 	if (obj->refCount <= AutoLang::DefaultClass::refCountForGlobal) {
+	// 		obj->free();
+	// 		reinterpret_cast<AreaAllocator<AObject*, 64::AreaChunkSlot*>(obj)->isFree =true;
+	// 		continue;
+	// 	}
+	// 	obj->refCount = obj->refCount - AutoLang::DefaultClass::refCountForGlobal;
+	// }
 	manager.destroy();
 }
 

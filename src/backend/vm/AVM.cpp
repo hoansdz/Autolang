@@ -2,91 +2,19 @@
 #define AVM_CPP
 
 #include "backend/vm/AVM.hpp"
-#include "frontend/parser/Debugger.hpp"
 #include "shared/DefaultOperator.hpp"
 #include <chrono>
 #include <functional>
 #include <iostream>
-#include <sstream>
-
-AVM::AVM(AVMReadFileMode &mode, bool allowDebug) : allowDebug(allowDebug) {
-	auto startCompiler = std::chrono::high_resolution_clock::now();
-
-	AutoLang::DefaultClass::init(data);
-	AutoLang::DefaultFunction::init(data);
-	data.mainFunctionId =
-	    data.registerFunction(nullptr, false, ".main", {}, {}, nullptr);
-
-	std::cout << "Init time : "
-	          << std::chrono::duration_cast<std::chrono::milliseconds>(
-	                 std::chrono::high_resolution_clock::now() - startCompiler)
-	                 .count()
-	          << " ms" << '\n';
-	if (AutoLang::build(data, mode)) {
-		data.main = &data.functions[data.mainFunctionId];
-
-#ifdef AUTOLANG_DEBUG
-		log();
-#endif
-
-		initGlobalVariables();
-		run();
-	}
-	auto end = std::chrono::high_resolution_clock::now();
-	auto durationCompiler =
-	    std::chrono::duration_cast<std::chrono::milliseconds>(end -
-	                                                          startCompiler);
-	std::cout << "Total time : " << durationCompiler.count() << " ms" << '\n';
-	while (allowDebug) {
-		std::string command;
-		std::getline(std::cin, command);
-		std::istringstream iss(command);
-		std::string word;
-		if (iss >> word) {
-			if (word == "log") {
-				if (iss >> word) {
-					std::string name = std::move(word);
-					auto &vec = data.funcMap[name];
-					if (vec.size() == 0) {
-						std::cout << "Cannot find " << name;
-						continue;
-					}
-					if (vec.size() == 1) {
-						log(&data.functions[vec[0]]);
-						std::cout << '\n';
-						continue;
-					}
-					for (auto pos : vec) {
-						std::cout << data.functions[pos].toString(data) << "\n";
-					}
-					uint32_t at;
-					std::cout << "Has " << vec.size() << ", log at: ";
-					std::cin >> at;
-					if (at <= vec.size()) {
-						log(&data.functions[vec[at]]);
-						std::cout << '\n';
-						continue;
-					}
-				} else {
-					std::cout << "Please log function" << '\n';
-					continue;
-				}
-			} else if (word == "e") {
-				return;
-			}
-		} else {
-			std::cout << "wtf" << '\n';
-		}
-	}
-}
 
 void AVM::run() {
 	std::cerr << "-------------------" << '\n';
 	std::cerr << "Runtime" << '\n';
 	auto start = std::chrono::high_resolution_clock::now();
-	//[0, 5] is temp area
-	stackAllocator.top = 5;
-	run(data.main, stackAllocator.top, 0);
+	stackAllocator.top = 0;
+	callFrames.allocate(128);
+	run(callFrames.push(data.main));
+	callFrames.pop();
 	auto end = std::chrono::high_resolution_clock::now();
 	auto duration =
 	    std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -94,68 +22,89 @@ void AVM::run() {
 	          << "Total runtime : " << duration.count() << " ms" << '\n';
 }
 
-AObject *AVM::run(Function *currentFunction, const size_t currentTop,
-                  size_t maxThisAreaSize) {
-	auto *bytecodes = currentFunction->bytecodes.data();
-	size_t i = 0;
-	const size_t size = currentFunction->bytecodes.size();
-	// printDebug('\n');
+template <bool loadVirtual, bool hasValue>
+void AVM::callFunction(Function *currentFunction, uint8_t *bytecodes,
+                       uint32_t &i) {
+	const size_t top = stackAllocator.top + currentFunction->maxDeclaration;
+	stackAllocator.setTop(top);
+	Function *func;
+	if constexpr (loadVirtual) {
+		uint32_t funcPos = get_u32(bytecodes, i);
+		uint32_t argumentCount = get_u32(bytecodes, i);
+		// Ensure
+		stackAllocator.ensure(argumentCount);
+		for (size_t size = argumentCount; size-- > 0;) {
+			auto object = stack.pop();
+			if (object != nullptr)
+				object->retain();
+			stackAllocator[size] = object;
+		}
+		func = data.functions[data.classes[stackAllocator[0]->type]
+		                          ->vtable[funcPos]];
+	} else {
+		func = data.functions[get_u32(bytecodes, i)];
+		// Ensure
+		stackAllocator.ensure(func->nullableArgs.size);
+		for (size_t size = func->nullableArgs.size; size-- > 0;) {
+			auto object = stack.pop();
+			if (object != nullptr)
+				object->retain();
+			stackAllocator[size] = object;
+		}
+	}
+	// std::cerr << "Calling " << func->name << "\n";
+	if constexpr (hasValue) {
+		AObject *value;
+		if (!func->bytecodes.empty()) {
+			value = run(callFrames.push(func));
+			callFrames.pop();
+		}
+		
+		if (func->native) {
+			value = func->native(data.manager,
+									stackAllocator.args + stackAllocator.top,
+									func->nullableArgs.size);
+		}
+		stack.push(value);
+	} else {
+		if (!func->bytecodes.empty()) {
+			run(callFrames.push(func));
+			callFrames.pop();
+		}
+		
+		if (func->native) {
+			func->native(data.manager, stackAllocator.args + stackAllocator.top,
+			             func->nullableArgs.size);
+		}
+	}
+
+	stackAllocator.clear(data.manager, top, top + func->maxDeclaration - 1);
+	stackAllocator.freeTo(top - currentFunction->maxDeclaration);
+}
+
+AObject *AVM::run(CallFrame *callFrame) {
+	auto *currentFunction = callFrame->func;
+	auto *bytecodes = callFrame->func->bytecodes.data();
+	uint32_t &i = callFrame->i;
+	const size_t size = callFrame->func->bytecodes.size();
 	try {
 		while (i < size) {
-			// std::cerr<<i<<'\n';
+			// std::cerr << i << '\n';
 			switch (bytecodes[i++]) {
 				case AutoLang::Opcode::CALL_FUNCTION: {
-					// std::cerr<<"loading: function"<<'\n';;
-					Function *func = &data.functions[get_u32(bytecodes, i)];
-					stackAllocator.top += currentFunction->maxDeclaration;
-					size_t top = stackAllocator.top;
-					// Ensure
-					stackAllocator.ensure(func->maxDeclaration);
-					for (size_t size = func->args.size; size-- > 0;) {
-						auto object = stack.pop();
-						if (object != nullptr)
-							object->retain();
-						stackAllocator[size] = object;
-					}
-					AObject *value;
-					if (func->bytecodes.size() != 0) {
-						value = run(func, top, currentFunction->maxDeclaration);
-					}
-
-					if (func->native) {
-						value = func->native(data.manager, stackAllocator,
-						                     func->args.size);
-					}
-					stack.push(value);
-					stackAllocator.clear(data.manager, top,
-					                     top + func->maxDeclaration - 1);
-					stackAllocator.freeTo(currentTop);
+					callFunction<false, true>(currentFunction, bytecodes, i);
 					break;
 				}
 				case AutoLang::Opcode::CALL_VOID_FUNCTION: {
-					// std::cerr<<"loading: function"<<'\n';;
-					Function *func = &data.functions[get_u32(bytecodes, i)];
-					stackAllocator.top += currentFunction->maxDeclaration;
-					uint32_t top = stackAllocator.top;
-					// Ensure
-					stackAllocator.ensure(func->maxDeclaration);
-					for (size_t size = func->args.size; size-- > 0;) {
-						auto object = stack.pop();
-						if (object != nullptr)
-							object->retain();
-						stackAllocator[size] = object;
-					}
-					if (func->bytecodes.size() != 0) {
-						run(func, top, currentFunction->maxDeclaration);
-					}
-
-					if (func->native) {
-						func->native(data.manager, stackAllocator,
-						             func->args.size);
-					}
-					stackAllocator.clear(data.manager, top,
-					                     top + func->maxDeclaration - 1);
-					stackAllocator.freeTo(currentTop);
+					callFunction<false, false>(currentFunction, bytecodes, i);
+					break;
+				}
+				case AutoLang::Opcode::CALL_VTABLE_FUNCTION: {
+					callFunction<true, true>(currentFunction, bytecodes, i);
+					break;
+				}
+				case AutoLang::Opcode::CALL_VTABLE_VOID_FUNCTION: {
+					callFunction<true, false>(currentFunction, bytecodes, i);
 					break;
 				}
 				case AutoLang::Opcode::LOAD_CONST: {
@@ -177,7 +126,7 @@ AObject *AVM::run(Function *currentFunction, const size_t currentTop,
 				case AutoLang::Opcode::RETURN_LOCAL: {
 					AObject **last = &stackAllocator[get_u32(bytecodes, i)];
 					AObject *obj = *last;
-					if (obj != nullptr) {
+					if (obj->refCount > 0) {
 						--obj->refCount;
 					}
 					stack.push(obj);
@@ -302,97 +251,86 @@ AObject *AVM::run(Function *currentFunction, const size_t currentTop,
 					break;
 				}
 				case AutoLang::Opcode::TO_INT: {
-					operate<AutoLang::DefaultFunction::to_int, 1>(currentTop);
+					operate<AutoLang::DefaultFunction::to_int, 1>();
 					break;
 				}
 				case AutoLang::Opcode::TO_FLOAT: {
-					operate<AutoLang::DefaultFunction::to_float, 1>(currentTop);
+					operate<AutoLang::DefaultFunction::to_float, 1>();
 					break;
 				}
 				case AutoLang::Opcode::TO_STRING: {
-					operate<AutoLang::DefaultFunction::to_string, 1>(
-					    currentTop);
+					operate<AutoLang::DefaultFunction::to_string, 1>();
 					break;
 				}
 				case AutoLang::Opcode::PLUS_PLUS: {
-					operate<AutoLang::DefaultFunction::plus_plus, 1>(
-					    currentTop);
+					operate<AutoLang::DefaultFunction::plus_plus, 1>();
 					break;
 				}
 				case AutoLang::Opcode::MINUS_MINUS: {
-					operate<AutoLang::DefaultFunction::minus_minus, 1>(
-					    currentTop);
+					operate<AutoLang::DefaultFunction::minus_minus, 1>();
 					break;
 				}
 				case AutoLang::Opcode::PLUS: {
-					operate<AutoLang::DefaultFunction::plus, 2>(currentTop);
+					operate<AutoLang::DefaultFunction::plus, 2>();
 					break;
 				}
 				case AutoLang::Opcode::MINUS: {
-					operate<AutoLang::DefaultFunction::minus, 2>(currentTop);
+					operate<AutoLang::DefaultFunction::minus, 2>();
 					break;
 				}
 				case AutoLang::Opcode::MUL: {
-					operate<AutoLang::DefaultFunction::mul, 2>(currentTop);
+					operate<AutoLang::DefaultFunction::mul, 2>();
 					break;
 				}
 				case AutoLang::Opcode::DIVIDE: {
-					operate<AutoLang::DefaultFunction::divide, 2>(currentTop);
+					operate<AutoLang::DefaultFunction::divide, 2>();
 					break;
 				}
 				case AutoLang::Opcode::PLUS_EQUAL:
-					operateWithoutPush<AutoLang::DefaultFunction::plus_eq, 2>(
-					    currentTop);
+					operate<AutoLang::DefaultFunction::plus_eq, 2, false>();
 					break;
 				case AutoLang::Opcode::MINUS_EQUAL:
-					operateWithoutPush<AutoLang::DefaultFunction::minus_eq, 2>(
-					    currentTop);
+					operate<AutoLang::DefaultFunction::minus_eq, 2, false>();
 					break;
 				case AutoLang::Opcode::MUL_EQUAL:
-					operateWithoutPush<AutoLang::DefaultFunction::mul_eq, 2>(
-					    currentTop);
+					operate<AutoLang::DefaultFunction::mul_eq, 2, false>();
 					break;
 				case AutoLang::Opcode::DIVIDE_EQUAL:
-					operateWithoutPush<AutoLang::DefaultFunction::divide_eq, 2>(
-					    currentTop);
+					operate<AutoLang::DefaultFunction::divide_eq, 2, false>();
 					break;
 				case AutoLang::Opcode::MOD: {
-					operate<AutoLang::DefaultFunction::mod, 2>(currentTop);
+					operate<AutoLang::DefaultFunction::mod, 2>();
 					break;
 				}
 				case AutoLang::Opcode::BITWISE_AND: {
-					operate<AutoLang::DefaultFunction::bitwise_and, 2>(
-					    currentTop);
+					operate<AutoLang::DefaultFunction::bitwise_and, 2>();
 					break;
 				}
 				case AutoLang::Opcode::BITWISE_OR: {
-					operate<AutoLang::DefaultFunction::bitwise_or, 2>(
-					    currentTop);
+					operate<AutoLang::DefaultFunction::bitwise_or, 2>();
 					break;
 				}
 				case AutoLang::Opcode::NEGATIVE: {
-					operate<AutoLang::DefaultFunction::negative, 1>(currentTop);
+					operate<AutoLang::DefaultFunction::negative, 1>();
 					break;
 				}
 				case AutoLang::Opcode::NOT: {
-					operate<AutoLang::DefaultFunction::op_not, 1>(currentTop);
+					operate<AutoLang::DefaultFunction::op_not, 1>();
 					break;
 				}
 				case AutoLang::Opcode::AND_AND: {
-					operate<AutoLang::DefaultFunction::op_and_and, 2>(
-					    currentTop);
+					operate<AutoLang::DefaultFunction::op_and_and, 2>();
 					break;
 				}
 				case AutoLang::Opcode::OR_OR: {
-					operate<AutoLang::DefaultFunction::op_or_or, 2>(currentTop);
+					operate<AutoLang::DefaultFunction::op_or_or, 2>();
 					break;
 				}
 				case AutoLang::Opcode::EQUAL_VALUE:
-					operate<AutoLang::DefaultFunction::op_eqeq, 2>(currentTop);
+					operate<AutoLang::DefaultFunction::op_eqeq, 2>();
 					break;
 				case AutoLang::Opcode::NOTEQ_VALUE:
-					operate<AutoLang::DefaultFunction::op_not_eq, 2>(
-					    currentTop);
+					operate<AutoLang::DefaultFunction::op_not_eq, 2>();
 					break;
 				case AutoLang::Opcode::IS_NULL: {
 					stack.push(ObjectManager::createBoolObject(
@@ -417,30 +355,24 @@ AObject *AVM::run(Function *currentFunction, const size_t currentTop,
 					break;
 				}
 				case AutoLang::Opcode::EQUAL_POINTER: {
-					operate<AutoLang::DefaultFunction::op_eq_pointer, 2>(
-					    currentTop);
+					operate<AutoLang::DefaultFunction::op_eq_pointer, 2>();
 					break;
 				}
 				case AutoLang::Opcode::NOTEQ_POINTER: {
-					operate<AutoLang::DefaultFunction::op_not_eq_pointer, 2>(
-					    currentTop);
+					operate<AutoLang::DefaultFunction::op_not_eq_pointer, 2>();
 					break;
 				}
 				case AutoLang::Opcode::LESS_THAN_EQ:
-					operate<AutoLang::DefaultFunction::op_less_than_eq, 2>(
-					    currentTop);
+					operate<AutoLang::DefaultFunction::op_less_than_eq, 2>();
 					break;
 				case AutoLang::Opcode::LESS_THAN:
-					operate<AutoLang::DefaultFunction::op_less_than, 2>(
-					    currentTop);
+					operate<AutoLang::DefaultFunction::op_less_than, 2>();
 					break;
 				case AutoLang::Opcode::GREATER_THAN_EQ:
-					operate<AutoLang::DefaultFunction::op_greater_than_eq, 2>(
-					    currentTop);
+					operate<AutoLang::DefaultFunction::op_greater_than_eq, 2>();
 					break;
 				case AutoLang::Opcode::GREATER_THAN:
-					operate<AutoLang::DefaultFunction::op_greater_than, 2>(
-					    currentTop);
+					operate<AutoLang::DefaultFunction::op_greater_than, 2>();
 					break;
 				case AutoLang::Opcode::FLOAT_TO_INT: {
 					auto obj = stack.pop();
@@ -525,35 +457,31 @@ void AVM::setGlobalVariables(uint32_t i, AObject *object) {
 	object->retain();
 }
 
-template <AObject *(*native)(NativeFuncInput), size_t size>
-void AVM::operate(size_t currentTop) {
-	stackAllocator.top = 0;
-	inputArgument<size>();
-	stack.push(native(data.manager, stackAllocator, size));
-	stackAllocator.top = currentTop;
-	stackAllocator.clearTemp<size>(data.manager);
+template <AObject *(*native)(NativeFuncInput), size_t size, bool push>
+void AVM::operate() {
+	inputTempAllocateArea<size>();
+	if constexpr (push) {
+		stack.push(native(data.manager, tempAllocateArea, size));
+	} else {
+		native(data.manager, tempAllocateArea, size);
+	}
+	clearTempAllocateArea<size>();
 }
 
-template <AObject *(*native)(NativeFuncInput), size_t size>
-void AVM::operateWithoutPush(size_t currentTop) {
-	stackAllocator.top = 0;
-	inputArgument<size>();
-	native(data.manager, stackAllocator, size);
-	stackAllocator.top = currentTop;
-	stackAllocator.clearTemp<size>(data.manager);
-}
-
-uint32_t AVM::get_u32(uint8_t *code, size_t &ip) {
+uint32_t AVM::get_u32(uint8_t *code, uint32_t &ip) {
 	uint32_t val;
 	memcpy(&val, code + ip, 4);
 	ip += 4;
 	return val;
 }
 
-AVM::~AVM() { delete[] globalVariables; }
+AVM::~AVM() {
+	if (globalVariables)
+		delete[] globalVariables;
+}
 
 template <typename K, typename V>
-size_t estimateUnorderedMapSize(const ankerl::unordered_dense::map<K, V> &map) {
+size_t estimateUnorderedMapSize(const HashMap<K, V> &map) {
 	size_t total = sizeof(map);
 	total += map.bucket_count() * sizeof(void *); // bucket array
 

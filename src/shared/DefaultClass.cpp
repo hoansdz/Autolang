@@ -25,20 +25,21 @@ void init(CompiledProgram& compile) {
 	if (!constObjects.objects) {
 		constObjects.allocate(builtInObjectSize);
 		nullObject = constObjects.push(nullClassId);
-		nullObject->refCount = refCountForGlobal;
 
 		trueObject = constObjects.push(boolClassId);
 		trueObject->b = true;
-		trueObject->refCount = refCountForGlobal;
 
 		falseObject = constObjects.push(boolClassId);
 		falseObject->b = false;
-		falseObject->refCount = refCountForGlobal;
 	} else {
 		nullObject  = constObjects[0];
 		trueObject  = constObjects[1];
 		falseObject = constObjects[2];
 	}
+
+	nullObject->refCount = refCountForGlobal;
+	trueObject->refCount = refCountForGlobal;
+	falseObject->refCount = refCountForGlobal;
 
 	AutoLang::Libs::Math::init(compile);
 }
