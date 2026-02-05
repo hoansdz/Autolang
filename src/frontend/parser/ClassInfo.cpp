@@ -15,7 +15,7 @@ AccessNode *ClassInfo::findDeclaration(in_func, uint32_t line,
 		}
 		// Not found
 	}
-	if (declarationThis) {
+	// if (declarationThis) {
 		auto clazz = compile.classes[declarationThis->classId];
 		auto it = clazz->memberMap.find(name);
 		if (it != clazz->memberMap.end()) {
@@ -27,7 +27,7 @@ AccessNode *ClassInfo::findDeclaration(in_func, uint32_t line,
 			    new VarNode(line, declarationThis, false, false), name, false,
 			    node->nullable, false);
 		}
-	}
+	// }
 	return nullptr;
 }
 

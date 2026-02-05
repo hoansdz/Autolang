@@ -5,7 +5,7 @@
 
 template <typename T, size_t size> void AreaAllocator<T, size>::destroy() {
 	auto *currentChunk = head;
-	if constexpr (std::is_same_v<T, AObject>) {
+	if constexpr (std::is_same_v<T, AutoLang::AObject>) {
 		// Free all slot
 		while (currentChunk != nullptr) {
 			for (size_t i = 0; i < size; ++i) {
@@ -25,6 +25,8 @@ template <typename T, size_t size> void AreaAllocator<T, size>::destroy() {
 		delete currentChunk;
 		currentChunk = nextChunk;
 	}
+	freeSlot = nullptr;
+	head = nullptr;
 }
 
 #endif

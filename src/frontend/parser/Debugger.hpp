@@ -20,12 +20,11 @@ struct ParserError : AutoLang::Lexer::LexerError {
 	ParserError(uint32_t line, std::string msg): AutoLang::Lexer::LexerError(line, msg){}
 };
 
-bool build(CompiledProgram& compile, AVMReadFileMode& mode);
 void lexerData(in_func, AVMReadFileMode& mode, Lexer::Context& lexerContext);
 void estimate(in_func, Lexer::Context& lexerContext);
 void freeData(in_func);
-void resolve(in_func);
-void ensureNoKeyword(in_func, size_t& i);
+inline void ensureNoKeyword(in_func, size_t& i);
+inline void ensureNoAnnotations(in_func, size_t& i);
 Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t& i);
 void ensureEndline(in_func, size_t& i);
 ExprNode* loadLine(in_func, size_t& i);
@@ -37,6 +36,7 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i);
 HasClassIdNode* parsePrimary(in_func, size_t& i);
 HasClassIdNode* loadIdentifier(in_func, size_t& i, bool allowAddThis = true);
 bool nextTokenIfMarkNonNull(in_func, size_t& i);
+void loadAnnotations(in_func, size_t& i);
 void loadBody(in_func, std::vector<ExprNode*>& nodes, size_t& i, bool createScope = true);
 IfNode* loadIf(in_func, size_t& i);
 ExprNode* loadFor(in_func, size_t& i);
@@ -53,12 +53,6 @@ ConstValueNode* findConstValueNode(in_func, size_t& i, std::string& name);
 char getOpenBracket(Lexer::TokenType type);
 bool isCloseBracket(char openBracket, Lexer::TokenType closeBracket);
 int getPrecedence(Lexer::TokenType type);
-
-inline void putBlock(in_func, BlockNode* node, std::vector<uint8_t>& bytecodes) {
-	node->optimize(in_data);
-	node->putBytecodes(in_data, bytecodes);
-	node->rewrite(in_data, bytecodes);
-}
 
 inline bool expect(Lexer::Token* token, Lexer::TokenType type) {
 	return token->type == type;

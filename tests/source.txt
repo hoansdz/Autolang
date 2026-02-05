@@ -1,7 +1,9 @@
 class Person(var name: String, var age: Int, val id: Float) {}
 
 class M extends Person {
-
+	constructor() {
+		super("Hello", 1, 2)
+	}
 }
 
 class PersonNode(var prev: PersonNode?, var currentPerson: Person, var next: PersonNode?) {
@@ -24,6 +26,7 @@ class ListPerson {
     	return beginNode
     }
     func addPerson(person: Person) {
+		println("${person.name}")
     	size += 1
     	if (beginNode == null) {
         	beginNode = PersonNode(null, person, null)
@@ -62,7 +65,7 @@ func main(): ListPerson {
   for (val i in 0..10) {
       listPerson.addPerson(Person("John " + i, 18 + i, 1.5 + i))
   }
-  listPerson.deletePerson(0)
+  /*listPerson.deletePerson(0)
   for (val i in 0..<3) {
   	listPerson.deletePerson(2)
   }
@@ -73,13 +76,10 @@ func main(): ListPerson {
       val person = currentNode?.currentPerson
       println("User "+person!.name+" has age: " + person!.age)
       currentNode = currentNode?.next
-  }
+  }*/
   return listPerson
 }
 val list = main()
-/*
-    OK
-*/
 
 class OptionalAccess(var child: OptionalAccess?) {
     static val a = 7

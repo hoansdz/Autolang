@@ -7,30 +7,39 @@
 namespace AutoLang {
 
 ExprNode* NullCoalescingNode::resolve(in_func) {
-	auto newLeft = left->resolve(in_data);
-	auto newRight = right->resolve(in_data);
-	if (newLeft) {
-		left = static_cast<HasClassIdNode*>(newLeft);
-	}
-	if (newRight) {
-		right = static_cast<HasClassIdNode*>(newRight);
-	}
+	left = static_cast<HasClassIdNode*>(left->resolve(in_data));
+	right = static_cast<HasClassIdNode*>(right->resolve(in_data));
+	left->mode = mode;
+	right->mode = mode;
 	switch (left->kind) {
 		case NodeType::CONST: {
 			if (left->classId == DefaultClass::nullClassId) {
-				warning(in_data, "Left expression won't never be used");
+				warning(in_data, "Left expression will never be used");
 				auto result = right;
 				right = nullptr;
+				ExprNode::deleteNode(this);
 				return result;
 			}
-			warning(in_data, "Right expression won't never be used");
+			warning(in_data, "Right expression will never be used");
 			auto result = left;
 			left = nullptr;
+			ExprNode::deleteNode(this);
 			return result;
 		}
 		default: break;
 	}
-	return nullptr;
+	// If an expression is expicitly marked non-nullable (via '!'),
+	// It guaranteed by language semantics to never produce null.
+	// Unknown case are treated as nullable at resolve time
+	// Example: in `if (a != null) { a ?? b }`, a is still considered nullable in resolve.
+	if (!left->isNullable()) {
+		warning(in_data, "Right expression will never be used");
+		auto result = left;
+		left = nullptr;
+		ExprNode::deleteNode(this);
+		return result;
+	}
+	return this;
 }
 
 void NullCoalescingNode::optimize(in_func) {

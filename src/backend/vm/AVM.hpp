@@ -1,10 +1,10 @@
 #ifndef AVM_HPP
 #define AVM_HPP
 
-#include "backend/optimize/FixedArray.hpp"
 #include "shared/AClass.hpp"
 #include "shared/CompiledProgram.hpp"
 #include "shared/FixedPool.hpp"
+#include "shared/FixedPoolLoaded.hpp"
 #include "shared/Function.hpp"
 #include "shared/ObjectManager.hpp"
 #include "shared/StackAllocator.hpp"
@@ -69,33 +69,33 @@ enum Opcode : uint8_t {
 	INT_TO_FLOAT = 53,
 	BOOL_TO_INT = 54,
 	BOOL_TO_FLOAT = 55,
-	INT_TO_STRING = 56,
-	FLOAT_TO_STRING = 57,
-	JUMP_AND_DELETE_IF_NULL = 58,
-	JUMP_AND_SET_IF_NULL = 59,
-	LOAD_MEMBER_IF_NNULL = 60,
-	LOAD_MEMBER_CAN_RET_NULL = 61,
-	POP_NO_RELEASE = 62,
-	CALL_VTABLE_FUNCTION = 63,
-	CALL_VTABLE_VOID_FUNCTION = 64,
+	JUMP_AND_DELETE_IF_NULL = 56,
+	JUMP_AND_SET_IF_NULL = 57,
+	LOAD_MEMBER_IF_NNULL = 58,
+	LOAD_MEMBER_CAN_RET_NULL = 59,
+	POP_NO_RELEASE = 60,
+	CALL_VTABLE_FUNCTION = 61,
+	CALL_VTABLE_VOID_FUNCTION = 62,
+	CALL_DATA_CONTRUCTOR = 63,
+	INT_FROM_INT = 64,
+	FLOAT_FROM_FLOAT = 65,
 };
-
-}
 
 template <typename K, typename V>
 size_t estimateUnorderedMapSize(const HashMap<K, V> &map);
 
 struct AVMReadFileMode {
-	const char *path;
-	const char *data;
+	const char* path;
+	const char* data;
 	uint32_t dataSize;
 	bool allowImportOtherFile;
+	ANativeMap nativeFuncMap;
 };
 
-enum VMState { INIT, RUNNING, HALTED, WAITING, ERROR };
+enum class VMState { INIT, RUNNING, HALTED, WAITING, ERROR };
 
 #ifndef MAX_STACK_OBJECT
-#define MAX_STACK_OBJECT 64
+#define MAX_STACK_OBJECT 128
 #endif
 
 #ifndef MAX_STACK_ALLOCATOR
@@ -107,17 +107,21 @@ enum VMState { INIT, RUNNING, HALTED, WAITING, ERROR };
 #endif
 
 struct CallFrame {
+	
 	Function *func;
-	uint32_t i = 0;
-	CallFrame(Function *func) : func(func) {}
+	uint32_t i;
+	uint32_t fromStackAllocator;
+	AObject* exception;
+	std::vector<uint32_t> catchPosition;
+	CallFrame() { catchPosition.reserve(4); }
 };
 
 class AVM {
-  private:
+  public:
 	inline uint32_t get_u32(uint8_t *code, uint32_t &ip);
 	void log(Function *currentFunction);
 	Stack<AObject *, MAX_STACK_OBJECT> stack;
-	FixedPool<CallFrame> callFrames;
+	FixedPoolLoaded<CallFrame, MAX_CALL_FRAME> callFrames;
 	StackAllocator stackAllocator = StackAllocator(MAX_STACK_ALLOCATOR);
 	AObject **tempAllocateArea = new AObject *[3]{};
 	inline AObject *getConstObject(uint32_t id);
@@ -131,7 +135,6 @@ class AVM {
 		if constexpr (index > 0) {
 			AObject *obj = stack.pop();
 			tempAllocateArea[std::integral_constant<size_t, index - 1>{}] = obj;
-			obj->retain();
 			inputTempAllocateArea<index - 1>();
 		}
 	}
@@ -145,16 +148,16 @@ class AVM {
 	}
 
 	bool allowDebug;
-	template <AObject *(*native)(NativeFuncInput), size_t size,
+	template <ANativeFunction native, size_t size,
 	          bool push = true>
 	inline void operate();
-	template <bool loadVirtual, bool hasValue>
-	inline void callFunction(Function *currentFunction, uint8_t *bytecodes,
+	template <bool loadVirtual>
+	inline CallFrame* callFunction(Function *currentFunction, uint8_t *bytecodes,
 	                         uint32_t &i);
-	AObject *run(CallFrame *callFrame);
+	void resume();
 	void run();
 
-  public:
+//   public:
 	VMState state = VMState::INIT;
 	[[nodiscard]] explicit AVM(bool allowDebug);
 	void start();
@@ -163,5 +166,7 @@ class AVM {
 	~AVM();
 	// friend ACompiler;
 };
+
+}
 
 #endif

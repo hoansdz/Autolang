@@ -23,6 +23,9 @@ public:
 			throw std::runtime_error("Floor");
 		return objects[--index];
 	}
+	inline void refresh() {
+		index = 0;
+	}
 	~Stack() {
 		// for (size_t i = 0; i < index; ++i) {
 		// 	AObject* obj = objects[i];

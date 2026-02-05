@@ -10,15 +10,14 @@
 
 namespace AutoLang {
 
+
 struct FunctionInfo {
 	AClass *clazz; // Context class
-	Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC;
 	std::vector<HashMap<std::string, DeclarationNode *>>
 	    scopes;
 	uint32_t declaration; // Count declaration
 	BlockNode block;
-	bool isConstructor = false;
-	bool isVirtual = false;
+	bool* nullableArgs = nullptr;
 	Offset virtualPosition;
 	int64_t hash;
 	FunctionInfo() : declaration(0), block(0) { scopes.emplace_back(); }

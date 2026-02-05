@@ -6,13 +6,17 @@
 
 namespace AutoLang {
 
-void ParserContext::init(CompiledProgram &compile, AVMReadFileMode &mode) {
+AVMReadFileMode *ParserContext::mode = nullptr;
+
+void ParserContext::init(CompiledProgram &compile) {
 	gotoFunction(compile.mainFunctionId);
 	mainFunctionId = compile.mainFunctionId;
 
 	constValue["null"] = std::pair(DefaultClass::nullObject, 0);
 	constValue["true"] = std::pair(DefaultClass::trueObject, 1);
 	constValue["false"] = std::pair(DefaultClass::falseObject, 2);
+
+	annotationMetadata.reserve(1);
 
 	{
 		using namespace AutoLang::DefaultClass;
@@ -131,8 +135,55 @@ void ParserContext::init(CompiledProgram &compile, AVMReadFileMode &mode) {
 
 		};
 	}
+}
 
-	this->mode = &mode;
+void ParserContext::refresh(CompiledProgram &compile) {
+	gotoFunction(compile.mainFunctionId);
+	mainFunctionId = compile.mainFunctionId;
+
+	hasError = false;
+	tokens.clear();
+	sources.clear();
+
+	for (auto &[_, funcInfo] : functionInfo) {
+		funcInfo.block.refresh();
+	}
+
+	for (auto node : staticNode) {
+		ExprNode::deleteNode(node);
+	}
+
+	newFunctions.refresh();
+	newClasses.refresh();
+	newClassesMap.clear();
+
+	hasError = false;
+	canBreakContinue = false;
+	justFindStatic = false;
+
+	continuePos = 0;
+	breakPos = 0;
+	jumpIfNullNode = nullptr;
+
+	functionInfo.clear();
+	classInfo.clear();
+
+	createConstructorPool.refresh();
+	ifPool.refresh();
+	whilePool.refresh();
+
+	declarationNodePool.refresh();
+	returnPool.refresh();
+	setValuePool.refresh();
+
+	currentClassId = std::nullopt;
+
+	constIntMap.clear();
+	constFloatMap.clear();
+	for (auto [str, _] : constStringMap) {
+		delete str;
+	}
+	constStringMap.clear();
 }
 
 void ParserContext::logMessage(uint32_t line, const std::string &message) {
@@ -149,13 +200,14 @@ HasClassIdNode *ParserContext::findDeclaration(in_func, uint32_t line,
                                                bool inGlobal) {
 	AccessNode *node = getCurrentFunctionInfo(in_data)->findDeclaration(
 	    in_data, line, name, justFindStatic);
+	auto func = getCurrentFunction(in_data);
 	if (node)
 		return node;
 	if (currentClassId) {
 		node = getCurrentClassInfo(in_data)->findDeclaration(
 		    in_data, line, name, justFindStatic);
 		// Static in function is VarNode, NonStatic is GetPropNode
-		if (getCurrentFunction(in_data)->isStatic && node &&
+		if ((func->functionFlags & FunctionFlags::FUNC_IS_STATIC) && node &&
 		    node->kind == NodeType::GET_PROP)
 			goto isNotStatic;
 		if (node)

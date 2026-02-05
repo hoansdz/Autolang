@@ -48,6 +48,8 @@ public:
 				delete object;
 			::operator delete(objects);
 			objects = nullptr;
+			size = 0;
+			index = 0;
 		}
 	}
 	~NonReallocatePool() {

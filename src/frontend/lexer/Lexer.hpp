@@ -7,7 +7,7 @@
 #include <iostream>
 #include <vector>
 
-#define AUTOLANG_DEBUG
+#define AUTOLANG_DEBUG_
 
 inline void printDebug(std::string msg) {
 #ifdef AUTOLANG_DEBUG
@@ -29,7 +29,7 @@ struct ParserContext;
 
 namespace Lexer {
 
-enum class TokenType : uint8_t {
+enum TokenType : uint8_t {
   COMMENT_SINGLE_LINE,
   // ===== Literals =====
   NUMBER,     //	Giá trị số: 123, 3.14
@@ -83,6 +83,7 @@ enum class TokenType : uint8_t {
   QMARK,     //   Dấu hỏi chấm
   QMARK_QMARK,
   EXMARK,    //   Dấu chấm than
+  AT_SIGN, // @
 
   // ===== Keywords =====
   IF,       //	Câu lệnh điều kiện: if
@@ -109,6 +110,11 @@ enum class TokenType : uint8_t {
   CATCH,
   THROW,
   EXTENDS,
+  NATIVE,
+  OVERRIDE,
+  NO_OVERRIDE,
+  NO_CONSTRUCTOR,
+  IMPORT,
 
   // ===== Special =====
   END_OF_FILE, //	Kết thúc file
@@ -140,6 +146,11 @@ static const HashMap<std::string, TokenType> CAST = {
     {"protected", TokenType::PROTECTED},
     {"constructor", TokenType::CONSTRUCTOR},
 	{"extends", TokenType::EXTENDS},
+	{"native", TokenType::NATIVE},
+	{"override", TokenType::OVERRIDE},
+	{"no_override", TokenType::NO_OVERRIDE},
+	{"no_constructor", TokenType::NO_CONSTRUCTOR},
+	{"import", TokenType::IMPORT},
 
     {"/*", TokenType::START_COMMENT},
     {"&", TokenType::AND},
@@ -179,6 +190,7 @@ struct Token {
   uint32_t line;
   uint32_t indexData;
   TokenType type;
+  Token() {}
   Token(uint32_t line, TokenType type, uint32_t indexData)
       : line(line), indexData(indexData), type(type) {}
   Token(uint32_t line, TokenType type) : line(line), indexData(0), type(type) {}
@@ -216,16 +228,19 @@ struct Context {
   uint32_t pos;
   uint32_t absolutePos;
   std::vector<char> bracketStack;
+  std::vector<Token> tokens;
 
   bool hasError = false;
 
   Estimate estimate;
+  Context() { tokens.reserve(256); bracketStack.reserve(16); }
+  inline void refresh() { bracketStack.clear(); tokens.clear(); hasError = false; }
 };
 
 inline bool nextLine(Context &context, const char *lines, uint32_t &i);
 inline bool isOperator(char chr);
 inline bool isEndOfLine(Context &context, uint32_t &i);
-std::vector<Token> load(ParserContext *mainContext, AVMReadFileMode &mode,
+void load(ParserContext *mainContext, AVMReadFileMode &mode,
                         Context &context);
 void loadQuote(Context &context, std::vector<Token> &tokens,
                AVMReadFileMode &mode, char quote, uint32_t &i);

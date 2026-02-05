@@ -28,6 +28,8 @@ ConstValueNode* op_eqeq(ConstValueNode* left, ConstValueNode* right);
 ConstValueNode* op_not_eq(ConstValueNode* left, ConstValueNode* right);
 void toInt(ConstValueNode* value);
 void toFloat(ConstValueNode* value);
+void toBool(ConstValueNode* value);
+void toString(ConstValueNode* value);
 
 }
 

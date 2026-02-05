@@ -1,10 +1,11 @@
 #ifndef CREATE_NODE_CPP
 #define CREATE_NODE_CPP
 
-#include <functional>
 #include "frontend/parser/node/CreateNode.hpp"
 #include "shared/DefaultFunction.hpp"
 #include "shared/Type.hpp"
+#include "shared/ClassFlags.hpp"
+#include <functional>
 
 namespace AutoLang {
 
@@ -23,27 +24,28 @@ void DeclarationNode::optimize(in_func) {
 		classId = clazz->id;
 	}
 	// printDebug("DeclarationNode: " + name + " is " +
-	// compile.classes[classId]->name);
+	//            compile.classes[classId]->name);
 }
 
 void CreateConstructorNode::pushFunction(in_func) {
 	AClass *clazz = compile.classes[classId];
 	funcId = compile.registerFunction<true>(
-	    clazz, false, name, new ClassId[arguments.size() + 1]{},
-	    std::vector<bool>(arguments.size() + 1, false), classId, false,
-	    isPrimary && !arguments.empty() ? AutoLang::DefaultFunction::data_constructor : nullptr );
+	    clazz, name, new ClassId[arguments.size() + 1]{}, arguments.size() + 1,
+	    classId, functionFlags | FunctionFlags::FUNC_IS_CONSTRUCTOR);
 	auto func = compile.functions[funcId];
 	auto funcInfo = &context.functionInfo[funcId];
+	new (&func->bytecodes) std::vector<uint8_t>();
 
 	func->args[0] = classId;
 
 	funcInfo->clazz = clazz;
-	funcInfo->accessModifier = accessModifier;
-	funcInfo->isConstructor = true;
+	funcInfo->nullableArgs = new bool[arguments.size() + 1]{};
 	func->maxDeclaration = 1;
 	funcInfo->declaration = 1;
+
 	if (isPrimary) {
 		auto classInfo = &context.classInfo[clazz->id];
+		func->functionFlags |= FunctionFlags::FUNC_IS_DATA_CONSTRUCTOR;
 		// printDebug(clazz->name);
 		// printDebug(arguments.size());
 		for (size_t i = 0; i < arguments.size(); ++i) {
@@ -65,7 +67,7 @@ void CreateConstructorNode::optimize(in_func) {
 	for (size_t i = 0; i < arguments.size(); ++i) {
 		auto &argument = arguments[i];
 		func->args[i + 1] = argument->classId;
-		func->nullableArgs[i + 1] = argument->nullable;
+		funcInfo->nullableArgs[i + 1] = argument->nullable;
 		if (isPrimary) {
 
 			// printDebug((uintptr_t)clazz);
@@ -76,8 +78,8 @@ void CreateConstructorNode::optimize(in_func) {
 			//     line,
 			//     new GetPropNode(
 			//         line, nullptr, classId,
-			//         new VarNode(line, classInfo->declarationThis, false, false),
-			//         argument->name, true, true, false),
+			//         new VarNode(line, classInfo->declarationThis, false,
+			//         false), argument->name, true, true, false),
 			//     new VarNode(line, argument, false, true));
 			// body.nodes.push_back(setNode);
 			clazz->memberId[i] = argument->classId;
@@ -96,7 +98,7 @@ void CreateConstructorNode::optimize(in_func) {
 	hash[funcInfo->hash] = func->id;
 
 	// Check super
-	if (classInfo->parent) {
+	if (clazz->classFlags & ClassFlags::CLASS_HAS_PARENT) {
 		if (body.nodes.empty()) {
 			throwError(
 			    "super() must be called first in a derived class constructor.");
@@ -111,7 +113,7 @@ void CreateConstructorNode::optimize(in_func) {
 					    "constructor.");
 				}
 				node->isSuper = true;
-				node->name = compile.classes[*classInfo->parent]->name + "()";
+				node->name = compile.classes[classInfo->parent]->name + "()";
 				break;
 			}
 			default:
@@ -121,15 +123,17 @@ void CreateConstructorNode::optimize(in_func) {
 	}
 
 	// Add return bytecodes
-	if (!isPrimary) {
-		body.nodes.push_back(context.returnPool.push(
-		    line, funcId,
-		    new VarNode(line, classInfo->declarationThis, false, false)));
-	}
+	auto thisNode = new VarNode(line, classInfo->declarationThis, false, false);
+	std::cerr<<clazz->name<<" "<<classInfo->declarationThis->id<<"\n";
+	thisNode->mode = mode;
+	body.nodes.push_back(context.returnPool.push(line, funcId, thisNode));
 }
 
 void CreateClassNode::pushClass(in_func) {
-	classId = compile.registerClass(context.lexerString[nameId]);
+	classId = compile.registerClass(context.lexerString[nameId], classFlags);
+	auto clazz = compile.classes[classId];
+	// std::cerr << "Created class name: " << clazz->name << " id " << classId
+	//           << "\n";
 }
 
 void CreateClassNode::optimize(in_func) {
@@ -140,8 +144,8 @@ void CreateClassNode::optimize(in_func) {
 	if (isDeclarationExist(in_data, name))
 		throwError("Cannot declare class with the same name as variable name " +
 		           name);
-	if (superId) {
-		auto &superClassName = context.lexerString[*superId];
+	if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
+		auto &superClassName = context.lexerString[superId];
 		auto it = compile.classMap.find(superClassName);
 		if (it == compile.classMap.end()) {
 			throwError("Cannot find class " + superClassName);
@@ -152,10 +156,10 @@ void CreateClassNode::optimize(in_func) {
 }
 
 void CreateClassNode::loadSuper(in_func) {
-	if (!loadedSuper && superId) {
+	if ((classFlags & ClassFlags::CLASS_HAS_PARENT) && !loadedSuper) {
 		auto clazz = compile.classes[classId];
 		auto classInfo = &context.classInfo[classId];
-		auto superClassId = *classInfo->parent;
+		auto superClassId = classInfo->parent;
 		auto superClass = compile.classes[superClassId];
 		auto superClassInfo = &context.classInfo[superClassId];
 
@@ -177,7 +181,6 @@ void CreateClassNode::loadSuper(in_func) {
 			auto it = context.newClassesMap.find(superClassId);
 			it->second->loadSuper(in_data);
 		}
-		
 
 		if (superClass->inheritance.get(classId)) {
 			throwError("Cyclic inheritance is not allowed.");
@@ -236,39 +239,49 @@ void CreateClassNode::loadSuper(in_func) {
 			for (auto &[hashValue, offset] : superFuncHash) {
 				auto it = hash.find(hashValue);
 				if (it != hash.end()) {
+					auto func = compile.functions[it->second];
 					auto funcInfo = &context.functionInfo[it->second];
 					auto superFunc = compile.functions[offset];
 					auto superFuncInfo = &context.functionInfo[offset];
 					// Index virtual position : Three times override -> Twice
 					// override -> First override  -> parent
-					if (!superFuncInfo->isVirtual) {
+					if (!(superFunc->functionFlags & FunctionFlags::FUNC_IS_VIRTUAL)) {
+						if (superFunc->functionFlags & FunctionFlags::FUNC_NO_OVERRIDE) {
+							throwError("Function " +
+							           superFunc->toString(compile) +
+							           " is marked @no_override");
+						}
 						ClassId parentId = *clazz->parentId;
 						while (true) {
 							auto parentClassInfo = &context.classInfo[parentId];
 							auto it1 = parentClassInfo->func.find(funcName);
-							if (it1 == parentClassInfo->func.end()) break;
-							auto& hashMap = it1->second;
+							if (it1 == parentClassInfo->func.end())
+								break;
+							auto &hashMap = it1->second;
 							auto it2 = hashMap.find(hashValue);
-							if (it2 == hashMap.end()) break;
+							if (it2 == hashMap.end())
+								break;
 							auto parentClass = compile.classes[parentId];
 							parentClass->vtable.push_back(offset);
-							if (!parentClass->parentId) break;
+							if (!parentClass->parentId)
+								break;
 							parentId = *parentClass->parentId;
 						}
 						superFuncInfo->virtualPosition = clazz->vtable.size();
-						superFuncInfo->isVirtual = true;
+						superFunc->functionFlags |= FunctionFlags::FUNC_IS_VIRTUAL;
 
 						funcInfo->virtualPosition =
 						    superFuncInfo->virtualPosition;
 						clazz->vtable.push_back(it->second);
-						funcInfo->isVirtual = true;
+						func->functionFlags |= FunctionFlags::FUNC_IS_VIRTUAL;
 					} else {
 						funcInfo->virtualPosition =
 						    superFuncInfo->virtualPosition;
 						clazz->vtable[funcInfo->virtualPosition] = it->second;
-						funcInfo->isVirtual = true;
+						func->functionFlags |= FunctionFlags::FUNC_IS_VIRTUAL;
 					}
-					std::cerr<<superFunc->name<<" ok\n";
+					// std::cerr<<superFunc->name<<" & "<<func->name<<"\n";
+					// std::cerr<<superFuncInfo->virtualPosition<<" & "<<funcInfo->virtualPosition<<"\n";
 					funcOverride.resize(superFunc->id);
 					funcOverride.set(superFunc->id);
 				}

@@ -8,7 +8,6 @@ namespace AutoLang
 
 IfNode *loadIf(in_func, size_t &i)
 {
-    ensureNoKeyword(in_data, i);
     Lexer::Token *token = &context.tokens[i];
     uint32_t firstLine = token->line;
     IfNode *node = context.ifPool.push(firstLine); // IfPool managed

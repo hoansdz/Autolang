@@ -7,18 +7,16 @@
 namespace AutoLang {
 
 ExprNode *OptionalAccessNode::resolve(in_func) {
-	auto newValue = static_cast<HasClassIdNode *>(value->resolve(in_data));
-	if (!newValue)
-		return nullptr;
-	value = newValue;
+	value = static_cast<HasClassIdNode *>(value->resolve(in_data));
+	value->mode = mode;
 	switch (value->kind) {
 		case NodeType::VAR:
 		case NodeType::CONST:
-			return value;
+			return this;
 		default:
 			break;
 	};
-	return nullptr;
+	return this;
 }
 
 void OptionalAccessNode::optimize(in_func) {

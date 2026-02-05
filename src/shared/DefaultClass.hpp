@@ -4,10 +4,11 @@
 #include <iostream>
 #include "shared/Type.hpp"
 
-struct CompiledProgram;
+namespace AutoLang {
+
+class ACompiler;
 struct AObject;
 
-namespace AutoLang {
 namespace DefaultClass {
 
 constexpr ClassId intClassId = 0;
@@ -16,12 +17,13 @@ constexpr ClassId boolClassId = 2;
 constexpr ClassId stringClassId = 3;
 constexpr ClassId nullClassId = 4;
 constexpr ClassId anyClassId = 5;
+constexpr ClassId exceptionClassId = 6;
 extern AObject* nullObject;
 extern AObject* trueObject;
 extern AObject* falseObject;
 constexpr uint32_t builtInObjectSize = 3;
 constexpr uint32_t refCountForGlobal = 2'000'000;
-void init(CompiledProgram& compile);
+void init(ACompiler& compiler);
 
 }
 }

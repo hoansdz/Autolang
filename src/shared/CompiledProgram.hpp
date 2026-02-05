@@ -12,6 +12,8 @@
 #include "shared/StackAllocator.hpp"
 #include "shared/ObjectManager.hpp"
 
+namespace AutoLang {
+
 struct PairHash
 {
 	template <typename T1, typename T2, typename T3>
@@ -37,36 +39,33 @@ struct CompiledProgram
 	std::vector<AClass*> classes;
 	HashMap<std::string, Offset> classMap;
 	std::vector<AObject *> constPool;
-	HashMap<int64_t, Offset> constIntMap;
-	HashMap<double, Offset> constFloatMap;
-	HashMap<AString *, Offset, AString::Hash, AString::Equal> constStringMap;
+	void refresh();
 	template <bool isConstructor = false>
 	Offset registerFunction( // Return value
 		AClass *clazz,
-		bool isStatic,
 		std::string name,
 		ClassId* args,
-		std::vector<bool> nullableArgs,
+		uint32_t argSize,
 		ClassId returnId,
-		bool returnNullable,
-		AObject *(*native)(NativeFuncInput));
+		uint32_t functionFlags);
 	inline Offset registerFunction( // No return value
 		AClass *clazz,
-		bool isStatic,
 		std::string name,
 		ClassId* args,
-		std::vector<bool> nullableArgs,
-		AObject *(*native)(NativeFuncInput))
+		uint32_t argSize,
+		uint32_t functionFlags)
 	{
-		return registerFunction(clazz, isStatic, name, args, nullableArgs, AutoLang::DefaultClass::nullClassId, false, native);
+		return registerFunction(clazz, name, args, argSize, AutoLang::DefaultClass::nullClassId, functionFlags);
 	}
 	ClassId registerClass(
-		std::string name);
+		std::string name, uint32_t classFlags);
 
 	Offset registerConstPool(HashMap<AString *, uint32_t, AString::Hash, AString::Equal> &map, AString *value);
 	template <typename T>
 	Offset registerConstPool(HashMap<T, uint32_t> &map, T value);
 	~CompiledProgram();
 };
+
+}
 
 #endif

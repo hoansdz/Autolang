@@ -2,6 +2,7 @@
 #define OPTIMIZE_NODE_CPP
 
 #include <iostream>
+#include <charconv>
 #include "frontend/parser/node/OptimizeNode.hpp"
 #include "frontend/parser/node/Node.hpp"
 #include "shared/AObject.hpp"
@@ -285,6 +286,13 @@ namespace AutoLang
 			value->classId = AutoLang::DefaultClass::intClassId;
 			value->i = static_cast<int64_t>(value->obj->b);
 			return;
+		// case AutoLang::DefaultClass::stringClassId:
+		// 	value->classId = AutoLang::DefaultClass::intClassId;
+		// 	auto* str = value->str;
+		// 	auto [ptr, ec] = std::from_chars(str->data(), str->data() + str->size(), value->i, 10);
+		// 	if (ec != std::errc()) { delete str; break; }
+		// 	if (ptr != str->data() + str->size()) { delete str; break; }
+		// 	return;
 		default:
 			break;
 		}
@@ -301,16 +309,74 @@ namespace AutoLang
 			return;
 		case AutoLang::DefaultClass::floatClassId:
 			return;
-		default:
-			break;
-		}
-		if (value->classId == AutoLang::DefaultClass::boolClassId)
-		{
+		case AutoLang::DefaultClass::boolClassId:
 			value->classId = AutoLang::DefaultClass::floatClassId;
 			value->f = static_cast<double>(value->obj->b);
 			return;
+		// case AutoLang::DefaultClass::stringClassId:
+		// 	value->classId = AutoLang::DefaultClass::floatClassId;
+		// 	auto* str = value->str;
+		// 	auto [ptr, ec] = std::from_chars(str->data(), str->data() + str->size(), value->f);
+		// 	if (ec != std::errc()) { delete str; break; }
+		// 	if (ptr != str->data() + str->size()) { delete str; break; }
+		// 	return;
+		default:
+			break;
 		}
-		throw std::runtime_error("a");
+		throw std::runtime_error("");
+	}
+
+	void toBool(ConstValueNode *value)
+	{
+		switch (value->classId)
+		{
+		case AutoLang::DefaultClass::intClassId: {
+			value->classId = AutoLang::DefaultClass::boolClassId;
+			bool b = value->i != 0;
+			value->obj = ObjectManager::createBoolObject(b);
+			value->id = ConstValueNode::getBoolId(b);
+			return;
+		}
+		case AutoLang::DefaultClass::floatClassId: {
+			value->classId = AutoLang::DefaultClass::boolClassId;
+			bool b = value->f != 0;
+			value->obj = ObjectManager::createBoolObject(b);
+			value->id = ConstValueNode::getBoolId(b);
+			return;
+		}
+		case AutoLang::DefaultClass::boolClassId:
+			return;
+		default:
+			break;
+		}
+		throw std::runtime_error("");
+	}
+
+	void toString(ConstValueNode *value)
+	{
+		switch (value->classId)
+		{
+		case AutoLang::DefaultClass::intClassId: {
+			value->classId = AutoLang::DefaultClass::stringClassId;
+			value->str = new std::string(std::to_string(value->i));
+			return;
+		}
+		case AutoLang::DefaultClass::floatClassId: {
+			value->classId = AutoLang::DefaultClass::stringClassId;
+			value->str = new std::string(std::to_string(value->f));
+			return;
+		}
+		case AutoLang::DefaultClass::boolClassId: {
+			value->classId = AutoLang::DefaultClass::stringClassId;
+			value->str = new std::string(value->obj->b ? "true" : "false");
+			return;
+		}
+		case AutoLang::DefaultClass::stringClassId:
+			return;
+		default:
+			break;
+		}
+		throw std::runtime_error("");
 	}
 
 }

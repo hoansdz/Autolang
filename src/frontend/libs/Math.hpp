@@ -2,29 +2,27 @@
 #define LIB_MATH_HPP
 
 #include <cmath>
-#include "frontend/parser/Debugger.hpp"
 
-namespace AutoLang
-{
-    namespace Libs
-    {
-        namespace Math
-        {
+namespace AutoLang {
+class ACompiler;
 
-            void init(CompiledProgram &compile);
-            int64_t integer_pow(int64_t base, int64_t exp);
-            AObject *abs(NativeFuncInData);
-            AObject *pow(NativeFuncInData);
-            AObject *round(NativeFuncInData);
-            AObject *floor(NativeFuncInData);
-            AObject *ceil(NativeFuncInData);
-            AObject *trunc(NativeFuncInData);
-            AObject *fmod(NativeFuncInData);
-            AObject *sin(NativeFuncInData);
-            AObject *cos(NativeFuncInData);
-            AObject *tan(NativeFuncInData);
+namespace Libs {
+namespace Math {
 
-        }
-    }
-}
+void init(AutoLang::ACompiler &compiler);
+int64_t integer_pow(int64_t base, int64_t exp);
+AObject *abs(NativeFuncInData);
+AObject *pow(NativeFuncInData);
+AObject *round(NativeFuncInData);
+AObject *floor(NativeFuncInData);
+AObject *ceil(NativeFuncInData);
+AObject *trunc(NativeFuncInData);
+AObject *fmod(NativeFuncInData);
+AObject *sin(NativeFuncInData);
+AObject *cos(NativeFuncInData);
+AObject *tan(NativeFuncInData);
+
+} // namespace Math
+} // namespace Libs
+} // namespace AutoLang
 #endif

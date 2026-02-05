@@ -56,47 +56,6 @@ void ConstValueNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	put_opcode_u32(bytecodes, id);
 }
 
-void CastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	value->putBytecodes(in_data, bytecodes);
-	switch (classId) {
-		case AutoLang::DefaultClass::intClassId: {
-			if (value->classId == AutoLang::DefaultClass::floatClassId) {
-				bytecodes.emplace_back(Opcode::FLOAT_TO_INT);
-				return;
-			}
-			if (value->classId == AutoLang::DefaultClass::boolClassId) {
-				bytecodes.emplace_back(Opcode::BOOL_TO_INT);
-				return;
-			}
-			bytecodes.emplace_back(Opcode::TO_INT);
-			return;
-		}
-		case AutoLang::DefaultClass::floatClassId: {
-			if (value->classId == AutoLang::DefaultClass::intClassId) {
-				bytecodes.emplace_back(Opcode::INT_TO_FLOAT);
-				return;
-			}
-			if (value->classId == AutoLang::DefaultClass::boolClassId) {
-				bytecodes.emplace_back(Opcode::BOOL_TO_FLOAT);
-				return;
-			}
-			bytecodes.emplace_back(Opcode::TO_FLOAT);
-			return;
-		}
-		default:
-			if (value->classId == AutoLang::DefaultClass::intClassId) {
-				bytecodes.emplace_back(Opcode::INT_TO_STRING);
-				return;
-			}
-			if (value->classId == AutoLang::DefaultClass::floatClassId) {
-				bytecodes.emplace_back(Opcode::FLOAT_TO_STRING);
-				return;
-			}
-			bytecodes.emplace_back(Opcode::TO_STRING);
-			return;
-	}
-}
-
 void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	if (!isStatic) {
 		caller->putBytecodes(in_data, bytecodes);
@@ -121,8 +80,7 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		return;
 	}
 	switch (caller->kind) {
-		case NodeType::VAR:
-		case NodeType::UNKNOW: {
+		case NodeType::VAR: {
 			break;
 		}
 		default: {
@@ -156,15 +114,6 @@ void GetPropNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
 }
 
 void IfNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	if (condition->kind == NodeType::CONST) {
-		// Is bool because optimize forbiddened others
-		if (static_cast<ConstValueNode *>(condition)->obj->b) {
-			ifTrue.putBytecodes(in_data, bytecodes);
-		} else if (ifFalse != nullptr) {
-			ifFalse->putBytecodes(in_data, bytecodes);
-		}
-		return;
-	}
 	condition->putBytecodes(in_data, bytecodes);
 	bytecodes.emplace_back(Opcode::JUMP_IF_FALSE);
 	size_t jumpIfFalseByte = bytecodes.size();
@@ -183,15 +132,6 @@ void IfNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 }
 
 void IfNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
-	if (condition->kind == NodeType::CONST) {
-		// Is bool because optimize forbiddened others
-		if (static_cast<ConstValueNode *>(condition)->obj->b) {
-			ifTrue.rewrite(in_data, bytecodes);
-		} else if (ifFalse != nullptr) {
-			ifFalse->rewrite(in_data, bytecodes);
-		}
-		return;
-	}
 	ifTrue.rewrite(in_data, bytecodes);
 	if (ifFalse)
 		ifFalse->rewrite(in_data, bytecodes);
@@ -269,10 +209,6 @@ void ForRangeNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 
 #define operator_plus_case(type, op)                                           \
 	case Lexer::TokenType::type: {                                             \
-		auto detach = this->detach;                                            \
-		if (detach->kind == NodeType::UNKNOW) {                                \
-			detach = static_cast<UnknowNode *>(detach)->correctNode;           \
-		}                                                                      \
 		auto _node = static_cast<AccessNode *>(detach);                        \
 		_node->isStore = false;                                                \
 		_node->putBytecodes(in_data, bytecodes);                               \
@@ -313,7 +249,7 @@ void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	}
 	if (addPopBytecode)
 		bytecodes.emplace_back(Opcode::POP);
-	if (funcInfo->isConstructor) {
+	if (func->functionFlags & FunctionFlags::FUNC_IS_CONSTRUCTOR) {
 		if (isSuper) {
 			bytecodes.emplace_back(Opcode::LOAD_LOCAL);
 			put_opcode_u32(bytecodes, 0);
@@ -327,19 +263,22 @@ void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	for (auto &argument : arguments) {
 		argument->putBytecodes(in_data, bytecodes);
 	}
-	if (funcInfo->isVirtual) {
+	if (func->functionFlags & FunctionFlags::FUNC_IS_VIRTUAL) {
 		bytecodes.emplace_back(func->returnId == DefaultClass::nullClassId
 		                           ? Opcode::CALL_VTABLE_VOID_FUNCTION
 		                           : Opcode::CALL_VTABLE_FUNCTION);
 		put_opcode_u32(bytecodes, funcInfo->virtualPosition);
-		put_opcode_u32(bytecodes, func->nullableArgs.size);
+		put_opcode_u32(bytecodes, func->argSize);
+		// std::cerr<<"At "<<func->name<<"\n";
+		// std::cerr<<"Put "<<funcInfo->virtualPosition<<" & "<<func->argSize<<"\n";
 	} else {
-		// if (funcInfo->isConstructor) {
-		// 	if (!bytecodes.empty() && func->native)
-		// }
-		bytecodes.emplace_back(func->returnId == DefaultClass::nullClassId
-		                           ? Opcode::CALL_VOID_FUNCTION
-		                           : Opcode::CALL_FUNCTION);
+		if (func->functionFlags & FunctionFlags::FUNC_IS_DATA_CONSTRUCTOR) {
+			bytecodes.emplace_back(Opcode::CALL_DATA_CONTRUCTOR);
+		} else {
+			bytecodes.emplace_back(func->returnId == DefaultClass::nullClassId
+			                           ? Opcode::CALL_VOID_FUNCTION
+			                           : Opcode::CALL_FUNCTION);
+		}
 		put_opcode_u32(bytecodes, funcId);
 	}
 	// put_opcode_u32(bytecodes, func->args.size);

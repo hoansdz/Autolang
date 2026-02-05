@@ -8,12 +8,15 @@
 #include "shared/Type.hpp"
 #include "shared/InheritanceBitset.hpp"
 
+namespace AutoLang {
+
 struct CompiledProgram;
 
 struct AClass
 {
 	std::string name;
 	ClassId id;
+	uint32_t classFlags;
 	std::optional<ClassId> parentId;
 	std::vector<ClassId> memberId;
 	std::vector<Offset> vtable; // Override function
@@ -21,8 +24,10 @@ struct AClass
 	HashMap<std::string, std::vector<Offset>> funcMap;
 	InheritanceBitset inheritance;
 	AClass(){}
-	AClass(std::string name, uint32_t id) : name(std::move(name)), id(id) {}
+	// AClass(std::string name, uint32_t id) : name(std::move(name)), id(id) {}
 	void log(CompiledProgram& data);
 };
+
+}
 
 #endif

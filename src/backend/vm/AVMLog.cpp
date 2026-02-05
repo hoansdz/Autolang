@@ -5,6 +5,8 @@
 #include "shared/DefaultClass.hpp"
 #include "shared/DefaultFunction.hpp"
 
+namespace AutoLang {
+
 void AVM::log() {
 	log(data.main);
 	std::cerr << "-------------------" << '\n';
@@ -35,7 +37,7 @@ void AVM::log() {
 std::string Function::toString(CompiledProgram &data) {
 	bool isFirst = true;
 	std::string result = "[" + std::to_string(id) + "] " + name + ": (";
-	for (int i = 0; i < nullableArgs.size; ++i) {
+	for (int i = 0; i < argSize; ++i) {
 		ClassId classId = args[i];
 		if (isFirst) {
 			isFirst = false;
@@ -43,18 +45,16 @@ std::string Function::toString(CompiledProgram &data) {
 			result += ", ";
 		}
 		result += data.classes[classId]->name;
-		if (nullableArgs[i])
-			result += "?";
 	}
 	result += ")->";
 	result += data.classes[returnId]->name;
-	if (returnNullable)
+	if (functionFlags & FunctionFlags::FUNC_RETURN_NULLABLE)
 		result += "?";
 	return result;
 }
 
 void AClass::log(CompiledProgram& data) {
-	std::cerr << "Class " + name << (inheritance.empty() ? "" : " extends ")
+	std::cerr << "[" << id << "]: Class " + name << (inheritance.empty() ? "" : std::string(" extends ") + data.classes[*parentId]->name)
 	          << "\n";
 	for (auto &[name, offset] : memberMap) {
 		std::cerr << "[" << offset << "] " << name << ": " << data.classes[memberId[offset]]->name
@@ -79,10 +79,15 @@ void AClass::log(CompiledProgram& data) {
 		break;
 
 void AVM::log(Function *currentFunction) {
+	std::cerr << currentFunction->toString(data) << '\n';
+	std::cerr << currentFunction->argSize << " arguments\n";
+	std::cerr << "Total " << currentFunction->maxDeclaration << " declarations\n";
+	if (currentFunction->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
+		std::cerr << "Has native function" << '\n';
+		return;
+	}
 	auto *bytecodes = currentFunction->bytecodes.data();
 	auto size = currentFunction->bytecodes.size();
-	std::cerr << currentFunction->toString(data) << '\n';
-	std::cerr << currentFunction->nullableArgs.size << " arguments\n";
 	std::cerr << "Size: " << size << " bytes" << '\n';
 	uint32_t i = 0;
 	while (i < size) {
@@ -113,6 +118,11 @@ void AVM::log(Function *currentFunction) {
 				uint32_t argumentCount = get_u32(bytecodes, i);
 				std::cerr << "CALL_VTABLE_VOID_FUNCTION	 " << funcPos << " "
 				          << argumentCount << '\n';
+				break;
+			}
+			case AutoLang::Opcode::CALL_DATA_CONTRUCTOR: {
+				uint32_t funcPos = get_u32(bytecodes, i);
+				std::cerr << "CALL_DATA_CONTRUCTOR	 " << funcPos << "\n";
 				break;
 			}
 			case AutoLang::Opcode::LOAD_CONST:
@@ -159,6 +169,8 @@ void AVM::log(Function *currentFunction) {
 				BYTECODE_PRINT_SINGLE(POP_NO_RELEASE)
 				BYTECODE_PRINT_SINGLE(RETURN)
 				BYTECODE_PRINT_SINGLE(RETURN_VALUE)
+				BYTECODE_PRINT_SINGLE(INT_FROM_INT)
+				BYTECODE_PRINT_SINGLE(FLOAT_FROM_FLOAT)
 			case AutoLang::Opcode::JUMP:
 				std::cerr << "JUMP	 " << get_u32(bytecodes, i) << '\n';
 				break;
@@ -221,14 +233,14 @@ void AVM::log(Function *currentFunction) {
 				BYTECODE_PRINT_SINGLE(INT_TO_FLOAT)
 				BYTECODE_PRINT_SINGLE(BOOL_TO_INT)
 				BYTECODE_PRINT_SINGLE(BOOL_TO_FLOAT)
-				BYTECODE_PRINT_SINGLE(INT_TO_STRING)
-				BYTECODE_PRINT_SINGLE(FLOAT_TO_STRING)
 			default:
 				throw std::runtime_error("Bytecode not defined " +
 				                         std::to_string(b));
 				break;
 		}
 	}
+}
+
 }
 
 #endif

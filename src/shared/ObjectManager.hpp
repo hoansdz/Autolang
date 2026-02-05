@@ -1,9 +1,11 @@
 #ifndef OBJECTMANAGER_HPP
 #define OBJECTMANAGER_HPP
 
+#include <iostream>
 #include "backend/optimize/Stack.hpp"
 #include "shared/AreaAllocator.hpp"
 
+namespace AutoLang {
 
 class ObjectManager {
   private:
@@ -71,7 +73,7 @@ class ObjectManager {
 			}
 			case AutoLang::DefaultClass::nullClassId:
 			case AutoLang::DefaultClass::boolClassId: {
-				assert("Critial Bug");
+				assert(false && "Critical Bug: free bool/null object");
 				return;
 			}
 			case AutoLang::DefaultClass::stringClassId: {
@@ -100,6 +102,17 @@ class ObjectManager {
 		freeObjectData(obj);
 		add(obj);
 	}
+	inline void tryRelease(AObject *obj) {
+		if (obj->refCount != 0)
+			return;
+		freeObjectData(obj);
+		add(obj);
+	}
+	inline void refresh() {
+		areaAllocator.destroy();
+		intObjects.refresh();
+		floatObjects.refresh();
+	}
 	static inline AObject *create(bool b) {
 		return b ? AutoLang::DefaultClass::trueObject
 		         : AutoLang::DefaultClass::falseObject;
@@ -111,6 +124,7 @@ class ObjectManager {
 		obj->member = new NormalArray<AObject *>(memberCount);
 		return obj;
 	}
+	inline AObject *createEmptyObject() { return areaAllocator.getObject(); }
 	inline AObject *create(int64_t i) { return get(i); }
 	inline AObject *create(double f) { return get(f); }
 	inline AObject *create(AString *str) { return get(str); }
@@ -121,5 +135,7 @@ class ObjectManager {
 	inline AObject *createString(double f) { return get(AString::from(f)); }
 	void destroy();
 };
+
+}
 
 #endif

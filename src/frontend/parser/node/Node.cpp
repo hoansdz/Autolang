@@ -7,12 +7,20 @@
 
 namespace AutoLang {
 
+ExprNode::ExprNode(NodeType kind, uint32_t line) : line(line), kind(kind) {
+	mode = ParserContext::mode;
+}
+
 void ExprNode::throwError(std::string message) {
+	ParserContext::mode = mode;
 	throw ParserError(line, message);
 }
 
 void ExprNode::warning(in_func, std::string message) {
+	auto lastMode = context.mode;
+	context.mode = mode;
 	context.warning(line, message);
+	context.mode = lastMode;
 }
 
 void ExprNode::deleteNode(ExprNode* node) {
@@ -34,10 +42,6 @@ void ExprNode::deleteNode(ExprNode* node) {
 	}
 	// std::cerr<<std::to_string(node->kind)<<'\n';
 	delete node;
-}
-
-UnknowNode::~UnknowNode() {
-	deleteNode(correctNode);
 }
 
 ReturnNode::~ReturnNode() {

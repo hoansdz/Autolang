@@ -1,20 +1,17 @@
-class T {
-    static val c: Int = 1
-
-    var name: String = "hi"
+class T(val name: String) {
+    //static val c: Int = 1
 
     func printName() {
         println(name)
     }
-
     func hm() {
+		val m = 1
         println("ok")
     }
 }
-
 class Person extends T {
     constructor() {
-        super()
+        super("hello")
         println(name)
     }
 }
@@ -27,17 +24,16 @@ class X extends Person {
         super()
     }
 
-    func hm() {
-        println(name)
-        println(n)
-        printName()
-        println(c)
-        println(k)
-    }
+	@override
+	@native("hi")
+    func hm()
 }
 
-val t = T()
+println(Math.pow(5, 5))
+
+val t = T("SOS")
 t.hm()
 
 val x = X()
 x.hm()
+println(String("hello", 3))

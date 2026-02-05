@@ -13,14 +13,14 @@
 namespace AutoLang {
 namespace Lexer {
 
-std::vector<Token> load(ParserContext* mainContext, AVMReadFileMode& mode, Context& context) {
+void load(ParserContext* mainContext, AVMReadFileMode& mode, Context& context) {
 	std::vector<char> lines;
 	if (mode.data == nullptr) {
 		std::ifstream file(mode.path, std::ios::binary | std::ios::ate);
 		if (!file.is_open()) {
 			context.hasError = true;
 			std::cerr << (std::string("File ") + mode.path + " doesn't exists \n");
-			return {};
+			return;
 		}
 		std::streamsize size = file.tellg();
 		file.seekg(0, std::ios::beg);
@@ -29,26 +29,23 @@ std::vector<Token> load(ParserContext* mainContext, AVMReadFileMode& mode, Conte
 		if (!file) {
 			context.hasError = true;
 			std::cerr << (std::string(mode.path) + ": An error occurred while reading the file\n");
-			return {};
+			return;
 		}
 		file.close();
 		mode.data = reinterpret_cast<const char*>(lines.data());
 		mode.dataSize = lines.size();
 	}
-	std::vector<Token> tokens;
-	tokens.reserve(256);
 	context.mainContext = mainContext;
-	context.totalSize = lines.size();
+	context.totalSize = mode.dataSize;
 	context.absolutePos = 0;
 	context.linePos = 0;
 	context.lineSize = 0;
 	context.nextLinePosition = 0;
-	context.bracketStack.reserve(16);
 	uint32_t i = 0;
 	while (nextLine(context, mode.data, i)) {
 		try {
 			while (!isEndOfLine(context, i)) {
-				loadNextTokenNoCloseBracket(context, tokens, mode, i);
+				loadNextTokenNoCloseBracket(context, context.tokens, mode, i);
 			}
 		}
 		catch (const LexerError& err) {
@@ -57,7 +54,6 @@ std::vector<Token> load(ParserContext* mainContext, AVMReadFileMode& mode, Conte
 			context.hasError = true;
 		}
 	}
-	return tokens;
 }
 
 bool loadNextTokenNoCloseBracket(Context &context, std::vector<Token>& tokens, AVMReadFileMode& mode, uint32_t &i) {
@@ -83,6 +79,14 @@ bool loadNextTokenNoCloseBracket(Context &context, std::vector<Token>& tokens, A
 		return true;
 	}
 	switch (chr) {
+		case '@': {
+			tokens.emplace_back(
+				context.linePos,
+				TokenType::AT_SIGN
+			);
+			++i;
+			return true;
+		}
 		case '\"':
 		case '\'': {
 			context.pos = i + 1;
@@ -522,6 +526,8 @@ std::string Token::toString(ParserContext& context) {
 			return "?.";
 		case TokenType::EXMARK:
 			return "!";
+		case TokenType::AT_SIGN:
+			return "@";
 		case TokenType::RETURN:
 			return "return";
 		case TokenType::AND_AND:
@@ -630,7 +636,12 @@ bool nextLine(Context& context, const char* lines, uint32_t& i) {
 				context.nextLinePosition = context.absolutePos + context.lineSize + 1;
 				goto out;
 			case '\r':
-				context.nextLinePosition = context.absolutePos + context.lineSize + 2;
+				if (context.absolutePos + context.lineSize + 1 < context.totalSize &&
+					context.line[context.lineSize + 1] == '\n') {
+					context.nextLinePosition = context.absolutePos + context.lineSize + 2;
+				} else {
+					context.nextLinePosition = context.absolutePos + context.lineSize + 1;
+				}
 				goto out;
 		}
 		++context.lineSize;

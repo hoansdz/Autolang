@@ -7,6 +7,8 @@
 #include "shared/Type.hpp"
 #include "AString.hpp"
 
+namespace AutoLang {
+
 class AVM;
 
 struct AObject
@@ -70,5 +72,7 @@ struct AObject
 		delete member;
 	}
 };
+
+}
 
 #endif

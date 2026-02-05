@@ -17,7 +17,7 @@ struct ClassInfo {
 	CreateConstructorNode *primaryConstructor = nullptr;
 	std::vector<CreateConstructorNode *> secondaryConstructor;
 	DeclarationNode *declarationThis;
-	std::optional<ClassId> parent;
+	ClassId parent;
 	AccessNode *findDeclaration(in_func, uint32_t line, std::string &name,
 	                            bool isStatic = false);
 	~ClassInfo();

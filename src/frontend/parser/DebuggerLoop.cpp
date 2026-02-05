@@ -7,7 +7,6 @@ namespace AutoLang
 {
 
 WhileNode* loadWhile(in_func, size_t& i) {
-	ensureNoKeyword(in_data, i);
 	Lexer::Token* token = &context.tokens[i];
 	uint32_t firstLine = token->line;
 	WhileNode* node = context.whilePool.push(firstLine); //WhilePool managed
@@ -36,7 +35,6 @@ WhileNode* loadWhile(in_func, size_t& i) {
 }
 
 ExprNode* loadFor(in_func, size_t& i) {
-	ensureNoKeyword(in_data, i);
 	Lexer::Token* token = &context.tokens[i];
 	uint32_t firstLine = token->line;
 

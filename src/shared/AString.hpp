@@ -11,6 +11,13 @@ public:
 
     AString(char* data, size_t size): data(data), size(size){}
 
+	inline static AString* from(const char* value) {
+		size_t size = strlen(value);
+        char* str = new char[size + 1];
+		strcpy(str, value);
+        return new AString(str, size);
+    }
+
     inline static AString* from(const std::string& value) {
         char* str = new char[value.size() + 1];
         memcpy(str, value.c_str(), value.size());

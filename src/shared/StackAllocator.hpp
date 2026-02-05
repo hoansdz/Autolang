@@ -7,6 +7,8 @@
 #include "shared/AObject.hpp"
 #include "ObjectManager.hpp"
 
+namespace AutoLang {
+
 class AVM;
 
 class StackAllocator {
@@ -89,10 +91,11 @@ public:
 			manager.release(*last);
 		}
 		*last = object;
-		object->retain();
 	}
 	
 	inline AObject*& operator[](size_t index){ return currentPtr[index]; }
 };
+
+}
 
 #endif

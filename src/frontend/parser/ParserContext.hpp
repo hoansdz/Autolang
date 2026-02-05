@@ -18,10 +18,22 @@ struct ClassDeclaration {
 };
 
 enum ModifierFlags : uint32_t {
-	PUBLIC = 1u << 0,
-	PRIVATE = 1u << 1,
-	PROTECTED = 1u << 2,
-	STATIC = 1u << 3,
+	MF_PUBLIC = 1u << 0,
+	MF_PRIVATE = 1u << 1,
+	MF_PROTECTED = 1u << 2,
+	MF_STATIC = 1u << 3,
+};
+
+enum AnnotationFlags : uint32_t {
+	AN_OVERRIDE = 1u << 0,
+	AN_NO_OVERRIDE = 1u << 1,
+	AN_NATIVE = 1u << 2,
+	AN_NO_CONSTRUCTOR = 1u << 3,
+};
+
+struct SourceChunk {
+	uint32_t end;
+	AVMReadFileMode mode;
 };
 
 struct ParserContext {
@@ -35,8 +47,14 @@ struct ParserContext {
 	    binaryOpResultType;
 	// Parse file to tokens
 	std::vector<Lexer::Token> tokens;
+	std::vector<SourceChunk> sources;
+	uint32_t sourcePos;
+	SourceChunk* currentChunk = nullptr;
 	// Keywords , example public, private, static
 	uint32_t modifierflags = 0;
+	// Anotations
+	uint32_t annotationFlags = 0;
+	HashMap<AnnotationFlags, Lexer::Token> annotationMetadata;
 	// Declaration new functions by user
 	NonReallocatePool<CreateFuncNode> newFunctions;
 	// Declaration new classes by user
@@ -44,7 +62,6 @@ struct ParserContext {
 
 	HashMap<uint32_t, CreateClassNode *> newClassesMap;
 
-	uint32_t line;
 	bool hasError = false;
 	bool canBreakContinue = false;
 	// Be used when it is static keywords, example static val a = ...
@@ -52,6 +69,7 @@ struct ParserContext {
 	// Be used when put bytecodes with break or continue
 	uint32_t continuePos = 0;
 	uint32_t breakPos = 0;
+	size_t currentTokenPos = 0;
 	JumpIfNullNode *jumpIfNullNode = nullptr;
 	// Function information in compiler time
 	HashMap<uint32_t, FunctionInfo> functionInfo;
@@ -72,14 +90,19 @@ struct ParserContext {
 	uint32_t mainFunctionId;
 	uint32_t currentFunctionId;
 
-	AVMReadFileMode *mode;
+	static AVMReadFileMode *mode;
+
+	HashMap<int64_t, Offset> constIntMap;
+	HashMap<double, Offset> constFloatMap;
+	HashMap<AString *, Offset, AString::Hash, AString::Equal> constStringMap;
 
 	// Constant value, example "null", "true", "false"
 	HashMap<std::string, std::pair<AObject *, uint32_t>>
 	    constValue;
-	void init(CompiledProgram &compiler, AVMReadFileMode &mode);
+	void init(CompiledProgram &compiler);
 	void logMessage(uint32_t line, const std::string &message);
 	void warning(uint32_t line, const std::string &message);
+	void refresh(CompiledProgram &compile);
 	inline static std::tuple<ClassId, ClassId, uint8_t>
 	makeTuple(ClassId first, ClassId second, uint8_t op) {
 		return std::make_tuple(std::min(first, second), std::max(first, second),

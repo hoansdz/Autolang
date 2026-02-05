@@ -4,6 +4,14 @@
 #include "ankerl/unordered_dense.h"
 #include <iostream>
 
+namespace AutoLang {
+struct AObject;
+class ObjectManager;
+}
+
+#define NativeFuncInput AutoLang::ObjectManager &, AutoLang::AObject **, size_t
+#define NativeFuncInData AutoLang::ObjectManager &manager, AutoLang::AObject **args, size_t size
+
 using ClassId = uint32_t;
 using LexerStringId = uint32_t;
 using Offset = uint32_t;
@@ -17,5 +25,7 @@ template<
     class Equal = std::equal_to<K>
 >
 using HashMap = ankerl::unordered_dense::map<K, V, Hash, Equal>;
+using ANativeFunction = AutoLang::AObject*(*)(NativeFuncInput);
+using ANativeMap = HashMap<std::string, ANativeFunction>;
 
 #endif

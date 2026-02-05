@@ -9,17 +9,33 @@ namespace AutoLang {
 void CreateFuncNode::pushFunction(in_func) {
 	AClass *clazz =
 	    contextCallClassId ? compile.classes[*contextCallClassId] : nullptr;
-	id = compile.registerFunction(clazz, isStatic, name,
-	                              new ClassId[arguments.size()]{},
-	                              std::vector<bool>(arguments.size(), false),
+	id = compile.registerFunction(clazz, name,
+	                              new ClassId[arguments.size()]{}, arguments.size(),
 	                              clazz ? clazz->id
-	                                    : AutoLang::DefaultClass::nullClassId,
-	                              returnNullable, nullptr);
+	                                    : AutoLang::DefaultClass::nullClassId, functionFlags);
 	auto func = compile.functions[id];
 	auto funcInfo = &context.functionInfo[id];
-	printDebug("Created function name: " + func->name);
+	new (&func->bytecodes) std::vector<uint8_t>();
 	funcInfo->clazz = clazz;
-	funcInfo->accessModifier = accessModifier;
+	funcInfo->nullableArgs = new bool[arguments.size()]{};
+	func->maxDeclaration = arguments.size();
+	funcInfo->declaration = arguments.size();
+}
+
+void CreateFuncNode::pushNativeFunction(in_func, ANativeFunction native) {
+	AClass *clazz =
+	    contextCallClassId ? compile.classes[*contextCallClassId] : nullptr;
+	id = compile.registerFunction(clazz, name,
+	                              new ClassId[arguments.size()]{}, arguments.size(),
+	                              clazz ? clazz->id
+	                                    : AutoLang::DefaultClass::nullClassId, functionFlags | FunctionFlags::FUNC_IS_NATIVE);
+	auto func = compile.functions[id];
+	auto funcInfo = &context.functionInfo[id];
+	func->native = native;
+	funcInfo->clazz = clazz;
+	funcInfo->nullableArgs = new bool[arguments.size()]{};
+	func->maxDeclaration = arguments.size();
+	funcInfo->declaration = arguments.size();
 }
 
 void CreateFuncNode::optimize(in_func) {
@@ -43,13 +59,13 @@ void CreateFuncNode::optimize(in_func) {
 	for (size_t i = 0; i < arguments.size(); ++i) {
 		auto &argument = arguments[i];
 		func->args[i] = argument->classId;
-		func->nullableArgs[i] = argument->nullable;
+		funcInfo->nullableArgs[i] = argument->nullable;
 	}
 
 	if (contextCallClassId) {
 		funcInfo->hash = func->loadHash();
 		auto classInfo = &context.classInfo[*contextCallClassId];
-		if (isStatic) {
+		if (func->functionFlags & FunctionFlags::FUNC_IS_STATIC) {
 			auto& hash = classInfo->staticFunc[name];
 			auto it = hash.find(funcInfo->hash);
 			if (it != hash.end() && compile.functions[it->second]->name == func->name) {
@@ -62,7 +78,7 @@ void CreateFuncNode::optimize(in_func) {
 			if (it != hash.end() && compile.functions[it->second]->name == func->name) {
 				throwError("Redefined function : " + func->toString(compile));
 			}
-			std::cerr<<"Created "<<name<<" hash "<<funcInfo->hash<<"\n";
+			// std::cerr<<"Created "<<name<<" hash "<<funcInfo->hash<<"\n";
 			hash[funcInfo->hash] = func->id;
 		}
 	}

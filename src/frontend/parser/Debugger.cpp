@@ -10,87 +10,15 @@
 
 namespace AutoLang {
 
-bool build(CompiledProgram &compile, AVMReadFileMode &mode) {
-	auto startCompiler = std::chrono::high_resolution_clock::now();
-	ParserContext context;
-	context.init(compile, mode);
-	context.line = 0;
-	size_t i = 0;
-	Lexer::Context lexerContext;
-	lexerData(in_data, mode, lexerContext);
-
-	// for (auto& token : context.tokens) {
-	// 	std::cout<<token.toString(context)<<" ";
-	// }
-
-	auto startParserTime = std::chrono::high_resolution_clock::now();
-	if (!lexerContext.hasError) {
-		i = 0;
-		while (i < context.tokens.size()) {
-			try {
-				auto node = loadLine(in_data, i);
-				ensureEndline(in_data, i);
-				++i;
-				if (node == nullptr) {
-					continue;
-				}
-				context.getCurrentFunctionInfo(in_data)->block.nodes.push_back(
-				    node);
-			} catch (const std::runtime_error &err) {
-				context.hasError = true;
-				std::cout << "Unexpected exception: " << err.what() << '\n';
-			} catch (const ParserError &err) {
-				context.hasError = true;
-				context.logMessage(err.line, err.message);
-				if (i >= context.tokens.size())
-					break;
-				uint32_t line = context.tokens[i].line;
-				Lexer::Token *_;
-				while (nextTokenSameLine(&_, context.tokens, i, line))
-					;
-			}
-		}
-	}
-
-	try {
-		if (!context.hasError) {
-			auto parserTime = std::chrono::high_resolution_clock::now();
-			std::cerr << "Parser time : "
-			          << std::chrono::duration_cast<std::chrono::milliseconds>(
-			                 parserTime - startParserTime)
-			                 .count()
-			          << " ms" << '\n';
-
-			printDebug("-----------------AST Node-----------------\n");
-			resolve(in_data);
-			auto resolveTime = std::chrono::high_resolution_clock::now();
-			std::cerr << "Optimize and Putbytecode time : "
-			          << std::chrono::duration_cast<std::chrono::milliseconds>(
-			                 resolveTime - parserTime)
-			                 .count()
-			          << " ms" << '\n';
-		}
-	} catch (const std::exception &err) {
-		context.hasError = true;
-		std::cout << "Unexpected exception: " << err.what() << '\n';
-	} catch (const ParserError &err) {
-		context.hasError = true;
-		context.logMessage(err.line, err.message);
-	}
-	freeData(in_data);
-	return !lexerContext.hasError && !context.hasError;
-}
-
 void lexerData(in_func, AVMReadFileMode &mode, Lexer::Context &lexerContext) {
 	auto startLexer = std::chrono::high_resolution_clock::now();
-	context.tokens = Lexer::load(&context, mode, lexerContext);
+	Lexer::load(&context, mode, lexerContext);
 	auto lexerTime = std::chrono::high_resolution_clock::now();
 	std::cerr << "Lexer file " << mode.path << " in  "
 	          << std::chrono::duration_cast<std::chrono::milliseconds>(
 	                 lexerTime - startLexer)
 	                 .count()
 	          << " ms" << '\n';
-	estimate(in_data, lexerContext);
 }
 
 void freeData(in_func) {
@@ -162,121 +90,6 @@ void estimate(in_func, Lexer::Context &lexerContext) {
 	           std::to_string(estimateAllFunctions));
 }
 
-void resolve(in_func) {
-	printDebug(context.getMainFunction(in_data)->bytecodes.size());
-	printDebug("Start optimize declaration nodes in functions");
-	for (int i = 0; i < context.declarationNodePool.index; ++i) {
-		context.declarationNodePool.objects[i].optimize(in_data);
-	}
-	for (auto *node : context.declarationNodePool.vecs) {
-		node->optimize(in_data);
-	}
-
-	printDebug("Start optimize classes");
-	size_t sizeNewClasses  = context.newClasses.getSize();
-	for (size_t i = 0; i < sizeNewClasses; ++i) {
-		context.newClasses[i]->optimize(in_data);
-	}
-
-	printDebug("Start optimize constructor nodes");
-	for (int i = 0; i < sizeNewClasses; ++i) {
-		auto *node = context.newClasses[i];
-		auto clazz = compile.classes[node->classId];
-		auto classInfo = &context.classInfo[clazz->id];
-		if (classInfo->primaryConstructor) {
-			classInfo->primaryConstructor->optimize(in_data);
-		} else {
-			for (auto *constructor : classInfo->secondaryConstructor) {
-				constructor->optimize(in_data);
-			}
-		}
-	}
-	printDebug("Start optimize static nodes");
-	for (auto &node : context.staticNode) {
-		node->optimize(in_data);
-	}
-	printDebug("Start optimize functions");
-	size_t sizeNewFunctions = context.newFunctions.getSize();
-	for (int i = 0; i < sizeNewFunctions; ++i) {
-		context.newFunctions[i]->optimize(in_data);
-	}
-
-	printDebug("Start load virtual");
-	for (size_t i = 0; i < sizeNewClasses; ++i) {
-		context.newClasses[i]->loadSuper(in_data);
-		context.newClasses[i]->body.optimize(in_data);
-	}
-
-	printDebug("Start put bytecodes constructor");
-	for (int i = 0; i < sizeNewClasses; ++i) {
-		auto *node = context.newClasses[i];
-		auto classInfo = &context.classInfo[compile.classes[node->classId]->id];
-		if (classInfo->primaryConstructor) {
-			// Put initial bytecodes, example val a = 5 => SetNode
-			//  node->body.optimize(in_data);
-			auto func =
-			    compile.functions[classInfo->primaryConstructor->funcId];
-			auto& bytecodes = func->bytecodes;
-			node->body.putBytecodes(in_data, bytecodes);
-			node->body.rewrite(in_data, bytecodes);
-		} else {
-			for (auto &constructor : classInfo->secondaryConstructor) {
-				auto func = compile.functions[constructor->funcId];
-				// Put initial bytecodes, example val a = 5 => SetNode a and
-				// value 5
-				//  node->body.optimize(in_data);
-				node->body.putBytecodes(in_data, func->bytecodes);
-				node->body.rewrite(in_data, func->bytecodes);
-				// Put constructor bytecodes
-				constructor->body.optimize(in_data);
-				constructor->body.putBytecodes(in_data, func->bytecodes);
-				constructor->body.rewrite(in_data, func->bytecodes);
-			}
-		}
-	}
-	printDebug("Start put bytecodes static nodes");
-	for (auto &node : context.staticNode) {
-		node->putBytecodes(in_data,
-		                   context.getMainFunction(in_data)->bytecodes);
-		node->rewrite(in_data, context.getMainFunction(in_data)->bytecodes);
-	}
-	context.getMainFunctionInfo(in_data)->block.optimize(in_data);
-	printDebug("Start put bytecodes in functions");
-	for (int i = 0; i < sizeNewFunctions; ++i) {
-		auto *node = context.newFunctions[i];
-		auto func = compile.functions[node->id];
-		node->body.optimize(in_data);
-		node->body.putBytecodes(in_data, func->bytecodes);
-		node->body.rewrite(in_data, func->bytecodes);
-	}
-	printDebug("Start put bytecodes in main");
-	context.getMainFunctionInfo(in_data)->block.putBytecodes(
-	    in_data, context.getMainFunction(in_data)->bytecodes);
-	context.getMainFunctionInfo(in_data)->block.rewrite(
-	    in_data, context.getMainFunction(in_data)->bytecodes);
-
-	printDebug("Real Declarations: " +
-	           std::to_string(context.declarationNodePool.index +
-	                          context.declarationNodePool.vecs.size()));
-	printDebug("Real New classes: " +
-	           std::to_string(context.newClasses.getSize()));
-	printDebug("Real New functions: " +
-	           std::to_string(context.newFunctions.getSize()));
-	printDebug("Real ClassInfo: " + std::to_string(context.classInfo.size()));
-	printDebug("Real FunctionInfo: " +
-	           std::to_string(context.functionInfo.size()));
-
-	printDebug("Real Classes: " + std::to_string(compile.classes.size()));
-	printDebug("Real Functions: " + std::to_string(compile.functions.size()));
-	printDebug("Real ClassMap: " + std::to_string(compile.classMap.size()));
-	printDebug("Real FuncMap: " + std::to_string(compile.funcMap.size()));
-	// size_t total = 0;
-	// for (auto& [k, v] : compile.funcMap)
-	// 	++total;
-
-	// printDebug("TOTAL FUNC IN MAP: " + std::to_string(total));
-}
-
 ClassDeclaration loadClassDeclaration(in_func, size_t &i,
                                       uint32_t line) { // Has check
 	ClassDeclaration result;
@@ -304,8 +117,8 @@ ClassDeclaration loadClassDeclaration(in_func, size_t &i,
 ExprNode *loadLine(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
 	context.modifierflags = 0;
+	context.annotationFlags = 0;
 initial:;
-	context.line = token->line;
 	bool isInFunction = !context.currentClassId ||
 	                    context.currentFunctionId != context.mainFunctionId;
 	switch (token->type) {
@@ -388,17 +201,29 @@ initial:;
 			                  "Cannot call return outside function");
 		return loadReturn(in_data, i);
 	}
+	case Lexer::TokenType::AT_SIGN: {
+		if (context.currentFunctionId != context.mainFunctionId)
+			throw ParserError(token->line,
+			                  "Annotation can only be used for functions");
+		loadAnnotations(in_data, i);
+		if (!nextToken(&token, context.tokens, i)) {
+			--i;
+			throw ParserError(context.tokens[i].line,
+			                  "Annotation must be followed by function");
+		}
+		goto initial;
+	}
 	case Lexer::TokenType::PUBLIC: {
 		if (isInFunction)
 			throw ParserError(token->line,
 			                  "'public' can only be used for class members");
-		if (context.modifierflags & ModifierFlags::PUBLIC)
+		if (context.modifierflags & ModifierFlags::MF_PUBLIC)
 			throw ParserError(token->line, "Duplicate modifier 'public'");
-		if (context.modifierflags & ModifierFlags::PRIVATE)
+		if (context.modifierflags & ModifierFlags::MF_PRIVATE)
 			throw ParserError(
 			    token->line,
 			    "Invalid modifier combination: 'public' and 'private'");
-		if (context.modifierflags & ModifierFlags::PROTECTED)
+		if (context.modifierflags & ModifierFlags::MF_PROTECTED)
 			throw ParserError(
 			    token->line,
 			    "Invalid modifier combination: 'public' and 'protected'");
@@ -407,20 +232,20 @@ initial:;
 			throw ParserError(context.tokens[i].line,
 			                  "'public' must be followed by a declaration");
 		}
-		context.modifierflags |= ModifierFlags::PUBLIC;
+		context.modifierflags |= ModifierFlags::MF_PUBLIC;
 		goto initial;
 	}
 	case Lexer::TokenType::PRIVATE: {
 		if (isInFunction)
 			throw ParserError(token->line,
 			                  "'private' can only be used for class members");
-		if (context.modifierflags & ModifierFlags::PRIVATE)
+		if (context.modifierflags & ModifierFlags::MF_PRIVATE)
 			throw ParserError(token->line, "Duplicate modifier 'private'");
-		if (context.modifierflags & ModifierFlags::PUBLIC)
+		if (context.modifierflags & ModifierFlags::MF_PUBLIC)
 			throw ParserError(
 			    token->line,
 			    "Invalid modifier combination: 'private' and 'public'");
-		if (context.modifierflags & ModifierFlags::PROTECTED)
+		if (context.modifierflags & ModifierFlags::MF_PROTECTED)
 			throw ParserError(
 			    token->line,
 			    "Invalid modifier combination: 'private' and 'protected'");
@@ -429,20 +254,20 @@ initial:;
 			throw ParserError(context.tokens[i].line,
 			                  "'private' must be followed by a declaration");
 		}
-		context.modifierflags |= ModifierFlags::PRIVATE;
+		context.modifierflags |= ModifierFlags::MF_PRIVATE;
 		goto initial;
 	}
 	case Lexer::TokenType::PROTECTED: {
 		if (isInFunction)
 			throw ParserError(token->line,
 			                  "'protected' can only be used for class members");
-		if (context.modifierflags & ModifierFlags::PROTECTED)
+		if (context.modifierflags & ModifierFlags::MF_PROTECTED)
 			throw ParserError(token->line, "Duplicate modifier 'protected'");
-		if (context.modifierflags & ModifierFlags::PUBLIC)
+		if (context.modifierflags & ModifierFlags::MF_PUBLIC)
 			throw ParserError(
 			    token->line,
 			    "Invalid modifier combination: 'protected' and 'public'");
-		if (context.modifierflags & ModifierFlags::PRIVATE)
+		if (context.modifierflags & ModifierFlags::MF_PRIVATE)
 			throw ParserError(
 			    token->line,
 			    "Invalid modifier combination: 'protected' and 'private'");
@@ -451,18 +276,18 @@ initial:;
 			throw ParserError(context.tokens[i].line,
 			                  "'protected' must be followed by a declaration");
 		}
-		context.modifierflags |= ModifierFlags::PROTECTED;
+		context.modifierflags |= ModifierFlags::MF_PROTECTED;
 		goto initial;
 	}
 	case Lexer::TokenType::STATIC: {
-		if (context.modifierflags & ModifierFlags::STATIC)
+		if (context.modifierflags & ModifierFlags::MF_STATIC)
 			throw ParserError(token->line, "Duplicate modifier 'static'");
 		if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 			--i;
 			throw ParserError(context.tokens[i].line,
 			                  "'static' must be followed by a declaration");
 		}
-		context.modifierflags |= ModifierFlags::STATIC;
+		context.modifierflags |= ModifierFlags::MF_STATIC;
 		goto initial;
 	}
 	default:
@@ -499,10 +324,22 @@ void loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i,
 			return;
 		}
 		try {
+			if (context.sources[context.sourcePos].end <= context.currentTokenPos) {
+				++context.sourcePos;
+				while (context.sources[context.sourcePos].end <= context.currentTokenPos) {
+					++context.sourcePos;
+				}
+				ParserContext::mode = &context.sources[context.sourcePos].mode;
+			}
 			auto node = loadLine(in_data, i);
 			ensureEndline(in_data, i);
 			if (node == nullptr)
 				continue;
+			if (context.annotationFlags || context.modifierflags) {
+				ExprNode::deleteNode(node);
+				ensureNoAnnotations(in_data, i);
+				ensureNoKeyword(in_data, i); 
+			}
 			nodes.push_back(node);
 		} catch (const std::runtime_error &err) {
 			throw err;
@@ -567,18 +404,20 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 			continue;
 		}
 		// auto binaryNode = context.binaryNodePool.push(op, left, right);
-		auto binaryNode =
-		    std::make_unique<BinaryNode>(firstLine, op, left.release(), right);
-		if (minPrecedence == 0) {
-			auto node = binaryNode->calculate(in_data);
-			if (node != nullptr) {
-				// binaryNode->left = nullptr;
-				// binaryNode->right = nullptr;
-				left.reset(node);
-				continue;
-			}
-		}
-		left.reset(binaryNode.release());
+		left.reset(new BinaryNode(firstLine, op, left.release(), right));
+		// auto binaryNode =
+		//     std::make_unique<BinaryNode>(firstLine, op, left.release(), right);
+		// if (minPrecedence == 0) {
+		// 	left.reset(binaryNode);
+		// 	auto node = binaryNode->calculate(in_data);
+		// 	if (node != nullptr) {
+		// 		// binaryNode->left = nullptr;
+		// 		// binaryNode->right = nullptr;
+		// 		left.reset(node);
+		// 		continue;
+		// 	}
+		// }
+		// left.reset(binaryNode.release());
 		// std::cout<<"op "<<binaryNode<<":"<<Lexer::Token(0, binaryNode->op,
 		// "").toString()<<'\n';
 	}
@@ -736,16 +575,10 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 			                  "Expected value after '" +
 			                      Lexer::Token(0, op).toString(context) + "'");
 		}
-		auto unaryNode = new UnaryNode(
+		return new UnaryNode(
 		    token->line,
 		    op == Lexer::TokenType::EXMARK ? Lexer::TokenType::NOT : op,
 		    parsePrimary(in_data, i));
-		auto calculated = unaryNode->calculate(in_data);
-		if (calculated == nullptr)
-			return unaryNode;
-		unaryNode->value = nullptr;
-		ExprNode::deleteNode(unaryNode);
-		return calculated;
 	}
 	case Lexer::TokenType::NUMBER: {
 		node.reset(loadNumber(in_data, i));
@@ -986,19 +819,26 @@ void ensureNoKeyword(in_func, size_t &i) {
 	                  "Command doesn't support any keyword");
 }
 
+void ensureNoAnnotations(in_func, size_t &i) {
+	if (!context.annotationFlags)
+		return;
+	throw ParserError(context.tokens[i].line,
+	                  "Command doesn't support any annotations");
+}
+
 Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t &i) {
 	// No keywords
 	if (!context.modifierflags)
 		return Lexer::TokenType::PUBLIC;
-	if (context.modifierflags & ModifierFlags::STATIC)
+	if (context.modifierflags & ModifierFlags::MF_STATIC)
 		throw ParserError(context.tokens[i].line,
 		                  "Command doesn't support 'static' keyword");
 	switch (context.modifierflags) {
-	case ModifierFlags::PUBLIC:
+	case ModifierFlags::MF_PUBLIC:
 		return Lexer::TokenType::PUBLIC;
-	case ModifierFlags::PRIVATE:
+	case ModifierFlags::MF_PRIVATE:
 		return Lexer::TokenType::PRIVATE;
-	case ModifierFlags::PROTECTED:
+	case ModifierFlags::MF_PROTECTED:
 		return Lexer::TokenType::PROTECTED;
 	default:
 		throw ParserError(0, "Bug: Parser not ensure one modifier");

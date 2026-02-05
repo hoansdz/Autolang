@@ -6,18 +6,20 @@
 #include <iostream>
 #include <sstream>
 
+namespace AutoLang {
 
 AVM::AVM(bool allowDebug) : allowDebug(allowDebug) {}
 
 void AVM::start() {
+	if (state == VMState::ERROR) {
+		throw std::runtime_error("VM returns error");
+	}
 	state = VMState::RUNNING;
-	auto start = std::chrono::high_resolution_clock::now();
+	
 	initGlobalVariables();
 	run();
-	auto end = std::chrono::high_resolution_clock::now();
-	auto durationCompiler =
-	    std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-	std::cout << "Total time : " << durationCompiler.count() << " ms" << '\n';
+	// log();
+	// allowDebug = true;
 	while (allowDebug) {
 		std::string command;
 		std::getline(std::cin, command);
@@ -36,7 +38,7 @@ void AVM::start() {
 					}
 					auto &vec = data.funcMap[name];
 					if (vec.size() == 0) {
-						std::cout << "Cannot find " << name;
+						std::cout << "Cannot find " << name << "\n";
 						continue;
 					}
 					if (vec.size() == 1) {
@@ -66,6 +68,8 @@ void AVM::start() {
 			std::cout << "wtf" << '\n';
 		}
 	}
+}
+
 }
 
 #endif

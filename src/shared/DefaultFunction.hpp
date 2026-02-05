@@ -8,9 +8,10 @@
 #include <iostream>
 
 namespace AutoLang {
+class ACompiler;
 namespace DefaultFunction {
 
-void init(CompiledProgram &compile);
+void init(ACompiler& compiler);
 inline AObject *data_constructor(NativeFuncInData);
 inline AObject *print(NativeFuncInData);
 inline AObject *println(NativeFuncInData);
@@ -23,14 +24,12 @@ inline AObject *get_string_size(NativeFuncInData);
 
 AObject *data_constructor(NativeFuncInData) {
 	AObject *obj = args[0];
-	obj->refCount -= 1;
 	for (size_t i = 1; i < size; ++i) {
 		AObject **last = &obj->member->data[i - 1];
 		*last = args[i];
 		(*last)->retain();
 	}
-	args[0] = nullptr;
-	return obj;
+	return nullptr;
 }
 
 AObject *print(NativeFuncInData) {
@@ -91,8 +90,6 @@ AObject *to_int(NativeFuncInData) {
 }
 
 AObject *to_float(NativeFuncInData) {
-	if (size != 1)
-		return nullptr;
 	auto obj = args[0];
 	switch (obj->type) {
 	case AutoLang::DefaultClass::intClassId:

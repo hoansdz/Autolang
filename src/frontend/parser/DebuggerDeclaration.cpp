@@ -20,16 +20,18 @@ namespace AutoLang
 {
 
 HasClassIdNode* loadDeclaration(in_func, size_t& i) {
+	ensureNoAnnotations(in_data, i);
 	auto declaration = &context.tokens[i];
 	bool isVal = declaration->type == Lexer::TokenType::VAL;
 	bool isGlobal = !context.currentClassId && context.currentFunctionId == context.mainFunctionId;
 	bool isInFunction = !context.currentClassId || context.currentFunctionId != context.mainFunctionId;
-	bool isStatic = context.modifierflags & ModifierFlags::STATIC;
+	bool isStatic = context.modifierflags & ModifierFlags::MF_STATIC;
 	if (isStatic) {
 		isGlobal = true;
-		context.modifierflags &= ~ModifierFlags::STATIC;
+		context.modifierflags &= ~ModifierFlags::MF_STATIC;
 	}
 	Lexer::TokenType accessModifier = getAndEnsureOneAccessModifier(in_data, i);
+	context.modifierflags = 0;
 	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
 	//Name
@@ -168,7 +170,7 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 		uint32_t nodeId = context.getCurrentClass(in_data)->memberMap.size();
 		// printDebug(compile.classes[context.currentClassInfo->declarationThis->classId]->name);
 		// printDebug((uintptr_t)context.currentClass);
-		std::cout << nodeId << " is node id of " << name <<'\n';
+		// std::cout << nodeId << " is node id of " << name <<'\n';
 		context.getCurrentClass(in_data)->memberMap[node->name] = nodeId;
 		context.getCurrentClass(in_data)->memberId.push_back(0);
 		//Add member id

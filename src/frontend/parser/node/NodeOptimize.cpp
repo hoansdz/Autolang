@@ -7,7 +7,7 @@
 
 namespace AutoLang {
 
-ConstValueNode *UnaryNode::calculate(in_func) {
+ExprNode *UnaryNode::resolve(in_func) {
 	// if (value->kind == NodeType::UNARY)
 	// {
 	// 	auto node = static_cast<UnaryNode *>(value);
@@ -18,66 +18,144 @@ ConstValueNode *UnaryNode::calculate(in_func) {
 	// 	node->value = nullptr;
 	// 	ExprNode::deleteNode(node);
 	// }
-	if (value->kind != NodeType::CONST)
-		return nullptr;
-	auto value = static_cast<ConstValueNode *>(this->value);
-	switch (op) {
-		using namespace AutoLang;
-		case Lexer::TokenType::PLUS: {
-			switch (value->classId) {
-				case AutoLang::DefaultClass::intClassId:
-				case AutoLang::DefaultClass::floatClassId: {
-					return value;
+	value = static_cast<HasClassIdNode *>(value->resolve(in_data));
+	value->mode = mode;
+	switch (value->kind) {
+		case NodeType::CONST: {
+			auto value = static_cast<ConstValueNode *>(this->value);
+			switch (op) {
+				using namespace AutoLang;
+				case Lexer::TokenType::PLUS: {
+					switch (value->classId) {
+						case AutoLang::DefaultClass::intClassId:
+						case AutoLang::DefaultClass::floatClassId: {
+							auto result = value;
+							value = nullptr;
+							ExprNode::deleteNode(this);
+							return value;
+						}
+						case AutoLang::DefaultClass::boolClassId: {
+							value->classId = AutoLang::DefaultClass::intClassId;
+							value->i = static_cast<int64_t>(value->obj->b);
+							auto result = value;
+							value = nullptr;
+							ExprNode::deleteNode(this);
+							return value;
+						}
+						default:
+							break;
+					}
+					break;
 				}
-				case AutoLang::DefaultClass::boolClassId: {
-					value->classId = AutoLang::DefaultClass::intClassId;
-					value->i = static_cast<int64_t>(value->obj->b);
-					return value;
+				case Lexer::TokenType::MINUS: {
+					switch (value->classId) {
+						case AutoLang::DefaultClass::intClassId: {
+							value->i = -value->i;
+							auto result = value;
+							value = nullptr;
+							ExprNode::deleteNode(this);
+							return value;
+						}
+						case AutoLang::DefaultClass::floatClassId: {
+							value->f = -value->f;
+							auto result = value;
+							value = nullptr;
+							ExprNode::deleteNode(this);
+							return value;
+						}
+						case AutoLang::DefaultClass::boolClassId: {
+							value->classId = AutoLang::DefaultClass::intClassId;
+							value->i = static_cast<int64_t>(-value->obj->b);
+							auto result = value;
+							value = nullptr;
+							ExprNode::deleteNode(this);
+							return value;
+						}
+						default:
+							break;
+					}
+					break;
+				}
+				case Lexer::TokenType::NOT: {
+					if (value->classId == AutoLang::DefaultClass::boolClassId) {
+						value->obj = ObjectManager::create(!value->obj->b);
+						value->id =
+						    context.getBoolConstValuePosition(value->obj->b);
+						auto result = value;
+						value = nullptr;
+						ExprNode::deleteNode(this);
+						return value;
+					}
+					// if (value->classId ==
+					// AutoLang::DefaultClass::nullClassId)
+					// {
+					// 	value->classId = AutoLang::DefaultClass::boolClassId;
+					// 	value->obj = ObjectManager::create(true);
+					// 	value->id = context.getBoolConstValuePosition(true);
+					// 	return value;
+					// }
+					break;
 				}
 				default:
 					break;
 			}
-			break;
+			throwError("Cannot find operator '" +
+			           Lexer::Token(0, op).toString(context) + "' with class " +
+			           compile.classes[value->classId]->name);
 		}
-		case Lexer::TokenType::MINUS: {
-			switch (value->classId) {
-				case AutoLang::DefaultClass::intClassId:
-					value->i = -value->i;
-					return value;
-				case AutoLang::DefaultClass::floatClassId:
-					value->f = -value->f;
-					return value;
-				case AutoLang::DefaultClass::boolClassId:
-					value->classId = AutoLang::DefaultClass::intClassId;
-					value->i = static_cast<int64_t>(-value->obj->b);
-					return value;
+		case NodeType::CAST: {
+			switch (op) {
+				using namespace AutoLang;
+				case Lexer::TokenType::PLUS: {
+					switch (value->classId) {
+						case AutoLang::DefaultClass::intClassId:
+						case AutoLang::DefaultClass::floatClassId: {
+							auto result = value;
+							value = nullptr;
+							ExprNode::deleteNode(this);
+							return value;
+						}
+						case AutoLang::DefaultClass::boolClassId: {
+							value->classId = AutoLang::DefaultClass::intClassId;
+							auto result = value;
+							value = nullptr;
+							ExprNode::deleteNode(this);
+							return value;
+						}
+						default:
+							break;
+					}
+					break;
+				}
+				case Lexer::TokenType::MINUS: {
+					switch (value->classId) {
+						case AutoLang::DefaultClass::intClassId:
+						case AutoLang::DefaultClass::floatClassId:
+						case AutoLang::DefaultClass::boolClassId: {
+							return this;
+						}
+						default:
+							break;
+					}
+					break;
+				}
+				case Lexer::TokenType::NOT: {
+					if (value->classId == AutoLang::DefaultClass::boolClassId) {
+						return this;
+					}
+					break;
+				}
 				default:
 					break;
 			}
-			break;
+			throwError("Cannot find operator '" +
+			           Lexer::Token(0, op).toString(context) + "' with class " +
+			           compile.classes[value->classId]->name);
 		}
-		case Lexer::TokenType::NOT: {
-			if (value->classId == AutoLang::DefaultClass::boolClassId) {
-				value->obj = ObjectManager::create(!value->obj->b);
-				value->id = context.getBoolConstValuePosition(value->obj->b);
-				return value;
-			}
-			// if (value->classId == AutoLang::DefaultClass::nullClassId)
-			// {
-			// 	value->classId = AutoLang::DefaultClass::boolClassId;
-			// 	value->obj = ObjectManager::create(true);
-			// 	value->id = context.getBoolConstValuePosition(true);
-			// 	return value;
-			// }
-			break;
+		default: {
 		}
-		default:
-			break;
 	}
-	throwError("Cannot find operator '" +
-	           Lexer::Token(0, op).toString(context) + "' with class " +
-	           compile.classes[value->classId]->name);
-	return nullptr;
+	return this;
 }
 
 void UnaryNode::optimize(in_func) {
@@ -116,15 +194,15 @@ void ConstValueNode::optimize(in_func) {
 		return;
 	switch (classId) {
 		case AutoLang::DefaultClass::intClassId:
-			id = compile.registerConstPool<int64_t>(compile.constIntMap, i);
+			id = compile.registerConstPool<int64_t>(context.constIntMap, i);
 			return;
 		case AutoLang::DefaultClass::floatClassId:
-			id = compile.registerConstPool<double>(compile.constFloatMap, f);
+			id = compile.registerConstPool<double>(context.constFloatMap, f);
 			return;
 		default:
 			if (classId != AutoLang::DefaultClass::stringClassId)
 				break;
-			id = compile.registerConstPool(compile.constStringMap,
+			id = compile.registerConstPool(context.constStringMap,
 			                               AString::from(*str));
 			delete str;
 			str = nullptr;
@@ -132,74 +210,37 @@ void ConstValueNode::optimize(in_func) {
 	}
 }
 
-HasClassIdNode *CastNode::createAndOptimize(in_func, HasClassIdNode *value,
-                                            ClassId classId) {
-	if (value->classId == classId)
-		return value;
-	try {
-		switch (value->kind) {
-			case (NodeType::CONST): {
-				auto node = static_cast<ConstValueNode *>(value);
-				if (node->isNullable())
-					return value;
-				switch (classId) {
-					case AutoLang::DefaultClass::intClassId:
-						toInt(node);
-						return value;
-					case AutoLang::DefaultClass::floatClassId:
-						toFloat(node);
-						return value;
-					default:
-						break;
-				}
-				break;
-			}
-			default:
-				break;
-		}
-	} catch (const std::runtime_error &err) {
-		value->throwError("Cannot cast " +
-		                  compile.classes[value->classId]->name + " to " +
-		                  compile.classes[classId]->name);
-	}
-	return new CastNode(value, classId);
-}
-
-void UnknowNode::optimize(in_func) {
+ExprNode *UnknowNode::resolve(in_func) {
 	auto it = compile.classMap.find(name);
 	if (it == compile.classMap.end()) {
 		if (contextCallClassId) {
 			AClass *clazz = compile.classes[*contextCallClassId];
 			AClass *lastClass = context.getCurrentClass(in_data);
 			context.gotoClass(clazz);
-			correctNode = context.getCurrentClassInfo(in_data)->findDeclaration(
-			    in_data, line, name);
+			auto correctNode =
+			    context.getCurrentClassInfo(in_data)->findDeclaration(
+			        in_data, line, name);
 			context.gotoClass(lastClass);
 			if (correctNode) {
 				static_cast<AccessNode *>(correctNode)->nullable = nullable;
-				correctNode->optimize(in_data);
-				classId = correctNode->classId;
-				switch (correctNode->kind) {
-					case NodeType::GET_PROP: {
-						classId = static_cast<GetPropNode *>(correctNode)
-						              ->declaration->classId;
-						break;
-					}
-					case NodeType::VAR: {
-						classId = static_cast<VarNode *>(correctNode)
-						              ->declaration->classId;
-						break;
-					}
-				}
-				return;
+				correctNode->mode = mode;
+				ExprNode::deleteNode(this);
+				return correctNode;
 			}
 		}
 		throwError("UnknowNode: Variable name: " + name +
 		           " is not be declarated");
 	}
 	// Founded class
-	classId = it->second;
-	correctNode = new ClassAccessNode(line, classId);
+	auto result = new ClassAccessNode(line, it->second);
+	ExprNode::deleteNode(this);
+	return result;
+}
+
+ExprNode *GetPropNode::resolve(in_func) {
+	caller = static_cast<HasClassIdNode *>(caller->resolve(in_data));
+	caller->mode = mode;
+	return this;
 }
 
 void GetPropNode::optimize(in_func) {
@@ -207,7 +248,7 @@ void GetPropNode::optimize(in_func) {
 	if (caller->isNullable()) {
 		if (!accessNullable)
 			throwError(
-			    "You can't use '.' with nullable value, you must use '?.'");
+			    "You can't use '.' with nullable valuea, you must use '?.'");
 	} else {
 		if (accessNullable) {
 			warning(in_data,
@@ -218,13 +259,6 @@ void GetPropNode::optimize(in_func) {
 	switch (caller->kind) {
 		case NodeType::CALL:
 		case NodeType::GET_PROP: {
-			break;
-		}
-		case NodeType::UNKNOW: {
-			auto node = static_cast<UnknowNode *>(caller)->correctNode;
-			if (node && node->kind == NodeType::VAR) {
-				static_cast<VarNode *>(node)->isStore = false;
-			}
 			break;
 		}
 		case NodeType::VAR: {
@@ -280,6 +314,40 @@ void GetPropNode::optimize(in_func) {
 	}
 }
 
+ExprNode *IfNode::resolve(in_func) {
+	condition = static_cast<HasClassIdNode *>(condition->resolve(in_data));
+	condition->mode = mode;
+	if (condition->kind == NodeType::CONST) {
+		// Is bool because optimize forbiddened others
+		if (static_cast<ConstValueNode *>(condition)->obj->b) {
+			if (ifFalse) {
+				warning(in_data, "Else body will never be used");
+			}
+			auto result = new BlockNode(ifTrue);
+			result->resolve(in_data);
+			result->mode = mode;
+			ifTrue.nodes.clear();
+			ExprNode::deleteNode(this);
+			return result;
+		} else if (ifFalse) {
+			auto result = ifFalse;
+			result->resolve(in_data);
+			result->mode = mode;
+			ifFalse = nullptr;
+			ExprNode::deleteNode(this);
+			return result;
+		}
+		return this;
+	}
+	ifTrue.resolve(in_data);
+	ifTrue.mode = mode;
+	if (ifFalse) {
+		ifFalse->resolve(in_data);
+		ifFalse->mode = mode;
+	}
+	return this;
+}
+
 void IfNode::optimize(in_func) {
 	condition->optimize(in_data);
 	if (condition->classId != AutoLang::DefaultClass::boolClassId)
@@ -291,6 +359,13 @@ void IfNode::optimize(in_func) {
 		ifFalse->optimize(in_data);
 }
 
+ExprNode *WhileNode::resolve(in_func) {
+	condition = static_cast<HasClassIdNode *>(condition->resolve(in_data));
+	condition->mode = mode;
+	body.resolve(in_data);
+	return this;
+}
+
 void WhileNode::optimize(in_func) {
 	condition->optimize(in_data);
 	if (condition->classId != AutoLang::DefaultClass::boolClassId)
@@ -300,20 +375,59 @@ void WhileNode::optimize(in_func) {
 	body.optimize(in_data);
 }
 
+ExprNode *ForRangeNode::resolve(in_func) {
+	detach = static_cast<AccessNode *>(detach->resolve(in_data));
+	from = static_cast<HasClassIdNode *>(from->resolve(in_data));
+	to = static_cast<HasClassIdNode *>(to->resolve(in_data));
+	body.resolve(in_data);
+	detach->mode = mode;
+	from->mode = mode;
+	to->mode = mode;
+	return this;
+}
+
 void ForRangeNode::optimize(in_func) {
 	detach->optimize(in_data);
+	switch (detach->classId) {
+		case AutoLang::DefaultClass::intClassId: {
+			break;
+		}
+		default: {
+			throwError("Detach value must be Int");
+		}
+	}
 	// if (detach->isVal)
-	//	throwError("Cannot change because it's val");
+	// 	throwError("Cannot change because it's val");
 	from->optimize(in_data);
-	from = CastNode::createAndOptimize(in_data, from,
-	                                   AutoLang::DefaultClass::intClassId);
+	switch (from->classId) {
+		case AutoLang::DefaultClass::intClassId: {
+			break;
+		}
+		default: {
+			throwError("From value must be Int");
+		}
+	}
 	to->optimize(in_data);
-	to = CastNode::createAndOptimize(in_data, to,
-	                                 AutoLang::DefaultClass::intClassId);
+	switch (to->classId) {
+		case AutoLang::DefaultClass::intClassId: {
+			break;
+		}
+		default: {
+			throwError("To value must be Int");
+		}
+	}
 	if (to->kind == NodeType::CONST) {
 		static_cast<ConstValueNode *>(to)->isLoadPrimary = true;
 	}
 	body.optimize(in_data);
+}
+
+ExprNode *SetNode::resolve(in_func) {
+	detach = static_cast<HasClassIdNode *>(detach->resolve(in_data));
+	value = static_cast<HasClassIdNode *>(value->resolve(in_data));
+	detach->mode = mode;
+	value->mode = mode;
+	return this;
 }
 
 void SetNode::optimize(in_func) {
@@ -331,8 +445,6 @@ void SetNode::optimize(in_func) {
 
 	bool detachNullable;
 
-	auto detach = this->detach;
-new_detach:;
 	switch (detach->kind) {
 		case NodeType::GET_PROP: {
 			if (detach->classId != AutoLang::DefaultClass::nullClassId &&
@@ -354,9 +466,7 @@ new_detach:;
 					    detach->classId;
 					// Marked non null won't run example val a! = 1
 					if (detachNode->declaration->mustInferenceNullable) {
-						auto valueNode = value;
-					back:;
-						switch (valueNode->kind) {
+						switch (value->kind) {
 							case VAR:
 							case GET_PROP: {
 								detachNode->declaration->nullable =
@@ -367,11 +477,6 @@ new_detach:;
 								detachNode->declaration->nullable =
 								    static_cast<CallNode *>(value)->nullable;
 								break;
-							}
-							case UNKNOW: {
-								valueNode = static_cast<UnknowNode *>(value)
-								                ->correctNode;
-								goto back;
 							}
 						}
 					}
@@ -427,9 +532,7 @@ new_detach:;
 					node->declaration->classId = value->classId;
 					// Marked non null won't run example val a! = 1
 					if (node->declaration->mustInferenceNullable) {
-						auto valueNode = value;
-					back1:;
-						switch (valueNode->kind) {
+						switch (value->kind) {
 							case VAR:
 							case GET_PROP: {
 								node->declaration->nullable =
@@ -440,11 +543,6 @@ new_detach:;
 								node->declaration->nullable =
 								    static_cast<CallNode *>(value)->nullable;
 								break;
-							}
-							case UNKNOW: {
-								valueNode = static_cast<UnknowNode *>(value)
-								                ->correctNode;
-								goto back1;
 							}
 						}
 					}
@@ -472,10 +570,6 @@ new_detach:;
 			}
 			break;
 		}
-		case NodeType::UNKNOW: {
-			detach = static_cast<UnknowNode *>(detach)->correctNode;
-			goto new_detach;
-		}
 		default: {
 			throwError("Invalid assignment target");
 		}
@@ -487,10 +581,6 @@ new_detach:;
 		switch (value->kind) {
 			case NodeType::OPTIONAL_ACCESS: {
 				value = static_cast<OptionalAccessNode *>(value)->value;
-				goto changedValue;
-			}
-			case NodeType::UNKNOW: {
-				value = static_cast<UnknowNode *>(value)->correctNode;
 				goto changedValue;
 			}
 			case NodeType::CONST: {
@@ -601,6 +691,18 @@ new_detach:;
 	}
 }
 
+ExprNode *CallNode::resolve(in_func) {
+	if (caller) {
+		caller = static_cast<HasClassIdNode *>(caller->resolve(in_data));
+		caller->mode = mode;
+	}
+	for (auto &argument : arguments) {
+		argument = static_cast<HasClassIdNode *>(argument->resolve(in_data));
+		argument->mode = mode;
+	}
+	return this;
+}
+
 void CallNode::optimize(in_func) {
 	AClass *clazz =
 	    contextCallClassId ? compile.classes[*contextCallClassId] : nullptr;
@@ -617,9 +719,24 @@ void CallNode::optimize(in_func) {
 		// Caller.funcName() => Class.funcName()
 		caller->optimize(in_data);
 		if (caller->isNullable()) {
-			if (!accessNullable)
-				throwError(
-				    "You can't use '.' with nullable value, you must use '?.'");
+			// switch (caller->kind) {
+			// 	case NodeType::GET_PROP: {
+			// 		std::cerr<<"GET_PROP\n";
+			// 		break;
+			// 	}
+			// 	case NodeType::UNKNOW: {
+			// 		std::cerr<<"UNKNOW\n";
+			// 		break;
+			// 	}
+			// 	case NodeType::CALL: {
+			// 		std::cerr<<"CALL\n";
+			// 		break;
+			// 	}
+			// }
+			if (!accessNullable) {
+				throwError("You can't use '.' with nullable valueb, you must "
+				           "use '?.'");
+			}
 		} else {
 			if (accessNullable) {
 				warning(
@@ -628,6 +745,7 @@ void CallNode::optimize(in_func) {
 				accessNullable = false;
 			}
 		}
+
 		switch (caller->kind) {
 			case NodeType::VAR: {
 				auto node = static_cast<VarNode *>(caller);
@@ -636,6 +754,9 @@ void CallNode::optimize(in_func) {
 				break;
 			}
 			case NodeType::GET_PROP:
+				break;
+			case NodeType::CLASS_ACCESS:
+				justFindStatic = true;
 				break;
 		}
 
@@ -647,7 +768,6 @@ void CallNode::optimize(in_func) {
 			callerCanCallId = caller->classId;
 		}
 
-		
 	} else {
 		// Check if constructor
 		auto it = compile.classMap.find(name.substr(0, name.length() - 2));
@@ -728,9 +848,11 @@ void CallNode::optimize(in_func) {
 		}
 		for (int j = 0; j < count; ++j) {
 			auto &vecs = *funcVec[j];
-			if (vecs.empty()) printDebug("Empty");
+			if (vecs.empty())
+				printDebug("Empty");
 			for (auto v : vecs) {
-				printDebug("Founded " + compile.functions[v]->toString(compile));
+				printDebug("Founded " +
+				           compile.functions[v]->toString(compile));
 			}
 		}
 		throwError(std::string("Cannot find function has arguments : ") +
@@ -740,7 +862,8 @@ void CallNode::optimize(in_func) {
 		for (int j = 0; j < count; ++j) {
 			auto &vecs = *funcVec[j];
 			for (auto v : vecs) {
-				printDebug("Founded " + compile.functions[v]->toString(compile));
+				printDebug("Founded " +
+				           compile.functions[v]->toString(compile));
 			}
 		}
 		throwError(std::string("Ambiguous Call : ") + funcName);
@@ -750,22 +873,22 @@ void CallNode::optimize(in_func) {
 	auto func = compile.functions[funcId];
 	auto funcInfo = &context.functionInfo[funcId];
 
-	nullable = func->returnNullable;
+	nullable = func->functionFlags & FunctionFlags::FUNC_RETURN_NULLABLE;
 
 	if (first.errorNonNullIfMatch)
 		throwError(std::string("Cannot input null in non null arguments ") +
 		           funcName);
-	if (funcInfo->accessModifier != Lexer::TokenType::PUBLIC &&
+	if (!(func->functionFlags & FunctionFlags::FUNC_PUBLIC) &&
 	    (!contextCallClassId || *contextCallClassId != funcInfo->clazz->id))
 		throwError("Cannot access private function name '" + funcName + "'");
 	// Add this
-	if (!caller && !func->isStatic) {
+	if (!caller && !(func->functionFlags & FunctionFlags::FUNC_IS_STATIC)) {
 		caller = new VarNode(line,
 		                     context.classInfo[callerCanCallId].declarationThis,
 		                     false, false);
 		caller->optimize(in_data);
 	}
-	if (func->isStatic && caller) {
+	if ((func->functionFlags & FunctionFlags::FUNC_IS_STATIC) && caller) {
 		switch (caller->kind) {
 			case NodeType::VAR: {
 				bool callerClassId = caller->classId;
@@ -793,12 +916,9 @@ void CallNode::optimize(in_func) {
 				break;
 		}
 	}
-	if (caller &&
-	    (caller->kind == NodeType::CLASS_ACCESS ||
-	     (caller->kind == NodeType::UNKNOW &&
-	      static_cast<UnknowNode *>(caller)->correctNode->kind ==
-	          NodeType::CLASS_ACCESS)) &&
-	    !func->isStatic && !funcInfo->isConstructor)
+	if (caller && caller->kind == NodeType::CLASS_ACCESS &&
+	    !(func->functionFlags & FunctionFlags::FUNC_IS_STATIC) &&
+	    !(func->functionFlags & FunctionFlags::FUNC_IS_CONSTRUCTOR))
 		throwError(func->name + " is not static function");
 }
 
@@ -810,12 +930,12 @@ bool CallNode::match(in_func, MatchOverload &match,
 		match.func = compile.functions[match.id];
 		auto funcInfo = &context.functionInfo[match.id];
 		bool skip = false;
-		if (!match.func->isStatic) {
+		if (!(match.func->functionFlags & FunctionFlags::FUNC_IS_STATIC)) {
 			if (justFindStatic)
 				continue;
 			skip = true;
 		}
-		if (match.func->nullableArgs.size != arguments.size() + skip)
+		if (match.func->argSize != arguments.size() + skip)
 			continue;
 		bool matched = true;
 		match.errorNonNullIfMatch = false;
@@ -833,7 +953,7 @@ bool CallNode::match(in_func, MatchOverload &match,
 					++match.score;
 					if (!match.errorNonNullIfMatch)
 						match.errorNonNullIfMatch =
-						    !match.func->nullableArgs[j + skip];
+						    !funcInfo->nullableArgs[j + skip];
 					continue;
 				} else if (inputClassId == AutoLang::DefaultClass::intClassId &&
 				           funcArgClassId ==
@@ -854,14 +974,29 @@ bool CallNode::match(in_func, MatchOverload &match,
 	return false;
 }
 
-void ReturnNode::optimize(in_func) {
-	auto func = compile.functions[funcId];
+ExprNode *ReturnNode::resolve(in_func) {
 	if (value) {
+		auto func = compile.functions[funcId];
 		if (func->returnId == AutoLang::DefaultClass::nullClassId) {
 			throwError("Cannot return value, function return Void");
 		}
+		if (value->classId == func->returnId)
+			return this;
+		if (value->classId == DefaultClass::nullClassId)
+			return this;
+		auto castNode = new CastNode(value, func->returnId);
+		castNode->mode = mode;
+		value = static_cast<HasClassIdNode *>(castNode->resolve(in_data));
+		value->mode = mode;
+	}
+	return this;
+}
+
+void ReturnNode::optimize(in_func) {
+	auto func = compile.functions[funcId];
+	if (value) {
 		value->optimize(in_data);
-		if (!func->returnNullable) {
+		if (!(func->functionFlags & FunctionFlags::FUNC_RETURN_NULLABLE)) {
 			if (value->classId == AutoLang::DefaultClass::nullClassId) {
 				throwError("Cannot return null because functions returns "
 				           "nonnull value");
@@ -872,9 +1007,6 @@ void ReturnNode::optimize(in_func) {
 			}
 			return;
 		}
-		if (value->classId == func->returnId)
-			return;
-		value = CastNode::createAndOptimize(in_data, value, func->returnId);
 		return;
 	}
 	if (func->returnId != AutoLang::DefaultClass::nullClassId) {
