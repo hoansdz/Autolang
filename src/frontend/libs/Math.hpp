@@ -21,6 +21,9 @@ AObject *fmod(NativeFuncInData);
 AObject *sin(NativeFuncInData);
 AObject *cos(NativeFuncInData);
 AObject *tan(NativeFuncInData);
+inline bool isIntegerFloat(double x) {
+    return std::floor(x) == x;
+}
 
 } // namespace Math
 } // namespace Libs

@@ -19,22 +19,26 @@ class ANotifier {
 	[[nodiscard]] inline AObject* createBool(bool value) {
 		return vm->data.manager.createBoolObject(value);
 	}
-	[[nodiscard]] inline AObject* createString(AString* value) {
-		return vm->data.manager.createStringObject(value);
-	}
 	template <typename T>
 	[[nodiscard]] inline AObject* createString(T value) {
 		return vm->data.manager.createString(value);
+	}
+	[[nodiscard]] inline AObject* createString(AString* value) {
+		return vm->data.manager.createStringObject(value);
 	}
 	template <typename T>
 	[[nodiscard]] inline AObject* createException(T message) {
 		auto obj = vm->data.manager.createEmptyObject();
 		obj->type = DefaultClass::exceptionClassId;
-		obj->member = new NormalArray[1];
+		obj->member = new NormalArray<AutoLang::AObject*>(1);
 		auto str = createString(message);
 		str->retain();
-		obj->member[0] = str;
+		obj->member->data[0] = str;
 		return obj;
+	}
+	template <typename T>
+	inline void throwException(T message) {
+		callFrame->exception = createException(message);
 	}
 	ANotifier(AVM *vm) : vm(vm) {}
 };

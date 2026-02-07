@@ -37,3 +37,29 @@ t.hm()
 val x = X()
 x.hm()
 println(String("hello", 3))
+println(x is X)
+println(x is T)
+println(x is Person)
+println(x is Float)
+val zero = 0
+
+func testOperator() {
+	try {
+		println("hi")
+		hehe()
+		println("Ok")
+	}
+	catch (e) {
+		println(e.message)
+		println(getRefCount(e))
+		throw (e)
+	}
+}
+
+func hehe() {
+	throw (Exception("hello ao that day"))
+	print(1 / zero)
+}
+
+testOperator()
+println("WTF")

@@ -79,14 +79,20 @@ enum Opcode : uint8_t {
 	CALL_DATA_CONTRUCTOR = 63,
 	INT_FROM_INT = 64,
 	FLOAT_FROM_FLOAT = 65,
+	ADD_TRY_BLOCK = 66,
+	REMOVE_TRY_AND_JUMP = 67,
+	THROW_EXCEPTION = 68,
+	REMOVE_TRY = 69,
+	IS = 70,
+	LOAD_EXCEPTION = 71,
 };
 
 template <typename K, typename V>
 size_t estimateUnorderedMapSize(const HashMap<K, V> &map);
 
 struct AVMReadFileMode {
-	const char* path;
-	const char* data;
+	const char *path;
+	const char *data;
 	uint32_t dataSize;
 	bool allowImportOtherFile;
 	ANativeMap nativeFuncMap;
@@ -107,16 +113,20 @@ enum class VMState { INIT, RUNNING, HALTED, WAITING, ERROR };
 #endif
 
 struct CallFrame {
-	
 	Function *func;
 	uint32_t i;
 	uint32_t fromStackAllocator;
-	AObject* exception;
+	uint32_t startStackCount;
+	AObject *exception;
 	std::vector<uint32_t> catchPosition;
 	CallFrame() { catchPosition.reserve(4); }
 };
 
+class ANotifier;
+
 class AVM {
+  private:
+	ANotifier* notifier;
   public:
 	inline uint32_t get_u32(uint8_t *code, uint32_t &ip);
 	void log(Function *currentFunction);
@@ -148,16 +158,15 @@ class AVM {
 	}
 
 	bool allowDebug;
-	template <ANativeFunction native, size_t size,
-	          bool push = true>
-	inline void operate();
-	template <bool loadVirtual>
-	inline CallFrame* callFunction(Function *currentFunction, uint8_t *bytecodes,
-	                         uint32_t &i);
+	template <ANativeFunction native, size_t size, bool push = true>
+	inline bool operate();
+	template <bool loadVirtual, bool hasValue, bool isConstructor>
+	inline bool callFunction(CallFrame*& currentCallFrame, Function *currentFunction,
+	                               uint8_t *bytecodes, uint32_t &i);
 	void resume();
 	void run();
 
-//   public:
+	//   public:
 	VMState state = VMState::INIT;
 	[[nodiscard]] explicit AVM(bool allowDebug);
 	void start();
@@ -167,6 +176,6 @@ class AVM {
 	// friend ACompiler;
 };
 
-}
+} // namespace AutoLang
 
 #endif

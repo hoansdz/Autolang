@@ -65,6 +65,8 @@ void estimate(in_func, Lexer::Context &lexerContext) {
 	                            lexerContext.estimate.constructorNode +
 	                            estimateNewClasses);
 	context.setValuePool.allocate(lexerContext.estimate.setNode);
+	context.tryCatchPool.allocate(lexerContext.estimate.tryCatchNode);
+	context.throwPool.allocate(lexerContext.estimate.throwNode);
 	// context.binaryNodePool.allocate(estimateBinaryNode);
 
 	context.constValue.reserve(3 // Const
@@ -148,6 +150,16 @@ initial:;
 			    "'" + Lexer::Token(0, token->type).toString(context) +
 			        "' only allowed inside a loop");
 		return new SkipNode(token->type, token->line);
+	}
+	case Lexer::TokenType::TRY: {
+		if (!isInFunction)
+			goto err_call_func;
+		return loadTryCatch(in_data, i);
+	}
+	case Lexer::TokenType::THROW: {
+		if (!isInFunction)
+			goto err_call_func;
+		return loadThrow(in_data, i);
 	}
 	case Lexer::TokenType::IF: {
 		if (!isInFunction)
@@ -848,12 +860,12 @@ Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t &i) {
 void ensureEndline(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
 	if (nextTokenSameLine(&token, context.tokens, i, token->line)) {
+		if (token->type == Lexer::TokenType::RBRACE) {
+			--i;
+			return;
+		}
 		std::string line = token->toString(context);
 		while (nextTokenSameLine(&token, context.tokens, i, token->line)) {
-			if (token->type == Lexer::TokenType::RBRACE) {
-				--i;
-				return;
-			}
 			line += " " + token->toString(context);
 			break;
 		}
@@ -908,6 +920,7 @@ int getPrecedence(Lexer::TokenType type) {
 	case Lexer::TokenType::QMARK_QMARK: {
 		return 10;
 	}
+	case Lexer::TokenType::IS:
 	case Lexer::TokenType::EQEQ:
 	case Lexer::TokenType::NOTEQ:
 	case Lexer::TokenType::EQEQEQ:

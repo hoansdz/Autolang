@@ -14,7 +14,7 @@ void AVM::log() {
 	for (int i = 0; i < data.constPool.size(); ++i) {
 		tempAllocateArea[0] = data.constPool[i];
 		std::cerr << '[' << i << "] ";
-		AutoLang::DefaultFunction::println(data.manager, tempAllocateArea, 1);
+		AutoLang::DefaultFunction::println(*notifier, tempAllocateArea, 1);
 	}
 	std::cerr << "-------------------" << '\n';
 	std::cerr << "Function: " << data.functions.size() << " elements" << '\n';
@@ -128,6 +128,15 @@ void AVM::log(Function *currentFunction) {
 			case AutoLang::Opcode::LOAD_CONST:
 				std::cerr << "LOAD_CONST	 " << get_u32(bytecodes, i) << '\n';
 				break;
+			case AutoLang::Opcode::IS:
+				std::cerr << "IS	 " << get_u32(bytecodes, i) << '\n';
+				break;
+			case AutoLang::Opcode::ADD_TRY_BLOCK:
+				std::cerr << "ADD_TRY_BLOCK	 " << get_u32(bytecodes, i) << '\n';
+				break;
+			case AutoLang::Opcode::REMOVE_TRY_AND_JUMP:
+				std::cerr << "REMOVE_TRY_AND_JUMP	 " << get_u32(bytecodes, i) << '\n';
+				break;
 			case AutoLang::Opcode::LOAD_CONST_PRIMARY:
 				std::cerr << "CONST_PRIMARY	 " << get_u32(bytecodes, i) << '\n';
 				break;
@@ -171,6 +180,9 @@ void AVM::log(Function *currentFunction) {
 				BYTECODE_PRINT_SINGLE(RETURN_VALUE)
 				BYTECODE_PRINT_SINGLE(INT_FROM_INT)
 				BYTECODE_PRINT_SINGLE(FLOAT_FROM_FLOAT)
+				BYTECODE_PRINT_SINGLE(REMOVE_TRY)
+				BYTECODE_PRINT_SINGLE(LOAD_EXCEPTION)
+				BYTECODE_PRINT_SINGLE(THROW_EXCEPTION)
 			case AutoLang::Opcode::JUMP:
 				std::cerr << "JUMP	 " << get_u32(bytecodes, i) << '\n';
 				break;

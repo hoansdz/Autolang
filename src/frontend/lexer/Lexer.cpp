@@ -248,6 +248,8 @@ void pushIdentifier(Context& context, std::vector<Token>& tokens, uint32_t& i) {
 		ESTIMATE_CASE_ADD(IF, ifNode)
 		ESTIMATE_CASE_ADD(WHILE, whileNode)
 		ESTIMATE_CASE_ADD(RETURN, returnNode)
+		ESTIMATE_CASE_ADD(TRY, tryCatchNode)
+		ESTIMATE_CASE_ADD(THROW, throwNode)
 
 		// ESTIMATE_CASE_ADD(PLUS, binaryNode)
 		// ESTIMATE_CASE_ADD(MINUS, binaryNode)

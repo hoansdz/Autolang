@@ -2,13 +2,15 @@
 #define AVM_LOADER_CPP
 
 #include "AVM.hpp"
+#include "ANotifier.hpp"
 #include <chrono>
 #include <iostream>
 #include <sstream>
 
 namespace AutoLang {
 
-AVM::AVM(bool allowDebug) : allowDebug(allowDebug) {}
+AVM::AVM(bool allowDebug) : allowDebug(allowDebug), notifier(new ANotifier(this)) {
+}
 
 void AVM::start() {
 	if (state == VMState::ERROR) {

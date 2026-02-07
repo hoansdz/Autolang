@@ -60,6 +60,16 @@ public:
         return new AString(newStr, newSize);
     }
 
+	inline AString* operator+(const char* value) {
+        std::string other = value;
+        size_t newSize = size + other.size();
+        char* newStr = new char[newSize + 1];
+        memcpy(newStr, data, size);
+        memcpy(newStr + size, other.c_str(), other.size());
+        newStr[newSize] = '\0';
+        return new AString(newStr, newSize);
+    }
+
     inline bool operator ==(const AString* other) const {
         return size == other->size && memcmp(data, other->data, size) == 0;
     }
@@ -77,7 +87,17 @@ public:
         memcpy(&newStr[first.size()], other->data, other->size);
         newStr[newSize] = '\0';
         return new AString(newStr, newSize);
-    } 
+    }
+
+	inline static AString* plus(const char* value, AString* other) {
+        std::string first = value;
+        size_t newSize = first.size() + other->size;
+        char* newStr = new char[newSize + 1];
+        memcpy(newStr, first.c_str(), first.size());
+        memcpy(&newStr[first.size()], other->data, other->size);
+        newStr[newSize] = '\0';
+        return new AString(newStr, newSize);
+    }
 
     ~AString() {
         delete[] data;

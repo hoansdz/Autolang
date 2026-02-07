@@ -171,6 +171,7 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	createConstructorPool.refresh();
 	ifPool.refresh();
 	whilePool.refresh();
+	tryCatchPool.refresh();
 
 	declarationNodePool.refresh();
 	returnPool.refresh();

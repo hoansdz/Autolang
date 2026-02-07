@@ -27,7 +27,9 @@ void ExprNode::deleteNode(ExprNode* node) {
 	if (!node) return;
 	switch (node->kind) {
 		case NodeType::IF:
-		case NodeType::WHILE: 
+		case NodeType::WHILE:
+		case NodeType::TRY_CATCH: 
+		case NodeType::THROW: 
 		case NodeType::RET:
 		case NodeType::SET:
 		case NodeType::DECLARATION:

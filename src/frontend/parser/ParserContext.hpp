@@ -85,6 +85,8 @@ struct ParserContext {
 	// NonReallocatePool<BinaryNode> binaryNodePool;
 	FixedPool<IfNode> ifPool;
 	FixedPool<WhileNode> whilePool;
+	FixedPool<TryCatchNode> tryCatchPool;
+	FixedPool<ThrowNode> throwPool;
 
 	std::optional<ClassId> currentClassId = std::nullopt;
 	uint32_t mainFunctionId;

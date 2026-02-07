@@ -532,19 +532,12 @@ void SetNode::optimize(in_func) {
 					node->declaration->classId = value->classId;
 					// Marked non null won't run example val a! = 1
 					if (node->declaration->mustInferenceNullable) {
-						switch (value->kind) {
-							case VAR:
-							case GET_PROP: {
-								node->declaration->nullable =
-								    static_cast<AccessNode *>(value)->nullable;
-								break;
-							}
-							case CALL: {
-								node->declaration->nullable =
-								    static_cast<CallNode *>(value)->nullable;
-								break;
-							}
-						}
+						node->declaration->nullable = value->isNullable();
+						node->nullable = node->declaration->nullable;
+						detachNullable = node->nullable;
+						// std::cerr << "Set " << node->declaration->name << " is "
+						//           << (detachNullable ? "nullable" : "nonnull")
+						//           << "\n";
 					}
 					// printDebug(std::string("SetNode: Declaration ") +
 					// node->declaration->name + " is " +

@@ -6,11 +6,11 @@
 
 namespace AutoLang {
 struct AObject;
-class ObjectManager;
+class ANotifier;
 }
 
-#define NativeFuncInput AutoLang::ObjectManager &, AutoLang::AObject **, size_t
-#define NativeFuncInData AutoLang::ObjectManager &manager, AutoLang::AObject **args, size_t size
+#define NativeFuncInput AutoLang::ANotifier&, AutoLang::AObject ** ,size_t
+#define NativeFuncInData AutoLang::ANotifier& notifier, AutoLang::AObject **args, size_t size
 
 using ClassId = uint32_t;
 using LexerStringId = uint32_t;

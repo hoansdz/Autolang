@@ -26,6 +26,9 @@ public:
 	inline void refresh() {
 		index = 0;
 	}
+	inline uint32_t getSize() {
+		return index;
+	}
 	~Stack() {
 		// for (size_t i = 0; i < index; ++i) {
 		// 	AObject* obj = objects[i];

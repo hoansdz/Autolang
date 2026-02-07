@@ -124,7 +124,7 @@ void CreateConstructorNode::optimize(in_func) {
 
 	// Add return bytecodes
 	auto thisNode = new VarNode(line, classInfo->declarationThis, false, false);
-	std::cerr<<clazz->name<<" "<<classInfo->declarationThis->id<<"\n";
+	// std::cerr<<clazz->name<<" "<<classInfo->declarationThis->id<<"\n";
 	thisNode->mode = mode;
 	body.nodes.push_back(context.returnPool.push(line, funcId, thisNode));
 }

@@ -41,6 +41,8 @@ void loadBody(in_func, std::vector<ExprNode*>& nodes, size_t& i, bool createScop
 IfNode* loadIf(in_func, size_t& i);
 ExprNode* loadFor(in_func, size_t& i);
 WhileNode* loadWhile(in_func, size_t& i);
+TryCatchNode* loadTryCatch(in_func, size_t& i);
+ThrowNode* loadThrow(in_func, size_t& i);
 CreateFuncNode* loadFunc(in_func, size_t& i);
 void loadConstructor(in_func, size_t& i);
 CreateClassNode* loadClass(in_func, size_t& i);

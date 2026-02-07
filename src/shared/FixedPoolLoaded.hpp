@@ -29,6 +29,12 @@ public:
 	inline T* pop() {
 		return &objects[--index];
 	}
+	inline uint32_t getSize() {
+		return index;
+	}
+	inline uint32_t getMaxSize() {
+		return size;
+	}
 };
 
 #endif

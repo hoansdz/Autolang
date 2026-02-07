@@ -133,6 +133,8 @@ class ObjectManager {
 	inline AObject *createStringObject(AString *str) { return get(str); }
 	inline AObject *createString(int64_t i) { return get(AString::from(i)); }
 	inline AObject *createString(double f) { return get(AString::from(f)); }
+	inline AObject *createString(const char* str) { return get(AString::from(str)); }
+	inline AObject *createString(std::string str) { return get(AString::from(str)); }
 	void destroy();
 };
 

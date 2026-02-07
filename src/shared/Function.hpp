@@ -46,6 +46,9 @@ struct Function {
 	}
 
 	~Function() {
+		if (!(functionFlags & FunctionFlags::FUNC_IS_NATIVE)) {
+			bytecodes.~vector<uint8_t>();
+		}
 		if (args)
 			delete[] args;
 	}

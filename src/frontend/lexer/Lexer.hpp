@@ -115,6 +115,7 @@ enum TokenType : uint8_t {
   NO_OVERRIDE,
   NO_CONSTRUCTOR,
   IMPORT,
+  IS,
 
   // ===== Special =====
   END_OF_FILE, //	Kết thúc file
@@ -151,6 +152,7 @@ static const HashMap<std::string, TokenType> CAST = {
 	{"no_override", TokenType::NO_OVERRIDE},
 	{"no_constructor", TokenType::NO_CONSTRUCTOR},
 	{"import", TokenType::IMPORT},
+	{"is", TokenType::IS},
 
     {"/*", TokenType::START_COMMENT},
     {"&", TokenType::AND},
@@ -216,6 +218,8 @@ struct Estimate {
   uint32_t returnNode = 0;
   uint32_t setNode = 0;
   uint32_t binaryNode = 0;
+  uint32_t tryCatchNode = 0;
+  uint32_t throwNode = 0;
 };
 
 struct Context {

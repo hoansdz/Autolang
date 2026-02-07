@@ -3,6 +3,7 @@
 
 #include "frontend/parser/Debugger.hpp"
 #include "shared/DefaultClass.hpp"
+#include "backend/vm/ANotifier.hpp"
 #include <cmath>
 #include <iostream>
 
@@ -36,377 +37,936 @@ inline AObject *op_eq_pointer(NativeFuncInData);
 inline AObject *op_not_eq_pointer(NativeFuncInData);
 
 AObject *plus(NativeFuncInData) {
-  if (size != 2)
-    return nullptr;
-  auto obj1 = args[0];
-  auto obj2 = args[1];
-  switch (obj1->type) {
-  case AutoLang::DefaultClass::intClassId: {
-    switch (obj2->type) {
-    case AutoLang::DefaultClass::intClassId:
-      return manager.create((obj1->i) + (obj2->i));
-    case AutoLang::DefaultClass::floatClassId:
-      return manager.create((obj1->i) + (obj2->f));
-    default:
-      if (obj2->type == AutoLang::DefaultClass::stringClassId)
-        return manager.create(AString::plus((obj1->i), (obj2->str)));
-      else
-        break;
-    }
-    break;
-  }
-  case AutoLang::DefaultClass::floatClassId: {
-    switch (obj2->type) {
-    case AutoLang::DefaultClass::intClassId:
-      return manager.create((obj1->f) + (obj2->i));
-    case AutoLang::DefaultClass::floatClassId:
-      return manager.create((obj1->f) + (obj2->f));
-    default:
-      if (obj2->type == AutoLang::DefaultClass::stringClassId)
-        return manager.create(AString::plus((obj1->f), (obj2->str)));
-      else
-        break;
-    }
-    break;
-  }
-  case AutoLang::DefaultClass::stringClassId: {
-    switch (obj2->type) {
-    case AutoLang::DefaultClass::intClassId:
-      return manager.create((*obj1->str) + (obj2->i));
-    case AutoLang::DefaultClass::floatClassId:
-      return manager.create((*obj1->str) + (obj2->f));
-    case AutoLang::DefaultClass::stringClassId:
-      return manager.create((*obj1->str) + (obj2->str));
-    default:
-      break;
-    }
-  }
-  default:
-    throw std::runtime_error("Cannot plus two class");
-    break;
-  }
-  return nullptr;
+	auto obj1 = args[0];
+	auto obj2 = args[1];
+	switch (obj1->type) {
+		case AutoLang::DefaultClass::intClassId: {
+			switch (obj2->type) {
+				case AutoLang::DefaultClass::intClassId:
+					return notifier.createInt((obj1->i) + (obj2->i));
+				case AutoLang::DefaultClass::floatClassId:
+					return notifier.createFloat((obj1->i) + (obj2->f));
+				case AutoLang::DefaultClass::boolClassId:
+					return notifier.createInt((obj1->i) + (obj2->b));
+				case AutoLang::DefaultClass::stringClassId:
+					return notifier.createString(
+					    AString::plus((obj1->i), (obj2->str)));
+				default:
+					break;
+			}
+			break;
+		}
+		case AutoLang::DefaultClass::floatClassId: {
+			switch (obj2->type) {
+				case AutoLang::DefaultClass::intClassId:
+					return notifier.createFloat((obj1->f) + (obj2->i));
+				case AutoLang::DefaultClass::floatClassId:
+					return notifier.createFloat((obj1->f) + (obj2->f));
+				case AutoLang::DefaultClass::boolClassId:
+					return notifier.createFloat((obj1->f) + (obj2->b));
+				case AutoLang::DefaultClass::stringClassId:
+					return notifier.createString(
+					    AString::plus((obj1->f), (obj2->str)));
+				default:
+					break;
+			}
+			break;
+		}
+		case AutoLang::DefaultClass::boolClassId: {
+			switch (obj2->type) {
+				case AutoLang::DefaultClass::intClassId:
+					return notifier.createInt((obj1->b) + (obj2->i));
+				case AutoLang::DefaultClass::floatClassId:
+					return notifier.createFloat((obj1->b) + (obj2->f));
+				case AutoLang::DefaultClass::boolClassId:
+					return notifier.createInt((obj1->b) + (obj2->b));
+				case AutoLang::DefaultClass::stringClassId:
+					return notifier.createString(AString::plus(
+					    (obj1->b ? "true" : "false"), (obj2->str)));
+				default:
+					break;
+			}
+			break;
+		}
+		case AutoLang::DefaultClass::stringClassId: {
+			switch (obj2->type) {
+				case AutoLang::DefaultClass::intClassId:
+					return notifier.createString((*obj1->str) + (obj2->i));
+				case AutoLang::DefaultClass::floatClassId:
+					return notifier.createString((*obj1->str) + (obj2->f));
+				case AutoLang::DefaultClass::boolClassId:
+					return notifier.createString((*obj1->str) +
+					                             (obj2->b ? "true" : "false"));
+				case AutoLang::DefaultClass::stringClassId:
+					return notifier.createString((*obj1->str) + (obj2->str));
+				default:
+					break;
+			}
+		}
+		default:
+			break;
+	}
+	notifier.throwException(
+	    "Cannot plus " + notifier.vm->data.classes[obj1->type]->name + " and " +
+	    notifier.vm->data.classes[obj2->type]->name);
+	return nullptr;
 }
 
-#define create_operator_number(name, op)                                       \
-  AObject *name(NativeFuncInData) {                                            \
-    if (size != 2)                                                             \
-      return nullptr;                                                          \
-    auto obj1 = args[0];                                             \
-    switch (obj1->type) {                                                      \
-    case AutoLang::DefaultClass::intClassId: {                                 \
-      auto obj2 = args[1];                                           \
-      switch (obj2->type) {                                                    \
-      case AutoLang::DefaultClass::intClassId:                                 \
-        return manager.create((obj1->i)op(obj2->i));                           \
-      case AutoLang::DefaultClass::floatClassId:                               \
-        return manager.create((obj1->i)op(obj2->f));                           \
-      default:                                                                 \
-        break;                                                                 \
-      }                                                                        \
-      break;                                                                   \
-    }                                                                          \
-    case AutoLang::DefaultClass::floatClassId: {                               \
-      auto obj2 = args[1];                                           \
-      switch (obj2->type) {                                                    \
-      case AutoLang::DefaultClass::intClassId:                                 \
-        return manager.create((obj1->f)op(obj2->i));                           \
-      case AutoLang::DefaultClass::floatClassId:                               \
-        return manager.create((obj1->f)op(obj2->f));                           \
-      default:                                                                 \
-        break;                                                                 \
-      }                                                                        \
-      break;                                                                   \
-    } break;                                                                   \
-    }                                                                          \
-    return nullptr;                                                            \
-  }
+AObject *minus(NativeFuncInData) {
+	auto obj1 = args[0];
+	auto obj2 = args[1];
+	switch (obj1->type) {
+		case AutoLang::DefaultClass::intClassId: {
+			switch (obj2->type) {
+				case AutoLang::DefaultClass::intClassId:
+					return notifier.createInt((obj1->i) - (obj2->i));
+				case AutoLang::DefaultClass::floatClassId:
+					return notifier.createFloat((obj1->i) - (obj2->f));
+				case AutoLang::DefaultClass::boolClassId:
+					return notifier.createInt((obj1->i) - (obj2->b));
+				default:
+					break;
+			}
+			break;
+		}
+		case AutoLang::DefaultClass::floatClassId: {
+			switch (obj2->type) {
+				case AutoLang::DefaultClass::intClassId:
+					return notifier.createFloat((obj1->f) - (obj2->i));
+				case AutoLang::DefaultClass::floatClassId:
+					return notifier.createFloat((obj1->f) - (obj2->f));
+				case AutoLang::DefaultClass::boolClassId:
+					return notifier.createFloat((obj1->f) - (obj2->b));
+				default:
+					break;
+			}
+			break;
+		}
+		case AutoLang::DefaultClass::boolClassId: {
+			switch (obj2->type) {
+				case AutoLang::DefaultClass::intClassId:
+					return notifier.createInt((obj1->b) - (obj2->i));
+				case AutoLang::DefaultClass::floatClassId:
+					return notifier.createFloat((obj1->b) - (obj2->f));
+				case AutoLang::DefaultClass::boolClassId:
+					return notifier.createInt((obj1->b) - (obj2->b));
+				default:
+					break;
+			}
+			break;
+		}
+		default:
+			break;
+	}
+	notifier.throwException(
+	    "Cannot minus " + notifier.vm->data.classes[obj1->type]->name +
+	    " and " + notifier.vm->data.classes[obj2->type]->name);
+	return nullptr;
+}
 
-#define create_operator_eq_value(name, op)                                     \
-  AObject *name(NativeFuncInData) {                                            \
-    if (size != 2)                                                             \
-      return nullptr;                                                          \
-    auto obj1 = args[0];                                             \
-    switch (obj1->type) {                                                      \
-    case AutoLang::DefaultClass::intClassId: {                                 \
-      auto obj2 = args[1];                                           \
-      switch (obj2->type) {                                                    \
-      case AutoLang::DefaultClass::intClassId:                                 \
-        return manager.create((obj1->i)op(obj2->i));                           \
-      case AutoLang::DefaultClass::floatClassId:                               \
-        return manager.create((obj1->i)op(obj2->f));                           \
-      default:                                                                 \
-        break;                                                                 \
-      }                                                                        \
-      break;                                                                   \
-    }                                                                          \
-    case AutoLang::DefaultClass::floatClassId: {                               \
-      auto obj2 = args[1];                                           \
-      switch (obj2->type) {                                                    \
-      case AutoLang::DefaultClass::intClassId:                                 \
-        return manager.create((obj1->f)op(obj2->i));                           \
-      case AutoLang::DefaultClass::floatClassId:                               \
-        return manager.create((obj1->f)op(obj2->f));                           \
-      default:                                                                 \
-        break;                                                                 \
-      }                                                                        \
-      break;                                                                   \
-    } break;                                                                   \
-    }                                                                          \
-    auto obj2 = args[1];                                             \
-    if (obj1->type == AutoLang::DefaultClass::boolClassId &&                   \
-        obj2->type == AutoLang::DefaultClass::boolClassId) {                   \
-      return manager.create((obj1->b)op(obj2->b));                             \
-    }                                                                          \
-    if (obj1->type == AutoLang::DefaultClass::stringClassId &&                 \
-        obj2->type == AutoLang::DefaultClass::stringClassId) {                 \
-      return manager.create((*obj1->str)op(obj2->str));                        \
-    }                                                                          \
-    return nullptr;                                                            \
-  }
+AObject *mul(NativeFuncInData) {
+	auto obj1 = args[0];
+	auto obj2 = args[1];
+	switch (obj1->type) {
+		case AutoLang::DefaultClass::intClassId: {
+			switch (obj2->type) {
+				case AutoLang::DefaultClass::intClassId:
+					return notifier.createInt((obj1->i) * (obj2->i));
+				case AutoLang::DefaultClass::floatClassId:
+					return notifier.createFloat((obj1->i) * (obj2->f));
+				case AutoLang::DefaultClass::boolClassId:
+					return notifier.createInt((obj1->i) * (obj2->b));
+				default:
+					break;
+			}
+			break;
+		}
+		case AutoLang::DefaultClass::floatClassId: {
+			switch (obj2->type) {
+				case AutoLang::DefaultClass::intClassId:
+					return notifier.createFloat((obj1->f) * (obj2->i));
+				case AutoLang::DefaultClass::floatClassId:
+					return notifier.createFloat((obj1->f) * (obj2->f));
+				case AutoLang::DefaultClass::boolClassId:
+					return notifier.createFloat((obj1->f) * (obj2->b));
+				default:
+					break;
+			}
+			break;
+		}
+		case AutoLang::DefaultClass::boolClassId: {
+			switch (obj2->type) {
+				case AutoLang::DefaultClass::intClassId:
+					return notifier.createInt((obj1->b) * (obj2->i));
+				case AutoLang::DefaultClass::floatClassId:
+					return notifier.createFloat((obj1->b) * (obj2->f));
+				case AutoLang::DefaultClass::boolClassId:
+					return notifier.createInt((obj1->b) * (obj2->b));
+				default:
+					break;
+			}
+			break;
+		}
+		default:
+			break;
+	}
+	notifier.throwException(
+	    "Cannot multiply " + notifier.vm->data.classes[obj1->type]->name +
+	    " and " + notifier.vm->data.classes[obj2->type]->name);
+	return nullptr;
+}
+
+AObject *divide(NativeFuncInData) {
+	auto obj1 = args[0];
+	auto obj2 = args[1];
+	switch (obj1->type) {
+		case AutoLang::DefaultClass::intClassId: {
+			switch (obj2->type) {
+				case AutoLang::DefaultClass::intClassId: {
+					if (obj2->i == 0)
+						goto divideByZero;
+					return notifier.createInt((obj1->i) / (obj2->i));
+				}
+				case AutoLang::DefaultClass::floatClassId: {
+					if (obj2->f == 0)
+						goto divideByZero;
+					return notifier.createFloat((obj1->i) / (obj2->f));
+				}
+				case AutoLang::DefaultClass::boolClassId: {
+					if (obj2->b == false)
+						goto divideByZero;
+					return notifier.createInt((obj1->i) / (obj2->b));
+				}
+				default:
+					break;
+			}
+			break;
+		}
+		case AutoLang::DefaultClass::floatClassId: {
+			switch (obj2->type) {
+				case AutoLang::DefaultClass::intClassId: {
+					if (obj2->i == 0)
+						goto divideByZero;
+					return notifier.createFloat((obj1->f) / (obj2->i));
+				}
+				case AutoLang::DefaultClass::floatClassId: {
+					if (obj2->f == 0)
+						goto divideByZero;
+					return notifier.createFloat((obj1->f) / (obj2->f));
+				}
+				case AutoLang::DefaultClass::boolClassId: {
+					if (obj2->b == false)
+						goto divideByZero;
+					return notifier.createFloat((obj1->f) / (obj2->b));
+				}
+				default:
+					break;
+			}
+			break;
+		}
+		case AutoLang::DefaultClass::boolClassId: {
+			switch (obj2->type) {
+				case AutoLang::DefaultClass::intClassId: {
+					if (obj2->i == 0)
+						goto divideByZero;
+					return notifier.createInt((obj1->b) / (obj2->i));
+				}
+				case AutoLang::DefaultClass::floatClassId: {
+					if (obj2->f == 0)
+						goto divideByZero;
+					return notifier.createFloat((obj1->b) / (obj2->f));
+				}
+				case AutoLang::DefaultClass::boolClassId: {
+					if (obj2->b == false)
+						goto divideByZero;
+					return notifier.createInt((obj1->b) / (obj2->b));
+				}
+				default:
+					break;
+			}
+			break;
+		}
+		default:
+			break;
+	}
+	notifier.throwException(
+	    "Cannot divide " + notifier.vm->data.classes[obj1->type]->name +
+	    " and " + notifier.vm->data.classes[obj2->type]->name);
+	return nullptr;
+divideByZero:;
+	notifier.throwException("Cannot divide by zero");
+	return nullptr;
+}
+
+AObject *op_eqeq(NativeFuncInData) {
+    auto obj1 = args[0];
+    auto obj2 = args[1];
+    switch (obj1->type) {
+        case AutoLang::DefaultClass::intClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    return notifier.createBool(obj1->i == obj2->i);
+                case AutoLang::DefaultClass::floatClassId:
+                    return notifier.createBool(obj1->i == obj2->f);
+                case AutoLang::DefaultClass::boolClassId:
+                    return notifier.createBool(obj1->i == obj2->b);
+                default: break;
+            }
+            break;
+        }
+        case AutoLang::DefaultClass::floatClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    return notifier.createBool(obj1->f == obj2->i);
+                case AutoLang::DefaultClass::floatClassId:
+                    return notifier.createBool(obj1->f == obj2->f);
+                case AutoLang::DefaultClass::boolClassId:
+                    return notifier.createBool(obj1->f == obj2->b);
+                default: break;
+            }
+            break;
+        }
+        case AutoLang::DefaultClass::boolClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    return notifier.createBool(obj1->b == obj2->i);
+                case AutoLang::DefaultClass::floatClassId:
+                    return notifier.createBool(obj1->b == obj2->f);
+                case AutoLang::DefaultClass::boolClassId:
+                    return notifier.createBool(obj1->b == obj2->b);
+                default: break;
+            }
+            break;
+        }
+        case AutoLang::DefaultClass::stringClassId: {
+            if (obj2->type == AutoLang::DefaultClass::stringClassId) {
+                return notifier.createBool(*obj1->str == obj2->str);
+            }
+            break;
+        }
+        default: break;
+    }
+    return notifier.createBool(false);
+}
+
+AObject *op_not_eq(NativeFuncInData) {
+    auto obj1 = args[0];
+    auto obj2 = args[1];
+    switch (obj1->type) {
+        case AutoLang::DefaultClass::intClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    return notifier.createBool(obj1->i != obj2->i);
+                case AutoLang::DefaultClass::floatClassId:
+                    return notifier.createBool(obj1->i != obj2->f);
+                case AutoLang::DefaultClass::boolClassId:
+                    return notifier.createBool(obj1->i != obj2->b);
+                default: break;
+            }
+            break;
+        }
+        case AutoLang::DefaultClass::floatClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    return notifier.createBool(obj1->f != obj2->i);
+                case AutoLang::DefaultClass::floatClassId:
+                    return notifier.createBool(obj1->f != obj2->f);
+                case AutoLang::DefaultClass::boolClassId:
+                    return notifier.createBool(obj1->f != obj2->b);
+                default: break;
+            }
+            break;
+        }
+        case AutoLang::DefaultClass::boolClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    return notifier.createBool(obj1->b != obj2->i);
+                case AutoLang::DefaultClass::floatClassId:
+                    return notifier.createBool(obj1->b != obj2->f);
+                case AutoLang::DefaultClass::boolClassId:
+                    return notifier.createBool(obj1->b != obj2->b);
+                default: break;
+            }
+            break;
+        }
+         case AutoLang::DefaultClass::stringClassId: {
+            if (obj2->type == AutoLang::DefaultClass::stringClassId) {
+                return notifier.createBool(*obj1->str != obj2->str);
+            }
+            break;
+        }
+        default: break;
+    }
+    return notifier.createBool(true);
+}
+
+AObject *op_less_than(NativeFuncInData) {
+    auto obj1 = args[0];
+    auto obj2 = args[1];
+    switch (obj1->type) {
+        case AutoLang::DefaultClass::intClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    return notifier.createBool(obj1->i < obj2->i);
+                case AutoLang::DefaultClass::floatClassId:
+                    return notifier.createBool(obj1->i < obj2->f);
+                case AutoLang::DefaultClass::boolClassId:
+                    return notifier.createBool(obj1->i < obj2->b);
+                default: break;
+            }
+            break;
+        }
+        case AutoLang::DefaultClass::floatClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    return notifier.createBool(obj1->f < obj2->i);
+                case AutoLang::DefaultClass::floatClassId:
+                    return notifier.createBool(obj1->f < obj2->f);
+                case AutoLang::DefaultClass::boolClassId:
+                    return notifier.createBool(obj1->f < obj2->b);
+                default: break;
+            }
+            break;
+        }
+        case AutoLang::DefaultClass::boolClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    return notifier.createBool(obj1->b < obj2->i);
+                case AutoLang::DefaultClass::floatClassId:
+                    return notifier.createBool(obj1->b < obj2->f);
+                case AutoLang::DefaultClass::boolClassId:
+                    return notifier.createBool(obj1->b < obj2->b);
+                default: break;
+            }
+            break;
+        }
+        default: break;
+    }
+    notifier.throwException(
+        "Cannot compare < between " + notifier.vm->data.classes[obj1->type]->name +
+        " and " + notifier.vm->data.classes[obj2->type]->name);
+    return nullptr;
+}
+
+AObject *op_greater_than(NativeFuncInData) {
+    auto obj1 = args[0];
+    auto obj2 = args[1];
+    switch (obj1->type) {
+        case AutoLang::DefaultClass::intClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    return notifier.createBool(obj1->i > obj2->i);
+                case AutoLang::DefaultClass::floatClassId:
+                    return notifier.createBool(obj1->i > obj2->f);
+                case AutoLang::DefaultClass::boolClassId:
+                    return notifier.createBool(obj1->i > obj2->b);
+                default: break;
+            }
+            break;
+        }
+        case AutoLang::DefaultClass::floatClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    return notifier.createBool(obj1->f > obj2->i);
+                case AutoLang::DefaultClass::floatClassId:
+                    return notifier.createBool(obj1->f > obj2->f);
+                case AutoLang::DefaultClass::boolClassId:
+                    return notifier.createBool(obj1->f > obj2->b);
+                default: break;
+            }
+            break;
+        }
+        case AutoLang::DefaultClass::boolClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    return notifier.createBool(obj1->b > obj2->i);
+                case AutoLang::DefaultClass::floatClassId:
+                    return notifier.createBool(obj1->b > obj2->f);
+                case AutoLang::DefaultClass::boolClassId:
+                    return notifier.createBool(obj1->b > obj2->b);
+                default: break;
+            }
+            break;
+        }
+        default: break;
+    }
+    notifier.throwException(
+        "Cannot compare > between " + notifier.vm->data.classes[obj1->type]->name +
+        " and " + notifier.vm->data.classes[obj2->type]->name);
+    return nullptr;
+}
+
+AObject *op_less_than_eq(NativeFuncInData) {
+    auto obj1 = args[0];
+    auto obj2 = args[1];
+    switch (obj1->type) {
+        case AutoLang::DefaultClass::intClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    return notifier.createBool(obj1->i <= obj2->i);
+                case AutoLang::DefaultClass::floatClassId:
+                    return notifier.createBool(obj1->i <= obj2->f);
+                case AutoLang::DefaultClass::boolClassId:
+                    return notifier.createBool(obj1->i <= obj2->b);
+                default: break;
+            }
+            break;
+        }
+        case AutoLang::DefaultClass::floatClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    return notifier.createBool(obj1->f <= obj2->i);
+                case AutoLang::DefaultClass::floatClassId:
+                    return notifier.createBool(obj1->f <= obj2->f);
+                case AutoLang::DefaultClass::boolClassId:
+                    return notifier.createBool(obj1->f <= obj2->b);
+                default: break;
+            }
+            break;
+        }
+        case AutoLang::DefaultClass::boolClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    return notifier.createBool(obj1->b <= obj2->i);
+                case AutoLang::DefaultClass::floatClassId:
+                    return notifier.createBool(obj1->b <= obj2->f);
+                case AutoLang::DefaultClass::boolClassId:
+                    return notifier.createBool(obj1->b <= obj2->b);
+                default: break;
+            }
+            break;
+        }
+        default: break;
+    }
+    notifier.throwException(
+        "Cannot compare <= between " + notifier.vm->data.classes[obj1->type]->name +
+        " and " + notifier.vm->data.classes[obj2->type]->name);
+    return nullptr;
+}
+
+AObject *op_greater_than_eq(NativeFuncInData) {
+    auto obj1 = args[0];
+    auto obj2 = args[1];
+    switch (obj1->type) {
+        case AutoLang::DefaultClass::intClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    return notifier.createBool(obj1->i >= obj2->i);
+                case AutoLang::DefaultClass::floatClassId:
+                    return notifier.createBool(obj1->i >= obj2->f);
+                case AutoLang::DefaultClass::boolClassId:
+                    return notifier.createBool(obj1->i >= obj2->b);
+                default: break;
+            }
+            break;
+        }
+        case AutoLang::DefaultClass::floatClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    return notifier.createBool(obj1->f >= obj2->i);
+                case AutoLang::DefaultClass::floatClassId:
+                    return notifier.createBool(obj1->f >= obj2->f);
+                case AutoLang::DefaultClass::boolClassId:
+                    return notifier.createBool(obj1->f >= obj2->b);
+                default: break;
+            }
+            break;
+        }
+        case AutoLang::DefaultClass::boolClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    return notifier.createBool(obj1->b >= obj2->i);
+                case AutoLang::DefaultClass::floatClassId:
+                    return notifier.createBool(obj1->b >= obj2->f);
+                case AutoLang::DefaultClass::boolClassId:
+                    return notifier.createBool(obj1->b >= obj2->b);
+                default: break;
+            }
+            break;
+        }
+        default: break;
+    }
+    notifier.throwException(
+        "Cannot compare >= between " + notifier.vm->data.classes[obj1->type]->name +
+        " and " + notifier.vm->data.classes[obj2->type]->name);
+    return nullptr;
+}
 
 AObject *mod(NativeFuncInData) {
-  auto obj1 = args[0];
-  auto obj2 = args[1];
-  switch (obj1->type) {
-  case AutoLang::DefaultClass::intClassId: {
-    switch (obj2->type) {
-    case AutoLang::DefaultClass::intClassId:
-      return manager.create((obj1->i) % (obj2->i));
-    case AutoLang::DefaultClass::floatClassId:
-      return manager.create(
-          static_cast<double>(std::fmod((obj1->i), (obj2->f))));
-    default:
-      break;
-    }
-    break;
-  }
-  case AutoLang::DefaultClass::floatClassId: {
-    switch (obj2->type) {
-    case AutoLang::DefaultClass::intClassId:
-      return manager.create(
-          static_cast<double>(std::fmod((obj1->f), (obj2->i))));
-    case AutoLang::DefaultClass::floatClassId:
-      return manager.create(
-          static_cast<double>(std::fmod((obj1->f), (obj2->f))));
-    default:
-      break;
-    }
-    break;
-  }
-  default:
-    break;
-  }
-  throw std::runtime_error("Cannot mod 2 variable");
+	auto obj1 = args[0];
+	auto obj2 = args[1];
+	switch (obj1->type) {
+		case AutoLang::DefaultClass::intClassId: {
+			switch (obj2->type) {
+				case AutoLang::DefaultClass::intClassId: {
+					if (obj2->i == 0)
+						goto divideByZero;
+					return notifier.createInt((obj1->i) % (obj2->i));
+				}
+				case AutoLang::DefaultClass::floatClassId: {
+					if (obj2->f == 0)
+						goto divideByZero;
+					return notifier.createFloat(fmod((obj1->i), (obj2->f)));
+				}
+				case AutoLang::DefaultClass::boolClassId: {
+					if (obj2->b == false)
+						goto divideByZero;
+					return notifier.createInt(obj1->i);
+				}
+				default:
+					break;
+			}
+			break;
+		}
+		case AutoLang::DefaultClass::floatClassId: {
+			switch (obj2->type) {
+				case AutoLang::DefaultClass::intClassId: {
+					if (obj2->i == 0)
+						goto divideByZero;
+					return notifier.createFloat(fmod((obj1->f), (obj2->i)));
+				}
+				case AutoLang::DefaultClass::floatClassId: {
+					if (obj2->f == 0)
+						goto divideByZero;
+					return notifier.createFloat(fmod((obj1->f), (obj2->f)));
+				}
+				case AutoLang::DefaultClass::boolClassId: {
+					if (obj2->b == false)
+						goto divideByZero;
+					return notifier.createFloat(obj1->f);
+				}
+				default:
+					break;
+			}
+			break;
+		}
+		case AutoLang::DefaultClass::boolClassId: {
+			switch (obj2->type) {
+				case AutoLang::DefaultClass::intClassId: {
+					if (obj2->i == 0)
+						goto divideByZero;
+					return notifier.createInt((obj1->b) % (obj2->i));
+				}
+				case AutoLang::DefaultClass::floatClassId: {
+					if (obj2->f == 0)
+						goto divideByZero;
+					return notifier.createFloat(fmod((obj1->b), (obj2->f)));
+				}
+				case AutoLang::DefaultClass::boolClassId: {
+					if (obj2->b == false)
+						goto divideByZero;
+					return notifier.createInt((obj1->b) % (obj2->b));
+				}
+				default:
+					break;
+			}
+			break;
+		}
+		default:
+			break;
+	}
+	notifier.throwException(
+	    "Cannot mod " + notifier.vm->data.classes[obj1->type]->name +
+	    " and " + notifier.vm->data.classes[obj2->type]->name);
+	return nullptr;
+divideByZero:;
+	notifier.throwException("Cannot divide by zero");
+	return nullptr;
 }
 
 AObject *bitwise_and(NativeFuncInData) {
-  auto obj1 = args[0];
-  auto obj2 = args[1];
-  switch (obj1->type) {
-  case AutoLang::DefaultClass::intClassId: {
-    switch (obj2->type) {
-    case AutoLang::DefaultClass::intClassId:
-      return manager.create((obj1->i) & (obj2->i));
-    default:
-      break;
-    }
-    break;
-  }
-  default:
-    break;
-  }
-  throw std::runtime_error("Cannot bitwise and 2 variable");
+	auto obj1 = args[0];
+	auto obj2 = args[1];
+	switch (obj1->type) {
+		case AutoLang::DefaultClass::intClassId: {
+			switch (obj2->type) {
+				case AutoLang::DefaultClass::intClassId:
+					return notifier.createInt((obj1->i) & (obj2->i));
+				default:
+					break;
+			}
+			break;
+		}
+		default:
+			break;
+	}
+	notifier.throwException(
+	    "Cannot bitwise and " + notifier.vm->data.classes[obj1->type]->name +
+	    " and " + notifier.vm->data.classes[obj2->type]->name);
+	return nullptr;
 }
 
 AObject *bitwise_or(NativeFuncInData) {
-  auto obj1 = args[0];
-  auto obj2 = args[1];
-  switch (obj1->type) {
-  case AutoLang::DefaultClass::intClassId: {
-    switch (obj2->type) {
-    case AutoLang::DefaultClass::intClassId:
-      return manager.create((obj1->i) | (obj2->i));
-    default:
-      break;
-    }
-    break;
-  }
-  default:
-    break;
-  }
-  throw std::runtime_error("Cannot bitwise and 2 variable");
-}
-
-create_operator_number(minus, -);
-create_operator_number(mul, *);
-create_operator_number(divide, /);
-
-#define create_operator_func_plus_equal(name, op)                              \
-  AObject *name(NativeFuncInData) {                                            \
-    if (size != 2)                                                             \
-      return nullptr;                                                          \
-    auto obj1 = args[0];                                             \
-    auto obj2 = args[1];                                             \
-    switch (obj1->type) {                                                      \
-    case AutoLang::DefaultClass::intClassId: {                                 \
-      switch (obj2->type) {                                                    \
-      case AutoLang::DefaultClass::intClassId:                                 \
-        obj1->i op obj2->i;                                                    \
-        return nullptr;                                                        \
-      case AutoLang::DefaultClass::floatClassId:                               \
-        obj1->i op obj2->f;                                                    \
-        return nullptr;                                                        \
-      default:                                                                 \
-        obj1->i op obj2->b;                                                    \
-        return nullptr;                                                        \
-      }                                                                        \
-      break;                                                                   \
-    }                                                                          \
-    case AutoLang::DefaultClass::floatClassId: {                               \
-      switch (obj2->type) {                                                    \
-      case AutoLang::DefaultClass::intClassId:                                 \
-        obj1->f op obj2->i;                                                    \
-        return nullptr;                                                        \
-      case AutoLang::DefaultClass::floatClassId:                               \
-        obj1->f op obj2->f;                                                    \
-        return nullptr;                                                        \
-      default:                                                                 \
-        obj1->f op obj2->b;                                                    \
-        return nullptr;                                                        \
-      }                                                                        \
-      break;                                                                   \
-    }                                                                          \
-    default: {                                                                 \
-      return nullptr;                                                          \
-    }                                                                          \
-    }                                                                          \
-    return nullptr;                                                            \
-  }
-
-#define create_operator_func_number_equal(name, op)                            \
-  AObject *name(NativeFuncInData) {                                            \
-    if (size != 2)                                                             \
-      return nullptr;                                                          \
-    auto obj1 = args[0];                                             \
-    auto obj2 = args[1];                                             \
-    switch (obj1->type) {                                                      \
-    case AutoLang::DefaultClass::intClassId: {                                 \
-      switch (obj2->type) {                                                    \
-      case AutoLang::DefaultClass::intClassId:                                 \
-        obj1->i op obj2->i;                                                    \
-        return nullptr;                                                        \
-      case AutoLang::DefaultClass::floatClassId:                               \
-        obj1->i op obj2->f;                                                    \
-        return nullptr;                                                        \
-      default:                                                                 \
-        obj1->i op obj2->b;                                                    \
-        return nullptr;                                                        \
-      }                                                                        \
-      break;                                                                   \
-    }                                                                          \
-    case AutoLang::DefaultClass::floatClassId: {                               \
-      switch (obj2->type) {                                                    \
-      case AutoLang::DefaultClass::intClassId:                                 \
-        obj1->f op obj2->i;                                                    \
-        return nullptr;                                                        \
-      case AutoLang::DefaultClass::floatClassId:                               \
-        obj1->f op obj2->f;                                                    \
-        return nullptr;                                                        \
-      default:                                                                 \
-        obj1->f op obj2->b;                                                    \
-        return nullptr;                                                        \
-      }                                                                        \
-      break;                                                                   \
-    }                                                                          \
-    }                                                                          \
-    return nullptr;                                                            \
-  }
-
-create_operator_func_plus_equal(plus_eq, +=);
-create_operator_func_number_equal(minus_eq, -=);
-create_operator_func_number_equal(mul_eq, *=);
-create_operator_func_number_equal(divide_eq, /=);
-
-AObject *plus_plus(NativeFuncInData) {
-  auto obj = args[0];
-  switch (obj->type) {
-  case AutoLang::DefaultClass::intClassId:
-    ++obj->i;
-    break;
-  case AutoLang::DefaultClass::floatClassId:
-    ++obj->f;
-    break;
-  default:
-    throw std::runtime_error("Cannot plus plus ");
-  }
-  return obj;
-}
-
-AObject *minus_minus(NativeFuncInData) {
-  auto obj = args[0];
-  switch (obj->type) {
-  case AutoLang::DefaultClass::intClassId:
-    --obj->i;
-    break;
-  case AutoLang::DefaultClass::floatClassId:
-    --obj->f;
-    break;
-  default:
-    throw std::runtime_error("Cannot plus plus ");
-  }
-  return obj;
-}
-
-AObject *negative(NativeFuncInData) {
-  auto obj = args[0];
-  switch (obj->type) {
-  case AutoLang::DefaultClass::intClassId:
-    return manager.create(-obj->i);
-  case AutoLang::DefaultClass::floatClassId:
-    return manager.create(-obj->f);
-  default:
-    if (obj->type == AutoLang::DefaultClass::boolClassId)
-      return manager.create(-static_cast<int64_t>(obj->b));
-    throw std::runtime_error("Cannot negative");
-  }
-}
-
-AObject *op_not(NativeFuncInData) {
-  auto obj = args[0];
-  if (obj->type == AutoLang::DefaultClass::boolClassId)
-    return manager.createBoolObject(!obj->b);
-  if (obj->type == AutoLang::DefaultClass::nullClassId)
-    return manager.createBoolObject(true);
-  throw std::runtime_error("Cannot use not oparator");
+	auto obj1 = args[0];
+	auto obj2 = args[1];
+	switch (obj1->type) {
+		case AutoLang::DefaultClass::intClassId: {
+			switch (obj2->type) {
+				case AutoLang::DefaultClass::intClassId:
+					return notifier.createInt((obj1->i) | (obj2->i));
+				default:
+					break;
+			}
+			break;
+		}
+		default:
+			break;
+	}
+	notifier.throwException(
+	    "Cannot bitwise or " + notifier.vm->data.classes[obj1->type]->name +
+	    " and " + notifier.vm->data.classes[obj2->type]->name);
+	return nullptr;
 }
 
 AObject *op_and_and(NativeFuncInData) {
-  return ObjectManager::createBoolObject(args[0]->b &&
-                                         args[1]->b);
+    auto obj1 = args[0];
+    auto obj2 = args[1];
+    
+    if (obj1->type == AutoLang::DefaultClass::boolClassId && 
+        obj2->type == AutoLang::DefaultClass::boolClassId) {
+        return notifier.createBool(obj1->b && obj2->b);
+    }
+
+    notifier.throwException(
+        "Cannot use && between " + notifier.vm->data.classes[obj1->type]->name +
+        " and " + notifier.vm->data.classes[obj2->type]->name);
+    return nullptr;
 }
 
 AObject *op_or_or(NativeFuncInData) {
-  return ObjectManager::createBoolObject(args[0]->b ||
-                                         args[1]->b);
+    auto obj1 = args[0];
+    auto obj2 = args[1];
+
+    if (obj1->type == AutoLang::DefaultClass::boolClassId && 
+        obj2->type == AutoLang::DefaultClass::boolClassId) {
+        return notifier.createBool(obj1->b || obj2->b);
+    }
+
+    notifier.throwException(
+        "Cannot use || between " + notifier.vm->data.classes[obj1->type]->name +
+        " and " + notifier.vm->data.classes[obj2->type]->name);
+    return nullptr;
 }
 
 AObject *op_eq_pointer(NativeFuncInData) {
-  return ObjectManager::createBoolObject(args[0] ==
-                                         args[1]);
+    return notifier.createBool(args[0] == args[1]);
 }
 
 AObject *op_not_eq_pointer(NativeFuncInData) {
-  return ObjectManager::createBoolObject(args[0] !=
-                                         args[1]);
+    return notifier.createBool(args[0] != args[1]);
 }
 
-create_operator_number(op_less_than, <);
-create_operator_number(op_greater_than, >);
-create_operator_number(op_less_than_eq, <=);
-create_operator_number(op_greater_than_eq, >=);
-create_operator_eq_value(op_eqeq, ==);
-create_operator_eq_value(op_not_eq, !=);
+AObject *plus_eq(NativeFuncInData) {
+    auto obj1 = args[0];
+    auto obj2 = args[1];
+    switch (obj1->type) {
+        case AutoLang::DefaultClass::intClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    obj1->i += obj2->i; return nullptr;
+                case AutoLang::DefaultClass::floatClassId:
+                    obj1->i += obj2->f; return nullptr;
+                case AutoLang::DefaultClass::boolClassId:
+                    obj1->i += obj2->b; return nullptr;
+                default: break;
+            }
+            break;
+        }
+        case AutoLang::DefaultClass::floatClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    obj1->f += obj2->i; return nullptr;
+                case AutoLang::DefaultClass::floatClassId:
+                    obj1->f += obj2->f; return nullptr;
+                case AutoLang::DefaultClass::boolClassId:
+                    obj1->f += obj2->b; return nullptr;
+                default: break;
+            }
+            break;
+        }
+        default: break;
+    }
+    notifier.throwException(
+        "Cannot use += between " + notifier.vm->data.classes[obj1->type]->name +
+        " and " + notifier.vm->data.classes[obj2->type]->name);
+    return nullptr;
+}
+
+AObject *minus_eq(NativeFuncInData) {
+    auto obj1 = args[0];
+    auto obj2 = args[1];
+    switch (obj1->type) {
+        case AutoLang::DefaultClass::intClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    obj1->i -= obj2->i; return nullptr;
+                case AutoLang::DefaultClass::floatClassId:
+                    obj1->i -= obj2->f; return nullptr;
+                case AutoLang::DefaultClass::boolClassId:
+                    obj1->i -= obj2->b; return nullptr;
+                default: break;
+            }
+            break;
+        }
+        case AutoLang::DefaultClass::floatClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    obj1->f -= obj2->i; return nullptr;
+                case AutoLang::DefaultClass::floatClassId:
+                    obj1->f -= obj2->f; return nullptr;
+                case AutoLang::DefaultClass::boolClassId:
+                    obj1->f -= obj2->b; return nullptr;
+                default: break;
+            }
+            break;
+        }
+        default: break;
+    }
+    notifier.throwException(
+        "Cannot use -= between " + notifier.vm->data.classes[obj1->type]->name +
+        " and " + notifier.vm->data.classes[obj2->type]->name);
+    return nullptr;
+}
+
+AObject *mul_eq(NativeFuncInData) {
+    auto obj1 = args[0];
+    auto obj2 = args[1];
+    switch (obj1->type) {
+        case AutoLang::DefaultClass::intClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    obj1->i *= obj2->i; return nullptr;
+                case AutoLang::DefaultClass::floatClassId:
+                    obj1->i *= obj2->f; return nullptr;
+                case AutoLang::DefaultClass::boolClassId:
+                    obj1->i *= obj2->b; return nullptr;
+                default: break;
+            }
+            break;
+        }
+        case AutoLang::DefaultClass::floatClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    obj1->f *= obj2->i; return nullptr;
+                case AutoLang::DefaultClass::floatClassId:
+                    obj1->f *= obj2->f; return nullptr;
+                case AutoLang::DefaultClass::boolClassId:
+                    obj1->f *= obj2->b; return nullptr;
+                default: break;
+            }
+            break;
+        }
+        default: break;
+    }
+    notifier.throwException(
+        "Cannot use *= between " + notifier.vm->data.classes[obj1->type]->name +
+        " and " + notifier.vm->data.classes[obj2->type]->name);
+    return nullptr;
+}
+
+AObject *divide_eq(NativeFuncInData) {
+    auto obj1 = args[0];
+    auto obj2 = args[1];
+    switch (obj1->type) {
+        case AutoLang::DefaultClass::intClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    if (obj2->i == 0) goto divideByZero;
+                    obj1->i /= obj2->i; return nullptr;
+                case AutoLang::DefaultClass::floatClassId:
+                    if (obj2->f == 0) goto divideByZero;
+                    obj1->i /= obj2->f; return nullptr;
+                case AutoLang::DefaultClass::boolClassId:
+                    if (obj2->b == false) goto divideByZero;
+                    obj1->i /= obj2->b; return nullptr;
+                default: break;
+            }
+            break;
+        }
+        case AutoLang::DefaultClass::floatClassId: {
+            switch (obj2->type) {
+                case AutoLang::DefaultClass::intClassId:
+                    if (obj2->i == 0) goto divideByZero;
+                    obj1->f /= obj2->i; return nullptr;
+                case AutoLang::DefaultClass::floatClassId:
+                    if (obj2->f == 0) goto divideByZero;
+                    obj1->f /= obj2->f; return nullptr;
+                case AutoLang::DefaultClass::boolClassId:
+                    if (obj2->b == false) goto divideByZero;
+                    obj1->f /= obj2->b; return nullptr;
+                default: break;
+            }
+            break;
+        }
+        default: break;
+    }
+    notifier.throwException(
+        "Cannot use /= between " + notifier.vm->data.classes[obj1->type]->name +
+        " and " + notifier.vm->data.classes[obj2->type]->name);
+    return nullptr;
+
+divideByZero:;
+    notifier.throwException("Cannot divide by zero in /= operation");
+    return nullptr;
+}
+
+AObject *plus_plus(NativeFuncInData) {
+    auto obj = args[0];
+    switch (obj->type) {
+        case AutoLang::DefaultClass::intClassId:
+            ++obj->i;
+            return obj;
+        case AutoLang::DefaultClass::floatClassId:
+            ++obj->f;
+            return obj;
+        default: break;
+    }
+    notifier.throwException(
+        "Cannot use ++ operator on " + notifier.vm->data.classes[obj->type]->name);
+    return nullptr;
+}
+
+AObject *minus_minus(NativeFuncInData) {
+    auto obj = args[0];
+    switch (obj->type) {
+        case AutoLang::DefaultClass::intClassId:
+            --obj->i;
+            return obj;
+        case AutoLang::DefaultClass::floatClassId:
+            --obj->f;
+            return obj;
+        default: break;
+    }
+    notifier.throwException(
+        "Cannot use -- operator on " + notifier.vm->data.classes[obj->type]->name);
+    return nullptr;
+}
+
+AObject *negative(NativeFuncInData) {
+    auto obj = args[0];
+    switch (obj->type) {
+        case AutoLang::DefaultClass::intClassId:
+            return notifier.createInt(-obj->i);
+        case AutoLang::DefaultClass::floatClassId:
+            return notifier.createFloat(-obj->f);
+        case AutoLang::DefaultClass::boolClassId:
+            return notifier.createInt(-static_cast<int64_t>(obj->b));
+        default: break;
+    }
+    notifier.throwException(
+        "Cannot use negative operator on " + notifier.vm->data.classes[obj->type]->name);
+    return nullptr;
+}
+
+AObject *op_not(NativeFuncInData) {
+    auto obj = args[0];
+    if (obj->type == AutoLang::DefaultClass::boolClassId) {
+        return notifier.createBool(!obj->b);
+    }
+    notifier.throwException(
+        "Cannot use ! operator on " + notifier.vm->data.classes[obj->type]->name);
+    return nullptr;
+}
 
 } // namespace DefaultFunction
 } // namespace AutoLang

@@ -1,281 +1,447 @@
 #ifndef OPTIMIZE_NODE_CPP
 #define OPTIMIZE_NODE_CPP
 
-#include <iostream>
 #include <charconv>
-#include "frontend/parser/node/OptimizeNode.hpp"
-#include "frontend/parser/node/Node.hpp"
-#include "shared/AObject.hpp"
+#include <cmath>
+#include <iostream>
+#include <stdexcept>
+#include <string>
+
 #include "frontend/parser/Debugger.hpp"
+#include "frontend/parser/node/Node.hpp"
+#include "frontend/parser/node/OptimizeNode.hpp"
+#include "shared/AObject.hpp"
 
-namespace AutoLang
-{
+namespace AutoLang {
+void toInt(ConstValueNode *value);
+void toFloat(ConstValueNode *value);
+void toBool(ConstValueNode *value);
+void toString(ConstValueNode *value);
 
-#define create_operator_func_plus_node(name, op)                                                                \
-	ConstValueNode *name(ConstValueNode *left, ConstValueNode *right)                                           \
-	{                                                                                                           \
-		auto obj1 = left;                                                                                       \
-		if (obj1->classId == AutoLang::DefaultClass::boolClassId)                                               \
-		{                                                                                                       \
-			toInt(left);                                                                                        \
-			return name(left, right);                                                                           \
-		}                                                                                                       \
-		auto obj2 = right;                                                                                      \
-		if (obj2->classId == AutoLang::DefaultClass::boolClassId)                                               \
-		{                                                                                                       \
-			toInt(right);                                                                                       \
-			return name(left, right);                                                                           \
-		}                                                                                                       \
-		switch (obj1->classId)                                                                                  \
-		{                                                                                                       \
-		case AutoLang::DefaultClass::intClassId:                                                                \
-		{                                                                                                       \
-			switch (obj2->classId)                                                                              \
-			{                                                                                                   \
-			case AutoLang::DefaultClass::intClassId:                                                            \
-				return new ConstValueNode(left->line, (obj1->i)op(obj2->i));                                                \
-			case AutoLang::DefaultClass::floatClassId:                                                          \
-				return new ConstValueNode(left->line, (obj1->i)op(obj2->f));                                                \
-			default:                                                                                            \
-				if (obj2->classId != AutoLang::DefaultClass::stringClassId)                                     \
-					break;                                                                                      \
-				return new ConstValueNode(left->line, (std::to_string(obj1->i))op(*static_cast<std::string *>(obj2->str))); \
-			}                                                                                                   \
-			break;                                                                                              \
-		}                                                                                                       \
-		case AutoLang::DefaultClass::floatClassId:                                                              \
-		{                                                                                                       \
-			switch (obj2->classId)                                                                              \
-			{                                                                                                   \
-			case AutoLang::DefaultClass::intClassId:                                                            \
-				return new ConstValueNode(left->line, (obj1->f)op(obj2->i));                                                \
-			case AutoLang::DefaultClass::floatClassId:                                                          \
-				return new ConstValueNode(left->line, (obj1->f)op(obj2->f));                                                \
-			default:                                                                                            \
-				if (obj2->classId != AutoLang::DefaultClass::stringClassId)                                     \
-					break;                                                                                      \
-				return new ConstValueNode(left->line, (std::to_string(obj1->f))op(*static_cast<std::string *>(obj2->str))); \
-			}                                                                                                   \
-			break;                                                                                              \
-		}                                                                                                       \
-		default:                                                                                                \
-		{                                                                                                       \
-			std::string &str = *static_cast<std::string *>(obj1->str);                                          \
-			switch (obj2->classId)                                                                              \
-			{                                                                                                   \
-			case AutoLang::DefaultClass::intClassId:                                                            \
-				return new ConstValueNode(left->line, (str)op(std::to_string(obj2->i)));                                    \
-			case AutoLang::DefaultClass::floatClassId:                                                          \
-				return new ConstValueNode(left->line, (str)op(std::to_string(obj2->f)));                                    \
-			default:                                                                                            \
-				if (obj2->classId != AutoLang::DefaultClass::stringClassId)                                     \
-					break;                                                                                      \
-				return new ConstValueNode(left->line, (str)op(*static_cast<std::string *>(obj2->str)));                     \
-			}                                                                                                   \
-			break;                                                                                              \
-		}                                                                                                       \
-		}                                                                                                       \
-		throw std::runtime_error("h");                                                                           \
+static void prepareOperands(ConstValueNode *left, ConstValueNode *right) {
+	if (left->classId == AutoLang::DefaultClass::boolClassId) {
+		toInt(left);
 	}
-
-#define create_operator_number_node(name, op)                         \
-	ConstValueNode *name(ConstValueNode *left, ConstValueNode *right) \
-	{                                                                 \
-		auto obj1 = left;                                             \
-		if (obj1->classId == AutoLang::DefaultClass::boolClassId)     \
-		{                                                             \
-			toInt(left);                                              \
-			return name(left, right);                                 \
-		}                                                             \
-		auto obj2 = right;                                            \
-		if (obj2->classId == AutoLang::DefaultClass::boolClassId)     \
-		{                                                             \
-			toInt(right);                                             \
-			return name(left, right);                                 \
-		}                                                             \
-		switch (obj1->classId)                                        \
-		{                                                             \
-		case AutoLang::DefaultClass::intClassId:                      \
-		{                                                             \
-			switch (obj2->classId)                                    \
-			{                                                         \
-			case AutoLang::DefaultClass::intClassId:                  \
-				return new ConstValueNode(left->line, (obj1->i)op(obj2->i));      \
-			case AutoLang::DefaultClass::floatClassId:                \
-				return new ConstValueNode(left->line, (obj1->i)op(obj2->f));      \
-			default:                                                  \
-				break;                                                \
-			}                                                         \
-			break;                                                    \
-		}                                                             \
-		case AutoLang::DefaultClass::floatClassId:                    \
-		{                                                             \
-			switch (obj2->classId)                                    \
-			{                                                         \
-			case AutoLang::DefaultClass::intClassId:                  \
-				return new ConstValueNode(left->line, (obj1->f)op(obj2->i));      \
-			case AutoLang::DefaultClass::floatClassId:                \
-				return new ConstValueNode(left->line, (obj1->f)op(obj2->f));      \
-			default:                                                  \
-				break;                                                \
-			}                                                         \
-			break;                                                    \
-		}                                                             \
-		default:                                                      \
-			break;                                                    \
-		}                                                             \
-		throw std::runtime_error("g");                                 \
+	if (right->classId == AutoLang::DefaultClass::boolClassId) {
+		toInt(right);
 	}
+}
 
-#define create_operator_compare(name, op)                       \
-	ConstValueNode *name(ConstValueNode *left, ConstValueNode *right)  \
-	{                                                                  \
-		auto obj1 = left;                                              \
-		auto obj2 = right;                                             \
-		switch (obj1->classId)                                         \
-		{                                                              \
-		case AutoLang::DefaultClass::intClassId:                       \
-		{                                                              \
-			switch (obj2->classId)                                     \
-			{                                                          \
-			case AutoLang::DefaultClass::intClassId:                   \
-				return new ConstValueNode(left->line, (obj1->i)op(obj2->i));       \
-			case AutoLang::DefaultClass::floatClassId:                 \
-				return new ConstValueNode(left->line, (obj1->i)op(obj2->f));       \
-			default:                                                   \
-				break;                                                 \
-			}                                                          \
-			break;                                                     \
-		}                                                              \
-		case AutoLang::DefaultClass::floatClassId:                     \
-		{                                                              \
-			switch (obj2->classId)                                     \
-			{                                                          \
-			case AutoLang::DefaultClass::intClassId:                   \
-				return new ConstValueNode(left->line, (obj1->f)op(obj2->i));       \
-			case AutoLang::DefaultClass::floatClassId:                 \
-				return new ConstValueNode(left->line, (obj1->f)op(obj2->f));       \
-			default:                                                   \
-				break;                                                 \
-			}                                                          \
-			break;                                                     \
-		}                                                              \
-		default:                                                       \
-			break;                                                     \
-		}                                                              \
-		if (obj1->classId == AutoLang::DefaultClass::boolClassId &&    \
-			obj2->classId == AutoLang::DefaultClass::boolClassId)      \
-		{                                                              \
-			return new ConstValueNode(left->line, (obj1->obj->b)op(obj2->obj->b)); \
-		}                                                              \
-		if (obj1->classId == AutoLang::DefaultClass::stringClassId &&  \
-			obj2->classId == AutoLang::DefaultClass::stringClassId)    \
-		{                                                              \
-			return new ConstValueNode(left->line, (obj1->str)op(obj2->str));       \
-		}                                                              \
-		throw std::runtime_error("f");                                  \
-	}
+ConstValueNode *plus(ConstValueNode *left, ConstValueNode *right) {
+	prepareOperands(left, right);
 
-	ConstValueNode *bitwise_and(ConstValueNode *left, ConstValueNode *right)
-	{
-		auto obj1 = left;
-		auto obj2 = right;
-		switch (obj1->classId)
-		{
+	switch (left->classId) {
 		case AutoLang::DefaultClass::intClassId:
-		{
-			switch (obj2->classId)
-			{
-			case AutoLang::DefaultClass::intClassId:
-				return new ConstValueNode(left->line, (obj1->i) & (obj2->i));
-			default:
-				break;
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->i + right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->i + right->f);
+				case AutoLang::DefaultClass::stringClassId:
+					return new ConstValueNode(
+					    left->line,
+					    std::to_string(left->i) +
+					        *static_cast<std::string *>(right->str));
+				default:
+					break;
 			}
 			break;
-		}
-		default:
-			break;
-		}
-		throw std::runtime_error("e");
-	}
 
-	ConstValueNode *bitwise_or(ConstValueNode *left, ConstValueNode *right)
-	{
-		auto obj1 = left;
-		auto obj2 = right;
-		switch (obj1->classId)
-		{
-		case AutoLang::DefaultClass::intClassId:
-		{
-			switch (obj2->classId)
-			{
-			case AutoLang::DefaultClass::intClassId:
-				return new ConstValueNode(left->line, (obj1->i) | (obj2->i));
-			default:
-				break;
-			}
-			break;
-		}
-		default:
-			break;
-		}
-		throw std::runtime_error("d");
-	}
-
-	ConstValueNode *mod(ConstValueNode *left, ConstValueNode *right)
-	{
-		auto obj1 = left;
-		auto obj2 = right;
-		switch (obj1->classId)
-		{
-		case AutoLang::DefaultClass::intClassId:
-		{
-			switch (obj2->classId)
-			{
-			case AutoLang::DefaultClass::intClassId:
-				return new ConstValueNode(left->line, (obj1->i) % (obj2->i));
-			case AutoLang::DefaultClass::floatClassId:
-				return new ConstValueNode(left->line, static_cast<double>(std::fmod((obj1->i), (obj2->f))));
-			default:
-				break;
-			}
-			break;
-		}
 		case AutoLang::DefaultClass::floatClassId:
-		{
-			switch (obj2->classId)
-			{
-			case AutoLang::DefaultClass::intClassId:
-				return new ConstValueNode(left->line, static_cast<double>(std::fmod((obj1->f), (obj2->i))));
-			case AutoLang::DefaultClass::floatClassId:
-				return new ConstValueNode(left->line, static_cast<double>(std::fmod((obj1->f), (obj2->f))));
-			default:
-				break;
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->f + right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->f + right->f);
+				case AutoLang::DefaultClass::stringClassId:
+					return new ConstValueNode(
+					    left->line,
+					    std::to_string(left->f) +
+					        *static_cast<std::string *>(right->str));
+				default:
+					break;
+			}
+			break;
+
+		case AutoLang::DefaultClass::stringClassId: {
+			std::string &strLeft = *static_cast<std::string *>(left->str);
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(
+					    left->line, strLeft + std::to_string(right->i));
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(
+					    left->line, strLeft + std::to_string(right->f));
+				case AutoLang::DefaultClass::stringClassId:
+					return new ConstValueNode(
+					    left->line,
+					    strLeft + *static_cast<std::string *>(right->str));
+				default:
+					break;
 			}
 			break;
 		}
 		default:
 			break;
-		}
-		throw std::runtime_error("c");
+	}
+	throw std::runtime_error("Invalid types for operator +");
+}
+
+ConstValueNode *minus(ConstValueNode *left, ConstValueNode *right) {
+	prepareOperands(left, right);
+
+	switch (left->classId) {
+		case AutoLang::DefaultClass::intClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->i - right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->i - right->f);
+				default:
+					break;
+			}
+			break;
+		case AutoLang::DefaultClass::floatClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->f - right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->f - right->f);
+				default:
+					break;
+			}
+			break;
+		default:
+			break;
+	}
+	throw std::runtime_error("Invalid types for operator -");
+}
+
+ConstValueNode *mul(ConstValueNode *left, ConstValueNode *right) {
+	prepareOperands(left, right);
+
+	switch (left->classId) {
+		case AutoLang::DefaultClass::intClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->i * right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->i * right->f);
+				default:
+					break;
+			}
+			break;
+		case AutoLang::DefaultClass::floatClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->f * right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->f * right->f);
+				default:
+					break;
+			}
+			break;
+		default:
+			break;
+	}
+	throw std::runtime_error("Invalid types for operator *");
+}
+
+ConstValueNode *divide(ConstValueNode *left, ConstValueNode *right) {
+	prepareOperands(left, right);
+
+	if (right->classId == AutoLang::DefaultClass::intClassId && right->i == 0) {
+		throw std::runtime_error("Division by zero");
+	}
+	if (right->classId == AutoLang::DefaultClass::floatClassId &&
+	    right->f == 0.0) {
+		throw std::runtime_error("Division by zero");
 	}
 
-	create_operator_func_plus_node(plus, +);
-	create_operator_number_node(minus, -);
-	create_operator_number_node(mul, *);
-	create_operator_number_node(divide, /);
-	create_operator_compare(op_eqeq, ==);
-	create_operator_compare(op_not_eq, !=);
+	switch (left->classId) {
+		case AutoLang::DefaultClass::intClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->i / right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->i / right->f);
+				default:
+					break;
+			}
+			break;
+		case AutoLang::DefaultClass::floatClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->f / right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->f / right->f);
+				default:
+					break;
+			}
+			break;
+		default:
+			break;
+	}
+	throw std::runtime_error("Invalid types for operator /");
+}
 
-	create_operator_number_node(op_greater_than, >);
-	create_operator_number_node(op_less_than, <);
-	create_operator_number_node(op_greater_than_eq, >=);
-	create_operator_number_node(op_less_than_eq, <=);
+ConstValueNode *mod(ConstValueNode *left, ConstValueNode *right) {
+	if (right->classId == AutoLang::DefaultClass::intClassId && right->i == 0) {
+		throw std::runtime_error("Modulo by zero");
+	}
+	if (right->classId == AutoLang::DefaultClass::floatClassId &&
+	    right->f == 0.0) {
+		throw std::runtime_error("Modulo by zero");
+	}
 
-	void toInt(ConstValueNode *value)
-	{
-		switch (value->classId)
-		{
+	switch (left->classId) {
+		case AutoLang::DefaultClass::intClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->i % right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(
+					    left->line,
+					    static_cast<double>(std::fmod(left->i, right->f)));
+				default:
+					break;
+			}
+			break;
+		case AutoLang::DefaultClass::floatClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(
+					    left->line,
+					    static_cast<double>(std::fmod(left->f, right->i)));
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(
+					    left->line,
+					    static_cast<double>(std::fmod(left->f, right->f)));
+				default:
+					break;
+			}
+			break;
+		default:
+			break;
+	}
+	throw std::runtime_error("Invalid types for operator %");
+}
+
+ConstValueNode *bitwise_and(ConstValueNode *left, ConstValueNode *right) {
+	if (left->classId == AutoLang::DefaultClass::intClassId &&
+	    right->classId == AutoLang::DefaultClass::intClassId) {
+		return new ConstValueNode(left->line, left->i & right->i);
+	}
+	throw std::runtime_error("Invalid types for operator &");
+}
+
+ConstValueNode *bitwise_or(ConstValueNode *left, ConstValueNode *right) {
+	if (left->classId == AutoLang::DefaultClass::intClassId &&
+	    right->classId == AutoLang::DefaultClass::intClassId) {
+		return new ConstValueNode(left->line, left->i | right->i);
+	}
+	throw std::runtime_error("Invalid types for operator |");
+}
+
+ConstValueNode *op_eqeq(ConstValueNode *left, ConstValueNode *right) {
+	switch (left->classId) {
+		case AutoLang::DefaultClass::intClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->i == right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->i == right->f);
+				default:
+					break;
+			}
+			break;
+		case AutoLang::DefaultClass::floatClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->f == right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->f == right->f);
+				default:
+					break;
+			}
+			break;
+		default:
+			break;
+	}
+
+	if (left->classId == AutoLang::DefaultClass::boolClassId &&
+	    right->classId == AutoLang::DefaultClass::boolClassId) {
+		return new ConstValueNode(left->line, left->obj->b == right->obj->b);
+	}
+	if (left->classId == AutoLang::DefaultClass::stringClassId &&
+	    right->classId == AutoLang::DefaultClass::stringClassId) {
+		return new ConstValueNode(left->line,
+		                          *static_cast<std::string *>(left->str) ==
+		                              *static_cast<std::string *>(right->str));
+	}
+
+	throw std::runtime_error("Invalid types for operator ==");
+}
+
+ConstValueNode *op_not_eq(ConstValueNode *left, ConstValueNode *right) {
+	switch (left->classId) {
+		case AutoLang::DefaultClass::intClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->i != right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->i != right->f);
+				default:
+					break;
+			}
+			break;
+		case AutoLang::DefaultClass::floatClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->f != right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->f != right->f);
+				default:
+					break;
+			}
+			break;
+		default:
+			break;
+	}
+
+	if (left->classId == AutoLang::DefaultClass::boolClassId &&
+	    right->classId == AutoLang::DefaultClass::boolClassId) {
+		return new ConstValueNode(left->line, left->obj->b != right->obj->b);
+	}
+	if (left->classId == AutoLang::DefaultClass::stringClassId &&
+	    right->classId == AutoLang::DefaultClass::stringClassId) {
+		return new ConstValueNode(left->line,
+		                          *static_cast<std::string *>(left->str) !=
+		                              *static_cast<std::string *>(right->str));
+	}
+
+	throw std::runtime_error("Invalid types for operator !=");
+}
+
+ConstValueNode *op_greater_than(ConstValueNode *left, ConstValueNode *right) {
+	prepareOperands(left, right);
+	switch (left->classId) {
+		case AutoLang::DefaultClass::intClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->i > right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->i > right->f);
+				default:
+					break;
+			}
+			break;
+		case AutoLang::DefaultClass::floatClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->f > right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->f > right->f);
+				default:
+					break;
+			}
+			break;
+		default:
+			break;
+	}
+	throw std::runtime_error("Invalid types for operator >");
+}
+
+ConstValueNode *op_less_than(ConstValueNode *left, ConstValueNode *right) {
+	prepareOperands(left, right);
+	switch (left->classId) {
+		case AutoLang::DefaultClass::intClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->i < right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->i < right->f);
+				default:
+					break;
+			}
+			break;
+		case AutoLang::DefaultClass::floatClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->f < right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->f < right->f);
+				default:
+					break;
+			}
+			break;
+		default:
+			break;
+	}
+	throw std::runtime_error("Invalid types for operator <");
+}
+
+ConstValueNode *op_greater_than_eq(ConstValueNode *left,
+                                   ConstValueNode *right) {
+	prepareOperands(left, right);
+	switch (left->classId) {
+		case AutoLang::DefaultClass::intClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->i >= right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->i >= right->f);
+				default:
+					break;
+			}
+			break;
+		case AutoLang::DefaultClass::floatClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->f >= right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->f >= right->f);
+				default:
+					break;
+			}
+			break;
+		default:
+			break;
+	}
+	throw std::runtime_error("Invalid types for operator >=");
+}
+
+ConstValueNode *op_less_than_eq(ConstValueNode *left, ConstValueNode *right) {
+	prepareOperands(left, right);
+	switch (left->classId) {
+		case AutoLang::DefaultClass::intClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->i <= right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->i <= right->f);
+				default:
+					break;
+			}
+			break;
+		case AutoLang::DefaultClass::floatClassId:
+			switch (right->classId) {
+				case AutoLang::DefaultClass::intClassId:
+					return new ConstValueNode(left->line, left->f <= right->i);
+				case AutoLang::DefaultClass::floatClassId:
+					return new ConstValueNode(left->line, left->f <= right->f);
+				default:
+					break;
+			}
+			break;
+		default:
+			break;
+	}
+	throw std::runtime_error("Invalid types for operator <=");
+}
+
+void toInt(ConstValueNode *value) {
+	switch (value->classId) {
 		case AutoLang::DefaultClass::intClassId:
 			return;
 		case AutoLang::DefaultClass::floatClassId:
@@ -286,23 +452,14 @@ namespace AutoLang
 			value->classId = AutoLang::DefaultClass::intClassId;
 			value->i = static_cast<int64_t>(value->obj->b);
 			return;
-		// case AutoLang::DefaultClass::stringClassId:
-		// 	value->classId = AutoLang::DefaultClass::intClassId;
-		// 	auto* str = value->str;
-		// 	auto [ptr, ec] = std::from_chars(str->data(), str->data() + str->size(), value->i, 10);
-		// 	if (ec != std::errc()) { delete str; break; }
-		// 	if (ptr != str->data() + str->size()) { delete str; break; }
-		// 	return;
 		default:
 			break;
-		}
-		throw std::runtime_error("");
 	}
+	throw std::runtime_error("Cannot convert to Int");
+}
 
-	void toFloat(ConstValueNode *value)
-	{
-		switch (value->classId)
-		{
+void toFloat(ConstValueNode *value) {
+	switch (value->classId) {
 		case AutoLang::DefaultClass::intClassId:
 			value->classId = AutoLang::DefaultClass::floatClassId;
 			value->f = static_cast<double>(value->i);
@@ -313,23 +470,14 @@ namespace AutoLang
 			value->classId = AutoLang::DefaultClass::floatClassId;
 			value->f = static_cast<double>(value->obj->b);
 			return;
-		// case AutoLang::DefaultClass::stringClassId:
-		// 	value->classId = AutoLang::DefaultClass::floatClassId;
-		// 	auto* str = value->str;
-		// 	auto [ptr, ec] = std::from_chars(str->data(), str->data() + str->size(), value->f);
-		// 	if (ec != std::errc()) { delete str; break; }
-		// 	if (ptr != str->data() + str->size()) { delete str; break; }
-		// 	return;
 		default:
 			break;
-		}
-		throw std::runtime_error("");
 	}
+	throw std::runtime_error("Cannot convert to Float");
+}
 
-	void toBool(ConstValueNode *value)
-	{
-		switch (value->classId)
-		{
+void toBool(ConstValueNode *value) {
+	switch (value->classId) {
 		case AutoLang::DefaultClass::intClassId: {
 			value->classId = AutoLang::DefaultClass::boolClassId;
 			bool b = value->i != 0;
@@ -348,37 +496,31 @@ namespace AutoLang
 			return;
 		default:
 			break;
-		}
-		throw std::runtime_error("");
 	}
+	throw std::runtime_error("Cannot convert to Bool");
+}
 
-	void toString(ConstValueNode *value)
-	{
-		switch (value->classId)
-		{
-		case AutoLang::DefaultClass::intClassId: {
+void toString(ConstValueNode *value) {
+	switch (value->classId) {
+		case AutoLang::DefaultClass::intClassId:
 			value->classId = AutoLang::DefaultClass::stringClassId;
 			value->str = new std::string(std::to_string(value->i));
 			return;
-		}
-		case AutoLang::DefaultClass::floatClassId: {
+		case AutoLang::DefaultClass::floatClassId:
 			value->classId = AutoLang::DefaultClass::stringClassId;
 			value->str = new std::string(std::to_string(value->f));
 			return;
-		}
-		case AutoLang::DefaultClass::boolClassId: {
+		case AutoLang::DefaultClass::boolClassId:
 			value->classId = AutoLang::DefaultClass::stringClassId;
 			value->str = new std::string(value->obj->b ? "true" : "false");
 			return;
-		}
 		case AutoLang::DefaultClass::stringClassId:
 			return;
 		default:
 			break;
-		}
-		throw std::runtime_error("");
 	}
-
+	throw std::runtime_error("Cannot convert to String");
 }
+} // namespace AutoLang
 
 #endif

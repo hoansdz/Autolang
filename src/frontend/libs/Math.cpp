@@ -1,15 +1,15 @@
 #ifndef LIB_MATH_CPP
 #define LIB_MATH_CPP
 
-#include "shared/Type.hpp"
 #include "./Math.hpp"
 #include "frontend/ACompiler.hpp"
+#include "shared/Type.hpp"
 
 namespace AutoLang {
 namespace Libs {
 namespace Math {
 
-void init(AutoLang::ACompiler& compiler) {
+void init(AutoLang::ACompiler &compiler) {
 	auto nativeMap = ANativeMap();
 	nativeMap.reserve(9);
 
@@ -22,10 +22,9 @@ void init(AutoLang::ACompiler& compiler) {
 	nativeMap.emplace("sin", &sin);
 	nativeMap.emplace("cos", &cos);
 	nativeMap.emplace("tan", &tan);
+	nativeMap.emplace("fmod", &fmod);
 
 	compiler.registerFromSource("std/math", false, R"###(
-
-		
 		class Math {
 			@native("round")
 			static func round(value: Float): Int
@@ -36,8 +35,6 @@ void init(AutoLang::ACompiler& compiler) {
 			@native("trunc")
 			static func trunc(value: Float): Int
 			@native("pow")
-			static func pow(base: Int, exp: Int): Int
-			@native("pow")
 			static func pow(base: Float, exp: Float): Float
 			@native("abs")
 			static func abs(value: Int): Int
@@ -45,25 +42,34 @@ void init(AutoLang::ACompiler& compiler) {
 			static func abs(value: Float): Float
 			@native("sin")
 			static func sin(value: Float): Float
+			@native("sin")
+			static func sin(value: Int): Float
 			@native("cos")
 			static func cos(value: Float): Float
+			@native("cos")
+			static func cos(value: Int): Float
 			@native("tan")
 			static func tan(value: Float): Float
+			@native("tan")
+			static func tan(value: Int): Float
+			@native("fmod")
+			static func fmod(num1: Float, num2: Float): Float
 		}
-	)###", std::move(nativeMap));
+	)###",
+	                            std::move(nativeMap));
 }
 
 AObject *abs(NativeFuncInData) {
-	if (size != 1)
-		return nullptr;
 	auto obj = args[0];
 	switch (obj->type) {
 		case AutoLang::DefaultClass::intClassId:
-			return manager.create(static_cast<int64_t>(std::abs(obj->i)));
+			return notifier.createInt(static_cast<int64_t>(std::abs(obj->i)));
 		case AutoLang::DefaultClass::floatClassId:
-			return manager.create(std::abs(obj->f));
-		default:
-			throw std::runtime_error("Cannot run with this type");
+			return notifier.createFloat(std::abs(obj->f));
+		default: {
+			notifier.throwException("Wrong type");
+			return nullptr;
+		}
 	}
 }
 
@@ -78,80 +84,131 @@ AObject *pow(NativeFuncInData) {
 		case AutoLang::DefaultClass::intClassId:
 			switch (obj2->type) {
 				case AutoLang::DefaultClass::intClassId:
-					return manager.create(integer_pow(obj1->i, obj2->i));
+					return notifier.createFloat(std::pow(obj1->i, obj2->i));
 				case AutoLang::DefaultClass::floatClassId:
-					return manager.create(std::pow(obj1->i, obj2->f));
-				default:
-					throw std::runtime_error("Cannot run with this type");
+					return notifier.createFloat(std::pow(obj1->i, obj2->f));
+				default: {
+					notifier.throwException("Wrong type");
+					return nullptr;
+				}
 			}
 		case AutoLang::DefaultClass::floatClassId:
 			switch (obj2->type) {
 				case AutoLang::DefaultClass::intClassId:
-					return manager.create(std::pow(obj1->f, obj2->i));
+					return notifier.createFloat(std::pow(obj1->f, obj2->i));
 				case AutoLang::DefaultClass::floatClassId:
-					return manager.create(std::pow(obj1->f, obj2->f));
-				default:
-					throw std::runtime_error("Cannot run with this type");
+					return notifier.createFloat(std::pow(obj1->f, obj2->f));
+				default: {
+					notifier.throwException("Wrong type");
+					return nullptr;
+				}
 			}
-		default:
-			throw std::runtime_error("Cannot run with this type");
+		default: {
+			notifier.throwException("Wrong type");
+			return nullptr;
+		}
 	}
 }
 
-#define in_num_out_int(name, func)                                             \
-	AObject *name(NativeFuncInData) {                                          \
-		if (size != 1)                                                         \
-			return nullptr;                                                    \
-		auto obj = args[0];                                                    \
-		switch (obj->type) {                                                   \
-			case AutoLang::DefaultClass::intClassId:                           \
-				return manager.create(static_cast<int64_t>(func(obj->i)));     \
-			case AutoLang::DefaultClass::floatClassId:                         \
-				return manager.create(static_cast<int64_t>(func(obj->f)));     \
-			default:                                                           \
-				throw std::runtime_error("Cannot run with this type");         \
-		}                                                                      \
+AObject *round(NativeFuncInData) {
+	auto obj1 = args[0];
+	switch (obj1->type) {
+		case AutoLang::DefaultClass::intClassId:
+			return notifier.createInt(obj1->i);
+		case AutoLang::DefaultClass::floatClassId:
+			return notifier.createInt(std::round(obj1->f));
+		default: {
+			notifier.throwException("Wrong type");
+			return nullptr;
+		}
 	}
+}
 
-#define in_num_out_float(name, func)                                           \
-	AObject *name(NativeFuncInData) {                                          \
-		if (size != 1)                                                         \
-			return nullptr;                                                    \
-		auto obj = args[0];                                                    \
-		switch (obj->type) {                                                   \
-			case AutoLang::DefaultClass::intClassId:                           \
-				return manager.create(static_cast<double>(func(obj->i)));      \
-			case AutoLang::DefaultClass::floatClassId:                         \
-				return manager.create(static_cast<double>(func(obj->f)));      \
-			default:                                                           \
-				throw std::runtime_error("Cannot run with this type");         \
-		}                                                                      \
+AObject *floor(NativeFuncInData) {
+	auto obj1 = args[0];
+	switch (obj1->type) {
+		case AutoLang::DefaultClass::intClassId:
+			return notifier.createInt(obj1->i);
+		case AutoLang::DefaultClass::floatClassId:
+			return notifier.createInt(std::floor(obj1->f));
+		default: {
+			notifier.throwException("Wrong type");
+			return nullptr;
+		}
 	}
+}
 
-in_num_out_int(round, std::round);
-in_num_out_int(floor, std::floor);
-in_num_out_int(ceil, std::ceil);
-in_num_out_float(sin, std::sin);
-in_num_out_float(cos, std::cos);
-in_num_out_float(tan, std::tan);
+AObject *ceil(NativeFuncInData) {
+	auto obj1 = args[0];
+	switch (obj1->type) {
+		case AutoLang::DefaultClass::intClassId:
+			return notifier.createInt(obj1->i);
+		case AutoLang::DefaultClass::floatClassId:
+			return notifier.createInt(std::ceil(obj1->f));
+		default: {
+			notifier.throwException("Wrong type");
+			return nullptr;
+		}
+	}
+}
+
+AObject *sin(NativeFuncInData) {
+	auto obj1 = args[0];
+	switch (obj1->type) {
+		case AutoLang::DefaultClass::intClassId:
+			return notifier.createFloat(std::sin(obj1->i));
+		case AutoLang::DefaultClass::floatClassId:
+			return notifier.createFloat(std::sin(obj1->f));
+		default: {
+			notifier.throwException("Wrong type");
+			return nullptr;
+		}
+	}
+}
+
+AObject *cos(NativeFuncInData) {
+	auto obj1 = args[0];
+	switch (obj1->type) {
+		case AutoLang::DefaultClass::intClassId:
+			return notifier.createFloat(std::cos(obj1->i));
+		case AutoLang::DefaultClass::floatClassId:
+			return notifier.createFloat(std::cos(obj1->f));
+		default: {
+			notifier.throwException("Wrong type");
+			return nullptr;
+		}
+	}
+}
+
+AObject *tan(NativeFuncInData) {
+	auto obj1 = args[0];
+	switch (obj1->type) {
+		case AutoLang::DefaultClass::intClassId:
+			return notifier.createFloat(std::tan(obj1->i));
+		case AutoLang::DefaultClass::floatClassId:
+			return notifier.createFloat(std::tan(obj1->f));
+		default: {
+			notifier.throwException("Wrong type");
+			return nullptr;
+		}
+	}
+}
 
 AObject *trunc(NativeFuncInData) {
-	if (size != 1)
-		return nullptr;
 	auto obj = args[0];
 	switch (obj->type) {
 		case AutoLang::DefaultClass::intClassId:
-			return manager.create(obj->i);
+			return notifier.createInt(obj->i);
 		case AutoLang::DefaultClass::floatClassId:
-			return manager.create(static_cast<int64_t>(std::trunc(obj->f)));
-		default:
-			throw std::runtime_error("Cannot run with this type");
+			return notifier.createInt(static_cast<int64_t>(std::trunc(obj->f)));
+		default: {
+			notifier.throwException("Wrong type");
+			return nullptr;
+		}
 	}
 }
 
 AObject *fmod(NativeFuncInData) {
-	if (size != 2)
-		return nullptr;
 	// base
 	auto obj1 = args[0];
 	// input
@@ -160,24 +217,30 @@ AObject *fmod(NativeFuncInData) {
 		case AutoLang::DefaultClass::intClassId:
 			switch (obj1->type) {
 				case AutoLang::DefaultClass::intClassId:
-					return manager.create(
+					return notifier.createFloat(
 					    static_cast<int64_t>(std::fmod(obj1->i, obj2->i)));
 				case AutoLang::DefaultClass::floatClassId:
-					return manager.create(std::fmod(obj1->i, obj2->f));
-				default:
-					throw std::runtime_error("Cannot run with this type");
+					return notifier.createFloat(std::fmod(obj1->i, obj2->f));
+				default: {
+					notifier.throwException("Wrong type");
+					return nullptr;
+				}
 			}
 		case AutoLang::DefaultClass::floatClassId:
 			switch (obj1->type) {
 				case AutoLang::DefaultClass::intClassId:
-					return manager.create(std::fmod(obj1->f, obj2->i));
+					return notifier.createFloat(std::fmod(obj1->f, obj2->i));
 				case AutoLang::DefaultClass::floatClassId:
-					return manager.create(std::fmod(obj1->f, obj2->f));
-				default:
-					throw std::runtime_error("Cannot run with this type");
+					return notifier.createFloat(std::fmod(obj1->f, obj2->f));
+				default: {
+					notifier.throwException("Wrong type");
+					return nullptr;
+				}
 			}
-		default:
-			throw std::runtime_error("Cannot run with this type");
+		default: {
+			notifier.throwException("Wrong type");
+			return nullptr;
+		}
 	}
 }
 

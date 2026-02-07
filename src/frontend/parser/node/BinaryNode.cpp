@@ -1,15 +1,87 @@
 #ifndef BINARY_NODE_CPP
 #define BINARY_NODE_CPP
 
-#include <iostream>
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include <iostream>
 
 namespace AutoLang {
 
 #define optimizeNode(token, func)                                              \
 	case Lexer::TokenType::token:                                              \
 		return func(l, r);
+
+ExprNode *BinaryNode::leftOpRight(in_func, ConstValueNode *l,
+                                  ConstValueNode *r) {
+	switch (op) {
+		using namespace AutoLang;
+		case Lexer::TokenType::PLUS:
+			return plus(l, r);
+		case Lexer::TokenType::MINUS:
+			return minus(l, r);
+		case Lexer::TokenType::STAR:
+			return mul(l, r);
+		case Lexer::TokenType::SLASH:
+			return divide(l, r);
+		case Lexer::TokenType::PERCENT:
+			return mod(l, r);
+
+		case Lexer::TokenType::AND:
+			return bitwise_and(l, r);
+		case Lexer::TokenType::OR:
+			return bitwise_or(l, r);
+
+		case Lexer::TokenType::EQEQ:
+			return op_eqeq(l, r);
+		case Lexer::TokenType::NOTEQ:
+			return op_not_eq(l, r);
+
+		case Lexer::TokenType::LTE:
+			return op_less_than_eq(l, r);
+		case Lexer::TokenType::GTE:
+			return op_greater_than_eq(l, r);
+		case Lexer::TokenType::LT:
+			return op_less_than(l, r);
+		case Lexer::TokenType::GT:
+			return op_greater_than(l, r);
+		case Lexer::TokenType::NOTEQEQ:
+		case Lexer::TokenType::EQEQEQ: {
+			const bool result = op == Lexer::TokenType::EQEQEQ;
+			switch (l->classId) {
+				case AutoLang::DefaultClass::boolClassId: {
+					if (r->classId == AutoLang::DefaultClass::boolClassId) {
+						const bool equal = (l->obj->b == r->obj->b);
+						return new ConstValueNode(line,
+						                          result ? equal : !equal);
+					} else if (r->classId ==
+					           AutoLang::DefaultClass::nullClassId) {
+						return new ConstValueNode(line, !result);
+					}
+				}
+				case AutoLang::DefaultClass::nullClassId: {
+					if (r->classId == AutoLang::DefaultClass::nullClassId) {
+						return new ConstValueNode(line, result);
+					} else if (r->classId ==
+					           AutoLang::DefaultClass::boolClassId) {
+						return new ConstValueNode(line, !result);
+					}
+					break;
+				}
+			}
+			throw ParserError(line, "What happen");
+		}
+		case Lexer::TokenType::AND_AND:
+			return new ConstValueNode(line, l->obj->b && r->obj->b);
+		case Lexer::TokenType::OR_OR:
+			return new ConstValueNode(line, l->obj->b || r->obj->b);
+		default:
+			throw ParserError(
+			    line, "Cannot use operator '" +
+			              Lexer::Token(0, op).toString(context) + "' between " +
+			              compile.classes[l->classId]->name + " and " +
+			              compile.classes[r->classId]->name);
+	}
+}
 
 ExprNode *BinaryNode::resolve(in_func) {
 	left = static_cast<HasClassIdNode *>(left->resolve(in_data));
@@ -32,75 +104,19 @@ ExprNode *BinaryNode::resolve(in_func) {
 		default:
 			return this;
 	}
-	left = nullptr;
-	right = nullptr;
-	std::unique_ptr<ConstValueNode> managerLeft(l);
-	std::unique_ptr<ConstValueNode> managerRight(r);
-	auto op = this->op;
-	ExprNode::deleteNode(this);
 	try {
-		switch (op) {
-			using namespace AutoLang;
-			case Lexer::TokenType::PLUS:
-				return plus(l, r);
-			case Lexer::TokenType::MINUS:
-				return minus(l, r);
-			case Lexer::TokenType::STAR:
-				return mul(l, r);
-			case Lexer::TokenType::SLASH:
-				return divide(l, r);
-			case Lexer::TokenType::PERCENT:
-				return mod(l, r);
-
-			case Lexer::TokenType::AND:
-				return bitwise_and(l, r);
-			case Lexer::TokenType::OR:
-				return bitwise_or(l, r);
-
-			case Lexer::TokenType::EQEQ:
-				return op_eqeq(l, r);
-			case Lexer::TokenType::NOTEQ:
-				return op_not_eq(l, r);
-
-			case Lexer::TokenType::LTE:
-				return op_less_than_eq(l, r);
-			case Lexer::TokenType::GTE:
-				return op_greater_than_eq(l, r);
-			case Lexer::TokenType::LT:
-				return op_less_than(l, r);
-			case Lexer::TokenType::GT:
-				return op_greater_than(l, r);
-			case Lexer::TokenType::NOTEQEQ:
-			case Lexer::TokenType::EQEQEQ: {
-				const bool result = op == Lexer::TokenType::EQEQEQ;
-				if (l->classId == AutoLang::DefaultClass::boolClassId) {
-					if (r->classId == AutoLang::DefaultClass::boolClassId) {
-						const bool equal = (l->obj->b == r->obj->b);
-						return new ConstValueNode(line,
-						                          result ? equal : !equal);
-					} else if (r->classId ==
-					           AutoLang::DefaultClass::nullClassId)
-						return new ConstValueNode(line, !result);
-				} else if (l->classId == AutoLang::DefaultClass::nullClassId) {
-					if (r->classId == AutoLang::DefaultClass::nullClassId) {
-						return new ConstValueNode(line, result);
-					} else if (r->classId ==
-					           AutoLang::DefaultClass::boolClassId)
-						return new ConstValueNode(line, !result);
-				}
-				throwError("What happen");
-			}
-			case Lexer::TokenType::AND_AND:
-				return new ConstValueNode(line, l->obj->b && r->obj->b);
-			case Lexer::TokenType::OR_OR:
-				return new ConstValueNode(line, l->obj->b || r->obj->b);
-			default:
-				throwError("What happen");
-		}
+		auto value = leftOpRight(in_data, l, r);
+		left = nullptr;
+		right = nullptr;
+		ExprNode::deleteNode(l);
+		ExprNode::deleteNode(r);
+		ExprNode::deleteNode(this);
+		return value;
 	} catch (const std::runtime_error &err) {
-		throwError("Cannot use " + Lexer::Token(0, op).toString(context) +
-		           " operator with " + compile.classes[l->classId]->name +
-		           " and " + compile.classes[r->classId]->name);
+		// throwError("Cannot use " + Lexer::Token(0, op).toString(context) +
+		//            " operator with " + compile.classes[l->classId]->name +
+		//            " and " + compile.classes[r->classId]->name);
+		throw ParserError(line, err.what());
 	}
 }
 
@@ -112,6 +128,15 @@ void BinaryNode::optimize(in_func) {
 	if (right->kind == NodeType::CONST)
 		static_cast<ConstValueNode *>(right)->isLoadPrimary = true;
 	switch (op) {
+		case Lexer::TokenType::IS: {
+			if (left->kind == CLASS_ACCESS) {
+				throwError("Left operand of 'is' must be a value");
+			}
+			if (right->kind != CLASS_ACCESS) {
+				throwError("Right operand of 'is' must be a class name");
+			}
+			return;
+		}
 		case Lexer::TokenType::PLUS:
 		case Lexer::TokenType::MINUS:
 		case Lexer::TokenType::STAR:
@@ -169,8 +194,14 @@ void BinaryNode::optimize(in_func) {
 }
 
 void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	if (left->classId == DefaultClass::nullClassId ||
-	    right->classId == DefaultClass::nullClassId) {
+	if (op == Lexer::TokenType::IS) {
+		left->putBytecodes(in_data, bytecodes);
+		bytecodes.emplace_back(Opcode::IS);
+		put_opcode_u32(bytecodes, right->classId);
+		return;
+	}
+	if ((left->classId == DefaultClass::nullClassId ||
+	     right->classId == DefaultClass::nullClassId)) {
 		if (left->classId != DefaultClass::nullClassId) {
 			left->putBytecodes(in_data, bytecodes);
 		} else {
