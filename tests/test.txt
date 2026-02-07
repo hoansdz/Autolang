@@ -1,4 +1,4 @@
-class T(val name: String) {
+/*class T(val name: String) {
     //static val c: Int = 1
 
     func printName() {
@@ -62,4 +62,33 @@ func hehe() {
 }
 
 testOperator()
-println("WTF")
+println("WTF")*/
+
+class Animal(val name: String) {
+	func sound() {
+
+	}
+}
+
+class Cat extends Animal {
+	constructor() {
+		super("cat")
+	}
+	@override
+	func sound() {
+		println("Meow")
+	}
+}
+
+class Dog extends Animal {
+	constructor() {
+		super("dog")
+	}
+	@override
+	func sound() {
+		println("Go")
+	}
+}
+
+Cat().sound() //Meow
+Dog().sound() //Go

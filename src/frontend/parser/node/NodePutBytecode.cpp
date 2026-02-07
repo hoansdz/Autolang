@@ -225,7 +225,7 @@ void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		operator_plus_case(SLASH_EQUAL, DIVIDE_EQUAL);
 		default: {
 			break;
-			// throwError("Unexpected op "+ Lexer::Token(0,
+			// throwError("Unexpected op "+ Lexer::Token(nullptr, 0,
 			// op).toString(context));
 		}
 	}

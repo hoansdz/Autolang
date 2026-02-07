@@ -11,13 +11,13 @@
 
 inline void printDebug(std::string msg) {
 #ifdef AUTOLANG_DEBUG
-  std::cerr << msg << '\n';
+	std::cerr << msg << '\n';
 #endif
 }
 
 inline void printDebug(long msg) {
 #ifdef AUTOLANG_DEBUG
-  std::cerr << msg << '\n';
+	std::cerr << msg << '\n';
 #endif
 }
 
@@ -30,96 +30,96 @@ struct ParserContext;
 namespace Lexer {
 
 enum TokenType : uint8_t {
-  COMMENT_SINGLE_LINE,
-  // ===== Literals =====
-  NUMBER,     //	Giá trị số: 123, 3.14
-  STRING,     //	Chuỗi: "abc"
-  IDENTIFIER, //	Tên biến, tên hàm: abc, foo
+	COMMENT_SINGLE_LINE,
+	// ===== Literals =====
+	NUMBER,     //	Giá trị số: 123, 3.14
+	STRING,     //	Chuỗi: "abc"
+	IDENTIFIER, //	Tên biến, tên hàm: abc, foo
 
-  START_COMMENT,
+	START_COMMENT,
 
-  // ===== Operators =====
-  PLUS, //	Toán tử cộng: +
-  PLUS_PLUS,
-  MINUS, //	Trừ: -
-  MINUS_MINUS,
-  STAR,        //	Nhân: *
-  SLASH,       //	Chia: /
-  PERCENT,     //	Modulo: %
-  EQUAL,       //	Gán: =
-  PLUS_EQUAL,  //	Cộng gán: +=
-  MINUS_EQUAL, //	Trừ gán: -=
-  STAR_EQUAL,  //	Nhân gán: *=
-  SLASH_EQUAL, //	Chia gán: /=
-  PERCENT_EQUAL,
+	// ===== Operators =====
+	PLUS, //	Toán tử cộng: +
+	PLUS_PLUS,
+	MINUS, //	Trừ: -
+	MINUS_MINUS,
+	STAR,        //	Nhân: *
+	SLASH,       //	Chia: /
+	PERCENT,     //	Modulo: %
+	EQUAL,       //	Gán: =
+	PLUS_EQUAL,  //	Cộng gán: +=
+	MINUS_EQUAL, //	Trừ gán: -=
+	STAR_EQUAL,  //	Nhân gán: *=
+	SLASH_EQUAL, //	Chia gán: /=
+	PERCENT_EQUAL,
 
-  // ===== Comparisons =====
-  EQEQ,    //	So sánh bằng: ==
-  NOTEQ,   //	Không bằng: !=
-  EQEQEQ,  //	So sánh bằng: ===
-  NOTEQEQ, //	Không bằng: !==
-  LT,      //	Nhỏ hơn: <
-  GT,      //	Lớn hơn: >
-  LTE,     //	Không lớn hơn: <=
-  GTE,     //	Không nhỏ hơn: >=
+	// ===== Comparisons =====
+	EQEQ,    //	So sánh bằng: ==
+	NOTEQ,   //	Không bằng: !=
+	EQEQEQ,  //	So sánh bằng: ===
+	NOTEQEQ, //	Không bằng: !==
+	LT,      //	Nhỏ hơn: <
+	GT,      //	Lớn hơn: >
+	LTE,     //	Không lớn hơn: <=
+	GTE,     //	Không nhỏ hơn: >=
 
-  // ===== Logical operators =====
-  AND_AND, //	Và logic: and
-  OR_OR,   //	Hoặc logic: or
+	// ===== Logical operators =====
+	AND_AND, //	Và logic: and
+	OR_OR,   //	Hoặc logic: or
 
-  // ===== Delimiters =====
-  LPAREN,    //	Mở ngoặc tròn: (
-  RPAREN,    //	Đóng ngoặc tròn: )
-  LBRACE,    //	Mở ngoặc nhọn: {
-  RBRACE,    //	Đóng ngoặc nhọn: }
-  LBRACKET,  //	Mở ngoặc vuông: [
-  RBRACKET,  //	Đóng ngoặc vuông: ]
-  COMMA,     //	Dấu phẩy: ,
-  DOT,       //	Dấu chấm: .
-  QMARK_DOT, //    Dấu ?.
-  DOT_DOT,
-  SEMICOLON, //	Dấu chấm phẩy: ;
-  COLON,     //	Dấu hai chấm: :
-  QMARK,     //   Dấu hỏi chấm
-  QMARK_QMARK,
-  EXMARK,    //   Dấu chấm than
-  AT_SIGN, // @
+	// ===== Delimiters =====
+	LPAREN,    //	Mở ngoặc tròn: (
+	RPAREN,    //	Đóng ngoặc tròn: )
+	LBRACE,    //	Mở ngoặc nhọn: {
+	RBRACE,    //	Đóng ngoặc nhọn: }
+	LBRACKET,  //	Mở ngoặc vuông: [
+	RBRACKET,  //	Đóng ngoặc vuông: ]
+	COMMA,     //	Dấu phẩy: ,
+	DOT,       //	Dấu chấm: .
+	QMARK_DOT, //    Dấu ?.
+	DOT_DOT,
+	SEMICOLON, //	Dấu chấm phẩy: ;
+	COLON,     //	Dấu hai chấm: :
+	QMARK,     //   Dấu hỏi chấm
+	QMARK_QMARK,
+	EXMARK,  //   Dấu chấm than
+	AT_SIGN, // @
 
-  // ===== Keywords =====
-  IF,       //	Câu lệnh điều kiện: if
-  ELSE,     //	Nhánh else
-  WHILE,    //	Vòng lặp while
-  FOR,      //	Vòng lặp for
-  FUNC,     //	Định nghĩa hàm: func / def
-  RETURN,   //	Trả giá trị về: return
-  VAL,      //	Khai báo biến bất biến: val
-  VAR,      //	Khai báo biến thay đổi: var
-  BREAK,    //	Dừng vòng lặp: break
-  CONTINUE, //	Bỏ qua vòng lặp hiện tại: continue
-  NOT,
-  AND,
-  OR,
-  IN,
-  PUBLIC,
-  PRIVATE,
-  PROTECTED,
-  CLASS,
-  CONSTRUCTOR,
-  STATIC,
-  TRY,
-  CATCH,
-  THROW,
-  EXTENDS,
-  NATIVE,
-  OVERRIDE,
-  NO_OVERRIDE,
-  NO_CONSTRUCTOR,
-  IMPORT,
-  IS,
+	// ===== Keywords =====
+	IF,       //	Câu lệnh điều kiện: if
+	ELSE,     //	Nhánh else
+	WHILE,    //	Vòng lặp while
+	FOR,      //	Vòng lặp for
+	FUNC,     //	Định nghĩa hàm: func / def
+	RETURN,   //	Trả giá trị về: return
+	VAL,      //	Khai báo biến bất biến: val
+	VAR,      //	Khai báo biến thay đổi: var
+	BREAK,    //	Dừng vòng lặp: break
+	CONTINUE, //	Bỏ qua vòng lặp hiện tại: continue
+	NOT,
+	AND,
+	OR,
+	IN,
+	PUBLIC,
+	PRIVATE,
+	PROTECTED,
+	CLASS,
+	CONSTRUCTOR,
+	STATIC,
+	TRY,
+	CATCH,
+	THROW,
+	EXTENDS,
+	NATIVE,
+	OVERRIDE,
+	NO_OVERRIDE,
+	NO_CONSTRUCTOR,
+	IMPORT,
+	IS,
 
-  // ===== Special =====
-  END_OF_FILE, //	Kết thúc file
-  INVALID      //	Token không hợp lệ
+	// ===== Special =====
+	END_OF_FILE, //	Kết thúc file
+	INVALID      //	Token không hợp lệ
 };
 
 static const HashMap<std::string, TokenType> CAST = {
@@ -146,13 +146,13 @@ static const HashMap<std::string, TokenType> CAST = {
     {"public", TokenType::PUBLIC},
     {"protected", TokenType::PROTECTED},
     {"constructor", TokenType::CONSTRUCTOR},
-	{"extends", TokenType::EXTENDS},
-	{"native", TokenType::NATIVE},
-	{"override", TokenType::OVERRIDE},
-	{"no_override", TokenType::NO_OVERRIDE},
-	{"no_constructor", TokenType::NO_CONSTRUCTOR},
-	{"import", TokenType::IMPORT},
-	{"is", TokenType::IS},
+    {"extends", TokenType::EXTENDS},
+    {"native", TokenType::NATIVE},
+    {"override", TokenType::OVERRIDE},
+    {"no_override", TokenType::NO_OVERRIDE},
+    {"no_constructor", TokenType::NO_CONSTRUCTOR},
+    {"import", TokenType::IMPORT},
+    {"is", TokenType::IS},
 
     {"/*", TokenType::START_COMMENT},
     {"&", TokenType::AND},
@@ -189,63 +189,72 @@ static const HashMap<std::string, TokenType> CAST = {
 };
 
 struct Token {
-  uint32_t line;
-  uint32_t indexData;
-  TokenType type;
-  Token() {}
-  Token(uint32_t line, TokenType type, uint32_t indexData)
-      : line(line), indexData(indexData), type(type) {}
-  Token(uint32_t line, TokenType type) : line(line), indexData(0), type(type) {}
-  std::string toString(ParserContext &context);
+	AVMReadFileMode *mode;
+	uint32_t line;
+	uint32_t indexData;
+	TokenType type;
+	Token() {}
+	Token(AVMReadFileMode *mode, uint32_t line, TokenType type, uint32_t indexData)
+	    : mode(mode), line(line), indexData(indexData), type(type) {}
+	Token(AVMReadFileMode *mode, uint32_t line, TokenType type)
+	    : mode(mode), line(line), indexData(0), type(type) {}
+	std::string toString(ParserContext &context);
 };
 
 class LexerError : std::exception {
-public:
-  uint32_t line;
-  std::string message;
-  LexerError(uint32_t line, std::string msg)
-      : line(line), message(std::move(msg)) {}
-  const char *what() const noexcept override { return message.c_str(); }
+  public:
+	uint32_t line;
+	std::string message;
+	LexerError(uint32_t line, std::string msg)
+	    : line(line), message(std::move(msg)) {}
+	const char *what() const noexcept override { return message.c_str(); }
 };
 
 struct Estimate {
-  uint32_t declaration = 0;
-  uint32_t classes = 0;
-  uint32_t functions = 0;
-  uint32_t constructorNode = 0;
-  uint32_t ifNode = 0;
-  uint32_t whileNode = 0;
-  uint32_t returnNode = 0;
-  uint32_t setNode = 0;
-  uint32_t binaryNode = 0;
-  uint32_t tryCatchNode = 0;
-  uint32_t throwNode = 0;
+	uint32_t declaration = 0;
+	uint32_t classes = 0;
+	uint32_t functions = 0;
+	uint32_t constructorNode = 0;
+	uint32_t ifNode = 0;
+	uint32_t whileNode = 0;
+	uint32_t returnNode = 0;
+	uint32_t setNode = 0;
+	uint32_t binaryNode = 0;
+	uint32_t tryCatchNode = 0;
+	uint32_t throwNode = 0;
 };
 
 struct Context {
-  ParserContext *mainContext;
-  const char *line;
-  size_t lineSize;
-  size_t nextLinePosition = 0;
-  size_t totalSize;
-  uint32_t linePos;
-  uint32_t pos;
-  uint32_t absolutePos;
-  std::vector<char> bracketStack;
-  std::vector<Token> tokens;
+	ParserContext *mainContext;
+	const char *line;
+	size_t lineSize;
+	size_t nextLinePosition = 0;
+	size_t totalSize;
+	uint32_t linePos;
+	uint32_t pos;
+	uint32_t absolutePos;
+	std::vector<char> bracketStack;
+	std::vector<Token> tokens;
+	AVMReadFileMode *mode;
 
-  bool hasError = false;
+	bool hasError = false;
 
-  Estimate estimate;
-  Context() { tokens.reserve(256); bracketStack.reserve(16); }
-  inline void refresh() { bracketStack.clear(); tokens.clear(); hasError = false; }
+	Estimate estimate;
+	Context() {
+		tokens.reserve(256);
+		bracketStack.reserve(16);
+	}
+	inline void refresh() {
+		bracketStack.clear();
+		tokens.clear();
+		hasError = false;
+	}
 };
 
 inline bool nextLine(Context &context, const char *lines, uint32_t &i);
 inline bool isOperator(char chr);
 inline bool isEndOfLine(Context &context, uint32_t &i);
-void load(ParserContext *mainContext, AVMReadFileMode &mode,
-                        Context &context);
+void load(ParserContext *mainContext, AVMReadFileMode &mode, Context &context);
 void loadQuote(Context &context, std::vector<Token> &tokens,
                AVMReadFileMode &mode, char quote, uint32_t &i);
 std::string loadIdentifier(Context &context, uint32_t &i);

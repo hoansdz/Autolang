@@ -147,7 +147,7 @@ initial:;
 		if (!context.canBreakContinue)
 			throw ParserError(
 			    token->line,
-			    "'" + Lexer::Token(0, token->type).toString(context) +
+			    "'" + Lexer::Token(nullptr, 0, token->type).toString(context) +
 			        "' only allowed inside a loop");
 		return new SkipNode(token->type, token->line);
 	}
@@ -430,7 +430,7 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 		// 	}
 		// }
 		// left.reset(binaryNode.release());
-		// std::cout<<"op "<<binaryNode<<":"<<Lexer::Token(0, binaryNode->op,
+		// std::cout<<"op "<<binaryNode<<":"<<Lexer::Token(nullptr, 0, binaryNode->op,
 		// "").toString()<<'\n';
 	}
 	--i;
@@ -585,7 +585,7 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 			--i;
 			throw ParserError(firstLine,
 			                  "Expected value after '" +
-			                      Lexer::Token(0, op).toString(context) + "'");
+			                      Lexer::Token(nullptr, 0, op).toString(context) + "'");
 		}
 		return new UnaryNode(
 		    token->line,

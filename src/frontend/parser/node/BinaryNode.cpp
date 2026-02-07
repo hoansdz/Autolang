@@ -77,7 +77,7 @@ ExprNode *BinaryNode::leftOpRight(in_func, ConstValueNode *l,
 		default:
 			throw ParserError(
 			    line, "Cannot use operator '" +
-			              Lexer::Token(0, op).toString(context) + "' between " +
+			              Lexer::Token(nullptr, 0, op).toString(context) + "' between " +
 			              compile.classes[l->classId]->name + " and " +
 			              compile.classes[r->classId]->name);
 	}
@@ -113,7 +113,7 @@ ExprNode *BinaryNode::resolve(in_func) {
 		ExprNode::deleteNode(this);
 		return value;
 	} catch (const std::runtime_error &err) {
-		// throwError("Cannot use " + Lexer::Token(0, op).toString(context) +
+		// throwError("Cannot use " + Lexer::Token(nullptr, 0, op).toString(context) +
 		//            " operator with " + compile.classes[l->classId]->name +
 		//            " and " + compile.classes[r->classId]->name);
 		throw ParserError(line, err.what());
@@ -151,7 +151,7 @@ void BinaryNode::optimize(in_func) {
 			}
 			if (left->isNullable() || right->isNullable())
 				throwError("Cannot use operator '" +
-				           Lexer::Token(0, op).toString(context) +
+				           Lexer::Token(nullptr, 0, op).toString(context) +
 				           "' with nullable value");
 			break;
 		}
@@ -180,7 +180,7 @@ void BinaryNode::optimize(in_func) {
 		default:
 			if (left->isNullable() || right->isNullable())
 				throwError("Cannot use operator '" +
-				           Lexer::Token(0, op).toString(context) +
+				           Lexer::Token(nullptr, 0, op).toString(context) +
 				           "' with nullable value");
 			break;
 	}
@@ -188,7 +188,7 @@ void BinaryNode::optimize(in_func) {
 	                          static_cast<uint8_t>(op), classId))
 		return;
 	throwError(std::string("Cannot use '") +
-	           Lexer::Token(0, op).toString(context) + "' between " +
+	           Lexer::Token(nullptr, 0, op).toString(context) + "' between " +
 	           compile.classes[left->classId]->name + " and " +
 	           compile.classes[right->classId]->name);
 }
@@ -276,7 +276,7 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		default:
 			// std::cout<<this<<'\n';
 			throwError(std::string("Cannot find operator '") +
-			           Lexer::Token(0, op).toString(context) + "'");
+			           Lexer::Token(nullptr, 0, op).toString(context) + "'");
 	}
 }
 

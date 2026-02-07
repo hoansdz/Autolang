@@ -57,7 +57,7 @@ void ACompiler::generateBytecodes() {
 	switch (state) {
 		case CompilerState::BYTECODE_READY:
 			throw std::logic_error("Bytecode already generated. Call run() to "
-			                       "execute instead of generate again.");
+			                       "execute instead of generating again.");
 			break;
 		case CompilerState::ERROR:
 			throw std::logic_error("Compiler is in ERROR state. Call refresh() "

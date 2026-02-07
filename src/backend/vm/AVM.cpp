@@ -636,11 +636,11 @@ resumeCallFrame:;
 			}
 		}
 	endFunction:;
+		if (callFrames.getSize() == 1)
+			return;
 		stackAllocator.clear(data.manager, currentCallFrame->fromStackAllocator,
 		                     stackAllocator.top +
 		                         currentCallFrame->func->maxDeclaration - 1);
-		if (callFrames.getSize() == 1)
-			return;
 		callFrames.pop();
 		currentCallFrame = callFrames.top();
 		stackAllocator.freeTo(currentCallFrame->fromStackAllocator);
