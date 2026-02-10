@@ -53,7 +53,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		throw ParserError(firstLine, "Expected name but not found");
 	}
 	std::string &name = context.lexerString[token->indexData];
-	if (name == "super")
+	if (token->indexData == lexerIdSuper)
 		throw ParserError(firstLine, "Super is a keyword");
 	// Arguments
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||

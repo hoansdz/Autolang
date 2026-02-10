@@ -9,6 +9,7 @@
 #include "frontend/structure/NonReallocatePool.hpp"
 #include "shared/FixedPool.hpp"
 #include <vector>
+#include <set>
 
 namespace AutoLang {
 
@@ -31,10 +32,12 @@ enum AnnotationFlags : uint32_t {
 	AN_NO_CONSTRUCTOR = 1u << 3,
 };
 
-struct SourceChunk {
-	uint32_t end;
-	AVMReadFileMode mode;
-};
+struct LibraryData;
+
+constexpr LexerStringId lexerIdSuper = 0;
+constexpr LexerStringId lexerIdInt = 1;
+constexpr LexerStringId lexerIdFloat = 2;
+constexpr LexerStringId lexerIdBool = 3;
 
 struct ParserContext {
 	// Optimize ram because reuse std::string instead of new std::string in
@@ -42,14 +45,16 @@ struct ParserContext {
 	std::vector<std::string> lexerString;
 	HashMap<std::string, LexerStringId> lexerStringMap;
 
+	Lexer::Context* mainLexerContext;
+	std::set<uint32_t> importOffset;
+	HashMap<std::string, LibraryData*> importMap;
+	std::vector<LibraryData*> loadingLibs;
+
 	HashMap<std::tuple<ClassId, ClassId, uint8_t>, ClassId,
 	                             PairHash>
 	    binaryOpResultType;
 	// Parse file to tokens
 	std::vector<Lexer::Token> tokens;
-	std::vector<SourceChunk> sources;
-	uint32_t sourcePos;
-	SourceChunk* currentChunk = nullptr;
 	// Keywords , example public, private, static
 	uint32_t modifierflags = 0;
 	// Anotations
@@ -92,7 +97,7 @@ struct ParserContext {
 	uint32_t mainFunctionId;
 	uint32_t currentFunctionId;
 
-	static AVMReadFileMode *mode;
+	static LibraryData *mode;
 
 	HashMap<int64_t, Offset> constIntMap;
 	HashMap<double, Offset> constFloatMap;

@@ -3,14 +3,25 @@
 
 #include "frontend/parser/ParserContext.hpp"
 #include "frontend/parser/Debugger.hpp"
+#include "frontend/ACompiler.hpp"
 
 namespace AutoLang {
 
-AVMReadFileMode *ParserContext::mode = nullptr;
+LibraryData *ParserContext::mode = nullptr;
 
 void ParserContext::init(CompiledProgram &compile) {
 	gotoFunction(compile.mainFunctionId);
 	mainFunctionId = compile.mainFunctionId;
+	
+	lexerString.emplace_back("super");
+	lexerString.emplace_back("Int");
+	lexerString.emplace_back("Float");
+	lexerString.emplace_back("Bool");
+
+	lexerStringMap["super"] = lexerIdSuper;
+	lexerStringMap["Int"] = lexerIdInt;
+	lexerStringMap["Float"] = lexerIdFloat;
+	lexerStringMap["Bool"] = lexerIdBool;
 
 	constValue["null"] = std::pair(DefaultClass::nullObject, 0);
 	constValue["true"] = std::pair(DefaultClass::trueObject, 1);
@@ -141,9 +152,9 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	gotoFunction(compile.mainFunctionId);
 	mainFunctionId = compile.mainFunctionId;
 
+	loadingLibs.clear();
 	hasError = false;
 	tokens.clear();
-	sources.clear();
 
 	for (auto &[_, funcInfo] : functionInfo) {
 		funcInfo.block.refresh();

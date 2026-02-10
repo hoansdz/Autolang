@@ -8,7 +8,18 @@
 
 namespace AutoLang {
 
-void ACompiler::registerFromSource(SourceChunk &source) {
+LibraryData *ACompiler::requestImport(const char *path) {
+	auto it = builtInLibrariesMap.find(std::string(path));
+	if (it != builtInLibrariesMap.end()) {
+		return builtInLibraries[it->second];
+	}
+	// lib = new LibraryData(path, 0);
+	// 		context.importMap[path] = lib;
+	// 		lib->rawData = data;
+	return nullptr;
+}
+
+void ACompiler::lexerTextToToken(LibraryData *library) {
 	switch (state) {
 		case CompilerState::BYTECODE_READY:
 			throw std::logic_error("Bytecode already generated. Call run() to "
@@ -22,35 +33,163 @@ void ACompiler::registerFromSource(SourceChunk &source) {
 	}
 	auto &context = parserContext;
 	auto &compile = vm.data;
-	context.mode = &source.mode;
 
-	lexerData(in_data, source.mode, lexerContext);
+	loadSource(library);
+	library->rawData.clear();
+}
+
+void ACompiler::loadSource(LibraryData *library) {
+	auto &context = parserContext;
+	auto &compile = vm.data;
+	lexerData(in_data, *this, library);
 	// for (auto& token : lexerContext.tokens) {
 	// 	std::cout<<token.toString(context)<<" ";
 	// }
-	source.end = lexerContext.tokens.size();
 	// std::cerr<<"h "<<source.mode.path<<": "<<source.end<<"\n";
-	if (lexerContext.hasError) {
+	if (library->lexerContext.hasError) {
 		state = CompilerState::ERROR;
+		context.importOffset.clear();
 		return;
 	}
+	for (auto &pos : context.importOffset) {
+		auto lib = loadImport(in_data, library->lexerContext.tokens, *this, (size_t)pos);
+		for (auto &[key, l] : lib->dependencies) {
+			library->dependencies[key] = l;
+		}
+		library->dependencies[lib->path] = lib;
+	}
+	context.importOffset.clear();
+
 	state = CompilerState::ANALYZED;
 }
 
-void ACompiler::registerFromSource(const char *path, bool allowImportOtherFile,
+void ACompiler::registerFromSource(const char *path, bool autoImport,
                                    const ANativeMap &nativeFuncMap) {
-	parserContext.sources.push_back(SourceChunk{
-	    0, {path, nullptr, 0, allowImportOtherFile, nativeFuncMap}});
-	registerFromSource(parserContext.sources.back());
+	uint32_t flags = LibraryFlags::IS_BUILT_IN;
+	if (autoImport) {
+		flags |= LibraryFlags::AUTO_IMPORT;
+	}
+	uint32_t libraryOffset = builtInLibraries.size();
+	auto lib = new LibraryData(path, flags, nativeFuncMap);
+	builtInLibraries.push_back(lib);
+	builtInLibrariesMap[path] = libraryOffset;
+	Lexer::loadFile(&parserContext, lib);
+	if (autoImport) {
+		autoImportMap[path] = lib;
+	}
 }
-void ACompiler::registerFromSource(const char *path, bool allowImportOtherFile,
-                                   const char *data,
+
+void ACompiler::registerFromSource(const char *path, const char *data,
+                                   bool autoImport,
                                    const ANativeMap &nativeFuncMap) {
-	parserContext.sources.push_back(
-	    SourceChunk{0,
-	                {path, data, static_cast<uint32_t>(std::strlen(data)),
-	                 allowImportOtherFile, nativeFuncMap}});
-	registerFromSource(parserContext.sources.back());
+
+	uint32_t flags = LibraryFlags::IS_BUILT_IN;
+	if (autoImport) {
+		flags |= LibraryFlags::AUTO_IMPORT;
+	}
+	uint32_t libraryOffset = builtInLibraries.size();
+	auto lib = new LibraryData(path, flags, nativeFuncMap);
+	lib->rawData = data;
+	builtInLibraries.push_back(lib);
+	builtInLibrariesMap[path] = libraryOffset;
+	if (autoImport) {
+		autoImportMap[path] = lib;
+	}
+}
+
+void ACompiler::loadBuiltInFunctions() {
+	for (auto *library : builtInLibraries) {
+		if (!library->lexerContext.tokens.empty())
+			continue;
+		lexerTextToToken(library);
+	}
+	parserContext.importMap.clear();
+}
+
+void ACompiler::loadMainSource(const char *path,
+                               const ANativeMap &nativeFuncMap) {
+	if (!loadedBuiltIn) {
+		loadBuiltInFunctions();
+	}
+	LibraryData *library = new LibraryData(path, 0, nativeFuncMap);
+	generatedLibraries.push_back(library);
+	Lexer::loadFile(&parserContext, library);
+	loadMainSource(library);
+}
+
+void ACompiler::loadMainSource(const char *path, const char *data,
+                               const ANativeMap &nativeFuncMap) {
+	if (!loadedBuiltIn) {
+		loadBuiltInFunctions();
+	}
+	LibraryData *library = new LibraryData(path, 0, nativeFuncMap);
+	library->rawData = data;
+	generatedLibraries.push_back(library);
+	loadMainSource(library);
+}
+
+void ACompiler::loadMainSource(LibraryData *library) {
+	auto &context = parserContext;
+	auto &compile = vm.data;
+
+	mainSource = library;
+
+	std::string autoImportStr;
+	for (auto &[k, lib] : autoImportMap) {
+		autoImportStr += "@import(\"" + lib->path + "\")\n";
+		// library->dependencies[k] = lib;
+		// library->lexerContext.tokens.insert(
+		//     library->lexerContext.tokens.begin(),
+		//     lib->lexerContext.tokens.begin(), lib->lexerContext.tokens.end());
+		// for (auto &[key, l] : lib->dependencies) {
+		// 	library->dependencies[key] = l;
+		// }
+	}
+	library->rawData = autoImportStr + library->rawData;
+
+	lexerData(in_data, *this, library);
+
+	if (mainSource->lexerContext.hasError) {
+		state = CompilerState::ERROR;
+		context.importOffset.clear();
+		return;
+	}
+
+	library->lexerContext.tokens.pop_back();
+
+	for (auto &pos : context.importOffset) {
+		auto lib = loadImport(in_data, library->lexerContext.tokens, *this, (size_t)pos);
+		for (auto &[key, l] : lib->dependencies) {
+			library->dependencies[key] = l;
+		}
+		library->dependencies[lib->path] = lib;
+	}
+	context.importOffset.clear();
+
+	auto &newEstimate = mainSource->lexerContext.estimate;
+
+	for (auto &[name, lib] : library->dependencies) {
+		const auto &libEstimate = lib->lexerContext.estimate;
+
+		newEstimate.declaration += libEstimate.declaration;
+		newEstimate.classes += libEstimate.classes;
+		newEstimate.functions += libEstimate.functions;
+		newEstimate.constructorNode += libEstimate.constructorNode;
+		newEstimate.ifNode += libEstimate.ifNode;
+		newEstimate.whileNode += libEstimate.whileNode;
+		newEstimate.returnNode += libEstimate.returnNode;
+		newEstimate.setNode += libEstimate.setNode;
+		newEstimate.binaryNode += libEstimate.binaryNode;
+		newEstimate.tryCatchNode += libEstimate.tryCatchNode;
+		newEstimate.throwNode += libEstimate.throwNode;
+	}
+
+	context.mode = library;
+	context.tokens = mainSource->lexerContext.tokens;
+	context.mainLexerContext = &library->lexerContext;
+	context.loadingLibs.reserve(8);
+	context.loadingLibs.push_back(library);
+	loadedMainSource = true;
 }
 
 void ACompiler::generateBytecodes() {
@@ -69,34 +208,21 @@ void ACompiler::generateBytecodes() {
 			break;
 	}
 
-	if (parserContext.sources.empty()) {
-		state = CompilerState::BYTECODE_READY;
-		return;
+	if (!loadedMainSource) {
+		throw std::logic_error(
+		    "No main source generated. Compile main source before generating.");
 	}
 
 	auto &context = parserContext;
 	auto &compile = vm.data;
 
-	context.tokens = std::move(lexerContext.tokens);
-
-	estimate(in_data, lexerContext);
+	estimate(in_data, mainSource->lexerContext);
 
 	auto startParserTime = std::chrono::high_resolution_clock::now();
-	context.sourcePos = 0;
 	context.currentTokenPos = 0;
-	ParserContext::mode = &context.sources[0].mode;
 	size_t &i = context.currentTokenPos;
 	while (i < context.tokens.size()) {
 		try {
-			if (context.sources[context.sourcePos].end <=
-			    context.currentTokenPos) {
-				++context.sourcePos;
-				while (context.sources[context.sourcePos].end <=
-				       context.currentTokenPos) {
-					++context.sourcePos;
-				}
-				ParserContext::mode = &context.sources[context.sourcePos].mode;
-			}
 			auto node = loadLine(in_data, i);
 			ensureEndline(in_data, i);
 			++i;
@@ -211,8 +337,8 @@ void ACompiler::generateBytecodes() {
 			} else {
 				for (auto &constructor : classInfo->secondaryConstructor) {
 					auto func = compile.functions[constructor->funcId];
-					// Put initial bytecodes, example val a = 5 => SetNode a and
-					// value 5
+					// Put initial bytecodes, example val a = 5 => SetNode a
+					// and value 5
 					//  node->body.optimize(in_data);
 					node->body.resolve(in_data);
 					node->body.putBytecodes(in_data, func->bytecodes);
@@ -293,12 +419,12 @@ void ACompiler::generateBytecodes() {
 		                 resolveTime - parserTime)
 		                 .count()
 		          << " ms" << '\n';
-	} catch (const std::exception &err) {
-		context.hasError = true;
-		std::cout << "Unexpected exception: " << err.what() << '\n';
 	} catch (const ParserError &err) {
 		context.hasError = true;
 		context.logMessage(err.line, err.message);
+	} catch (const std::exception &err) {
+		context.hasError = true;
+		std::cout << "Unexpected exception: " << err.what() << '\n';
 	}
 
 	if (context.hasError) {
@@ -314,8 +440,8 @@ void ACompiler::run() {
 		case CompilerState::BYTECODE_READY:
 			break;
 		case CompilerState::ERROR:
-			throw std::logic_error(
-			    "Compiler is in ERROR state. Call refresh() before running.");
+			throw std::logic_error("Compiler is in ERROR state. Call "
+			                       "refresh() before running.");
 
 		case CompilerState::READY:
 			throw std::logic_error("Bytecode not generated. Call "
@@ -332,7 +458,7 @@ void ACompiler::run() {
 
 void ACompiler::refresh() {
 	parserContext.refresh(vm.data);
-	lexerContext.refresh();
+	mainSource->lexerContext.refresh();
 	vm.data.refresh();
 	// AutoLang::DefaultClass::init(vm.data);
 	AutoLang::Libs::stdlib::init(*this);
@@ -341,7 +467,8 @@ void ACompiler::refresh() {
 	vm.data.mainFunctionId = vm.data.registerFunction(
 	    nullptr, ".main", nullptr, 0,
 	    static_cast<uint32_t>(FunctionFlags::FUNC_IS_STATIC));
-	new (&vm.data.functions[vm.data.mainFunctionId]->bytecodes) std::vector<uint8_t>();
+	new (&vm.data.functions[vm.data.mainFunctionId]->bytecodes)
+	    std::vector<uint8_t>();
 	state = CompilerState::READY;
 }
 
@@ -351,7 +478,8 @@ ACompiler::ACompiler() {
 	vm.data.mainFunctionId = vm.data.registerFunction(
 	    nullptr, ".main", nullptr, 0,
 	    static_cast<uint32_t>(FunctionFlags::FUNC_IS_STATIC));
-	new (&vm.data.functions[vm.data.mainFunctionId]->bytecodes) std::vector<uint8_t>();
+	new (&vm.data.functions[vm.data.mainFunctionId]->bytecodes)
+	    std::vector<uint8_t>();
 	AutoLang::Libs::stdlib::init(*this);
 	AutoLang::DefaultClass::init(*this);
 	AutoLang::DefaultFunction::init(*this);
@@ -375,7 +503,7 @@ ACompiler::~ACompiler() {
 	auto &compile = vm.data;
 	freeData(in_data);
 	parserContext.refresh(vm.data);
-	lexerContext.refresh();
+	mainSource->lexerContext.refresh();
 	vm.data.refresh();
 }
 

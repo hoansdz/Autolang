@@ -100,7 +100,7 @@ ExprNode *UnaryNode::resolve(in_func) {
 					break;
 			}
 			throwError("Cannot find operator '" +
-			           Lexer::Token(nullptr, 0, op).toString(context) + "' with class " +
+			           Lexer::Token(0, op).toString(context) + "' with class " +
 			           compile.classes[value->classId]->name);
 		}
 		case NodeType::CAST: {
@@ -149,7 +149,7 @@ ExprNode *UnaryNode::resolve(in_func) {
 					break;
 			}
 			throwError("Cannot find operator '" +
-			           Lexer::Token(nullptr, 0, op).toString(context) + "' with class " +
+			           Lexer::Token(0, op).toString(context) + "' with class " +
 			           compile.classes[value->classId]->name);
 		}
 		default: {
@@ -437,7 +437,7 @@ void SetNode::optimize(in_func) {
 
 	if (value->isNullable() && op != Lexer::TokenType::EQUAL) {
 		throwError("Cannot use operator '" +
-		           Lexer::Token(nullptr, 0, op).toString(context) +
+		           Lexer::Token(0, op).toString(context) +
 		           "' with nullable variables");
 	}
 
@@ -506,7 +506,7 @@ void SetNode::optimize(in_func) {
 				if (op != Lexer::TokenType::EQUAL) {
 					throwError(detachNode->declaration->name +
 					           " cannot use operator" +
-					           Lexer::Token(nullptr, 0, op).toString(context) +
+					           Lexer::Token(0, op).toString(context) +
 					           " with null value");
 				}
 				return;
@@ -556,7 +556,7 @@ void SetNode::optimize(in_func) {
 				if (op != Lexer::TokenType::EQUAL) {
 					throwError(node->declaration->name +
 					           " cannot use operator" +
-					           Lexer::Token(nullptr, 0, op).toString(context) +
+					           Lexer::Token(0, op).toString(context) +
 					           " with null value");
 				}
 				return;
@@ -635,7 +635,7 @@ void SetNode::optimize(in_func) {
 						return;
 					break;
 			}
-			throwError("Cannot use " + Lexer::Token(nullptr, 0, op).toString(context) +
+			throwError("Cannot use " + Lexer::Token(0, op).toString(context) +
 			           " operator with " +
 			           compile.classes[detach->classId]->name + " and " +
 			           compile.classes[value->classId]->name);

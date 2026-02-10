@@ -90,14 +90,6 @@ enum Opcode : uint8_t {
 template <typename K, typename V>
 size_t estimateUnorderedMapSize(const HashMap<K, V> &map);
 
-struct AVMReadFileMode {
-	const char *path;
-	const char *data;
-	uint32_t dataSize;
-	bool allowImportOtherFile;
-	ANativeMap nativeFuncMap;
-};
-
 enum class VMState { INIT, RUNNING, HALTED, WAITING, ERROR };
 
 #ifndef MAX_STACK_OBJECT

@@ -7,11 +7,13 @@
 namespace AutoLang {
 struct AObject;
 class ANotifier;
+class ACompiler;
 }
 
 #define NativeFuncInput AutoLang::ANotifier&, AutoLang::AObject ** ,size_t
 #define NativeFuncInData AutoLang::ANotifier& notifier, AutoLang::AObject **args, size_t size
 
+using InitLibFn = const char* (*)();
 using ClassId = uint32_t;
 using LexerStringId = uint32_t;
 using Offset = uint32_t;

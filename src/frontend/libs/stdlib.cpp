@@ -11,7 +11,7 @@ namespace Libs {
 namespace stdlib {
 void init(ACompiler &compiler) {
 	compiler.registerFromSource(
-	    "stdlib", false, R"###(
+	    "stdlib", R"###(
 		@no_constructor
 		class Int {
 			@native("to_string")
@@ -57,14 +57,15 @@ void init(ACompiler &compiler) {
 		@native("get_refcount")
 		func getRefCount(value: Any?): Int
 	)###",
+	    true,
 	    ANativeMap(
 	        {{"string_constructor", &DefaultFunction::string_constructor},
 	         {"print", &DefaultFunction::print},
 	         {"println", &DefaultFunction::println},
 	         {"get_refcount", &DefaultFunction::get_refcount},
-			 {"str_to_int", &DefaultFunction::to_int},
-			 {"str_to_float", &DefaultFunction::to_float},
-			 {"to_string", &DefaultFunction::to_string},
+	         {"str_to_int", &DefaultFunction::to_int},
+	         {"str_to_float", &DefaultFunction::to_float},
+	         {"to_string", &DefaultFunction::to_string},
 	         {"string_size", &DefaultFunction::get_string_size}}));
 }
 } // namespace stdlib

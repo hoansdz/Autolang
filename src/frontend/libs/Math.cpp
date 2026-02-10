@@ -24,7 +24,7 @@ void init(AutoLang::ACompiler &compiler) {
 	nativeMap.emplace("tan", &tan);
 	nativeMap.emplace("fmod", &fmod);
 
-	compiler.registerFromSource("std/math", false, R"###(
+	compiler.registerFromSource("std/math", R"###(
 		class Math {
 			@native("round")
 			static func round(value: Float): Int
@@ -56,7 +56,7 @@ void init(AutoLang::ACompiler &compiler) {
 			static func fmod(num1: Float, num2: Float): Float
 		}
 	)###",
-	                            std::move(nativeMap));
+	                            false, std::move(nativeMap));
 }
 
 AObject *abs(NativeFuncInData) {

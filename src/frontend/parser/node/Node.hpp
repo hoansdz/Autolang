@@ -64,7 +64,7 @@ enum NodeType : uint8_t {
 };
 
 struct ExprNode {
-	AVMReadFileMode *mode;
+	LibraryData *mode;
 	uint32_t line;
 	NodeType kind;
 	ExprNode(NodeType kind, uint32_t line = 0);

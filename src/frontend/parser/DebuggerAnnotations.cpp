@@ -2,6 +2,7 @@
 #define DEBUGGER_ANNOTATIONS_CPP
 
 #include "Debugger.hpp"
+#include "frontend/ACompiler.hpp"
 
 namespace AutoLang {
 
@@ -59,6 +60,44 @@ void loadAnnotations(in_func, size_t &i) {
 				                  "Duplicate annotation @no_constructor");
 			}
 			context.annotationFlags |= AnnotationFlags::AN_NO_CONSTRUCTOR;
+			break;
+		}
+		case Lexer::TokenType::IMPORT: {
+			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
+			    !expect(token, Lexer::TokenType::LPAREN)) {
+				--i;
+				throw ParserError(firstLine,
+				                  "Bug: @import not ensure ( bracket");
+			}
+			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
+			    !expect(token, Lexer::TokenType::STRING)) {
+				throw ParserError(firstLine, "Bug: @import not ensure (String");
+			}
+			auto &path = context.lexerString[token->indexData];
+			bool mustAppend =
+			    context.importMap.find(path) == context.importMap.end();
+			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
+			    !expect(token, Lexer::TokenType::RPAREN)) {
+				--i;
+				throw ParserError(firstLine,
+				                  "Bug: @import not ensure (String)");
+			}
+			if (!mustAppend)
+				break;
+			auto it =
+			    context.mainLexerContext->library->dependencies.find(path);
+			if (it == context.mainLexerContext->library->dependencies.end()) {
+				throw ParserError(firstLine,
+				                  "Bug: Library " +
+				                      context.mainLexerContext->library->path +
+				                      " not ensure dependencies");
+			}
+			auto library = it->second;
+			context.mode = library;
+			context.loadingLibs.push_back(library);
+			context.tokens.insert(context.tokens.begin() + i + 1,
+			                      library->lexerContext.tokens.begin(),
+			                      library->lexerContext.tokens.end());
 			break;
 		}
 		default: {

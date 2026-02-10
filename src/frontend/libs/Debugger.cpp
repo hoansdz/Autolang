@@ -9,11 +9,12 @@ namespace Libs {
 namespace Debugger {
 void init(ACompiler &compiler) {
 	compiler.registerFromSource(
-	    "std/debugger", false, R"###(
+	    "std/debugger", R"###(
 		class Debugger {
 			
 		}
 	)###",
+	    false,
 	    ANativeMap(
 	        {{"string_constructor", &DefaultFunction::string_constructor},
 	         {"print", &DefaultFunction::print},
@@ -24,13 +25,9 @@ void init(ACompiler &compiler) {
 	         {"to_string", &DefaultFunction::to_string},
 	         {"string_size", &DefaultFunction::get_string_size}}));
 }
-AObject *getClassName(NativeFuncInData) {
-	
-}
+AObject *getClassName(NativeFuncInData) {}
 
-AObject *getClassId(NativeFuncInData) {
-
-}
+AObject *getClassId(NativeFuncInData) {}
 } // namespace Debugger
 } // namespace Libs
 } // namespace AutoLang

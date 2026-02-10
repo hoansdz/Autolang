@@ -21,10 +21,9 @@ inline void printDebug(long msg) {
 #endif
 }
 
-struct AVMReadFileMode;
-
 namespace AutoLang {
 
+struct LibraryData;
 struct ParserContext;
 
 namespace Lexer {
@@ -115,6 +114,7 @@ enum TokenType : uint8_t {
 	NO_OVERRIDE,
 	NO_CONSTRUCTOR,
 	IMPORT,
+	END_IMPORT,
 	IS,
 
 	// ===== Special =====
@@ -189,19 +189,18 @@ static const HashMap<std::string, TokenType> CAST = {
 };
 
 struct Token {
-	AVMReadFileMode *mode;
 	uint32_t line;
 	uint32_t indexData;
 	TokenType type;
 	Token() {}
-	Token(AVMReadFileMode *mode, uint32_t line, TokenType type, uint32_t indexData)
-	    : mode(mode), line(line), indexData(indexData), type(type) {}
-	Token(AVMReadFileMode *mode, uint32_t line, TokenType type)
-	    : mode(mode), line(line), indexData(0), type(type) {}
+	Token(uint32_t line, TokenType type, uint32_t indexData)
+	    : line(line), indexData(indexData), type(type) {}
+	Token(uint32_t line, TokenType type)
+	    : line(line), indexData(0), type(type) {}
 	std::string toString(ParserContext &context);
 };
 
-class LexerError : std::exception {
+class LexerError : public std::exception {
   public:
 	uint32_t line;
 	std::string message;
@@ -235,7 +234,7 @@ struct Context {
 	uint32_t absolutePos;
 	std::vector<char> bracketStack;
 	std::vector<Token> tokens;
-	AVMReadFileMode *mode;
+	LibraryData *library;
 
 	bool hasError = false;
 
@@ -254,17 +253,15 @@ struct Context {
 inline bool nextLine(Context &context, const char *lines, uint32_t &i);
 inline bool isOperator(char chr);
 inline bool isEndOfLine(Context &context, uint32_t &i);
-void load(ParserContext *mainContext, AVMReadFileMode &mode, Context &context);
-void loadQuote(Context &context, std::vector<Token> &tokens,
-               AVMReadFileMode &mode, char quote, uint32_t &i);
+void loadFile(ParserContext *mainContext, LibraryData *library);
+void load(ParserContext *mainContext, LibraryData *library);
+void loadQuote(Context &context, char quote, uint32_t &i);
 std::string loadIdentifier(Context &context, uint32_t &i);
 std::string loadNumber(Context &context, uint32_t &i);
 TokenType loadOp(Context &context, uint32_t &i);
-bool loadNextTokenNoCloseBracket(Context &context, std::vector<Token> &tokens,
-                                 AVMReadFileMode &mode, uint32_t &i);
-void pushAndEnsureBracket(Context &context, std::vector<Token> &tokens,
-                          AVMReadFileMode &mode, uint32_t &i);
-void pushIdentifier(Context &context, std::vector<Token> &tokens, uint32_t &i);
+bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i);
+void pushAndEnsureBracket(Context &context, uint32_t &i);
+void pushIdentifier(Context &context, uint32_t &i);
 uint32_t pushLexerString(Context &context, std::string &&str);
 char getCloseBracket(char chr);
 

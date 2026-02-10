@@ -5,22 +5,13 @@
 int main(int argc, char *argv[]) {
 	auto start = std::chrono::high_resolution_clock::now();
 	try {
-		AutoLang::AVMReadFileMode mode = {
-		    "tests/test.txt", nullptr, 0, true,
-		    ANativeMap({{"hi", [](NativeFuncInput) -> AutoLang::AObject * {
-			                 std::cerr << "Ok nha\n";
-			                 std::cerr << "Xin chao tat ca cac ban\n";
-			                 return nullptr;
-		                 }}})};
-		auto nativeMap =
-		    ANativeMap({{"hi", [](NativeFuncInput) -> AutoLang::AObject * {
-			                 std::cerr << "Ok nha\n";
-			                 std::cerr << "Xin chao tat ca cac ban\n";
-			                 return nullptr;
-		                 }}});
 		try {
 			AutoLang::ACompiler compiler;
-			compiler.registerFromSource("tests/test.txt", false, nativeMap);
+			compiler.loadBuiltInFunctions();
+			compiler.loadMainSource("tests/test.txt", {{"hi", [](NativeFuncInput) -> AutoLang::AObject* {
+				std::cerr<<"Duoc roi ne!!!\n";
+				return nullptr;
+			}}});
 			if (compiler.getState() == AutoLang::CompilerState::ERROR) {
 				return 0;
 			}
