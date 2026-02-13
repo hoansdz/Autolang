@@ -13,13 +13,14 @@
 namespace AutoLang {
 
 void lexerData(in_func, ACompiler &compiler, LibraryData *library) {
-	auto startLexer = std::chrono::high_resolution_clock::now();
+	// auto startLexer = std::chrono::high_resolution_clock::now();
 	Lexer::load(&context, library);
-	auto lexerTime = std::chrono::high_resolution_clock::now();
-	auto total = std::chrono::duration_cast<std::chrono::milliseconds>(
-	                 lexerTime - startLexer)
-	                 .count();
-	std::cerr << "Lexer file " << library->path << " in  " << total << " ms\n";
+	// auto lexerTime = std::chrono::high_resolution_clock::now();
+	// auto total = std::chrono::duration_cast<std::chrono::milliseconds>(
+	//                  lexerTime - startLexer)
+	//                  .count();
+	// std::cerr << "Lexer file " << library->path << " in  " << total << "
+	// ms\n";
 }
 
 LibraryData *loadImport(in_func, std::vector<Lexer::Token> &tokens,
@@ -82,6 +83,7 @@ void freeData(in_func) {
 	for (auto *node : context.staticNode) {
 		ExprNode::deleteNode(node);
 	}
+	context.staticNode.clear();
 	context.createConstructorPool.refresh();
 	context.newClasses.refresh();
 	context.newFunctions.refresh();
@@ -138,8 +140,8 @@ void estimate(in_func, Lexer::Context &lexerContext) {
 	           std::to_string(estimateAllFunctions));
 }
 
-ClassDeclaration loadClassDeclaration(in_func, size_t &i,
-                                      uint32_t line) { // Has check
+ClassDeclaration loadClassDeclaration(in_func, size_t &i, uint32_t line,
+                                      bool allowReturnVoid) { // Has check
 	ClassDeclaration result;
 	Lexer::Token *token;
 	if (!nextTokenSameLine(&token, context.tokens, i, line) ||
@@ -149,16 +151,32 @@ ClassDeclaration loadClassDeclaration(in_func, size_t &i,
 		                  "Expected class name but not found");
 	}
 	result.className = context.lexerString[token->indexData];
-	if (result.className == "Null")
-		throw ParserError(token->line,
-		                  "Null cannot used as a type for declaration '" +
-		                      result.className + "'");
-	if (!nextTokenSameLine(&token, context.tokens, i, line) ||
-	    !expect(token, Lexer::TokenType::QMARK)) {
+	switch (token->indexData) {
+		case lexerIdNull: {
+			throw ParserError(token->line,
+			                  "Null cannot used as a type for declaration");
+		}
+		case lexerIdVoid: {
+			if (!allowReturnVoid) {
+				throw ParserError(token->line,
+				                  "Void cannot used as a type for declaration");
+			}
+			break;
+		}
+	}
+	if (!nextTokenSameLine(&token, context.tokens, i, line)) {
 		--i;
 		return result;
 	}
-	result.nullable = true;
+	if (expect(token, Lexer::TokenType::QMARK)) {
+		result.nullable = true;
+		return result;
+	}
+	if (expect(token, Lexer::TokenType::EXMARK)) {
+		result.nullable = false;
+		return result;
+	}
+	--i;
 	return result;
 }
 
@@ -172,7 +190,7 @@ initial:;
 	switch (token->type) {
 		case Lexer::TokenType::END_IMPORT: {
 			context.loadingLibs.pop_back();
- 			ParserContext::mode = context.loadingLibs.back();
+			ParserContext::mode = context.loadingLibs.back();
 			nextToken(&token, context.tokens, i);
 			goto initial;
 		}
@@ -597,7 +615,8 @@ std::vector<DeclarationNode *> loadListDeclaration(in_func, size_t &i,
 			throw ParserError(context.tokens[i].line,
 			                  "Expected ':' but not found");
 		}
-		auto classDeclaration = loadClassDeclaration(in_data, i, token->line);
+		auto classDeclaration =
+		    loadClassDeclaration(in_data, i, token->line, false);
 		if (!nextToken(&token, context.tokens, i))
 			break;
 		auto node = context.makeDeclarationNode(
@@ -954,6 +973,8 @@ Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t &i) {
 }
 
 void ensureEndline(in_func, size_t &i) {
+	if (i >= context.tokens.size())
+		return;
 	Lexer::Token *token = &context.tokens[i];
 	if (nextTokenSameLine(&token, context.tokens, i, token->line)) {
 		if (token->type == Lexer::TokenType::RBRACE) {
@@ -1016,6 +1037,8 @@ int getPrecedence(Lexer::TokenType type) {
 		case Lexer::TokenType::QMARK_QMARK: {
 			return 10;
 		}
+		case Lexer::TokenType::SAFE_CAST:
+		case Lexer::TokenType::UNSAFE_CAST:
 		case Lexer::TokenType::IS:
 		case Lexer::TokenType::EQEQ:
 		case Lexer::TokenType::NOTEQ:

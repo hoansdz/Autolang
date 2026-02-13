@@ -8,7 +8,6 @@ namespace AutoLang {
 
 ExprNode *OptionalAccessNode::resolve(in_func) {
 	value = static_cast<HasClassIdNode *>(value->resolve(in_data));
-	value->mode = mode;
 	switch (value->kind) {
 		case NodeType::VAR:
 		case NodeType::CONST:

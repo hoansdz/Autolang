@@ -1,98 +1,41 @@
-class T(val name: String) {
-    //static val c: Int = 1
-
-    func printName() {
-        println(name)
-    }
-    func hm() {
-		val m = 1
-        println("ok")
-    }
-}
-class Person extends T {
-    constructor() {
-        super("hello")
-        println(name)
-    }
+class Person<T>() {
+	func sound() {}
 }
 
-class X extends Person {
-    static val k: Int = 99
-    val n: Int = 5
+class A extends Person {
+  static val k: Int = 99
 
-    constructor() {
-        super()
-    }
+  constructor() {
+    super()
+  }
 
-	@override
-	@native("hi")
-    func hm()
+  func sound() {
+	println("Hello A")
+  }
 }
 
-println(Math.pow(5, 5))
+class B extends Person {
+  static val k: Int = 99
 
-val t = T("SOS")
-t.hm()
+  constructor() {
+    super()
+  }
 
-val x = X()
-x.hm()
-println(String("hello", 3))
-println(x is X)
-println(x is T)
-println(x is Person)
-println(x is Float)
-val zero = 0
+  func sound() {
+	println("Hello B")
+  }
+}
 
-func testOperator() {
-	try {
-		println("hi")
-		hehe()
-		println("Ok")
+func t(person: Person): Any {
+	if (person is A) {
+		return true
 	}
-	catch (e) {
-		println(e.message)
-		println(getRefCount(e))
-		throw (e)
+	if (person is B) {
+		return null
 	}
+	return 0
 }
 
-func hehe() {
-	throw (Exception("hello ao that day"))
-	print(1 / zero)
-}
-
-class Animal(val name: String) {
-	func sound() {
-
-	}
-}
-
-class Cat extends Animal {
-	constructor() {
-		super("cat")
-	}
-	@override
-	func sound() {
-		println("Meow")
-	}
-}
-
-class Dog extends Animal {
-	constructor() {
-		super("dog")
-	}
-	@override
-	func sound() {
-		println("Go")
-	}
-}
-
-Cat().sound() //Meow
-Dog().sound() //Go
-
-@import("std/math")
-println(Math.pow(5, 5))
-println(Int(5.6))
-
-testOperator()
-println("WTF")
+println(t(A() as? Person))
+println(t(B()))
+println(t((B() as Any) as? A))

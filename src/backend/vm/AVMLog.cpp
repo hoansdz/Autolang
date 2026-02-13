@@ -53,12 +53,15 @@ std::string Function::toString(CompiledProgram &data) {
 	return result;
 }
 
-void AClass::log(CompiledProgram& data) {
-	std::cerr << "[" << id << "]: Class " + name << (inheritance.empty() ? "" : std::string(" extends ") + data.classes[*parentId]->name)
+void AClass::log(CompiledProgram &data) {
+	std::cerr << "[" << id << "]: Class " + name
+	          << (inheritance.empty() ? ""
+	                                  : std::string(" extends ") +
+	                                        data.classes[*parentId]->name)
 	          << "\n";
 	for (auto &[name, offset] : memberMap) {
-		std::cerr << "[" << offset << "] " << name << ": " << data.classes[memberId[offset]]->name
-		          << "\n";
+		std::cerr << "[" << offset << "] " << name << ": "
+		          << data.classes[memberId[offset]]->name << "\n";
 	}
 	for (auto &[name, vecs] : funcMap) {
 		for (auto funcId : vecs) {
@@ -81,7 +84,8 @@ void AClass::log(CompiledProgram& data) {
 void AVM::log(Function *currentFunction) {
 	std::cerr << currentFunction->toString(data) << '\n';
 	std::cerr << currentFunction->argSize << " arguments\n";
-	std::cerr << "Total " << currentFunction->maxDeclaration << " declarations\n";
+	std::cerr << "Total " << currentFunction->maxDeclaration
+	          << " declarations\n";
 	if (currentFunction->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 		std::cerr << "Has native function" << '\n';
 		return;
@@ -131,11 +135,18 @@ void AVM::log(Function *currentFunction) {
 			case AutoLang::Opcode::IS:
 				std::cerr << "IS	 " << get_u32(bytecodes, i) << '\n';
 				break;
+			case AutoLang::Opcode::SAFE_CAST:
+				std::cerr << "SAFE_CAST	 " << data.classes[get_u32(bytecodes, i)]->name << '\n';
+				break;
+			case AutoLang::Opcode::UNSAFE_CAST:
+				std::cerr << "UNSAFE_CAST	 " << data.classes[get_u32(bytecodes, i)]->name << '\n';
+				break;
 			case AutoLang::Opcode::ADD_TRY_BLOCK:
 				std::cerr << "ADD_TRY_BLOCK	 " << get_u32(bytecodes, i) << '\n';
 				break;
 			case AutoLang::Opcode::REMOVE_TRY_AND_JUMP:
-				std::cerr << "REMOVE_TRY_AND_JUMP	 " << get_u32(bytecodes, i) << '\n';
+				std::cerr << "REMOVE_TRY_AND_JUMP	 " << get_u32(bytecodes, i)
+				          << '\n';
 				break;
 			case AutoLang::Opcode::LOAD_CONST_PRIMARY:
 				std::cerr << "CONST_PRIMARY	 " << get_u32(bytecodes, i) << '\n';
@@ -182,6 +193,7 @@ void AVM::log(Function *currentFunction) {
 				BYTECODE_PRINT_SINGLE(FLOAT_FROM_FLOAT)
 				BYTECODE_PRINT_SINGLE(REMOVE_TRY)
 				BYTECODE_PRINT_SINGLE(LOAD_EXCEPTION)
+				BYTECODE_PRINT_SINGLE(WAIT_INPUT)
 				BYTECODE_PRINT_SINGLE(THROW_EXCEPTION)
 			case AutoLang::Opcode::JUMP:
 				std::cerr << "JUMP	 " << get_u32(bytecodes, i) << '\n';
@@ -253,6 +265,6 @@ void AVM::log(Function *currentFunction) {
 	}
 }
 
-}
+} // namespace AutoLang
 
 #endif

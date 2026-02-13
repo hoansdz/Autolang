@@ -3,12 +3,13 @@
 
 inline const char* requestImport(const char* path) {
 #ifdef __EMSCRIPTEN__
-    extern "C" const char* onImportRequested(const char* path);
-    return onImportRequested(path);
+    /*extern "C" const char* onImportRequested(const char* path);
+    return onImportRequested(path);*/
 #else
-    (void)path;
-    return nullptr;
+    /*(void)path;
+    return nullptr;*/
 #endif
+    return nullptr;
 }
 
 #endif

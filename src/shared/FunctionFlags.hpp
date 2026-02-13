@@ -17,6 +17,8 @@ enum FunctionFlags : uint32_t {
 	FUNC_OVERRIDE = 1u << 8,
 	FUNC_NO_OVERRIDE = 1u << 9,
 	FUNC_IS_DATA_CONSTRUCTOR = 1u << 10,
+	FUNC_WAIT_INPUT = 1u << 11,
+	FUNC_HAS_BODY = 1u << 12,
 };
 
 }

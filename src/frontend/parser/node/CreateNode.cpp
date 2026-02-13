@@ -124,8 +124,6 @@ void CreateConstructorNode::optimize(in_func) {
 
 	// Add return bytecodes
 	auto thisNode = new VarNode(line, classInfo->declarationThis, false, false);
-	// std::cerr<<clazz->name<<" "<<classInfo->declarationThis->id<<"\n";
-	thisNode->mode = mode;
 	body.nodes.push_back(context.returnPool.push(line, funcId, thisNode));
 }
 
@@ -170,6 +168,7 @@ void CreateClassNode::loadSuper(in_func) {
 			case DefaultClass::stringClassId:
 			case DefaultClass::boolClassId:
 			case DefaultClass::anyClassId:
+			case DefaultClass::voidClassId:
 				throwError(superClass->name + " cannot be extends");
 			default:
 				break;
@@ -188,13 +187,16 @@ void CreateClassNode::loadSuper(in_func) {
 
 		auto memberToFind = HashMap<std::string_view, DeclarationNode *>();
 		memberToFind.reserve(classInfo->member.size());
-		for (auto *declaration : classInfo->member) {
+		for (auto *declaration : classInfo->member) {\
 			memberToFind[declaration->name] = declaration;
 			declaration->id += superClassInfo->member.size();
 			clazz->memberMap[declaration->name] = declaration->id;
 		}
 		uint32_t newPosition = superClassInfo->member.size();
 		for (auto &declaration : superClassInfo->member) {
+			if (declaration->accessModifier == Lexer::TokenType::PRIVATE) {
+				continue;
+			}
 			auto it = memberToFind.find(declaration->name);
 			if (it != memberToFind.end()) {
 				throwError("Member '" + declaration->name +
@@ -210,8 +212,11 @@ void CreateClassNode::loadSuper(in_func) {
 		                         superClassInfo->member.begin(),
 		                         superClassInfo->member.end());
 		auto newStaticMember = superClassInfo->staticMember;
-		for (auto &[key, value] : classInfo->staticMember) {
-			newStaticMember[key] = value;
+		for (auto &[key, declaration] : classInfo->staticMember) {
+			if (declaration->accessModifier == Lexer::TokenType::PRIVATE) {
+				continue;
+			}
+			newStaticMember[key] = declaration;
 		}
 		classInfo->staticMember = std::move(newStaticMember);
 		clazz->memberId.insert(clazz->memberId.begin(),
@@ -243,6 +248,7 @@ void CreateClassNode::loadSuper(in_func) {
 					auto funcInfo = &context.functionInfo[it->second];
 					auto superFunc = compile.functions[offset];
 					auto superFuncInfo = &context.functionInfo[offset];
+
 					// Index virtual position : Three times override -> Twice
 					// override -> First override  -> parent
 					if (!(superFunc->functionFlags & FunctionFlags::FUNC_IS_VIRTUAL)) {
@@ -293,6 +299,10 @@ void CreateClassNode::loadSuper(in_func) {
 			auto &vecs = clazz->funcMap[key];
 			vecs.reserve(vecs.size() + value.size());
 			for (auto val : value) {
+				auto func = compile.functions[val];
+				if (func->functionFlags & FunctionFlags::FUNC_IS_CONSTRUCTOR) {
+					continue;
+				}
 				if (funcOverride.get(val)) {
 					continue;
 				}

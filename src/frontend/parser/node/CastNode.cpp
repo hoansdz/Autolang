@@ -8,6 +8,7 @@
 namespace AutoLang {
 
 ExprNode *CastNode::resolve(in_func) {
+	value = static_cast<HasClassIdNode *>(value->resolve(in_data));
 	if (value->classId == classId) {
 		switch (classId) {
 			case AutoLang::DefaultClass::intClassId:
@@ -16,12 +17,14 @@ ExprNode *CastNode::resolve(in_func) {
 			}
 			default: {
 				auto result = value;
-				result->mode = mode;
 				value = nullptr;
 				ExprNode::deleteNode(this);
 				return result;
 			}
 		}
+	}
+	if (classId == DefaultClass::anyClassId) {
+		return this;
 	}
 	try {
 		switch (value->kind) {
@@ -76,6 +79,9 @@ ExprNode *CastNode::resolve(in_func) {
 void CastNode::optimize(in_func) {
 	value->optimize(in_data);
 	if (value->classId == classId) {
+		return;
+	}
+	if (classId == DefaultClass::anyClassId) {
 		return;
 	}
 	switch (classId) {
@@ -166,6 +172,42 @@ void CastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			return;
 	}
 }
+
+CastNode::~CastNode() { deleteNode(value); }
+
+ExprNode *RuntimeCastNode::resolve(in_func) {
+	value = static_cast<HasClassIdNode *>(value->resolve(in_data));
+	return this;
+}
+
+void RuntimeCastNode::optimize(in_func) {
+	value->optimize(in_data);
+	if (value->classId == classId ||
+	    compile.classes[value->classId]->inheritance.get(classId)) {
+		return;
+	}
+	if (classId == DefaultClass::anyClassId ||
+	    value->classId == DefaultClass::anyClassId ||
+	    compile.classes[classId]->inheritance.get(value->classId)) {
+		return;
+	}
+	throwError("Cannot cast " + compile.classes[value->classId]->name + " to " +
+	           compile.classes[classId]->name +
+	           ": no inheritance relationship");
+}
+
+void RuntimeCastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	value->putBytecodes(in_data, bytecodes);
+	if (value->classId == classId ||
+	    compile.classes[value->classId]->inheritance.get(classId) ||
+	    classId == DefaultClass::anyClassId) {
+		return;
+	}
+	bytecodes.emplace_back(nullable ? Opcode::SAFE_CAST : Opcode::UNSAFE_CAST);
+	put_opcode_u32(bytecodes, classId);
+}
+
+RuntimeCastNode::~RuntimeCastNode() { deleteNode(value); }
 
 } // namespace AutoLang
 #endif

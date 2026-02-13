@@ -1,6 +1,7 @@
 #ifndef DEBUGGER_FUNCTION_CPP
 #define DEBUGGER_FUNCTION_CPP
 
+#include "frontend/ACompiler.hpp"
 #include "frontend/parser/Debugger.hpp"
 #include "shared/FunctionFlags.hpp"
 
@@ -16,6 +17,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		                  "@no_constructor is only supported classes");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NATIVE) {
+		functionFlags |= FunctionFlags::FUNC_HAS_BODY;
 		functionFlags |= FunctionFlags::FUNC_IS_NATIVE;
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_OVERRIDE) {
@@ -23,6 +25,14 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_OVERRIDE) {
 		functionFlags |= FunctionFlags::FUNC_NO_OVERRIDE;
+	}
+	if (context.annotationFlags & AnnotationFlags::AN_WAIT_INPUT) {
+		functionFlags |= FunctionFlags::FUNC_HAS_BODY;
+		functionFlags |= FunctionFlags::FUNC_WAIT_INPUT;
+		if (!(functionFlags & FunctionFlags::FUNC_IS_NATIVE)) {
+			throw ParserError(firstLine,
+			                  "@wait_input must followed by @native");
+		}
 	}
 	if (!context.currentClassId ||
 	    (context.modifierflags & ModifierFlags::MF_STATIC)) {
@@ -47,14 +57,32 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			break;
 	}
 	// Name
-	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
-	    !expect(token, Lexer::TokenType::IDENTIFIER)) {
+	if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 		--i;
 		throw ParserError(firstLine, "Expected name but not found");
 	}
-	std::string &name = context.lexerString[token->indexData];
-	if (token->indexData == lexerIdSuper)
-		throw ParserError(firstLine, "Super is a keyword");
+	std::string name;
+	switch (token->type) {
+		case Lexer::TokenType::IDENTIFIER: {
+			if (token->indexData == lexerIdSuper)
+				throw ParserError(firstLine, "Super is a keyword");
+			name = context.lexerString[token->indexData] + "()";
+			break;
+		}
+		case Lexer::TokenType::LBRACKET: {
+			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
+			    !expect(token, Lexer::TokenType::RBRACKET)) {
+				--i;
+				throw ParserError(firstLine, "Expected ] but not found");
+			}
+			name = "[]";
+			break;
+		}
+		default: {
+			--i;
+			throw ParserError(firstLine, "Expected name but not found");
+		}
+	}
 	// Arguments
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 	    !expect(token, Lexer::TokenType::LPAREN)) {
@@ -63,7 +91,6 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 	}
 	auto listDeclarationNode = loadListDeclaration(in_data, i);
 	std::string returnClass;
-	bool returnNullable = false;
 	// Return class name
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
@@ -73,11 +100,11 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 	}
 	if (token->type == Lexer::TokenType::COLON) {
 		ClassDeclaration classDeclaration =
-		    loadClassDeclaration(in_data, i, token->line);
+		    loadClassDeclaration(in_data, i, token->line, true);
 		returnClass = std::move(classDeclaration.className);
-		returnNullable = classDeclaration.nullable;
-		if (returnClass == "Null")
-			throw ParserError(firstLine, "Cannot return Null class");
+		if (classDeclaration.nullable) {
+			functionFlags |= FunctionFlags::FUNC_RETURN_NULLABLE;
+		}
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
 			if (functionFlags & FunctionFlags::FUNC_IS_NATIVE)
@@ -86,39 +113,76 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		}
 	}
 
-	if (!expect(token, Lexer::TokenType::LBRACE)) {
-		--i;
-		if (!(functionFlags & FunctionFlags::FUNC_IS_NATIVE)) {
-			throw ParserError(firstLine, "Expected body but not found");
+	switch (token->type) {
+		case Lexer::TokenType::LBRACE: {
+			if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
+				--i;
+				throw ParserError(firstLine,
+				                  "@native function must not have a body");
+			}
+			break;
 		}
-	} else {
-		if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
+		case Lexer::TokenType::EQUAL: {
+			if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
+				--i;
+				throw ParserError(firstLine,
+				                  "@native function must not have a body");
+			}
+			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
+				throw ParserError(firstLine,
+				                  "Expected value after = but not found");
+			}
+			if (!(functionFlags & FunctionFlags::FUNC_IS_STATIC) &&
+			    context.currentClassId) {
+				listDeclarationNode.insert(
+				    listDeclarationNode.begin(),
+				    context.getCurrentClassInfo(in_data)->declarationThis);
+			}
+			CreateFuncNode *node = context.newFunctions.push(
+			    firstLine, context.currentClassId, name,
+			    std::move(returnClass), std::move(listDeclarationNode),
+			    functionFlags);
+			node->pushFunction(in_data);
+			auto func = compile.functions[node->id];
+			func->returnId = DefaultClass::nullClassId;
+			context.gotoFunction(node->id);
+			auto &scope =
+			    context.getCurrentFunctionInfo(in_data)->scopes.back();
+
+			for (size_t i = 0; i < node->arguments.size(); ++i) {
+				auto *argument = node->arguments[i];
+				argument->id = i;
+				scope[argument->name] = argument;
+			}
+
+			auto returnNode =
+			    context.returnPool.push(firstLine, context.currentFunctionId,
+			                            loadExpression(in_data, 0, i));
+			node->body.nodes.push_back(returnNode);
+			context.gotoFunction(context.mainFunctionId);
+			return node;
+		}
+		default: {
 			--i;
-			throw ParserError(firstLine,
-			                  "@native function must not have a body");
+			if (!(functionFlags & FunctionFlags::FUNC_IS_NATIVE)) {
+				throw ParserError(firstLine, "Expected body but not found");
+			}
+			break;
 		}
 	}
 
 createFunc:;
 
-	if (returnNullable) {
-		functionFlags |= FunctionFlags::FUNC_RETURN_NULLABLE;
-	}
-
 	// Add this
 	if (!(functionFlags & FunctionFlags::FUNC_IS_STATIC) &&
 	    context.currentClassId) {
-		// scope["this"] =
-		// context.getCurrentClassInfo(in_data)->declarationThis;
-		// node->arguments.insert(node->arguments.begin(),
-		// context.getCurrentClassInfo(in_data)->declarationThis);
 		listDeclarationNode.insert(
 		    listDeclarationNode.begin(),
 		    context.getCurrentClassInfo(in_data)->declarationThis);
 	}
 
 	CreateFuncNode *node = context.newFunctions.push(
-	    firstLine, context.currentClassId, name + "()", std::move(returnClass),
+	    firstLine, context.currentClassId, name, std::move(returnClass),
 	    std::move(listDeclarationNode), functionFlags);
 	if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 		auto &token = context.annotationMetadata[AnnotationFlags::AN_NATIVE];
@@ -131,8 +195,9 @@ createFunc:;
 		node->pushNativeFunction(in_data, it->second);
 		auto func = compile.functions[node->id];
 		context.gotoFunction(node->id);
-		for (size_t i = 1; i < node->arguments.size(); ++i) {
-			node->arguments[i]->id = i;
+		for (size_t i = 0; i < node->arguments.size(); ++i) {
+			auto *argument = node->arguments[i];
+			argument->id = i;
 		}
 		context.gotoFunction(context.mainFunctionId);
 		return node;
@@ -141,17 +206,15 @@ createFunc:;
 	}
 	// compile.funcMap[compile.functions[node->id].name]->push_back(node->id);
 	auto func = compile.functions[node->id];
+	// std::cerr<<"Created "<<name+"()"<<" ->
+	// "<<compile.classes[func->returnId]->name<<"\n";
 	context.gotoFunction(node->id);
 	auto &scope = context.getCurrentFunctionInfo(in_data)->scopes.back();
 
-	if (!(functionFlags & FunctionFlags::FUNC_IS_STATIC) &&
-	    context.currentClassId) {
-		// Add this
-		scope["this"] = context.getCurrentClassInfo(in_data)->declarationThis;
-	}
-
-	for (size_t i = 1; i < node->arguments.size(); ++i) {
-		node->arguments[i]->id = i;
+	for (size_t i = 0; i < node->arguments.size(); ++i) {
+		auto *argument = node->arguments[i];
+		argument->id = i;
+		scope[argument->name] = argument;
 	}
 
 	loadBody(in_data, node->body.nodes, i);

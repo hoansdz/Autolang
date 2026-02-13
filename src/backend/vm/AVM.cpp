@@ -10,16 +10,6 @@
 namespace AutoLang {
 
 void AVM::run() {
-	switch (state) {
-		case VMState::INIT: {
-			throw std::logic_error("Virtual machine isn't inited");
-		}
-		default: {
-			while (callFrames.getSize() > 0)
-				callFrames.pop();
-			break;
-		}
-	}
 	std::cerr << "-------------------" << '\n';
 	std::cerr << "Runtime" << '\n';
 	auto start = std::chrono::high_resolution_clock::now();
@@ -32,27 +22,48 @@ void AVM::run() {
 	mainCallFrame->i = 0;
 	mainCallFrame->catchPosition.clear();
 	resume();
+	switch (state) {
+		case VMState::ERROR: {
+			assert(mainCallFrame->exception);
+			std::vector<Function *> funcs;
+			std::cerr << "Exception: "
+			          << mainCallFrame->exception->member->data[0]->str->data
+			          << "\n";
+			for (uint32_t i = 0; i < callFrames.getMaxSize(); ++i) {
+				auto currentCallFrame = &callFrames.objects[i];
+				if (currentCallFrame->exception != mainCallFrame->exception)
+					break;
+				funcs.push_back(currentCallFrame->func);
+			}
+			for (size_t i = funcs.size(); i-- > 0;) {
+				std::cerr << "At function " << funcs[i]->name << "\n";
+			}
+			break;
+		}
+		case VMState::WAITING: {
+
+			break;
+		}
+	}
 	auto end = std::chrono::high_resolution_clock::now();
 	auto duration =
 	    std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-	std::cout << '\n'
-	          << "Total runtime : " << duration.count() << " ms" << '\n';
-	if (mainCallFrame->exception) {
-		std::vector<Function *> funcs;
-		std::cerr << "Exception: "
-		          << mainCallFrame->exception->member->data[0]->str->data
-		          << "\n";
-		for (uint32_t i = 0; i < callFrames.getMaxSize(); ++i) {
-			auto currentCallFrame = &callFrames.objects[i];
-			if (currentCallFrame->exception != mainCallFrame->exception)
-				break;
-			funcs.push_back(currentCallFrame->func);
+	std::cout << '\n' << "Total runtime : " << duration.count() << " ms\n";
+}
+
+void AVM::input(AObject *inputData) {
+	switch (state) {
+		case VMState::WAITING: {
+			break;
 		}
-		for (size_t i = funcs.size(); i-- > 0;) {
-			std::cerr << "At function " << funcs[i]->name << "\n";
+		default: {
+			throw std::logic_error(
+			    "VM isn't required waiting, call restart() to restart");
 		}
-		state = VMState::ERROR;
 	}
+	stack.push(inputData);
+	inputData->retain();
+	state = VMState::RUNNING;
 }
 
 template <bool loadVirtual, bool hasValue, bool isConstructor>
@@ -148,6 +159,7 @@ resumeCallFrame:;
 			}
 			if (callFrames.getSize() == 1) {
 				stackAllocator.freeTo(0);
+				state = VMState::ERROR;
 				return;
 			}
 			callFrames.pop();
@@ -156,14 +168,17 @@ resumeCallFrame:;
 			oldCallFrame->exception = currentCallFrame->exception;
 			currentCallFrame = oldCallFrame;
 			stackAllocator.freeTo(currentCallFrame->fromStackAllocator);
-			// std::cerr<<"from " << currentCallFrame->fromStackAllocator << "\n";
+			// std::cerr<<"from " << currentCallFrame->fromStackAllocator <<
+			// "\n";
 			goto resumeCallFrame;
 		} else {
-			// std::cerr << "First size " << currentCallFrame->catchPosition.size() << "\n";
+			// std::cerr << "First size " <<
+			// currentCallFrame->catchPosition.size() << "\n";
 			currentCallFrame->i = currentCallFrame->catchPosition.back();
 			currentCallFrame->catchPosition.pop_back();
-			// std::cerr << "Second size " << currentCallFrame->catchPosition.size() << "\n";
-			// std::cerr << "Goto " << currentCallFrame->i << "\n";
+			// std::cerr << "Second size " <<
+			// currentCallFrame->catchPosition.size() << "\n"; std::cerr <<
+			// "Goto " << currentCallFrame->i << "\n";
 		}
 	}
 	auto *currentFunction = currentCallFrame->func;
@@ -171,7 +186,8 @@ resumeCallFrame:;
 	uint32_t &i = currentCallFrame->i;
 	const size_t size = currentCallFrame->func->bytecodes.size();
 	notifier->callFrame = currentCallFrame;
-	// std::cerr << "Called function " << currentCallFrame->func->name << " " << currentCallFrame->fromStackAllocator << " with "
+	// std::cerr << "Called function " << currentCallFrame->func->name << " " <<
+	// currentCallFrame->fromStackAllocator << " with "
 	//           << currentCallFrame->func->argSize << " arguments \n";
 	try {
 		while (i < size) {
@@ -190,6 +206,9 @@ resumeCallFrame:;
 					        currentCallFrame, currentFunction, bytecodes, i)) {
 						goto resumeCallFrame;
 					}
+					if (state == VMState::WAITING) {
+						return;
+					}
 					break;
 				}
 				case AutoLang::Opcode::CALL_VTABLE_FUNCTION: {
@@ -203,6 +222,9 @@ resumeCallFrame:;
 					if (!callFunction<true, false, false>(
 					        currentCallFrame, currentFunction, bytecodes, i)) {
 						goto resumeCallFrame;
+					}
+					if (state == VMState::WAITING) {
+						return;
 					}
 					break;
 				}
@@ -379,6 +401,36 @@ resumeCallFrame:;
 					    data.classes[obj->type]->inheritance.get(classId)));
 					stack.top()->retain();
 					data.manager.release(obj);
+					break;
+				}
+				case AutoLang::Opcode::SAFE_CAST: {
+					auto obj = stack.top();
+					uint32_t classId = get_u32(bytecodes, i);
+					if (obj->type == classId ||
+					    data.classes[obj->type]->inheritance.get(classId)) {
+						break;
+					}
+					stack.pop();
+					data.manager.release(obj);
+					stack.push(DefaultClass::nullObject);
+					DefaultClass::nullObject->retain();
+					break;
+				}
+				case AutoLang::Opcode::UNSAFE_CAST: {
+					auto obj = stack.top();
+					uint32_t classId = get_u32(bytecodes, i);
+					std::cerr<<"NO OK\n";
+					if (obj->type == classId ||
+					    data.classes[obj->type]->inheritance.get(classId)) {
+						break;
+					}
+					std::cerr<<"OK\n";
+					notifier->throwException("Cannot cast " + data.classes[obj->type]->name + " to " + data.classes[classId]->name);
+					data.manager.release(stack.pop());
+					goto resumeCallFrame;
+				}
+				case AutoLang::Opcode::WAIT_INPUT: {
+					state = VMState::WAITING;
 					break;
 				}
 				case AutoLang::Opcode::LOAD_EXCEPTION: {
@@ -636,8 +688,10 @@ resumeCallFrame:;
 			}
 		}
 	endFunction:;
-		if (callFrames.getSize() == 1)
+		if (callFrames.getSize() == 1) {
+			state = VMState::HALTED;
 			return;
+		}
 		stackAllocator.clear(data.manager, currentCallFrame->fromStackAllocator,
 		                     stackAllocator.top +
 		                         currentCallFrame->func->maxDeclaration - 1);
@@ -704,13 +758,6 @@ uint32_t AVM::get_u32(uint8_t *code, uint32_t &ip) {
 	memcpy(&val, code + ip, 4);
 	ip += 4;
 	return val;
-}
-
-AVM::~AVM() {
-	delete notifier;
-	delete[] tempAllocateArea;
-	if (globalVariables)
-		delete[] globalVariables;
 }
 
 template <typename K, typename V>

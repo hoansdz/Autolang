@@ -1,6 +1,7 @@
 #ifndef DEBUGGER_CLASS_CPP
 #define DEBUGGER_CLASS_CPP
 
+#include "frontend/ACompiler.hpp"
 #include "frontend/parser/Debugger.hpp"
 #include "shared/ClassFlags.hpp"
 #include <memory>
@@ -61,6 +62,41 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 		}
 		context.gotoClass(lastClass);
 		return n;
+	}
+	if (expect(token, Lexer::TokenType::LT)) {
+		while (true) {
+			if (!nextToken(&token, context.tokens, i) ||
+			    !expect(token, Lexer::TokenType::IDENTIFIER)) {
+				--i;
+				throw ParserError(context.tokens[i].line,
+				                  "Expected class name but not found");
+			}
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(
+				    context.tokens[i].line,
+				    "Expected '>' after class name but not found");
+			}
+			switch (token->type) {
+				case Lexer::TokenType::COMMA: {
+					break;
+				}
+				case Lexer::TokenType::GT: {
+					goto finishedGenerics;
+				}
+				default: {
+					throw ParserError(
+					    firstLine,
+					    "Expected '>' after class name but not found");
+				}
+			}
+		}
+	finishedGenerics:;
+		if (!nextToken(&token, context.tokens, i)) {
+			--i;
+			throw ParserError(context.tokens[i].line,
+			                  "Generics class must have body");
+		}
 	}
 	LexerStringId superStringId;
 	if (expect(token, Lexer::TokenType::EXTENDS)) {
@@ -201,12 +237,10 @@ void loadConstructor(in_func, size_t &i) {
 		                  "@no_constructor is only supported classes");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NATIVE) {
-		throw ParserError(firstLine,
-		                  "@native is only supported functions");
+		throw ParserError(firstLine, "@native is only supported functions");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_OVERRIDE) {
-		throw ParserError(firstLine,
-		                  "@override is only supported functions");
+		throw ParserError(firstLine, "@override is only supported functions");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_OVERRIDE) {
 		throw ParserError(firstLine,

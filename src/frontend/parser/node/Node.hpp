@@ -61,6 +61,8 @@ enum NodeType : uint8_t {
 	NULL_COALESCING,
 	TRY_CATCH,
 	THROW,
+	RUNTIME_CAST,
+	GENERIC_DECLARATION
 };
 
 struct ExprNode {
@@ -280,6 +282,20 @@ struct CastNode : NullableNode { // #
 	~CastNode();
 };
 
+struct RuntimeCastNode : NullableNode { // #
+	HasClassIdNode *value;
+	RuntimeCastNode(HasClassIdNode *value, ClassId classId, bool isSafeCast)
+	    : NullableNode(NodeType::RUNTIME_CAST, classId, isSafeCast, value->line),
+	      value(value) {}
+	ExprNode *resolve(in_func) override;
+	void optimize(in_func) override;
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes);
+	inline void rewrite(in_func, std::vector<uint8_t> &bytecodes) override {
+		value->rewrite(in_data, bytecodes);
+	}
+	~RuntimeCastNode();
+};
+
 // caller.name
 struct GetPropNode : AccessNode {
 	std::optional<ClassId> contextCallClassId;
@@ -322,8 +338,18 @@ struct WhileNode : CanBreakContinueNode {
 	HasClassIdNode *condition;
 	WhileNode(uint32_t line) : CanBreakContinueNode(NodeType::WHILE, line) {}
 	ExprNode *resolve(in_func) override;
-	void optimize(in_func);
-	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes);
+	void optimize(in_func) override;
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
+	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override {
+		if (condition->kind == NodeType::CONST) {
+			// Is bool because optimize forbiddened others
+			if (!static_cast<ConstValueNode *>(condition)->obj->b) {
+				return;
+			}
+		}
+		condition->rewrite(in_data, bytecodes);
+		CanBreakContinueNode::rewrite(in_data, bytecodes);
+	}
 	~WhileNode();
 };
 
@@ -364,6 +390,7 @@ struct ForRangeNode : CanBreakContinueNode {
 	inline void rewrite(in_func, std::vector<uint8_t> &bytecodes) override {
 		from->rewrite(in_data, bytecodes);
 		to->rewrite(in_data, bytecodes);
+		CanBreakContinueNode::rewrite(in_data, bytecodes);
 	}
 	~ForRangeNode();
 };
@@ -399,7 +426,7 @@ struct CallNode : NullableNode {
 	Offset funcId;
 	BytecodePos jumpIfNullPos;
 	bool justFindStatic;
-	bool addPopBytecode = false;
+	bool pauseVM = false;
 	bool accessNullable;
 	bool isSuper = false;
 	CallNode(uint32_t line, std::optional<ClassId> contextCallClassId,
@@ -421,20 +448,22 @@ struct CallNode : NullableNode {
 };
 
 struct TryCatchNode : ExprNode {
-	DeclarationNode* exceptionDeclaration;
+	DeclarationNode *exceptionDeclaration;
 	BlockNode body;
 	BlockNode catchBody;
-	TryCatchNode(uint32_t line) : ExprNode(NodeType::TRY_CATCH, line), body(line), catchBody(line) {}
-	ExprNode* resolve(in_func) override;
+	TryCatchNode(uint32_t line)
+	    : ExprNode(NodeType::TRY_CATCH, line), body(line), catchBody(line) {}
+	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
 };
 
 struct ThrowNode : ExprNode {
-	HasClassIdNode* value;
-	ThrowNode(uint32_t line, HasClassIdNode* value) : ExprNode(NodeType::THROW, line), value(value) {}
-	ExprNode* resolve(in_func) override;
+	HasClassIdNode *value;
+	ThrowNode(uint32_t line, HasClassIdNode *value)
+	    : ExprNode(NodeType::THROW, line), value(value) {}
+	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;

@@ -10,12 +10,12 @@ template<typename T>
 class FixedPool {
 public:
 	T* objects = nullptr;
-	size_t size = 0;
-	size_t index = 0;
+	uint32_t size = 0;
+	uint32_t index = 0;
 	FixedPool() = default;
 	FixedPool(const FixedPool&) = delete;
 	FixedPool& operator=(const FixedPool&) = delete;
-	inline void allocate(size_t size) {
+	inline void allocate(uint32_t size) {
 		if (objects) throw std::runtime_error("No reallocate");
 		this->size = size;
 		objects = static_cast<T*>(::operator new(sizeof(T) * size));
@@ -29,7 +29,7 @@ public:
 		new (newObj) T(std::forward<Args>(args)...);
 		return newObj;
 	}
-	inline T* operator[](size_t idx) {
+	inline T* operator[](uint32_t idx) {
 		return &objects[idx];
 	}
 	inline void pop() {
@@ -41,6 +41,7 @@ public:
 				objects[i].~T();
 			::operator delete(objects);
 			objects = nullptr;
+			index = 0;
 		}
 	}
 	~FixedPool() {

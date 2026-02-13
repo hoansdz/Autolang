@@ -86,8 +86,23 @@ ExprNode *BinaryNode::leftOpRight(in_func, ConstValueNode *l,
 ExprNode *BinaryNode::resolve(in_func) {
 	left = static_cast<HasClassIdNode *>(left->resolve(in_data));
 	right = static_cast<HasClassIdNode *>(right->resolve(in_data));
-	left->mode = mode;
-	right->mode = mode;
+	switch (op) {
+		case Lexer::TokenType::SAFE_CAST:
+		case Lexer::TokenType::UNSAFE_CAST: {
+			if (left->kind == CLASS_ACCESS) {
+				throwError("Left operand of 'as' must be a value");
+			}
+			if (right->kind != CLASS_ACCESS) {
+				throwError("Right operand of 'as' must be a class name");
+			}
+			auto result = new RuntimeCastNode(left, right->classId, op == Lexer::TokenType::SAFE_CAST);
+			left = nullptr;
+			ExprNode::deleteNode(this);
+			return result->resolve(in_data);
+		}
+		default:
+			break;
+	}
 	ConstValueNode *l;
 	switch (left->kind) {
 		case NodeType::CONST:
@@ -135,6 +150,7 @@ void BinaryNode::optimize(in_func) {
 			if (right->kind != CLASS_ACCESS) {
 				throwError("Right operand of 'is' must be a class name");
 			}
+			classId = DefaultClass::boolClassId;
 			return;
 		}
 		case Lexer::TokenType::PLUS:

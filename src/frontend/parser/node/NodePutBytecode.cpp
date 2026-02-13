@@ -38,7 +38,7 @@ void SkipNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
 			rewrite_opcode_u32(bytecodes, jumpBytePos, context.breakPos);
 			break;
 		default:
-			break;
+			throwError("Wrong type");
 	}
 }
 
@@ -236,6 +236,9 @@ void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	auto *func = compile.functions[funcId];
 	auto *funcInfo = &context.functionInfo[funcId];
+	if (func->functionFlags & FunctionFlags::FUNC_WAIT_INPUT) {
+		bytecodes.emplace_back(Opcode::WAIT_INPUT);
+	}
 	if (caller) {
 		caller->putBytecodes(in_data, bytecodes);
 		if (accessNullable) {
@@ -247,8 +250,6 @@ void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			put_opcode_u32(bytecodes, 0);
 		}
 	}
-	if (addPopBytecode)
-		bytecodes.emplace_back(Opcode::POP);
 	if (func->functionFlags & FunctionFlags::FUNC_IS_CONSTRUCTOR) {
 		if (isSuper) {
 			bytecodes.emplace_back(Opcode::LOAD_LOCAL);
@@ -257,27 +258,32 @@ void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			bytecodes.emplace_back(Opcode::CREATE_OBJECT);
 			put_opcode_u32(bytecodes, classId);
 			put_opcode_u32(bytecodes,
-			               compile.classes[classId]->memberMap.size());
+			               compile.classes[classId]->memberId.size());
 		}
 	}
 	for (auto &argument : arguments) {
 		argument->putBytecodes(in_data, bytecodes);
 	}
 	if (func->functionFlags & FunctionFlags::FUNC_IS_VIRTUAL) {
-		bytecodes.emplace_back(func->returnId == DefaultClass::nullClassId
-		                           ? Opcode::CALL_VTABLE_VOID_FUNCTION
-		                           : Opcode::CALL_VTABLE_FUNCTION);
+		bool returnVoid =
+		    func->returnId == DefaultClass::voidClassId ||
+		    (func->functionFlags & FunctionFlags::FUNC_WAIT_INPUT);
+		bytecodes.emplace_back(returnVoid ? Opcode::CALL_VTABLE_VOID_FUNCTION
+		                                  : Opcode::CALL_VTABLE_FUNCTION);
 		put_opcode_u32(bytecodes, funcInfo->virtualPosition);
 		put_opcode_u32(bytecodes, func->argSize);
 		// std::cerr<<"At "<<func->name<<"\n";
-		// std::cerr<<"Put "<<funcInfo->virtualPosition<<" & "<<func->argSize<<"\n";
+		// std::cerr<<"Put "<<funcInfo->virtualPosition<<" &
+		// "<<func->argSize<<"\n";
 	} else {
 		if (func->functionFlags & FunctionFlags::FUNC_IS_DATA_CONSTRUCTOR) {
 			bytecodes.emplace_back(Opcode::CALL_DATA_CONTRUCTOR);
 		} else {
-			bytecodes.emplace_back(func->returnId == DefaultClass::nullClassId
-			                           ? Opcode::CALL_VOID_FUNCTION
-			                           : Opcode::CALL_FUNCTION);
+			bool returnVoid =
+			    func->returnId == DefaultClass::voidClassId ||
+			    (func->functionFlags & FunctionFlags::FUNC_WAIT_INPUT);
+			bytecodes.emplace_back(returnVoid ? Opcode::CALL_VOID_FUNCTION
+			                                  : Opcode::CALL_FUNCTION);
 		}
 		put_opcode_u32(bytecodes, funcId);
 	}

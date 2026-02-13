@@ -31,6 +31,14 @@ struct DeclarationNode : HasClassIdNode {
 	~DeclarationNode() {}
 };
 
+struct GenericDeclarationNode : HasClassIdNode {
+	std::string name;
+	std::vector<ExprNode*> dependenceNodes;
+	GenericDeclarationNode(uint32_t line, std::string name)
+	    : HasClassIdNode(NodeType::GENERIC_DECLARATION, 0, line),
+	      name(std::move(name)) {}
+};
+
 struct CreateConstructorNode : HasClassIdNode {
 	ClassId classId;
 	std::string name;

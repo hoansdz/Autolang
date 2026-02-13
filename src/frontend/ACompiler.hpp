@@ -44,9 +44,9 @@ class ACompiler {
 	void loadSource(LibraryData *library);
 	void lexerTextToToken(LibraryData *library);
 	void loadMainSource(LibraryData *library);
-	void loadMainSource(const char *path, const ANativeMap &nativeFuncMap);
+	void loadMainSource(const char *path, const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP);
 	void loadMainSource(const char *path, const char *data,
-	                    const ANativeMap &nativeFuncMap);
+	                    const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP);
 	LibraryData *requestImport(const char *path);
 
 	AVM vm = AVM(false);

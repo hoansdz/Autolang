@@ -47,6 +47,7 @@ public:
 			for (auto* object : vecs)
 				delete object;
 			::operator delete(objects);
+			vecs.clear();
 			objects = nullptr;
 			size = 0;
 			index = 0;

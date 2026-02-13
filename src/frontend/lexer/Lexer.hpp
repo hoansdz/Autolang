@@ -115,7 +115,10 @@ enum TokenType : uint8_t {
 	NO_CONSTRUCTOR,
 	IMPORT,
 	END_IMPORT,
+	WAIT_INPUT,
 	IS,
+	SAFE_CAST,
+	UNSAFE_CAST,
 
 	// ===== Special =====
 	END_OF_FILE, //	Kết thúc file
@@ -153,6 +156,8 @@ static const HashMap<std::string, TokenType> CAST = {
     {"no_constructor", TokenType::NO_CONSTRUCTOR},
     {"import", TokenType::IMPORT},
     {"is", TokenType::IS},
+	{"as", TokenType::UNSAFE_CAST},
+	{"wait_input", TokenType::WAIT_INPUT},
 
     {"/*", TokenType::START_COMMENT},
     {"&", TokenType::AND},

@@ -9,8 +9,6 @@ namespace AutoLang {
 ExprNode* NullCoalescingNode::resolve(in_func) {
 	left = static_cast<HasClassIdNode*>(left->resolve(in_data));
 	right = static_cast<HasClassIdNode*>(right->resolve(in_data));
-	left->mode = mode;
-	right->mode = mode;
 	switch (left->kind) {
 		case NodeType::CONST: {
 			if (left->classId == DefaultClass::nullClassId) {

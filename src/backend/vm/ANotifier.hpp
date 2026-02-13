@@ -40,6 +40,9 @@ class ANotifier {
 	inline void throwException(T message) {
 		callFrame->exception = createException(message);
 	}
+	inline void input(AObject* obj) {
+		vm->input(obj);
+	}
 	ANotifier(AVM *vm) : vm(vm) {}
 };
 

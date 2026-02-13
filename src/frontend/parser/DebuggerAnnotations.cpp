@@ -31,6 +31,13 @@ void loadAnnotations(in_func, size_t &i) {
 			context.annotationFlags |= AnnotationFlags::AN_NO_OVERRIDE;
 			break;
 		}
+		case Lexer::TokenType::WAIT_INPUT: {
+			if (context.annotationFlags & AnnotationFlags::AN_WAIT_INPUT) {
+				throw ParserError(firstLine, "Duplicate annotation @wait_input");
+			}
+			context.annotationFlags |= AnnotationFlags::AN_WAIT_INPUT;
+			break;
+		}
 		case Lexer::TokenType::NATIVE: {
 			if (context.annotationFlags & AnnotationFlags::AN_NATIVE) {
 				throw ParserError(firstLine, "Duplicate annotation @native");
@@ -94,6 +101,7 @@ void loadAnnotations(in_func, size_t &i) {
 			}
 			auto library = it->second;
 			context.mode = library;
+			context.importMap[path] = library;
 			context.loadingLibs.push_back(library);
 			context.tokens.insert(context.tokens.begin() + i + 1,
 			                      library->lexerContext.tokens.begin(),

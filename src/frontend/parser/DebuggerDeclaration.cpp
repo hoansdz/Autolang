@@ -73,7 +73,7 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 	HasClassIdNode* value = nullptr;
 	std::string className;
 	if (expect(token, Lexer::TokenType::COLON)) {
-		auto classDeclaration = loadClassDeclaration(in_data, i, declaration->line);
+		auto classDeclaration = loadClassDeclaration(in_data, i, declaration->line, false);
 		if (sugarSyntax) {
 			throw ParserError(token->line, 
 				std::string("Sugar syntax ") + (isVal ? "val " : "var ") + name + (nullable ? "?" : "!") + " can be use when fast declare, cannot use with " + classDeclaration.className + "? " +
@@ -119,6 +119,7 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 		}
 		value = new ConstValueNode(firstLine, DefaultClass::nullObject, 0);
 		--i;
+		std::cerr<<name<<"\n";
 	}
 	createNode:;
 	std::string declarationName;
@@ -129,10 +130,9 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 			declarationName = context.getCurrentClass(in_data)->name + '.' + name;
 	} else declarationName = name;
 
-	if (value->kind == NodeType::CONST && static_cast<ConstValueNode*>(value)->id == 0) {
-		//0 is null const object position
+	if (value->kind == NodeType::CONST && value->isNullable()) {
 		if (!nullable) {
-			throw ParserError(token->line, declarationName+ " must nullable to can detach null value");
+			throw ParserError(token->line, declarationName+ " is marked non nullable, cannot detach null value");
 		}
 		if (className.empty()) {
 			throw ParserError(token->line, std::string("Ambiguous call nullable ") + (isVal ? "val " : "var ") + name + "? = null");
@@ -167,7 +167,7 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 	}
 	//Non static
 	if (context.currentClassId && context.currentFunctionId == context.mainFunctionId) {
-		uint32_t nodeId = context.getCurrentClass(in_data)->memberMap.size();
+		uint32_t nodeId = context.getCurrentClass(in_data)->memberId.size();
 		// printDebug(compile.classes[context.currentClassInfo->declarationThis->classId]->name);
 		// printDebug((uintptr_t)context.currentClass);
 		// std::cout << nodeId << " is node id of " << name <<'\n';

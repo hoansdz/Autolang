@@ -22,6 +22,8 @@ inline AObject *to_int(NativeFuncInData);
 inline AObject *to_float(NativeFuncInData);
 inline AObject *to_string(NativeFuncInData);
 inline AObject *get_string_size(NativeFuncInData);
+inline AObject *input_str(NativeFuncInData);
+inline AObject *str_get(NativeFuncInData);
 
 AObject *data_constructor(NativeFuncInData) {
 	AObject *obj = args[0];
@@ -158,8 +160,41 @@ AObject *string_constructor(NativeFuncInData) {
 	return nullptr;
 }
 
+AObject *str_get(NativeFuncInData) {
+	AString *str = args[0]->str;
+	int64_t pos = args[1]->i;
+
+	auto len = str->size;
+
+	if (len == 0) {
+		notifier.throwException("Empty string");
+		return nullptr;
+	}
+
+	if (pos < 0)
+		pos += len;
+
+	if (pos < 0 || pos >= len) {
+		notifier.throwException("Index out of range");
+		return nullptr;
+	}
+
+	return notifier.createString(AString::from(str->data[pos]));
+}
+
 AObject *get_string_size(NativeFuncInData) {
 	return notifier.createInt(static_cast<int64_t>(args[0]->str->size));
+}
+
+AObject *input_str(NativeFuncInData) {
+#ifdef __EMSCRIPTEN__
+
+#else
+	std::string s;
+	std::getline(std::cin, s);
+	notifier.input(notifier.createString(AString::from(s)));
+#endif
+	return nullptr;
 }
 
 } // namespace DefaultFunction

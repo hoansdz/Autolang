@@ -25,6 +25,7 @@ void init(AutoLang::ACompiler &compiler) {
 	nativeMap.emplace("fmod", &fmod);
 
 	compiler.registerFromSource("std/math", R"###(
+		@no_constructor
 		class Math {
 			@native("round")
 			static func round(value: Float): Int

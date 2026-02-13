@@ -17,16 +17,19 @@ void runCompiler(const char *path, const char *data) {
 	auto start = std::chrono::high_resolution_clock::now();
 	try {
 		try {
-			AutoLang::ACompiler compiler;
-			compiler.registerFromSource(path, true, data, nativeMap);
+			static AutoLang::ACompiler compiler;
+			compiler.loadMainSource(path, data);
 			if (compiler.getState() == AutoLang::CompilerState::ERROR) {
+				compiler.refresh();
 				return;
 			}
 			compiler.generateBytecodes();
 			if (compiler.getState() == AutoLang::CompilerState::ERROR) {
+				compiler.refresh();
 				return;
 			}
 			compiler.run();
+			compiler.refresh();
 		} catch (const std::logic_error &err) {
 			std::cerr << err.what();
 		}

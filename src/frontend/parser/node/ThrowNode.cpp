@@ -8,7 +8,6 @@ namespace AutoLang {
 
 ExprNode *ThrowNode::resolve(in_func) {
 	value = static_cast<HasClassIdNode *>(value->resolve(in_data));
-	value->mode = mode;
 	return this;
 }
 

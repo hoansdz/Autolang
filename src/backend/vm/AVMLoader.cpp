@@ -18,7 +18,10 @@ void AVM::start() {
 	}
 	state = VMState::RUNNING;
 	
-	initGlobalVariables();
+	data.main = data.functions[data.mainFunctionId];
+	if (!globalVariables) {
+		initGlobalVariables();
+	}
 	run();
 	// log();
 	// allowDebug = true;
@@ -70,6 +73,33 @@ void AVM::start() {
 			std::cout << "wtf" << '\n';
 		}
 	}
+}
+
+void AVM::restart() {
+	// auto start = std::chrono::high_resolution_clock::now();
+	state = VMState::READY;
+	stack.index = 0;
+	callFrames.index = 0;
+	stackAllocator.setTop(0);
+	for (size_t i = 0; i < stackAllocator.maxSize; ++i) {
+		stackAllocator.args[i] = nullptr;
+	}
+	for (size_t i = 0; i < data.main->maxDeclaration; ++i) {
+		globalVariables[i] = nullptr;
+	}
+	data.manager.refresh();
+	// auto end = std::chrono::high_resolution_clock::now();
+	// auto duration =
+	//     std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+	// std::cout << '\n'
+	//           << "Restart time : " << duration.count() << " ms" << '\n';
+}
+
+AVM::~AVM() {
+	delete notifier;
+	delete[] tempAllocateArea;
+	if (globalVariables)
+		delete[] globalVariables;
 }
 
 }

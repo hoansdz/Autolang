@@ -11,6 +11,7 @@
 #include "shared/Function.hpp"
 #include "shared/StackAllocator.hpp"
 #include "shared/ObjectManager.hpp"
+#include "shared/FixedPool.hpp"
 
 namespace AutoLang {
 
@@ -38,8 +39,9 @@ struct CompiledProgram
 	AreaAllocator<AClass, 64> classAllocator;
 	std::vector<AClass*> classes;
 	HashMap<std::string, Offset> classMap;
-	std::vector<AObject *> constPool;
+	std::vector<AObject*> constPool;
 	void refresh();
+	void destroy();
 	template <bool isConstructor = false>
 	Offset registerFunction( // Return value
 		AClass *clazz,
@@ -55,7 +57,7 @@ struct CompiledProgram
 		uint32_t argSize,
 		uint32_t functionFlags)
 	{
-		return registerFunction(clazz, name, args, argSize, AutoLang::DefaultClass::nullClassId, functionFlags);
+		return registerFunction(clazz, name, args, argSize, AutoLang::DefaultClass::voidClassId, functionFlags);
 	}
 	ClassId registerClass(
 		std::string name, uint32_t classFlags);

@@ -13,9 +13,9 @@ class AVM;
 
 class StackAllocator {
 private:
-	size_t maxSize;
 	size_t sizeNow;
 public:
+	size_t maxSize;
 	size_t top;
 	AObject** args;
 	AObject** currentPtr;
@@ -66,7 +66,7 @@ public:
 		currentPtr = args + top;
 	}
 	
-	inline void clear(ObjectManager& manager, size_t from, size_t to) {
+	inline void clear(ObjectManager& manager, int from, int to) {
 		for (; from<=to; ++from) {
 			AObject** obj = &args[from];
 			if (*obj == nullptr) continue;

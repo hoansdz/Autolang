@@ -10,7 +10,7 @@
 
 namespace AutoLang {
 
-void CompiledProgram::refresh() {
+void CompiledProgram::destroy() {
 	manager.refresh();
 	functionAllocator.destroy();
 	functions.clear();
@@ -18,7 +18,10 @@ void CompiledProgram::refresh() {
 	classAllocator.destroy();
 	classes.clear();
 	classMap.clear();
-	constPool.clear();
+}
+
+void CompiledProgram::refresh() {
+	manager.refresh();
 }
 
 template <bool isConstructor>
@@ -89,13 +92,14 @@ Offset CompiledProgram::registerConstPool(
 		delete value;
 		return it->second;
 	}
-	map[value] = constPool.size();
+	uint32_t id = constPool.size();
+	map[value] = id;
 	// printDebug("Value : "+toStr(value)+" at
 	// "+std::to_string(constPool.size()));
-	AObject *obj = manager.create(value);
+	auto obj = new AObject(value);
 	constPool.push_back(obj);
-	obj->refCount = AutoLang::DefaultClass::refCountForGlobal;
-	return constPool.size() - 1;
+	constPool[id]->refCount = AutoLang::DefaultClass::refCountForGlobal;
+	return id;
 }
 
 template <typename T>
@@ -104,28 +108,23 @@ Offset CompiledProgram::registerConstPool(HashMap<T, uint32_t> &map, T value) {
 	if (it != map.end()) {
 		return it->second;
 	}
-	map[value] = constPool.size();
+	uint32_t id = constPool.size();
+	map[value] = id;
 	// printDebug("Value : "+toStr(value)+" at
 	// "+std::to_string(constPool.size()));
-	AObject *obj = manager.create(value);
+	auto obj = new AObject(value);
 	constPool.push_back(obj);
-	obj->refCount = AutoLang::DefaultClass::refCountForGlobal;
-	return constPool.size() - 1;
+	constPool[id]->refCount = AutoLang::DefaultClass::refCountForGlobal;
+	return id;
 }
 
 CompiledProgram::~CompiledProgram() {
-	// for (AObject* obj : constPool) {
-	// 	if (obj->refCount <= AutoLang::DefaultClass::refCountForGlobal) {
-	// 		obj->free();
-	// 		reinterpret_cast<AreaAllocator<AObject*,
-	// 64::AreaChunkSlot*>(obj)->isFree =true; 		continue;
-	// 	}
-	// 	obj->refCount = obj->refCount -
-	// AutoLang::DefaultClass::refCountForGlobal;
-	// }
 	manager.destroy();
 	classAllocator.destroy();
 	functionAllocator.destroy();
+	for (auto* obj : constPool) {
+		delete obj;
+	}
 }
 
 } // namespace AutoLang

@@ -21,7 +21,7 @@ struct Function {
 	uint32_t maxDeclaration;
 	Offset id;
 	Function()
-	    : functionFlags(functionFlags), args(nullptr),
+	    : functionFlags(FunctionFlags::FUNC_IS_NATIVE), args(nullptr),
 	      returnId(0), maxDeclaration(0), id(0) {}
 	// Function(ClassId id, std::string name, AObject
 	// *(*native)(NativeFuncInput),

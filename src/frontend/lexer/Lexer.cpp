@@ -43,6 +43,7 @@ void load(ParserContext *mainContext, LibraryData *library) {
 	context.linePos = 0;
 	context.lineSize = 0;
 	context.nextLinePosition = 0;
+	ParserContext::mode = library;
 	uint32_t i = 0;
 	while (nextLine(context, library->rawData.data(), i)) {
 		try {
@@ -263,6 +264,17 @@ void pushIdentifier(Context &context, uint32_t &i) {
 		ESTIMATE_CASE_ADD(RETURN, returnNode)
 		ESTIMATE_CASE_ADD(TRY, tryCatchNode)
 		ESTIMATE_CASE_ADD(THROW, throwNode)
+		case TokenType::UNSAFE_CAST: {
+			if (!isEndOfLine(context, i)) {
+				if (context.line[i] != '?') {
+					break;
+				}
+				++i;
+				context.tokens.emplace_back(context.linePos, SAFE_CAST);
+				return;
+			}
+			break;
+		}
 		case TokenType::IMPORT: {
 			if (context.tokens.empty() ||
 			    context.tokens.back().type != TokenType::AT_SIGN) {

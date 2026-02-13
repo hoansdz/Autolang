@@ -25,6 +25,13 @@ public:
         return new AString(str, value.size());
     }
 
+	inline static AString* from(char chr) {
+        char* str = new char[2];
+        str[0] = chr;
+        str[1] = '\0';
+        return new AString(str, 2);
+    }
+
     template<typename T>
     inline static AString* from(T value) {
         std::string val = std::to_string(value);

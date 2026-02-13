@@ -30,6 +30,7 @@ enum AnnotationFlags : uint32_t {
 	AN_NO_OVERRIDE = 1u << 1,
 	AN_NATIVE = 1u << 2,
 	AN_NO_CONSTRUCTOR = 1u << 3,
+	AN_WAIT_INPUT = 1u << 4
 };
 
 struct LibraryData;
@@ -38,6 +39,8 @@ constexpr LexerStringId lexerIdSuper = 0;
 constexpr LexerStringId lexerIdInt = 1;
 constexpr LexerStringId lexerIdFloat = 2;
 constexpr LexerStringId lexerIdBool = 3;
+constexpr LexerStringId lexerIdNull = 4;
+constexpr LexerStringId lexerIdVoid = 5;
 
 struct ParserContext {
 	// Optimize ram because reuse std::string instead of new std::string in

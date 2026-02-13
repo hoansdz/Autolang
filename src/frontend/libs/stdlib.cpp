@@ -38,6 +38,10 @@ void init(ACompiler &compiler) {
 			func toInt(): Int
 			@native("str_to_float")
 			func toFloat(): Float
+			@native("str_get")
+			func [](position: Int): String
+			@native("str_get")
+			func get(position: Int): String
 		}
 		@no_constructor
 		class Null {
@@ -45,6 +49,10 @@ void init(ACompiler &compiler) {
 		}
 		@no_constructor
 		class Any {
+		
+		}
+		@no_constructor
+		class Void {
 		
 		}
 		class Exception(val message: String) {
@@ -56,6 +64,9 @@ void init(ACompiler &compiler) {
 		func println(value: Any?)
 		@native("get_refcount")
 		func getRefCount(value: Any?): Int
+		@wait_input
+		@native("input")
+		func input(): String
 	)###",
 	    true,
 	    ANativeMap(
@@ -66,6 +77,8 @@ void init(ACompiler &compiler) {
 	         {"str_to_int", &DefaultFunction::to_int},
 	         {"str_to_float", &DefaultFunction::to_float},
 	         {"to_string", &DefaultFunction::to_string},
+			 {"str_get", &DefaultFunction::str_get},
+			 {"input", &DefaultFunction::input_str},
 	         {"string_size", &DefaultFunction::get_string_size}}));
 }
 } // namespace stdlib

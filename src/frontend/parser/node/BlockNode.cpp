@@ -7,10 +7,10 @@
 namespace AutoLang {
 
 ExprNode *BlockNode::resolve(in_func) {
+	ParserContext::mode = mode;
 	for (size_t i = 0; i < nodes.size(); ++i) {
 		auto &node = nodes[i];
 		node = node->resolve(in_data);
-		node->mode = mode;
 	}
 	return this;
 }
@@ -40,7 +40,7 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				auto currentNode = static_cast<CallNode *>(node);
 				node->putBytecodes(in_data, bytecodes);
 				// if (currentNode->isSuper) break;
-				if (currentNode->classId != DefaultClass::nullClassId)
+				if (currentNode->classId != DefaultClass::voidClassId)
 					bytecodes.emplace_back(currentNode->isSuper
 					                           ? Opcode::POP_NO_RELEASE
 					                           : Opcode::POP);

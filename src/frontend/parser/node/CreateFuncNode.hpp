@@ -9,7 +9,7 @@
 namespace AutoLang {
 
 // func name(arguments): returnClass { body }
-struct CreateFuncNode : HasClassIdNode {
+struct CreateFuncNode : ExprNode {
 	std::optional<ClassId> contextCallClassId;
 	std::string name;
 	std::string returnClass;
@@ -21,7 +21,7 @@ struct CreateFuncNode : HasClassIdNode {
 	               std::string name, std::string returnClass,
 	               std::vector<DeclarationNode *> arguments,
 	               uint32_t functionFlags)
-	    : HasClassIdNode(NodeType::CREATE_FUNC, 0, line),
+	    : ExprNode(NodeType::CREATE_FUNC, line),
 	      contextCallClassId(contextCallClassId), name(std::move(name)),
 	      returnClass(std::move(returnClass)), arguments(std::move(arguments)),
 	      body(line), functionFlags(functionFlags) {}

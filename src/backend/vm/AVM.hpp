@@ -85,12 +85,15 @@ enum Opcode : uint8_t {
 	REMOVE_TRY = 69,
 	IS = 70,
 	LOAD_EXCEPTION = 71,
+	WAIT_INPUT = 72,
+	SAFE_CAST = 73,
+	UNSAFE_CAST = 74
 };
 
 template <typename K, typename V>
 size_t estimateUnorderedMapSize(const HashMap<K, V> &map);
 
-enum class VMState { INIT, RUNNING, HALTED, WAITING, ERROR };
+enum class VMState { READY, RUNNING, HALTED, WAITING, ERROR };
 
 #ifndef MAX_STACK_OBJECT
 #define MAX_STACK_OBJECT 128
@@ -128,10 +131,10 @@ class AVM {
 	AObject **tempAllocateArea = new AObject *[3]{};
 	inline AObject *getConstObject(uint32_t id);
 
-	uint32_t globalVariableCount;
 	inline void initGlobalVariables();
 	AObject **globalVariables = nullptr;
 	inline void setGlobalVariables(uint32_t i, AObject *object);
+	void restart();
 
 	template <size_t index> inline void inputTempAllocateArea() {
 		if constexpr (index > 0) {
@@ -157,9 +160,10 @@ class AVM {
 	                               uint8_t *bytecodes, uint32_t &i);
 	void resume();
 	void run();
+	void input(AObject* inputData);
 
 	//   public:
-	VMState state = VMState::INIT;
+	VMState state = VMState::READY;
 	[[nodiscard]] explicit AVM(bool allowDebug);
 	void start();
 	void log();

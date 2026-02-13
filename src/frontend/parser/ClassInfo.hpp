@@ -14,6 +14,7 @@ struct ClassInfo {
 	HashMap<std::string, DeclarationNode *> staticMember;
 	HashMap<std::string, HashMap<HashValue, Offset>> func;
 	HashMap<std::string, HashMap<HashValue, Offset>> staticFunc;
+	HashMap<std::string, GenericDeclarationNode*> genericDeclarations;
 	CreateConstructorNode *primaryConstructor = nullptr;
 	std::vector<CreateConstructorNode *> secondaryConstructor;
 	DeclarationNode *declarationThis;

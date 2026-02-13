@@ -64,10 +64,6 @@ ConstValueNode::~ConstValueNode() {
 	delete str;
 }
 
-CastNode::~CastNode() {
-	deleteNode(value);
-}
-
 ForRangeNode::~ForRangeNode() {
 	deleteNode(detach);
 	deleteNode(from);

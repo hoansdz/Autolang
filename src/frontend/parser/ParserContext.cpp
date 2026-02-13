@@ -17,11 +17,15 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerString.emplace_back("Int");
 	lexerString.emplace_back("Float");
 	lexerString.emplace_back("Bool");
+	lexerString.emplace_back("Null");
+	lexerString.emplace_back("Void");
 
 	lexerStringMap["super"] = lexerIdSuper;
 	lexerStringMap["Int"] = lexerIdInt;
 	lexerStringMap["Float"] = lexerIdFloat;
 	lexerStringMap["Bool"] = lexerIdBool;
+	lexerStringMap["Null"] = lexerIdNull;
+	lexerStringMap["Void"] = lexerIdVoid;
 
 	constValue["null"] = std::pair(DefaultClass::nullObject, 0);
 	constValue["true"] = std::pair(DefaultClass::trueObject, 1);
@@ -155,14 +159,16 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	loadingLibs.clear();
 	hasError = false;
 	tokens.clear();
+	importMap.clear();
 
 	for (auto &[_, funcInfo] : functionInfo) {
 		funcInfo.block.refresh();
 	}
 
-	for (auto node : staticNode) {
+	for (auto* node : staticNode) {
 		ExprNode::deleteNode(node);
 	}
+	staticNode.clear();
 
 	newFunctions.refresh();
 	newClasses.refresh();
@@ -177,6 +183,9 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	jumpIfNullNode = nullptr;
 
 	functionInfo.clear();
+	for (auto& [_, func] : functionInfo) {
+		delete[] func.nullableArgs;
+	}
 	classInfo.clear();
 
 	createConstructorPool.refresh();
@@ -187,6 +196,8 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	declarationNodePool.refresh();
 	returnPool.refresh();
 	setValuePool.refresh();
+
+	throwPool.refresh();
 
 	currentClassId = std::nullopt;
 

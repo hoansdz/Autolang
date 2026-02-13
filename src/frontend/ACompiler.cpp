@@ -52,7 +52,8 @@ void ACompiler::loadSource(LibraryData *library) {
 		return;
 	}
 	for (auto &pos : context.importOffset) {
-		auto lib = loadImport(in_data, library->lexerContext.tokens, *this, (size_t)pos);
+		auto lib = loadImport(in_data, library->lexerContext.tokens, *this,
+		                      (size_t)pos);
 		for (auto &[key, l] : lib->dependencies) {
 			library->dependencies[key] = l;
 		}
@@ -136,11 +137,12 @@ void ACompiler::loadMainSource(LibraryData *library) {
 
 	std::string autoImportStr;
 	for (auto &[k, lib] : autoImportMap) {
-		autoImportStr += "@import(\"" + lib->path + "\")\n";
+		autoImportStr += "@import(\"" + lib->path + "\")";
 		// library->dependencies[k] = lib;
 		// library->lexerContext.tokens.insert(
 		//     library->lexerContext.tokens.begin(),
-		//     lib->lexerContext.tokens.begin(), lib->lexerContext.tokens.end());
+		//     lib->lexerContext.tokens.begin(),
+		//     lib->lexerContext.tokens.end());
 		// for (auto &[key, l] : lib->dependencies) {
 		// 	library->dependencies[key] = l;
 		// }
@@ -158,7 +160,8 @@ void ACompiler::loadMainSource(LibraryData *library) {
 	library->lexerContext.tokens.pop_back();
 
 	for (auto &pos : context.importOffset) {
-		auto lib = loadImport(in_data, library->lexerContext.tokens, *this, (size_t)pos);
+		auto lib = loadImport(in_data, library->lexerContext.tokens, *this,
+		                      (size_t)pos);
 		for (auto &[key, l] : lib->dependencies) {
 			library->dependencies[key] = l;
 		}
@@ -250,12 +253,12 @@ void ACompiler::generateBytecodes() {
 			}
 		}
 	}
-	auto parserTime = std::chrono::high_resolution_clock::now();
-	std::cerr << "Generated node : "
-	          << std::chrono::duration_cast<std::chrono::milliseconds>(
-	                 parserTime - startParserTime)
-	                 .count()
-	          << " ms" << '\n';
+	// auto parserTime = std::chrono::high_resolution_clock::now();
+	// std::cerr << "Generated node : "
+	//           << std::chrono::duration_cast<std::chrono::milliseconds>(
+	//                  parserTime - startParserTime)
+	//                  .count()
+	//           << " ms" << '\n';
 
 	if (context.hasError) {
 		state = CompilerState::ERROR;
@@ -293,10 +296,10 @@ void ACompiler::generateBytecodes() {
 			}
 		}
 		printDebug("Start optimize static nodes");
+
 		for (auto &node : context.staticNode) {
-			auto oldMode = node->mode;
+			ParserContext::mode = node->mode;
 			node = node->resolve(in_data);
-			node->mode = oldMode;
 			node->optimize(in_data);
 		}
 		printDebug("Start optimize functions");
@@ -357,7 +360,11 @@ void ACompiler::generateBytecodes() {
 			                   context.getMainFunction(in_data)->bytecodes);
 			node->rewrite(in_data, context.getMainFunction(in_data)->bytecodes);
 		}
-		context.getMainFunctionInfo(in_data)->block.resolve(in_data);
+		printDebug("Start optimize bytecodes in main");
+		for (auto *node : context.getMainFunctionInfo(in_data)->block.nodes) {
+			ParserContext::mode = node->mode;
+			node->resolve(in_data);
+		}
 		context.getMainFunctionInfo(in_data)->block.optimize(in_data);
 		printDebug("Start put bytecodes in functions");
 		for (int i = 0; i < sizeNewFunctions; ++i) {
@@ -413,12 +420,6 @@ void ACompiler::generateBytecodes() {
 		// 	++total;
 
 		// printDebug("TOTAL FUNC IN MAP: " + std::to_string(total));
-		auto resolveTime = std::chrono::high_resolution_clock::now();
-		std::cerr << "Optimize and Putbytecode time : "
-		          << std::chrono::duration_cast<std::chrono::milliseconds>(
-		                 resolveTime - parserTime)
-		                 .count()
-		          << " ms" << '\n';
 	} catch (const ParserError &err) {
 		context.hasError = true;
 		context.logMessage(err.line, err.message);
@@ -426,6 +427,13 @@ void ACompiler::generateBytecodes() {
 		context.hasError = true;
 		std::cout << "Unexpected exception: " << err.what() << '\n';
 	}
+
+	// auto resolveTime = std::chrono::high_resolution_clock::now();
+	// std::cerr << "Optimize and Putbytecode time : "
+	//           << std::chrono::duration_cast<std::chrono::milliseconds>(
+	//                  resolveTime - parserTime)
+	//                  .count()
+	//           << " ms" << '\n';
 
 	if (context.hasError) {
 		state = CompilerState::ERROR;
@@ -452,47 +460,56 @@ void ACompiler::run() {
 			    "Source is analyzed but bytecode not generated. "
 			    "Call generateBytecodes() before running.");
 	}
-	vm.data.main = vm.data.functions[vm.data.mainFunctionId];
 	vm.start();
 }
 
 void ACompiler::refresh() {
 	parserContext.refresh(vm.data);
 	mainSource->lexerContext.refresh();
-	vm.data.refresh();
+	for (auto *lib : generatedLibraries) {
+		delete lib;
+	}
+	generatedLibraries.clear();
+	vm.restart();
+	vm.data.destroy();
 	// AutoLang::DefaultClass::init(vm.data);
-	AutoLang::Libs::stdlib::init(*this);
-	AutoLang::DefaultClass::init(*this);
-	AutoLang::DefaultFunction::init(*this);
+	// AutoLang::Libs::stdlib::init(*this);
+	// AutoLang::DefaultClass::init(*this);
+	// AutoLang::DefaultFunction::init(*this);
 	vm.data.mainFunctionId = vm.data.registerFunction(
 	    nullptr, ".main", nullptr, 0,
 	    static_cast<uint32_t>(FunctionFlags::FUNC_IS_STATIC));
 	new (&vm.data.functions[vm.data.mainFunctionId]->bytecodes)
 	    std::vector<uint8_t>();
-	state = CompilerState::READY;
+	state = CompilerState::ANALYZED;
+	if (vm.globalVariables) {
+		delete[] vm.globalVariables;
+		vm.globalVariables = nullptr;
+	}
 }
 
 ACompiler::ACompiler() {
-	auto startCompiler = std::chrono::high_resolution_clock::now();
+	// auto startCompiler = std::chrono::high_resolution_clock::now();
+
+	AutoLang::Libs::stdlib::init(*this);
+	AutoLang::DefaultClass::init(*this);
+	AutoLang::DefaultFunction::init(*this);
 
 	vm.data.mainFunctionId = vm.data.registerFunction(
 	    nullptr, ".main", nullptr, 0,
 	    static_cast<uint32_t>(FunctionFlags::FUNC_IS_STATIC));
 	new (&vm.data.functions[vm.data.mainFunctionId]->bytecodes)
 	    std::vector<uint8_t>();
-	AutoLang::Libs::stdlib::init(*this);
-	AutoLang::DefaultClass::init(*this);
-	AutoLang::DefaultFunction::init(*this);
 	// AutoLang::DefaultClass::init(vm.data);
 	// AutoLang::DefaultFunction::init(vm.data);
 
 	parserContext.init(vm.data);
 
-	std::cout << "Init time : "
-	          << std::chrono::duration_cast<std::chrono::milliseconds>(
-	                 std::chrono::high_resolution_clock::now() - startCompiler)
-	                 .count()
-	          << " ms" << '\n';
+	// std::cout << "Init time : "
+	//           << std::chrono::duration_cast<std::chrono::milliseconds>(
+	//                  std::chrono::high_resolution_clock::now() -
+	//                  startCompiler) .count()
+	//           << " ms" << '\n';
 	state = CompilerState::READY;
 	AutoLang::Libs::Math::init(*this);
 	state = CompilerState::READY;
@@ -503,8 +520,10 @@ ACompiler::~ACompiler() {
 	auto &compile = vm.data;
 	freeData(in_data);
 	parserContext.refresh(vm.data);
-	mainSource->lexerContext.refresh();
-	vm.data.refresh();
+	if (mainSource) {
+		mainSource->lexerContext.refresh();
+	}
+	vm.data.destroy();
 }
 
 } // namespace AutoLang
