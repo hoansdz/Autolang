@@ -1,41 +1,176 @@
-class Person<T>() {
-	func sound() {}
+@import("std/list")
+val l = List<Int>()
+for (val i in 0..10) {
+	l.add(i + 1)
 }
-
-class A extends Person {
-  static val k: Int = 99
-
-  constructor() {
-    super()
-  }
-
-  func sound() {
-	println("Hello A")
-  }
+for (val i in 0..10) {
+	println(l[10 - i])
 }
+l.clear()
+println(l is List<Float>)
 
-class B extends Person {
-  static val k: Int = 99
-
-  constructor() {
-    super()
-  }
-
-  func sound() {
-	println("Hello B")
-  }
-}
-
-func t(person: Person): Any {
-	if (person is A) {
-		return true
+class Test<T>{
+	static func printValue(x: T) {
+		println(x)
 	}
-	if (person is B) {
+}
+
+class Person(var name: String, var age: Int, val id: Float) {}
+
+class M extends Person {
+	constructor() {
+		super("Hello", 1, 2)
+	}
+}
+
+class PersonNode(var prev: PersonNode?, var currentPerson: Person, var next: PersonNode?) {
+
+}
+//hi
+class ListPerson {
+	private var beginNode: PersonNode? = null
+    public var size: Int = 0
+    constructor (a: Int) {
+		println(a)
+        println("hello "+a)
+		
+        if (a == 5) {
+            return
+        }
+    }
+    constructor (a: String) {
+        println("hello ${a}")
+    }
+    func begin(): PersonNode? {
+    	return beginNode
+    }
+    func addPerson(person: Person) {
+		println("${person.name}")
+    	size += 1
+    	if (beginNode == null) {
+        	beginNode = PersonNode(null, person, null)
+            return
+        }
+        var currentNode? = beginNode
+        while (currentNode?.next != null) {
+        	currentNode = currentNode?.next
+        }
+        currentNode!.next = PersonNode(currentNode, person, null)
+        currentNode!.next!.prev = currentNode
+    }
+    func deletePerson(index: Int) {
+    	if (index >= size) {
+        	return
+        }
+        size -= 1
+        if (index == 0) {
+        	beginNode = beginNode?.next!
+            beginNode!.prev = null
+            return
+        }
+        var currentNode? = beginNode
+        for (val i in 0..<index - 1) {
+        	currentNode = currentNode?.next
+        }
+        currentNode!.next = currentNode?.next?.next
+        currentNode!.next!.prev = currentNode
+    }
+}
+
+func main(): ListPerson {
+  val listPerson = ListPerson(5)
+  println(getRefCount(listPerson))
+
+  for (val i in 0..10) {
+      listPerson.addPerson(Person("John " + i, 18 + i, 1.5 + i))
+  }
+  /*listPerson.deletePerson(0)
+  for (val i in 0..<3) {
+  	listPerson.deletePerson(2)
+  }
+
+  var currentNode? = listPerson.begin()
+
+  for (val i in 0..<listPerson.size) {
+      val person = currentNode?.currentPerson
+      println("User "+person!.name+" has age: " + person!.age)
+      currentNode = currentNode?.next
+  }*/
+  return listPerson
+}
+val list = main()
+
+class OptionalAccess(var child: OptionalAccess?) {
+    static val a = 7
+	val x = 0
+	val m = 0
+    func hello(value: Int) {
+        println("Hello world nha ${value}")
+    }
+	func get(): Int? {
 		return null
 	}
-	return 0
 }
 
-println(t(A() as? Person))
-println(t(B()))
-println(t((B() as Any) as? A))
+func testOptionalAccess() {
+    var a: OptionalAccess?
+    a?.hello(1)
+	println(a?.get() ?? 100)
+    a = OptionalAccess(a?.child)
+    a?.hello(2)
+    a?.child?.hello(3)
+    a!.child = OptionalAccess(null)
+    a?.child?.hello(4)
+    println(a?.a)
+    val m:OptionalAccess? = null
+    println(m)
+}
+
+testOptionalAccess()
+
+func test() {
+    println(1e5)
+    println(1_000_000)
+    println(3)
+    println(1E+6)
+    println(1E-5)
+    println(1E-5/*5khiotrmgpwreklnfjnfmg wrgnreoi*/)
+    var a: Float? = null
+    val b: Int = a!
+    println(b)
+}
+
+val x: Int? = null
+println("${x ?? 25} ")
+
+//println("${"2".toInt() + "3".toInt() * 4}  ")   // precedence
+println("${!("1".toInt() == 2)}")             // not
+println("${(("5".toInt() > 3) && (2 < 4))}")    // logic
+
+println("2".toInt().toString())
+println(list.begin()?.next?.currentPerson.name)
+println(Person("A", 1, 1.0).name)
+
+func side(): Int {
+    println("SIDE")
+    return 10
+}
+
+
+func testqmarkqmark() {
+	var a: Int? = null
+	var b: Int? = 5
+	println(a ?? 1)          // 1
+	println(b ?? 1)          // 5
+	println(a ?? b ?? 7)     // 5
+	println(null ?? a ?? 9)  // 9
+
+	var x: Int? = 3
+	var y: Int? = null
+
+	println(x ?? side())   // 3 (KHÔNG in "SIDE")
+	println(y ?? side())   // SIDE \n 10
+
+}
+
+testqmarkqmark()

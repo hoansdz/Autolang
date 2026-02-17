@@ -24,26 +24,26 @@ void ExprNode::warning(in_func, std::string message) {
 }
 
 void ExprNode::deleteNode(ExprNode* node) {
-	if (!node) return;
-	switch (node->kind) {
-		case NodeType::IF:
-		case NodeType::WHILE:
-		case NodeType::TRY_CATCH: 
-		case NodeType::THROW: 
-		case NodeType::RET:
-		case NodeType::SET:
-		case NodeType::DECLARATION:
-		case NodeType::CREATE_FUNC:
-		case NodeType::CREATE_CLASS:
-		case NodeType::CREATE_CONSTRUCTOR:
-		// case NodeType::BINARY:
-		{
-			return;
-		}
-		default: break;
-	}
-	// std::cerr<<std::to_string(node->kind)<<'\n';
-	delete node;
+	// if (!node) return;
+	// switch (node->kind) {
+	// 	case NodeType::IF:
+	// 	case NodeType::WHILE:
+	// 	case NodeType::TRY_CATCH: 
+	// 	case NodeType::THROW: 
+	// 	case NodeType::RET:
+	// 	case NodeType::SET:
+	// 	case NodeType::DECLARATION:
+	// 	case NodeType::CREATE_FUNC:
+	// 	case NodeType::CREATE_CLASS:
+	// 	case NodeType::CREATE_CONSTRUCTOR:
+	// 	// case NodeType::BINARY:
+	// 	{
+	// 		return;
+	// 	}
+	// 	default: break;
+	// }
+	// // std::cerr<<std::to_string(node->kind)<<'\n';
+	// delete node;
 }
 
 ReturnNode::~ReturnNode() {
@@ -86,13 +86,6 @@ WhileNode::~WhileNode() {
 SetNode::~SetNode() {
 	deleteNode(detach);
 	deleteNode(value);
-}
-
-CallNode::~CallNode() {
-	deleteNode(caller);
-	for (auto* argument:arguments) {
-		deleteNode(argument);
-	}
 }
 
 AClass* findClass(in_func, std::string name) {

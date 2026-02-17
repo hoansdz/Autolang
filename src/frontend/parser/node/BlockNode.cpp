@@ -51,7 +51,7 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				currentNode->returnNullIfNull = false;
 				node->putBytecodes(in_data, bytecodes);
 				if (currentNode->value->kind != NodeType::CALL ||
-				    currentNode->value->classId != DefaultClass::nullClassId)
+				    currentNode->value->classId != DefaultClass::voidClassId)
 					bytecodes.emplace_back(Opcode::POP);
 				currentNode->jumpIfNullPos = bytecodes.size();
 				break;
@@ -76,6 +76,16 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			}
 		}
 	}
+}
+
+ExprNode *BlockNode::copy(in_func) {
+	BlockNode* newNode = context.blockNodePool.push(line);
+	newNode->mode = mode;
+	newNode->nodes.reserve(nodes.size());
+	for (auto &node : nodes) {
+		newNode->nodes.push_back(node);
+	}
+	return newNode;
 }
 
 BlockNode::~BlockNode() {

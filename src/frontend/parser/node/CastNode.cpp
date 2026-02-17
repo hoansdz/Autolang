@@ -32,21 +32,21 @@ ExprNode *CastNode::resolve(in_func) {
 				auto node = static_cast<ConstValueNode *>(value);
 				switch (classId) {
 					case AutoLang::DefaultClass::intClassId: {
-						toInt(node);
+						toInt(in_data, node);
 						auto result = value;
 						value = nullptr;
 						ExprNode::deleteNode(this);
 						return result;
 					}
 					case AutoLang::DefaultClass::floatClassId: {
-						toFloat(node);
+						toFloat(in_data, node);
 						auto result = value;
 						value = nullptr;
 						ExprNode::deleteNode(this);
 						return result;
 					}
 					case AutoLang::DefaultClass::boolClassId: {
-						toBool(node);
+						toBool(in_data, node);
 						auto result = value;
 						value = nullptr;
 						ExprNode::deleteNode(this);
@@ -173,6 +173,11 @@ void CastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	}
 }
 
+ExprNode *CastNode::copy(in_func) {
+	return context.castPool.push(
+	    static_cast<HasClassIdNode *>(value->copy(in_data)), classId);
+}
+
 CastNode::~CastNode() { deleteNode(value); }
 
 ExprNode *RuntimeCastNode::resolve(in_func) {
@@ -205,6 +210,11 @@ void RuntimeCastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	}
 	bytecodes.emplace_back(nullable ? Opcode::SAFE_CAST : Opcode::UNSAFE_CAST);
 	put_opcode_u32(bytecodes, classId);
+}
+
+ExprNode *RuntimeCastNode::copy(in_func) {
+	return context.runtimeCastPool.push(
+	    static_cast<HasClassIdNode *>(value->copy(in_data)), classId, nullable);
 }
 
 RuntimeCastNode::~RuntimeCastNode() { deleteNode(value); }

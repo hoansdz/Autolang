@@ -2,8 +2,8 @@
 #define PARSER_CONTEXT_CPP
 
 #include "frontend/parser/ParserContext.hpp"
-#include "frontend/parser/Debugger.hpp"
 #include "frontend/ACompiler.hpp"
+#include "frontend/parser/Debugger.hpp"
 
 namespace AutoLang {
 
@@ -12,7 +12,7 @@ LibraryData *ParserContext::mode = nullptr;
 void ParserContext::init(CompiledProgram &compile) {
 	gotoFunction(compile.mainFunctionId);
 	mainFunctionId = compile.mainFunctionId;
-	
+
 	lexerString.emplace_back("super");
 	lexerString.emplace_back("Int");
 	lexerString.emplace_back("Float");
@@ -161,18 +161,19 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	tokens.clear();
 	importMap.clear();
 
-	for (auto &[_, funcInfo] : functionInfo) {
-		funcInfo.block.refresh();
+	for (auto &funcInfo : functionInfo) {
+		funcInfo->block.refresh();
 	}
 
-	for (auto* node : staticNode) {
+	for (auto *node : staticNode) {
 		ExprNode::deleteNode(node);
 	}
 	staticNode.clear();
 
 	newFunctions.refresh();
 	newClasses.refresh();
-	newClassesMap.clear();
+	newDefaultClassesMap.clear();
+	newGenericClassesMap.clear();
 
 	hasError = false;
 	canBreakContinue = false;
@@ -182,22 +183,42 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	breakPos = 0;
 	jumpIfNullNode = nullptr;
 
+	functionInfoAllocator.destroy();
+	classInfoAllocator.destroy();
 	functionInfo.clear();
-	for (auto& [_, func] : functionInfo) {
-		delete[] func.nullableArgs;
+	for (auto *funcInfo : functionInfo) {
+		delete[] funcInfo->nullableArgs;
 	}
 	classInfo.clear();
 
-	createConstructorPool.refresh();
-	ifPool.refresh();
-	whilePool.refresh();
-	tryCatchPool.refresh();
+	createConstructorPool.destroy();
+	ifPool.destroy();
+	whilePool.destroy();
+	tryCatchPool.destroy();
 
 	declarationNodePool.refresh();
-	returnPool.refresh();
-	setValuePool.refresh();
+	returnPool.destroy();
+	setValuePool.destroy();
 
-	throwPool.refresh();
+	throwPool.destroy();
+	
+	returnPool.destroy();
+	setValuePool.destroy();
+	binaryNodePool.destroy();
+	castPool.destroy();
+	runtimeCastPool.destroy();
+	varPool.destroy();
+	getPropPool.destroy();
+	unknowNodePool.destroy();
+	optionalAccessNodePool.destroy();
+	nullCoalescingPool.destroy();
+	blockNodePool.destroy();
+	callNodePool.destroy();
+	classAccessPool.destroy();
+	constValuePool.destroy();
+	unaryNodePool.destroy();
+	forRangePool.destroy();
+	classDeclarationAllocator.destroy();
 
 	currentClassId = std::nullopt;
 
@@ -248,11 +269,10 @@ isNotStatic:;
 	throw ParserError(line, name + " is not static");
 }
 
-DeclarationNode *
-ParserContext::makeDeclarationNode(in_func, uint32_t line, bool isTemp,
-                                   std::string name, std::string className,
-                                   bool isVal, bool isGlobal, bool nullable,
-                                   bool pushToScope) {
+DeclarationNode *ParserContext::makeDeclarationNode(
+    in_func, uint32_t line, bool isTemp, std::string name,
+    ClassDeclaration *classDeclaration, bool isVal, bool isGlobal,
+    bool nullable, bool pushToScope) {
 	auto func =
 	    isGlobal ? getMainFunction(in_data) : getCurrentFunction(in_data);
 	auto funcInfo = isGlobal ? getMainFunctionInfo(in_data)
@@ -262,10 +282,15 @@ ParserContext::makeDeclarationNode(in_func, uint32_t line, bool isTemp,
 		if (it != funcInfo->scopes.back().end())
 			throw ParserError(line, name + " has exist");
 	}
-	DeclarationNode *node = declarationNodePool.push(
-	    line, std::move(name), std::move(className), isVal, isGlobal, nullable);
+	DeclarationNode *node =
+	    declarationNodePool.push(line, context.currentClassId, std::move(name),
+	                             classDeclaration, isVal, isGlobal, nullable);
 	node->classId = AutoLang::DefaultClass::nullClassId;
 	node->id = pushToScope ? funcInfo->declaration++ : 0;
+	if (context.currentClassId) {
+		auto classInfo = context.classInfo[*context.currentClassId];
+		classInfo->allDeclarationNode.push_back(node);
+	}
 	// funcInfo->declarationNodes.push_back(node);
 	if (pushToScope) {
 		size_t newSize = funcInfo->declaration;

@@ -2,21 +2,18 @@
 #define PARSER_CONTEXT_HPP
 
 #include "backend/vm/AVM.hpp"
-#include "frontend/parser/FunctionInfo.hpp"
+#include "frontend/parser/ClassDeclaration.hpp"
 #include "frontend/parser/ClassInfo.hpp"
+#include "frontend/parser/FunctionInfo.hpp"
 #include "frontend/parser/node/CreateFuncNode.hpp"
 #include "frontend/parser/node/CreateNode.hpp"
 #include "frontend/structure/NonReallocatePool.hpp"
+#include "shared/ChunkArena.hpp"
 #include "shared/FixedPool.hpp"
-#include <vector>
 #include <set>
+#include <vector>
 
 namespace AutoLang {
-
-struct ClassDeclaration {
-	std::string className;
-	bool nullable = false;
-};
 
 enum ModifierFlags : uint32_t {
 	MF_PUBLIC = 1u << 0,
@@ -30,7 +27,8 @@ enum AnnotationFlags : uint32_t {
 	AN_NO_OVERRIDE = 1u << 1,
 	AN_NATIVE = 1u << 2,
 	AN_NO_CONSTRUCTOR = 1u << 3,
-	AN_WAIT_INPUT = 1u << 4
+	AN_WAIT_INPUT = 1u << 4,
+	AN_NO_EXTENDS = 1u << 5
 };
 
 struct LibraryData;
@@ -48,13 +46,12 @@ struct ParserContext {
 	std::vector<std::string> lexerString;
 	HashMap<std::string, LexerStringId> lexerStringMap;
 
-	Lexer::Context* mainLexerContext;
+	Lexer::Context *mainLexerContext;
 	std::set<uint32_t> importOffset;
-	HashMap<std::string, LibraryData*> importMap;
-	std::vector<LibraryData*> loadingLibs;
+	HashMap<std::string, LibraryData *> importMap;
+	std::vector<LibraryData *> loadingLibs;
 
-	HashMap<std::tuple<ClassId, ClassId, uint8_t>, ClassId,
-	                             PairHash>
+	HashMap<std::tuple<ClassId, ClassId, uint8_t>, ClassId, PairHash>
 	    binaryOpResultType;
 	// Parse file to tokens
 	std::vector<Lexer::Token> tokens;
@@ -67,8 +64,12 @@ struct ParserContext {
 	NonReallocatePool<CreateFuncNode> newFunctions;
 	// Declaration new classes by user
 	NonReallocatePool<CreateClassNode> newClasses;
+	HashMap<LexerStringId, ClassId> defaultClassMap;
 
-	HashMap<uint32_t, CreateClassNode *> newClassesMap;
+	HashMap<uint32_t, CreateClassNode *> newDefaultClassesMap;
+	HashMap<uint32_t, CreateClassNode *> newGenericClassesMap;
+	AreaAllocator<ClassDeclaration, 64> classDeclarationAllocator;
+	std::vector<ClassDeclaration *> allClassDeclarations;
 
 	bool hasError = false;
 	bool canBreakContinue = false;
@@ -80,21 +81,36 @@ struct ParserContext {
 	size_t currentTokenPos = 0;
 	JumpIfNullNode *jumpIfNullNode = nullptr;
 	// Function information in compiler time
-	HashMap<uint32_t, FunctionInfo> functionInfo;
+	AreaAllocator<FunctionInfo, 64> functionInfoAllocator;
+	std::vector<FunctionInfo *> functionInfo;
 	// Class information in compiler time
-	HashMap<uint32_t, ClassInfo> classInfo;
+	AreaAllocator<ClassInfo, 64> classInfoAllocator;
+	std::vector<ClassInfo *> classInfo;
 	// All static variable will be here and put bytecodes to ".main" function
 	std::vector<ExprNode *> staticNode;
 
 	NonReallocatePool<DeclarationNode> declarationNodePool;
-	NonReallocatePool<ReturnNode> returnPool;
-	NonReallocatePool<SetNode> setValuePool;
-	FixedPool<CreateConstructorNode> createConstructorPool;
-	// NonReallocatePool<BinaryNode> binaryNodePool;
-	FixedPool<IfNode> ifPool;
-	FixedPool<WhileNode> whilePool;
-	FixedPool<TryCatchNode> tryCatchPool;
-	FixedPool<ThrowNode> throwPool;
+	ChunkArena<ReturnNode, 64> returnPool;
+	ChunkArena<SetNode, 64> setValuePool;
+	ChunkArena<CreateConstructorNode, 64> createConstructorPool;
+	ChunkArena<BinaryNode, 64> binaryNodePool;
+	ChunkArena<IfNode, 64> ifPool;
+	ChunkArena<WhileNode, 64> whilePool;
+	ChunkArena<TryCatchNode, 64> tryCatchPool;
+	ChunkArena<ThrowNode, 64> throwPool;
+	ChunkArena<CastNode, 64> castPool;
+	ChunkArena<RuntimeCastNode, 64> runtimeCastPool;
+	ChunkArena<VarNode, 64> varPool;
+	ChunkArena<GetPropNode, 64> getPropPool;
+	ChunkArena<UnknowNode, 64> unknowNodePool;
+	ChunkArena<OptionalAccessNode, 64> optionalAccessNodePool;
+	ChunkArena<NullCoalescingNode, 64> nullCoalescingPool;
+	ChunkArena<BlockNode, 64> blockNodePool;
+	ChunkArena<CallNode, 64> callNodePool;
+	ChunkArena<ClassAccessNode, 64> classAccessPool;
+	ChunkArena<ConstValueNode, 64> constValuePool;
+	ChunkArena<UnaryNode, 64> unaryNodePool;
+	ChunkArena<ForRangeNode, 64> forRangePool;
 
 	std::optional<ClassId> currentClassId = std::nullopt;
 	uint32_t mainFunctionId;
@@ -107,8 +123,7 @@ struct ParserContext {
 	HashMap<AString *, Offset, AString::Hash, AString::Equal> constStringMap;
 
 	// Constant value, example "null", "true", "false"
-	HashMap<std::string, std::pair<AObject *, uint32_t>>
-	    constValue;
+	HashMap<std::string, std::pair<AObject *, uint32_t>> constValue;
 	void init(CompiledProgram &compiler);
 	void logMessage(uint32_t line, const std::string &message);
 	void warning(uint32_t line, const std::string &message);
@@ -148,32 +163,46 @@ struct ParserContext {
 		return compile.functions[mainFunctionId];
 	}
 	inline FunctionInfo *getMainFunctionInfo(in_func) {
-		return &functionInfo[mainFunctionId];
+		return functionInfo[mainFunctionId];
 	}
 	inline Function *getCurrentFunction(in_func) {
 		return compile.functions[currentFunctionId];
 	}
 	inline FunctionInfo *getCurrentFunctionInfo(in_func) {
-		return &functionInfo[currentFunctionId];
+		return functionInfo[currentFunctionId];
 	}
 	inline AClass *getCurrentClass(in_func) {
 		return currentClassId ? compile.classes[*currentClassId] : nullptr;
 	}
 	inline ClassInfo *getCurrentClassInfo(in_func) {
-		return currentClassId ? &classInfo[*currentClassId] : nullptr;
+		return currentClassId ? classInfo[*currentClassId] : nullptr;
 	}
 	static inline std::optional<uint32_t> getClassId(AClass *clazz) {
 		if (!clazz)
 			return std::nullopt;
 		return clazz->id;
 	}
+	CreateClassNode *findCreateClassNode(uint32_t id) {
+		{
+			auto it = newDefaultClassesMap.find(id);
+			if (it != newDefaultClassesMap.end()) {
+				return it->second;
+			}
+		}
+		{
+			auto it = newGenericClassesMap.find(id);
+			if (it != newGenericClassesMap.end()) {
+				return it->second;
+			}
+		}
+		return nullptr;
+	}
 	HasClassIdNode *findDeclaration(in_func, uint32_t line, std::string &name,
 	                                bool inGlobal);
-	DeclarationNode *makeDeclarationNode(in_func, uint32_t line, bool isTemp,
-	                                     std::string name,
-	                                     std::string className, bool isVal,
-	                                     bool isGlobal, bool nullable,
-	                                     bool pushToScope = true);
+	DeclarationNode *
+	makeDeclarationNode(in_func, uint32_t line, bool isTemp, std::string name,
+	                    ClassDeclaration *classDeclaration, bool isVal,
+	                    bool isGlobal, bool nullable, bool pushToScope = true);
 	inline bool getBoolConstValuePosition(bool b) { return b ? 1 : 2; }
 	~ParserContext();
 };

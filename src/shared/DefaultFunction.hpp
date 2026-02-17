@@ -55,7 +55,8 @@ AObject *print(NativeFuncInData) {
 			std::cout << (obj == DefaultClass::trueObject ? "true" : "false");
 			break;
 		default:
-			std::cout << (uintptr_t)(obj);
+			std::cout << notifier.vm->data.classes[obj->type]->name + ":" +
+			                 std::to_string((uintptr_t)(obj));
 			break;
 	}
 	return nullptr;

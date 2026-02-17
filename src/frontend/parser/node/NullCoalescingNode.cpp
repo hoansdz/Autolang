@@ -6,9 +6,9 @@
 
 namespace AutoLang {
 
-ExprNode* NullCoalescingNode::resolve(in_func) {
-	left = static_cast<HasClassIdNode*>(left->resolve(in_data));
-	right = static_cast<HasClassIdNode*>(right->resolve(in_data));
+ExprNode *NullCoalescingNode::resolve(in_func) {
+	left = static_cast<HasClassIdNode *>(left->resolve(in_data));
+	right = static_cast<HasClassIdNode *>(right->resolve(in_data));
 	switch (left->kind) {
 		case NodeType::CONST: {
 			if (left->classId == DefaultClass::nullClassId) {
@@ -24,12 +24,14 @@ ExprNode* NullCoalescingNode::resolve(in_func) {
 			ExprNode::deleteNode(this);
 			return result;
 		}
-		default: break;
+		default:
+			break;
 	}
 	// If an expression is expicitly marked non-nullable (via '!'),
 	// It guaranteed by language semantics to never produce null.
 	// Unknown case are treated as nullable at resolve time
-	// Example: in `if (a != null) { a ?? b }`, a is still considered nullable in resolve.
+	// Example: in `if (a != null) { a ?? b }`, a is still considered nullable
+	// in resolve.
 	if (!left->isNullable()) {
 		warning(in_data, "Right expression will never be used");
 		auto result = left;
@@ -104,6 +106,12 @@ void NullCoalescingNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
 	}
 	context.jumpIfNullNode = lastJumpIfNullNode;
 	right->rewrite(in_data, bytecodes);
+}
+
+ExprNode *NullCoalescingNode::copy(in_func) {
+	return context.nullCoalescingPool.push(
+	    line, static_cast<HasClassIdNode *>(left->copy(in_data)),
+	    static_cast<HasClassIdNode *>(right->copy(in_data)));
 }
 
 NullCoalescingNode::~NullCoalescingNode() {

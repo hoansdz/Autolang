@@ -16,6 +16,10 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		throw ParserError(firstLine,
 		                  "@no_constructor is only supported classes");
 	}
+	if (context.annotationFlags & AnnotationFlags::AN_NO_EXTENDS) {
+		throw ParserError(firstLine,
+		                  "@no_extends is only supported classes");
+	}
 	if (context.annotationFlags & AnnotationFlags::AN_NATIVE) {
 		functionFlags |= FunctionFlags::FUNC_HAS_BODY;
 		functionFlags |= FunctionFlags::FUNC_IS_NATIVE;
@@ -90,7 +94,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		throw ParserError(firstLine, "Expected ( but not found");
 	}
 	auto listDeclarationNode = loadListDeclaration(in_data, i);
-	std::string returnClass;
+	ClassDeclaration *classDeclaration = nullptr;
 	// Return class name
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
@@ -99,10 +103,9 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		throw ParserError(firstLine, "Expected body but not found");
 	}
 	if (token->type == Lexer::TokenType::COLON) {
-		ClassDeclaration classDeclaration =
-		    loadClassDeclaration(in_data, i, token->line, true);
-		returnClass = std::move(classDeclaration.className);
-		if (classDeclaration.nullable) {
+		classDeclaration = loadClassDeclaration(in_data, i, token->line, true);
+		context.allClassDeclarations.push_back(classDeclaration);
+		if (classDeclaration->nullable) {
 			functionFlags |= FunctionFlags::FUNC_RETURN_NULLABLE;
 		}
 		if (!nextToken(&token, context.tokens, i)) {
@@ -139,9 +142,8 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				    context.getCurrentClassInfo(in_data)->declarationThis);
 			}
 			CreateFuncNode *node = context.newFunctions.push(
-			    firstLine, context.currentClassId, name,
-			    std::move(returnClass), std::move(listDeclarationNode),
-			    functionFlags);
+			    firstLine, context.currentClassId, name, classDeclaration,
+			    std::move(listDeclarationNode), functionFlags);
 			node->pushFunction(in_data);
 			auto func = compile.functions[node->id];
 			func->returnId = DefaultClass::nullClassId;
@@ -182,7 +184,7 @@ createFunc:;
 	}
 
 	CreateFuncNode *node = context.newFunctions.push(
-	    firstLine, context.currentClassId, name, std::move(returnClass),
+	    firstLine, context.currentClassId, name, classDeclaration,
 	    std::move(listDeclarationNode), functionFlags);
 	if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 		auto &token = context.annotationMetadata[AnnotationFlags::AN_NATIVE];
@@ -218,7 +220,7 @@ createFunc:;
 	}
 
 	loadBody(in_data, node->body.nodes, i);
-	if (!node->returnClass.empty()) {
+	if (classDeclaration) {
 		bool hasReturn = false;
 		for (size_t i = node->body.nodes.size(); i-- > 0;) {
 			if (node->body.nodes[i]->kind == NodeType::RET) {
@@ -244,7 +246,7 @@ ReturnNode *loadReturn(in_func, size_t &i) {
 		    context.getCurrentClassInfo(in_data)->declarationThis;
 		auto value =
 		    (func->functionFlags & FunctionFlags::FUNC_IS_CONSTRUCTOR)
-		        ? new VarNode(firstLine, declarartionThis, false, false)
+		        ? context.varPool.push(firstLine, declarartionThis, false, false)
 		        : nullptr;
 		return context.returnPool.push(firstLine, context.currentFunctionId,
 		                               value);

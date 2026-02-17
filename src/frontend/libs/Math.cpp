@@ -25,37 +25,37 @@ void init(AutoLang::ACompiler &compiler) {
 	nativeMap.emplace("fmod", &fmod);
 
 	compiler.registerFromSource("std/math", R"###(
-		@no_constructor
-		class Math {
-			@native("round")
-			static func round(value: Float): Int
-			@native("floor")
-			static func floor(value: Float): Int
-			@native("ceil")
-			static func ceil(value: Float): Int
-			@native("trunc")
-			static func trunc(value: Float): Int
-			@native("pow")
-			static func pow(base: Float, exp: Float): Float
-			@native("abs")
-			static func abs(value: Int): Int
-			@native("abs")
-			static func abs(value: Float): Float
-			@native("sin")
-			static func sin(value: Float): Float
-			@native("sin")
-			static func sin(value: Int): Float
-			@native("cos")
-			static func cos(value: Float): Float
-			@native("cos")
-			static func cos(value: Int): Float
-			@native("tan")
-			static func tan(value: Float): Float
-			@native("tan")
-			static func tan(value: Int): Float
-			@native("fmod")
-			static func fmod(num1: Float, num2: Float): Float
-		}
+@no_constructor
+class Math {
+	@native("round")
+	static func round(value: Float): Int
+	@native("floor")
+	static func floor(value: Float): Int
+	@native("ceil")
+	static func ceil(value: Float): Int
+	@native("trunc")
+	static func trunc(value: Float): Int
+	@native("pow")
+	static func pow(base: Float, exp: Float): Float
+	@native("abs")
+	static func abs(value: Int): Int
+	@native("abs")
+	static func abs(value: Float): Float
+	@native("sin")
+	static func sin(value: Float): Float
+	@native("sin")
+	static func sin(value: Int): Float
+	@native("cos")
+	static func cos(value: Float): Float
+	@native("cos")
+	static func cos(value: Int): Float
+	@native("tan")
+	static func tan(value: Float): Float
+	@native("tan")
+	static func tan(value: Int): Float
+	@native("fmod")
+	static func fmod(num1: Float, num2: Float): Float
+}
 	)###",
 	                            false, std::move(nativeMap));
 }

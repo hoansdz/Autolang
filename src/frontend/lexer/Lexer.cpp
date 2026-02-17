@@ -123,7 +123,7 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 					goto end;
 				}
 				if (!nextLine(context, context.library->rawData.data(), i)) {
-					throw LexerError(firstLine, std::string("Cannot found */"));
+					throw LexerError(firstLine, std::string("Cannot find */"));
 				}
 				goto start;
 			end:;

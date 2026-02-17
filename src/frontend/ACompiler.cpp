@@ -4,6 +4,7 @@
 #include "ACompiler.hpp"
 #include "frontend/libs/Math.hpp"
 #include "frontend/libs/stdlib.hpp"
+#include "frontend/libs/list.hpp"
 #include <chrono>
 
 namespace AutoLang {
@@ -267,7 +268,21 @@ void ACompiler::generateBytecodes() {
 
 	try {
 		printDebug("-----------------AST Node-----------------\n");
-		printDebug(context.getMainFunction(in_data)->bytecodes.size());
+
+		printDebug("Load all class declarations");
+		// Load class declaration (generics as T won't have class id)
+		for (auto *declaration : context.allClassDeclarations) {
+			declaration->load<true>(in_data);
+		}
+
+		printDebug("Start optimize classes");
+		size_t sizeNewClasses = context.newClasses.getSize();
+		for (size_t i = 0; i < sizeNewClasses; ++i) {
+			context.newClasses[i]->optimize(in_data);
+			// auto classInfo =
+			// context.classInfo[context.newClasses[i]->classId];
+		}
+
 		printDebug("Start optimize declaration nodes in functions");
 		for (int i = 0; i < context.declarationNodePool.index; ++i) {
 			context.declarationNodePool.objects[i].optimize(in_data);
@@ -276,17 +291,13 @@ void ACompiler::generateBytecodes() {
 			node->optimize(in_data);
 		}
 
-		printDebug("Start optimize classes");
-		size_t sizeNewClasses = context.newClasses.getSize();
-		for (size_t i = 0; i < sizeNewClasses; ++i) {
-			context.newClasses[i]->optimize(in_data);
-		}
-
 		printDebug("Start optimize constructor nodes");
 		for (int i = 0; i < sizeNewClasses; ++i) {
 			auto *node = context.newClasses[i];
 			auto clazz = compile.classes[node->classId];
-			auto classInfo = &context.classInfo[clazz->id];
+			auto classInfo = context.classInfo[clazz->id];
+			if (!classInfo->genericDeclarations.empty())
+				continue;
 			if (classInfo->primaryConstructor) {
 				classInfo->primaryConstructor->optimize(in_data);
 			} else {
@@ -295,32 +306,52 @@ void ACompiler::generateBytecodes() {
 				}
 			}
 		}
-		printDebug("Start optimize static nodes");
-
-		for (auto &node : context.staticNode) {
-			ParserContext::mode = node->mode;
-			node = node->resolve(in_data);
-			node->optimize(in_data);
-		}
 		printDebug("Start optimize functions");
 		size_t sizeNewFunctions = context.newFunctions.getSize();
 		for (int i = 0; i < sizeNewFunctions; ++i) {
-			context.newFunctions[i]->optimize(in_data);
+			auto *createFunctionNode = context.newFunctions[i];
+			if (createFunctionNode->contextCallClassId) {
+				auto classInfo =
+				    context.classInfo[*createFunctionNode->contextCallClassId];
+				if (!classInfo->genericDeclarations.empty())
+					continue;
+			}
+			createFunctionNode->optimize(in_data);
 		}
 
 		printDebug("Start load virtual");
 		for (size_t i = 0; i < sizeNewClasses; ++i) {
 			auto *newClass = context.newClasses[i];
+			auto classInfo = context.classInfo[newClass->classId];
+			if (!classInfo->genericDeclarations.empty())
+				continue;
 			newClass->loadSuper(in_data);
+		}
+
+		printDebug("Start optimize detach member default value");
+		for (size_t i = 0; i < sizeNewClasses; ++i) {
+			auto *newClass = context.newClasses[i];
+			auto classInfo = context.classInfo[newClass->classId];
+			if (!classInfo->genericDeclarations.empty())
+				continue;
 			newClass->body.resolve(in_data);
 			newClass->body.optimize(in_data);
+		}
+
+		printDebug("Start optimize static nodes");
+		for (auto &node : context.staticNode) {
+			ParserContext::mode = node->mode;
+			node = node->resolve(in_data);
+			node->optimize(in_data);
 		}
 
 		printDebug("Start put bytecodes constructor");
 		for (int i = 0; i < sizeNewClasses; ++i) {
 			auto *node = context.newClasses[i];
 			auto classInfo =
-			    &context.classInfo[compile.classes[node->classId]->id];
+			    context.classInfo[compile.classes[node->classId]->id];
+			if (!classInfo->genericDeclarations.empty())
+				continue;
 			if (classInfo->primaryConstructor) {
 				// Put initial bytecodes, example val a = 5 => SetNode
 				//  node->body.optimize(in_data);
@@ -369,6 +400,11 @@ void ACompiler::generateBytecodes() {
 		printDebug("Start put bytecodes in functions");
 		for (int i = 0; i < sizeNewFunctions; ++i) {
 			auto *node = context.newFunctions[i];
+			if (node->contextCallClassId) {
+				auto classInfo = context.classInfo[*node->contextCallClassId];
+				if (!classInfo->genericDeclarations.empty())
+					continue;
+			}
 			auto func = compile.functions[node->id];
 			if ((func->functionFlags & FunctionFlags::FUNC_OVERRIDE) &&
 			    !(func->functionFlags & FunctionFlags::FUNC_IS_VIRTUAL)) {
@@ -392,9 +428,9 @@ void ACompiler::generateBytecodes() {
 		    in_data, context.getMainFunction(in_data)->bytecodes);
 
 		printDebug("Start delete nullable args constructor");
-		for (auto &[_, funcInfo] : context.functionInfo) {
-			if (funcInfo.nullableArgs != nullptr) {
-				delete[] funcInfo.nullableArgs;
+		for (auto *funcInfo : context.functionInfo) {
+			if (funcInfo->nullableArgs != nullptr) {
+				delete[] funcInfo->nullableArgs;
 			}
 		}
 
@@ -479,6 +515,8 @@ void ACompiler::refresh() {
 	vm.data.mainFunctionId = vm.data.registerFunction(
 	    nullptr, ".main", nullptr, 0,
 	    static_cast<uint32_t>(FunctionFlags::FUNC_IS_STATIC));
+	parserContext.functionInfo.push_back(
+	    parserContext.functionInfoAllocator.getObject());
 	new (&vm.data.functions[vm.data.mainFunctionId]->bytecodes)
 	    std::vector<uint8_t>();
 	state = CompilerState::ANALYZED;
@@ -494,10 +532,13 @@ ACompiler::ACompiler() {
 	AutoLang::Libs::stdlib::init(*this);
 	AutoLang::DefaultClass::init(*this);
 	AutoLang::DefaultFunction::init(*this);
+	AutoLang::Libs::list::init(*this);
 
 	vm.data.mainFunctionId = vm.data.registerFunction(
 	    nullptr, ".main", nullptr, 0,
 	    static_cast<uint32_t>(FunctionFlags::FUNC_IS_STATIC));
+	parserContext.functionInfo.push_back(
+	    parserContext.functionInfoAllocator.getObject());
 	new (&vm.data.functions[vm.data.mainFunctionId]->bytecodes)
 	    std::vector<uint8_t>();
 	// AutoLang::DefaultClass::init(vm.data);
@@ -524,6 +565,12 @@ ACompiler::~ACompiler() {
 		mainSource->lexerContext.refresh();
 	}
 	vm.data.destroy();
+	for (auto library : generatedLibraries) {
+		delete library;
+	}
+	for (auto library : builtInLibraries) {
+		delete library;
+	}
 }
 
 } // namespace AutoLang

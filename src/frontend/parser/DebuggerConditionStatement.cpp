@@ -44,7 +44,7 @@ IfNode *loadIf(in_func, size_t &i)
         --i;
         throw ParserError(token->line, "Expected command after else but not found");
     }
-    node->ifFalse = new BlockNode(token->line);
+    node->ifFalse = context.blockNodePool.push(token->line);
     loadBody(in_data, node->ifFalse->nodes, i);
     return node;
 }

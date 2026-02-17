@@ -123,6 +123,10 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 			stack.push(obj);
 			stack.top()->retain();
 		}
+		// std::cerr << currentCallFrame->fromStackAllocator << " "
+		//           << stackAllocator.top +
+		//                  currentCallFrame->func->maxDeclaration - 1
+		//           << "\n";
 		stackAllocator.clear(data.manager, currentCallFrame->fromStackAllocator,
 		                     stackAllocator.top +
 		                         currentCallFrame->func->maxDeclaration - 1);
@@ -186,8 +190,8 @@ resumeCallFrame:;
 	uint32_t &i = currentCallFrame->i;
 	const size_t size = currentCallFrame->func->bytecodes.size();
 	notifier->callFrame = currentCallFrame;
-	// std::cerr << "Called function " << currentCallFrame->func->name << " " <<
-	// currentCallFrame->fromStackAllocator << " with "
+	// std::cerr << "Called function " << currentCallFrame->func->name << " "
+	//           << currentCallFrame->fromStackAllocator << " with "
 	//           << currentCallFrame->func->argSize << " arguments \n";
 	try {
 		while (i < size) {
@@ -278,8 +282,11 @@ resumeCallFrame:;
 					break;
 				}
 				case AutoLang::Opcode::LOAD_LOCAL: {
-					stack.push(stackAllocator[get_u32(bytecodes, i)]);
-					stack.top()->retain();
+					uint32_t pos = get_u32(bytecodes, i);
+					AObject *obj = stackAllocator[pos];
+					assert(obj != nullptr);
+					stack.push(obj);
+					obj->retain();
 					break;
 				}
 				case AutoLang::Opcode::STORE_LOCAL: {
@@ -288,18 +295,14 @@ resumeCallFrame:;
 					break;
 				}
 				case AutoLang::Opcode::LOAD_MEMBER: {
-					auto obj = stack.top();
-					--obj->refCount;
-					stack.top() = (*obj->member)[get_u32(bytecodes, i)];
+					AObject *parent = stack.top();
+					stack.top() = (*parent->member)[get_u32(bytecodes, i)];
 					stack.top()->retain();
-					// if (obj->refCount == 0) data.manager.release()
-					// # Memory leaks example A().b, we can't free A because b
-					// will be destroyed
+					data.manager.release(parent);
 					break;
 				}
 				case AutoLang::Opcode::LOAD_MEMBER_IF_NNULL: {
-					auto obj = stack.top();
-					--obj->refCount;
+					AObject *obj = stack.top();
 					if (obj != AutoLang::DefaultClass::nullObject) {
 						stack.top() = (*obj->member)[get_u32(bytecodes, i)];
 						stack.top()->retain();
@@ -307,28 +310,30 @@ resumeCallFrame:;
 						stack.pop();
 						i += 4;
 					}
+					data.manager.release(obj);
 					break;
 				}
 				case AutoLang::Opcode::LOAD_MEMBER_CAN_RET_NULL: {
-					auto obj = stack.top();
-					--obj->refCount;
+					AObject *obj = stack.top();
 					if (obj != AutoLang::DefaultClass::nullObject) {
 						stack.top() = (*obj->member)[get_u32(bytecodes, i)];
+						stack.top()->retain();
 					} else {
 						i += 4;
 					}
+					data.manager.release(obj);
 					break;
 				}
 				case AutoLang::Opcode::STORE_MEMBER: {
 					AObject *parent = stack.pop();
-					--parent->refCount;
-					AObject **last =
-					    &parent->member->data[get_u32(bytecodes, i)];
-					if (*last != nullptr) {
-						data.manager.release(*last);
+					AObject *&last =
+					    parent->member->data[get_u32(bytecodes, i)];
+					if (last != nullptr) {
+						data.manager.release(last);
 					}
 					// New value
-					*last = stack.pop();
+					last = stack.pop();
+					data.manager.release(parent);
 					break;
 				}
 				case AutoLang::Opcode::RETURN: {
@@ -419,13 +424,13 @@ resumeCallFrame:;
 				case AutoLang::Opcode::UNSAFE_CAST: {
 					auto obj = stack.top();
 					uint32_t classId = get_u32(bytecodes, i);
-					std::cerr<<"NO OK\n";
 					if (obj->type == classId ||
 					    data.classes[obj->type]->inheritance.get(classId)) {
 						break;
 					}
-					std::cerr<<"OK\n";
-					notifier->throwException("Cannot cast " + data.classes[obj->type]->name + " to " + data.classes[classId]->name);
+					notifier->throwException(
+					    "Cannot cast " + data.classes[obj->type]->name +
+					    " to " + data.classes[classId]->name);
 					data.manager.release(stack.pop());
 					goto resumeCallFrame;
 				}
@@ -435,6 +440,7 @@ resumeCallFrame:;
 				}
 				case AutoLang::Opcode::LOAD_EXCEPTION: {
 					stack.push(currentCallFrame->exception);
+					currentCallFrame->exception->retain();
 					currentCallFrame->exception = nullptr;
 					break;
 				}

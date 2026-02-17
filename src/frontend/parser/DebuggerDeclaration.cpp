@@ -1,12 +1,13 @@
 /*
 
 @brief Parse and load variable in function and class
-			 Build AST Node
+             Build AST Node
 @param in_func -> input (context, compile), in_data -> (context, compile)
 @param i -> Current position
-@details Handle keywords 'val', 'var', 'static', 'public', 'private', 'protected'
+@details Handle keywords 'val', 'var', 'static', 'public', 'private',
+'protected'
 @note Use std::unique_ptr to make it safer
-			 Use raw pointer release it because it will push to other managers
+             Use raw pointer release it because it will push to other managers
 
 */
 
@@ -16,15 +17,16 @@
 #include "frontend/parser/Debugger.hpp"
 #include "shared/Utils.hpp"
 
-namespace AutoLang
-{
+namespace AutoLang {
 
-HasClassIdNode* loadDeclaration(in_func, size_t& i) {
+HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 	ensureNoAnnotations(in_data, i);
 	auto declaration = &context.tokens[i];
 	bool isVal = declaration->type == Lexer::TokenType::VAL;
-	bool isGlobal = !context.currentClassId && context.currentFunctionId == context.mainFunctionId;
-	bool isInFunction = !context.currentClassId || context.currentFunctionId != context.mainFunctionId;
+	bool isGlobal = (!context.currentClassId) &&
+	                context.currentFunctionId == context.mainFunctionId;
+	bool isInFunction = !context.currentClassId ||
+	                    context.currentFunctionId != context.mainFunctionId;
 	bool isStatic = context.modifierflags & ModifierFlags::MF_STATIC;
 	if (isStatic) {
 		isGlobal = true;
@@ -34,19 +36,23 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 	context.modifierflags = 0;
 	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
-	//Name
+	// Name
 	if (!nextTokenSameLine(&token, context.tokens, i, declaration->line) ||
-		!expect(token, Lexer::TokenType::IDENTIFIER)) {
+	    !expect(token, Lexer::TokenType::IDENTIFIER)) {
 		--i;
-		throw ParserError(context.tokens[i].line, "Expected name but not found");
+		throw ParserError(context.tokens[i].line,
+		                  "Expected name but not found");
 	}
-	std::string& name = context.lexerString[token->indexData];
+	std::string &name = context.lexerString[token->indexData];
 	if (context.currentClassId) {
-		if (isMapExist(context.getCurrentClass(in_data)->memberMap, name) || 
-			isMapExist(context.getCurrentClassInfo(in_data)->staticMember, name))
-			throw ParserError(token->line, "Declaration: Redefination variable name \"" + name + "\"");
+		if (isMapExist(context.getCurrentClass(in_data)->memberMap, name) ||
+		    isMapExist(context.getCurrentClassInfo(in_data)->staticMember,
+		               name))
+			throw ParserError(token->line,
+			                  "Declaration: Redefination variable name \"" +
+			                      name + "\"");
 	}
-	//Sugar syntax val a? = 1
+	// Sugar syntax val a? = 1
 	bool nullable = true;
 	bool sugarSyntax = false;
 	if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
@@ -55,162 +61,249 @@ HasClassIdNode* loadDeclaration(in_func, size_t& i) {
 	}
 	if (expect(token, Lexer::TokenType::QMARK)) {
 		sugarSyntax = true;
-		//Class name
+		// Class name
 		if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
 			--i;
 			throw ParserError(firstLine, "Expected class name but not found");
 		}
-	} else
-	if (expect(token, Lexer::TokenType::EXMARK)) {
+	} else if (expect(token, Lexer::TokenType::EXMARK)) {
 		sugarSyntax = true;
 		nullable = false;
-		//Class name
+		// Class name
 		if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
 			--i;
 			throw ParserError(firstLine, "Expected class name but not found");
 		}
 	}
-	HasClassIdNode* value = nullptr;
-	std::string className;
+	HasClassIdNode *value = nullptr;
+	ClassDeclaration *classDeclaration = nullptr;
 	if (expect(token, Lexer::TokenType::COLON)) {
-		auto classDeclaration = loadClassDeclaration(in_data, i, declaration->line, false);
+		classDeclaration =
+		    loadClassDeclaration(in_data, i, declaration->line, false);
+		context.allClassDeclarations.push_back(classDeclaration);
 		if (sugarSyntax) {
-			throw ParserError(token->line, 
-				std::string("Sugar syntax ") + (isVal ? "val " : "var ") + name + (nullable ? "?" : "!") + " can be use when fast declare, cannot use with " + classDeclaration.className + "? " +
-				"use " + (isVal ? "val " : "var ") + name + ": " + classDeclaration.className + (nullable ? "?" : "!") + " instead of"
-			);
+			throw ParserError(
+			    token->line,
+			    std::string("Sugar syntax ") + (isVal ? "val " : "var ") +
+			        name + (nullable ? "?" : "!") +
+			        " can be used when fast declare, cannot use with " +
+			        classDeclaration->getName(in_data) + "? " + "use " +
+			        (isVal ? "val " : "var ") + name + ": " +
+			        classDeclaration->getName(in_data) +
+			        (nullable ? "?" : "!") + " instead of");
 		}
-		nullable = classDeclaration.nullable;
-		className = std::move(classDeclaration.className);
+		nullable = classDeclaration->nullable;
 		if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
-			if (nullable) {
-				--i;
-				value = new ConstValueNode(firstLine, DefaultClass::nullObject, 0);
-				goto createNode;
-			}
+			// if (nullable) {
 			--i;
-			throw ParserError(context.tokens[i].line, className + " must have value");
+			value = context.constValuePool.push(firstLine,
+			                                    DefaultClass::nullObject, 0);
+			goto createNode;
+			// }
+			// --i;
+			// throw ParserError(context.tokens[i].line,
+			//                   " Expected value but not found");
 		}
-		// if (!nextTokenSameLine(&token, context.tokens, i, declaration->line) ||
-		// 	 !expect(token, Lexer::TokenType::IDENTIFIER)) {
-		// 	throw std::runtime_error("Expected class name but not found");
+		// if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)
+		// || 	 !expect(token, Lexer::TokenType::IDENTIFIER)) { 	throw
+		// std::runtime_error("Expected class name but not found");
 		// }
 		// className = context.lexerString[token->indexData];
 		// if (className == "Null")
-		// 	throw std::runtime_error(name + " cannot declarate variable of type Null");
-		// if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
+		// 	throw std::runtime_error(name + " cannot declarate variable of type
+		// Null"); if (!nextTokenSameLine(&token, context.tokens, i,
+		// declaration->line)) {
 		// 	--i;
 		// 	goto createNode;
 		// }
 	}
-	//Value
+	// Value
 	if (expect(token, Lexer::TokenType::EQUAL)) {
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
-			throw ParserError(context.tokens[i].line, "Expected expression after '=' but not found");
+			throw ParserError(context.tokens[i].line,
+			                  "Expected expression after '=' but not found");
 		}
 		bool lastJustFindStatic = context.justFindStatic;
 		context.justFindStatic = isStatic;
 		value = loadExpression(in_data, 0, i);
 		context.justFindStatic = lastJustFindStatic;
 	} else {
-		if (className.empty()) {
-			throw ParserError(token->line, "Unknow what type of "+name);
+		if (!classDeclaration) {
+			throw ParserError(token->line, "Unknow what type of " + name);
 		}
-		value = new ConstValueNode(firstLine, DefaultClass::nullObject, 0);
+		value =
+		    context.constValuePool.push(firstLine, DefaultClass::nullObject, 0);
 		--i;
-		std::cerr<<name<<"\n";
 	}
-	createNode:;
+createNode:;
 	std::string declarationName;
 	if (isStatic) {
 		if (context.currentFunctionId != context.mainFunctionId)
-			declarationName = context.getCurrentFunction(in_data)->name + '.' + name;
+			declarationName =
+			    context.getCurrentFunction(in_data)->name + '.' + name;
 		if (context.currentClassId)
-			declarationName = context.getCurrentClass(in_data)->name + '.' + name;
-	} else declarationName = name;
+			declarationName =
+			    context.getCurrentClass(in_data)->name + '.' + name;
+	} else
+		declarationName = name;
 
-	if (value->kind == NodeType::CONST && value->isNullable()) {
-		if (!nullable) {
-			throw ParserError(token->line, declarationName+ " is marked non nullable, cannot detach null value");
-		}
-		if (className.empty()) {
-			throw ParserError(token->line, std::string("Ambiguous call nullable ") + (isVal ? "val " : "var ") + name + "? = null");
-		}
-	}
-	auto node = context.makeDeclarationNode(in_data, token->line, false, std::move(declarationName), 
-		std::move(className), isVal, isGlobal, nullable, (isInFunction || isStatic));
+	// if (value->kind == NodeType::CONST && value->isNullable()) {
+	// 	if (!nullable) {
+	// 		throw ParserError(
+	// 		    token->line,
+	// 		    declarationName +
+	// 		        " is marked non nullable, cannot detach null value");
+	// 	}
+	// 	if (!classDeclaration) {
+	// 		throw ParserError(
+	// 		    token->line, std::string("Ambiguous call nullable ") +
+	// 		                     (isVal ? "val " : "var ") + name + "? = null");
+	// 	}
+	// }
+	auto node = context.makeDeclarationNode(in_data, token->line, false, name,
+	                                        classDeclaration, isVal, isGlobal,
+	                                        nullable, isInFunction);
 	node->accessModifier = accessModifier;
-	node->mustInferenceNullable = !sugarSyntax && node->className.empty();
-	//printDebug(node->name + " is " + (node->accessModifier == Lexer::TokenType::PUBLIC ? "public" : "private"));
-	//printDebug((isVal ? "val " : "var ") + name + " has id " + std::to_string(node->id) + " " + (isGlobal ? "1 " : "0 " ) + (isStatic ? "1 " : "0 "));
+	node->mustInferenceNullable = !sugarSyntax && !classDeclaration;
+	// printDebug(node->name + " is " + (node->accessModifier ==
+	// Lexer::TokenType::PUBLIC ? "public" : "private")); printDebug((isVal ?
+	// "val " : "var ") + name + " has id " + std::to_string(node->id) + " " +
+	// (isGlobal ? "1 " : "0 " ) + (isStatic ? "1 " : "0 "));
 	if (isStatic) {
-		//Function
+		// Function
 		if (context.currentFunctionId != context.mainFunctionId) {
-			auto it = context.getCurrentFunctionInfo(in_data)->scopes.back().find(name);
-			if (it != context.getCurrentFunctionInfo(in_data)->scopes.back().end())
+			auto it =
+			    context.getCurrentFunctionInfo(in_data)->scopes.back().find(
+			        name);
+			if (it !=
+			    context.getCurrentFunctionInfo(in_data)->scopes.back().end())
 				throw ParserError(token->line, name + " has exist");
 			context.getCurrentFunctionInfo(in_data)->scopes.back()[name] = node;
-		} else { //Class
+		} else { // Class
 			context.getCurrentClassInfo(in_data)->staticMember[name] = node;
 		}
 		context.staticNode.push_back(context.setValuePool.push(
-			firstLine,
-			new VarNode(
-				firstLine,
-				node,
-				false,
-				true
-			), value
-		));
+		    firstLine, context.varPool.push(firstLine, node, false, true),
+		    value));
 		return nullptr;
 	}
-	//Non static
-	if (context.currentClassId && context.currentFunctionId == context.mainFunctionId) {
+	// Non static
+	if (context.currentClassId &&
+	    context.currentFunctionId == context.mainFunctionId) {
 		uint32_t nodeId = context.getCurrentClass(in_data)->memberId.size();
 		// printDebug(compile.classes[context.currentClassInfo->declarationThis->classId]->name);
 		// printDebug((uintptr_t)context.currentClass);
 		// std::cout << nodeId << " is node id of " << name <<'\n';
 		context.getCurrentClass(in_data)->memberMap[node->name] = nodeId;
 		context.getCurrentClass(in_data)->memberId.push_back(0);
-		//Add member id
+		// Add member id
 		node->id = nodeId;
 
-		//Add Member
+		// Add Member
 		context.getCurrentClassInfo(in_data)->member.push_back(node);
 		auto setNode = context.setValuePool.push(
-			firstLine,
-			new GetPropNode(
-				firstLine,
-				node,
-				context.currentClassId,
-				new VarNode(
-					firstLine,
-					context.getCurrentClassInfo(in_data)->declarationThis,
-					false,
-					false
-				),
-				node->name,
-				true,
-				true,
-				false
-			),
-			value
-		);
+		    firstLine,
+		    context.getPropPool.push(
+		        firstLine, node, context.currentClassId,
+		        context.varPool.push(
+		            firstLine,
+		            context.getCurrentClassInfo(in_data)->declarationThis,
+		            false, false),
+		        node->name, true, true, false),
+		    value);
 		return setNode;
 	}
 	return context.setValuePool.push(
-		firstLine,
-		new VarNode(
-			firstLine,
-			node,
-			true,
-			true
-		), 
-		value
-	);
+	    firstLine, context.varPool.push(firstLine, node, true, true), value);
 }
 
+ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
+                                       bool allowReturnVoid) { // Has check
+	Lexer::Token *token;
+	if (!nextTokenSameLine(&token, context.tokens, i, line) ||
+	    !expect(token, Lexer::TokenType::IDENTIFIER)) {
+		--i;
+		throw ParserError(
+		    context.tokens[i].line,
+		    "LoadClassDeclaration: Expected class name but not found");
+	}
+	ClassDeclaration *result = context.classDeclarationAllocator.getObject();
+	if (context.currentClassId) {
+		auto currentClassInfo = context.getCurrentClassInfo(in_data);
+		auto it =
+		    currentClassInfo->genericDeclarationMap.find(token->indexData);
+		if (it != currentClassInfo->genericDeclarationMap.end()) {
+			result->isGenericDeclaration = true;
+			currentClassInfo->genericDeclarations[it->second]
+			    ->allClassDeclarations.push_back(result);
+		}
+	}
+	result->line = token->line;
+	result->baseClassLexerStringId = token->indexData;
+	switch (token->indexData) {
+		case lexerIdNull: {
+			throw ParserError(token->line,
+			                  "Null cannot used as a type for declaration");
+		}
+		case lexerIdVoid: {
+			if (!allowReturnVoid) {
+				throw ParserError(token->line,
+				                  "Void cannot used as a type for declaration");
+			}
+			break;
+		}
+	}
+	if (!nextTokenSameLine(&token, context.tokens, i, line) ||
+	    expect(token, Lexer::TokenType::GT)) {
+		--i;
+		return result;
+	}
+	if (expect(token, Lexer::TokenType::LT)) {
+		while (true) {
+			auto classDeclaration =
+			    loadClassDeclaration(in_data, i, line, allowReturnVoid);
+			result->inputClassId.push_back(classDeclaration);
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(
+				    context.tokens[i].line,
+				    "Expected '>' after class name but not found");
+			}
+			switch (token->type) {
+				case Lexer::TokenType::COMMA: {
+					break;
+				}
+				case Lexer::TokenType::GT: {
+					goto finishedGenerics;
+				}
+				default: {
+					throw ParserError(
+					    line, "Expected '>' after class name but not found");
+				}
+			}
+		}
+	finishedGenerics:;
+		if (!nextToken(&token, context.tokens, i)) {
+			--i;
+			throw ParserError(context.tokens[i].line,
+			                  "Generics class must have body");
+		}
+	}
+	if (expect(token, Lexer::TokenType::QMARK)) {
+		result->mustInference = false;
+		result->nullable = true;
+		return result;
+	}
+	if (expect(token, Lexer::TokenType::EXMARK)) {
+		result->mustInference = false;
+		result->nullable = false;
+		return result;
+	}
+	--i;
+	return result;
 }
+
+} // namespace AutoLang
 
 #endif

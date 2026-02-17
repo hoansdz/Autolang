@@ -41,6 +41,11 @@ void OptionalAccessNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
 	context.jumpIfNullNode = lastJumpIfNullNode;
 }
 
+ExprNode *OptionalAccessNode::copy(in_func) {
+	return context.optionalAccessNodePool.push(
+	    line, static_cast<HasClassIdNode *>(value->copy(in_data)));
+}
+
 OptionalAccessNode::~OptionalAccessNode() { ExprNode::deleteNode(value); }
 
 } // namespace AutoLang

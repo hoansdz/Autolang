@@ -22,7 +22,8 @@ void ThrowNode::optimize(in_func) {
 			}
 			auto valueClass = compile.classes[value->classId];
 			if (!(value->classId == DefaultClass::exceptionClassId ||
-			     valueClass->inheritance.get(DefaultClass::exceptionClassId))) {
+			      valueClass->inheritance.get(
+			          DefaultClass::exceptionClassId))) {
 				throwError("The thing being throw must be a exception");
 			}
 		}
@@ -35,6 +36,11 @@ void ThrowNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 }
 
 void ThrowNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {}
+
+ExprNode *ThrowNode::copy(in_func) {
+	return context.throwPool.push(
+	    line, static_cast<HasClassIdNode *>(value->copy(in_data)));
+}
 
 ThrowNode::~ThrowNode() { deleteNode(value); }
 

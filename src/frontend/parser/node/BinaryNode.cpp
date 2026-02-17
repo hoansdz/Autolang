@@ -16,34 +16,34 @@ ExprNode *BinaryNode::leftOpRight(in_func, ConstValueNode *l,
 	switch (op) {
 		using namespace AutoLang;
 		case Lexer::TokenType::PLUS:
-			return plus(l, r);
+			return plus(in_data, l, r);
 		case Lexer::TokenType::MINUS:
-			return minus(l, r);
+			return minus(in_data, l, r);
 		case Lexer::TokenType::STAR:
-			return mul(l, r);
+			return mul(in_data, l, r);
 		case Lexer::TokenType::SLASH:
-			return divide(l, r);
+			return divide(in_data, l, r);
 		case Lexer::TokenType::PERCENT:
-			return mod(l, r);
+			return mod(in_data, l, r);
 
 		case Lexer::TokenType::AND:
-			return bitwise_and(l, r);
+			return bitwise_and(in_data, l, r);
 		case Lexer::TokenType::OR:
-			return bitwise_or(l, r);
+			return bitwise_or(in_data, l, r);
 
 		case Lexer::TokenType::EQEQ:
-			return op_eqeq(l, r);
+			return op_eqeq(in_data, l, r);
 		case Lexer::TokenType::NOTEQ:
-			return op_not_eq(l, r);
+			return op_not_eq(in_data, l, r);
 
 		case Lexer::TokenType::LTE:
-			return op_less_than_eq(l, r);
+			return op_less_than_eq(in_data, l, r);
 		case Lexer::TokenType::GTE:
-			return op_greater_than_eq(l, r);
+			return op_greater_than_eq(in_data, l, r);
 		case Lexer::TokenType::LT:
-			return op_less_than(l, r);
+			return op_less_than(in_data, l, r);
 		case Lexer::TokenType::GT:
-			return op_greater_than(l, r);
+			return op_greater_than(in_data, l, r);
 		case Lexer::TokenType::NOTEQEQ:
 		case Lexer::TokenType::EQEQEQ: {
 			const bool result = op == Lexer::TokenType::EQEQEQ;
@@ -51,19 +51,19 @@ ExprNode *BinaryNode::leftOpRight(in_func, ConstValueNode *l,
 				case AutoLang::DefaultClass::boolClassId: {
 					if (r->classId == AutoLang::DefaultClass::boolClassId) {
 						const bool equal = (l->obj->b == r->obj->b);
-						return new ConstValueNode(line,
-						                          result ? equal : !equal);
+						return context.constValuePool.push(
+						    line, result ? equal : !equal);
 					} else if (r->classId ==
 					           AutoLang::DefaultClass::nullClassId) {
-						return new ConstValueNode(line, !result);
+						return context.constValuePool.push(line, !result);
 					}
 				}
 				case AutoLang::DefaultClass::nullClassId: {
 					if (r->classId == AutoLang::DefaultClass::nullClassId) {
-						return new ConstValueNode(line, result);
+						return context.constValuePool.push(line, result);
 					} else if (r->classId ==
 					           AutoLang::DefaultClass::boolClassId) {
-						return new ConstValueNode(line, !result);
+						return context.constValuePool.push(line, !result);
 					}
 					break;
 				}
@@ -71,9 +71,9 @@ ExprNode *BinaryNode::leftOpRight(in_func, ConstValueNode *l,
 			throw ParserError(line, "What happen");
 		}
 		case Lexer::TokenType::AND_AND:
-			return new ConstValueNode(line, l->obj->b && r->obj->b);
+			return context.constValuePool.push(line, l->obj->b && r->obj->b);
 		case Lexer::TokenType::OR_OR:
-			return new ConstValueNode(line, l->obj->b || r->obj->b);
+			return context.constValuePool.push(line, l->obj->b || r->obj->b);
 		default:
 			throw ParserError(
 			    line, "Cannot use operator '" +
@@ -95,7 +95,8 @@ ExprNode *BinaryNode::resolve(in_func) {
 			if (right->kind != CLASS_ACCESS) {
 				throwError("Right operand of 'as' must be a class name");
 			}
-			auto result = new RuntimeCastNode(left, right->classId, op == Lexer::TokenType::SAFE_CAST);
+			auto result = context.runtimeCastPool.push(
+			    left, right->classId, op == Lexer::TokenType::SAFE_CAST);
 			left = nullptr;
 			ExprNode::deleteNode(this);
 			return result->resolve(in_data);
@@ -158,12 +159,14 @@ void BinaryNode::optimize(in_func) {
 		case Lexer::TokenType::STAR:
 		case Lexer::TokenType::SLASH: {
 			if (left->classId == AutoLang::DefaultClass::boolClassId) {
-				left = new CastNode(left, AutoLang::DefaultClass::intClassId);
+				left = context.castPool.push(
+				    left, AutoLang::DefaultClass::intClassId);
 			}
 			// std::cout<<compile.classes[left->classId]->name<<'\n';
 
 			if (right->classId == AutoLang::DefaultClass::boolClassId) {
-				right = new CastNode(right, AutoLang::DefaultClass::intClassId);
+				right = context.castPool.push(
+				    right, AutoLang::DefaultClass::intClassId);
 			}
 			if (left->isNullable() || right->isNullable())
 				throwError("Cannot use operator '" +
@@ -294,6 +297,12 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			throwError(std::string("Cannot find operator '") +
 			           Lexer::Token(0, op).toString(context) + "'");
 	}
+}
+
+ExprNode *BinaryNode::copy(in_func) {
+	return context.binaryNodePool.push(
+	    line, op, static_cast<HasClassIdNode *>(left->copy(in_data)),
+	    static_cast<HasClassIdNode *>(right->copy(in_data)));
 }
 
 } // namespace AutoLang

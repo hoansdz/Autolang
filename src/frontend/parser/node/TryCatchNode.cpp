@@ -41,6 +41,20 @@ void TryCatchNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
 	catchBody.rewrite(in_data, bytecodes);
 }
 
+ExprNode *TryCatchNode::copy(in_func) {
+	auto newNode = context.tryCatchPool.push(line);
+	newNode->exceptionDeclaration = exceptionDeclaration; //???
+	newNode->body.nodes.reserve(body.nodes.size());
+	for (auto node : body.nodes) {
+		newNode->body.nodes.push_back(node->copy(in_data));
+	}
+	newNode->catchBody.nodes.reserve(catchBody.nodes.size());
+	for (auto node : catchBody.nodes) {
+		newNode->catchBody.nodes.push_back(node->copy(in_data));
+	}
+	return newNode;
+}
+
 } // namespace AutoLang
 
 #endif

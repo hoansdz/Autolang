@@ -11,7 +11,7 @@ AccessNode *ClassInfo::findDeclaration(in_func, uint32_t line,
 	{
 		auto it = staticMember.find(name);
 		if (it != staticMember.end()) {
-			return new VarNode(line, it->second, false, it->second->nullable);
+			return context.varPool.push(line, it->second, false, it->second->nullable);
 		}
 		// Not found
 	}
@@ -22,16 +22,20 @@ AccessNode *ClassInfo::findDeclaration(in_func, uint32_t line,
 			auto node = member[it->second];
 			if (isStatic)
 				ParserError(line, name + " is not static");
-			return new GetPropNode(
+			return context.getPropPool.push(
 			    line, node, declarationThis->classId,
-			    new VarNode(line, declarationThis, false, false), name, false,
+			    context.varPool.push(line, declarationThis, false, false), name, false,
 			    node->nullable, false);
 		}
 	// }
 	return nullptr;
 }
 
-ClassInfo::~ClassInfo() {}
+ClassInfo::~ClassInfo() {
+	for (auto declaration : genericDeclarations) {
+		delete declaration;
+	}
+}
 
 } // namespace AutoLang
 

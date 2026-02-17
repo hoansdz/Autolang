@@ -12,24 +12,26 @@ namespace AutoLang {
 	
 struct ConstValueNode;
 struct ParserContext;
+struct CompiledProgram;
 
-ConstValueNode* plus(ConstValueNode* left, ConstValueNode* right);
-ConstValueNode* minus(ConstValueNode* left, ConstValueNode* right);
-ConstValueNode* mul(ConstValueNode* left, ConstValueNode* right);
-ConstValueNode* divide(ConstValueNode* left, ConstValueNode* right);
-ConstValueNode* mod(ConstValueNode* left, ConstValueNode* right);
-ConstValueNode* bitwise_and(ConstValueNode* left, ConstValueNode* right);
-ConstValueNode* bitwise_or(ConstValueNode* left, ConstValueNode* right);
-ConstValueNode* op_less_than(ConstValueNode* left, ConstValueNode* right);
-ConstValueNode* op_greater_than(ConstValueNode* left, ConstValueNode* right);
-ConstValueNode* op_less_than_eq(ConstValueNode* left, ConstValueNode* right);
-ConstValueNode* op_greater_than_eq(ConstValueNode* left, ConstValueNode* right);
-ConstValueNode* op_eqeq(ConstValueNode* left, ConstValueNode* right);
-ConstValueNode* op_not_eq(ConstValueNode* left, ConstValueNode* right);
-void toInt(ConstValueNode* value);
-void toFloat(ConstValueNode* value);
-void toBool(ConstValueNode* value);
-void toString(ConstValueNode* value);
+ConstValueNode* plus(in_func, ConstValueNode* left, ConstValueNode* right);
+ConstValueNode* minus(in_func, ConstValueNode* left, ConstValueNode* right);
+ConstValueNode* mul(in_func, ConstValueNode* left, ConstValueNode* right);
+ConstValueNode* divide(in_func, ConstValueNode* left, ConstValueNode* right);
+ConstValueNode* mod(in_func, ConstValueNode* left, ConstValueNode* right);
+ConstValueNode* bitwise_and(in_func, ConstValueNode* left, ConstValueNode* right);
+ConstValueNode* bitwise_or(in_func, ConstValueNode* left, ConstValueNode* right);
+ConstValueNode* op_less_than(in_func, ConstValueNode* left, ConstValueNode* right);
+ConstValueNode* op_greater_than(in_func, ConstValueNode* left, ConstValueNode* right);
+ConstValueNode* op_less_than_eq(in_func, ConstValueNode* left, ConstValueNode* right);
+ConstValueNode* op_greater_than_eq(in_func, ConstValueNode* left, ConstValueNode* right);
+ConstValueNode* op_eqeq(in_func, ConstValueNode* left, ConstValueNode* right);
+ConstValueNode* op_not_eq(in_func, ConstValueNode* left, ConstValueNode* right);
+
+void toInt(in_func, ConstValueNode* value);
+void toFloat(in_func, ConstValueNode* value);
+void toBool(in_func, ConstValueNode* value);
+void toString(in_func, ConstValueNode* value);
 
 }
 

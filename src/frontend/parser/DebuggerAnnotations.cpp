@@ -69,6 +69,14 @@ void loadAnnotations(in_func, size_t &i) {
 			context.annotationFlags |= AnnotationFlags::AN_NO_CONSTRUCTOR;
 			break;
 		}
+		case Lexer::TokenType::NO_EXTENDS: {
+			if (context.annotationFlags & AnnotationFlags::AN_NO_EXTENDS) {
+				throw ParserError(firstLine,
+				                  "Duplicate annotation @no_extends");
+			}
+			context.annotationFlags |= AnnotationFlags::AN_NO_EXTENDS;
+			break;
+		}
 		case Lexer::TokenType::IMPORT: {
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 			    !expect(token, Lexer::TokenType::LPAREN)) {

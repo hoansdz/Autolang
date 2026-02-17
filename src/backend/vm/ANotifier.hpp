@@ -43,6 +43,9 @@ class ANotifier {
 	inline void input(AObject* obj) {
 		vm->input(obj);
 	}
+	inline void release(AObject* obj) {
+		vm->data.manager.release(obj);
+	}
 	ANotifier(AVM *vm) : vm(vm) {}
 };
 

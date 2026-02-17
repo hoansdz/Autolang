@@ -14,7 +14,7 @@ AccessNode *FunctionInfo::findDeclaration(in_func, uint32_t line,
 			continue;
 		if (isStatic && i != 0 && !it->second->isGlobal)
 			throw ParserError(line, it->second->name + " is not static");
-		return new VarNode(line, it->second, false, it->second->nullable);
+		return context.varPool.push(line, it->second, false, it->second->nullable);
 	}
 	return nullptr;
 }

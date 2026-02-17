@@ -10,6 +10,7 @@
 #include "frontend/parser/FunctionInfo.cpp"
 #include "shared/AObject.cpp"
 #include "shared/CompiledProgram.cpp"
+#include "frontend/parser/ClassDeclaration.cpp"
 #include "frontend/parser/DebuggerAnnotations.cpp"
 #include "frontend/parser/DebuggerConditionStatement.cpp"
 #include "frontend/parser/DebuggerClass.cpp"
@@ -28,6 +29,7 @@
 #include "frontend/parser/node/CreateNode.cpp"
 #include "frontend/parser/node/CreateFuncNode.cpp"
 #include "frontend/parser/node/CastNode.cpp"
+#include "frontend/parser/node/CallNode.cpp"
 #include "frontend/parser/node/NodeOptimize.cpp"
 #include "frontend/parser/node/NodePutbytecode.cpp"
 #include "frontend/parser/node/NullCoalescingNode.cpp"
@@ -39,5 +41,6 @@
 #include "shared/AreaAllocator.cpp"
 #include "frontend/libs/Math.cpp"
 #include "frontend/libs/stdlib.cpp"
+#include "frontend/libs/list.cpp"
 
 #endif

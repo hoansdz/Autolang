@@ -136,10 +136,12 @@ void AVM::log(Function *currentFunction) {
 				std::cerr << "IS	 " << get_u32(bytecodes, i) << '\n';
 				break;
 			case AutoLang::Opcode::SAFE_CAST:
-				std::cerr << "SAFE_CAST	 " << data.classes[get_u32(bytecodes, i)]->name << '\n';
+				std::cerr << "SAFE_CAST	 "
+				          << data.classes[get_u32(bytecodes, i)]->name << '\n';
 				break;
 			case AutoLang::Opcode::UNSAFE_CAST:
-				std::cerr << "UNSAFE_CAST	 " << data.classes[get_u32(bytecodes, i)]->name << '\n';
+				std::cerr << "UNSAFE_CAST	 "
+				          << data.classes[get_u32(bytecodes, i)]->name << '\n';
 				break;
 			case AutoLang::Opcode::ADD_TRY_BLOCK:
 				std::cerr << "ADD_TRY_BLOCK	 " << get_u32(bytecodes, i) << '\n';

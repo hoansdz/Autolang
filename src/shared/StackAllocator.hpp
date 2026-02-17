@@ -86,11 +86,11 @@ public:
 	}
 	
 	inline void set(ObjectManager& manager, size_t index, AObject* object) {
-		AObject** last = &args[top + index];
-		if (*last != nullptr) {
-			manager.release(*last);
+		AObject*& last = currentPtr[index];
+		if (last != nullptr) {
+			manager.release(last);
 		}
-		*last = object;
+		last = object;
 	}
 	
 	inline AObject*& operator[](size_t index){ return currentPtr[index]; }

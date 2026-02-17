@@ -12,8 +12,9 @@ void CreateFuncNode::pushFunction(in_func) {
 	id = compile.registerFunction(
 	    clazz, name, new ClassId[arguments.size()]{}, arguments.size(),
 	    AutoLang::DefaultClass::voidClassId, functionFlags);
+	context.functionInfo.push_back(context.functionInfoAllocator.getObject());
 	auto func = compile.functions[id];
-	auto funcInfo = &context.functionInfo[id];
+	auto funcInfo = context.functionInfo[id];
 	new (&func->bytecodes) std::vector<uint8_t>();
 	funcInfo->clazz = clazz;
 	funcInfo->nullableArgs = new bool[arguments.size()]{};
@@ -28,8 +29,9 @@ void CreateFuncNode::pushNativeFunction(in_func, ANativeFunction native) {
 	    clazz, name, new ClassId[arguments.size()]{}, arguments.size(),
 	    AutoLang::DefaultClass::voidClassId,
 	    functionFlags | FunctionFlags::FUNC_IS_NATIVE);
+	context.functionInfo.push_back(context.functionInfoAllocator.getObject());
 	auto func = compile.functions[id];
-	auto funcInfo = &context.functionInfo[id];
+	auto funcInfo = context.functionInfo[id];
 	func->native = native;
 	funcInfo->clazz = clazz;
 	funcInfo->nullableArgs = new bool[arguments.size()]{};
@@ -46,13 +48,9 @@ void CreateFuncNode::optimize(in_func) {
 		throwError("Cannot declare function with the same name as class name " +
 		           name);
 	auto func = compile.functions[id];
-	auto funcInfo = &context.functionInfo[id];
-	if (!returnClass.empty()) {
-		auto it = compile.classMap.find(returnClass);
-		if (it == compile.classMap.end())
-			throwError("CreateFuncNode: Cannot find class name: " +
-			           returnClass);
-		func->returnId = it->second;
+	auto funcInfo = context.functionInfo[id];
+	if (classDeclaration) {
+		func->returnId = *classDeclaration->classId;
 	}
 	for (size_t i = 0; i < arguments.size(); ++i) {
 		auto &argument = arguments[i];
@@ -62,7 +60,7 @@ void CreateFuncNode::optimize(in_func) {
 
 	if (contextCallClassId) {
 		funcInfo->hash = func->loadHash();
-		auto classInfo = &context.classInfo[*contextCallClassId];
+		auto classInfo = context.classInfo[*contextCallClassId];
 		if (func->functionFlags & FunctionFlags::FUNC_IS_STATIC) {
 			auto &hash = classInfo->staticFunc[name];
 			auto it = hash.find(funcInfo->hash);
