@@ -50,7 +50,7 @@ enum NodeType : uint8_t {
 	IF,
 	BLOCK,
 	WHILE,
-	FOR_RANGE,
+	FOR,
 	CREATE_FUNC,
 	CREATE_CLASS,
 	CREATE_CONSTRUCTOR,
@@ -62,7 +62,8 @@ enum NodeType : uint8_t {
 	TRY_CATCH,
 	THROW,
 	RUNTIME_CAST,
-	GENERIC_DECLARATION
+	GENERIC_DECLARATION,
+	RANGE
 };
 
 struct ExprNode {
@@ -73,6 +74,7 @@ struct ExprNode {
 	[[noreturn]] inline void throwError(std::string message);
 	void warning(in_func, std::string message);
 	static void deleteNode(ExprNode *node);
+	std::string getNodeType();
 	virtual ExprNode *resolve(in_func) { return this; }
 	virtual void optimize(in_func) {}
 	virtual void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {};
@@ -86,15 +88,19 @@ struct SkipNode : ExprNode {
 	BytecodePos jumpBytePos;
 	SkipNode(Lexer::TokenType type, uint32_t line)
 	    : ExprNode(NodeType::SKIP, line), type(type) {}
-	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes);
-	void rewrite(in_func, std::vector<uint8_t> &bytecodes);
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
+	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
 };
 
 struct BlockNode : ExprNode {
 	std::vector<ExprNode *> nodes;
 	BlockNode(uint32_t line) : ExprNode(NodeType::BLOCK, line) {}
-	void optimize(in_func);
-	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes);
+	static void loadReturnValueClassId(in_func, uint32_t line,
+	                                   std::optional<ClassId> &currentClassId,
+	                                   ClassId newClassId);
+	void loadClassAndOptimize(in_func);
+	void optimize(in_func) override;
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	ExprNode *resolve(in_func) override;
 	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
 	void refresh();
@@ -109,7 +115,7 @@ struct CanBreakContinueNode : ExprNode {
 	CanBreakContinueNode(NodeType kind, uint32_t line)
 	    : ExprNode(kind, line), body(line) {}
 	ExprNode *resolve(in_func) override { return body.resolve(in_data); };
-	void rewrite(in_func, std::vector<uint8_t> &bytecodes);
+	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
 };
 
 struct HasClassIdNode : ExprNode {
@@ -127,7 +133,7 @@ struct NullableNode : HasClassIdNode {
 	bool nullable;
 	NullableNode(NodeType kind, ClassId classId, bool nullable, uint32_t line)
 	    : HasClassIdNode(kind, classId, line), nullable(nullable) {}
-	bool isNullable() { return nullable; }
+	bool isNullable() override { return nullable; }
 };
 
 struct JumpIfNullNode : NullableNode {
@@ -196,6 +202,9 @@ struct ConstValueNode : HasClassIdNode {
 	};
 	bool isLoadPrimary = false;
 	uint32_t id = UINT32_MAX;
+	ConstValueNode()
+	    : HasClassIdNode(NodeType::CONST, AutoLang::DefaultClass::intClassId,
+	                     line) {}
 	ConstValueNode(uint32_t line, int64_t i)
 	    : HasClassIdNode(NodeType::CONST, AutoLang::DefaultClass::intClassId,
 	                     line),
@@ -267,7 +276,7 @@ struct BinaryNode : HasClassIdNode {
 	      right(right) {}
 	ExprNode *leftOpRight(in_func, ConstValueNode *l, ConstValueNode *r);
 	ExprNode *resolve(in_func) override;
-	void optimize(in_func);
+	void optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes);
 	ExprNode *copy(in_func) override;
 	inline void rewrite(in_func, std::vector<uint8_t> &bytecodes) override {
@@ -284,7 +293,7 @@ struct CastNode : NullableNode { // #
 	      value(value) {}
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;
-	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes);
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	inline void rewrite(in_func, std::vector<uint8_t> &bytecodes) override {
 		value->rewrite(in_data, bytecodes);
 	}
@@ -300,7 +309,7 @@ struct RuntimeCastNode : NullableNode { // #
 	      value(value) {}
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;
-	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes);
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	inline void rewrite(in_func, std::vector<uint8_t> &bytecodes) override {
 		value->rewrite(in_data, bytecodes);
 	}
@@ -335,15 +344,19 @@ struct GetPropNode : AccessNode {
 	~GetPropNode();
 };
 
-struct IfNode : ExprNode {
+struct IfNode : HasClassIdNode {
 	HasClassIdNode *condition;
 	BlockNode ifTrue;
 	BlockNode *ifFalse = nullptr;
-	IfNode(uint32_t line) : ExprNode(NodeType::IF, line), ifTrue(line) {}
+	bool mustReturnValue = false;
+	std::vector<BytecodePos> jumpPosition;
+	IfNode(uint32_t line, bool mustReturnValue)
+	    : HasClassIdNode(NodeType::IF, DefaultClass::nullClassId, line),
+	      ifTrue(line), mustReturnValue(mustReturnValue) {}
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func);
-	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes);
-	void rewrite(in_func, std::vector<uint8_t> &bytecodes);
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
+	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
 	ExprNode *copy(in_func) override;
 	~IfNode();
 };
@@ -389,27 +402,21 @@ struct SetNode : HasClassIdNode {
 };
 
 // for (detach in from..to) body
-struct ForRangeNode : CanBreakContinueNode {
+struct ForNode : CanBreakContinueNode {
 	AccessNode *detach;
-	HasClassIdNode *from;
-	HasClassIdNode *to;
-	bool isLessThanEq;
-	// ForRangeNode(uint32_t line) : CanBreakContinueNode(NodeType::FOR_RANGE,
-	// line) {}
-	ForRangeNode(uint32_t line, AccessNode *detach, HasClassIdNode *from,
-	             HasClassIdNode *to, bool isLessThanEq)
-	    : CanBreakContinueNode(NodeType::FOR_RANGE, line), detach(detach),
-	      from(from), to(to), isLessThanEq(isLessThanEq) {}
+	HasClassIdNode *data;
+	ForNode(uint32_t line, AccessNode *detach, HasClassIdNode *data)
+	    : CanBreakContinueNode(NodeType::FOR, line), detach(detach),
+	      data(data) {}
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func);
-	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes);
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	inline void rewrite(in_func, std::vector<uint8_t> &bytecodes) override {
-		from->rewrite(in_data, bytecodes);
-		to->rewrite(in_data, bytecodes);
+		data->rewrite(in_data, bytecodes);
 		CanBreakContinueNode::rewrite(in_data, bytecodes);
 	}
 	ExprNode *copy(in_func) override;
-	~ForRangeNode();
+	~ForNode();
 };
 
 // getName(id) => variable
@@ -426,7 +433,7 @@ struct VarNode : AccessNode {
 struct ClassAccessNode : HasClassIdNode {
 	ClassAccessNode(uint32_t line, uint32_t type)
 	    : HasClassIdNode(NodeType::CLASS_ACCESS, type, line) {}
-	ExprNode *copy(in_func) { return this; }
+	ExprNode *copy(in_func) override { return this; }
 };
 
 struct MatchOverload {
@@ -490,6 +497,20 @@ struct ThrowNode : ExprNode {
 	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
 	ExprNode *copy(in_func) override;
 	~ThrowNode();
+};
+
+struct RangeNode : HasClassIdNode {
+	HasClassIdNode *from;
+	HasClassIdNode *to;
+	bool lessThan;
+	RangeNode(uint32_t line, HasClassIdNode *from, HasClassIdNode *to,
+	          bool lessThan)
+	    : HasClassIdNode(NodeType::RANGE, DefaultClass::intClassId, line),
+	      from(from), to(to), lessThan(lessThan) {}
+	ExprNode *resolve(in_func) override;
+	void optimize(in_func) override;
+	ExprNode *copy(in_func) override;
+	~RangeNode();
 };
 
 } // namespace AutoLang

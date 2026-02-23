@@ -65,6 +65,7 @@ ExprNode *DeclarationNode::copy(in_func) {
 	newNode->id = id;
 	if (classDeclaration) {
 		if (!classDeclaration->classId) {
+			// classDeclaration->load<true>(in_data);
 			throwError("Bug: DeclarationNode copy: Unresolved class " +
 			           classDeclaration->getName(in_data));
 		}
@@ -82,7 +83,7 @@ void CreateConstructorNode::pushFunction(in_func) {
 	funcId = compile.registerFunction<true>(
 	    clazz, name, new ClassId[arguments.size() + 1]{}, arguments.size() + 1,
 	    classId, functionFlags | FunctionFlags::FUNC_IS_CONSTRUCTOR);
-	context.functionInfo.push_back(context.functionInfoAllocator.getObject());
+	context.functionInfo.push_back(context.functionInfoAllocator.push());
 	auto func = compile.functions[funcId];
 	auto funcInfo = context.functionInfo[funcId];
 	new (&func->bytecodes) std::vector<uint8_t>();
@@ -181,7 +182,20 @@ void CreateConstructorNode::optimize(in_func) {
 void CreateClassNode::pushClass(in_func) {
 	classId = compile.registerClass(context.lexerString[nameId], classFlags);
 	context.defaultClassMap[nameId] = classId;
-	context.classInfo.push_back(context.classInfoAllocator.getObject());
+	auto classInfo = context.classInfoAllocator.push();
+	context.classInfo.push_back(classInfo);
+	// if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
+	// 	if (!classInfo->genericDeclarations.empty()) {
+	// 		return;
+	// 	}
+	// 	context.allClassDeclarations.push_back();
+	// 	if (!superDeclaration->classId) {
+	// 		throwError("Unresolved class name " +
+	// 		           superDeclaration->getName(in_data));
+	// 	}
+	// 	auto classInfo = context.classInfo[classId];
+	// 	classInfo->parent = *superDeclaration->classId;
+	// }
 	// auto clazz = compile.classes[classId];
 	// std::cerr << "Created class name: " << clazz->name << " id " << classId
 	//           << "\n";
@@ -205,6 +219,9 @@ void CreateClassNode::optimize(in_func) {
 		}
 	}
 	if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
+		if (!classInfo->genericDeclarations.empty()) {
+			return;
+		}
 		if (!superDeclaration->classId) {
 			throwError("Unresolved class name " +
 			           superDeclaration->getName(in_data));
@@ -222,6 +239,10 @@ void CreateClassNode::loadSuper(in_func) {
 		auto superClass = compile.classes[superClassId];
 		auto superClassInfo = context.classInfo[superClassId];
 
+		if (!classInfo->genericDeclarations.empty()) {
+			return;
+		}
+
 		if (superClass->classFlags & ClassFlags::CLASS_NO_EXTENDS) {
 			throwError("@no_extends is already applied to " + superClass->name);
 		}
@@ -231,7 +252,9 @@ void CreateClassNode::loadSuper(in_func) {
 		{
 			auto node = context.findCreateClassNode(superClassId);
 			if (!node) {
-				throwError("Bug: Cannot find create class node");
+				throwError("Bug: Cannot find create class node " +
+				           compile.classes[superClassId]->name + " " +
+				           std::to_string(superClassId));
 			}
 			node->loadSuper(in_data);
 		}
@@ -260,6 +283,10 @@ void CreateClassNode::loadSuper(in_func) {
 				           "'. Overriding is not supported yet.");
 			}
 			clazz->memberMap[declaration->name] = declaration->id;
+			if (context.lexerString[nameId] ==
+			    "GWrapperGenericTest<GCat,Int>") {
+				std::cerr<<declaration->name<<"\n";
+			}
 		}
 		classInfo->member.reserve(classInfo->member.size() +
 		                          superClassInfo->member.size());

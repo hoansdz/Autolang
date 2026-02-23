@@ -17,8 +17,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		                  "@no_constructor is only supported classes");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_EXTENDS) {
-		throw ParserError(firstLine,
-		                  "@no_extends is only supported classes");
+		throw ParserError(firstLine, "@no_extends is only supported classes");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NATIVE) {
 		functionFlags |= FunctionFlags::FUNC_HAS_BODY;
@@ -68,18 +67,9 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 	std::string name;
 	switch (token->type) {
 		case Lexer::TokenType::IDENTIFIER: {
-			if (token->indexData == lexerIdSuper)
+			if (token->indexData == lexerIdsuper)
 				throw ParserError(firstLine, "Super is a keyword");
 			name = context.lexerString[token->indexData] + "()";
-			break;
-		}
-		case Lexer::TokenType::LBRACKET: {
-			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
-			    !expect(token, Lexer::TokenType::RBRACKET)) {
-				--i;
-				throw ParserError(firstLine, "Expected ] but not found");
-			}
-			name = "[]";
 			break;
 		}
 		default: {
@@ -242,14 +232,19 @@ ReturnNode *loadReturn(in_func, size_t &i) {
 	auto func = context.getCurrentFunction(in_data);
 	if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 		--i;
-		auto declarartionThis =
-		    context.getCurrentClassInfo(in_data)->declarationThis;
-		auto value =
-		    (func->functionFlags & FunctionFlags::FUNC_IS_CONSTRUCTOR)
-		        ? context.varPool.push(firstLine, declarartionThis, false, false)
-		        : nullptr;
+		if (context.currentClassId) {
+			auto declarartionThis =
+			    context.getCurrentClassInfo(in_data)->declarationThis;
+			auto value =
+			    (func->functionFlags & FunctionFlags::FUNC_IS_CONSTRUCTOR)
+			        ? context.varPool.push(firstLine, declarartionThis, false,
+			                               false)
+			        : nullptr;
+			return context.returnPool.push(firstLine, context.currentFunctionId,
+			                               value);
+		}
 		return context.returnPool.push(firstLine, context.currentFunctionId,
-		                               value);
+		                               nullptr);
 	}
 	if (func->functionFlags & FunctionFlags::FUNC_IS_CONSTRUCTOR)
 		throw ParserError(token->line, "Cannot return value in constructor");

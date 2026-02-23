@@ -12,60 +12,16 @@
 
 namespace AutoLang {
 
-void lexerData(in_func, ACompiler &compiler, LibraryData *library) {
+void lexerData(in_func, ACompiler &compiler, LibraryData *library,
+               std::vector<Offset> *importOffset) {
 	// auto startLexer = std::chrono::high_resolution_clock::now();
-	Lexer::load(&context, library);
+	Lexer::load(&context, library, importOffset);
 	// auto lexerTime = std::chrono::high_resolution_clock::now();
 	// auto total = std::chrono::duration_cast<std::chrono::milliseconds>(
 	//                  lexerTime - startLexer)
 	//                  .count();
 	// std::cerr << "Lexer file " << library->path << " in  " << total << "
 	// ms\n";
-}
-
-LibraryData *loadImport(in_func, std::vector<Lexer::Token> &tokens,
-                        ACompiler &compiler, size_t i) {
-	Lexer::Token *token = &tokens[i];
-	// std::cerr<<i<<" & "<<tokens.size() << "\n";
-	Lexer::Token *importToken = token;
-	uint32_t firstLine = token->line;
-	assert(token->type == Lexer::TokenType::IMPORT);
-	if (!nextTokenSameLine(&token, tokens, i, firstLine) ||
-	    !expect(token, Lexer::TokenType::LPAREN)) {
-		--i;
-		throw ParserError(firstLine, "@import expected string value (");
-	}
-	if (!nextTokenSameLine(&token, tokens, i, firstLine) ||
-	    !expect(token, Lexer::TokenType::STRING)) {
-		throw ParserError(firstLine, "@import expected string value (String");
-	}
-	std::string &path = context.lexerString[token->indexData];
-	if (!nextTokenSameLine(&token, tokens, i, firstLine) ||
-	    !expect(token, Lexer::TokenType::RPAREN)) {
-		--i;
-		throw ParserError(firstLine, "@import expects a constant "
-		                             "string value, not an expression");
-	}
-	if (path.empty()) {
-		throw ParserError(firstLine, "import path is empty");
-	}
-	// {
-	// 	auto it = context.importMap.find(path);
-	// 	if (it != context.importMap.end()) {
-	// 		return it->second;
-	// 	}
-	// }
-	LibraryData *library = compiler.requestImport(path.c_str());
-	if (!library) {
-		throw ParserError(firstLine, "Cannot find library '" + path + "'");
-	}
-	// context.importMap[path] = library;
-	if (!library->lexerContext.tokens.empty()) {
-		return library;
-	}
-	compiler.loadSource(library);
-	library->rawData.clear();
-	return library;
 }
 
 void freeData(in_func) {
@@ -111,6 +67,8 @@ ClassId loadGenerics(in_func, std::string &name,
 	{
 		auto it = context.lexerStringMap.find(name);
 		if (it == context.lexerStringMap.end()) {
+			// std::cerr << "Oh " << name << "\n";
+			// int *a = nullptr; *a = 5;
 			newNameId = context.lexerString.size();
 			context.lexerStringMap[name] = newNameId;
 			context.lexerString.push_back(name);
@@ -122,10 +80,13 @@ ClassId loadGenerics(in_func, std::string &name,
 	auto newCreateClassNode = context.newClasses.push(
 	    baseCreateClassNode->line, newNameId, baseCreateClassNode->classFlags);
 	newCreateClassNode->pushClass(in_data);
+	// std::cerr<<"Created create class node
+	// "<<context.lexerString[newNameId]<<"\n";
 	newCreateClassNode->superDeclaration =
 	    baseCreateClassNode->superDeclaration;
 	auto newClassId = newCreateClassNode->classId;
 	context.defaultClassMap[newNameId] = newClassId;
+	context.newDefaultClassesMap[newClassId] = newCreateClassNode;
 
 	for (size_t i = 0; i < classInfo->genericDeclarations.size(); ++i) {
 		auto &genericDeclaration = classInfo->genericDeclarations[i];
@@ -167,15 +128,34 @@ ClassId loadGenerics(in_func, std::string &name,
 	auto lastCurrentClassId = context.currentClassId;
 	context.currentClassId = newClassId;
 
+	if (newCreateClassNode->superDeclaration &&
+	    !newCreateClassNode->superDeclaration->classId) {
+		newCreateClassNode->superDeclaration->load<true>(in_data);
+		// std::cerr << "Created "
+		//           << newCreateClassNode->superDeclaration->getName(in_data)
+		//           << "\n ";
+	}
+
 	for (auto *member : classInfo->member) {
+		if (member->classDeclaration) {
+			if (!member->classDeclaration->classId) {
+				member->classDeclaration->load<true>(in_data);
+				if (!member->classDeclaration->classId) {
+					throw ParserError(
+					    classDeclaration->line,
+					    "Unsolved " +
+					        member->classDeclaration->getName(in_data));
+				}
+			}
+			// std::cerr
+			//     << "Member declaration: "
+			//     << compile.classes[*member->classDeclaration->classId]->name
+			//     << "\n";
+		} else {
+			// std::cerr << "No" << "\n";
+		}
 		newClassInfo->member.push_back(
 		    static_cast<DeclarationNode *>(member->copy(in_data)));
-		// if (member->classDeclaration) {
-		// 	std::cerr
-		// 	    << compile.classes[*member->classDeclaration->classId]->name
-		// 	    << "\n";
-		// } else
-		// 	std::cerr << "No" << "\n";
 	}
 
 	newClassInfo->declarationThis->classId = newClassId;
@@ -187,6 +167,14 @@ ClassId loadGenerics(in_func, std::string &name,
 	// newClass->funcMap = clazz->funcMap;
 
 	for (auto &[classDeclaration, node] : classInfo->mustRenameNodes) {
+		if (!classDeclaration) {
+			classDeclaration->load<true>(in_data);
+			if (!classDeclaration->classId) {
+				throw ParserError(classDeclaration->line,
+				                  "Unsolved " +
+				                      classDeclaration->getName(in_data));
+			}
+		}
 		switch (node->kind) {
 			case NodeType::UNKNOW: {
 				auto unknowNode = static_cast<UnknowNode *>(node);
@@ -194,7 +182,7 @@ ClassId loadGenerics(in_func, std::string &name,
 				    classDeclaration->getName(in_data));
 				if (it == context.lexerStringMap.end()) {
 					throw ParserError(classDeclaration->line,
-					                  "Unsolved " +
+					                  "AUnsolved " +
 					                      classDeclaration->getName(in_data));
 				}
 				unknowNode->nameId = it->second;
@@ -206,15 +194,41 @@ ClassId loadGenerics(in_func, std::string &name,
 				    classDeclaration->getName(in_data));
 				if (it == context.lexerStringMap.end()) {
 					throw ParserError(classDeclaration->line,
-					                  "Unsolved " +
+					                  "BUnsolved " +
 					                      classDeclaration->getName(in_data));
 				}
-				callNode->name = context.lexerString[it->second];
+				callNode->name = context.lexerString[it->second] + "()";
+				break;
 			}
 		}
 	}
 
 	ParserContext::mode = baseCreateClassNode->mode;
+
+	for (auto *declarationNode : classInfo->allDeclarationNode) {
+		if (declarationNode->classDeclaration) {
+			if (!declarationNode->classDeclaration->classId) {
+				declarationNode->classDeclaration->load<false>(in_data);
+				if (!declarationNode->classDeclaration->classId) {
+					throw ParserError(
+					    declarationNode->classDeclaration->line,
+					    "Bug: Cannot find class name " +
+					        declarationNode->classDeclaration->getName(
+					            in_data));
+				}
+				std::cerr << "loaded "
+				          << declarationNode->classDeclaration->getName(in_data)
+				          << "\n";
+				declarationNode->optimize(in_data);
+				declarationNode->classDeclaration->classId = std::nullopt;
+				// declarationNode->classDeclaration = nullptr;
+				continue;
+			}
+		}
+		declarationNode->optimize(in_data);
+		// declarationNode->classDeclaration = nullptr;
+	}
+
 	newCreateClassNode->body.nodes.reserve(
 	    baseCreateClassNode->body.nodes.size());
 	for (auto *node : baseCreateClassNode->body.nodes) {
@@ -276,9 +290,10 @@ ClassId loadGenerics(in_func, std::string &name,
 		} else {
 			newCreateFuncNode->pushFunction(in_data);
 		}
+		auto newFunc = compile.functions[newCreateFuncNode->id];
+		newFunc->returnId = compile.functions[createFuncNode->id]->returnId;
 		if (createFuncNode->classDeclaration) {
-			compile.functions[newCreateFuncNode->id]->returnId =
-			    *createFuncNode->classDeclaration->classId;
+			newFunc->returnId = *createFuncNode->classDeclaration->classId;
 		}
 		auto lastCurrentFunctionId = context.currentFunctionId;
 		context.currentFunctionId = newCreateFuncNode->id;
@@ -292,27 +307,6 @@ ClassId loadGenerics(in_func, std::string &name,
 	}
 
 	context.currentClassId = lastCurrentClassId;
-
-	for (auto *declarationNode : classInfo->allDeclarationNode) {
-		if (declarationNode->classDeclaration) {
-			if (!declarationNode->classDeclaration->classId) {
-				declarationNode->classDeclaration->load<false>(in_data);
-				if (!declarationNode->classDeclaration->classId) {
-					throw ParserError(
-					    declarationNode->classDeclaration->line,
-					    "Bug: Cannot find class name " +
-					        declarationNode->classDeclaration->getName(
-					            in_data));
-				}
-				declarationNode->optimize(in_data);
-				declarationNode->classDeclaration->classId = std::nullopt;
-				// declarationNode->classDeclaration = nullptr;
-				continue;
-			}
-		}
-		declarationNode->optimize(in_data);
-		// declarationNode->classDeclaration = nullptr;
-	}
 
 	// std::cerr << "Created " << newClass->name << "\n";
 	return newClassId;
@@ -379,7 +373,9 @@ initial:;
 		case Lexer::TokenType::END_IMPORT: {
 			context.loadingLibs.pop_back();
 			ParserContext::mode = context.loadingLibs.back();
-			nextToken(&token, context.tokens, i);
+			if (!nextToken(&token, context.tokens, i)) {
+				return nullptr;
+			}
 			goto initial;
 		}
 		case Lexer::TokenType::LBRACE:
@@ -391,7 +387,7 @@ initial:;
 			if (!isInFunction) {
 				goto err_call_func;
 			}
-			return parsePrimary(in_data, i);
+			return loadExpression(in_data, 0, i);
 		}
 		case Lexer::TokenType::VAR:
 		case Lexer::TokenType::VAL: {
@@ -422,7 +418,7 @@ initial:;
 		case Lexer::TokenType::IF: {
 			if (!isInFunction)
 				goto err_call_func;
-			return loadIf(in_data, i);
+			return loadIf(in_data, i, false);
 		}
 		case Lexer::TokenType::FOR: {
 			if (!isInFunction)
@@ -674,9 +670,19 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 			    "Expected expression after operator but not found");
 		}
 		HasClassIdNode *right = loadExpression(in_data, precedence + 1, i);
-		if (op == Lexer::TokenType::QMARK_QMARK) {
-			left = context.nullCoalescingPool.push(firstLine, left, right);
-			continue;
+		switch (op) {
+			case Lexer::TokenType::DOT_DOT_LT: {
+				left = context.rangeNode.push(firstLine, left, right, true);
+				continue;
+			}
+			case Lexer::TokenType::DOT_DOT: {
+				left = context.rangeNode.push(firstLine, left, right, false);
+				continue;
+			}
+			case Lexer::TokenType::QMARK_QMARK: {
+				left = context.nullCoalescingPool.push(firstLine, left, right);
+				continue;
+			}
 		}
 		// auto binaryNode = context.binaryNodePool.push(op, left, right);
 		left = context.binaryNodePool.push(firstLine, op, left, right);
@@ -726,9 +732,10 @@ std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 			}
 			return nodes;
 		}
-		default:
+		default: {
 			nodes.push_back(loadExpression(in_data, 0, i));
 			break;
+		}
 	}
 	while (nextToken(&token, context.tokens, i)) {
 		switch (token->type) {
@@ -840,9 +847,10 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 	uint32_t firstLine = token->line;
 	HasClassIdNode *node;
 	switch (token->type) {
-		case Lexer::TokenType::IDENTIFIER:
+		case Lexer::TokenType::IDENTIFIER: {
 			node = loadIdentifier(in_data, i);
 			break;
+		}
 		case Lexer::TokenType::PLUS:
 		case Lexer::TokenType::EXMARK:
 		case Lexer::TokenType::MINUS: {
@@ -872,15 +880,18 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 		case Lexer::TokenType::LBRACE: {
 			auto list = loadListArgument(in_data, i);
 			if (list.size() != 1) {
-				for (auto *i : list)
-					ExprNode::deleteNode(i);
-				if (list.size() == 0)
+				if (list.empty()) {
 					throw ParserError(firstLine,
 					                  "Expected value but empty bracket found");
+				}
 				throw ParserError(firstLine,
 				                  "Expected value but arguments found");
 			}
 			node = list[0];
+			break;
+		}
+		case Lexer::TokenType::IF: {
+			node = loadIf(in_data, i, true);
 			break;
 		}
 		default:
@@ -895,6 +906,15 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 			return node;
 		}
 		switch (token->type) {
+			case Lexer::TokenType::LBRACKET: {
+				uint32_t firstLine = token->line;
+				auto arguments = loadListArgument(in_data, i);
+				node = context.callNodePool.push(
+				    firstLine, context.currentClassId, node, "[]",
+				    std::move(arguments), context.justFindStatic,
+				    !nextTokenIfMarkNonNull(in_data, i), false);
+				break;
+			}
 			case Lexer::TokenType::QMARK_DOT:
 			case Lexer::TokenType::DOT: {
 				bool accessNullable =
@@ -974,11 +994,9 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 						return context.setValuePool.push(token->line, varNode,
 						                                 value, op);
 					}
+					case NodeType::GET_PROP:
+					case NodeType::CALL:
 					case NodeType::UNKNOW: {
-						return context.setValuePool.push(token->line, node,
-						                                 value, op);
-					}
-					case NodeType::GET_PROP: {
 						return context.setValuePool.push(token->line, node,
 						                                 value, op);
 					}
@@ -1030,13 +1048,18 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 				break;
 			}
 			if (!nextToken(&token, context.tokens, i) ||
-			    (token->type != Lexer::TokenType::GT &&
-			     token->type != Lexer::TokenType::COMMA)) {
+			    (token->type != Lexer::TokenType::LT &&
+			     token->type != Lexer::TokenType::GT &&
+			     token->type != Lexer::TokenType::COMMA &&
+			     token->type != Lexer::TokenType::QMARK &&
+			     token->type != Lexer::TokenType::AT_SIGN)) {
 				i -= 2;
 				break;
 			}
 			auto firstLine = token->line;
 			i -= 4;
+			// std::cerr << "Creating " << context.tokens[i].toString(context)
+			//           << "\n";
 			auto classDeclaration =
 			    loadClassDeclaration(in_data, i, token->line, true);
 			context.allClassDeclarations.push_back(classDeclaration);
@@ -1044,7 +1067,7 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			    !expect(token, Lexer::TokenType::LPAREN)) {
 				--i;
 				auto name = classDeclaration->getName(in_data);
-				std::cerr << "Created unknownode: " << name << "\n";
+				// std::cerr << "Created unknownode: " << name << "\n";
 				LexerStringId newNameId;
 				{
 					auto it = context.lexerStringMap.find(name);
@@ -1065,6 +1088,8 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 				}
 				return node;
 			}
+			// std::cerr << "Created callnode "
+			//           << classDeclaration->getName(in_data) << "\n";
 			auto arguments = loadListArgument(in_data, i);
 			auto callNode = context.callNodePool.push(
 			    firstLine, context.currentClassId, nullptr,
@@ -1134,8 +1159,7 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			return callNode;
 		}
 		case Lexer::TokenType::LBRACKET: {
-			auto varNode = findVarNode(
-			    in_data, i, context.lexerString[identifier->indexData], true);
+			auto varNode = findVarNode(in_data, i, identifier->indexData, true);
 			if (varNode->kind != AutoLang::NodeType::VAR) {
 				ExprNode::deleteNode(varNode);
 				throw ParserError(token->line, "Invalid assignment target");
@@ -1144,7 +1168,7 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			auto arguments = loadListArgument(in_data, i);
 			return context.callNodePool.push(
 			    firstLine, context.currentClassId,
-			    static_cast<AccessNode *>(varNode), "[]", arguments,
+			    static_cast<AccessNode *>(varNode), "[]", std::move(arguments),
 			    context.justFindStatic, !nextTokenIfMarkNonNull(in_data, i),
 			    false);
 		}
@@ -1170,21 +1194,20 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 
 HasClassIdNode *findIdentifierNode(in_func, size_t &i, LexerStringId nameId,
                                    bool nullable) {
-	auto varNode =
-	    findVarNode(in_data, i, context.lexerString[nameId], nullable);
+	auto varNode = findVarNode(in_data, i, nameId, nullable);
 	return varNode ? varNode
 	               : context.unknowNodePool.push(context.tokens[i].line,
 	                                             context.currentClassId, nameId,
 	                                             nullable);
 }
 
-HasClassIdNode *findVarNode(in_func, size_t &i, std::string &name,
+HasClassIdNode *findVarNode(in_func, size_t &i, LexerStringId nameId,
                             bool nullable) {
-	auto constValueNode = findConstValueNode(in_data, i, name);
+	auto constValueNode = findConstValueNode(in_data, i, nameId);
 	if (constValueNode != nullptr)
 		return constValueNode;
-	auto node =
-	    context.findDeclaration(in_data, context.tokens[i].line, name, true);
+	auto node = context.findDeclaration(in_data, context.tokens[i].line,
+	                                    context.lexerString[nameId], true);
 	if (!node)
 		return nullptr;
 	if (static_cast<AccessNode *>(node)->nullable) // #
@@ -1192,13 +1215,27 @@ HasClassIdNode *findVarNode(in_func, size_t &i, std::string &name,
 	return node;
 }
 
-ConstValueNode *findConstValueNode(in_func, size_t &i, std::string &name) {
-	auto it = context.constValue.find(name);
+ConstValueNode *findConstValueNode(in_func, size_t &i, LexerStringId nameId) {
+	switch (nameId) {
+		case lexerId__FILE__: {
+			return context.constValuePool.push(0, context.mode->path);
+		}
+		case lexerId__LINE__: {
+			return context.constValuePool.push(
+			    0, static_cast<int64_t>(context.tokens[i].line));
+		}
+		case lexerId__FUNC__: {
+			return context.constValuePool.push(
+			    0, context.getCurrentFunction(in_data)->name);
+		}
+		default:
+			break;
+	}
+	auto it = context.constValue.find(nameId);
 	if (it == context.constValue.end()) {
 		return nullptr;
 	}
-	return context.constValuePool.push(context.tokens[i].line, it->second.first,
-	                                   it->second.second);
+	return static_cast<ConstValueNode *>(it->second->copy(in_data));
 }
 
 void ensureNoKeyword(in_func, size_t &i) {
@@ -1312,11 +1349,16 @@ int getPrecedence(Lexer::TokenType type) {
 		case Lexer::TokenType::GT: {
 			return 7;
 		}
+		case Lexer::TokenType::IN: {
+			return 5;
+		}
+		case Lexer::TokenType::DOT_DOT_LT:
+		case Lexer::TokenType::DOT_DOT: {
+			return 4;
+		}
+		case Lexer::TokenType::OR_OR:
 		case Lexer::TokenType::AND_AND: {
 			return 3;
-		}
-		case Lexer::TokenType::OR_OR: {
-			return 2;
 		}
 		default:
 			return -1;

@@ -228,7 +228,7 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 		    context.tokens[i].line,
 		    "LoadClassDeclaration: Expected class name but not found");
 	}
-	ClassDeclaration *result = context.classDeclarationAllocator.getObject();
+	ClassDeclaration *result = context.classDeclarationAllocator.push();
 	if (context.currentClassId) {
 		auto currentClassInfo = context.getCurrentClassInfo(in_data);
 		auto it =

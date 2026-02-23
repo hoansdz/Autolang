@@ -23,6 +23,43 @@ void ExprNode::warning(in_func, std::string message) {
 	context.mode = lastMode;
 }
 
+#define STRINGIFY(x) #x
+#define GET_NODE_TYPE_CASE(x) case x: return STRINGIFY(x);
+
+std::string ExprNode::getNodeType() {
+    switch (kind) {
+        GET_NODE_TYPE_CASE(UNKNOW)
+        GET_NODE_TYPE_CASE(VAR)
+        GET_NODE_TYPE_CASE(BINARY)
+        GET_NODE_TYPE_CASE(CONST)
+        GET_NODE_TYPE_CASE(GET_PROP)
+        GET_NODE_TYPE_CASE(DECLARATION)
+        GET_NODE_TYPE_CASE(CALL)
+        GET_NODE_TYPE_CASE(CAST)
+        GET_NODE_TYPE_CASE(SET)
+        GET_NODE_TYPE_CASE(CLASS)
+        GET_NODE_TYPE_CASE(UNARY)
+        GET_NODE_TYPE_CASE(IF)
+        GET_NODE_TYPE_CASE(BLOCK)
+        GET_NODE_TYPE_CASE(WHILE)
+        GET_NODE_TYPE_CASE(FOR)
+        GET_NODE_TYPE_CASE(CREATE_FUNC)
+        GET_NODE_TYPE_CASE(CREATE_CLASS)
+        GET_NODE_TYPE_CASE(CREATE_CONSTRUCTOR)
+        GET_NODE_TYPE_CASE(RET)
+        GET_NODE_TYPE_CASE(SKIP)
+        GET_NODE_TYPE_CASE(CLASS_ACCESS)
+        GET_NODE_TYPE_CASE(OPTIONAL_ACCESS)
+        GET_NODE_TYPE_CASE(NULL_COALESCING)
+        GET_NODE_TYPE_CASE(TRY_CATCH)
+        GET_NODE_TYPE_CASE(THROW)
+        GET_NODE_TYPE_CASE(RUNTIME_CAST)
+        GET_NODE_TYPE_CASE(GENERIC_DECLARATION)
+    }
+
+    return "UNKNOWN_NODE_TYPE";
+}
+
 void ExprNode::deleteNode(ExprNode* node) {
 	// if (!node) return;
 	// switch (node->kind) {
@@ -64,19 +101,8 @@ ConstValueNode::~ConstValueNode() {
 	delete str;
 }
 
-ForRangeNode::~ForRangeNode() {
-	deleteNode(detach);
-	deleteNode(from);
-	deleteNode(to);
-}
-
 GetPropNode::~GetPropNode() {
 	deleteNode(caller);
-}
-
-IfNode::~IfNode() {
-	deleteNode(condition);
-	deleteNode(ifFalse);
 }
 
 WhileNode::~WhileNode() {

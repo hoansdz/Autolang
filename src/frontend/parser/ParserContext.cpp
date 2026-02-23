@@ -19,17 +19,32 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerString.emplace_back("Bool");
 	lexerString.emplace_back("Null");
 	lexerString.emplace_back("Void");
+	lexerString.emplace_back("null");
+	lexerString.emplace_back("true");
+	lexerString.emplace_back("false");
+	lexerString.emplace_back("__FILE__");
+	lexerString.emplace_back("__LINE__");
+	lexerString.emplace_back("__FUNC__");
 
-	lexerStringMap["super"] = lexerIdSuper;
+	lexerStringMap["super"] = lexerIdsuper;
 	lexerStringMap["Int"] = lexerIdInt;
 	lexerStringMap["Float"] = lexerIdFloat;
 	lexerStringMap["Bool"] = lexerIdBool;
 	lexerStringMap["Null"] = lexerIdNull;
 	lexerStringMap["Void"] = lexerIdVoid;
+	lexerStringMap["null"] = lexerIdnull;
+	lexerStringMap["true"] = lexerIdtrue;
+	lexerStringMap["false"] = lexerIdfalse;
+	lexerStringMap["__FILE__"] = lexerId__FILE__;
+	lexerStringMap["__LINE__"] = lexerId__LINE__;
+	lexerStringMap["__FUNC__"] = lexerId__FUNC__;
 
-	constValue["null"] = std::pair(DefaultClass::nullObject, 0);
-	constValue["true"] = std::pair(DefaultClass::trueObject, 1);
-	constValue["false"] = std::pair(DefaultClass::falseObject, 2);
+	constValue[lexerIdnull] =
+	    constValuePool.push(0, DefaultClass::nullObject, 0);
+	constValue[lexerIdtrue] =
+	    constValuePool.push(0, DefaultClass::trueObject, 1);
+	constValue[lexerIdfalse] =
+	    constValuePool.push(0, DefaultClass::falseObject, 2);
 
 	annotationMetadata.reserve(1);
 
@@ -169,6 +184,7 @@ void ParserContext::refresh(CompiledProgram &compile) {
 		ExprNode::deleteNode(node);
 	}
 	staticNode.clear();
+	allClassDeclarations.clear();
 
 	newFunctions.refresh();
 	newClasses.refresh();
@@ -201,7 +217,7 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	setValuePool.destroy();
 
 	throwPool.destroy();
-	
+
 	returnPool.destroy();
 	setValuePool.destroy();
 	binaryNodePool.destroy();
@@ -217,7 +233,7 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	classAccessPool.destroy();
 	constValuePool.destroy();
 	unaryNodePool.destroy();
-	forRangePool.destroy();
+	forPool.destroy();
 	classDeclarationAllocator.destroy();
 
 	currentClassId = std::nullopt;

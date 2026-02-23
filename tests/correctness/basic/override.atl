@@ -1,0 +1,35 @@
+class Animal() {
+	func sound(): String {
+		return "None"
+	} 
+}
+
+class Dog extends Animal {
+	constructor () {
+		super()
+	}
+	@override
+	func sound(): String {
+		return "Go"
+	}
+}
+
+class Cat extends Animal {
+	constructor () {
+		super()
+	}
+	@override
+	func sound(): String {
+		return "Meow"
+	}
+}
+
+func testOverride() {
+	val cat: Animal = Cat()
+	val dog: Animal = Dog()
+	assert(cat.sound() == "Meow", __FILE__, __LINE__)
+	assert(dog.sound() == "Go", __FILE__, __LINE__)
+	println("Passed ${__FUNC__}")
+}
+
+testOverride()

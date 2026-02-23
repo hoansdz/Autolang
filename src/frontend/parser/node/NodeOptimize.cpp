@@ -31,7 +31,7 @@ ExprNode *UnaryNode::resolve(in_func) {
 							auto result = value;
 							value = nullptr;
 							ExprNode::deleteNode(this);
-							return value;
+							return result;
 						}
 						case AutoLang::DefaultClass::boolClassId: {
 							value->classId = AutoLang::DefaultClass::intClassId;
@@ -39,7 +39,7 @@ ExprNode *UnaryNode::resolve(in_func) {
 							auto result = value;
 							value = nullptr;
 							ExprNode::deleteNode(this);
-							return value;
+							return result;
 						}
 						default:
 							break;
@@ -53,14 +53,14 @@ ExprNode *UnaryNode::resolve(in_func) {
 							auto result = value;
 							value = nullptr;
 							ExprNode::deleteNode(this);
-							return value;
+							return result;
 						}
 						case AutoLang::DefaultClass::floatClassId: {
 							value->f = -value->f;
 							auto result = value;
 							value = nullptr;
 							ExprNode::deleteNode(this);
-							return value;
+							return result;
 						}
 						case AutoLang::DefaultClass::boolClassId: {
 							value->classId = AutoLang::DefaultClass::intClassId;
@@ -68,7 +68,7 @@ ExprNode *UnaryNode::resolve(in_func) {
 							auto result = value;
 							value = nullptr;
 							ExprNode::deleteNode(this);
-							return value;
+							return result;
 						}
 						default:
 							break;
@@ -83,7 +83,7 @@ ExprNode *UnaryNode::resolve(in_func) {
 						auto result = value;
 						value = nullptr;
 						ExprNode::deleteNode(this);
-						return value;
+						return result;
 					}
 					// if (value->classId ==
 					// AutoLang::DefaultClass::nullClassId)
@@ -112,14 +112,14 @@ ExprNode *UnaryNode::resolve(in_func) {
 							auto result = value;
 							value = nullptr;
 							ExprNode::deleteNode(this);
-							return value;
+							return result;
 						}
 						case AutoLang::DefaultClass::boolClassId: {
 							value->classId = AutoLang::DefaultClass::intClassId;
 							auto result = value;
 							value = nullptr;
 							ExprNode::deleteNode(this);
-							return value;
+							return result;
 						}
 						default:
 							break;
@@ -203,14 +203,12 @@ void ConstValueNode::optimize(in_func) {
 		case AutoLang::DefaultClass::floatClassId:
 			id = compile.registerConstPool<double>(context.constFloatMap, f);
 			return;
-		default:
-			if (classId != AutoLang::DefaultClass::stringClassId)
-				break;
+		case AutoLang::DefaultClass::stringClassId:
 			id = compile.registerConstPool(context.constStringMap,
 			                               AString::from(*str));
-			delete str;
-			str = nullptr;
 			return;
+		default:
+			break;
 	}
 }
 
@@ -264,7 +262,7 @@ ExprNode *UnknowNode::copy(in_func) {
 			    line, classInfo->genericDeclarations[it->second]->classId);
 		}
 	}
-	return context.unknowNodePool.push(line, contextCallClassId, nameId,
+	return context.unknowNodePool.push(line, context.currentClassId, nameId,
 	                                   nullable);
 }
 
@@ -367,59 +365,6 @@ ExprNode *GetPropNode::copy(in_func) {
 	return newNode;
 }
 
-ExprNode *IfNode::resolve(in_func) {
-	condition = static_cast<HasClassIdNode *>(condition->resolve(in_data));
-	if (condition->kind == NodeType::CONST) {
-		// Is bool because optimize forbiddened others
-		if (static_cast<ConstValueNode *>(condition)->obj->b) {
-			if (ifFalse) {
-				warning(in_data, "Else body will never be used");
-			}
-			auto result = context.blockNodePool.push(ifTrue);
-			result->resolve(in_data);
-			ifTrue.nodes.clear();
-			ExprNode::deleteNode(this);
-			return result;
-		} else if (ifFalse) {
-			auto result = ifFalse;
-			result->resolve(in_data);
-			ifFalse = nullptr;
-			ExprNode::deleteNode(this);
-			return result;
-		}
-		return this;
-	}
-	ifTrue.resolve(in_data);
-	ifTrue.mode = mode;
-	if (ifFalse) {
-		ifFalse->resolve(in_data);
-	}
-	return this;
-}
-
-void IfNode::optimize(in_func) {
-	condition->optimize(in_data);
-	if (condition->classId != AutoLang::DefaultClass::boolClassId)
-		throwError("Cannot use expression of type '" +
-		           condition->getClassName(in_data) +
-		           "' as a condition, expected 'Bool'");
-	ifTrue.optimize(in_data);
-	if (ifFalse)
-		ifFalse->optimize(in_data);
-}
-
-ExprNode *IfNode::copy(in_func) {
-	auto newNode = context.ifPool.push(line);
-	newNode->ifTrue.nodes.reserve(ifTrue.nodes.size());
-	for (auto node : ifTrue.nodes) {
-		newNode->ifTrue.nodes.push_back(node->copy(in_data));
-	}
-	if (ifFalse) {
-		newNode->ifFalse = static_cast<BlockNode *>(ifFalse->copy(in_data));
-	}
-	return newNode;
-}
-
 ExprNode *WhileNode::resolve(in_func) {
 	condition = static_cast<HasClassIdNode *>(condition->resolve(in_data));
 	body.resolve(in_data);
@@ -444,60 +389,19 @@ ExprNode *WhileNode::copy(in_func) {
 	return newNode;
 }
 
-ExprNode *ForRangeNode::resolve(in_func) {
-	detach = static_cast<AccessNode *>(detach->resolve(in_data));
-	from = static_cast<HasClassIdNode *>(from->resolve(in_data));
-	to = static_cast<HasClassIdNode *>(to->resolve(in_data));
-	body.resolve(in_data);
-	return this;
-}
-
-void ForRangeNode::optimize(in_func) {
-	detach->optimize(in_data);
-	switch (detach->classId) {
-		case AutoLang::DefaultClass::intClassId: {
-			break;
-		}
-		default: {
-			throwError("Detach value must be Int");
-		}
-	}
-	// if (detach->isVal)
-	// 	throwError("Cannot change because it's val");
-	from->optimize(in_data);
-	switch (from->classId) {
-		case AutoLang::DefaultClass::intClassId: {
-			break;
-		}
-		default: {
-			throwError("From value must be Int");
-		}
-	}
-	to->optimize(in_data);
-	switch (to->classId) {
-		case AutoLang::DefaultClass::intClassId: {
-			break;
-		}
-		default: {
-			throwError("To value must be Int");
-		}
-	}
-	if (to->kind == NodeType::CONST) {
-		static_cast<ConstValueNode *>(to)->isLoadPrimary = true;
-	}
-	body.optimize(in_data);
-}
-
-ExprNode *ForRangeNode::copy(in_func) {
-	return context.forRangePool.push(
-	    line, static_cast<AccessNode *>(detach->copy(in_data)),
-	    static_cast<HasClassIdNode *>(from->copy(in_data)),
-	    static_cast<HasClassIdNode *>(to->copy(in_data)), isLessThanEq);
-}
-
 ExprNode *SetNode::resolve(in_func) {
 	detach = static_cast<HasClassIdNode *>(detach->resolve(in_data));
 	value = static_cast<HasClassIdNode *>(value->resolve(in_data));
+	if (detach->kind == NodeType::CALL) {
+		auto result = static_cast<CallNode *>(detach);
+		if (result->name != "[]")
+			return this;
+		result->name = "set()";
+		result->arguments.push_back(value);
+		detach = nullptr;
+		value = nullptr;
+		return result;
+	}
 	return this;
 }
 

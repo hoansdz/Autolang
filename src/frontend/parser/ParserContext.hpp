@@ -33,12 +33,18 @@ enum AnnotationFlags : uint32_t {
 
 struct LibraryData;
 
-constexpr LexerStringId lexerIdSuper = 0;
+constexpr LexerStringId lexerIdsuper = 0;
 constexpr LexerStringId lexerIdInt = 1;
 constexpr LexerStringId lexerIdFloat = 2;
 constexpr LexerStringId lexerIdBool = 3;
 constexpr LexerStringId lexerIdNull = 4;
 constexpr LexerStringId lexerIdVoid = 5;
+constexpr LexerStringId lexerIdnull = 6;
+constexpr LexerStringId lexerIdtrue = 7;
+constexpr LexerStringId lexerIdfalse = 8;
+constexpr LexerStringId lexerId__FILE__ = 9;
+constexpr LexerStringId lexerId__LINE__ = 10;
+constexpr LexerStringId lexerId__FUNC__ = 11;
 
 struct ParserContext {
 	// Optimize ram because reuse std::string instead of new std::string in
@@ -47,7 +53,6 @@ struct ParserContext {
 	HashMap<std::string, LexerStringId> lexerStringMap;
 
 	Lexer::Context *mainLexerContext;
-	std::set<uint32_t> importOffset;
 	HashMap<std::string, LibraryData *> importMap;
 	std::vector<LibraryData *> loadingLibs;
 
@@ -68,7 +73,7 @@ struct ParserContext {
 
 	HashMap<uint32_t, CreateClassNode *> newDefaultClassesMap;
 	HashMap<uint32_t, CreateClassNode *> newGenericClassesMap;
-	AreaAllocator<ClassDeclaration, 64> classDeclarationAllocator;
+	ChunkArena<ClassDeclaration, 64> classDeclarationAllocator;
 	std::vector<ClassDeclaration *> allClassDeclarations;
 
 	bool hasError = false;
@@ -80,37 +85,39 @@ struct ParserContext {
 	uint32_t breakPos = 0;
 	size_t currentTokenPos = 0;
 	JumpIfNullNode *jumpIfNullNode = nullptr;
+	IfNode *mustReturnValueNode = nullptr;
 	// Function information in compiler time
-	AreaAllocator<FunctionInfo, 64> functionInfoAllocator;
+	ChunkArena<FunctionInfo, 64> functionInfoAllocator;
 	std::vector<FunctionInfo *> functionInfo;
 	// Class information in compiler time
-	AreaAllocator<ClassInfo, 64> classInfoAllocator;
+	ChunkArena<ClassInfo, 64> classInfoAllocator;
 	std::vector<ClassInfo *> classInfo;
 	// All static variable will be here and put bytecodes to ".main" function
 	std::vector<ExprNode *> staticNode;
 
 	NonReallocatePool<DeclarationNode> declarationNodePool;
-	ChunkArena<ReturnNode, 64> returnPool;
-	ChunkArena<SetNode, 64> setValuePool;
+	ChunkArena<ReturnNode, 128> returnPool;
+	ChunkArena<SetNode, 128> setValuePool;
 	ChunkArena<CreateConstructorNode, 64> createConstructorPool;
-	ChunkArena<BinaryNode, 64> binaryNodePool;
-	ChunkArena<IfNode, 64> ifPool;
+	ChunkArena<BinaryNode, 128> binaryNodePool;
+	ChunkArena<IfNode, 128> ifPool;
 	ChunkArena<WhileNode, 64> whilePool;
 	ChunkArena<TryCatchNode, 64> tryCatchPool;
 	ChunkArena<ThrowNode, 64> throwPool;
 	ChunkArena<CastNode, 64> castPool;
 	ChunkArena<RuntimeCastNode, 64> runtimeCastPool;
-	ChunkArena<VarNode, 64> varPool;
-	ChunkArena<GetPropNode, 64> getPropPool;
-	ChunkArena<UnknowNode, 64> unknowNodePool;
+	ChunkArena<VarNode, 128> varPool;
+	ChunkArena<GetPropNode, 128> getPropPool;
+	ChunkArena<UnknowNode, 128> unknowNodePool;
 	ChunkArena<OptionalAccessNode, 64> optionalAccessNodePool;
 	ChunkArena<NullCoalescingNode, 64> nullCoalescingPool;
 	ChunkArena<BlockNode, 64> blockNodePool;
 	ChunkArena<CallNode, 64> callNodePool;
 	ChunkArena<ClassAccessNode, 64> classAccessPool;
-	ChunkArena<ConstValueNode, 64> constValuePool;
+	ChunkArena<ConstValueNode, 128> constValuePool;
 	ChunkArena<UnaryNode, 64> unaryNodePool;
-	ChunkArena<ForRangeNode, 64> forRangePool;
+	ChunkArena<ForNode, 64> forPool;
+	ChunkArena<RangeNode, 32> rangeNode;
 
 	std::optional<ClassId> currentClassId = std::nullopt;
 	uint32_t mainFunctionId;
@@ -123,7 +130,7 @@ struct ParserContext {
 	HashMap<AString *, Offset, AString::Hash, AString::Equal> constStringMap;
 
 	// Constant value, example "null", "true", "false"
-	HashMap<std::string, std::pair<AObject *, uint32_t>> constValue;
+	HashMap<LexerStringId, ConstValueNode *> constValue;
 	void init(CompiledProgram &compiler);
 	void logMessage(uint32_t line, const std::string &message);
 	void warning(uint32_t line, const std::string &message);
@@ -203,7 +210,7 @@ struct ParserContext {
 	makeDeclarationNode(in_func, uint32_t line, bool isTemp, std::string name,
 	                    ClassDeclaration *classDeclaration, bool isVal,
 	                    bool isGlobal, bool nullable, bool pushToScope = true);
-	inline bool getBoolConstValuePosition(bool b) { return b ? 1 : 2; }
+	inline size_t getBoolConstValuePosition(bool b) { return b ? 1 : 2; }
 	~ParserContext();
 };
 

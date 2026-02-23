@@ -24,6 +24,7 @@ void loadFile(ParserContext *mainContext, LibraryData *library) {
 	if (!file.is_open()) {
 		throw LexerError(0, "File " + library->path + " doesn't exists");
 	}
+	library->isFile = true;
 	std::streamsize size = file.tellg();
 	file.seekg(0, std::ios::beg);
 	library->rawData.resize(size);
@@ -34,7 +35,8 @@ void loadFile(ParserContext *mainContext, LibraryData *library) {
 	file.close();
 }
 
-void load(ParserContext *mainContext, LibraryData *library) {
+void load(ParserContext *mainContext, LibraryData *library,
+          std::vector<Offset> *importOffset) {
 	auto &context = library->lexerContext;
 	context.library = library;
 	context.mainContext = mainContext;
@@ -43,6 +45,7 @@ void load(ParserContext *mainContext, LibraryData *library) {
 	context.linePos = 0;
 	context.lineSize = 0;
 	context.nextLinePosition = 0;
+	context.importOffset = importOffset;
 	ParserContext::mode = library;
 	uint32_t i = 0;
 	while (nextLine(context, library->rawData.data(), i)) {
@@ -67,7 +70,7 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 		++i;
 		return true;
 	}
-	if (std::isalpha((unsigned char)chr)) {
+	if (std::isalpha((unsigned char)chr) || chr == '_') {
 		context.pos = i;
 		++i;
 		pushIdentifier(context, i);
@@ -288,7 +291,7 @@ void pushIdentifier(Context &context, uint32_t &i) {
 				throw LexerError(context.linePos,
 				                 "@import is only allowed at file scope");
 			}
-			context.mainContext->importOffset.insert(context.tokens.size());
+			context.importOffset->push_back(context.tokens.size());
 			break;
 		}
 
@@ -468,7 +471,7 @@ void loadQuote(Context &context, char quote, uint32_t &i) {
 						throw LexerError(context.linePos,
 						                 std::string("Expected ") + quote +
 						                     " but not found");
-					if (!context.line[i] == '{') {
+					if (context.line[i] != '{') {
 						newStr += '$';
 						break;
 					}
@@ -666,6 +669,8 @@ std::string Token::toString(ParserContext &context) {
 			return "<=";
 		case TokenType::GTE:
 			return ">=";
+		case TokenType::END_IMPORT:
+			return "END_IMPORT";
 		case TokenType::IDENTIFIER:
 			return context.lexerString[indexData];
 		default:

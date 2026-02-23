@@ -23,6 +23,7 @@ struct LibraryData {
 	uint32_t flags;
 	ANativeMap nativeFuncMap;
 	std::string rawData;
+	bool isFile = false;
 	LibraryData(std::string path, uint32_t flags, ANativeMap nativeFuncMap = EMPTY_NATIVE_MAP)
 	    : path(std::move(path)), flags(flags),
 	      nativeFuncMap(std::move(nativeFuncMap)) {}
@@ -47,7 +48,7 @@ class ACompiler {
 	void loadMainSource(const char *path, const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP);
 	void loadMainSource(const char *path, const char *data,
 	                    const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP);
-	LibraryData *requestImport(const char *path);
+	LibraryData *requestImport(LibraryData* currentLibrary, const char *path);
 
 	AVM vm = AVM(false);
 	ACompiler();

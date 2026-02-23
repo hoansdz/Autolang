@@ -24,6 +24,9 @@ void CallNode::optimize(in_func) {
 	uint8_t count = 0;
 	std::vector<uint32_t> *funcVec[2];
 
+	if (name == "[]")
+		name = "get()";
+
 	for (auto &argument : arguments) {
 		argument->optimize(in_data);
 		if (argument->kind == NodeType::CALL &&
@@ -380,9 +383,11 @@ ExprNode *CallNode::copy(in_func) {
 	if (caller) {
 		newCaller = static_cast<HasClassIdNode *>(caller->copy(in_data));
 	}
-	return context.callNodePool.push(line, contextCallClassId, newCaller, name,
-	                                 arguments, justFindStatic, nullable,
-	                                 accessNullable);
+	auto newNode = context.callNodePool.push(
+	    line, context.currentClassId, newCaller, name, arguments, justFindStatic,
+	    nullable, accessNullable);
+	newNode->classId = classId;
+	return newNode;
 }
 
 CallNode::~CallNode() {

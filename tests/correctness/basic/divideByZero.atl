@@ -1,0 +1,16 @@
+func testDivideByZero() {
+	var errorCaught = false
+
+	try {
+		val a = 10
+		val b = a / 0
+	} 
+	catch (e) {
+		errorCaught = true
+	}
+
+	assert(errorCaught, __FILE__, __LINE__)
+	println("Passed ${__FUNC__}")
+}
+
+testDivideByZero()

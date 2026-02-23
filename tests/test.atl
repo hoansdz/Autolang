@@ -1,5 +1,4 @@
-@import("std/list")
-val l = List<Int>()
+val l = Array<Int>()
 for (val i in 0..10) {
 	l.add(i + 1)
 }
@@ -7,13 +6,8 @@ for (val i in 0..10) {
 	println(l[10 - i])
 }
 l.clear()
-println(l is List<Float>)
-
-class Test<T>{
-	static func printValue(x: T) {
-		println(x)
-	}
-}
+println(l is Array<Float>)
+/* hello */
 
 class Person(var name: String, var age: Int, val id: Float) {}
 
@@ -39,7 +33,7 @@ class ListPerson {
         }
     }
     constructor (a: String) {
-        println("hello ${a}")
+        println("hello ${a + 1}")
     }
     func begin(): PersonNode? {
     	return beginNode

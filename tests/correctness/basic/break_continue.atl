@@ -1,0 +1,13 @@
+func testBreakContinue() {
+	val a = 5
+	while (a >= 3) {
+		a -= 2;
+		for (val i in 0..9) {
+			if (i == 2) break
+		}
+		continue
+		assert(false, __FILE__, __LINE__)
+	}
+}
+
+testBreakContinue()

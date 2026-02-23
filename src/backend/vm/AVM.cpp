@@ -10,9 +10,8 @@
 namespace AutoLang {
 
 void AVM::run() {
-	std::cerr << "-------------------" << '\n';
-	std::cerr << "Runtime" << '\n';
-	auto start = std::chrono::high_resolution_clock::now();
+	std::cerr << "----------------RUNTIME----------------" << '\n';
+	// auto start = std::chrono::high_resolution_clock::now();
 	stackAllocator.top = 0;
 	auto mainCallFrame = callFrames.push();
 	mainCallFrame->func = data.main;
@@ -45,10 +44,10 @@ void AVM::run() {
 			break;
 		}
 	}
-	auto end = std::chrono::high_resolution_clock::now();
-	auto duration =
-	    std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-	std::cout << '\n' << "Total runtime : " << duration.count() << " ms\n";
+	// auto end = std::chrono::high_resolution_clock::now();
+	// auto duration =
+	//     std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+	// std::cout << '\n' << "Total runtime : " << duration.count() << " ms\n";
 }
 
 void AVM::input(AObject *inputData) {
@@ -244,19 +243,23 @@ resumeCallFrame:;
 					break;
 				}
 				case AutoLang::Opcode::LOAD_CONST_PRIMARY: {
-					stack.push(data.constPool[get_u32(bytecodes, i)]);
-					stack.top()->retain();
+					stack.push(&data.constPool[get_u32(bytecodes, i)]);
+					// stack.top()->retain();
 					break;
 				}
 				case AutoLang::Opcode::POP: {
 					auto obj = stack.pop();
-					--obj->refCount;
+					if (!(obj->flags & AObject::Flags::OBJ_IS_CONST)) {
+						--obj->refCount;
+					}
 					data.manager.tryRelease(obj);
 					break;
 				}
 				case AutoLang::Opcode::POP_NO_RELEASE: {
 					auto obj = stack.pop();
-					--obj->refCount;
+					if (!(obj->flags & AObject::Flags::OBJ_IS_CONST)) {
+						--obj->refCount;
+					}
 					break;
 				}
 				case AutoLang::Opcode::RETURN_LOCAL: {
@@ -344,7 +347,6 @@ resumeCallFrame:;
 				}
 				case AutoLang::Opcode::JUMP_IF_FALSE: {
 					AObject *obj = stack.pop();
-					--obj->refCount;
 					if (!obj->b) {
 						i = get_u32(bytecodes, i);
 					} else {
@@ -358,13 +360,14 @@ resumeCallFrame:;
 				}
 				case AutoLang::Opcode::JUMP_IF_NULL: {
 					AObject *obj = stack.pop();
-					--obj->refCount;
 					if (obj == AutoLang::DefaultClass::nullObject) {
 						i = get_u32(bytecodes, i);
 						break;
 					}
+					// if (!(obj->flags & AObject::Flags::OBJ_IS_CONST)) {
+					// 	data.manager.release(obj);
+					// }
 					i += 4;
-					data.manager.tryRelease(obj);
 					break;
 				}
 				case AutoLang::Opcode::JUMP_AND_DELETE_IF_NULL: {
@@ -372,7 +375,7 @@ resumeCallFrame:;
 					if (obj == AutoLang::DefaultClass::nullObject) {
 						i = get_u32(bytecodes, i);
 						stack.pop();
-						--obj->refCount;
+						// --obj->refCount;
 					} else {
 						i += 4;
 					}
@@ -389,10 +392,11 @@ resumeCallFrame:;
 				}
 				case AutoLang::Opcode::JUMP_IF_NON_NULL: {
 					auto obj = stack.pop();
-					--obj->refCount;
 					if (obj != AutoLang::DefaultClass::nullObject) {
+						if (!(obj->flags & AObject::Flags::OBJ_IS_CONST)) {
+							data.manager.release(obj);
+						}
 						i = get_u32(bytecodes, i);
-						data.manager.tryRelease(obj);
 					} else {
 						i += 4;
 					}
@@ -404,7 +408,7 @@ resumeCallFrame:;
 					stack.push(data.manager.createBoolObject(
 					    obj->type == classId ||
 					    data.classes[obj->type]->inheritance.get(classId)));
-					stack.top()->retain();
+					// stack.top()->retain();
 					data.manager.release(obj);
 					break;
 				}
@@ -418,7 +422,7 @@ resumeCallFrame:;
 					stack.pop();
 					data.manager.release(obj);
 					stack.push(DefaultClass::nullObject);
-					DefaultClass::nullObject->retain();
+					// DefaultClass::nullObject->retain();
 					break;
 				}
 				case AutoLang::Opcode::UNSAFE_CAST: {
@@ -575,34 +579,38 @@ resumeCallFrame:;
 				// restart(), null will be reset to 2 bilion
 				case AutoLang::Opcode::IS_NULL: {
 					AObject *obj = stack.pop();
-					--obj->refCount;
+					if (!(obj->flags & AObject::Flags::OBJ_IS_CONST)) {
+						--obj->refCount;
+					}
 					stack.push(ObjectManager::createBoolObject(
 					    obj == AutoLang::DefaultClass::nullObject));
-					stack.top()->retain();
+					// stack.top()->retain();
 					break;
 				}
 				case AutoLang::Opcode::IS_NON_NULL: {
 					AObject *obj = stack.pop();
-					--obj->refCount;
+					if (!(obj->flags & AObject::Flags::OBJ_IS_CONST)) {
+						--obj->refCount;
+					}
 					stack.push(ObjectManager::createBoolObject(
 					    obj != AutoLang::DefaultClass::nullObject));
-					stack.top()->retain();
+					// stack.top()->retain();
 					break;
 				}
 				case AutoLang::Opcode::LOAD_NULL: {
 					stack.push(AutoLang::DefaultClass::nullObject);
-					stack.top()->retain();
+					// stack.top()->retain();
 					break;
 				}
 				case AutoLang::Opcode::LOAD_TRUE: {
 					stack.push(AutoLang::DefaultClass::trueObject);
-					stack.top()->retain();
+					// stack.top()->retain();
 					break;
 				}
 				case AutoLang::Opcode::LOAD_FALSE: {
 					assert(AutoLang::DefaultClass::falseObject != nullptr);
 					stack.push(AutoLang::DefaultClass::falseObject);
-					stack.top()->retain();
+					// stack.top()->retain();
 					break;
 				}
 				case AutoLang::Opcode::EQUAL_POINTER: {
@@ -637,7 +645,9 @@ resumeCallFrame:;
 					break;
 				case AutoLang::Opcode::INT_FROM_INT: {
 					AObject *obj = stack.pop();
-					--obj->refCount;
+					if (!(obj->flags & AObject::Flags::OBJ_IS_CONST)) {
+						--obj->refCount;
+					}
 					stack.push(data.manager.createIntObject(
 					    static_cast<int64_t>(obj->i)));
 					stack.top()->retain();
@@ -646,47 +656,48 @@ resumeCallFrame:;
 				}
 				case AutoLang::Opcode::FLOAT_TO_INT: {
 					AObject *obj = stack.pop();
-					--obj->refCount;
 					stack.push(data.manager.createIntObject(
 					    static_cast<int64_t>(obj->f)));
 					stack.top()->retain();
-					data.manager.tryRelease(obj);
+					if (!(obj->flags & AObject::Flags::OBJ_IS_CONST)) {
+						data.manager.release(obj);
+					}
 					break;
 				}
 				case AutoLang::Opcode::FLOAT_FROM_FLOAT: {
 					AObject *obj = stack.pop();
-					--obj->refCount;
 					stack.push(data.manager.createFloatObject(
 					    static_cast<int64_t>(obj->f)));
 					stack.top()->retain();
-					data.manager.tryRelease(obj);
+					if (!(obj->flags & AObject::Flags::OBJ_IS_CONST)) {
+						data.manager.release(obj);
+					}
 					break;
 				}
 				case AutoLang::Opcode::INT_TO_FLOAT: {
 					AObject *obj = stack.pop();
-					--obj->refCount;
 					stack.push(data.manager.createFloatObject(
 					    static_cast<double>(obj->i)));
 					stack.top()->retain();
-					data.manager.tryRelease(obj);
+					if (!(obj->flags & AObject::Flags::OBJ_IS_CONST)) {
+						data.manager.release(obj);
+					}
 					break;
 				}
 				case AutoLang::Opcode::BOOL_TO_INT: {
 					AObject *obj = stack.pop();
-					--obj->refCount;
+					// --obj->refCount;
 					stack.push(data.manager.createIntObject(
 					    static_cast<int64_t>(obj->b)));
 					stack.top()->retain();
-					data.manager.tryRelease(obj);
 					break;
 				}
 				case AutoLang::Opcode::BOOL_TO_FLOAT: {
 					AObject *obj = stack.pop();
-					--obj->refCount;
+					// --obj->refCount;
 					stack.push(data.manager.createFloatObject(
 					    static_cast<double>(obj->b)));
 					stack.top()->retain();
-					data.manager.tryRelease(obj);
 					break;
 				}
 				default:
@@ -714,7 +725,7 @@ resumeCallFrame:;
 }
 
 AObject *AVM::getConstObject(uint32_t id) {
-	AObject *obj = data.constPool[id];
+	AObject *obj = &data.constPool[id];
 	switch (obj->type) {
 		case AutoLang::DefaultClass::intClassId:
 			return data.manager.create(obj->i);

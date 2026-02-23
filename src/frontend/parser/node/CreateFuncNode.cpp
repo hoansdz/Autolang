@@ -12,7 +12,7 @@ void CreateFuncNode::pushFunction(in_func) {
 	id = compile.registerFunction(
 	    clazz, name, new ClassId[arguments.size()]{}, arguments.size(),
 	    AutoLang::DefaultClass::voidClassId, functionFlags);
-	context.functionInfo.push_back(context.functionInfoAllocator.getObject());
+	context.functionInfo.push_back(context.functionInfoAllocator.push());
 	auto func = compile.functions[id];
 	auto funcInfo = context.functionInfo[id];
 	new (&func->bytecodes) std::vector<uint8_t>();
@@ -29,7 +29,7 @@ void CreateFuncNode::pushNativeFunction(in_func, ANativeFunction native) {
 	    clazz, name, new ClassId[arguments.size()]{}, arguments.size(),
 	    AutoLang::DefaultClass::voidClassId,
 	    functionFlags | FunctionFlags::FUNC_IS_NATIVE);
-	context.functionInfo.push_back(context.functionInfoAllocator.getObject());
+	context.functionInfo.push_back(context.functionInfoAllocator.push());
 	auto func = compile.functions[id];
 	auto funcInfo = context.functionInfo[id];
 	func->native = native;

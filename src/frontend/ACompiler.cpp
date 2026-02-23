@@ -2,22 +2,48 @@
 #define ACOMPILER_CPP
 
 #include "ACompiler.hpp"
-#include "frontend/libs/Math.hpp"
+#include "frontend/libs/math.hpp"
 #include "frontend/libs/stdlib.hpp"
-#include "frontend/libs/list.hpp"
+#include "frontend/libs/time.hpp"
 #include <chrono>
+#include <filesystem>
+#include <iostream>
+
 
 namespace AutoLang {
 
-LibraryData *ACompiler::requestImport(const char *path) {
+LibraryData *ACompiler::requestImport(LibraryData *currentLibrary,
+                                      const char *path) {
 	auto it = builtInLibrariesMap.find(std::string(path));
 	if (it != builtInLibrariesMap.end()) {
 		return builtInLibraries[it->second];
 	}
-	// lib = new LibraryData(path, 0);
-	// 		context.importMap[path] = lib;
-	// 		lib->rawData = data;
+
+#ifdef __EMSCRIPTEN__
+	if (path[0] == '.')
+		return nullptr;
 	return nullptr;
+#else
+	if (path[0] != '.')
+		return nullptr;
+	std::filesystem::path input = path;
+	std::filesystem::path currentPath;
+	if (currentLibrary->isFile) {
+		currentPath = std::filesystem::path(currentLibrary->path).parent_path();
+	} else {
+		currentPath = std::filesystem::current_path();
+	}
+	std::filesystem::path resolved = (currentPath / input).lexically_normal();
+	if (!std::filesystem::exists(resolved)) {
+		return nullptr;
+	}
+	// std::cout<<input<<"\n"<<currentPath<<"\n"<<resolved<<"\n";
+	LibraryData *library =
+	    new LibraryData(resolved.string(), 0, currentLibrary->nativeFuncMap);
+	generatedLibraries.push_back(library);
+	Lexer::loadFile(&parserContext, library);
+	return library;
+#endif
 }
 
 void ACompiler::lexerTextToToken(LibraryData *library) {
@@ -42,25 +68,24 @@ void ACompiler::lexerTextToToken(LibraryData *library) {
 void ACompiler::loadSource(LibraryData *library) {
 	auto &context = parserContext;
 	auto &compile = vm.data;
-	lexerData(in_data, *this, library);
+	std::vector<Offset> importOffset;
+	lexerData(in_data, *this, library, &importOffset);
 	// for (auto& token : lexerContext.tokens) {
 	// 	std::cout<<token.toString(context)<<" ";
 	// }
 	// std::cerr<<"h "<<source.mode.path<<": "<<source.end<<"\n";
 	if (library->lexerContext.hasError) {
 		state = CompilerState::ERROR;
-		context.importOffset.clear();
 		return;
 	}
-	for (auto &pos : context.importOffset) {
-		auto lib = loadImport(in_data, library->lexerContext.tokens, *this,
-		                      (size_t)pos);
+	for (auto &pos : importOffset) {
+		auto lib = loadImport(in_data, library, library->lexerContext.tokens,
+		                      *this, (size_t)pos);
 		for (auto &[key, l] : lib->dependencies) {
 			library->dependencies[key] = l;
 		}
 		library->dependencies[lib->path] = lib;
 	}
-	context.importOffset.clear();
 
 	state = CompilerState::ANALYZED;
 }
@@ -150,25 +175,24 @@ void ACompiler::loadMainSource(LibraryData *library) {
 	}
 	library->rawData = autoImportStr + library->rawData;
 
-	lexerData(in_data, *this, library);
+	std::vector<Offset> importOffset;
+	lexerData(in_data, *this, library, &importOffset);
 
 	if (mainSource->lexerContext.hasError) {
 		state = CompilerState::ERROR;
-		context.importOffset.clear();
 		return;
 	}
 
 	library->lexerContext.tokens.pop_back();
 
-	for (auto &pos : context.importOffset) {
-		auto lib = loadImport(in_data, library->lexerContext.tokens, *this,
-		                      (size_t)pos);
+	for (auto &pos : importOffset) {
+		auto lib = loadImport(in_data, library, library->lexerContext.tokens,
+		                      *this, (size_t)pos);
 		for (auto &[key, l] : lib->dependencies) {
 			library->dependencies[key] = l;
 		}
 		library->dependencies[lib->path] = lib;
 	}
-	context.importOffset.clear();
 
 	auto &newEstimate = mainSource->lexerContext.estimate;
 
@@ -221,6 +245,11 @@ void ACompiler::generateBytecodes() {
 	auto &compile = vm.data;
 
 	estimate(in_data, mainSource->lexerContext);
+
+	// for (auto& token : context.tokens) {
+	// 	std::cerr<<token.toString(context)<<" ";
+	// }
+	// std::cerr<<"\n";
 
 	auto startParserTime = std::chrono::high_resolution_clock::now();
 	context.currentTokenPos = 0;
@@ -392,9 +421,9 @@ void ACompiler::generateBytecodes() {
 			node->rewrite(in_data, context.getMainFunction(in_data)->bytecodes);
 		}
 		printDebug("Start optimize bytecodes in main");
-		for (auto *node : context.getMainFunctionInfo(in_data)->block.nodes) {
+		for (auto *&node : context.getMainFunctionInfo(in_data)->block.nodes) {
 			ParserContext::mode = node->mode;
-			node->resolve(in_data);
+			node = node->resolve(in_data);
 		}
 		context.getMainFunctionInfo(in_data)->block.optimize(in_data);
 		printDebug("Start put bytecodes in functions");
@@ -426,13 +455,6 @@ void ACompiler::generateBytecodes() {
 		    in_data, context.getMainFunction(in_data)->bytecodes);
 		context.getMainFunctionInfo(in_data)->block.rewrite(
 		    in_data, context.getMainFunction(in_data)->bytecodes);
-
-		printDebug("Start delete nullable args constructor");
-		for (auto *funcInfo : context.functionInfo) {
-			if (funcInfo->nullableArgs != nullptr) {
-				delete[] funcInfo->nullableArgs;
-			}
-		}
 
 		printDebug("Real Declarations: " +
 		           std::to_string(context.declarationNodePool.index +
@@ -516,7 +538,7 @@ void ACompiler::refresh() {
 	    nullptr, ".main", nullptr, 0,
 	    static_cast<uint32_t>(FunctionFlags::FUNC_IS_STATIC));
 	parserContext.functionInfo.push_back(
-	    parserContext.functionInfoAllocator.getObject());
+	    parserContext.functionInfoAllocator.push());
 	new (&vm.data.functions[vm.data.mainFunctionId]->bytecodes)
 	    std::vector<uint8_t>();
 	state = CompilerState::ANALYZED;
@@ -532,13 +554,13 @@ ACompiler::ACompiler() {
 	AutoLang::Libs::stdlib::init(*this);
 	AutoLang::DefaultClass::init(*this);
 	AutoLang::DefaultFunction::init(*this);
-	AutoLang::Libs::list::init(*this);
+	AutoLang::Libs::time::init(*this);
 
 	vm.data.mainFunctionId = vm.data.registerFunction(
 	    nullptr, ".main", nullptr, 0,
 	    static_cast<uint32_t>(FunctionFlags::FUNC_IS_STATIC));
 	parserContext.functionInfo.push_back(
-	    parserContext.functionInfoAllocator.getObject());
+	    parserContext.functionInfoAllocator.push());
 	new (&vm.data.functions[vm.data.mainFunctionId]->bytecodes)
 	    std::vector<uint8_t>();
 	// AutoLang::DefaultClass::init(vm.data);

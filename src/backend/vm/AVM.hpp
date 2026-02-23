@@ -9,6 +9,7 @@
 #include "shared/ObjectManager.hpp"
 #include "shared/StackAllocator.hpp"
 #include <string>
+#include <chrono>
 
 namespace AutoLang {
 
@@ -125,6 +126,7 @@ class AVM {
   public:
 	inline uint32_t get_u32(uint8_t *code, uint32_t &ip);
 	void log(Function *currentFunction);
+	
 	Stack<AObject *, MAX_STACK_OBJECT> stack;
 	FixedPoolLoaded<CallFrame, MAX_CALL_FRAME> callFrames;
 	StackAllocator stackAllocator = StackAllocator(MAX_STACK_ALLOCATOR);

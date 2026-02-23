@@ -1,0 +1,21 @@
+func testBasicOperator() {
+
+	val a = 1 + 2
+	assert(a == 3,  __FILE__,  __LINE__)
+
+	val b = 5 - (2 + 3)
+	assert(b == 0,  __FILE__,  __LINE__)
+
+	val c = 5 * (5 - 2 * 2)
+	assert(c == 5,  __FILE__,  __LINE__)
+
+	val d = 5 / (5 - 2 * 2)
+	assert(d == 5,  __FILE__,  __LINE__)
+
+	val e = 10 / 2 * 3
+	assert(e == 15,  __FILE__,  __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+testBasicOperator()

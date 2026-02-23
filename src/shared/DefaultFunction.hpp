@@ -2,7 +2,7 @@
 #define DEFAULT_FUNCTION_HPP
 
 #include "backend/vm/ANotifier.hpp"
-#include "frontend/libs/Math.hpp"
+#include "frontend/libs/math.hpp"
 #include "frontend/parser/Debugger.hpp"
 #include "shared/DefaultClass.hpp"
 #include <cstdlib>
@@ -55,8 +55,8 @@ AObject *print(NativeFuncInData) {
 			std::cout << (obj == DefaultClass::trueObject ? "true" : "false");
 			break;
 		default:
-			std::cout << notifier.vm->data.classes[obj->type]->name + ":" +
-			                 std::to_string((uintptr_t)(obj));
+			std::cout << notifier.vm->data.classes[obj->type]->name + "@"
+			          << obj;
 			break;
 	}
 	return nullptr;
@@ -181,6 +181,54 @@ AObject *str_get(NativeFuncInData) {
 	}
 
 	return notifier.createString(AString::from(str->data[pos]));
+}
+
+AObject* str_substr(NativeFuncInData) {
+    AString* str = args[0]->str;
+    int64_t len = str->size;
+
+    if (size < 2 || size > 3) {
+        notifier.throwException("substr expects 1 or 2 arguments");
+        return nullptr;
+    }
+
+    int64_t from = args[1]->i;
+
+    if (from < 0)
+        from += len;
+
+    if (from < 0 || from > len) {
+        notifier.throwException("Index out of range");
+        return nullptr;
+    }
+
+    // substr(from)
+    if (size == 2) {
+        int64_t newLen = len - from;
+
+        char* newStr = new char[newLen + 1];
+        memcpy(newStr, str->data + from, newLen);
+        newStr[newLen] = '\0';
+
+        return notifier.createString(new AString(newStr, newLen));
+    }
+
+    // substr(from, length)
+    int64_t length = args[2]->i;
+
+    if (length < 0) {
+        notifier.throwException("Length cannot be negative");
+        return nullptr;
+    }
+
+    if (from + length > len)
+        length = len - from;
+
+    char* newStr = new char[length + 1];
+    memcpy(newStr, str->data + from, length);
+    newStr[length] = '\0';
+
+    return notifier.createString(new AString(newStr, length));
 }
 
 AObject *get_string_size(NativeFuncInData) {

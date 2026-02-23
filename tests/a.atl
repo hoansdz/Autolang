@@ -1,0 +1,46 @@
+@import("std/time")
+
+val start = Time.now()
+
+// class Iterator<T> {
+// 	func next(): Iterator<T>? {
+// 		return null
+// 	}
+// }
+
+// class Loopable<T> {
+// 	private val it_begin: Iterator<T> = Iterator<T>()
+// 	func begin() = it_begin
+// }
+
+// class Array<T> extends Loopable<T> {
+// 	constructor () {
+// 		super()
+// 		println(this)
+// 	}
+// }
+
+// val arr: Array<Int> = Array<Int>()
+// print(arr)
+// print(" and ")
+// println(arr.begin())
+
+// class Pair<T, R>(val first: T, val second: R)
+
+// val pair = Pair<Int, Int>(5, 7)
+// println("${pair.first} and ${pair.second}")
+
+// val a = Array<Array<Int>>()
+// a.add(Array<Int>())
+// a[0].add(8)
+// println(a[0][0])
+// val b = "Hello"
+// println(b.substr(1))
+
+var a = 0
+for (val i in 0..10_000_000) {
+	a = a + i
+}
+println(a)
+
+println("Total runtime: ${Time.now() - start} ms")

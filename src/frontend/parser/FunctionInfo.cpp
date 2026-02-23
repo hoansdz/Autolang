@@ -14,12 +14,16 @@ AccessNode *FunctionInfo::findDeclaration(in_func, uint32_t line,
 			continue;
 		if (isStatic && i != 0 && !it->second->isGlobal)
 			throw ParserError(line, it->second->name + " is not static");
-		return context.varPool.push(line, it->second, false, it->second->nullable);
+		return context.varPool.push(line, it->second, false,
+		                            it->second->nullable);
 	}
 	return nullptr;
 }
 
-FunctionInfo::~FunctionInfo() {}
+FunctionInfo::~FunctionInfo() {
+	if (nullableArgs)
+		delete[] nullableArgs;
+}
 
 } // namespace AutoLang
 

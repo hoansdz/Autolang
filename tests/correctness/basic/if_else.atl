@@ -1,9 +1,23 @@
-var s = 0
-for (i in 1..10){
-    if (i > 5){
-        s += i
-    }
-}
-println(s)
+func testIfExpression() {
 
-//Expected 40
+	val a = if (true) 10 else 20
+	assert(a == 10, __FILE__, __LINE__)
+
+	val b = if (false) 10 else 20
+	assert(b == 20, __FILE__, __LINE__)
+
+	if (true) {
+		val a = if (a == 10) {
+			20
+			assert(false, __FILE__, __LINE__)
+		} else {
+			100
+		}
+		assert(a == 20, __FILE__, __LINE__)
+	}
+	assert(a == 10, __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+testIfExpression()

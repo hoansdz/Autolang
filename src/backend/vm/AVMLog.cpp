@@ -12,7 +12,7 @@ void AVM::log() {
 	std::cerr << "-------------------" << '\n';
 	std::cerr << "ConstPool: " << data.constPool.size() << " elements" << '\n';
 	for (int i = 0; i < data.constPool.size(); ++i) {
-		tempAllocateArea[0] = data.constPool[i];
+		tempAllocateArea[0] = &data.constPool[i];
 		std::cerr << '[' << i << "] ";
 		AutoLang::DefaultFunction::println(*notifier, tempAllocateArea, 1);
 	}

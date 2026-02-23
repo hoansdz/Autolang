@@ -1,67 +1,71 @@
 #ifndef AOBJECT_HPP
 #define AOBJECT_HPP
 
-#include <iostream>
-#include "shared/NormalArray.hpp"
-#include "shared/DefaultClass.hpp"
-#include "shared/Type.hpp"
 #include "AString.hpp"
+#include "shared/DefaultClass.hpp"
+#include "shared/NormalArray.hpp"
+#include "shared/Type.hpp"
+#include <iostream>
 
 namespace AutoLang {
 
 class AVM;
 
-struct AObject
-{
+struct AObject {
+	enum Flags : uint32_t { OBJ_IS_FREE = 1u << 0, OBJ_IS_CONST = 1u << 1 };
 	ClassId type;
 	uint32_t refCount;
-	union
-	{
+	uint32_t flags = 0;
+	union {
 		int64_t i;
 		double f;
 		uint8_t b;
 		NormalArray<AObject *> *member;
-		AString* str;
+		AString *str;
 	};
-	AObject() : refCount(0) {}
+	AObject() : type(0), refCount(0) {}
 	AObject(uint32_t type) : type(type), refCount(0) {}
-	AObject(uint32_t type, uint32_t memberCount) : type(type), refCount(0), member(new NormalArray<AObject *>(memberCount)) {}
-	AObject(int64_t i) : type(AutoLang::DefaultClass::intClassId), refCount(0), i(i) {}
-	AObject(double f) : type(AutoLang::DefaultClass::floatClassId), refCount(0), f(f) {}
-	AObject(AString *str) : type(AutoLang::DefaultClass::stringClassId), refCount(0), str(str) {}
-	inline void retain() { ++refCount; };
-	template <bool checkRefCount = false>
-	inline void free()
-	{
-		switch (type)
-		{
-		case AutoLang::DefaultClass::intClassId:
-		case AutoLang::DefaultClass::floatClassId:
-		{
+	AObject(uint32_t type, uint32_t memberCount)
+	    : type(type), refCount(0),
+	      member(new NormalArray<AObject *>(memberCount)) {}
+	AObject(int64_t i)
+	    : type(AutoLang::DefaultClass::intClassId), refCount(0), i(i) {}
+	AObject(double f)
+	    : type(AutoLang::DefaultClass::floatClassId), refCount(0), f(f) {}
+	AObject(AString *str)
+	    : type(AutoLang::DefaultClass::stringClassId), refCount(0), str(str) {}
+	inline void retain() {
+		if (flags & AObject::Flags::OBJ_IS_CONST)
 			return;
-		}
-		case AutoLang::DefaultClass::stringClassId:
-		{
-			if constexpr (checkRefCount)
-			{
-				if (refCount > 0)
-					--refCount;
-				if (refCount != 0)
-					return;
+		++refCount;
+	};
+	template <bool checkRefCount = false> inline void free() {
+		switch (type) {
+			case AutoLang::DefaultClass::intClassId:
+			case AutoLang::DefaultClass::floatClassId:
+			case AutoLang::DefaultClass::boolClassId:
+			case AutoLang::DefaultClass::nullClassId: {
+				return;
 			}
-			delete str;
-			return;
-		}
-		default:
-			break;
+			case AutoLang::DefaultClass::stringClassId: {
+				if constexpr (checkRefCount) {
+					if (refCount > 0)
+						--refCount;
+					if (refCount != 0)
+						return;
+				}
+				delete str;
+				return;
+			}
+			default:
+				break;
 		}
 		// if (type == AutoLang::DefaultClass::nullClassId ||
 		// 	type == AutoLang::DefaultClass::boolClassId) {
 		// 	assert("what wrong");
 		// 	return;
 		// }
-		for (size_t i = 0; i < member->size; ++i)
-		{ // Support delete data
+		for (size_t i = 0; i < member->size; ++i) { // Support delete data
 			auto *obj = (*member)[i];
 			if (!obj)
 				continue;
@@ -73,6 +77,6 @@ struct AObject
 	}
 };
 
-}
+} // namespace AutoLang
 
 #endif

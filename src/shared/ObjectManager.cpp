@@ -7,10 +7,10 @@ namespace AutoLang {
 
 void ObjectManager::destroy() {
     for (size_t i = 0; i < intObjects.index; ++i) {
-        reinterpret_cast<AreaAllocator<AObject, 64>::AreaChunkSlot*>(intObjects.objects[i])->isFree = true;
+        intObjects.objects[i]->flags = AObject::Flags::OBJ_IS_FREE;
     }
     for (size_t i = 0; i < floatObjects.index; ++i) {
-        reinterpret_cast<AreaAllocator<AObject, 64>::AreaChunkSlot*>(floatObjects.objects[i])->isFree = true;
+        floatObjects.objects[i]->flags = AObject::Flags::OBJ_IS_FREE;
     }
     areaAllocator.destroy();
 }

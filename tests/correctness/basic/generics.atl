@@ -1,0 +1,59 @@
+class GAnimal() {
+	func sound() = "Nothing"
+}
+
+class GDog extends GAnimal {
+	constructor () {
+		super()
+	}
+	func sound() = "Go"
+}
+
+class GCat extends GAnimal {
+	constructor () {
+		super()
+	}
+	func sound() = "Meow"
+}
+
+class GenericTest<T>() {
+	val value: T = T()
+	func sound(): String = value.sound()
+}
+
+class GWrapper<T>() {
+	val value: T?
+	func get(): T? = value
+}
+
+class GWrapperGenericTest<T, R> extends GWrapper<T> {
+	val x: R?
+	constructor(x: R?) {
+		super()
+		this.x = x
+	}
+	func getValue(): T? = value
+}
+
+class GTestGet<Parent, Child> {
+	val value: Parent = Child()
+}
+
+func testGenerics() {
+	val f1 = GenericTest<GAnimal>()
+	assert(f1 is GenericTest<GAnimal> && f1.value.sound() == f1.sound() && f1.sound() == "Nothing", __FILE__, __LINE__)
+	val f2 = GenericTest<GDog>()
+	assert(f2 is GenericTest<GDog> && f2.value.sound() == f2.sound() && f2.sound() == "Go", __FILE__, __LINE__)
+	val f3 = GenericTest<GCat>()
+	assert(f3 is GenericTest<GCat> && f3.value.sound() == f3.sound() && f3.sound() == "Meow", __FILE__, __LINE__)
+	val f4 = GWrapperGenericTest<GCat, Int>(null)
+	assert(f4.getValue()?.sound() == null, __FILE__, __LINE__)
+	val f5 = GWrapperGenericTest<GCat, Int>(null)
+	f5.value = GCat()
+	assert(f5.getValue()?.sound() == "Meow", __FILE__, __LINE__)
+	val f6 = GTestGet<GAnimal, GCat>()
+	assert(f6.value.sound() == "Meow", __FILE__, __LINE__)
+	println("Passed ${__FUNC__}")
+}
+
+testGenerics()

@@ -1,0 +1,11 @@
+func plus(a: Int, b: Int) = a + b
+
+func testFunction() {
+
+	val x = plus(2, 3)
+	assert(x == 5, __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+testFunction()

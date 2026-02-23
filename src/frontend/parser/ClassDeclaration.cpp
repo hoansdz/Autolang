@@ -36,31 +36,39 @@ template <bool changeGenericsClassId> void ClassDeclaration::load(in_func) {
 			              context.lexerString[baseClassLexerStringId] + "'");
 		}
 	}
-	bool marked[inputClassId.size()]{};
-	for (size_t i = 0; i < inputClassId.size(); ++i) {
-		auto *classDeclaration = inputClassId[i];
-		if (!classDeclaration->classId) {
-			if constexpr (!changeGenericsClassId) {
+	std::string name;
+	if constexpr (!changeGenericsClassId) {
+		bool change = true;
+		std::unique_ptr<bool[]> marked(new bool[inputClassId.size()]());
+		for (size_t i = 0; i < inputClassId.size(); ++i) {
+			auto *classDeclaration = inputClassId[i];
+			if (!classDeclaration->classId) {
+				classDeclaration->load<changeGenericsClassId>(in_data);
+				marked[i] = true;
+				change = false;
+			}
+		}
+		name = getName(in_data);
+		for (size_t i = 0; i < inputClassId.size(); ++i) {
+			if (marked[i]) {
+				inputClassId[i]->classId = std::nullopt;
+			}
+		}
+		if (!change) return;
+	} else {
+		bool change = true;
+		for (size_t i = 0; i < inputClassId.size(); ++i) {
+			auto *classDeclaration = inputClassId[i];
+			if (!classDeclaration->classId) {
 				classDeclaration->load<changeGenericsClassId>(in_data);
 				if (!classDeclaration->classId) {
-					throw ParserError(line,
-					                  "Bug: Cannot find class " +
-					                      classDeclaration->getName(in_data));
-				}
-			} else {
-				classDeclaration->load<changeGenericsClassId>(in_data);
-				if (!classDeclaration->classId) {
-					return;
+					change = false;
 				}
 			}
 		}
+		if (!change) return;
+		name = getName(in_data);
 	}
-	for (size_t i = 0; i < inputClassId.size(); ++i) {
-		if (marked[i]) {
-			inputClassId[i]->classId = std::nullopt;
-		}
-	}
-	auto name = getName(in_data);
 	{
 		auto it = compile.classMap.find(name);
 		if (it != compile.classMap.end()) {

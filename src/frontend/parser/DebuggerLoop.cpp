@@ -96,28 +96,7 @@ ExprNode *loadFor(in_func, size_t &i) {
 		throw ParserError(context.tokens[i].line,
 		                  "Expected expression after 'in' but not found");
 	}
-	HasClassIdNode *first = loadExpression(in_data, 0, i);
-	// if (first->kind == NodeType::CONST || first->kind == NodeType::VAR) {
-	if (!nextToken(&token, context.tokens, i) ||
-	    !expect(token, Lexer::TokenType::DOT_DOT)) {
-		--i;
-		throw ParserError(context.tokens[i].line, "Expected .. but not found");
-	}
-	if (!nextToken(&token, context.tokens, i)) {
-		--i;
-		throw ParserError(context.tokens[i].line,
-		                  "Expected expression after '..' but not found");
-	}
-	bool isLessEqThan = true;
-	if (expect(token, Lexer::TokenType::LT)) {
-		isLessEqThan = false;
-		if (!nextToken(&token, context.tokens, i)) {
-			--i;
-			throw ParserError(context.tokens[i].line,
-			                  "Expected value after '..<' but not found");
-		}
-	}
-	HasClassIdNode *second = loadExpression(in_data, 0, i);
+	HasClassIdNode *data = loadExpression(in_data, 0, i);
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::RPAREN)) {
 		--i;
@@ -128,8 +107,7 @@ ExprNode *loadFor(in_func, size_t &i) {
 		throw ParserError(context.tokens[i].line,
 		                  "Expected function body but not found");
 	}
-	auto node = context.forRangePool.push(firstLine, declaration, first, second,
-	                                      isLessEqThan);
+	auto node = context.forPool.push(firstLine, declaration, data);
 	loadBody(in_data, node->body.nodes, i);
 	if (createNewDeclaration) {
 		context.getCurrentFunctionInfo(in_data)->popBackScope();

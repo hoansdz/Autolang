@@ -10,7 +10,7 @@ namespace AutoLang {
 class ObjectManager {
   private:
 	static constexpr uint32_t size = 8;
-	AreaAllocator<AObject, 64> areaAllocator;
+	AreaAllocator<64> areaAllocator;
 	Stack<AObject*, size> intObjects;
 	Stack<AObject*, size> floatObjects;
 	inline void add(AObject *obj) {
@@ -95,6 +95,8 @@ class ObjectManager {
   public:
 	ObjectManager() {}
 	inline void release(AObject *obj) {
+		if (obj->flags & AObject::Flags::OBJ_IS_CONST)
+			return;
 		if (obj->refCount > 0)
 			--obj->refCount;
 		if (obj->refCount != 0)

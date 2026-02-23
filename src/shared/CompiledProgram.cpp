@@ -48,7 +48,7 @@ Offset CompiledProgram::registerFunction(AClass *clazz, std::string name,
 	// printDebug(name);
 	// printDebug("BEGIN SIZE FUNC: "+std::to_string(functions.size()) + " " +
 	// std::to_string(funcMap.size()));
-	auto *func = functionAllocator.getObject();
+	auto *func = functionAllocator.push();
 	func->id = id;
 	func->name = std::move(name);
 	func->args = args;
@@ -67,7 +67,7 @@ ClassId CompiledProgram::registerClass(std::string name, uint32_t classFlags) {
 	if (it != classMap.end())
 		throw std::runtime_error("Class " + name + " has exist");
 	Offset id = classes.size();
-	AClass *clazz = classAllocator.getObject();
+	AClass *clazz = classAllocator.push();
 	clazz->name = std::move(name);
 	clazz->id = id;
 	clazz->classFlags = classFlags;
@@ -96,9 +96,10 @@ Offset CompiledProgram::registerConstPool(
 	map[value] = id;
 	// printDebug("Value : "+toStr(value)+" at
 	// "+std::to_string(constPool.size()));
-	auto obj = new AObject(value);
-	constPool.push_back(obj);
-	constPool[id]->refCount = AutoLang::DefaultClass::refCountForGlobal;
+	constPool.push_back(value);
+	AObject* obj = &constPool.back();
+	obj->refCount = AutoLang::DefaultClass::refCountForGlobal;
+	obj->flags = AObject::Flags::OBJ_IS_CONST;
 	return id;
 }
 
@@ -112,9 +113,10 @@ Offset CompiledProgram::registerConstPool(HashMap<T, uint32_t> &map, T value) {
 	map[value] = id;
 	// printDebug("Value : "+toStr(value)+" at
 	// "+std::to_string(constPool.size()));
-	auto obj = new AObject(value);
-	constPool.push_back(obj);
-	constPool[id]->refCount = AutoLang::DefaultClass::refCountForGlobal;
+	constPool.push_back(value);
+	AObject* obj = &constPool.back();
+	obj->refCount = AutoLang::DefaultClass::refCountForGlobal;
+	obj->flags = AObject::Flags::OBJ_IS_CONST;
 	return id;
 }
 
@@ -122,9 +124,6 @@ CompiledProgram::~CompiledProgram() {
 	manager.destroy();
 	classAllocator.destroy();
 	functionAllocator.destroy();
-	for (auto* obj : constPool) {
-		delete obj;
-	}
 }
 
 } // namespace AutoLang

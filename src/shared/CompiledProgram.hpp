@@ -12,6 +12,7 @@
 #include "shared/StackAllocator.hpp"
 #include "shared/ObjectManager.hpp"
 #include "shared/FixedPool.hpp"
+#include "shared/ChunkArena.hpp"
 
 namespace AutoLang {
 
@@ -33,13 +34,13 @@ struct CompiledProgram
 	CompiledProgram() {}
 	ObjectManager manager;
 	Offset mainFunctionId;
-	AreaAllocator<Function, 64> functionAllocator;
+	ChunkArena<Function, 64> functionAllocator;
 	std::vector<Function*> functions;
 	HashMap<std::string, std::vector<Offset>> funcMap;
-	AreaAllocator<AClass, 64> classAllocator;
+	ChunkArena<AClass, 64> classAllocator;
 	std::vector<AClass*> classes;
 	HashMap<std::string, Offset> classMap;
-	std::vector<AObject*> constPool;
+	std::vector<AObject> constPool;
 	void refresh();
 	void destroy();
 	template <bool isConstructor = false>

@@ -113,30 +113,6 @@ void GetPropNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
 	}
 }
 
-void IfNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	condition->putBytecodes(in_data, bytecodes);
-	bytecodes.emplace_back(Opcode::JUMP_IF_FALSE);
-	size_t jumpIfFalseByte = bytecodes.size();
-	put_opcode_u32(bytecodes, 0);
-	ifTrue.putBytecodes(in_data, bytecodes);
-	if (ifFalse) {
-		bytecodes.emplace_back(Opcode::JUMP);
-		size_t jumpIfTrueByte = bytecodes.size();
-		put_opcode_u32(bytecodes, 0);
-		rewrite_opcode_u32(bytecodes, jumpIfFalseByte, bytecodes.size());
-		ifFalse->putBytecodes(in_data, bytecodes);
-		rewrite_opcode_u32(bytecodes, jumpIfTrueByte, bytecodes.size());
-	} else {
-		rewrite_opcode_u32(bytecodes, jumpIfFalseByte, bytecodes.size());
-	}
-}
-
-void IfNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
-	ifTrue.rewrite(in_data, bytecodes);
-	if (ifFalse)
-		ifFalse->rewrite(in_data, bytecodes);
-}
-
 void CanBreakContinueNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
 	uint32_t lastContinuePos = context.continuePos;
 	uint32_t lastBreakPos = context.breakPos;
@@ -167,39 +143,6 @@ void WhileNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	bytecodes.emplace_back(Opcode::JUMP_IF_FALSE);
 	size_t jumpIfFalseByte = bytecodes.size();
 	put_opcode_u32(bytecodes, 0);
-	body.putBytecodes(in_data, bytecodes);
-	bytecodes.emplace_back(Opcode::JUMP);
-	put_opcode_u32(bytecodes, continuePos);
-	rewrite_opcode_u32(bytecodes, jumpIfFalseByte, bytecodes.size());
-	breakPos = bytecodes.size();
-}
-
-void ForRangeNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	// for (detach in from..to) { body }
-	// detach = from
-	from->putBytecodes(in_data, bytecodes);
-	detach->isStore = true;
-	detach->putBytecodes(in_data, bytecodes);
-
-	// Skip
-	detach->isStore = false;
-	detach->putBytecodes(in_data, bytecodes);
-	bytecodes.emplace_back(Opcode::JUMP);
-	size_t firstSkipByte = bytecodes.size();
-	put_opcode_u32(bytecodes, 0);
-	// detach++ => skip first
-	continuePos = bytecodes.size();
-	detach->putBytecodes(in_data, bytecodes);
-	bytecodes.emplace_back(Opcode::PLUS_PLUS);
-	rewrite_opcode_u32(bytecodes, firstSkipByte, bytecodes.size());
-	// compare
-	to->putBytecodes(in_data, bytecodes);
-	bytecodes.emplace_back(isLessThanEq ? Opcode::LESS_THAN_EQ
-	                                    : Opcode::LESS_THAN);
-	bytecodes.emplace_back(Opcode::JUMP_IF_FALSE);
-	size_t jumpIfFalseByte = bytecodes.size();
-	put_opcode_u32(bytecodes, 0);
-	// body
 	body.putBytecodes(in_data, bytecodes);
 	bytecodes.emplace_back(Opcode::JUMP);
 	put_opcode_u32(bytecodes, continuePos);

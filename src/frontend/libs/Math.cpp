@@ -1,7 +1,7 @@
 #ifndef LIB_MATH_CPP
 #define LIB_MATH_CPP
 
-#include "./Math.hpp"
+#include "./math.hpp"
 #include "frontend/ACompiler.hpp"
 #include "shared/Type.hpp"
 

@@ -1,23 +1,23 @@
-#ifndef AREAALLOCATOR_CPP
-#define AREAALLOCATOR_CPP
+#ifndef AREA_ALLOCATOR_CPP
+#define AREA_ALLOCATOR_CPP
 
 #include "AreaAllocator.hpp"
 
-template <typename T, size_t size> void AreaAllocator<T, size>::destroy() {
+namespace AutoLang {
+
+template <size_t size> void AreaAllocator<size>::destroy() {
 	auto *currentChunk = head;
-	if constexpr (std::is_same_v<T, AutoLang::AObject>) {
-		// Free all slot
-		while (currentChunk != nullptr) {
-			for (size_t i = 0; i < size; ++i) {
-				auto &slot = currentChunk->data[i];
-				if (slot.isFree)
-					continue;
-				slot.obj.template free<true>();
-			}
-			currentChunk = currentChunk->next;
+	// Free all slot
+	while (currentChunk != nullptr) {
+		for (size_t i = 0; i < size; ++i) {
+			auto &slot = currentChunk->data[i];
+			if (slot.obj.flags & AObject::Flags::OBJ_IS_FREE)
+				continue;
+			slot.obj.template free<true>();
 		}
-		currentChunk = head;
+		currentChunk = currentChunk->next;
 	}
+	currentChunk = head;
 
 	// Free chunk
 	while (currentChunk != nullptr) {
@@ -27,6 +27,8 @@ template <typename T, size_t size> void AreaAllocator<T, size>::destroy() {
 	}
 	freeSlot = nullptr;
 	head = nullptr;
+}
+
 }
 
 #endif

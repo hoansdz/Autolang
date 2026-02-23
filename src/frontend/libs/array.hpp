@@ -6,7 +6,7 @@
 namespace AutoLang {
 class ACompiler;
 namespace Libs {
-namespace list {
+namespace array {
 AObject *add(NativeFuncInData);
 AObject *remove(NativeFuncInData);
 AObject *size(NativeFuncInData);

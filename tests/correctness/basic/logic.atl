@@ -1,0 +1,15 @@
+func testLogic() {
+
+	val a = true && false
+	assert(a == false, __FILE__, __LINE__)
+
+	val b = true || false
+	assert(b == true, __FILE__, __LINE__)
+
+	val c = !false
+	assert(c == true, __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+testLogic()

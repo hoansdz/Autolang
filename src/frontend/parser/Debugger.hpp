@@ -20,9 +20,11 @@ struct ParserError : AutoLang::Lexer::LexerError {
 	    : AutoLang::Lexer::LexerError(line, msg) {}
 };
 
-void lexerData(in_func, ACompiler &compiler, LibraryData *library);
-LibraryData *loadImport(in_func, std::vector<Lexer::Token> &tokens,
-                        ACompiler &compiler, size_t i);
+void lexerData(in_func, ACompiler &compiler, LibraryData *library,
+               std::vector<Offset> *importOffset);
+LibraryData *loadImport(in_func, LibraryData *currentLibrary,
+                        std::vector<Lexer::Token> &tokens, ACompiler &compiler,
+                        size_t i);
 void estimate(in_func, Lexer::Context &lexerContext);
 void freeData(in_func);
 ClassId loadGenerics(in_func, std::string &name,
@@ -45,7 +47,7 @@ bool nextTokenIfMarkNonNull(in_func, size_t &i);
 void loadAnnotations(in_func, size_t &i);
 void loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i,
               bool createScope = true);
-IfNode *loadIf(in_func, size_t &i);
+IfNode *loadIf(in_func, size_t &i, bool mustReturnValue);
 ExprNode *loadFor(in_func, size_t &i);
 WhileNode *loadWhile(in_func, size_t &i);
 TryCatchNode *loadTryCatch(in_func, size_t &i);
@@ -58,9 +60,9 @@ ReturnNode *loadReturn(in_func, size_t &i);
 ConstValueNode *loadNumber(in_func, size_t &i);
 HasClassIdNode *findIdentifierNode(in_func, size_t &i, LexerStringId nameId,
                                    bool nullable);
-HasClassIdNode *findVarNode(in_func, size_t &i, std::string &name,
+HasClassIdNode *findVarNode(in_func, size_t &i, LexerStringId nameId,
                             bool nullable);
-ConstValueNode *findConstValueNode(in_func, size_t &i, std::string &name);
+ConstValueNode *findConstValueNode(in_func, size_t &i, LexerStringId nameId);
 char getOpenBracket(Lexer::TokenType type);
 bool isCloseBracket(char openBracket, Lexer::TokenType closeBracket);
 int getPrecedence(Lexer::TokenType type);

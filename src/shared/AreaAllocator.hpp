@@ -1,15 +1,18 @@
-#ifndef AREAALLOCATOR_HPP
-#define AREAALLOCATOR_HPP
+#ifndef AREA_ALLOCATOR_HPP
+#define AREA_ALLOCATOR_HPP
 
 #include "shared/AObject.hpp"
 
-template <typename T, size_t size> class AreaAllocator {
+namespace AutoLang {
+
+template <size_t size> class AreaAllocator {
   public:
 	struct AreaChunkSlot {
-		T obj;
+		AObject obj;
 		AreaChunkSlot *nextFree;
-		bool isFree;
-		AreaChunkSlot() : isFree(true), nextFree(nullptr) {}
+		AreaChunkSlot() : obj(), nextFree(nullptr) {
+			obj.flags &= AObject::Flags::OBJ_IS_FREE;
+		}
 	};
 
 	struct AreaChunk {
@@ -24,15 +27,15 @@ template <typename T, size_t size> class AreaAllocator {
 
   public:
 	AreaAllocator() : head(nullptr), freeSlot(nullptr) {}
-	inline T *getObject() {
+	inline AObject *getObject() {
 		if (freeSlot != nullptr) {
-			freeSlot->isFree = false;
 			auto *obj = &freeSlot->obj;
+			obj->flags = 0;
 			freeSlot = freeSlot->nextFree;
 			return obj;
 		}
 		auto *newChunk = new AreaChunk();
-		newChunk->data[0].isFree = false;
+		newChunk->data[0].obj.flags = 0;
 		newChunk->next = head;
 		head = newChunk;
 
@@ -43,13 +46,15 @@ template <typename T, size_t size> class AreaAllocator {
 		freeSlot = &newChunk->data[1];
 		return &newChunk->data[0].obj;
 	}
-	inline void release(T *obj) {
+	inline void release(AObject *obj) {
 		AreaChunkSlot *slot = reinterpret_cast<AreaChunkSlot *>(obj);
-		slot->isFree = true;
+		obj->flags = AObject::Flags::OBJ_IS_FREE;
 		slot->nextFree = freeSlot;
 		freeSlot = slot;
 	}
 	void destroy();
 };
+
+} // namespace AutoLang
 
 #endif

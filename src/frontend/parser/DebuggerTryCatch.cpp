@@ -27,13 +27,13 @@ TryCatchNode *loadTryCatch(in_func, size_t &i) {
 	    !expect(token, Lexer::TokenType::LPAREN)) {
 		--i;
 		throw ParserError(firstLine,
-		                  "Expected variable name after try but not found");
+		                  "Expected left paren after catch but not found");
 	}
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::IDENTIFIER)) {
 		--i;
 		throw ParserError(firstLine,
-		                  "Expected variable name after try but not found");
+		                  "Expected variable name after catch but not found");
 	}
 	std::string &name = context.lexerString[token->indexData];
 	if (!nextToken(&token, context.tokens, i) ||

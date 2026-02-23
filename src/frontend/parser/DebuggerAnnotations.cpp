@@ -3,6 +3,7 @@
 
 #include "Debugger.hpp"
 #include "frontend/ACompiler.hpp"
+#include <filesystem>
 
 namespace AutoLang {
 
@@ -33,7 +34,8 @@ void loadAnnotations(in_func, size_t &i) {
 		}
 		case Lexer::TokenType::WAIT_INPUT: {
 			if (context.annotationFlags & AnnotationFlags::AN_WAIT_INPUT) {
-				throw ParserError(firstLine, "Duplicate annotation @wait_input");
+				throw ParserError(firstLine,
+				                  "Duplicate annotation @wait_input");
 			}
 			context.annotationFlags |= AnnotationFlags::AN_WAIT_INPUT;
 			break;
@@ -88,7 +90,20 @@ void loadAnnotations(in_func, size_t &i) {
 			    !expect(token, Lexer::TokenType::STRING)) {
 				throw ParserError(firstLine, "Bug: @import not ensure (String");
 			}
-			auto &path = context.lexerString[token->indexData];
+			std::string path = context.lexerString[token->indexData];
+			if (path[0] == '.') {
+				std::filesystem::path input = path;
+				std::filesystem::path currentPath;
+				if (context.mode->isFile) {
+					currentPath =
+					    std::filesystem::path(context.mode->path).parent_path();
+				} else {
+					currentPath = std::filesystem::current_path();
+				}
+				std::filesystem::path resolved =
+				    (currentPath / input).lexically_normal();
+				path = resolved.string();
+			}
 			bool mustAppend =
 			    context.importMap.find(path) == context.importMap.end();
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
@@ -102,10 +117,10 @@ void loadAnnotations(in_func, size_t &i) {
 			auto it =
 			    context.mainLexerContext->library->dependencies.find(path);
 			if (it == context.mainLexerContext->library->dependencies.end()) {
-				throw ParserError(firstLine,
-				                  "Bug: Library " +
-				                      context.mainLexerContext->library->path +
-				                      " not ensure dependencies");
+				throw ParserError(
+				    firstLine, "Bug: Library '" +
+				                   context.mainLexerContext->library->path +
+				                   "' not ensure dependencies '" + path + "'");
 			}
 			auto library = it->second;
 			context.mode = library;
@@ -114,6 +129,10 @@ void loadAnnotations(in_func, size_t &i) {
 			context.tokens.insert(context.tokens.begin() + i + 1,
 			                      library->lexerContext.tokens.begin(),
 			                      library->lexerContext.tokens.end());
+			// for (auto &token : context.tokens) {
+			// 	std::cerr << token.toString(context) << " ";
+			// }
+			// std::cerr << "\n";
 			break;
 		}
 		default: {

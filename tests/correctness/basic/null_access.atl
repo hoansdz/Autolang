@@ -1,0 +1,23 @@
+class NullAccessTest(val value: Int) {
+	func plus(value: Int) {
+		this.value += value
+	}
+}
+
+func testNullAccess() {
+	var value: NullAccessTest? = null
+	value?.plus(5)
+	value = NullAccessTest(5)
+	value?.plus(5)
+	assert(value!.value == 10, __FILE__, __LINE__)
+
+	var f1 = (value?.value ?? 2)
+	assert(f1 == 10, __FILE__, __LINE__)
+	value = null
+	val f2 = (null ?? 2)
+	assert(f2 == 2, __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+testNullAccess()

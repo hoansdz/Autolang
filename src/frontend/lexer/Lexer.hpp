@@ -77,6 +77,7 @@ enum TokenType : uint8_t {
 	DOT,       //	Dấu chấm: .
 	QMARK_DOT, //    Dấu ?.
 	DOT_DOT,
+	DOT_DOT_LT,
 	SEMICOLON, //	Dấu chấm phẩy: ;
 	COLON,     //	Dấu hai chấm: :
 	QMARK,     //   Dấu hỏi chấm
@@ -155,11 +156,11 @@ static const HashMap<std::string, TokenType> CAST = {
     {"override", TokenType::OVERRIDE},
     {"no_override", TokenType::NO_OVERRIDE},
     {"no_constructor", TokenType::NO_CONSTRUCTOR},
-	{"no_extends", TokenType::NO_EXTENDS},
+    {"no_extends", TokenType::NO_EXTENDS},
     {"import", TokenType::IMPORT},
     {"is", TokenType::IS},
-	{"as", TokenType::UNSAFE_CAST},
-	{"wait_input", TokenType::WAIT_INPUT},
+    {"as", TokenType::UNSAFE_CAST},
+    {"wait_input", TokenType::WAIT_INPUT},
 
     {"/*", TokenType::START_COMMENT},
     {"&", TokenType::AND},
@@ -173,6 +174,7 @@ static const HashMap<std::string, TokenType> CAST = {
     {"!", TokenType::EXMARK},
     {".", TokenType::DOT},
     {"..", TokenType::DOT_DOT},
+	{"..<", TokenType::DOT_DOT_LT},
     {"+", TokenType::PLUS},
     {"++", TokenType::PLUS_PLUS},
     {"-", TokenType::MINUS},
@@ -242,6 +244,7 @@ struct Context {
 	std::vector<char> bracketStack;
 	std::vector<Token> tokens;
 	LibraryData *library;
+	std::vector<Offset> *importOffset;
 
 	bool hasError = false;
 
@@ -261,7 +264,8 @@ inline bool nextLine(Context &context, const char *lines, uint32_t &i);
 inline bool isOperator(char chr);
 inline bool isEndOfLine(Context &context, uint32_t &i);
 void loadFile(ParserContext *mainContext, LibraryData *library);
-void load(ParserContext *mainContext, LibraryData *library);
+void load(ParserContext *mainContext, LibraryData *library,
+          std::vector<Offset> *importOffset);
 void loadQuote(Context &context, char quote, uint32_t &i);
 std::string loadIdentifier(Context &context, uint32_t &i);
 std::string loadNumber(Context &context, uint32_t &i);

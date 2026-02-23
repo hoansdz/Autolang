@@ -1,14 +1,14 @@
 #ifndef LIBS_LIST_CPP
 #define LIBS_LIST_CPP
 
-#include "list.hpp"
+#include "array.hpp"
 #include "frontend/ACompiler.hpp"
 #include <string>
 
 namespace AutoLang {
 class ACompiler;
 namespace Libs {
-namespace list {
+namespace array {
 
 AObject *add(NativeFuncInData) {
 	auto obj = args[0];
@@ -37,13 +37,13 @@ AObject *remove(NativeFuncInData) {
 	auto obj = args[0];
 
 	if (args[1]->type != AutoLang::DefaultClass::intClassId) {
-		notifier.throwException("List.remove: index must be Int");
+		notifier.throwException("Array.remove: index must be Int");
 		return nullptr;
 	}
 	int index = static_cast<int64_t>(args[1]->i);
 
 	if (index < 0 || index >= obj->member->size) {
-		notifier.throwException("List.remove: index out of range: " +
+		notifier.throwException("Array.remove: index out of range: " +
 		                        std::to_string(index));
 		return nullptr;
 	}
@@ -79,13 +79,13 @@ AObject *get(NativeFuncInData) {
 	auto obj = args[0];
 
 	if (args[1]->type != AutoLang::DefaultClass::intClassId) {
-		notifier.throwException("List.get: index must be Int");
+		notifier.throwException("Array.get: index must be Int");
 		return nullptr;
 	}
 	int index = static_cast<int64_t>(args[1]->i);
 
 	if (index < 0 || index >= obj->member->size) {
-		notifier.throwException("List.get: index out of range: " +
+		notifier.throwException("Array.get: index out of range: " +
 		                        std::to_string(index));
 		return nullptr;
 	}
@@ -98,13 +98,13 @@ AObject *set(NativeFuncInData) {
 	auto obj = args[0];
 
 	if (args[1]->type != AutoLang::DefaultClass::intClassId) {
-		notifier.throwException("List.set: index must be Int");
+		notifier.throwException("Array.set: index must be Int");
 		return nullptr;
 	}
 	int index = static_cast<int64_t>(args[1]->i);
 
 	if (index < 0 || index >= obj->member->size) {
-		notifier.throwException("List.set: index out of range: " +
+		notifier.throwException("Array.set: index out of range: " +
 		                        std::to_string(index));
 		return nullptr;
 	}
@@ -132,38 +132,7 @@ AObject *clear(NativeFuncInData) {
 	return nullptr;
 }
 
-void init(ACompiler &compiler) {
-	compiler.registerFromSource("std/list", R"###(
-@no_extends
-class List<T>() {
-	@native("add")
-	func add(value: T)
-	@native("remove")
-	func remove(index: Int)
-	@native("size")
-	func size()
-	@native("get")
-	func get(index: Int): T
-	@native("get")
-	func [](index: Int): T
-	@native("set")
-	func set(index: Int, value: T)
-	@native("clear")
-	func clear()
-}
-	)###",
-	                            true,
-	                            ANativeMap({
-	                                {"add", &add},
-	                                {"remove", &remove},
-	                                {"size", &size},
-	                                {"get", &get},
-	                                {"set", &set},
-	                                {"clear", &clear},
-	                            }));
-}
-
-} // namespace list
+} // namespace array
 } // namespace Libs
 } // namespace AutoLang
 
