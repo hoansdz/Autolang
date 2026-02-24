@@ -401,24 +401,6 @@ struct SetNode : HasClassIdNode {
 	~SetNode();
 };
 
-// for (detach in from..to) body
-struct ForNode : CanBreakContinueNode {
-	AccessNode *detach;
-	HasClassIdNode *data;
-	ForNode(uint32_t line, AccessNode *detach, HasClassIdNode *data)
-	    : CanBreakContinueNode(NodeType::FOR, line), detach(detach),
-	      data(data) {}
-	ExprNode *resolve(in_func) override;
-	void optimize(in_func);
-	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
-	inline void rewrite(in_func, std::vector<uint8_t> &bytecodes) override {
-		data->rewrite(in_data, bytecodes);
-		CanBreakContinueNode::rewrite(in_data, bytecodes);
-	}
-	ExprNode *copy(in_func) override;
-	~ForNode();
-};
-
 // getName(id) => variable
 struct VarNode : AccessNode {
 	VarNode(uint32_t line, DeclarationNode *declaration, bool isStore,
@@ -428,6 +410,26 @@ struct VarNode : AccessNode {
 	void optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	ExprNode *copy(in_func) override;
+};
+
+// for (detach in from..to) body
+struct ForNode : CanBreakContinueNode {
+	VarNode *iteratorNode;
+	AccessNode *detach;
+	HasClassIdNode *data;
+	ForNode(uint32_t line, AccessNode *detach, HasClassIdNode *data,
+	        VarNode *iteratorNode)
+	    : CanBreakContinueNode(NodeType::FOR, line), detach(detach), data(data),
+	      iteratorNode(iteratorNode) {}
+	ExprNode *resolve(in_func) override;
+	void optimize(in_func);
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
+	inline void rewrite(in_func, std::vector<uint8_t> &bytecodes) override {
+		data->rewrite(in_data, bytecodes);
+		CanBreakContinueNode::rewrite(in_data, bytecodes);
+	}
+	ExprNode *copy(in_func) override;
+	~ForNode();
 };
 
 struct ClassAccessNode : HasClassIdNode {

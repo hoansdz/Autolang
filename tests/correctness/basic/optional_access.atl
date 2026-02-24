@@ -1,0 +1,27 @@
+class OptionalAccess(var child: OptionalAccess?) {
+    static val a = 7
+	val x = 0
+	val m = 0
+    func hello(value: Int) {
+        println("Hello world nha ${value}")
+    }
+	func get(): Int? {
+		return null
+	}
+}
+
+func testOptionalAccess() {
+    var a: OptionalAccess?
+    a?.hello(1)
+	println(a?.get() ?? 100)
+    a = OptionalAccess(a?.child)
+    a?.hello(2)
+    a?.child?.hello(3)
+    a!.child = OptionalAccess(null)
+    a?.child?.hello(4)
+    println(a?.a)
+    val m:OptionalAccess? = null
+    println(m)
+}
+
+testOptionalAccess()

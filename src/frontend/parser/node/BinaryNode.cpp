@@ -87,6 +87,30 @@ ExprNode *BinaryNode::resolve(in_func) {
 	left = static_cast<HasClassIdNode *>(left->resolve(in_data));
 	right = static_cast<HasClassIdNode *>(right->resolve(in_data));
 	switch (op) {
+		case Lexer::TokenType::IN: {
+			switch (right->kind) {
+				case NodeType::RANGE: {
+					switch (left->kind) {
+						case NodeType::CLASS_ACCESS: {
+							throwError("Expected value but class name found");
+							break;
+						}
+						default: {
+							if (left->classId != DefaultClass::intClassId) {
+								throwError(
+								    "Type mismatch: expected 'Int' but '" +
+								    compile.classes[left->classId]->name +
+								    "' found");
+								break;
+							}
+							break;
+						}
+					}
+					break;
+				}
+			}
+			break;
+		}
 		case Lexer::TokenType::SAFE_CAST:
 		case Lexer::TokenType::UNSAFE_CAST: {
 			if (left->kind == CLASS_ACCESS) {
@@ -241,12 +265,70 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	left->putBytecodes(in_data, bytecodes);
 	right->putBytecodes(in_data, bytecodes);
 	switch (op) {
-		case Lexer::TokenType::PLUS:
+		case Lexer::TokenType::PLUS: {
+			switch (left->classId) {
+				case DefaultClass::intClassId: {
+					switch (right->classId) {
+						case DefaultClass::intClassId: {
+							bytecodes.emplace_back(AutoLang::Opcode::I_PLUS_I);
+							return;
+						}
+						case DefaultClass::floatClassId: {
+							bytecodes.emplace_back(AutoLang::Opcode::I_PLUS_F);
+							return;
+						}
+					}
+					break;
+				}
+				case DefaultClass::floatClassId: {
+					switch (right->classId) {
+						case DefaultClass::intClassId: {
+							bytecodes.emplace_back(AutoLang::Opcode::F_PLUS_I);
+							return;
+						}
+						case DefaultClass::floatClassId: {
+							bytecodes.emplace_back(AutoLang::Opcode::F_PLUS_F);
+							return;
+						}
+					}
+					break;
+				}
+			}
 			bytecodes.emplace_back(AutoLang::Opcode::PLUS);
 			return;
-		case Lexer::TokenType::MINUS:
+		}
+		case Lexer::TokenType::MINUS: {
+			switch (left->classId) {
+				case DefaultClass::intClassId: {
+					switch (right->classId) {
+						case DefaultClass::intClassId: {
+							bytecodes.emplace_back(AutoLang::Opcode::I_MINUS_I);
+							return;
+						}
+						case DefaultClass::floatClassId: {
+							bytecodes.emplace_back(AutoLang::Opcode::I_MINUS_F);
+							return;
+						}
+					}
+					break;
+				}
+				case DefaultClass::floatClassId: {
+					switch (right->classId) {
+						case DefaultClass::intClassId: {
+							bytecodes.emplace_back(AutoLang::Opcode::F_MINUS_I);
+							return;
+						}
+						case DefaultClass::floatClassId: {
+							bytecodes.emplace_back(AutoLang::Opcode::F_MINUS_F);
+							return;
+						}
+					}
+					break;
+				}
+			}
 			bytecodes.emplace_back(AutoLang::Opcode::MINUS);
 			return;
+		}
 		case Lexer::TokenType::STAR:
 			bytecodes.emplace_back(AutoLang::Opcode::MUL);
 			return;

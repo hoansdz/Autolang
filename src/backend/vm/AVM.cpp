@@ -75,9 +75,10 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 	currentCallFrame->startStackCount = stack.getSize();
 	currentCallFrame->catchPosition.clear();
 	stackAllocator.setTop(currentCallFrame->fromStackAllocator);
+	uint32_t argumentCount;
 	if constexpr (loadVirtual) {
 		uint32_t funcPos = get_u32(bytecodes, i);
-		uint32_t argumentCount = get_u32(bytecodes, i);
+		argumentCount = get_u32(bytecodes, i);
 		// std::cerr<<"Pos: "<<funcPos<<" & "<<argumentCount<<"\n";
 		// Ensure
 		stackAllocator.ensure(argumentCount);
@@ -94,8 +95,9 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 	} else {
 		currentCallFrame->func = data.functions[get_u32(bytecodes, i)];
 		// Ensure
-		stackAllocator.ensure(currentCallFrame->func->argSize);
-		for (size_t size = currentCallFrame->func->argSize; size-- > 0;) {
+		argumentCount = currentCallFrame->func->argSize;
+		stackAllocator.ensure(argumentCount);
+		for (size_t size = argumentCount; size-- > 0;) {
 			auto object = stack.pop();
 			assert(object != nullptr);
 			stackAllocator[size] = object;
@@ -105,16 +107,16 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 	notifier->callFrame = currentCallFrame;
 
 	if (currentCallFrame->func->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
-		auto obj =
-		    currentCallFrame->func->native(*notifier, stackAllocator.currentPtr,
-		                                   currentCallFrame->func->argSize);
+		auto obj = currentCallFrame->func->native(
+		    *notifier, stackAllocator.currentPtr, argumentCount);
 		if (currentCallFrame->exception) {
-			stackAllocator.clear(
-			    data.manager, currentCallFrame->fromStackAllocator,
-			    stackAllocator.top + currentCallFrame->func->maxDeclaration -
-			        1);
-			stackAllocator.freeTo(callFrames.objects[callFrames.getSize() - 2]
-			                          .fromStackAllocator);
+			// stackAllocator.clear(
+			//     data.manager, currentCallFrame->fromStackAllocator,
+			//     stackAllocator.top + currentCallFrame->func->maxDeclaration -
+			//         1);
+			// stackAllocator.freeTo(callFrames.objects[callFrames.getSize() -
+			// 2]
+			//                           .fromStackAllocator);
 			currentCallFrame->exception->retain();
 			return false;
 		}
@@ -136,8 +138,7 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 	} else {
 		if constexpr (isConstructor) {
 			AutoLang::DefaultFunction::data_constructor(
-			    *notifier, stackAllocator.currentPtr,
-			    currentCallFrame->func->argSize);
+			    *notifier, stackAllocator.currentPtr, argumentCount);
 		}
 		currentCallFrame->i = 0;
 		return false;
@@ -236,6 +237,41 @@ resumeCallFrame:;
 					        currentCallFrame, currentFunction, bytecodes, i)) {
 						goto resumeCallFrame;
 					}
+				}
+				case AutoLang::Opcode::FOR_LIST: {
+					AObject *list = stack.pop();
+					bool isGlobal = bytecodes[i++] == Opcode::STORE_GLOBAL;
+					AObject **iterator;
+					AObject **container;
+					if (isGlobal) {
+						container = &globalVariables[get_u32(bytecodes, i)];
+						iterator = &globalVariables[get_u32(bytecodes, i)];
+					} else {
+						container = &stackAllocator[get_u32(bytecodes, i)];
+						iterator = &stackAllocator[get_u32(bytecodes, i)];
+					}
+					// if (!list) {
+					// 	i = get_u32(bytecodes, i);
+					// 	break;
+					// }
+					if (*iterator == DefaultClass::nullObject) {
+						if (list->member->size == 0) {
+							i = get_u32(bytecodes, i);
+							break;
+						}
+						*iterator = data.manager.createIntObject(0);
+						*container = list->member->data[0];
+						i += 4;
+						break;
+					}
+					uint32_t newIndex = ++(*iterator)->i;
+					if (list->member->size == newIndex) {
+						i = get_u32(bytecodes, i);
+						break;
+					}
+					*container = list->member->data[newIndex];
+					i += 4;
+					break;
 				}
 				case AutoLang::Opcode::LOAD_CONST: {
 					stack.push(getConstObject(get_u32(bytecodes, i)));
@@ -700,6 +736,127 @@ resumeCallFrame:;
 					stack.top()->retain();
 					break;
 				}
+				case AutoLang::Opcode::I_PLUS_I: {
+					AObject *b = stack.pop();
+					AObject *a = stack.top();
+					if (a->refCount <= 1) {
+						a->i += b->i;
+						data.manager.release(b);
+						break;
+					}
+					stack.top() = data.manager.createIntObject(a->i + b->i);
+					++stack.top()->refCount;
+					data.manager.release(a);
+					data.manager.release(b);
+					break;
+				}
+				case AutoLang::Opcode::I_PLUS_F: {
+					AObject *b = stack.pop();
+					AObject *a = stack.top();
+					if (a->refCount <= 1) {
+						a->type = DefaultClass::floatClassId;
+						a->f = (double)a->i + b->f;
+						data.manager.release(b);
+						break;
+					}
+					stack.top() =
+					    data.manager.createFloatObject((double)a->i + b->f);
+					++stack.top()->refCount;
+					data.manager.release(a);
+					data.manager.release(b);
+					break;
+				}
+				case AutoLang::Opcode::F_PLUS_F: {
+					AObject *b = stack.pop();
+					AObject *a = stack.top();
+					if (a->refCount <= 1) {
+						a->f += b->f;
+						data.manager.release(b);
+						break;
+					}
+					stack.top() = data.manager.createFloatObject(a->f + b->f);
+					++stack.top()->refCount;
+					data.manager.release(a);
+					data.manager.release(b);
+					break;
+				}
+				case AutoLang::Opcode::F_PLUS_I: {
+					AObject *b = stack.pop();
+					AObject *a = stack.top();
+					if (a->refCount <= 1) {
+						a->f += (double)b->i;
+						data.manager.release(b);
+						break;
+					}
+					stack.top() =
+					    data.manager.createFloatObject(a->f + (double)b->i);
+					++stack.top()->refCount;
+					data.manager.release(a);
+					data.manager.release(b);
+					break;
+				}
+				case AutoLang::Opcode::I_MINUS_I: {
+					AObject *b = stack.pop();
+					AObject *a = stack.top();
+					// std::cerr << a->refCount << " " << b->refCount << "\n";
+					// std::cerr << data.classes[a->type]->name << " "
+					//           << data.classes[b->type]->name << "\n";
+					// std::cerr << a->i << " " << b->i << "\n";
+					if (a->refCount <= 1) {
+						a->i -= b->i;
+						data.manager.release(b);
+						break;
+					}
+					stack.top() = data.manager.createIntObject(a->i - b->i);
+					++stack.top()->refCount;
+					data.manager.release(a);
+					data.manager.release(b);
+					break;
+				}
+				case AutoLang::Opcode::I_MINUS_F: {
+					AObject *b = stack.pop();
+					AObject *a = stack.top();
+					if (a->refCount <= 1) {
+						a->type = DefaultClass::floatClassId;
+						a->f = (double)a->i - b->f;
+						data.manager.release(b);
+						break;
+					}
+					stack.top() =
+					    data.manager.createFloatObject((double)a->i - b->f);
+					++stack.top()->refCount;
+					data.manager.release(a);
+					data.manager.release(b);
+					break;
+				}
+				case AutoLang::Opcode::F_MINUS_F: {
+					AObject *b = stack.pop();
+					AObject *a = stack.top();
+					if (a->refCount <= 1) {
+						a->f -= b->f;
+						data.manager.release(b);
+						break;
+					}
+					stack.top() = data.manager.createFloatObject(a->f - b->f);
+					++stack.top()->refCount;
+					data.manager.release(a);
+					data.manager.release(b);
+					break;
+				}
+				case AutoLang::Opcode::F_MINUS_I: {
+					AObject *b = stack.pop();
+					AObject *a = stack.top();
+					if (a->refCount <= 1) {
+						a->f -= b->i;
+						data.manager.release(b);
+						break;
+					}
+					stack.top() = data.manager.createFloatObject(a->f - b->i);
+					++stack.top()->refCount;
+					data.manager.release(a);
+					data.manager.release(b);
+					break;
+				}
 				default:
 					throw std::runtime_error("Bytecode not be defined");
 			}
@@ -771,6 +928,7 @@ template <ANativeFunction native, size_t size, bool push> bool AVM::operate() {
 }
 
 uint32_t AVM::get_u32(uint8_t *code, uint32_t &ip) {
+	// uint32_t val = *reinterpret_cast<uint32_t *>(code + ip);
 	uint32_t val;
 	memcpy(&val, code + ip, 4);
 	ip += 4;

@@ -524,6 +524,7 @@ void toString(in_func, ConstValueNode *value) {
 	}
 	throw ParserError(value->line, "Cannot convert to String");
 }
+
 } // namespace AutoLang
 
 #endif

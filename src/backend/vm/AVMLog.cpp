@@ -129,6 +129,16 @@ void AVM::log(Function *currentFunction) {
 				std::cerr << "CALL_DATA_CONTRUCTOR	 " << funcPos << "\n";
 				break;
 			}
+			case AutoLang::Opcode::FOR_LIST: {
+				bool isGlobal = bytecodes[i++] == Opcode::STORE_GLOBAL;
+				uint32_t containerPos = get_u32(bytecodes, i);
+				uint32_t pos = get_u32(bytecodes, i);
+				uint32_t posJumpIfFalse = get_u32(bytecodes, i);
+				std::cerr << "FOR_LIST	 " << (isGlobal ? "GLOBAL " : "LOCAL ")
+				          << containerPos << " " << pos << " JUMP_IF_FALSE "
+				          << posJumpIfFalse << '\n';
+				break;
+			}
 			case AutoLang::Opcode::LOAD_CONST:
 				std::cerr << "LOAD_CONST	 " << get_u32(bytecodes, i) << '\n';
 				break;
@@ -230,6 +240,14 @@ void AVM::log(Function *currentFunction) {
 				std::cerr << "OR	 " << '\n';
 				break;
 				BYTECODE_PRINT_SINGLE(PLUS)
+				BYTECODE_PRINT_SINGLE(I_PLUS_I)
+				BYTECODE_PRINT_SINGLE(I_PLUS_F)
+				BYTECODE_PRINT_SINGLE(F_PLUS_I)
+				BYTECODE_PRINT_SINGLE(F_PLUS_F)
+				BYTECODE_PRINT_SINGLE(I_MINUS_I)
+				BYTECODE_PRINT_SINGLE(I_MINUS_F)
+				BYTECODE_PRINT_SINGLE(F_MINUS_I)
+				BYTECODE_PRINT_SINGLE(F_MINUS_F)
 				BYTECODE_PRINT_SINGLE(MINUS)
 				BYTECODE_PRINT_SINGLE(MUL)
 				BYTECODE_PRINT_SINGLE(DIVIDE)

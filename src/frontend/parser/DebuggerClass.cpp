@@ -69,6 +69,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 		return node;
 	}
 	if (expect(token, Lexer::TokenType::LT)) {
+		classInfo->genericData = new GenericData();
 		context.newGenericClassesMap[node->classId] = node;
 		while (true) {
 			if (!nextToken(&token, context.tokens, i) ||
@@ -79,19 +80,20 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 			}
 			auto &genericDeclarationName =
 			    context.lexerString[token->indexData];
-			if (classInfo->genericDeclarationMap.find(token->indexData) !=
-			    classInfo->genericDeclarationMap.end()) {
+			if (classInfo->findGenericDeclaration(token->indexData)) {
 				throw ParserError(firstLine,
 				                  "Redefined " + genericDeclarationName);
 			}
-			Offset id = classInfo->genericDeclarations.size();
+			Offset id = classInfo->genericData->genericDeclarations.size();
 			auto declarationData =
 			    new GenericDeclarationNode(firstLine, token->indexData);
 			// declarationData->classDeclaration.baseClassLexerStringId =
 			// nameId; declarationData->classDeclaration.isGenericDeclaration =
 			// true; declarationData->classDeclaration.line = token->line;
-			classInfo->genericDeclarations.push_back(declarationData);
-			classInfo->genericDeclarationMap[token->indexData] = id;
+			classInfo->genericData->genericDeclarations.push_back(
+			    declarationData);
+			classInfo->genericData->genericDeclarationMap[token->indexData] =
+			    id;
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
 				throw ParserError(

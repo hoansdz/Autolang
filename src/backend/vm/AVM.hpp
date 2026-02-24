@@ -88,7 +88,17 @@ enum Opcode : uint8_t {
 	LOAD_EXCEPTION = 71,
 	WAIT_INPUT = 72,
 	SAFE_CAST = 73,
-	UNSAFE_CAST = 74
+	UNSAFE_CAST = 74,
+	I_PLUS_I = 75,
+	I_PLUS_F = 76,
+	F_PLUS_I = 77,
+	F_PLUS_F = 78,
+	I_MINUS_I = 79,
+	I_MINUS_F = 80,
+	F_MINUS_I = 81,
+	F_MINUS_F = 82,
+	IN_RANGE = 83,
+	FOR_LIST = 84
 };
 
 template <typename K, typename V>
@@ -97,11 +107,11 @@ size_t estimateUnorderedMapSize(const HashMap<K, V> &map);
 enum class VMState { READY, RUNNING, HALTED, WAITING, ERROR };
 
 #ifndef MAX_STACK_OBJECT
-#define MAX_STACK_OBJECT 128
+#define MAX_STACK_OBJECT 256
 #endif
 
 #ifndef MAX_STACK_ALLOCATOR
-#define MAX_STACK_ALLOCATOR 256
+#define MAX_STACK_ALLOCATOR 512
 #endif
 
 #ifndef MAX_CALL_FRAME

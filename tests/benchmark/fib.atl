@@ -1,0 +1,18 @@
+// fib_bench.al
+val start = Time.now()
+func fib(n: Int): Int {
+    if (n < 2) {
+        return n
+    }
+	//println("n=${n} ${n-1} ${fib(n-1)} and ${n-2} ${fib(n-2)}")
+    return fib(n - 1) + fib(n - 2)
+}
+
+func benchmarkFib() {
+    val n = 35
+    val result = fib(n)
+    println("Fibonacci(35) = ${result}")
+}
+
+benchmarkFib()
+println("Total time ${Time.now() - start}")

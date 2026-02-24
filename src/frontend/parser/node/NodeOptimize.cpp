@@ -256,10 +256,10 @@ ExprNode *UnknowNode::resolve(in_func) {
 ExprNode *UnknowNode::copy(in_func) {
 	if (contextCallClassId) {
 		auto classInfo = context.classInfo[*contextCallClassId];
-		auto it = classInfo->genericDeclarationMap.find(nameId);
-		if (it != classInfo->genericDeclarationMap.end()) {
-			return context.classAccessPool.push(
-			    line, classInfo->genericDeclarations[it->second]->classId);
+		auto genericDeclaration = classInfo->findGenericDeclaration(nameId);
+		if (genericDeclaration) {
+			return context.classAccessPool.push(line,
+			                                    genericDeclaration->classId);
 		}
 	}
 	return context.unknowNodePool.push(line, context.currentClassId, nameId,

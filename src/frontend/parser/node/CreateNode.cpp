@@ -18,6 +18,7 @@ void DeclarationNode::optimize(in_func) {
 		throwError("Cannot declare variable with the same name as class name " +
 		           name);
 	if (classDeclaration) {
+		// Doesn't changed
 		if (classDeclaration->isGenerics(in_data)) {
 			return;
 		}
@@ -30,15 +31,16 @@ void DeclarationNode::optimize(in_func) {
 			    baseClassName);
 		}
 		auto classInfo = context.classInfo[it->second];
-		if (classInfo->genericDeclarations.empty()) {
+		if (!classInfo->genericData) {
 			classId = it->second;
 			return;
 		}
-		if (classInfo->genericDeclarations.size() !=
+		if (classInfo->genericData->genericDeclarations.size() !=
 		        classDeclaration->inputClassId.size() &&
 		    !classDeclaration->isGenericDeclaration) {
 			throwError("'" + baseClassName + "' expects " +
-			           std::to_string(classInfo->genericDeclarations.size()) +
+			           std::to_string(
+			               classInfo->genericData->genericDeclarations.size()) +
 			           " type argument but " +
 			           std::to_string(classDeclaration->inputClassId.size()) +
 			           " were given");
@@ -65,9 +67,11 @@ ExprNode *DeclarationNode::copy(in_func) {
 	newNode->id = id;
 	if (classDeclaration) {
 		if (!classDeclaration->classId) {
-			// classDeclaration->load<true>(in_data);
-			throwError("Bug: DeclarationNode copy: Unresolved class " +
-			           classDeclaration->getName(in_data));
+			classDeclaration->load<true>(in_data);
+			if (!classDeclaration) {
+				throwError("Bug: DeclarationNode copy: Unresolved class " +
+				           classDeclaration->getName(in_data));
+			}
 		}
 		newNode->classId = *classDeclaration->classId;
 		newNode->mustInferenceNullable = classDeclaration->mustInference;
@@ -185,7 +189,7 @@ void CreateClassNode::pushClass(in_func) {
 	auto classInfo = context.classInfoAllocator.push();
 	context.classInfo.push_back(classInfo);
 	// if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
-	// 	if (!classInfo->genericDeclarations.empty()) {
+	// 	if (!classInfo->genericData) {
 	// 		return;
 	// 	}
 	// 	context.allClassDeclarations.push_back();
@@ -210,18 +214,23 @@ void CreateClassNode::optimize(in_func) {
 		throwError("Cannot declare class with the same name as variable name " +
 		           name);
 	auto classInfo = context.classInfo[classId];
-	for (auto genericDeclaration : classInfo->genericDeclarations) {
-		if (isClassExist(in_data,
-		                 context.lexerString[genericDeclaration->nameId])) {
-			throwError("Cannot declare generics type with the same name as "
-			           "class name " +
-			           context.lexerString[genericDeclaration->nameId]);
+	if (classInfo->genericData) {
+		for (auto genericDeclaration :
+		     classInfo->genericData->genericDeclarations) {
+			if (isClassExist(in_data,
+			                 context.lexerString[genericDeclaration->nameId])) {
+				throwError("Cannot declare generics type with the same name as "
+				           "class name " +
+				           context.lexerString[genericDeclaration->nameId]);
+			}
 		}
 	}
 	if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
-		if (!classInfo->genericDeclarations.empty()) {
+		if (classInfo->genericData) {
+			std::cerr<<"A "<<name<<"\n";
 			return;
 		}
+		std::cerr<<"B "<<name<<"\n";
 		if (!superDeclaration->classId) {
 			throwError("Unresolved class name " +
 			           superDeclaration->getName(in_data));
@@ -239,7 +248,7 @@ void CreateClassNode::loadSuper(in_func) {
 		auto superClass = compile.classes[superClassId];
 		auto superClassInfo = context.classInfo[superClassId];
 
-		if (!classInfo->genericDeclarations.empty()) {
+		if (classInfo->genericData) {
 			return;
 		}
 
@@ -285,7 +294,7 @@ void CreateClassNode::loadSuper(in_func) {
 			clazz->memberMap[declaration->name] = declaration->id;
 			if (context.lexerString[nameId] ==
 			    "GWrapperGenericTest<GCat,Int>") {
-				std::cerr<<declaration->name<<"\n";
+				std::cerr << declaration->name << "\n";
 			}
 		}
 		classInfo->member.reserve(classInfo->member.size() +

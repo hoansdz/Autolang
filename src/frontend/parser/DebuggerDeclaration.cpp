@@ -231,12 +231,11 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 	ClassDeclaration *result = context.classDeclarationAllocator.push();
 	if (context.currentClassId) {
 		auto currentClassInfo = context.getCurrentClassInfo(in_data);
-		auto it =
-		    currentClassInfo->genericDeclarationMap.find(token->indexData);
-		if (it != currentClassInfo->genericDeclarationMap.end()) {
+		auto genericDeclaration =
+		    currentClassInfo->findGenericDeclaration(token->indexData);
+		if (genericDeclaration) {
 			result->isGenericDeclaration = true;
-			currentClassInfo->genericDeclarations[it->second]
-			    ->allClassDeclarations.push_back(result);
+			genericDeclaration->allClassDeclarations.push_back(result);
 		}
 	}
 	result->line = token->line;

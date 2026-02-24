@@ -10,7 +10,7 @@ namespace AutoLang {
 class ObjectManager {
   private:
 	static constexpr uint32_t size = 8;
-	AreaAllocator<64> areaAllocator;
+	AreaAllocator<128> areaAllocator;
 	Stack<AObject*, size> intObjects;
 	Stack<AObject*, size> floatObjects;
 	inline void add(AObject *obj) {

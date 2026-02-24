@@ -88,8 +88,12 @@ ClassId loadGenerics(in_func, std::string &name,
 	context.defaultClassMap[newNameId] = newClassId;
 	context.newDefaultClassesMap[newClassId] = newCreateClassNode;
 
-	for (size_t i = 0; i < classInfo->genericDeclarations.size(); ++i) {
-		auto &genericDeclaration = classInfo->genericDeclarations[i];
+	std::vector<ClassDeclaration*> genericTypeId;
+
+	for (size_t i = 0; i < classInfo->genericData->genericDeclarations.size();
+	     ++i) {
+		auto &genericDeclaration =
+		    classInfo->genericData->genericDeclarations[i];
 		auto &inputClassId = classDeclaration->inputClassId[i];
 
 		// Change callnode name
@@ -103,6 +107,10 @@ ClassId loadGenerics(in_func, std::string &name,
 		// Change generics type
 		genericDeclaration->classId = *inputClassId->classId;
 		genericDeclaration->nullable = inputClassId->nullable;
+		auto newClassDeclaration = context.classDeclarationAllocator.push();
+		newClassDeclaration->classId = *inputClassId->classId;
+		newClassDeclaration->nullable = inputClassId->nullable;
+		genericTypeId.push_back(newClassDeclaration);
 
 		for (auto *classDeclaration :
 		     genericDeclaration->allClassDeclarations) {
@@ -120,6 +128,8 @@ ClassId loadGenerics(in_func, std::string &name,
 	newClass->memberMap = clazz->memberMap;
 	newClass->memberId = clazz->memberId;
 	auto newClassInfo = context.classInfo[newClassId];
+	newClassInfo->baseClassId = classId;
+	newClassInfo->genericTypeId = std::move(genericTypeId);
 	newClassInfo->declarationThis = context.declarationNodePool.push(
 	    classInfo->declarationThis->line, newClassId, "this", nullptr, true,
 	    false, false);
@@ -166,7 +176,8 @@ ClassId loadGenerics(in_func, std::string &name,
 
 	// newClass->funcMap = clazz->funcMap;
 
-	for (auto &[classDeclaration, node] : classInfo->mustRenameNodes) {
+	for (auto &[classDeclaration, node] :
+	     classInfo->genericData->mustRenameNodes) {
 		if (!classDeclaration) {
 			classDeclaration->load<true>(in_data);
 			if (!classDeclaration->classId) {
@@ -1084,7 +1095,8 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 				                                        newNameId, true);
 				if (context.currentClassId) {
 					auto classInfo = context.getCurrentClassInfo(in_data);
-					classInfo->mustRenameNodes[classDeclaration] = node;
+					classInfo->genericData->mustRenameNodes[classDeclaration] =
+					    node;
 				}
 				return node;
 			}
@@ -1098,7 +1110,8 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			    false);
 			if (context.currentClassId) {
 				auto classInfo = context.getCurrentClassInfo(in_data);
-				classInfo->mustRenameNodes[classDeclaration] = callNode;
+				classInfo->genericData->mustRenameNodes[classDeclaration] =
+				    callNode;
 			}
 			return callNode;
 		}
@@ -1147,13 +1160,10 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			    !nextTokenIfMarkNonNull(in_data, i), false);
 			if (context.currentClassId) {
 				auto classInfo = context.getCurrentClassInfo(in_data);
-				if (!classInfo->genericDeclarations.empty()) {
-					auto it = classInfo->genericDeclarationMap.find(
-					    identifier->indexData);
-					if (it != classInfo->genericDeclarationMap.end()) {
-						classInfo->genericDeclarations[it->second]
-						    ->allCallNodes.push_back(callNode);
-					}
+				auto genericDeclaration =
+				    classInfo->findGenericDeclaration(identifier->indexData);
+				if (genericDeclaration) {
+					genericDeclaration->allCallNodes.push_back(callNode);
 				}
 			}
 			return callNode;

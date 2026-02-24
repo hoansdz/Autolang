@@ -11,29 +11,33 @@ AccessNode *ClassInfo::findDeclaration(in_func, uint32_t line,
 	{
 		auto it = staticMember.find(name);
 		if (it != staticMember.end()) {
-			return context.varPool.push(line, it->second, false, it->second->nullable);
+			return context.varPool.push(line, it->second, false,
+			                            it->second->nullable);
 		}
 		// Not found
 	}
 	// if (declarationThis) {
-		auto clazz = compile.classes[declarationThis->classId];
-		auto it = clazz->memberMap.find(name);
-		if (it != clazz->memberMap.end()) {
-			auto node = member[it->second];
-			if (isStatic)
-				ParserError(line, name + " is not static");
-			return context.getPropPool.push(
-			    line, node, declarationThis->classId,
-			    context.varPool.push(line, declarationThis, false, false), name, false,
-			    node->nullable, false);
-		}
+	auto clazz = compile.classes[declarationThis->classId];
+	auto it = clazz->memberMap.find(name);
+	if (it != clazz->memberMap.end()) {
+		auto node = member[it->second];
+		if (isStatic)
+			ParserError(line, name + " is not static");
+		return context.getPropPool.push(
+		    line, node, declarationThis->classId,
+		    context.varPool.push(line, declarationThis, false, false), name,
+		    false, node->nullable, false);
+	}
 	// }
 	return nullptr;
 }
 
 ClassInfo::~ClassInfo() {
-	for (auto declaration : genericDeclarations) {
-		delete declaration;
+	if (genericData) {
+		for (auto declaration : genericData->genericDeclarations) {
+			delete declaration;
+		}
+		delete genericData;
 	}
 }
 

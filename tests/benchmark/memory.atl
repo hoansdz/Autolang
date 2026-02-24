@@ -1,0 +1,23 @@
+// memory_bench.al
+val start = Time.now()
+class Node<T>(val data: T, var next: Node<T>?) {
+}
+
+func benchmarkMemory() {
+    var i = 0
+    var list: Node<Int>? = null
+    
+    // Cấp phát 1 triệu object
+    while (i < 1000000) {
+        list = Node<Int>(i, list)
+        i = i + 1
+    }
+
+    println("Created 1M nodes successfully")
+    
+    // Khi hàm kết thúc, Arena hoặc RefCount sẽ dọn dẹp toàn bộ 
+    // Hãy đo xem bước dọn dẹp này có gây khựng (lag) không
+}
+
+benchmarkMemory()
+println("Total time ${Time.now() - start}")

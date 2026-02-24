@@ -325,7 +325,7 @@ void ACompiler::generateBytecodes() {
 			auto *node = context.newClasses[i];
 			auto clazz = compile.classes[node->classId];
 			auto classInfo = context.classInfo[clazz->id];
-			if (!classInfo->genericDeclarations.empty())
+			if (classInfo->genericData)
 				continue;
 			if (classInfo->primaryConstructor) {
 				classInfo->primaryConstructor->optimize(in_data);
@@ -342,7 +342,7 @@ void ACompiler::generateBytecodes() {
 			if (createFunctionNode->contextCallClassId) {
 				auto classInfo =
 				    context.classInfo[*createFunctionNode->contextCallClassId];
-				if (!classInfo->genericDeclarations.empty())
+				if (classInfo->genericData)
 					continue;
 			}
 			createFunctionNode->optimize(in_data);
@@ -352,7 +352,7 @@ void ACompiler::generateBytecodes() {
 		for (size_t i = 0; i < sizeNewClasses; ++i) {
 			auto *newClass = context.newClasses[i];
 			auto classInfo = context.classInfo[newClass->classId];
-			if (!classInfo->genericDeclarations.empty())
+			if (classInfo->genericData)
 				continue;
 			newClass->loadSuper(in_data);
 		}
@@ -361,7 +361,7 @@ void ACompiler::generateBytecodes() {
 		for (size_t i = 0; i < sizeNewClasses; ++i) {
 			auto *newClass = context.newClasses[i];
 			auto classInfo = context.classInfo[newClass->classId];
-			if (!classInfo->genericDeclarations.empty())
+			if (classInfo->genericData)
 				continue;
 			newClass->body.resolve(in_data);
 			newClass->body.optimize(in_data);
@@ -379,7 +379,7 @@ void ACompiler::generateBytecodes() {
 			auto *node = context.newClasses[i];
 			auto classInfo =
 			    context.classInfo[compile.classes[node->classId]->id];
-			if (!classInfo->genericDeclarations.empty())
+			if (classInfo->genericData)
 				continue;
 			if (classInfo->primaryConstructor) {
 				// Put initial bytecodes, example val a = 5 => SetNode
@@ -431,7 +431,7 @@ void ACompiler::generateBytecodes() {
 			auto *node = context.newFunctions[i];
 			if (node->contextCallClassId) {
 				auto classInfo = context.classInfo[*node->contextCallClassId];
-				if (!classInfo->genericDeclarations.empty())
+				if (classInfo->genericData)
 					continue;
 			}
 			auto func = compile.functions[node->id];

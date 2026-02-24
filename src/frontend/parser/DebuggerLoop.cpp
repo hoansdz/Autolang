@@ -48,16 +48,6 @@ ExprNode *loadFor(in_func, size_t &i) {
 		--i;
 		throw ParserError(firstLine, "Expected name but not found");
 	}
-	uint8_t createNewDeclaration = 0; // None: 0, Var: 1, Val: 2
-	if (expect(token, Lexer::TokenType::VAR) ||
-	    expect(token, Lexer::TokenType::VAL)) {
-		createNewDeclaration = expect(token, Lexer::TokenType::VAR) ? 1 : 2;
-		if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
-			--i;
-			throw ParserError(context.tokens[i].line,
-			                  "Expected name but not found");
-		}
-	}
 	if (!expect(token, Lexer::TokenType::IDENTIFIER)) {
 		--i;
 		throw ParserError(context.tokens[i].line,
@@ -65,26 +55,14 @@ ExprNode *loadFor(in_func, size_t &i) {
 	}
 	std::string &name = context.lexerString[token->indexData];
 	AccessNode *declaration;
-	if (createNewDeclaration) {
-		context.getCurrentFunctionInfo(in_data)->scopes.emplace_back();
-		// Create temp declaration
-		auto declarationNode = context.makeDeclarationNode(
-		    in_data, token->line, true, name, nullptr,
-		    createNewDeclaration != 1,
-		    context.currentFunctionId == context.mainFunctionId, false, true);
-		declarationNode->classId = AutoLang::DefaultClass::intClassId;
-		declaration =
-		    context.varPool.push(firstLine, declarationNode, false, true);
-	} else {
-		declaration = static_cast<AccessNode *>(
-		    context.getCurrentFunctionInfo(in_data)->findDeclaration(
-		        in_data, firstLine, name));
-		if (!declaration) {
-			--i;
-			throw ParserError(context.tokens[i].line,
-			                  "Cannot find variable name: " + name);
-		}
-	}
+	context.getCurrentFunctionInfo(in_data)->scopes.emplace_back();
+	// Create temp declaration
+	auto declarationNode = context.makeDeclarationNode(
+	    in_data, token->line, true, name, nullptr, true,
+	    context.currentFunctionId == context.mainFunctionId, false, true);
+	declarationNode->classId = AutoLang::DefaultClass::nullClassId;
+	declaration =
+	    context.varPool.push(firstLine, declarationNode, false, false);
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::IN)) {
 		--i;
@@ -97,6 +75,16 @@ ExprNode *loadFor(in_func, size_t &i) {
 		                  "Expected expression after 'in' but not found");
 	}
 	HasClassIdNode *data = loadExpression(in_data, 0, i);
+	VarNode *iteratorNode = nullptr;
+	if (data->kind != NodeType::RANGE) {
+		// Create temp declaration
+		auto declarationNode = context.makeDeclarationNode(
+		    in_data, token->line, true, ".iterator", nullptr, true,
+		    context.currentFunctionId == context.mainFunctionId, false, true);
+		declarationNode->classId = AutoLang::DefaultClass::intClassId;
+		iteratorNode =
+		    context.varPool.push(firstLine, declarationNode, false, false);
+	}
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::RPAREN)) {
 		--i;
@@ -107,11 +95,10 @@ ExprNode *loadFor(in_func, size_t &i) {
 		throw ParserError(context.tokens[i].line,
 		                  "Expected function body but not found");
 	}
-	auto node = context.forPool.push(firstLine, declaration, data);
-	loadBody(in_data, node->body.nodes, i);
-	if (createNewDeclaration) {
-		context.getCurrentFunctionInfo(in_data)->popBackScope();
-	}
+	auto node =
+	    context.forPool.push(firstLine, declaration, data, iteratorNode);
+	loadBody(in_data, node->body.nodes, i, false);
+	context.getCurrentFunctionInfo(in_data)->popBackScope();
 	return node;
 	//}
 }
