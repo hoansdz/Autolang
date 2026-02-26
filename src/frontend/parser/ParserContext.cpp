@@ -10,6 +10,10 @@ namespace AutoLang {
 LibraryData *ParserContext::mode = nullptr;
 
 void ParserContext::init(CompiledProgram &compile) {
+	static ConstValueNode constValues[3] = {
+	    ConstValueNode(0, DefaultClass::nullObject, 0),
+	    ConstValueNode(0, DefaultClass::trueObject, 1),
+	    ConstValueNode(0, DefaultClass::falseObject, 2)};
 	gotoFunction(compile.mainFunctionId);
 	mainFunctionId = compile.mainFunctionId;
 
@@ -25,6 +29,7 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerString.emplace_back("__FILE__");
 	lexerString.emplace_back("__LINE__");
 	lexerString.emplace_back("__FUNC__");
+	lexerString.emplace_back("__CLASS__");
 
 	lexerStringMap["super"] = lexerIdsuper;
 	lexerStringMap["Int"] = lexerIdInt;
@@ -38,13 +43,11 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerStringMap["__FILE__"] = lexerId__FILE__;
 	lexerStringMap["__LINE__"] = lexerId__LINE__;
 	lexerStringMap["__FUNC__"] = lexerId__FUNC__;
+	lexerStringMap["__CLASS__"] = lexerId__CLASS__;
 
-	constValue[lexerIdnull] =
-	    constValuePool.push(0, DefaultClass::nullObject, 0);
-	constValue[lexerIdtrue] =
-	    constValuePool.push(0, DefaultClass::trueObject, 1);
-	constValue[lexerIdfalse] =
-	    constValuePool.push(0, DefaultClass::falseObject, 2);
+	constValue[lexerIdnull] = &constValues[0];
+	constValue[lexerIdtrue] = &constValues[1];
+	constValue[lexerIdfalse] = &constValues[2];
 
 	annotationMetadata.reserve(1);
 
@@ -165,6 +168,29 @@ void ParserContext::init(CompiledProgram &compile) {
 
 		};
 	}
+
+	operatorTable = {{Lexer::TokenType::PLUS, OP_PLUS},
+	                 {Lexer::TokenType::MINUS, OP_MINUS},
+	                 {Lexer::TokenType::STAR, OP_MUL},
+	                 {Lexer::TokenType::SLASH, OP_DIV},
+	                 {Lexer::TokenType::PERCENT, OP_MOD},
+
+	                 {Lexer::TokenType::AND, OP_BIT_AND},
+	                 {Lexer::TokenType::OR, OP_BIT_OR},
+
+	                 {Lexer::TokenType::AND_AND, OP_AND_AND},
+	                 {Lexer::TokenType::OR_OR, OP_OR_OR},
+
+	                 {Lexer::TokenType::NOTEQEQ, OP_NOT_EQ_POINTER},
+	                 {Lexer::TokenType::EQEQEQ, OP_EQ_POINTER},
+
+	                 {Lexer::TokenType::NOTEQ, OP_NOT_EQ},
+	                 {Lexer::TokenType::EQEQ, OP_EQEQ},
+
+	                 {Lexer::TokenType::LT, OP_LESS},
+	                 {Lexer::TokenType::GT, OP_GREATER},
+	                 {Lexer::TokenType::GTE, OP_GREATER_EQ},
+	                 {Lexer::TokenType::LTE, OP_LESS_EQ}};
 }
 
 void ParserContext::refresh(CompiledProgram &compile) {
@@ -185,6 +211,8 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	}
 	staticNode.clear();
 	allClassDeclarations.clear();
+
+	mustInferenceFunctionType.clear();
 
 	newFunctions.refresh();
 	newClasses.refresh();

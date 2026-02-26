@@ -179,6 +179,7 @@ struct UnknowNode : NullableNode {
 	      contextCallClassId(contextCallClassId) {}
 	ExprNode *resolve(in_func) override;
 	ExprNode *copy(in_func) override;
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 };
 
 struct AccessNode : NullableNode {
@@ -235,9 +236,10 @@ struct ConstValueNode : HasClassIdNode {
 
 struct ReturnNode : ExprNode {
 	// Current function
-	Offset funcId;
+	FunctionId funcId;
 	HasClassIdNode *value;
-	ReturnNode(uint32_t line, Offset funcId, HasClassIdNode *value)
+	bool loaded = false;
+	ReturnNode(uint32_t line, FunctionId funcId, HasClassIdNode *value)
 	    : ExprNode(NodeType::RET, line), funcId(funcId), value(value) {}
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;
@@ -278,6 +280,7 @@ struct BinaryNode : HasClassIdNode {
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes);
+	bool putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes);
 	ExprNode *copy(in_func) override;
 	inline void rewrite(in_func, std::vector<uint8_t> &bytecodes) override {
 		left->rewrite(in_data, bytecodes);
@@ -415,14 +418,17 @@ struct VarNode : AccessNode {
 // for (detach in from..to) body
 struct ForNode : CanBreakContinueNode {
 	VarNode *iteratorNode;
-	AccessNode *detach;
+	VarNode *detach;
 	HasClassIdNode *data;
-	ForNode(uint32_t line, AccessNode *detach, HasClassIdNode *data,
+	ForNode(uint32_t line, VarNode *detach, HasClassIdNode *data,
 	        VarNode *iteratorNode)
 	    : CanBreakContinueNode(NodeType::FOR, line), detach(detach), data(data),
 	      iteratorNode(iteratorNode) {}
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func);
+	bool putOptimizedRangeBytecode(in_func, std::vector<uint8_t> &bytecodes,
+	                               BytecodePos &jumpIfFalseByte,
+	                               BytecodePos &firstSkipByte);
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	inline void rewrite(in_func, std::vector<uint8_t> &bytecodes) override {
 		data->rewrite(in_data, bytecodes);
@@ -440,7 +446,7 @@ struct ClassAccessNode : HasClassIdNode {
 
 struct MatchOverload {
 	Function *func;
-	Offset id;
+	FunctionId id;
 	uint8_t score;
 	bool errorNonNullIfMatch = false;
 };
@@ -451,7 +457,7 @@ struct CallNode : NullableNode {
 	HasClassIdNode *caller;
 	std::string name;
 	std::vector<HasClassIdNode *> arguments;
-	Offset funcId;
+	FunctionId funcId;
 	BytecodePos jumpIfNullPos;
 	bool justFindStatic;
 	bool pauseVM = false;
@@ -514,6 +520,17 @@ struct RangeNode : HasClassIdNode {
 	ExprNode *copy(in_func) override;
 	~RangeNode();
 };
+
+// struct CreateArrayNode : HasClassIdNode {
+// 	std::vector<HasClassIdNode *> values;
+// 	CreateArrayNode(uint32_t line, std::vector<HasClassIdNode *>values)
+// 	    : HasClassIdNode(NodeType::THROW, DefaultClass::nullClassId, line),
+// values(values) {} 	ExprNode *resolve(in_func) override; 	void optimize(in_func)
+// override; 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes)
+// override; 	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
+// 	ExprNode *copy(in_func) override;
+// 	~CreateArrayNode();
+// };
 
 } // namespace AutoLang
 

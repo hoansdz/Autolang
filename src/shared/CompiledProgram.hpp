@@ -33,25 +33,25 @@ struct CompiledProgram
 	Function *main;
 	CompiledProgram() {}
 	ObjectManager manager;
-	Offset mainFunctionId;
+	FunctionId mainFunctionId;
 	ChunkArena<Function, 64> functionAllocator;
 	std::vector<Function*> functions;
-	HashMap<std::string, std::vector<Offset>> funcMap;
+	HashMap<std::string, std::vector<FunctionId>> funcMap;
 	ChunkArena<AClass, 64> classAllocator;
 	std::vector<AClass*> classes;
-	HashMap<std::string, Offset> classMap;
+	HashMap<std::string, ClassId> classMap;
 	std::vector<AObject> constPool;
 	void refresh();
 	void destroy();
 	template <bool isConstructor = false>
-	Offset registerFunction( // Return value
+	FunctionId registerFunction( // Return value
 		AClass *clazz,
 		std::string name,
 		ClassId* args,
 		uint32_t argSize,
 		ClassId returnId,
 		uint32_t functionFlags);
-	inline Offset registerFunction( // No return value
+	inline FunctionId registerFunction( // No return value
 		AClass *clazz,
 		std::string name,
 		ClassId* args,

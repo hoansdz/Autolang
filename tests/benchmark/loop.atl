@@ -1,0 +1,11 @@
+val start = Time.now()
+
+var x = 0
+
+for (i in 0..<100_000_000) {
+	x = x + i
+}
+
+println(x)
+
+println("Total time ${Time.now() - start}")

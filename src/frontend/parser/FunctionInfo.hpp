@@ -18,6 +18,7 @@ struct FunctionInfo {
 	uint32_t declaration; // Count declaration
 	BlockNode block;
 	bool* nullableArgs = nullptr;
+	ReturnNode* inferenceNode = nullptr;
 	Offset virtualPosition;
 	int64_t hash;
 	FunctionInfo() : declaration(0), block(0) { scopes.emplace_back(); }

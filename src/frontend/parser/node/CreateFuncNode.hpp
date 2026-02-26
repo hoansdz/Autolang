@@ -14,7 +14,7 @@ struct CreateFuncNode : ExprNode {
 	std::optional<ClassId> contextCallClassId;
 	std::string name;
 	ClassDeclaration *classDeclaration;
-	Offset id;
+	FunctionId id;
 	BlockNode body;
 	const std::vector<DeclarationNode *> arguments;
 	uint32_t functionFlags;

@@ -21,7 +21,8 @@ AObject *now(NativeFuncInData) {
 
 void init(ACompiler &compiler) {
 	compiler.registerFromSource("std/time", R"###(
-class Time() {
+@no_constructor
+class Time {
 	@native("now")
 	static func now(): Int
 }

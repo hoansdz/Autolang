@@ -19,9 +19,9 @@ struct AClass
 	uint32_t classFlags;
 	std::optional<ClassId> parentId;
 	std::vector<ClassId> memberId;
-	std::vector<Offset> vtable; // Override function
+	std::vector<FunctionId> vtable; // Override function
 	HashMap<std::string, MemberOffset> memberMap;
-	HashMap<std::string, std::vector<Offset>> funcMap;
+	HashMap<std::string, std::vector<FunctionId>> funcMap;
 	InheritanceBitset inheritance;
 	AClass(){}
 	// AClass(std::string name, uint32_t id) : name(std::move(name)), id(id) {}

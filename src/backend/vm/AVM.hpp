@@ -89,16 +89,38 @@ enum Opcode : uint8_t {
 	WAIT_INPUT = 72,
 	SAFE_CAST = 73,
 	UNSAFE_CAST = 74,
-	I_PLUS_I = 75,
-	I_PLUS_F = 76,
-	F_PLUS_I = 77,
-	F_PLUS_F = 78,
+	I_CAL_I = 75,
+	I_CAL_F = 76,
+	F_CAL_I = 77,
+	F_CAL_F = 78,
 	I_MINUS_I = 79,
 	I_MINUS_F = 80,
 	F_MINUS_I = 81,
 	F_MINUS_F = 82,
 	IN_RANGE = 83,
-	FOR_LIST = 84
+	FOR_LIST = 84,
+	CREATE_NATIVE_OBJECT = 85,
+
+	GLOBAL_CAL_GLOBAL,
+	GLOBAL_CAL_CONST,
+	CONST_CAL_GLOBAL,
+
+	GLOBAL_CAL_LOCAL,
+	LOCAL_CAL_GLOBAL,
+
+	LOCAL_CAL_LOCAL,
+	LOCAL_CAL_CONST,
+	CONST_CAL_LOCAL,
+
+	GLOBAL_CAL_GLOBAL_JUMP,
+	GLOBAL_CAL_LOCAL_JUMP,
+	GLOBAL_CAL_CONST_JUMP,
+	LOCAL_CAL_CONST_JUMP,
+	LOCAL_CAL_LOCAL_JUMP,
+	LOCAL_CAL_GLOBAL_JUMP,
+
+	PLUS_PLUS_LOCAL,
+	PLUS_PLUS_GLOBAL,
 };
 
 template <typename K, typename V>
@@ -167,6 +189,8 @@ class AVM {
 	bool allowDebug;
 	template <ANativeFunction native, size_t size, bool push = true>
 	inline bool operate();
+	template <size_t size>
+	inline bool fastOperate(ANativeFunction native);
 	template <bool loadVirtual, bool hasValue, bool isConstructor>
 	inline bool callFunction(CallFrame*& currentCallFrame, Function *currentFunction,
 	                               uint8_t *bytecodes, uint32_t &i);

@@ -8,7 +8,7 @@
 namespace AutoLang {
 
 class ObjectManager {
-  private:
+  public:
 	static constexpr uint32_t size = 8;
 	AreaAllocator<128> areaAllocator;
 	Stack<AObject*, size> intObjects;
@@ -16,6 +16,7 @@ class ObjectManager {
 	inline void add(AObject *obj) {
 		switch (obj->type) {
 			case AutoLang::DefaultClass::intClassId: {
+				// std::cerr<<"released " << obj << "\n";
 				if (intObjects.index == size) {
 					areaAllocator.release(obj);
 					return;
@@ -65,6 +66,13 @@ class ObjectManager {
 		obj->str = str;
 		return obj;
 	}
+	inline AObject *get(ClassId classId, ANativeData* nativeData) {
+		auto obj = areaAllocator.getObject();
+		obj->type = classId;
+		obj->data = nativeData;
+		obj->flags = AObject::Flags::OBJ_IS_NATIVE_DATA;
+		return obj;
+	}
 	inline void freeObjectData(AObject *obj) { // As free but it push again
 		switch (obj->type) {
 			case AutoLang::DefaultClass::intClassId:
@@ -83,6 +91,10 @@ class ObjectManager {
 			default:
 				break;
 		}
+		if (obj->flags & AObject::Flags::OBJ_IS_NATIVE_DATA && obj->data->destructor) {
+			obj->data->destructor(obj->data);
+			return;
+		}
 		for (int i = 0; i < obj->member->size; ++i) {
 			auto *mem = (*obj->member)[i];
 			if (!mem)
@@ -97,10 +109,12 @@ class ObjectManager {
 	inline void release(AObject *obj) {
 		if (obj->flags & AObject::Flags::OBJ_IS_CONST)
 			return;
-		if (obj->refCount > 0)
+		if (obj->refCount > 1) {
 			--obj->refCount;
-		if (obj->refCount != 0)
 			return;
+		} else {
+			obj->refCount = 0;
+		}
 		freeObjectData(obj);
 		add(obj);
 	}

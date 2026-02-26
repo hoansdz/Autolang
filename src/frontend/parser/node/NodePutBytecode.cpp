@@ -187,7 +187,13 @@ void ReturnNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			return;
 		}
 	return_global:;
+		size_t f1 = bytecodes.size();
 		value->putBytecodes(in_data, bytecodes);
+		size_t f2 = bytecodes.size();
+		if (f1 == f2) {
+			std::cerr<<value->getNodeType();
+			std::cerr<<" WTF\n";
+		}
 		bytecodes.emplace_back(Opcode::RETURN_VALUE);
 		return;
 	}

@@ -16,6 +16,10 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		throw ParserError(firstLine,
 		                  "@no_constructor is only supported classes");
 	}
+	if (context.annotationFlags & AnnotationFlags::AN_NATIVE_DATA) {
+		throw ParserError(firstLine,
+		                  "@native_data is only supported classes");
+	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_EXTENDS) {
 		throw ParserError(firstLine, "@no_extends is only supported classes");
 	}
@@ -65,11 +69,42 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		throw ParserError(firstLine, "Expected name but not found");
 	}
 	std::string name;
+	// ClassDeclaration *mustRenameFunctionDeclaration = nullptr;
 	switch (token->type) {
 		case Lexer::TokenType::IDENTIFIER: {
-			if (token->indexData == lexerIdsuper)
-				throw ParserError(firstLine, "Super is a keyword");
-			name = context.lexerString[token->indexData] + "()";
+			switch (token->indexData) {
+				case lexerId__FILE__: {
+					throw ParserError(firstLine, "__FILE__ is a magic const");
+				}
+				case lexerId__LINE__: {
+					throw ParserError(firstLine, "__LINE__ is a magic const");
+				}
+				case lexerId__FUNC__: {
+					throw ParserError(firstLine, "__FUNC__ is a magic const");
+				}
+				case lexerId__CLASS__: {
+					if (!context.currentClassId) {
+						throw ParserError(firstLine,
+						                  "Function name must not empty, must "
+						                  "declare in class");
+					}
+					auto clazz = context.getCurrentClass(in_data);
+					auto classInfo = context.getCurrentClassInfo(in_data);
+					if (!classInfo->genericData) {
+						name = clazz->name + "()";
+						break;
+					}
+					name = "__CLASS__()";
+					break;
+				}
+				case lexerIdsuper: {
+					throw ParserError(firstLine, "Super is a keyword");
+				}
+				default: {
+					name = context.lexerString[token->indexData] + "()";
+					break;
+				}
+			}
 			break;
 		}
 		default: {
@@ -136,6 +171,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			    std::move(listDeclarationNode), functionFlags);
 			node->pushFunction(in_data);
 			auto func = compile.functions[node->id];
+			auto funcInfo = context.functionInfo[node->id];
 			func->returnId = DefaultClass::nullClassId;
 			context.gotoFunction(node->id);
 			auto &scope =
@@ -151,6 +187,17 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			    context.returnPool.push(firstLine, context.currentFunctionId,
 			                            loadExpression(in_data, 0, i));
 			node->body.nodes.push_back(returnNode);
+			funcInfo->inferenceNode = returnNode;
+			if (context.currentClassId) {
+				auto classInfo = context.getCurrentClassInfo(in_data);
+				if (!classInfo->genericData) {
+					context.mustInferenceFunctionType.push_back(node->id);
+				} else {
+					returnNode->loaded = true;
+				}
+			} else {
+				context.mustInferenceFunctionType.push_back(node->id);
+			}
 			context.gotoFunction(context.mainFunctionId);
 			return node;
 		}

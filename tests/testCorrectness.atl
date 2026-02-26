@@ -9,3 +9,5 @@
 @import("./correctness/basic/override.atl")
 @import("./correctness/basic/null_access.atl")
 @import("./correctness/basic/generics.atl")
+
+// @import("./correctness/basic/function.atl")

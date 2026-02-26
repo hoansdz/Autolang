@@ -1,16 +1,66 @@
-val start = Time.now()
+// val start = Time.now()
 
-val arr: Array<String> = Array<String>()
-arr.add("hi")
-arr.add("nha")
-arr.add("hi")
-arr.add("hi")
-arr.add("hi")
-arr.add("hi")
-arr.add("say deo")
-val x = 5
-for (i in arr) {
-	println("${i} ok ok ok")
+// val arr: Array<String> = Array<String>()
+// arr.add("hi")
+// arr.add("nha")
+// arr.add("hi")
+// arr.add("hi")
+// arr.add("hi")
+// arr.add("hi")
+// arr.add("say deo")
+// val x = 5
+// for (i in arr) {
+// 	println("$i ok ok ok")
+// }
+
+// class App<T>(val name: T) {
+
+//   func launch(): String = "Launching $name with Autolang"
+
+//   func version(): Int = 1
+// }
+
+// val app = App<String>("Embedded Engine")
+// println(app.launch())
+
+// println("Total time ${Time.now() - start}")
+
+// A generic tester that works on any T
+
+val dogTest = Tester<Dog>()
+val catTest = Tester<Cat>()
+
+println("Dog says: " + dogTest.check())
+println("Cat says: " + catTest.check())
+
+// Runtime type checks work on full generic signatures
+if (dogTest is Tester<Dog>) {
+    println("Verified Tester<Dog>")
 }
 
-println("Total time ${Time.now() - start}")
+class Cat extends Animal { 
+    constructor() { super() }
+    func sound() = "Meow" 
+}
+
+class Dog extends Animal { 
+    constructor() { 
+		super()
+		println(__CLASS__) 
+	}
+    func sound() = "Woof" 
+}
+
+class Tester<T> {
+    val subject: T = T()
+    func check() = subject.sound()
+}
+
+class Animal { func sound() = "..." }
+
+for (i in 0..<2) {
+  println(i)
+}
+
+println(__CLASS__)
+println(Map<Int,Int>())

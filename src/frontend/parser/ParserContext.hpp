@@ -10,6 +10,7 @@
 #include "frontend/structure/NonReallocatePool.hpp"
 #include "shared/ChunkArena.hpp"
 #include "shared/FixedPool.hpp"
+#include "frontend/parser/OperatorId.hpp"
 #include <set>
 #include <vector>
 
@@ -20,6 +21,7 @@ enum ModifierFlags : uint32_t {
 	MF_PRIVATE = 1u << 1,
 	MF_PROTECTED = 1u << 2,
 	MF_STATIC = 1u << 3,
+	MF_LATEINIT = 1u << 4,
 };
 
 enum AnnotationFlags : uint32_t {
@@ -28,7 +30,8 @@ enum AnnotationFlags : uint32_t {
 	AN_NATIVE = 1u << 2,
 	AN_NO_CONSTRUCTOR = 1u << 3,
 	AN_WAIT_INPUT = 1u << 4,
-	AN_NO_EXTENDS = 1u << 5
+	AN_NO_EXTENDS = 1u << 5,
+	AN_NATIVE_DATA = 1u << 6,
 };
 
 struct LibraryData;
@@ -45,6 +48,7 @@ constexpr LexerStringId lexerIdfalse = 8;
 constexpr LexerStringId lexerId__FILE__ = 9;
 constexpr LexerStringId lexerId__LINE__ = 10;
 constexpr LexerStringId lexerId__FUNC__ = 11;
+constexpr LexerStringId lexerId__CLASS__ = 12;
 
 struct ParserContext {
 	// Optimize ram because reuse std::string instead of new std::string in
@@ -55,6 +59,8 @@ struct ParserContext {
 	Lexer::Context *mainLexerContext;
 	HashMap<std::string, LibraryData *> importMap;
 	std::vector<LibraryData *> loadingLibs;
+
+	HashMap<Lexer::TokenType, OperatorId> operatorTable;
 
 	HashMap<std::tuple<ClassId, ClassId, uint8_t>, ClassId, PairHash>
 	    binaryOpResultType;
@@ -67,6 +73,7 @@ struct ParserContext {
 	HashMap<AnnotationFlags, Lexer::Token> annotationMetadata;
 	// Declaration new functions by user
 	NonReallocatePool<CreateFuncNode> newFunctions;
+	std::vector<FunctionId> mustInferenceFunctionType;
 	// Declaration new classes by user
 	NonReallocatePool<CreateClassNode> newClasses;
 	HashMap<LexerStringId, ClassId> defaultClassMap;

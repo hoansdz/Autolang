@@ -9,7 +9,6 @@
 #include <filesystem>
 #include <iostream>
 
-
 namespace AutoLang {
 
 LibraryData *ACompiler::requestImport(LibraryData *currentLibrary,
@@ -328,9 +327,11 @@ void ACompiler::generateBytecodes() {
 			if (classInfo->genericData)
 				continue;
 			if (classInfo->primaryConstructor) {
+				classInfo->primaryConstructor->resolve(in_data);
 				classInfo->primaryConstructor->optimize(in_data);
 			} else {
 				for (auto *constructor : classInfo->secondaryConstructor) {
+					constructor->resolve(in_data);
 					constructor->optimize(in_data);
 				}
 			}
@@ -414,12 +415,24 @@ void ACompiler::generateBytecodes() {
 				}
 			}
 		}
+
 		printDebug("Start put bytecodes static nodes");
 		for (auto &node : context.staticNode) {
 			node->putBytecodes(in_data,
 			                   context.getMainFunction(in_data)->bytecodes);
 			node->rewrite(in_data, context.getMainFunction(in_data)->bytecodes);
 		}
+
+		printDebug("Inference function type");
+		for (FunctionId id : context.mustInferenceFunctionType) {
+			auto *funcInfo = context.functionInfo[id];
+			if (!funcInfo->inferenceNode->loaded) {
+				funcInfo->inferenceNode->resolve(in_data);
+				funcInfo->inferenceNode->optimize(in_data);
+				funcInfo->inferenceNode->loaded = true;
+			}
+		}
+
 		printDebug("Start optimize bytecodes in main");
 		for (auto *&node : context.getMainFunctionInfo(in_data)->block.nodes) {
 			ParserContext::mode = node->mode;
@@ -435,6 +448,7 @@ void ACompiler::generateBytecodes() {
 					continue;
 			}
 			auto func = compile.functions[node->id];
+			auto funcInfo = context.functionInfo[node->id];
 			if ((func->functionFlags & FunctionFlags::FUNC_OVERRIDE) &&
 			    !(func->functionFlags & FunctionFlags::FUNC_IS_VIRTUAL)) {
 				throw ParserError(
@@ -445,8 +459,10 @@ void ACompiler::generateBytecodes() {
 			}
 			if (func->functionFlags & FunctionFlags::FUNC_IS_NATIVE)
 				continue;
-			node->body.resolve(in_data);
-			node->body.optimize(in_data);
+			if (!funcInfo->inferenceNode) {
+				node->body.resolve(in_data);
+				node->body.optimize(in_data);
+			}
 			node->body.putBytecodes(in_data, func->bytecodes);
 			node->body.rewrite(in_data, func->bytecodes);
 		}

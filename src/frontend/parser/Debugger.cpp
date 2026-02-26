@@ -88,7 +88,7 @@ ClassId loadGenerics(in_func, std::string &name,
 	context.defaultClassMap[newNameId] = newClassId;
 	context.newDefaultClassesMap[newClassId] = newCreateClassNode;
 
-	std::vector<ClassDeclaration*> genericTypeId;
+	std::vector<ClassDeclaration *> genericTypeId;
 
 	for (size_t i = 0; i < classInfo->genericData->genericDeclarations.size();
 	     ++i) {
@@ -227,9 +227,10 @@ ClassId loadGenerics(in_func, std::string &name,
 					        declarationNode->classDeclaration->getName(
 					            in_data));
 				}
-				std::cerr << "loaded "
-				          << declarationNode->classDeclaration->getName(in_data)
-				          << "\n";
+				// std::cerr << "loaded "
+				//           <<
+				//           declarationNode->classDeclaration->getName(in_data)
+				//           << "\n";
 				declarationNode->optimize(in_data);
 				declarationNode->classDeclaration->classId = std::nullopt;
 				// declarationNode->classDeclaration = nullptr;
@@ -285,7 +286,10 @@ ClassId loadGenerics(in_func, std::string &name,
 		}
 	}
 
+	auto lastCurrentFunctionId = context.currentFunctionId;
+
 	for (auto *createFuncNode : classInfo->createFunctionNodes) {
+		auto funcInfo = context.functionInfo[createFuncNode->id];
 		std::vector<DeclarationNode *> arguments;
 		arguments.reserve(createFuncNode->arguments.size());
 		for (auto argument : createFuncNode->arguments) {
@@ -293,8 +297,10 @@ ClassId loadGenerics(in_func, std::string &name,
 			    static_cast<DeclarationNode *>(argument->copy(in_data)));
 		}
 		auto newCreateFuncNode = context.newFunctions.push(
-		    createFuncNode->line, newClassId, createFuncNode->name, nullptr,
-		    arguments, createFuncNode->functionFlags);
+		    createFuncNode->line, newClassId,
+		    createFuncNode->name == "__CLASS__()" ? newClass->name + "()"
+		                                          : createFuncNode->name,
+		    nullptr, arguments, createFuncNode->functionFlags);
 		if (createFuncNode->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 			newCreateFuncNode->pushNativeFunction(
 			    in_data, compile.functions[createFuncNode->id]->native);
@@ -302,11 +308,11 @@ ClassId loadGenerics(in_func, std::string &name,
 			newCreateFuncNode->pushFunction(in_data);
 		}
 		auto newFunc = compile.functions[newCreateFuncNode->id];
+		auto newFuncInfo = context.functionInfo[newCreateFuncNode->id];
 		newFunc->returnId = compile.functions[createFuncNode->id]->returnId;
 		if (createFuncNode->classDeclaration) {
 			newFunc->returnId = *createFuncNode->classDeclaration->classId;
 		}
-		auto lastCurrentFunctionId = context.currentFunctionId;
 		context.currentFunctionId = newCreateFuncNode->id;
 		// ParserContext::mode = createFuncNode->mode; //Loaded in new class
 		newCreateFuncNode->body.nodes.reserve(
@@ -314,9 +320,14 @@ ClassId loadGenerics(in_func, std::string &name,
 		for (auto *node : createFuncNode->body.nodes) {
 			newCreateFuncNode->body.nodes.push_back(node->copy(in_data));
 		}
-		context.currentFunctionId = lastCurrentFunctionId;
+		if (funcInfo->inferenceNode) {
+			newFuncInfo->inferenceNode =
+			    static_cast<ReturnNode *>(newCreateFuncNode->body.nodes[0]);
+			context.mustInferenceFunctionType.push_back(newFunc->id);
+		}
 	}
 
+	context.currentFunctionId = lastCurrentFunctionId;
 	context.currentClassId = lastCurrentClassId;
 
 	// std::cerr << "Created " << newClass->name << "\n";
@@ -577,6 +588,18 @@ initial:;
 				                  "'static' must be followed by a declaration");
 			}
 			context.modifierflags |= ModifierFlags::MF_STATIC;
+			goto initial;
+		}
+		case Lexer::TokenType::LATEINIT: {
+			if (context.modifierflags & ModifierFlags::MF_LATEINIT)
+				throw ParserError(token->line, "Duplicate modifier 'lateinit'");
+			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
+				--i;
+				throw ParserError(
+				    context.tokens[i].line,
+				    "'lateinit' must be followed by a declaration");
+			}
+			context.modifierflags |= ModifierFlags::MF_LATEINIT;
 			goto initial;
 		}
 		default:
@@ -993,19 +1016,21 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 				}
 				auto value = loadExpression(in_data, 0, i);
 				switch (node->kind) {
+					case NodeType::GET_PROP:
 					case NodeType::VAR: {
-						auto varNode = static_cast<VarNode *>(node);
-						if (varNode->declaration->isVal) {
-							ExprNode::deleteNode(value);
-							throw ParserError(
-							    token->line,
-							    varNode->declaration->name +
-							        " cannot be changed because val");
+						auto varNode = static_cast<AccessNode *>(node);
+						if (varNode->declaration) {
+							if (varNode->declaration->isVal) {
+								ExprNode::deleteNode(value);
+								throw ParserError(
+								    token->line,
+								    varNode->declaration->name +
+								        " cannot be changed because it's val");
+							}
 						}
 						return context.setValuePool.push(token->line, varNode,
 						                                 value, op);
 					}
-					case NodeType::GET_PROP:
 					case NodeType::CALL:
 					case NodeType::UNKNOW: {
 						return context.setValuePool.push(token->line, node,
@@ -1110,8 +1135,10 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			    false);
 			if (context.currentClassId) {
 				auto classInfo = context.getCurrentClassInfo(in_data);
-				classInfo->genericData->mustRenameNodes[classDeclaration] =
-				    callNode;
+				if (classInfo->genericData) {
+					classInfo->genericData->mustRenameNodes[classDeclaration] =
+					    callNode;
+				}
 			}
 			return callNode;
 		}
@@ -1238,6 +1265,12 @@ ConstValueNode *findConstValueNode(in_func, size_t &i, LexerStringId nameId) {
 			return context.constValuePool.push(
 			    0, context.getCurrentFunction(in_data)->name);
 		}
+		case lexerId__CLASS__: {
+			return context.constValuePool.push(
+			    0, context.currentClassId
+			           ? context.getCurrentClass(in_data)->name
+			           : "");
+		}
 		default:
 			break;
 	}
@@ -1269,6 +1302,9 @@ Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t &i) {
 	if (context.modifierflags & ModifierFlags::MF_STATIC)
 		throw ParserError(context.tokens[i].line,
 		                  "Command doesn't support 'static' keyword");
+	if (context.modifierflags & ModifierFlags::MF_LATEINIT)
+		throw ParserError(context.tokens[i].line,
+		                  "Command doesn't support 'lateinit' keyword");
 	switch (context.modifierflags) {
 		case ModifierFlags::MF_PUBLIC:
 			return Lexer::TokenType::PUBLIC;

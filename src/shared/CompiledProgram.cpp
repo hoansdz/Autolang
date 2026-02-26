@@ -25,7 +25,7 @@ void CompiledProgram::refresh() {
 }
 
 template <bool isConstructor>
-Offset CompiledProgram::registerFunction(AClass *clazz, std::string name,
+FunctionId CompiledProgram::registerFunction(AClass *clazz, std::string name,
                                          ClassId *args, uint32_t argSize,
                                          ClassId returnId,
                                          uint32_t functionFlags) {
@@ -66,7 +66,7 @@ ClassId CompiledProgram::registerClass(std::string name, uint32_t classFlags) {
 	auto it = classMap.find(name);
 	if (it != classMap.end())
 		throw std::runtime_error("Class " + name + " has exist");
-	Offset id = classes.size();
+	ClassId id = classes.size();
 	AClass *clazz = classAllocator.push();
 	clazz->name = std::move(name);
 	clazz->id = id;

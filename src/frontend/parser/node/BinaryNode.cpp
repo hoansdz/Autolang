@@ -109,6 +109,7 @@ ExprNode *BinaryNode::resolve(in_func) {
 					break;
 				}
 			}
+			classId = DefaultClass::boolClassId;
 			break;
 		}
 		case Lexer::TokenType::SAFE_CAST:
@@ -178,6 +179,10 @@ void BinaryNode::optimize(in_func) {
 			classId = DefaultClass::boolClassId;
 			return;
 		}
+		case Lexer::TokenType::IN: {
+			classId = DefaultClass::boolClassId;
+			break;
+		}
 		case Lexer::TokenType::PLUS:
 		case Lexer::TokenType::MINUS:
 		case Lexer::TokenType::STAR:
@@ -192,10 +197,11 @@ void BinaryNode::optimize(in_func) {
 				right = context.castPool.push(
 				    right, AutoLang::DefaultClass::intClassId);
 			}
-			if (left->isNullable() || right->isNullable())
+			if (left->isNullable() || right->isNullable()) {
 				throwError("Cannot use operator '" +
 				           Lexer::Token(0, op).toString(context) +
 				           "' with nullable value");
+			}
 			break;
 		}
 		case Lexer::TokenType::EQEQ: {
@@ -236,11 +242,124 @@ void BinaryNode::optimize(in_func) {
 	           compile.classes[right->classId]->name);
 }
 
+bool BinaryNode::putOptimizedBytecode(in_func,
+                                      std::vector<uint8_t> &bytecodes) {
+	switch (op) {
+		case Lexer::TokenType::IS: {
+			left->putBytecodes(in_data, bytecodes);
+			bytecodes.emplace_back(Opcode::IS);
+			put_opcode_u32(bytecodes, right->classId);
+			return true;
+		}
+		case Lexer::TokenType::IN: {
+			throwError("In condition keywords doesn't support now");
+		}
+		default: {
+			auto it = context.operatorTable.find(op);
+			if (it == context.operatorTable.end())
+				break;
+			OperatorId operatorId = it->second;
+			switch (left->kind) {
+				case NodeType::VAR: {
+					auto leftNode = static_cast<VarNode *>(left);
+					switch (right->kind) {
+						case NodeType::VAR: {
+							auto rightNode = static_cast<VarNode *>(right);
+							if (leftNode->declaration->isGlobal) {
+								if (rightNode->declaration->isGlobal) {
+									bytecodes.emplace_back(
+									    Opcode::GLOBAL_CAL_GLOBAL);
+									bytecodes.emplace_back(operatorId);
+									put_opcode_u32(bytecodes,
+									               leftNode->declaration->id);
+									put_opcode_u32(bytecodes,
+									               rightNode->declaration->id);
+									return true;
+								}
+								bytecodes.emplace_back(
+								    Opcode::GLOBAL_CAL_LOCAL);
+								bytecodes.emplace_back(operatorId);
+								put_opcode_u32(bytecodes,
+								               leftNode->declaration->id);
+								put_opcode_u32(bytecodes,
+								               rightNode->declaration->id);
+								return true;
+							}
+							if (rightNode->declaration->isGlobal) {
+								bytecodes.emplace_back(
+								    Opcode::LOCAL_CAL_GLOBAL);
+								bytecodes.emplace_back(operatorId);
+								put_opcode_u32(bytecodes,
+								               leftNode->declaration->id);
+								put_opcode_u32(bytecodes,
+								               rightNode->declaration->id);
+								return true;
+							}
+							bytecodes.emplace_back(Opcode::LOCAL_CAL_LOCAL);
+							bytecodes.emplace_back(operatorId);
+							put_opcode_u32(bytecodes,
+							               leftNode->declaration->id);
+							put_opcode_u32(bytecodes,
+							               rightNode->declaration->id);
+							return true;
+						}
+						case NodeType::CONST: {
+							auto rightNode =
+							    static_cast<ConstValueNode *>(right);
+							if (right->classId ==
+							    AutoLang::DefaultClass::nullClassId) {
+								throwError("Null must be cleared by optimizer");
+							}
+							if (right->classId ==
+							    AutoLang::DefaultClass::boolClassId) {
+								return false;
+							}
+							bytecodes.emplace_back(
+							    leftNode->declaration->isGlobal
+							        ? Opcode::GLOBAL_CAL_CONST
+							        : Opcode::LOCAL_CAL_CONST);
+							bytecodes.emplace_back(operatorId);
+							put_opcode_u32(bytecodes,
+							               leftNode->declaration->id);
+							put_opcode_u32(bytecodes, rightNode->id);
+							return true;
+						}
+					}
+					break;
+				}
+				case NodeType::CONST: {
+					auto leftNode = static_cast<ConstValueNode *>(left);
+					if (leftNode->classId == DefaultClass::nullClassId) {
+						throwError("Null must be cleared by optimizer");
+					}
+					if (leftNode->classId == DefaultClass::boolClassId) {
+						return false;
+					}
+					switch (right->kind) {
+						case NodeType::VAR: {
+							auto rightNode = static_cast<VarNode *>(right);
+							bytecodes.emplace_back(
+							    rightNode->declaration->isGlobal
+							        ? Opcode::CONST_CAL_GLOBAL
+							        : Opcode::CONST_CAL_LOCAL);
+							bytecodes.emplace_back(operatorId);
+							put_opcode_u32(bytecodes, leftNode->id);
+							put_opcode_u32(bytecodes,
+							               rightNode->declaration->id);
+							return true;
+						}
+					}
+					break;
+				}
+			}
+			break;
+		}
+	}
+	return false;
+}
+
 void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	if (op == Lexer::TokenType::IS) {
-		left->putBytecodes(in_data, bytecodes);
-		bytecodes.emplace_back(Opcode::IS);
-		put_opcode_u32(bytecodes, right->classId);
+	if (putOptimizedBytecode(in_data, bytecodes)) {
 		return;
 	}
 	if ((left->classId == DefaultClass::nullClassId ||
@@ -257,8 +376,12 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			case Lexer::TokenType::NOTEQEQ:
 				bytecodes.emplace_back(AutoLang::Opcode::IS_NON_NULL);
 				return;
-			default:
-				throwError("Wrong, this can't happen");
+			default: {
+				throwError("Cannot use operator '" +
+				           Lexer::Token(0, op).toString(context) + "' with '" +
+				           compile.classes[left->classId]->name + "' and '" +
+				           compile.classes[right->classId]->name + "'");
+			}
 		}
 		return;
 	}
@@ -270,11 +393,11 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				case DefaultClass::intClassId: {
 					switch (right->classId) {
 						case DefaultClass::intClassId: {
-							bytecodes.emplace_back(AutoLang::Opcode::I_PLUS_I);
+							bytecodes.emplace_back(AutoLang::Opcode::I_CAL_I);
 							return;
 						}
 						case DefaultClass::floatClassId: {
-							bytecodes.emplace_back(AutoLang::Opcode::I_PLUS_F);
+							bytecodes.emplace_back(AutoLang::Opcode::I_CAL_F);
 							return;
 						}
 					}
@@ -283,11 +406,11 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				case DefaultClass::floatClassId: {
 					switch (right->classId) {
 						case DefaultClass::intClassId: {
-							bytecodes.emplace_back(AutoLang::Opcode::F_PLUS_I);
+							bytecodes.emplace_back(AutoLang::Opcode::F_CAL_I);
 							return;
 						}
 						case DefaultClass::floatClassId: {
-							bytecodes.emplace_back(AutoLang::Opcode::F_PLUS_F);
+							bytecodes.emplace_back(AutoLang::Opcode::F_CAL_F);
 							return;
 						}
 					}

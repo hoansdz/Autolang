@@ -1,6 +1,8 @@
 func testForLoop() {
 	var a = 0
-	for (val i in 1..10){
+	val b = 10
+	val c = 0
+	for (i in 1..b - c){
 		a += i
 	}
 	assert(a == 55, __FILE__, __LINE__)

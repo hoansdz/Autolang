@@ -11,8 +11,13 @@ namespace AutoLang {
 
 class AVM;
 
+struct ANativeData {
+	void* data;
+	void (*destructor)(void* data);
+};
+
 struct AObject {
-	enum Flags : uint32_t { OBJ_IS_FREE = 1u << 0, OBJ_IS_CONST = 1u << 1 };
+	enum Flags : uint32_t { OBJ_IS_FREE = 1u << 0, OBJ_IS_CONST = 1u << 1, OBJ_IS_NATIVE_DATA = 1u << 2 };
 	ClassId type;
 	uint32_t refCount;
 	uint32_t flags = 0;
@@ -22,6 +27,7 @@ struct AObject {
 		uint8_t b;
 		NormalArray<AObject *> *member;
 		AString *str;
+		ANativeData *data;
 	};
 	AObject() : type(0), refCount(0) {}
 	AObject(uint32_t type) : type(type), refCount(0) {}
@@ -34,6 +40,8 @@ struct AObject {
 	    : type(AutoLang::DefaultClass::floatClassId), refCount(0), f(f) {}
 	AObject(AString *str)
 	    : type(AutoLang::DefaultClass::stringClassId), refCount(0), str(str) {}
+	AObject(uint32_t type, ANativeData *data)
+	    : type(type), refCount(0), data(data) {}
 	inline void retain() {
 		if (flags & AObject::Flags::OBJ_IS_CONST)
 			return;
@@ -65,6 +73,10 @@ struct AObject {
 		// 	assert("what wrong");
 		// 	return;
 		// }
+		if (flags & Flags::OBJ_IS_NATIVE_DATA && data->destructor) {
+			data->destructor(data->data);
+			return;
+		}
 		for (size_t i = 0; i < member->size; ++i) { // Support delete data
 			auto *obj = (*member)[i];
 			if (!obj)

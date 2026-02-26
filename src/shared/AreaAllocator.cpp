@@ -27,6 +27,7 @@ template <size_t size> void AreaAllocator<size>::destroy() {
 	}
 	freeSlot = nullptr;
 	head = nullptr;
+	countObject = 0;
 }
 
 }

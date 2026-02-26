@@ -35,6 +35,8 @@ class Bool {
 @no_constructor
 class String {
 	@native("string_constructor")
+	static func String(): String
+	@native("string_constructor")
 	static func String(str: String): String
 	@native("string_constructor")
 	static func String(str: String, repeatTimes: Int): String
@@ -84,6 +86,13 @@ class Array<T>() {
 	@native("clear")
 	func clear()
 }
+
+@native_data
+class Map<K, V> {
+	func get(key: K){}
+	func set(key: K, value: V){}
+}
+	
 @native("print")
 func print(value: Any?)
 @native("println")

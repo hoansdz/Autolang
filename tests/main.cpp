@@ -7,7 +7,7 @@ int main(int argc, char *argv[]) {
 	try {
 		try {
 			AutoLang::ACompiler compiler;
-			// compiler.loadMainSource("tests/a.txt", {{"hi", [](NativeFuncInput) -> AutoLang::AObject* {
+			// compiler.loadMainSource("tests/testCorrectness.atl", {{"hi", [](NativeFuncInput) -> AutoLang::AObject* {
 			// 	std::cerr<<"Duoc roi ne!!!\n";
 			// 	return nullptr;
 			// }}});
@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
 			// compiler.generateBytecodes();
 			// compiler.run();
 			// compiler.refresh();
-			compiler.loadMainSource("tests/source.atl", {{"hi", [](NativeFuncInput) -> AutoLang::AObject* {
+			compiler.loadMainSource("tests/benchmark/fib.atl", {{"hi", [](NativeFuncInput) -> AutoLang::AObject* {
 				std::cerr<<"Duoc roi ne!!!\n";
 				return nullptr;
 			}}});

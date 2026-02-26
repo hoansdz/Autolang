@@ -227,10 +227,10 @@ void CreateClassNode::optimize(in_func) {
 	}
 	if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
 		if (classInfo->genericData) {
-			std::cerr<<"A "<<name<<"\n";
+			// std::cerr<<"A "<<name<<"\n";
 			return;
 		}
-		std::cerr<<"B "<<name<<"\n";
+		// std::cerr<<"B "<<name<<"\n";
 		if (!superDeclaration->classId) {
 			throwError("Unresolved class name " +
 			           superDeclaration->getName(in_data));

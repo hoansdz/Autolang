@@ -26,6 +26,9 @@ class ANotifier {
 	[[nodiscard]] inline AObject* createString(AString* value) {
 		return vm->data.manager.createStringObject(value);
 	}
+	[[nodiscard]] inline AObject* createNativeData(ClassId classId, void* data, void (*destructor)(void* data) = nullptr) {
+		return vm->data.manager.get(classId, new ANativeData{data, destructor});
+	}
 	template <typename T>
 	[[nodiscard]] inline AObject* createException(T message) {
 		auto obj = vm->data.manager.createEmptyObject();

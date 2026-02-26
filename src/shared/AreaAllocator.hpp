@@ -26,7 +26,8 @@ template <size_t size> class AreaAllocator {
 	AreaChunkSlot *freeSlot;
 
   public:
-	AreaAllocator() : head(nullptr), freeSlot(nullptr) {}
+	uint32_t countObject;
+	AreaAllocator() : head(nullptr), freeSlot(nullptr), countObject(0) {}
 	inline AObject *getObject() {
 		if (freeSlot != nullptr) {
 			auto *obj = &freeSlot->obj;
@@ -34,6 +35,7 @@ template <size_t size> class AreaAllocator {
 			freeSlot = freeSlot->nextFree;
 			return obj;
 		}
+		countObject += size;
 		auto *newChunk = new AreaChunk();
 		newChunk->data[0].obj.flags = 0;
 		newChunk->next = head;

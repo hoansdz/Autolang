@@ -18,7 +18,7 @@ struct DeclarationNode : HasClassIdNode {
 	std::optional<ClassId> contextCallClassId;
 	Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC;
 	std::string name;
-	Offset id;
+	FunctionId id;
 	ClassDeclaration *classDeclaration;
 	bool isGlobal;
 	bool isVal;
@@ -48,7 +48,7 @@ struct GenericDeclarationNode : NullableNode {
 struct CreateConstructorNode : HasClassIdNode {
 	ClassId classId;
 	std::string name;
-	Offset funcId;
+	FunctionId funcId;
 	BlockNode body;
 	const std::vector<DeclarationNode *> arguments;
 	uint32_t functionFlags;

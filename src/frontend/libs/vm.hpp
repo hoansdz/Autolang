@@ -1,10 +1,10 @@
-#ifndef LIBS_VM_HPP
-#define LIBS_VM_HPP
+#ifndef LIBS_TIME_HPP
+#define LIBS_TIME_HPP
 
 namespace AutoLang {
 class ACompiler;
 namespace Libs {
-namespace time {
+namespace vm {
 
 void init(ACompiler &compiler);
 }

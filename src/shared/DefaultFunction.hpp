@@ -136,29 +136,39 @@ AObject *to_string(NativeFuncInData) {
 }
 
 AObject *string_constructor(NativeFuncInData) {
-	// To string
-	if (size == 1) {
-		return to_string(notifier, args, size);
-	}
-	//"hi",3 => "hihihi"
-	if (size == 2) {
-		int64_t count = args[1]->i;
-		AString *oldAStr = args[0]->str;
-		if (count <= 0 || oldAStr->size == 0) {
+	switch (size) {
+		case 0: {
 			char *newStr = new char[1];
 			newStr[0] = '\0';
 			return notifier.createString(new AString(newStr, 0));
 		}
-		size_t newSize = oldAStr->size * count;
-		char *newStr = new char[newSize + 1];
-		for (int i = 0; i < count; ++i) {
-			memcpy(&newStr[i * oldAStr->size], oldAStr->data, oldAStr->size);
+		// To string
+		case 1: {
+			return to_string(notifier, args, size);
 		}
-		newStr[newSize] = '\0';
-		return notifier.createString(new AString(newStr, newSize));
+		//"hi",3 => "hihihi"
+		case 2: {
+			int64_t count = args[1]->i;
+			AString *oldAStr = args[0]->str;
+			if (count <= 0 || oldAStr->size == 0) {
+				char *newStr = new char[1];
+				newStr[0] = '\0';
+				return notifier.createString(new AString(newStr, 0));
+			}
+			size_t newSize = oldAStr->size * count;
+			char *newStr = new char[newSize + 1];
+			for (int i = 0; i < count; ++i) {
+				memcpy(&newStr[i * oldAStr->size], oldAStr->data,
+				       oldAStr->size);
+			}
+			newStr[newSize] = '\0';
+			return notifier.createString(new AString(newStr, newSize));
+		}
+		default: {
+			notifier.throwException("Cannot create String");
+			return nullptr;
+		}
 	}
-	notifier.throwException("Cannot cast to String");
-	return nullptr;
 }
 
 AObject *str_get(NativeFuncInData) {
@@ -183,52 +193,52 @@ AObject *str_get(NativeFuncInData) {
 	return notifier.createString(AString::from(str->data[pos]));
 }
 
-AObject* str_substr(NativeFuncInData) {
-    AString* str = args[0]->str;
-    int64_t len = str->size;
+AObject *str_substr(NativeFuncInData) {
+	AString *str = args[0]->str;
+	int64_t len = str->size;
 
-    if (size < 2 || size > 3) {
-        notifier.throwException("substr expects 1 or 2 arguments");
-        return nullptr;
-    }
+	if (size < 2 || size > 3) {
+		notifier.throwException("substr expects 1 or 2 arguments");
+		return nullptr;
+	}
 
-    int64_t from = args[1]->i;
+	int64_t from = args[1]->i;
 
-    if (from < 0)
-        from += len;
+	if (from < 0)
+		from += len;
 
-    if (from < 0 || from > len) {
-        notifier.throwException("Index out of range");
-        return nullptr;
-    }
+	if (from < 0 || from > len) {
+		notifier.throwException("Index out of range");
+		return nullptr;
+	}
 
-    // substr(from)
-    if (size == 2) {
-        int64_t newLen = len - from;
+	// substr(from)
+	if (size == 2) {
+		int64_t newLen = len - from;
 
-        char* newStr = new char[newLen + 1];
-        memcpy(newStr, str->data + from, newLen);
-        newStr[newLen] = '\0';
+		char *newStr = new char[newLen + 1];
+		memcpy(newStr, str->data + from, newLen);
+		newStr[newLen] = '\0';
 
-        return notifier.createString(new AString(newStr, newLen));
-    }
+		return notifier.createString(new AString(newStr, newLen));
+	}
 
-    // substr(from, length)
-    int64_t length = args[2]->i;
+	// substr(from, length)
+	int64_t length = args[2]->i;
 
-    if (length < 0) {
-        notifier.throwException("Length cannot be negative");
-        return nullptr;
-    }
+	if (length < 0) {
+		notifier.throwException("Length cannot be negative");
+		return nullptr;
+	}
 
-    if (from + length > len)
-        length = len - from;
+	if (from + length > len)
+		length = len - from;
 
-    char* newStr = new char[length + 1];
-    memcpy(newStr, str->data + from, length);
-    newStr[length] = '\0';
+	char *newStr = new char[length + 1];
+	memcpy(newStr, str->data + from, length);
+	newStr[length] = '\0';
 
-    return notifier.createString(new AString(newStr, length));
+	return notifier.createString(new AString(newStr, length));
 }
 
 AObject *get_string_size(NativeFuncInData) {

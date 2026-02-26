@@ -139,6 +139,18 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 		if constexpr (isConstructor) {
 			AutoLang::DefaultFunction::data_constructor(
 			    *notifier, stackAllocator.currentPtr, argumentCount);
+			// if (currentCallFrame->func->)
+			// stack.push(stackAllocator[0]);
+			// stackAllocator[0] = nullptr;
+			// stackAllocator.clear(
+			//     data.manager, currentCallFrame->fromStackAllocator + 1,
+			//     stackAllocator.top + currentCallFrame->func->maxDeclaration -
+			//         1);
+			// callFrames.pop();
+			// currentCallFrame = callFrames.top();
+			// notifier->callFrame = currentCallFrame;
+			// stackAllocator.freeTo(currentCallFrame->fromStackAllocator);
+			// return true;
 		}
 		currentCallFrame->i = 0;
 		return false;
@@ -147,6 +159,42 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 }
 
 void AVM::resume() {
+	static ANativeFunction operatorTable[] = {
+
+	    /*  0 */ DefaultFunction::plus_plus,   // ++
+	    /*  1 */ DefaultFunction::minus_minus, // --
+
+	    /*  2 */ DefaultFunction::plus,      // +
+	    /*  3 */ DefaultFunction::plus_eq,   // +=
+	    /*  4 */ DefaultFunction::minus,     // -
+	    /*  5 */ DefaultFunction::minus_eq,  // -=
+	    /*  6 */ DefaultFunction::mul,       // *
+	    /*  7 */ DefaultFunction::mul_eq,    // *=
+	    /*  8 */ DefaultFunction::divide,    // /
+	    /*  9 */ DefaultFunction::divide_eq, // /=
+
+	    /* 10 */ DefaultFunction::mod, // %
+
+	    /* 11 */ DefaultFunction::bitwise_and, // &
+	    /* 12 */ DefaultFunction::bitwise_or,  // |
+
+	    /* 13 */ DefaultFunction::negative, // unary -
+	    /* 14 */ DefaultFunction::op_not,   // !
+
+	    /* 15 */ DefaultFunction::op_and_and, // &&
+	    /* 16 */ DefaultFunction::op_or_or,   // ||
+
+	    /* 17 */ DefaultFunction::op_less_than,       // <
+	    /* 18 */ DefaultFunction::op_greater_than,    // >
+	    /* 19 */ DefaultFunction::op_less_than_eq,    // <=
+	    /* 20 */ DefaultFunction::op_greater_than_eq, // >=
+
+	    /* 21 */ DefaultFunction::op_eqeq,   // ==
+	    /* 22 */ DefaultFunction::op_not_eq, // !=
+
+	    /* 23 */ DefaultFunction::op_eq_pointer,    // === (pointer equality)
+	    /* 24 */ DefaultFunction::op_not_eq_pointer // !== (pointer inequality)
+	};
 	auto currentCallFrame = callFrames.top();
 resumeCallFrame:;
 	if (currentCallFrame->exception) {
@@ -210,9 +258,9 @@ resumeCallFrame:;
 					        currentCallFrame, currentFunction, bytecodes, i)) {
 						goto resumeCallFrame;
 					}
-					if (state == VMState::WAITING) {
-						return;
-					}
+					// if (state == VMState::WAITING) {
+					// 	return;
+					// }
 					break;
 				}
 				case AutoLang::Opcode::CALL_VTABLE_FUNCTION: {
@@ -227,9 +275,9 @@ resumeCallFrame:;
 					        currentCallFrame, currentFunction, bytecodes, i)) {
 						goto resumeCallFrame;
 					}
-					if (state == VMState::WAITING) {
-						return;
-					}
+					// if (state == VMState::WAITING) {
+					// 	return;
+					// }
 					break;
 				}
 				case AutoLang::Opcode::CALL_DATA_CONTRUCTOR: {
@@ -237,6 +285,7 @@ resumeCallFrame:;
 					        currentCallFrame, currentFunction, bytecodes, i)) {
 						goto resumeCallFrame;
 					}
+					break;
 				}
 				case AutoLang::Opcode::FOR_LIST: {
 					AObject *list = stack.pop();
@@ -275,7 +324,7 @@ resumeCallFrame:;
 				}
 				case AutoLang::Opcode::LOAD_CONST: {
 					stack.push(getConstObject(get_u32(bytecodes, i)));
-					stack.top()->retain();
+					// std::cerr<<stack.top()<<" created\n";
 					break;
 				}
 				case AutoLang::Opcode::LOAD_CONST_PRIMARY: {
@@ -305,9 +354,16 @@ resumeCallFrame:;
 					goto endFunction;
 				}
 				case AutoLang::Opcode::CREATE_OBJECT: {
-					uint32_t type = get_u32(bytecodes, i);
+					ClassId classId = get_u32(bytecodes, i);
 					size_t count = static_cast<size_t>(get_u32(bytecodes, i));
-					stack.push(data.manager.get(type, count));
+					stack.push(data.manager.get(classId, count));
+					stack.top()->retain();
+					break;
+				}
+				case AutoLang::Opcode::CREATE_NATIVE_OBJECT: {
+					ClassId classId = get_u32(bytecodes, i);
+					stack.push(data.manager.get(
+					    classId, new ANativeData{nullptr, nullptr}));
 					stack.top()->retain();
 					break;
 				}
@@ -329,8 +385,11 @@ resumeCallFrame:;
 					break;
 				}
 				case AutoLang::Opcode::STORE_LOCAL: {
-					stackAllocator.set(data.manager, get_u32(bytecodes, i),
-					                   stack.pop());
+					auto obj = stack.pop();
+					uint32_t pos = get_u32(bytecodes, i);
+					// std::cerr<<pos<<" "<<obj<<"
+					// "<<data.classes[obj->type]->name<<"\n";
+					stackAllocator.set(data.manager, pos, obj);
 					break;
 				}
 				case AutoLang::Opcode::LOAD_MEMBER: {
@@ -383,7 +442,7 @@ resumeCallFrame:;
 				}
 				case AutoLang::Opcode::JUMP_IF_FALSE: {
 					AObject *obj = stack.pop();
-					if (!obj->b) {
+					if (obj == DefaultClass::falseObject) {
 						i = get_u32(bytecodes, i);
 					} else {
 						i += 4;
@@ -520,13 +579,202 @@ resumeCallFrame:;
 					break;
 				}
 				case AutoLang::Opcode::PLUS_PLUS: {
-					if (!operate<AutoLang::DefaultFunction::plus_plus, 1>())
-						goto resumeCallFrame;
+					// if (!operate<AutoLang::DefaultFunction::plus_plus, 1>())
+					// 	goto resumeCallFrame;
+					++stack.top()->i;
+					break;
+				}
+				case AutoLang::Opcode::PLUS_PLUS_GLOBAL: {
+					// if (!operate<AutoLang::DefaultFunction::plus_plus, 1>())
+					// 	goto resumeCallFrame;
+					++globalVariables[get_u32(bytecodes, i)]->i;
+					break;
+				}
+				case AutoLang::Opcode::PLUS_PLUS_LOCAL: {
+					// if (!operate<AutoLang::DefaultFunction::plus_plus, 1>())
+					// 	goto resumeCallFrame;
+					++stackAllocator[get_u32(bytecodes, i)]->i;
 					break;
 				}
 				case AutoLang::Opcode::MINUS_MINUS: {
 					if (!operate<AutoLang::DefaultFunction::minus_minus, 1>())
 						goto resumeCallFrame;
+					break;
+				}
+				case AutoLang::Opcode::GLOBAL_CAL_GLOBAL: {
+					uint8_t tablePos = bytecodes[i++];
+					tempAllocateArea[0] =
+					    globalVariables[get_u32(bytecodes, i)];
+					tempAllocateArea[1] =
+					    globalVariables[get_u32(bytecodes, i)];
+					if (!fastOperate<2>(operatorTable[tablePos]))
+						goto resumeCallFrame;
+					break;
+				}
+				case AutoLang::Opcode::GLOBAL_CAL_LOCAL: {
+					uint8_t tablePos = bytecodes[i++];
+					tempAllocateArea[0] =
+					    globalVariables[get_u32(bytecodes, i)];
+					tempAllocateArea[1] = stackAllocator[get_u32(bytecodes, i)];
+					if (!fastOperate<2>(operatorTable[tablePos]))
+						goto resumeCallFrame;
+					break;
+				}
+				case AutoLang::Opcode::LOCAL_CAL_GLOBAL: {
+					uint8_t tablePos = bytecodes[i++];
+					tempAllocateArea[0] = stackAllocator[get_u32(bytecodes, i)];
+					tempAllocateArea[1] =
+					    globalVariables[get_u32(bytecodes, i)];
+					if (!fastOperate<2>(operatorTable[tablePos]))
+						goto resumeCallFrame;
+					break;
+				}
+				case AutoLang::Opcode::GLOBAL_CAL_CONST: {
+					uint8_t tablePos = bytecodes[i++];
+					tempAllocateArea[0] =
+					    globalVariables[get_u32(bytecodes, i)];
+					tempAllocateArea[1] =
+					    &data.constPool[get_u32(bytecodes, i)];
+					if (!fastOperate<2>(operatorTable[tablePos]))
+						goto resumeCallFrame;
+					break;
+				}
+				case AutoLang::Opcode::CONST_CAL_GLOBAL: {
+					uint8_t tablePos = bytecodes[i++];
+					tempAllocateArea[0] =
+					    &data.constPool[get_u32(bytecodes, i)];
+					tempAllocateArea[1] =
+					    globalVariables[get_u32(bytecodes, i)];
+					if (!fastOperate<2>(operatorTable[tablePos]))
+						goto resumeCallFrame;
+					break;
+				}
+				case AutoLang::Opcode::LOCAL_CAL_LOCAL: {
+					uint8_t tablePos = bytecodes[i++];
+					tempAllocateArea[0] = stackAllocator[get_u32(bytecodes, i)];
+					tempAllocateArea[1] = stackAllocator[get_u32(bytecodes, i)];
+					if (!fastOperate<2>(operatorTable[tablePos]))
+						goto resumeCallFrame;
+					break;
+				}
+				case AutoLang::Opcode::LOCAL_CAL_CONST: {
+					uint8_t tablePos = bytecodes[i++];
+					tempAllocateArea[0] = stackAllocator[get_u32(bytecodes, i)];
+					tempAllocateArea[1] =
+					    &data.constPool[get_u32(bytecodes, i)];
+					if (!fastOperate<2>(operatorTable[tablePos]))
+						goto resumeCallFrame;
+					break;
+				}
+				case AutoLang::Opcode::CONST_CAL_LOCAL: {
+					uint8_t tablePos = bytecodes[i++];
+					tempAllocateArea[0] =
+					    &data.constPool[get_u32(bytecodes, i)];
+					tempAllocateArea[1] = stackAllocator[get_u32(bytecodes, i)];
+					if (!fastOperate<2>(operatorTable[tablePos]))
+						goto resumeCallFrame;
+					break;
+				}
+				case AutoLang::Opcode::GLOBAL_CAL_CONST_JUMP: {
+					uint8_t tablePos = bytecodes[i++];
+					tempAllocateArea[0] =
+					    globalVariables[get_u32(bytecodes, i)];
+					tempAllocateArea[1] =
+					    &data.constPool[get_u32(bytecodes, i)];
+					auto obj = operatorTable[tablePos](*notifier,
+					                                   tempAllocateArea, size);
+					if (notifier->callFrame->exception) {
+						goto resumeCallFrame;
+					}
+					if (obj == DefaultClass::trueObject) {
+						i = get_u32(bytecodes, i);
+					} else {
+						i += 4;
+					}
+					break;
+				}
+				case AutoLang::Opcode::GLOBAL_CAL_LOCAL_JUMP: {
+					uint8_t tablePos = bytecodes[i++];
+					tempAllocateArea[0] =
+					    globalVariables[get_u32(bytecodes, i)];
+					tempAllocateArea[1] = stackAllocator[get_u32(bytecodes, i)];
+					auto obj = operatorTable[tablePos](*notifier,
+					                                   tempAllocateArea, size);
+					if (notifier->callFrame->exception) {
+						goto resumeCallFrame;
+					}
+					if (obj == DefaultClass::trueObject) {
+						i = get_u32(bytecodes, i);
+					} else {
+						i += 4;
+					}
+					break;
+				}
+				case AutoLang::Opcode::GLOBAL_CAL_GLOBAL_JUMP: {
+					uint8_t tablePos = bytecodes[i++];
+					tempAllocateArea[0] =
+					    globalVariables[get_u32(bytecodes, i)];
+					tempAllocateArea[1] =
+					    globalVariables[get_u32(bytecodes, i)];
+					auto obj = operatorTable[tablePos](*notifier,
+					                                   tempAllocateArea, size);
+					if (notifier->callFrame->exception) {
+						goto resumeCallFrame;
+					}
+					if (obj == DefaultClass::trueObject) {
+						i = get_u32(bytecodes, i);
+					} else {
+						i += 4;
+					}
+					break;
+				}
+				case AutoLang::Opcode::LOCAL_CAL_CONST_JUMP: {
+					uint8_t tablePos = bytecodes[i++];
+					tempAllocateArea[0] = stackAllocator[get_u32(bytecodes, i)];
+					tempAllocateArea[1] =
+					    &data.constPool[get_u32(bytecodes, i)];
+					auto obj = operatorTable[tablePos](*notifier,
+					                                   tempAllocateArea, size);
+					if (notifier->callFrame->exception) {
+						goto resumeCallFrame;
+					}
+					if (obj == DefaultClass::trueObject) {
+						i = get_u32(bytecodes, i);
+					} else {
+						i += 4;
+					}
+					break;
+				}
+				case AutoLang::Opcode::LOCAL_CAL_LOCAL_JUMP: {
+					uint8_t tablePos = bytecodes[i++];
+					tempAllocateArea[0] = stackAllocator[get_u32(bytecodes, i)];
+					tempAllocateArea[1] = stackAllocator[get_u32(bytecodes, i)];
+					auto obj = operatorTable[tablePos](*notifier,
+					                                   tempAllocateArea, size);
+					if (notifier->callFrame->exception) {
+						goto resumeCallFrame;
+					}
+					if (obj == DefaultClass::trueObject) {
+						i = get_u32(bytecodes, i);
+					} else {
+						i += 4;
+					}
+					break;
+				}
+				case AutoLang::Opcode::LOCAL_CAL_GLOBAL_JUMP: {
+					uint8_t tablePos = bytecodes[i++];
+					tempAllocateArea[0] = stackAllocator[get_u32(bytecodes, i)];
+					tempAllocateArea[1] = globalVariables[get_u32(bytecodes, i)];
+					auto obj = operatorTable[tablePos](*notifier,
+					                                   tempAllocateArea, size);
+					if (notifier->callFrame->exception) {
+						goto resumeCallFrame;
+					}
+					if (obj == DefaultClass::trueObject) {
+						i = get_u32(bytecodes, i);
+					} else {
+						i += 4;
+					}
 					break;
 				}
 				case AutoLang::Opcode::PLUS: {
@@ -736,7 +984,7 @@ resumeCallFrame:;
 					stack.top()->retain();
 					break;
 				}
-				case AutoLang::Opcode::I_PLUS_I: {
+				case AutoLang::Opcode::I_CAL_I: {
 					AObject *b = stack.pop();
 					AObject *a = stack.top();
 					if (a->refCount <= 1) {
@@ -750,7 +998,7 @@ resumeCallFrame:;
 					data.manager.release(b);
 					break;
 				}
-				case AutoLang::Opcode::I_PLUS_F: {
+				case AutoLang::Opcode::I_CAL_F: {
 					AObject *b = stack.pop();
 					AObject *a = stack.top();
 					if (a->refCount <= 1) {
@@ -766,7 +1014,7 @@ resumeCallFrame:;
 					data.manager.release(b);
 					break;
 				}
-				case AutoLang::Opcode::F_PLUS_F: {
+				case AutoLang::Opcode::F_CAL_F: {
 					AObject *b = stack.pop();
 					AObject *a = stack.top();
 					if (a->refCount <= 1) {
@@ -780,7 +1028,7 @@ resumeCallFrame:;
 					data.manager.release(b);
 					break;
 				}
-				case AutoLang::Opcode::F_PLUS_I: {
+				case AutoLang::Opcode::F_CAL_I: {
 					AObject *b = stack.pop();
 					AObject *a = stack.top();
 					if (a->refCount <= 1) {
@@ -884,10 +1132,16 @@ resumeCallFrame:;
 AObject *AVM::getConstObject(uint32_t id) {
 	AObject *obj = &data.constPool[id];
 	switch (obj->type) {
-		case AutoLang::DefaultClass::intClassId:
-			return data.manager.create(obj->i);
-		case AutoLang::DefaultClass::floatClassId:
-			return data.manager.create(obj->f);
+		case AutoLang::DefaultClass::intClassId: {
+			auto newObj = data.manager.create(obj->i);
+			newObj->refCount = 1;
+			return newObj;
+		}
+		case AutoLang::DefaultClass::floatClassId: {
+			auto newObj = data.manager.create(obj->f);
+			newObj->refCount = 1;
+			return newObj;
+		}
 		default:
 			return obj;
 	}
@@ -924,6 +1178,19 @@ template <ANativeFunction native, size_t size, bool push> bool AVM::operate() {
 		}
 	}
 	clearTempAllocateArea<size>();
+	return true;
+}
+
+template <size_t size> inline bool AVM::fastOperate(ANativeFunction native) {
+	auto obj = native(*notifier, tempAllocateArea, size);
+	if (notifier->callFrame->exception) {
+		return false;
+	} else {
+		if (obj != nullptr) {
+			stack.push(obj);
+			obj->retain();
+		}
+	}
 	return true;
 }
 

@@ -54,7 +54,7 @@ ExprNode *loadFor(in_func, size_t &i) {
 		                  "Expected name but not found");
 	}
 	std::string &name = context.lexerString[token->indexData];
-	AccessNode *declaration;
+	VarNode *declaration;
 	context.getCurrentFunctionInfo(in_data)->scopes.emplace_back();
 	// Create temp declaration
 	auto declarationNode = context.makeDeclarationNode(

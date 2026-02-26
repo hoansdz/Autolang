@@ -18,7 +18,7 @@ class GCat extends GAnimal {
 
 class GenericTest<T>() {
 	val value: T = T()
-	func sound(): String = value.sound()
+	func sound() = value.sound()
 }
 
 class GWrapper<T>() {

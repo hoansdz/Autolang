@@ -226,7 +226,7 @@ TokenType loadOp(Context &context, uint32_t &i) {
 		return it->second;
 	}
 	char second = context.line[i++];
-	if (isEndOfLine(context, i) || second == '.' || second == '/' ||
+	if (isEndOfLine(context, i) || second == '/' ||
 	    !isOperator(context.line[i])) {
 	loadSecond:;
 		std::string str = {first, second};
@@ -323,7 +323,7 @@ std::string loadIdentifier(Context &context, uint32_t &i) {
 		char chr = context.line[i];
 		if (std::isblank(chr))
 			break;
-		if (std::isalnum(chr) || chr == '_' || chr == '$') {
+		if (std::isalnum(chr) || chr == '_') {
 			continue;
 		}
 		break;
@@ -457,6 +457,7 @@ void loadQuote(Context &context, char quote, uint32_t &i) {
 	bool isSpecialCase = false;
 	std::string newStr;
 	char chr;
+first:;
 	for (; !isEndOfLine(context, i); ++i) {
 		chr = context.line[i];
 		if (!isSpecialCase) {
@@ -471,9 +472,28 @@ void loadQuote(Context &context, char quote, uint32_t &i) {
 						throw LexerError(context.linePos,
 						                 std::string("Expected ") + quote +
 						                     " but not found");
-					if (context.line[i] != '{') {
-						newStr += '$';
-						break;
+					chr = context.line[i];
+					if (chr != '{') {
+						if (!std::isalpha(chr) && chr != '_') {
+							--i;
+							chr = context.line[i];
+							break;
+						}
+						context.tokens.emplace_back(
+						    context.linePos, TokenType::STRING,
+						    pushLexerString(context, std::move(newStr)));
+						context.tokens.emplace_back(context.linePos,
+						                            TokenType::PLUS);
+						context.pos = i;
+						pushIdentifier(context, i);
+						if (context.line[i] == quote) {
+							++i;
+							return;
+						}
+						context.tokens.emplace_back(context.linePos,
+						                            TokenType::PLUS);
+						newStr = "";
+						goto first;
 					}
 					context.tokens.emplace_back(context.linePos,
 					                            TokenType::LPAREN);

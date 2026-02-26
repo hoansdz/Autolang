@@ -30,6 +30,9 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 	if (context.annotationFlags & AnnotationFlags::AN_NO_EXTENDS) {
 		classFlags |= ClassFlags::CLASS_NO_EXTENDS;
 	}
+	if (context.annotationFlags & AnnotationFlags::AN_NATIVE_DATA) {
+		// classFlags |= ClassFlags::CLASS_NATIVE_DATA;
+	}
 
 	// Name
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
@@ -57,14 +60,15 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		context.newDefaultClassesMap[node->classId] = node;
-		if (!(classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR)) {
-			auto *constructor = context.createConstructorPool.push(
-			    firstLine, *context.currentClassId, name + "()",
-			    std::vector<DeclarationNode *>{}, false,
-			    FunctionFlags::FUNC_PUBLIC);
-			classInfo->secondaryConstructor.push_back(constructor);
-			constructor->pushFunction(in_data);
+		if (classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR) {
+			return node;
 		}
+		auto *constructor = context.createConstructorPool.push(
+		    firstLine, *context.currentClassId, name + "()",
+		    std::vector<DeclarationNode *>{}, false,
+		    FunctionFlags::FUNC_PUBLIC);
+		classInfo->secondaryConstructor.push_back(constructor);
+		constructor->pushFunction(in_data);
 		context.gotoClass(lastClass);
 		return node;
 	}
@@ -165,6 +169,10 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 			throw ParserError(context.tokens[i].line,
 			                  "@no_constructor is already applied");
 		}
+		if (classFlags & ClassFlags::CLASS_NATIVE_DATA) {
+			throw ParserError(context.tokens[i].line,
+			                  "@native_data is already applied");
+		}
 		classInfo->primaryConstructor = context.createConstructorPool.push(
 		    firstLine, *context.currentClassId, name + "()",
 		    loadListDeclaration(in_data, i, true), true,
@@ -251,11 +259,18 @@ void loadConstructor(in_func, size_t &i) {
 		throw ParserError(firstLine,
 		                  "@no_constructor is only supported classes");
 	}
+	if (context.annotationFlags & AnnotationFlags::AN_NATIVE_DATA) {
+		throw ParserError(firstLine, "@native_data is only supported classes");
+	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_EXTENDS) {
 		throw ParserError(firstLine, "@no_extends is only supported classes");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NATIVE) {
 		throw ParserError(firstLine, "@native is only supported functions");
+	} else if (clazz->classFlags & ClassFlags::CLASS_NATIVE_DATA) {
+		throw ParserError(
+		    firstLine, "Class " + clazz->name +
+		                   " marked @native_data, @constructor must be native");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_OVERRIDE) {
 		throw ParserError(firstLine, "@override is only supported functions");

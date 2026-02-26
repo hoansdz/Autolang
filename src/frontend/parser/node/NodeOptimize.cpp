@@ -266,6 +266,10 @@ ExprNode *UnknowNode::copy(in_func) {
 	                                   nullable);
 }
 
+void UnknowNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	throwError("Unknow node can't putbytecodes");
+}
+
 ExprNode *GetPropNode::resolve(in_func) {
 	caller = static_cast<HasClassIdNode *>(caller->resolve(in_data));
 	if (caller->kind == NodeType::CLASS_ACCESS) {
@@ -668,6 +672,9 @@ ExprNode *SetNode::copy(in_func) {
 }
 
 ExprNode *ReturnNode::resolve(in_func) {
+	if (loaded) {
+		return this;
+	}
 	if (value) {
 		auto func = compile.functions[funcId];
 		if (func->returnId == DefaultClass::voidClassId) {
@@ -675,8 +682,9 @@ ExprNode *ReturnNode::resolve(in_func) {
 		}
 		if (value->classId == func->returnId)
 			return this;
-		if (value->classId == DefaultClass::nullClassId)
+		if (value->classId == DefaultClass::nullClassId) {
 			return this;
+		}
 		if (func->returnId == DefaultClass::nullClassId) {
 			return this;
 		}
@@ -687,7 +695,11 @@ ExprNode *ReturnNode::resolve(in_func) {
 }
 
 void ReturnNode::optimize(in_func) {
+	if (loaded) {
+		return;
+	}
 	auto func = compile.functions[funcId];
+	// std::cerr<<"Loading "<<func->name<<"\n";
 	if (value) {
 		value->optimize(in_data);
 		// Marks auto
@@ -696,6 +708,7 @@ void ReturnNode::optimize(in_func) {
 				return;
 			}
 			case DefaultClass::nullClassId: {
+				// std::cerr << "Loaded " << func->name << "\n";
 				func->returnId = value->classId;
 				if (value->isNullable()) {
 					func->functionFlags |= FunctionFlags::FUNC_RETURN_NULLABLE;
@@ -728,6 +741,8 @@ ExprNode *ReturnNode::copy(in_func) {
 }
 
 void VarNode::optimize(in_func) {
+	// std::cerr << "loaded " << declaration->name << " "
+	//           << compile.classes[declaration->classId]->name << "\n";
 	classId = declaration->classId;
 	isVal = declaration->isVal;
 	if (nullable) {

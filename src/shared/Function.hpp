@@ -19,7 +19,7 @@ struct Function {
 		std::vector<uint8_t> bytecodes;
 	};
 	uint32_t maxDeclaration;
-	Offset id;
+	FunctionId id;
 	Function()
 	    : functionFlags(FunctionFlags::FUNC_IS_NATIVE), args(nullptr),
 	      returnId(0), maxDeclaration(0), id(0) {}

@@ -4,14 +4,27 @@
 #include "./math.hpp"
 #include "frontend/ACompiler.hpp"
 #include "shared/Type.hpp"
+#include <random>
+#include <chrono>
 
 namespace AutoLang {
 namespace Libs {
 namespace Math {
 
+static std::mt19937_64 &getRng() {
+    static std::mt19937_64 rng(
+        static_cast<uint64_t>(
+            std::chrono::high_resolution_clock::now().time_since_epoch().count()
+        )
+    );
+    return rng;
+}
+
+AObject *random(NativeFuncInData);
+
 void init(AutoLang::ACompiler &compiler) {
 	auto nativeMap = ANativeMap();
-	nativeMap.reserve(9);
+	nativeMap.reserve(10);
 
 	nativeMap.emplace("round", &round);
 	nativeMap.emplace("floor", &floor);
@@ -23,41 +36,124 @@ void init(AutoLang::ACompiler &compiler) {
 	nativeMap.emplace("cos", &cos);
 	nativeMap.emplace("tan", &tan);
 	nativeMap.emplace("fmod", &fmod);
+	nativeMap.emplace("random", &Math::random);
 
-	compiler.registerFromSource("std/math", R"###(
-@no_constructor
-class Math {
-	@native("round")
-	static func round(value: Float): Int
-	@native("floor")
-	static func floor(value: Float): Int
-	@native("ceil")
-	static func ceil(value: Float): Int
-	@native("trunc")
-	static func trunc(value: Float): Int
-	@native("pow")
-	static func pow(base: Float, exp: Float): Float
-	@native("abs")
-	static func abs(value: Int): Int
-	@native("abs")
-	static func abs(value: Float): Float
-	@native("sin")
-	static func sin(value: Float): Float
-	@native("sin")
-	static func sin(value: Int): Float
-	@native("cos")
-	static func cos(value: Float): Float
-	@native("cos")
-	static func cos(value: Int): Float
-	@native("tan")
-	static func tan(value: Float): Float
-	@native("tan")
-	static func tan(value: Int): Float
-	@native("fmod")
-	static func fmod(num1: Float, num2: Float): Float
+		compiler.registerFromSource("std/math", R"###(
+	@no_constructor
+	class Math {
+		@native("round")
+		static func round(value: Float): Int
+
+		@native("floor")
+		static func floor(value: Float): Int
+
+		@native("ceil")
+		static func ceil(value: Float): Int
+
+		@native("trunc")
+		static func trunc(value: Float): Int
+
+		@native("pow")
+		static func pow(base: Float, exp: Float): Float
+
+		@native("abs")
+		static func abs(value: Int): Int
+
+		@native("abs")
+		static func abs(value: Float): Float
+
+		@native("sin")
+		static func sin(value: Float): Float
+
+		@native("sin")
+		static func sin(value: Int): Float
+
+		@native("cos")
+		static func cos(value: Float): Float
+
+		@native("cos")
+		static func cos(value: Int): Float
+
+		@native("tan")
+		static func tan(value: Float): Float
+
+		@native("tan")
+		static func tan(value: Int): Float
+
+		@native("fmod")
+		static func fmod(num1: Float, num2: Float): Float
+
+		@native("random")
+		static func random(): Float
+
+		@native("random")
+		static func random(min: Int, max: Int): Int
+
+		@native("random")
+		static func random(min: Float, max: Float): Float
+	}
+		)###",
+									false, std::move(nativeMap));
 }
-	)###",
-	                            false, std::move(nativeMap));
+
+AObject *random(NativeFuncInData) {
+
+    auto &rng = getRng();
+
+    if (size == 0) {
+        std::uniform_real_distribution<double> dist(0.0, 1.0);
+        return notifier.createFloat(dist(rng));
+    }
+
+    if (size == 2) {
+        auto obj1 = args[0];
+        auto obj2 = args[1];
+
+        // Int range
+        if (obj1->type == AutoLang::DefaultClass::intClassId &&
+            obj2->type == AutoLang::DefaultClass::intClassId) {
+
+            int64_t min = obj1->i;
+            int64_t max = obj2->i;
+
+            if (min > max) {
+                notifier.throwException("min > max");
+                return nullptr;
+            }
+
+            std::uniform_int_distribution<int64_t> dist(min, max);
+            return notifier.createInt(dist(rng));
+        }
+
+        // Float range
+        if ((obj1->type == AutoLang::DefaultClass::floatClassId ||
+             obj1->type == AutoLang::DefaultClass::intClassId) &&
+            (obj2->type == AutoLang::DefaultClass::floatClassId ||
+             obj2->type == AutoLang::DefaultClass::intClassId)) {
+
+            double min = (obj1->type == AutoLang::DefaultClass::intClassId)
+                             ? obj1->i
+                             : obj1->f;
+
+            double max = (obj2->type == AutoLang::DefaultClass::intClassId)
+                             ? obj2->i
+                             : obj2->f;
+
+            if (min > max) {
+                notifier.throwException("min > max");
+                return nullptr;
+            }
+
+            std::uniform_real_distribution<double> dist(min, max);
+            return notifier.createFloat(dist(rng));
+        }
+
+        notifier.throwException("Wrong type");
+        return nullptr;
+    }
+
+    notifier.throwException("Wrong number of arguments");
+    return nullptr;
 }
 
 AObject *abs(NativeFuncInData) {

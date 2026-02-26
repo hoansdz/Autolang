@@ -3,6 +3,7 @@
 
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "shared/ClassFlags.hpp"
 
 namespace AutoLang {
 
@@ -195,6 +196,12 @@ void CallNode::optimize(in_func) {
 	auto func = compile.functions[funcId];
 	auto funcInfo = context.functionInfo[funcId];
 
+	if (funcInfo->inferenceNode && !funcInfo->inferenceNode->loaded) {
+		funcInfo->inferenceNode->resolve(in_data);
+		funcInfo->inferenceNode->optimize(in_data);
+		funcInfo->inferenceNode->loaded = true;
+	}
+
 	nullable = func->functionFlags & FunctionFlags::FUNC_RETURN_NULLABLE;
 
 	if (first.errorNonNullIfMatch)
@@ -329,10 +336,17 @@ void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			bytecodes.emplace_back(Opcode::LOAD_LOCAL);
 			put_opcode_u32(bytecodes, 0);
 		} else {
-			bytecodes.emplace_back(Opcode::CREATE_OBJECT);
-			put_opcode_u32(bytecodes, classId);
-			put_opcode_u32(bytecodes,
-			               compile.classes[classId]->memberId.size());
+			if (contextCallClassId &&
+			    compile.classes[*contextCallClassId]->classFlags &
+			        ClassFlags::CLASS_NATIVE_DATA) {
+				bytecodes.emplace_back(Opcode::CREATE_NATIVE_OBJECT);
+				put_opcode_u32(bytecodes, classId);
+			} else {
+				bytecodes.emplace_back(Opcode::CREATE_OBJECT);
+				put_opcode_u32(bytecodes, classId);
+				put_opcode_u32(bytecodes,
+				               compile.classes[classId]->memberId.size());
+			}
 		}
 	}
 	for (auto &argument : arguments) {
@@ -384,8 +398,8 @@ ExprNode *CallNode::copy(in_func) {
 		newCaller = static_cast<HasClassIdNode *>(caller->copy(in_data));
 	}
 	auto newNode = context.callNodePool.push(
-	    line, context.currentClassId, newCaller, name, arguments, justFindStatic,
-	    nullable, accessNullable);
+	    line, context.currentClassId, newCaller, name, arguments,
+	    justFindStatic, nullable, accessNullable);
 	newNode->classId = classId;
 	return newNode;
 }

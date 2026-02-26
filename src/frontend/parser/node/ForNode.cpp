@@ -7,16 +7,16 @@
 namespace AutoLang {
 
 ExprNode *ForNode::resolve(in_func) {
-	detach = static_cast<AccessNode *>(detach->resolve(in_data));
-	switch (detach->kind) {
-		case NodeType::VAR:
-		case NodeType::GET_PROP: {
-			break;
-		}
-		default: {
-			throwError("Invalid assign target");
-		}
-	}
+	// detach = static_cast<VarNode *>(detach->resolve(in_data));
+	// switch (detach->kind) {
+	// 	case NodeType::VAR:
+	// 	case NodeType::GET_PROP: {
+	// 		break;
+	// 	}
+	// 	default: {
+	// 		throwError("Invalid assign target");
+	// 	}
+	// }
 	data = static_cast<HasClassIdNode *>(data->resolve(in_data));
 	body.resolve(in_data);
 	return this;
@@ -120,12 +120,101 @@ void ForNode::optimize(in_func) {
 
 ExprNode *ForNode::copy(in_func) {
 	return context.forPool.push(
-	    line, static_cast<AccessNode *>(detach->copy(in_data)),
+	    line, static_cast<VarNode *>(detach->copy(in_data)),
 	    static_cast<HasClassIdNode *>(data->copy(in_data)), iteratorNode);
+}
+
+bool ForNode::putOptimizedRangeBytecode(in_func,
+                                        std::vector<uint8_t> &bytecodes,
+                                        BytecodePos &jumpIfFalseByte,
+                                        BytecodePos &firstSkipByte) {
+	OperatorId operatorId = static_cast<RangeNode *>(data)->lessThan
+	                            ? OperatorId::OP_GREATER_EQ
+	                            : OperatorId::OP_GREATER;
+	auto right = static_cast<RangeNode *>(data)->to;
+	switch (right->kind) {
+		case NodeType::VAR: {
+			auto rightNode = static_cast<VarNode *>(right);
+			if (detach->declaration->isGlobal) {
+				if (rightNode->declaration->isGlobal) {
+					bytecodes.emplace_back(detach->declaration->isGlobal
+					                           ? Opcode::PLUS_PLUS_GLOBAL
+					                           : Opcode::PLUS_PLUS_LOCAL);
+					put_opcode_u32(bytecodes, detach->declaration->id);
+					bytecodes.emplace_back(Opcode::GLOBAL_CAL_GLOBAL_JUMP);
+					bytecodes.emplace_back(operatorId);
+					put_opcode_u32(bytecodes, detach->declaration->id);
+					put_opcode_u32(bytecodes, rightNode->declaration->id);
+					jumpIfFalseByte = bytecodes.size();
+					put_opcode_u32(bytecodes, 0);
+					return true;
+				}
+				bytecodes.emplace_back(detach->declaration->isGlobal
+				                           ? Opcode::PLUS_PLUS_GLOBAL
+				                           : Opcode::PLUS_PLUS_LOCAL);
+				put_opcode_u32(bytecodes, detach->declaration->id);
+				bytecodes.emplace_back(Opcode::GLOBAL_CAL_LOCAL_JUMP);
+				bytecodes.emplace_back(operatorId);
+				put_opcode_u32(bytecodes, detach->declaration->id);
+				put_opcode_u32(bytecodes, rightNode->declaration->id);
+				jumpIfFalseByte = bytecodes.size();
+				put_opcode_u32(bytecodes, 0);
+				return true;
+			}
+			if (rightNode->declaration->isGlobal) {
+				bytecodes.emplace_back(detach->declaration->isGlobal
+				                           ? Opcode::PLUS_PLUS_GLOBAL
+				                           : Opcode::PLUS_PLUS_LOCAL);
+				put_opcode_u32(bytecodes, detach->declaration->id);
+				bytecodes.emplace_back(Opcode::LOCAL_CAL_GLOBAL_JUMP);
+				bytecodes.emplace_back(operatorId);
+				put_opcode_u32(bytecodes, detach->declaration->id);
+				put_opcode_u32(bytecodes, rightNode->declaration->id);
+				jumpIfFalseByte = bytecodes.size();
+				put_opcode_u32(bytecodes, 0);
+				return true;
+			}
+			bytecodes.emplace_back(detach->declaration->isGlobal
+			                           ? Opcode::PLUS_PLUS_GLOBAL
+			                           : Opcode::PLUS_PLUS_LOCAL);
+			put_opcode_u32(bytecodes, detach->declaration->id);
+			bytecodes.emplace_back(Opcode::LOCAL_CAL_LOCAL_JUMP);
+			bytecodes.emplace_back(operatorId);
+			put_opcode_u32(bytecodes, detach->declaration->id);
+			put_opcode_u32(bytecodes, rightNode->declaration->id);
+			jumpIfFalseByte = bytecodes.size();
+			put_opcode_u32(bytecodes, 0);
+			return true;
+		}
+		case NodeType::CONST: {
+			auto rightNode = static_cast<ConstValueNode *>(right);
+			if (right->classId == AutoLang::DefaultClass::nullClassId) {
+				throwError("Null must be cleared by optimizer");
+			}
+			if (right->classId == AutoLang::DefaultClass::boolClassId) {
+				return false;
+			}
+			bytecodes.emplace_back(detach->declaration->isGlobal
+			                           ? Opcode::PLUS_PLUS_GLOBAL
+			                           : Opcode::PLUS_PLUS_LOCAL);
+			put_opcode_u32(bytecodes, detach->declaration->id);
+			bytecodes.emplace_back(detach->declaration->isGlobal
+			                           ? Opcode::GLOBAL_CAL_CONST_JUMP
+			                           : Opcode::LOCAL_CAL_CONST_JUMP);
+			bytecodes.emplace_back(operatorId);
+			put_opcode_u32(bytecodes, detach->declaration->id);
+			put_opcode_u32(bytecodes, rightNode->id);
+			jumpIfFalseByte = bytecodes.size();
+			put_opcode_u32(bytecodes, 0);
+			return true;
+		}
+	}
+	return false;
 }
 
 void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	BytecodePos jumpIfFalseByte;
+	std::optional<BytecodePos> setupJumpIfFalse;
 	switch (data->kind) {
 		// for (detach in from..to) { body }
 		case NodeType::RANGE: {
@@ -138,21 +227,34 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			// Skip
 			detach->isStore = false;
 			detach->putBytecodes(in_data, bytecodes);
+			rangeNode->to->putBytecodes(in_data, bytecodes);
+			bytecodes.emplace_back(rangeNode->lessThan ? Opcode::LESS_THAN
+			                                           : Opcode::LESS_THAN_EQ);
+			bytecodes.emplace_back(Opcode::JUMP_IF_FALSE);
+			setupJumpIfFalse = bytecodes.size();
+			put_opcode_u32(bytecodes, 0);
 			bytecodes.emplace_back(Opcode::JUMP);
 			BytecodePos firstSkipByte = bytecodes.size();
 			put_opcode_u32(bytecodes, 0);
 			// detach++ => skip first
 			continuePos = bytecodes.size();
-			detach->putBytecodes(in_data, bytecodes);
-			bytecodes.emplace_back(Opcode::PLUS_PLUS);
 			rewrite_opcode_u32(bytecodes, firstSkipByte, bytecodes.size());
-			// compare
-			rangeNode->to->putBytecodes(in_data, bytecodes);
-			bytecodes.emplace_back(rangeNode->lessThan ? Opcode::LESS_THAN
-			                                           : Opcode::LESS_THAN_EQ);
-			bytecodes.emplace_back(Opcode::JUMP_IF_FALSE);
-			jumpIfFalseByte = bytecodes.size();
-			put_opcode_u32(bytecodes, 0);
+			if (putOptimizedRangeBytecode(in_data, bytecodes, jumpIfFalseByte,
+			                              firstSkipByte)) {
+
+			} else {
+				// compare
+				detach->putBytecodes(in_data, bytecodes);
+				bytecodes.emplace_back(Opcode::PLUS_PLUS);
+				rangeNode->to->putBytecodes(in_data, bytecodes);
+				bytecodes.emplace_back(rangeNode->lessThan
+				                           ? Opcode::LESS_THAN
+				                           : Opcode::LESS_THAN_EQ);
+				bytecodes.emplace_back(Opcode::JUMP_IF_FALSE);
+				jumpIfFalseByte = bytecodes.size();
+				put_opcode_u32(bytecodes, 0);
+			}
+			rewrite_opcode_u32(bytecodes, firstSkipByte, bytecodes.size());
 			break;
 		}
 		default: {
@@ -174,7 +276,7 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					continuePos = bytecodes.size();
 
 					// Skip
-					static_cast<AccessNode*>(data)->isStore = false;
+					static_cast<AccessNode *>(data)->isStore = false;
 					data->putBytecodes(in_data, bytecodes);
 					bytecodes.emplace_back(Opcode::FOR_LIST);
 					bytecodes.emplace_back(iteratorNode->declaration->isGlobal
@@ -198,6 +300,9 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	body.putBytecodes(in_data, bytecodes);
 	bytecodes.emplace_back(Opcode::JUMP);
 	put_opcode_u32(bytecodes, continuePos);
+	if (setupJumpIfFalse) {
+		rewrite_opcode_u32(bytecodes, *setupJumpIfFalse, bytecodes.size());
+	}
 	rewrite_opcode_u32(bytecodes, jumpIfFalseByte, bytecodes.size());
 	breakPos = bytecodes.size();
 }
