@@ -1,18 +1,22 @@
 #ifndef OBJECTMANAGER_HPP
 #define OBJECTMANAGER_HPP
 
-#include <iostream>
 #include "backend/optimize/Stack.hpp"
 #include "shared/AreaAllocator.hpp"
+#include <iostream>
+
 
 namespace AutoLang {
 
 class ObjectManager {
+  private:
+	friend AVM;
+	ANotifier* notifier;
   public:
 	static constexpr uint32_t size = 8;
 	AreaAllocator<128> areaAllocator;
-	Stack<AObject*, size> intObjects;
-	Stack<AObject*, size> floatObjects;
+	Stack<AObject *, size> intObjects;
+	Stack<AObject *, size> floatObjects;
 	inline void add(AObject *obj) {
 		switch (obj->type) {
 			case AutoLang::DefaultClass::intClassId: {
@@ -24,7 +28,7 @@ class ObjectManager {
 				intObjects.objects[intObjects.index++] = obj;
 				return;
 			}
-			case AutoLang::DefaultClass::floatClassId:{
+			case AutoLang::DefaultClass::floatClassId: {
 				if (floatObjects.index == size) {
 					areaAllocator.release(obj);
 					return;
@@ -66,7 +70,7 @@ class ObjectManager {
 		obj->str = str;
 		return obj;
 	}
-	inline AObject *get(ClassId classId, ANativeData* nativeData) {
+	inline AObject *get(ClassId classId, ANativeData *nativeData) {
 		auto obj = areaAllocator.getObject();
 		obj->type = classId;
 		obj->data = nativeData;
@@ -91,8 +95,9 @@ class ObjectManager {
 			default:
 				break;
 		}
-		if (obj->flags & AObject::Flags::OBJ_IS_NATIVE_DATA && obj->data->destructor) {
-			obj->data->destructor(obj->data);
+		if (obj->flags & AObject::Flags::OBJ_IS_NATIVE_DATA &&
+		    obj->data->destructor) {
+			obj->data->destructor(*notifier, obj->data);
 			return;
 		}
 		for (int i = 0; i < obj->member->size; ++i) {
@@ -125,7 +130,7 @@ class ObjectManager {
 		add(obj);
 	}
 	inline void refresh() {
-		areaAllocator.destroy();
+		areaAllocator.destroy(*notifier);
 		intObjects.refresh();
 		floatObjects.refresh();
 	}
@@ -149,11 +154,15 @@ class ObjectManager {
 	inline AObject *createStringObject(AString *str) { return get(str); }
 	inline AObject *createString(int64_t i) { return get(AString::from(i)); }
 	inline AObject *createString(double f) { return get(AString::from(f)); }
-	inline AObject *createString(const char* str) { return get(AString::from(str)); }
-	inline AObject *createString(std::string str) { return get(AString::from(str)); }
+	inline AObject *createString(const char *str) {
+		return get(AString::from(str));
+	}
+	inline AObject *createString(std::string str) {
+		return get(AString::from(str));
+	}
 	void destroy();
 };
 
-}
+} // namespace AutoLang
 
 #endif

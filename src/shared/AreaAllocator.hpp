@@ -26,7 +26,7 @@ template <size_t size> class AreaAllocator {
 	AreaChunkSlot *freeSlot;
 
   public:
-	uint32_t countObject;
+	size_t countObject;
 	AreaAllocator() : head(nullptr), freeSlot(nullptr), countObject(0) {}
 	inline AObject *getObject() {
 		if (freeSlot != nullptr) {
@@ -54,7 +54,7 @@ template <size_t size> class AreaAllocator {
 		slot->nextFree = freeSlot;
 		freeSlot = slot;
 	}
-	void destroy();
+	void destroy(ANotifier& notifier);
 };
 
 } // namespace AutoLang

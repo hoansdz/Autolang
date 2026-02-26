@@ -10,7 +10,7 @@
 namespace AutoLang {
 
 AVM::AVM(bool allowDebug) : allowDebug(allowDebug), notifier(new ANotifier(this)) {
-	
+	data.manager.notifier = notifier;
 }
 
 void AVM::start() {

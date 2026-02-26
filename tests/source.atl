@@ -27,40 +27,9 @@
 
 // A generic tester that works on any T
 
-val dogTest = Tester<Dog>()
-val catTest = Tester<Cat>()
-
-println("Dog says: " + dogTest.check())
-println("Cat says: " + catTest.check())
-
-// Runtime type checks work on full generic signatures
-if (dogTest is Tester<Dog>) {
-    println("Verified Tester<Dog>")
-}
-
-class Cat extends Animal { 
-    constructor() { super() }
-    func sound() = "Meow" 
-}
-
-class Dog extends Animal { 
-    constructor() { 
-		super()
-		println(__CLASS__) 
-	}
-    func sound() = "Woof" 
-}
-
-class Tester<T> {
-    val subject: T = T()
-    func check() = subject.sound()
-}
-
-class Animal { func sound() = "..." }
-
-for (i in 0..<2) {
-  println(i)
-}
-
-println(__CLASS__)
-println(Map<Int,Int>())
+val m: Map<String, Int> = Map<String, Int>()
+m["a"] = 1
+m["a"] = 2
+println(m["a"])
+m.remove("a")
+println(m["a"])

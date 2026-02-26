@@ -49,6 +49,7 @@ constexpr LexerStringId lexerId__FILE__ = 9;
 constexpr LexerStringId lexerId__LINE__ = 10;
 constexpr LexerStringId lexerId__FUNC__ = 11;
 constexpr LexerStringId lexerId__CLASS__ = 12;
+constexpr LexerStringId lexerIdgetClassId = 13;
 
 struct ParserContext {
 	// Optimize ram because reuse std::string instead of new std::string in

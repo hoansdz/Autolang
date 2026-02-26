@@ -1,5 +1,5 @@
-#ifndef LIBS_TIME_HPP
-#define LIBS_TIME_HPP
+#ifndef LIBS_VM_HPP
+#define LIBS_VM_HPP
 
 namespace AutoLang {
 class ACompiler;

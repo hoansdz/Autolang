@@ -160,6 +160,10 @@ ExprNode *UnaryNode::resolve(in_func) {
 void UnaryNode::optimize(in_func) {
 	if (value->kind == NodeType::CONST)
 		static_cast<ConstValueNode *>(value)->isLoadPrimary = true;
+	if (value->kind == NodeType::CLASS_ACCESS) {
+		throwError("Expected value if use operator '" +
+		           Lexer::Token(0, op).toString(context) + "'");
+	}
 	value->optimize(in_data);
 	switch (op) {
 		case Lexer::TokenType::PLUS:
@@ -680,16 +684,19 @@ ExprNode *ReturnNode::resolve(in_func) {
 		if (func->returnId == DefaultClass::voidClassId) {
 			throwError("Cannot return value, function return Void");
 		}
-		if (value->classId == func->returnId)
-			return this;
-		if (value->classId == DefaultClass::nullClassId) {
-			return this;
-		}
+		value = static_cast<HasClassIdNode *>(value->resolve(in_data));
 		if (func->returnId == DefaultClass::nullClassId) {
 			return this;
 		}
-		auto castNode = context.castPool.push(value, func->returnId);
-		value = static_cast<HasClassIdNode *>(castNode->resolve(in_data));
+		if (value->classId == func->returnId) {
+			return this;
+		}
+		if (value->classId == DefaultClass::nullClassId) {
+			return this;
+		}
+		value = context.castPool.push(value, func->returnId);
+		// auto castNode = context.castPool.push(value, func->returnId);
+		// value = static_cast<HasClassIdNode *>(castNode->resolve(in_data));
 	}
 	return this;
 }

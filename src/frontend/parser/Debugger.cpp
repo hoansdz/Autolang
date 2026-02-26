@@ -311,6 +311,13 @@ ClassId loadGenerics(in_func, std::string &name,
 		auto newFuncInfo = context.functionInfo[newCreateFuncNode->id];
 		newFunc->returnId = compile.functions[createFuncNode->id]->returnId;
 		if (createFuncNode->classDeclaration) {
+			if (!createFuncNode->classDeclaration->classId) {
+				createFuncNode->classDeclaration->load<false>(in_data);
+				if (!createFuncNode->classDeclaration->classId) {
+					throw ParserError(0, "wtf");
+				}
+				createFuncNode->classDeclaration->classId = std::nullopt;
+			}
 			newFunc->returnId = *createFuncNode->classDeclaration->classId;
 		}
 		context.currentFunctionId = newCreateFuncNode->id;
@@ -1179,6 +1186,16 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 					return context.castPool.push(arguments[0],
 					                             DefaultClass::boolClassId);
 				}
+				case lexerIdgetClassId: {
+					if (arguments.size() != 1) {
+						throw ParserError(firstLine,
+						                  "Invalid call: Bool expects 1 "
+						                  "argument, but " +
+						                      std::to_string(arguments.size()) +
+						                      " were provided");
+					}
+					break;
+				}
 			}
 			auto callNode = context.callNodePool.push(
 			    firstLine, context.currentClassId, nullptr,
@@ -1196,18 +1213,13 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			return callNode;
 		}
 		case Lexer::TokenType::LBRACKET: {
-			auto varNode = findVarNode(in_data, i, identifier->indexData, true);
-			if (varNode->kind != AutoLang::NodeType::VAR) {
-				ExprNode::deleteNode(varNode);
-				throw ParserError(token->line, "Invalid assignment target");
-			}
+			auto varNode = findIdentifierNode(in_data, i, identifier->indexData, true);
 			uint32_t firstLine = token->line;
 			auto arguments = loadListArgument(in_data, i);
 			return context.callNodePool.push(
-			    firstLine, context.currentClassId,
-			    static_cast<AccessNode *>(varNode), "[]", std::move(arguments),
-			    context.justFindStatic, !nextTokenIfMarkNonNull(in_data, i),
-			    false);
+			    firstLine, context.currentClassId, varNode, "[]",
+			    std::move(arguments), context.justFindStatic,
+			    !nextTokenIfMarkNonNull(in_data, i), false);
 		}
 		case Lexer::TokenType::LBRACE: {
 			break;

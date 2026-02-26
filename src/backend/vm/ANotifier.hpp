@@ -26,7 +26,7 @@ class ANotifier {
 	[[nodiscard]] inline AObject* createString(AString* value) {
 		return vm->data.manager.createStringObject(value);
 	}
-	[[nodiscard]] inline AObject* createNativeData(ClassId classId, void* data, void (*destructor)(void* data) = nullptr) {
+	[[nodiscard]] inline AObject* createNativeData(ClassId classId, void* data, DestructorParameters destructor = nullptr) {
 		return vm->data.manager.get(classId, new ANativeData{data, destructor});
 	}
 	template <typename T>

@@ -5,7 +5,7 @@
 
 namespace AutoLang {
 
-template <size_t size> void AreaAllocator<size>::destroy() {
+template <size_t size> void AreaAllocator<size>::destroy(ANotifier& notifier) {
 	auto *currentChunk = head;
 	// Free all slot
 	while (currentChunk != nullptr) {
@@ -13,7 +13,7 @@ template <size_t size> void AreaAllocator<size>::destroy() {
 			auto &slot = currentChunk->data[i];
 			if (slot.obj.flags & AObject::Flags::OBJ_IS_FREE)
 				continue;
-			slot.obj.template free<true>();
+			slot.obj.template free<true>(notifier);
 		}
 		currentChunk = currentChunk->next;
 	}

@@ -22,7 +22,7 @@ void init(ACompiler &compiler) {
 @no_constructor
 class VM {
 	@native("count_area_object")
-	static func getCoundAreaObject(): Int
+	static func getCountAreaAllocatorObject(): Int
 }
 	)###",
 	                            true,

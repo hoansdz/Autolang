@@ -46,5 +46,7 @@
 #include "frontend/libs/stdlib.cpp"
 #include "frontend/libs/array.cpp"
 #include "frontend/libs/time.cpp"
+#include "frontend/libs/vm.cpp"
+#include "frontend/libs/map.cpp"
 
 #endif

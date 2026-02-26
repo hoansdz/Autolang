@@ -5,6 +5,7 @@
 #include "frontend/libs/math.hpp"
 #include "frontend/libs/stdlib.hpp"
 #include "frontend/libs/time.hpp"
+#include "frontend/libs/vm.hpp"
 #include <chrono>
 #include <filesystem>
 #include <iostream>
@@ -571,6 +572,7 @@ ACompiler::ACompiler() {
 	AutoLang::DefaultClass::init(*this);
 	AutoLang::DefaultFunction::init(*this);
 	AutoLang::Libs::time::init(*this);
+	AutoLang::Libs::vm::init(*this);
 
 	vm.data.mainFunctionId = vm.data.registerFunction(
 	    nullptr, ".main", nullptr, 0,

@@ -8,11 +8,67 @@
 namespace AutoLang {
 
 ExprNode *CallNode::resolve(in_func) {
-	if (caller) {
-		caller = static_cast<HasClassIdNode *>(caller->resolve(in_data));
-	}
 	for (auto &argument : arguments) {
 		argument = static_cast<HasClassIdNode *>(argument->resolve(in_data));
+	}
+	if (caller) {
+		caller = static_cast<HasClassIdNode *>(caller->resolve(in_data));
+	} else if (!name.empty()) {
+		auto it =
+		    context.lexerStringMap.find(name.substr(0, name.length() - 2));
+		if (it != context.lexerStringMap.end()) {
+			LexerStringId nameId = it->second;
+			switch (nameId) {
+				case lexerIdInt: {
+					if (arguments.size() != 1) {
+						throwError("Invalid call: Int expects 1 "
+						           "argument, but " +
+						           std::to_string(arguments.size()) +
+						           " were provided");
+					}
+					auto result = context.castPool.push(
+					    arguments[0], DefaultClass::intClassId);
+					arguments.clear();
+					return result;
+				}
+				case lexerIdFloat: {
+					if (arguments.size() != 1) {
+						throwError("Invalid call: Float expects 1 "
+						           "argument, but " +
+						           std::to_string(arguments.size()) +
+						           " were provided");
+					}
+					auto result = context.castPool.push(
+					    arguments[0], DefaultClass::floatClassId);
+					arguments.clear();
+					return result;
+				}
+				case lexerIdBool: {
+					if (arguments.size() != 1) {
+						throwError("Invalid call: Bool expects 1 "
+						           "argument, but " +
+						           std::to_string(arguments.size()) +
+						           " were provided");
+					}
+					auto result = context.castPool.push(
+					    arguments[0], DefaultClass::boolClassId);
+					arguments.clear();
+					return result;
+				}
+				case lexerIdgetClassId: {
+					if (arguments.size() != 1) {
+						throwError("Invalid call: getClassId() expects 1 "
+						           "argument, but " +
+						           std::to_string(arguments.size()) +
+						           " were provided");
+					}
+					auto result = context.constValuePool.push(
+					    line, static_cast<int64_t>(arguments[0]->classId));
+					arguments.clear();
+					return result;
+				}
+			}
+		}
 	}
 	return this;
 }
@@ -30,9 +86,16 @@ void CallNode::optimize(in_func) {
 
 	for (auto &argument : arguments) {
 		argument->optimize(in_data);
-		if (argument->kind == NodeType::CALL &&
-		    argument->classId == AutoLang::DefaultClass::voidClassId) {
-			throwError("Cannot input Void value");
+		switch (argument->kind) {
+			case NodeType::CLASS_ACCESS: {
+				throwError("Cannot input class at function " + name);
+			}
+			case NodeType::CALL: {
+				if (argument->classId == AutoLang::DefaultClass::voidClassId) {
+					throwError("Cannot input Void value");
+				}
+				break;
+			}
 		}
 	}
 
@@ -397,8 +460,14 @@ ExprNode *CallNode::copy(in_func) {
 	if (caller) {
 		newCaller = static_cast<HasClassIdNode *>(caller->copy(in_data));
 	}
+	std::vector<HasClassIdNode *> newArguments;
+	newArguments.reserve(arguments.size());
+	for (auto *argument : arguments) {
+		newArguments.push_back(
+		    static_cast<HasClassIdNode *>(argument->copy(in_data)));
+	}
 	auto newNode = context.callNodePool.push(
-	    line, context.currentClassId, newCaller, name, arguments,
+	    line, context.currentClassId, newCaller, name, std::move(newArguments),
 	    justFindStatic, nullable, accessNullable);
 	newNode->classId = classId;
 	return newNode;

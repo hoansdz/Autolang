@@ -12,7 +12,7 @@ void ObjectManager::destroy() {
     for (size_t i = 0; i < floatObjects.index; ++i) {
         floatObjects.objects[i]->flags = AObject::Flags::OBJ_IS_FREE;
     }
-    areaAllocator.destroy();
+    areaAllocator.destroy(*notifier);
 }
 
 }

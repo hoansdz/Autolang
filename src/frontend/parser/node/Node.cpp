@@ -37,7 +37,6 @@ std::string ExprNode::getNodeType() {
         GET_NODE_TYPE_CASE(CALL)
         GET_NODE_TYPE_CASE(CAST)
         GET_NODE_TYPE_CASE(SET)
-        GET_NODE_TYPE_CASE(CLASS)
         GET_NODE_TYPE_CASE(UNARY)
         GET_NODE_TYPE_CASE(IF)
         GET_NODE_TYPE_CASE(BLOCK)

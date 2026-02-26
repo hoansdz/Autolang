@@ -45,7 +45,6 @@ enum NodeType : uint8_t {
 	CALL,
 	CAST,
 	SET,
-	CLASS,
 	UNARY,
 	IF,
 	BLOCK,

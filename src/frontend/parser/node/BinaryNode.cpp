@@ -187,6 +187,11 @@ void BinaryNode::optimize(in_func) {
 		case Lexer::TokenType::MINUS:
 		case Lexer::TokenType::STAR:
 		case Lexer::TokenType::SLASH: {
+			if (left->kind == NodeType::CLASS_ACCESS ||
+			    right->kind == NodeType::CLASS_ACCESS) {
+				throwError("Expected value if use operator '" +
+				           Lexer::Token(0, op).toString(context) + "'");
+			}
 			if (left->classId == AutoLang::DefaultClass::boolClassId) {
 				left = context.castPool.push(
 				    left, AutoLang::DefaultClass::intClassId);
@@ -205,6 +210,11 @@ void BinaryNode::optimize(in_func) {
 			break;
 		}
 		case Lexer::TokenType::EQEQ: {
+			if (left->kind == NodeType::CLASS_ACCESS ||
+			    right->kind == NodeType::CLASS_ACCESS) {
+				throwError("Expected value if use operator '" +
+				           Lexer::Token(0, op).toString(context) + "'");
+			}
 			if (left->classId == AutoLang::DefaultClass::nullClassId ||
 			    right->classId == AutoLang::DefaultClass::nullClassId) {
 				op = Lexer::TokenType::EQEQEQ;
@@ -214,6 +224,11 @@ void BinaryNode::optimize(in_func) {
 			break;
 		}
 		case Lexer::TokenType::NOTEQ: {
+			if (left->kind == NodeType::CLASS_ACCESS ||
+			    right->kind == NodeType::CLASS_ACCESS) {
+				throwError("Expected value if use operator '" +
+				           Lexer::Token(0, op).toString(context) + "'");
+			}
 			if (left->classId == AutoLang::DefaultClass::nullClassId ||
 			    right->classId == AutoLang::DefaultClass::nullClassId) {
 				op = Lexer::TokenType::NOTEQEQ;
@@ -224,14 +239,25 @@ void BinaryNode::optimize(in_func) {
 		}
 		case Lexer::TokenType::NOTEQEQ:
 		case Lexer::TokenType::EQEQEQ: {
+			if (left->kind == NodeType::CLASS_ACCESS ||
+			    right->kind == NodeType::CLASS_ACCESS) {
+				throwError("Expected value if use operator '" +
+				           Lexer::Token(0, op).toString(context) + "'");
+			}
 			return;
 		}
-		default:
+		default: {
+			if (left->kind == NodeType::CLASS_ACCESS ||
+			    right->kind == NodeType::CLASS_ACCESS) {
+				throwError("Expected value if use operator '" +
+				           Lexer::Token(0, op).toString(context) + "'");
+			}
 			if (left->isNullable() || right->isNullable())
 				throwError("Cannot use operator '" +
 				           Lexer::Token(0, op).toString(context) +
 				           "' with nullable value");
 			break;
+		}
 	}
 	if (context.getTypeResult(left->classId, right->classId,
 	                          static_cast<uint8_t>(op), classId))

@@ -11,9 +11,11 @@ namespace AutoLang {
 
 class AVM;
 
+using DestructorParameters = void (*)(ANotifier &notifier, void* data);
+
 struct ANativeData {
 	void* data;
-	void (*destructor)(void* data);
+	DestructorParameters destructor;
 };
 
 struct AObject {
@@ -47,7 +49,7 @@ struct AObject {
 			return;
 		++refCount;
 	};
-	template <bool checkRefCount = false> inline void free() {
+	template <bool checkRefCount = false> inline void free(ANotifier& notifier) {
 		switch (type) {
 			case AutoLang::DefaultClass::intClassId:
 			case AutoLang::DefaultClass::floatClassId:
@@ -74,7 +76,7 @@ struct AObject {
 		// 	return;
 		// }
 		if (flags & Flags::OBJ_IS_NATIVE_DATA && data->destructor) {
-			data->destructor(data->data);
+			data->destructor(notifier, data->data);
 			return;
 		}
 		for (size_t i = 0; i < member->size; ++i) { // Support delete data
