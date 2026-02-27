@@ -189,7 +189,8 @@ bool ForNode::putOptimizedRangeBytecode(in_func,
 		case NodeType::CONST: {
 			auto rightNode = static_cast<ConstValueNode *>(right);
 			if (right->classId == AutoLang::DefaultClass::nullClassId) {
-				throwError("Null must be cleared by optimizer");
+				// throwError("Null must be cleared by optimizer");
+				return false;
 			}
 			if (right->classId == AutoLang::DefaultClass::boolClassId) {
 				return false;

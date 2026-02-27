@@ -12,7 +12,7 @@ void AVM::log() {
 	std::cerr << "-------------------" << "\n";
 	std::cerr << "ConstPool: " << data.constPool.size() << " elements" << "\n";
 	for (int i = 0; i < data.constPool.size(); ++i) {
-		tempAllocateArea[0] = &data.constPool[i];
+		tempAllocateArea[0] = data.constPool[i];
 		std::cerr << '[' << i << "] ";
 		AutoLang::DefaultFunction::println(*notifier, tempAllocateArea, 1);
 	}
@@ -191,17 +191,93 @@ void AVM::log(Function *currentFunction) {
 			case AutoLang::Opcode::STORE_LOCAL:
 				std::cerr << "STORE_LOCAL	 " << get_u32(bytecodes, i) << "\n";
 				break;
+			case AutoLang::Opcode::LOCAL_STORE_LOCAL: {
+				uint32_t pos1 = get_u32(bytecodes, i);
+				uint32_t pos2 = get_u32(bytecodes, i);
+				std::cerr << "LOCAL_STORE_LOCAL	 " << pos1 << " " << pos2
+				          << "\n";
+				break;
+			}
+			case AutoLang::Opcode::LOCAL_STORE_CONST: {
+				uint32_t pos1 = get_u32(bytecodes, i);
+				uint32_t pos2 = get_u32(bytecodes, i);
+				std::cerr << "LOCAL_STORE_CONST	 " << pos1 << " " << pos2
+				          << "\n";
+				break;
+			}
+			case AutoLang::Opcode::LOCAL_STORE_GLOBAL: {
+				uint32_t pos1 = get_u32(bytecodes, i);
+				uint32_t pos2 = get_u32(bytecodes, i);
+				std::cerr << "LOCAL_STORE_GLOBAL	 " << pos1 << " " << pos2
+				          << "\n";
+				break;
+			}
+			case AutoLang::Opcode::GLOBAL_STORE_LOCAL: {
+				uint32_t pos1 = get_u32(bytecodes, i);
+				uint32_t pos2 = get_u32(bytecodes, i);
+				std::cerr << "GLOBAL_STORE_LOCAL	 " << pos1 << " " << pos2
+				          << "\n";
+				break;
+			}
+			case AutoLang::Opcode::GLOBAL_STORE_CONST: {
+				uint32_t pos1 = get_u32(bytecodes, i);
+				uint32_t pos2 = get_u32(bytecodes, i);
+				std::cerr << "GLOBAL_STORE_CONST	 " << pos1 << " " << pos2
+				          << "\n";
+				break;
+			}
+			case AutoLang::Opcode::GLOBAL_STORE_GLOBAL: {
+				uint32_t pos1 = get_u32(bytecodes, i);
+				uint32_t pos2 = get_u32(bytecodes, i);
+				std::cerr << "GLOBAL_STORE_GLOBAL	 " << pos1 << " " << pos2
+				          << "\n";
+				break;
+			}
+			case AutoLang::Opcode::LOCAL_LOAD_MEMBER: {
+				uint32_t pos = get_u32(bytecodes, i);
+				uint32_t memberId = get_u32(bytecodes, i);
+				std::cerr << "LOCAL_LOAD_MEMBER	 " << pos << " " << memberId
+				          << "\n";
+				break;
+			}
+			case AutoLang::Opcode::GLOBAL_LOAD_MEMBER: {
+				uint32_t pos = get_u32(bytecodes, i);
+				uint32_t memberId = get_u32(bytecodes, i);
+				std::cerr << "GLOBAL_LOAD_MEMBER	 " << pos << " " << memberId
+				          << "\n";
+				break;
+			}
+			case AutoLang::Opcode::GLOBAL_LOAD_MEMBER_AND_STORE: {
+				uint32_t pos = get_u32(bytecodes, i);
+				uint32_t memberId = get_u32(bytecodes, i);
+				std::cerr << "GLOBAL_LOAD_MEMBER_AND_STORE	 " << pos << " " << memberId
+				          << "\n";
+				break;
+			}
+			case AutoLang::Opcode::LOCAL_LOAD_MEMBER_AND_STORE: {
+				uint32_t pos = get_u32(bytecodes, i);
+				uint32_t memberId = get_u32(bytecodes, i);
+				std::cerr << "LOCAL_LOAD_MEMBER_AND_STORE	 " << pos << " " << memberId
+				          << "\n";
+				break;
+			}
 			case AutoLang::Opcode::LOAD_MEMBER:
 				std::cerr << "LOAD_MEMBER	 " << get_u32(bytecodes, i) << "\n";
 				break;
-			case AutoLang::Opcode::LOAD_MEMBER_IF_NNULL:
-				std::cerr << "LOAD_MEMBER_IF_NNULL	 " << get_u32(bytecodes, i)
-				          << "\n";
+			case AutoLang::Opcode::LOAD_MEMBER_IF_NNULL_OR_JUMP: {
+				uint32_t memberId = get_u32(bytecodes, i);
+				uint32_t jumpIfFalsePos = get_u32(bytecodes, i);
+				std::cerr << "LOAD_MEMBER_IF_NNULL_OR_JUMP	 "
+				          << " " << memberId << " " << jumpIfFalsePos << "\n";
 				break;
-			case AutoLang::Opcode::LOAD_MEMBER_CAN_RET_NULL:
-				std::cerr << "LOAD_MEMBER_CAN_RET_NULL	 "
-				          << get_u32(bytecodes, i) << "\n";
+			}
+			case AutoLang::Opcode::LOAD_MEMBER_CAN_RET_NULL_OR_JUMP: {
+				uint32_t memberId = get_u32(bytecodes, i);
+				uint32_t jumpIfFalsePos = get_u32(bytecodes, i);
+				std::cerr << "LOAD_MEMBER_CAN_RET_NULL_OR_JUMP	 "
+				          << " " << memberId << " " << jumpIfFalsePos << "\n";
 				break;
+			}
 			case AutoLang::Opcode::STORE_MEMBER:
 				std::cerr << "STORE_MEMBER	 " << get_u32(bytecodes, i) << "\n";
 				break;

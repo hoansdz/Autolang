@@ -27,9 +27,22 @@
 
 // A generic tester that works on any T
 
-val m: Map<String, Int> = Map<String, Int>()
-m["a"] = 1
-m["a"] = 2
-println(m["a"])
-m.remove("a")
-println(m["a"])
+class X<M> {
+	val x: String = "hello"
+	val y: Int = 1
+	val z: Int = 1
+	constructor () {
+		println(__CLASS__)
+		println(x)
+	}
+}
+
+
+func t() {
+val x = 5
+val y = 6
+val z = 7
+val m = X<Int>()
+}
+
+t()

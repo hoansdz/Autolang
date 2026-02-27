@@ -10,6 +10,8 @@
 
 namespace AutoLang {
 
+CompiledProgram::CompiledProgram() {}
+
 void CompiledProgram::destroy() {
 	manager.refresh();
 	functionAllocator.destroy();
@@ -18,17 +20,20 @@ void CompiledProgram::destroy() {
 	classAllocator.destroy();
 	classes.clear();
 	classMap.clear();
+	constObjectAllocator.destroy();
+	constPool.clear();
+	constPool.push_back(DefaultClass::nullObject);
+	constPool.push_back(DefaultClass::trueObject);
+	constPool.push_back(DefaultClass::falseObject);
 }
 
-void CompiledProgram::refresh() {
-	manager.refresh();
-}
+void CompiledProgram::refresh() { manager.refresh(); }
 
 template <bool isConstructor>
 FunctionId CompiledProgram::registerFunction(AClass *clazz, std::string name,
-                                         ClassId *args, uint32_t argSize,
-                                         ClassId returnId,
-                                         uint32_t functionFlags) {
+                                             ClassId *args, uint32_t argSize,
+                                             ClassId returnId,
+                                             uint32_t functionFlags) {
 	uint32_t id = functions.size();
 	if (clazz != nullptr) {
 		clazz->funcMap[name].push_back(id);
@@ -96,8 +101,8 @@ Offset CompiledProgram::registerConstPool(
 	map[value] = id;
 	// printDebug("Value : "+toStr(value)+" at
 	// "+std::to_string(constPool.size()));
-	constPool.push_back(value);
-	AObject* obj = &constPool.back();
+	constPool.push_back(constObjectAllocator.push(value));
+	AObject *obj = constPool.back();
 	obj->refCount = AutoLang::DefaultClass::refCountForGlobal;
 	obj->flags = AObject::Flags::OBJ_IS_CONST;
 	return id;
@@ -113,8 +118,8 @@ Offset CompiledProgram::registerConstPool(HashMap<T, uint32_t> &map, T value) {
 	map[value] = id;
 	// printDebug("Value : "+toStr(value)+" at
 	// "+std::to_string(constPool.size()));
-	constPool.push_back(value);
-	AObject* obj = &constPool.back();
+	constPool.push_back(constObjectAllocator.push(value));
+	AObject *obj = constPool.back();
 	obj->refCount = AutoLang::DefaultClass::refCountForGlobal;
 	obj->flags = AObject::Flags::OBJ_IS_CONST;
 	return id;

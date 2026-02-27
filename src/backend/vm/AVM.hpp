@@ -8,8 +8,8 @@
 #include "shared/Function.hpp"
 #include "shared/ObjectManager.hpp"
 #include "shared/StackAllocator.hpp"
-#include <string>
 #include <chrono>
+#include <string>
 
 namespace AutoLang {
 
@@ -72,8 +72,8 @@ enum Opcode : uint8_t {
 	BOOL_TO_FLOAT = 55,
 	JUMP_AND_DELETE_IF_NULL = 56,
 	JUMP_AND_SET_IF_NULL = 57,
-	LOAD_MEMBER_IF_NNULL = 58,
-	LOAD_MEMBER_CAN_RET_NULL = 59,
+	LOAD_MEMBER_IF_NNULL_OR_JUMP = 58,
+	LOAD_MEMBER_CAN_RET_NULL_OR_JUMP = 59,
 	POP_NO_RELEASE = 60,
 	CALL_VTABLE_FUNCTION = 61,
 	CALL_VTABLE_VOID_FUNCTION = 62,
@@ -121,6 +121,18 @@ enum Opcode : uint8_t {
 
 	PLUS_PLUS_LOCAL,
 	PLUS_PLUS_GLOBAL,
+
+	GLOBAL_LOAD_MEMBER,
+	LOCAL_LOAD_MEMBER,
+	GLOBAL_LOAD_MEMBER_AND_STORE,
+	LOCAL_LOAD_MEMBER_AND_STORE,
+
+	GLOBAL_STORE_GLOBAL,
+	GLOBAL_STORE_LOCAL,
+	GLOBAL_STORE_CONST,
+	LOCAL_STORE_GLOBAL,
+	LOCAL_STORE_LOCAL,
+	LOCAL_STORE_CONST
 };
 
 template <typename K, typename V>
@@ -154,11 +166,12 @@ class ANotifier;
 
 class AVM {
   private:
-	ANotifier* notifier;
+	ANotifier *notifier;
+
   public:
 	inline uint32_t get_u32(uint8_t *code, uint32_t &ip);
 	void log(Function *currentFunction);
-	
+
 	Stack<AObject *, MAX_STACK_OBJECT> stack;
 	FixedPoolLoaded<CallFrame, MAX_CALL_FRAME> callFrames;
 	StackAllocator stackAllocator = StackAllocator(MAX_STACK_ALLOCATOR);
@@ -189,14 +202,14 @@ class AVM {
 	bool allowDebug;
 	template <ANativeFunction native, size_t size, bool push = true>
 	inline bool operate();
-	template <size_t size>
-	inline bool fastOperate(ANativeFunction native);
+	template <size_t size> inline bool fastOperate(ANativeFunction native);
 	template <bool loadVirtual, bool hasValue, bool isConstructor>
-	inline bool callFunction(CallFrame*& currentCallFrame, Function *currentFunction,
-	                               uint8_t *bytecodes, uint32_t &i);
+	inline bool callFunction(CallFrame *&currentCallFrame,
+	                         Function *currentFunction, uint8_t *bytecodes,
+	                         uint32_t &i);
 	void resume();
 	void run();
-	void input(AObject* inputData);
+	void input(AObject *inputData);
 
 	//   public:
 	VMState state = VMState::READY;

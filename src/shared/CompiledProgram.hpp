@@ -31,7 +31,7 @@ struct CompiledProgram
 {
 	// Use when finished resize vector
 	Function *main;
-	CompiledProgram() {}
+	CompiledProgram();
 	ObjectManager manager;
 	FunctionId mainFunctionId;
 	ChunkArena<Function, 64> functionAllocator;
@@ -40,7 +40,8 @@ struct CompiledProgram
 	ChunkArena<AClass, 64> classAllocator;
 	std::vector<AClass*> classes;
 	HashMap<std::string, ClassId> classMap;
-	std::vector<AObject> constPool;
+	ChunkArena<AObject, 64> constObjectAllocator;
+	std::vector<AObject*> constPool;
 	void refresh();
 	void destroy();
 	template <bool isConstructor = false>

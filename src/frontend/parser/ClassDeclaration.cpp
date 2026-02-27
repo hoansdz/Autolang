@@ -20,6 +20,16 @@ template <bool changeGenericsClassId> void ClassDeclaration::load(in_func) {
 			              context.lexerString[baseClassLexerStringId] + "'");
 		}
 		classId = it->second;
+		auto classInfo = context.classInfo[it->second];
+		if (classInfo->genericData) {
+			throw ParserError(
+			    line,
+			    "'" + context.lexerString[baseClassLexerStringId] +
+			        "' expects " +
+			        std::to_string(
+			            classInfo->genericData->genericDeclarations.size()) +
+			        " type argument but 0 were given");
+		}
 		return;
 	}
 	{
@@ -54,7 +64,8 @@ template <bool changeGenericsClassId> void ClassDeclaration::load(in_func) {
 				inputClassId[i]->classId = std::nullopt;
 			}
 		}
-		if (!change) return;
+		if (!change)
+			return;
 	} else {
 		bool change = true;
 		for (size_t i = 0; i < inputClassId.size(); ++i) {
@@ -66,7 +77,8 @@ template <bool changeGenericsClassId> void ClassDeclaration::load(in_func) {
 				}
 			}
 		}
-		if (!change) return;
+		if (!change)
+			return;
 		name = getName(in_data);
 	}
 	{

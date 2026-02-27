@@ -52,26 +52,27 @@ using StringHashMap =
 using ObjectHashMap = HashMap<AObject *, AObject *>;
 
 AObject *constructor(NativeFuncInData) {
-	ClassId keyId = args[0]->i;
+	ClassId classId = args[0]->i;
+	ClassId keyId = args[1]->i;
 	switch (keyId) {
 		case DefaultClass::intClassId: {
 			return notifier.createNativeData(
-			    keyId, new AHashMap{keyId, new IntHashMap()},
+			    classId, new AHashMap{keyId, new IntHashMap()},
 			    destroyMap<IntHashMap, false>);
 		}
 		case DefaultClass::floatClassId: {
 			return notifier.createNativeData(
-			    keyId, new AHashMap{keyId, new FloatHashMap()},
+			    classId, new AHashMap{keyId, new FloatHashMap()},
 			    destroyMap<FloatHashMap, false>);
 		}
 		case DefaultClass::stringClassId: {
 			return notifier.createNativeData(
-			    keyId, new AHashMap{keyId, new StringHashMap()},
+			    classId, new AHashMap{keyId, new StringHashMap()},
 			    destroyMap<StringHashMap, true>);
 		}
 		default: {
 			return notifier.createNativeData(
-			    keyId, new AHashMap{keyId, new ObjectHashMap()},
+			    classId, new AHashMap{keyId, new ObjectHashMap()},
 			    destroyMap<ObjectHashMap, true>);
 		}
 	}

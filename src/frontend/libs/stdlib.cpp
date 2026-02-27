@@ -87,12 +87,13 @@ class Array<T>() {
 	func clear()
 }
 
+@no_extends
 @no_constructor
 class Map<K, V> {
 	@native("map_constructor")
-	private static func create(keyId: Int): Map<K, V>
+	private static func create(classId: Int, keyId: Int): Map<K, V>
 	
-	static func __CLASS__() = create(getClassId(K))
+	static func __CLASS__() = create(getClassId(Map<K, V>), getClassId(K))
 	
 	@native("map_get")
 	func get(key: K): V?

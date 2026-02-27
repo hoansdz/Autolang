@@ -48,6 +48,13 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 		throw ParserError(context.tokens[i].line,
 		                  "Expected name but not found");
 	}
+	{
+		std::string message =
+		    context.checkValidDeclarationName(token->indexData);
+		if (!message.empty()) {
+			throw ParserError(token->line, message);
+		}
+	}
 	std::string &name = context.lexerString[token->indexData];
 	if (context.currentClassId) {
 		if (isMapExist(context.getCurrentClass(in_data)->memberMap, name) ||

@@ -151,6 +151,7 @@ struct OptionalAccessNode : JumpIfNullNode {
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
 	ExprNode *copy(in_func) override;
+	bool isNullable() override { return true; }
 	~OptionalAccessNode();
 };
 
@@ -524,11 +525,10 @@ struct RangeNode : HasClassIdNode {
 // 	std::vector<HasClassIdNode *> values;
 // 	CreateArrayNode(uint32_t line, std::vector<HasClassIdNode *>values)
 // 	    : HasClassIdNode(NodeType::THROW, DefaultClass::nullClassId, line),
-// values(values) {} 	ExprNode *resolve(in_func) override; 	void optimize(in_func)
-// override; 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes)
-// override; 	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
-// 	ExprNode *copy(in_func) override;
-// 	~CreateArrayNode();
+// values(values) {} 	ExprNode *resolve(in_func) override; 	void
+// optimize(in_func) override; 	void putBytecodes(in_func, std::vector<uint8_t>
+// &bytecodes) override; 	void rewrite(in_func, std::vector<uint8_t>
+// &bytecodes) override; 	ExprNode *copy(in_func) override; 	~CreateArrayNode();
 // };
 
 } // namespace AutoLang

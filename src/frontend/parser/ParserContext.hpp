@@ -192,6 +192,17 @@ struct ParserContext {
 	inline ClassInfo *getCurrentClassInfo(in_func) {
 		return currentClassId ? classInfo[*currentClassId] : nullptr;
 	}
+	std::string checkValidDeclarationName(LexerStringId nameId) {
+		switch (nameId) {
+			case lexerId__LINE__:
+			case lexerId__FILE__:
+			case lexerId__CLASS__:
+			case lexerId__FUNC__: {
+				return lexerString[nameId] + " is magic const value";
+			}
+		}
+		return "";
+	}
 	static inline std::optional<uint32_t> getClassId(AClass *clazz) {
 		if (!clazz)
 			return std::nullopt;

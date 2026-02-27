@@ -1278,6 +1278,12 @@ ConstValueNode *findConstValueNode(in_func, size_t &i, LexerStringId nameId) {
 			    0, context.getCurrentFunction(in_data)->name);
 		}
 		case lexerId__CLASS__: {
+			if (context.currentClassId) {
+				auto classInfo = context.getCurrentClassInfo(in_data);
+				if (classInfo->genericData) {
+					return nullptr;
+				}
+			}
 			return context.constValuePool.push(
 			    0, context.currentClassId
 			           ? context.getCurrentClass(in_data)->name

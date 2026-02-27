@@ -5,13 +5,13 @@
 #include "shared/AreaAllocator.hpp"
 #include <iostream>
 
-
 namespace AutoLang {
 
 class ObjectManager {
   private:
 	friend AVM;
-	ANotifier* notifier;
+	ANotifier *notifier;
+
   public:
 	static constexpr uint32_t size = 8;
 	AreaAllocator<128> areaAllocator;
@@ -95,9 +95,11 @@ class ObjectManager {
 			default:
 				break;
 		}
-		if (obj->flags & AObject::Flags::OBJ_IS_NATIVE_DATA &&
-		    obj->data->destructor) {
-			obj->data->destructor(*notifier, obj->data);
+		if (obj->flags & AObject::Flags::OBJ_IS_NATIVE_DATA) {
+			if (obj->data->destructor) {
+				obj->data->destructor(*notifier, obj->data->data);
+			}
+			delete obj->data;
 			return;
 		}
 		for (int i = 0; i < obj->member->size; ++i) {

@@ -75,8 +75,11 @@ struct AObject {
 		// 	assert("what wrong");
 		// 	return;
 		// }
-		if (flags & Flags::OBJ_IS_NATIVE_DATA && data->destructor) {
-			data->destructor(notifier, data->data);
+		if (flags & Flags::OBJ_IS_NATIVE_DATA) {
+			if (data->destructor) {
+				data->destructor(notifier, data->data);
+			}
+			delete data;
 			return;
 		}
 		for (size_t i = 0; i < member->size; ++i) { // Support delete data

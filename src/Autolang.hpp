@@ -27,6 +27,7 @@
 #include "frontend/parser/node/ForNode.cpp"
 #include "frontend/parser/node/RangeNode.cpp"
 #include "frontend/parser/node/BlockNode.cpp"
+#include "frontend/parser/node/GetPropNode.cpp"
 #include "frontend/parser/node/TryCatchNode.cpp"
 #include "frontend/parser/node/ThrowNode.cpp"
 #include "frontend/parser/node/CreateNode.cpp"

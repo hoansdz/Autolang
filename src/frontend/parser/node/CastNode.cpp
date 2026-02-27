@@ -70,7 +70,7 @@ ExprNode *CastNode::resolve(in_func) {
 				break;
 		}
 	} catch (const std::runtime_error &err) {
-		throwError("Cannot castb " + compile.classes[value->classId]->name +
+		throwError("Cannot cast " + compile.classes[value->classId]->name +
 		           " to " + compile.classes[classId]->name);
 	}
 	return this;
@@ -93,7 +93,7 @@ void CastNode::optimize(in_func) {
 					return;
 				}
 				default: {
-					throwError("Cannot castc " +
+					throwError("Cannot cast " +
 					           compile.classes[value->classId]->name + " to " +
 					           compile.classes[classId]->name);
 				}
@@ -108,7 +108,24 @@ void CastNode::optimize(in_func) {
 					return;
 				}
 				default: {
-					throwError("Cannot castd " +
+					throwError("Cannot cast " +
+					           compile.classes[value->classId]->name + " to " +
+					           compile.classes[classId]->name);
+				}
+			}
+			break;
+		}
+		case AutoLang::DefaultClass::boolClassId: {
+			switch (value->classId) {
+				case AutoLang::DefaultClass::intClassId: 
+				case AutoLang::DefaultClass::floatClassId: {
+					throwError("Type Error: Cannot cast Int/Float to Bool. Use explicit comparison like 'value != 0' instead.");
+				}
+				case AutoLang::DefaultClass::boolClassId: {
+					return;
+				}
+				default: {
+					throwError("Cannot cast " +
 					           compile.classes[value->classId]->name + " to " +
 					           compile.classes[classId]->name);
 				}
@@ -121,7 +138,7 @@ void CastNode::optimize(in_func) {
 			    compile.classes[value->classId]->inheritance.get(classId)) {
 				return;
 			}
-			throwError("Cannot caste " + compile.classes[value->classId]->name +
+			throwError("Cannot cast " + compile.classes[value->classId]->name +
 			           " to " + compile.classes[classId]->name);
 	}
 }

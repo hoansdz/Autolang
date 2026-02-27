@@ -11,3 +11,5 @@ end
 test()
 
 print("Total time", os.clock() - start)
+
+[[D:\msys64\mingw64\bin\lua.exe tests/benchmark/lua/fib.lua]]

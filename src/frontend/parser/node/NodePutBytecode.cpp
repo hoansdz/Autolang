@@ -56,63 +56,6 @@ void ConstValueNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	put_opcode_u32(bytecodes, id);
 }
 
-void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	if (!isStatic) {
-		caller->putBytecodes(in_data, bytecodes);
-		if (isStore) {
-			if (accessNullable) {
-				throwError(
-				    "Bug: Setnode not ensure store data is non nullable");
-			}
-			bytecodes.emplace_back(Opcode::STORE_MEMBER);
-			put_opcode_u32(bytecodes, id);
-			return;
-		}
-		if (accessNullable) {
-			assert(context.jumpIfNullNode != nullptr);
-			bytecodes.emplace_back(context.jumpIfNullNode->returnNullIfNull
-			                           ? Opcode::LOAD_MEMBER_CAN_RET_NULL
-			                           : Opcode::LOAD_MEMBER_IF_NNULL);
-		} else {
-			bytecodes.emplace_back(Opcode::LOAD_MEMBER);
-		}
-		put_opcode_u32(bytecodes, id);
-		return;
-	}
-	switch (caller->kind) {
-		case NodeType::VAR: {
-			break;
-		}
-		default: {
-			caller->putBytecodes(in_data, bytecodes);
-			bytecodes.emplace_back(Opcode::POP);
-			break;
-		}
-	}
-	if (accessNullable) {
-		if (isStore) {
-			throwError("Bug: Setnode not ensure store data is non nullable");
-		}
-		warning(in_data, "Access static variables: we recommend call " +
-		                     compile.classes[caller->classId]->name + "." +
-		                     name);
-		accessNullable = false;
-	}
-	bytecodes.emplace_back(isStore ? Opcode::STORE_GLOBAL
-	                               : Opcode::LOAD_GLOBAL);
-	put_opcode_u32(bytecodes, id);
-}
-
-void GetPropNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
-	if (context.jumpIfNullNode) {
-		caller->rewrite(in_data, bytecodes);
-		if (accessNullable && isStore) {
-			rewrite_opcode_u32(bytecodes, jumpIfNullPos,
-			                   context.jumpIfNullNode->jumpIfNullPos);
-		}
-	}
-}
-
 void CanBreakContinueNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
 	uint32_t lastContinuePos = context.continuePos;
 	uint32_t lastBreakPos = context.breakPos;

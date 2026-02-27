@@ -259,6 +259,12 @@ ExprNode *UnknowNode::resolve(in_func) {
 
 ExprNode *UnknowNode::copy(in_func) {
 	if (contextCallClassId) {
+		switch (nameId) {
+			case lexerId__CLASS__: {
+				return context.constValuePool.push(
+				    0, context.getCurrentClass(in_data)->name);
+			}
+		}
 		auto classInfo = context.classInfo[*contextCallClassId];
 		auto genericDeclaration = classInfo->findGenericDeclaration(nameId);
 		if (genericDeclaration) {
@@ -272,105 +278,6 @@ ExprNode *UnknowNode::copy(in_func) {
 
 void UnknowNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	throwError("Unknow node can't putbytecodes");
-}
-
-ExprNode *GetPropNode::resolve(in_func) {
-	caller = static_cast<HasClassIdNode *>(caller->resolve(in_data));
-	if (caller->kind == NodeType::CLASS_ACCESS) {
-		auto *classInfo = context.classInfo[caller->classId];
-		auto it = classInfo->staticMember.find(name);
-		if (it == classInfo->staticMember.end()) {
-			throwError("Cannot find static member name: '" + name + "'");
-		}
-		auto declarationNode = it->second;
-		ExprNode::deleteNode(caller);
-		return context.varPool.push(line, declarationNode, isStore, nullable);
-	}
-	return this;
-}
-
-void GetPropNode::optimize(in_func) {
-	caller->optimize(in_data);
-	if (caller->isNullable()) {
-		if (!accessNullable)
-			throwError(
-			    "You can't use '.' with nullable value, you must use '?.'");
-	} else {
-		if (accessNullable) {
-			warning(in_data,
-			        "You should use '.' with non null value instead of '?.'");
-			accessNullable = false;
-		}
-	}
-	switch (caller->kind) {
-		case NodeType::CALL:
-		case NodeType::GET_PROP: {
-			break;
-		}
-		case NodeType::VAR: {
-			static_cast<VarNode *>(caller)->isStore = false;
-			break;
-		}
-		default: {
-			throwError("Cannot find caller");
-		}
-	}
-	auto clazz = compile.classes[caller->classId];
-	auto classInfo = context.classInfo[clazz->id];
-	auto it = clazz->memberMap.find(name);
-	if (it == clazz->memberMap.end()) {
-		// Find static member
-		auto it_ = classInfo->staticMember.find(name);
-		if (it_ == classInfo->staticMember.end())
-			throwError("Cannot find member name '" + name + "' in class " +
-			           clazz->name);
-		declaration = it_->second;
-		if (declaration->accessModifier != Lexer::TokenType::PUBLIC &&
-		    (!contextCallClassId || *contextCallClassId != clazz->id)) {
-			throwError("Cannot access private -a member name '" + name + "'");
-		}
-		isStatic = true;
-		isVal = declaration->isVal;
-		id = declaration->id;
-		classId = declaration->classId;
-	}
-	if (!isStatic) {
-		// a.a = ...
-		declaration = classInfo->member[it->second];
-		isVal = !isInitial && declaration->isVal;
-		if (declaration->accessModifier != Lexer::TokenType::PUBLIC &&
-		    (!contextCallClassId || *contextCallClassId != clazz->id)) {
-			throwError("Cannot access private member name '" + name + "'");
-		}
-		id = it->second;
-		// for (int i = 0; i<clazz->memberId.size(); ++i) {
-		// 	printDebug("MemId: "+std::to_string(clazz->memberId[i]));
-		// }
-		// printDebug("Class " + clazz->name + " GetProp: "+name+" "+" has:
-		// "+std::to_string((uintptr_t)declarationNode));
-		if (clazz->memberId[id] != declaration->classId)
-			clazz->memberId[id] = declaration->classId;
-		classId = declaration->classId; // clazz->memberId[id];
-		// printDebug("Class " + clazz->name + " GetProp: " + name + " " +
-		//            " has id: " + std::to_string(id) + " " +
-		//            std::to_string(classId) + " " +
-		//            compile.classes[classId]->name);
-	}
-	if (nullable) {
-		nullable = declaration->nullable;
-	}
-}
-
-ExprNode *GetPropNode::copy(in_func) {
-	auto newNode = context.getPropPool.push(
-	    line,
-	    declaration ? static_cast<DeclarationNode *>(declaration->copy(in_data))
-	                : nullptr,
-	    contextCallClassId,
-	    caller ? static_cast<HasClassIdNode *>(caller->copy(in_data)) : nullptr,
-	    name, isInitial, nullable, accessNullable);
-	newNode->isStore = isStore;
-	return newNode;
 }
 
 ExprNode *WhileNode::resolve(in_func) {

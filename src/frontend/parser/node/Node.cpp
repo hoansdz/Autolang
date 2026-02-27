@@ -100,10 +100,6 @@ ConstValueNode::~ConstValueNode() {
 	delete str;
 }
 
-GetPropNode::~GetPropNode() {
-	deleteNode(caller);
-}
-
 WhileNode::~WhileNode() {
 	deleteNode(condition);
 }

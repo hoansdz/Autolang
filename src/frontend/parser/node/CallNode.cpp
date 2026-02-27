@@ -169,8 +169,13 @@ void CallNode::optimize(in_func) {
 				// allowPrefix = clazz != nullptr;
 			} else {
 				// Return Id in putbytecode
-				funcName = compile.classes[it->second]->name + '.' + name;
-				caller = context.classAccessPool.push(line, it->second);
+				auto classInfo = context.classInfo[it->second];
+				if (!classInfo->genericData) {
+					funcName = compile.classes[it->second]->name + '.' + name;
+					caller = context.classAccessPool.push(line, it->second);
+				} else {
+					funcName = name;
+				}
 			}
 		}
 

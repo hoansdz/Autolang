@@ -328,7 +328,7 @@ resumeCallFrame:;
 					break;
 				}
 				case AutoLang::Opcode::LOAD_CONST_PRIMARY: {
-					stack.push(&data.constPool[get_u32(bytecodes, i)]);
+					stack.push(data.constPool[get_u32(bytecodes, i)]);
 					// stack.top()->retain();
 					break;
 				}
@@ -392,6 +392,92 @@ resumeCallFrame:;
 					stackAllocator.set(data.manager, pos, obj);
 					break;
 				}
+				case AutoLang::Opcode::GLOBAL_STORE_LOCAL: {
+					AObject *&obj1 = globalVariables[get_u32(bytecodes, i)];
+					AObject *obj2 = stackAllocator[get_u32(bytecodes, i)];
+					obj2->retain();
+					if (obj1 != nullptr) {
+						data.manager.release(obj1);
+					}
+					obj1 = obj2;
+					break;
+				}
+				case AutoLang::Opcode::GLOBAL_STORE_GLOBAL: {
+					AObject *&obj1 = globalVariables[get_u32(bytecodes, i)];
+					AObject *obj2 = globalVariables[get_u32(bytecodes, i)];
+					obj2->retain();
+					if (obj1 != nullptr) {
+						data.manager.release(obj1);
+					}
+					obj1 = obj2;
+					break;
+				}
+				case AutoLang::Opcode::GLOBAL_STORE_CONST: {
+					AObject *&obj1 = globalVariables[get_u32(bytecodes, i)];
+					AObject *obj2 = getConstObject(get_u32(bytecodes, i));
+					if (obj1 != nullptr) {
+						data.manager.release(obj1);
+					}
+					obj1 = obj2;
+					break;
+				}
+				case AutoLang::Opcode::LOCAL_STORE_LOCAL: {
+					AObject *&obj1 = stackAllocator[get_u32(bytecodes, i)];
+					AObject *obj2 = stackAllocator[get_u32(bytecodes, i)];
+					obj2->retain();
+					if (obj1 != nullptr) {
+						data.manager.release(obj1);
+					}
+					obj1 = obj2;
+					break;
+				}
+				case AutoLang::Opcode::LOCAL_STORE_GLOBAL: {
+					AObject *&obj1 = stackAllocator[get_u32(bytecodes, i)];
+					AObject *obj2 = globalVariables[get_u32(bytecodes, i)];
+					obj2->retain();
+					if (obj1 != nullptr) {
+						data.manager.release(obj1);
+					}
+					obj1 = obj2;
+					break;
+				}
+				case AutoLang::Opcode::LOCAL_STORE_CONST: {
+					AObject *&obj1 = stackAllocator[get_u32(bytecodes, i)];
+					AObject *obj2 = getConstObject(get_u32(bytecodes, i));
+					if (obj1 != nullptr) {
+						data.manager.release(obj1);
+					}
+					obj1 = obj2;
+					break;
+				}
+				case AutoLang::Opcode::LOCAL_LOAD_MEMBER: {
+					uint32_t pos = get_u32(bytecodes, i);
+					AObject *obj = stackAllocator[pos];
+					AObject *member = obj->member->data[get_u32(bytecodes, i)];
+					member->retain();
+					stack.push(member);
+					break;
+				}
+				case AutoLang::Opcode::GLOBAL_LOAD_MEMBER: {
+					uint32_t pos = get_u32(bytecodes, i);
+					AObject *obj = globalVariables[pos];
+					AObject *member = obj->member->data[get_u32(bytecodes, i)];
+					member->retain();
+					stack.push(member);
+					break;
+				}
+				case AutoLang::Opcode::GLOBAL_LOAD_MEMBER_AND_STORE: {
+					uint32_t pos = get_u32(bytecodes, i);
+					AObject *obj = globalVariables[pos];
+					obj->member->data[get_u32(bytecodes, i)] = stack.pop();
+					break;
+				}
+				case AutoLang::Opcode::LOCAL_LOAD_MEMBER_AND_STORE: {
+					uint32_t pos = get_u32(bytecodes, i);
+					AObject *obj = stackAllocator[pos];
+					obj->member->data[get_u32(bytecodes, i)] = stack.pop();
+					break;
+				}
 				case AutoLang::Opcode::LOAD_MEMBER: {
 					AObject *parent = stack.top();
 					stack.top() = (*parent->member)[get_u32(bytecodes, i)];
@@ -399,27 +485,31 @@ resumeCallFrame:;
 					data.manager.release(parent);
 					break;
 				}
-				case AutoLang::Opcode::LOAD_MEMBER_IF_NNULL: {
+				case AutoLang::Opcode::LOAD_MEMBER_IF_NNULL_OR_JUMP: {
 					AObject *obj = stack.top();
 					if (obj != AutoLang::DefaultClass::nullObject) {
 						stack.top() = (*obj->member)[get_u32(bytecodes, i)];
 						stack.top()->retain();
+						i += 4;
+						data.manager.release(obj);
 					} else {
 						stack.pop();
 						i += 4;
+						i = get_u32(bytecodes, i);
 					}
-					data.manager.release(obj);
 					break;
 				}
-				case AutoLang::Opcode::LOAD_MEMBER_CAN_RET_NULL: {
+				case AutoLang::Opcode::LOAD_MEMBER_CAN_RET_NULL_OR_JUMP: {
 					AObject *obj = stack.top();
 					if (obj != AutoLang::DefaultClass::nullObject) {
 						stack.top() = (*obj->member)[get_u32(bytecodes, i)];
 						stack.top()->retain();
+						i += 4;
+						data.manager.release(obj);
 					} else {
 						i += 4;
+						i = get_u32(bytecodes, i);
 					}
-					data.manager.release(obj);
 					break;
 				}
 				case AutoLang::Opcode::STORE_MEMBER: {
@@ -633,16 +723,14 @@ resumeCallFrame:;
 					uint8_t tablePos = bytecodes[i++];
 					tempAllocateArea[0] =
 					    globalVariables[get_u32(bytecodes, i)];
-					tempAllocateArea[1] =
-					    &data.constPool[get_u32(bytecodes, i)];
+					tempAllocateArea[1] = data.constPool[get_u32(bytecodes, i)];
 					if (!fastOperate<2>(operatorTable[tablePos]))
 						goto resumeCallFrame;
 					break;
 				}
 				case AutoLang::Opcode::CONST_CAL_GLOBAL: {
 					uint8_t tablePos = bytecodes[i++];
-					tempAllocateArea[0] =
-					    &data.constPool[get_u32(bytecodes, i)];
+					tempAllocateArea[0] = data.constPool[get_u32(bytecodes, i)];
 					tempAllocateArea[1] =
 					    globalVariables[get_u32(bytecodes, i)];
 					if (!fastOperate<2>(operatorTable[tablePos]))
@@ -660,16 +748,14 @@ resumeCallFrame:;
 				case AutoLang::Opcode::LOCAL_CAL_CONST: {
 					uint8_t tablePos = bytecodes[i++];
 					tempAllocateArea[0] = stackAllocator[get_u32(bytecodes, i)];
-					tempAllocateArea[1] =
-					    &data.constPool[get_u32(bytecodes, i)];
+					tempAllocateArea[1] = data.constPool[get_u32(bytecodes, i)];
 					if (!fastOperate<2>(operatorTable[tablePos]))
 						goto resumeCallFrame;
 					break;
 				}
 				case AutoLang::Opcode::CONST_CAL_LOCAL: {
 					uint8_t tablePos = bytecodes[i++];
-					tempAllocateArea[0] =
-					    &data.constPool[get_u32(bytecodes, i)];
+					tempAllocateArea[0] = data.constPool[get_u32(bytecodes, i)];
 					tempAllocateArea[1] = stackAllocator[get_u32(bytecodes, i)];
 					if (!fastOperate<2>(operatorTable[tablePos]))
 						goto resumeCallFrame;
@@ -679,8 +765,7 @@ resumeCallFrame:;
 					uint8_t tablePos = bytecodes[i++];
 					tempAllocateArea[0] =
 					    globalVariables[get_u32(bytecodes, i)];
-					tempAllocateArea[1] =
-					    &data.constPool[get_u32(bytecodes, i)];
+					tempAllocateArea[1] = data.constPool[get_u32(bytecodes, i)];
 					auto obj = operatorTable[tablePos](*notifier,
 					                                   tempAllocateArea, size);
 					if (notifier->callFrame->exception) {
@@ -731,8 +816,7 @@ resumeCallFrame:;
 				case AutoLang::Opcode::LOCAL_CAL_CONST_JUMP: {
 					uint8_t tablePos = bytecodes[i++];
 					tempAllocateArea[0] = stackAllocator[get_u32(bytecodes, i)];
-					tempAllocateArea[1] =
-					    &data.constPool[get_u32(bytecodes, i)];
+					tempAllocateArea[1] = data.constPool[get_u32(bytecodes, i)];
 					auto obj = operatorTable[tablePos](*notifier,
 					                                   tempAllocateArea, size);
 					if (notifier->callFrame->exception) {
@@ -764,7 +848,8 @@ resumeCallFrame:;
 				case AutoLang::Opcode::LOCAL_CAL_GLOBAL_JUMP: {
 					uint8_t tablePos = bytecodes[i++];
 					tempAllocateArea[0] = stackAllocator[get_u32(bytecodes, i)];
-					tempAllocateArea[1] = globalVariables[get_u32(bytecodes, i)];
+					tempAllocateArea[1] =
+					    globalVariables[get_u32(bytecodes, i)];
 					auto obj = operatorTable[tablePos](*notifier,
 					                                   tempAllocateArea, size);
 					if (notifier->callFrame->exception) {
@@ -1130,7 +1215,7 @@ resumeCallFrame:;
 }
 
 AObject *AVM::getConstObject(uint32_t id) {
-	AObject *obj = &data.constPool[id];
+	AObject *obj = data.constPool[id];
 	switch (obj->type) {
 		case AutoLang::DefaultClass::intClassId: {
 			auto newObj = data.manager.create(obj->i);

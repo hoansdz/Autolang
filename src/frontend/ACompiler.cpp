@@ -574,6 +574,10 @@ ACompiler::ACompiler() {
 	AutoLang::Libs::time::init(*this);
 	AutoLang::Libs::vm::init(*this);
 
+	vm.data.constPool.push_back(DefaultClass::nullObject);
+	vm.data.constPool.push_back(DefaultClass::trueObject);
+	vm.data.constPool.push_back(DefaultClass::falseObject);
+
 	vm.data.mainFunctionId = vm.data.registerFunction(
 	    nullptr, ".main", nullptr, 0,
 	    static_cast<uint32_t>(FunctionFlags::FUNC_IS_STATIC));
