@@ -916,8 +916,38 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 			    firstLine, context.lexerString[token->indexData]);
 			break;
 		}
+		case Lexer::TokenType::LT: {
+			std::vector<ClassDeclaration *> inputVecs;
+			loadListGenericDeclarationType(in_data, i, firstLine, false,
+			                               inputVecs);
+			if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
+				--i;
+				throw ParserError(firstLine, "Expected array after <Type>");
+			}
+			switch (token->type) {
+				case Lexer::TokenType::LBRACKET: {
+					auto classDeclaration =
+					    context.classDeclarationAllocator.push();
+					classDeclaration->baseClassLexerStringId = lexerIdArray;
+					classDeclaration->inputClassId = std::move(inputVecs);
+					context.allClassDeclarations.push_back(classDeclaration);
+					auto list = loadListArgument(in_data, i);
+					return context.createArrayPool.push(firstLine, classDeclaration,
+					                           std::move(list));
+				}
+				default: {
+					throw ParserError(firstLine, "Expected array after <Type>");
+				}
+			}
+			break;
+		}
+		case Lexer::TokenType::LBRACKET: {
+			auto list = loadListArgument(in_data, i);
+			node = context.createArrayPool.push(firstLine, nullptr,
+			                                    std::move(list));
+			break;
+		}
 		case Lexer::TokenType::LPAREN:
-		case Lexer::TokenType::LBRACKET:
 		case Lexer::TokenType::LBRACE: {
 			auto list = loadListArgument(in_data, i);
 			if (list.size() != 1) {
@@ -1213,7 +1243,8 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			return callNode;
 		}
 		case Lexer::TokenType::LBRACKET: {
-			auto varNode = findIdentifierNode(in_data, i, identifier->indexData, true);
+			auto varNode =
+			    findIdentifierNode(in_data, i, identifier->indexData, true);
 			uint32_t firstLine = token->line;
 			auto arguments = loadListArgument(in_data, i);
 			return context.callNodePool.push(

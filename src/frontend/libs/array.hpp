@@ -13,6 +13,7 @@ AObject *size(NativeFuncInData);
 AObject *get(NativeFuncInData);
 AObject *set(NativeFuncInData);
 AObject *clear(NativeFuncInData);
+AObject *to_string(NativeFuncInData);
 void init(ACompiler &compiler);
 } // namespace list
 } // namespace Libs

@@ -27,7 +27,7 @@ class Time {
 	static func now(): Int
 }
 	)###",
-	                            true,
+	                            false,
 	                            ANativeMap({
 	                                {"now", &now},
 	                            }));

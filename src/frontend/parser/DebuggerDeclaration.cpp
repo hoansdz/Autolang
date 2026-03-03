@@ -286,34 +286,13 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 		return result;
 	}
 	if (expect(token, Lexer::TokenType::LT)) {
-		while (true) {
-			auto classDeclaration =
-			    loadClassDeclaration(in_data, i, line, allowReturnVoid);
-			result->inputClassId.push_back(classDeclaration);
-			if (!nextToken(&token, context.tokens, i)) {
-				--i;
-				throw ParserError(
-				    context.tokens[i].line,
-				    "Expected '>' after class name but not found");
-			}
-			switch (token->type) {
-				case Lexer::TokenType::COMMA: {
-					break;
-				}
-				case Lexer::TokenType::GT: {
-					goto finishedGenerics;
-				}
-				default: {
-					throw ParserError(
-					    line, "Expected '>' after class name but not found");
-				}
-			}
-		}
-	finishedGenerics:;
+		loadListGenericDeclarationType(in_data, i, line, allowReturnVoid,
+		                               result->inputClassId);
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
-			throw ParserError(context.tokens[i].line,
-			                  "Generics class must have body");
+			return result;
+			// throw ParserError(context.tokens[i].line,
+			//                   "Generics class must have body");
 		}
 	}
 	if (expect(token, Lexer::TokenType::QMARK)) {
@@ -328,6 +307,34 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 	}
 	--i;
 	return result;
+}
+
+void loadListGenericDeclarationType(
+    in_func, size_t &i, uint32_t line, bool allowReturnVoid,
+    std::vector<ClassDeclaration *> &inputVecs) {
+	Lexer::Token *token;
+	while (true) {
+		auto classDeclaration =
+		    loadClassDeclaration(in_data, i, line, allowReturnVoid);
+		inputVecs.push_back(classDeclaration);
+		if (!nextToken(&token, context.tokens, i)) {
+			--i;
+			throw ParserError(context.tokens[i].line,
+			                  "Expected '>' after class name but not found");
+		}
+		switch (token->type) {
+			case Lexer::TokenType::COMMA: {
+				break;
+			}
+			case Lexer::TokenType::GT: {
+				return;
+			}
+			default: {
+				throw ParserError(
+				    line, "Expected '>' after class name but not found");
+			}
+		}
+	}
 }
 
 } // namespace AutoLang

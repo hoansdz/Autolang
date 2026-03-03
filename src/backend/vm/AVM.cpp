@@ -360,6 +360,17 @@ resumeCallFrame:;
 					stack.top()->retain();
 					break;
 				}
+				case AutoLang::Opcode::FAST_SAVE_MEMBER: {
+					ClassId classId = get_u32(bytecodes, i);
+					uint32_t count = get_u32(bytecodes, i);
+					auto obj = data.manager.get(classId, count);
+					for (; count-- > 0;) {
+						obj->member->data[count] = stack.pop();
+					}
+					stack.push(obj);
+					stack.top()->retain();
+					break;
+				}
 				case AutoLang::Opcode::CREATE_NATIVE_OBJECT: {
 					ClassId classId = get_u32(bytecodes, i);
 					stack.push(data.manager.get(
@@ -882,11 +893,14 @@ resumeCallFrame:;
 						goto resumeCallFrame;
 					break;
 				}
-				case AutoLang::Opcode::PLUS_EQUAL:
-					if (!operate<AutoLang::DefaultFunction::plus_eq, 2,
-					             false>())
+				case AutoLang::Opcode::PLUS_EQUAL: {
+					tempAllocateArea[1] = stack.pop();
+					tempAllocateArea[0] = stack.pop();
+					if (!fastOperate<2>(AutoLang::DefaultFunction::plus_eq))
 						goto resumeCallFrame;
+					data.manager.release(tempAllocateArea[1]);
 					break;
+				}
 				case AutoLang::Opcode::MINUS_EQUAL:
 					if (!operate<AutoLang::DefaultFunction::minus_eq, 2,
 					             false>())

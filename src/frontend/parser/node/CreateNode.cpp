@@ -68,7 +68,7 @@ ExprNode *DeclarationNode::copy(in_func) {
 	if (classDeclaration) {
 		if (!classDeclaration->classId) {
 			classDeclaration->load<true>(in_data);
-			if (!classDeclaration) {
+			if (!classDeclaration->classId) {
 				throwError("Bug: DeclarationNode copy: Unresolved class " +
 				           classDeclaration->getName(in_data));
 			}

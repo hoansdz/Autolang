@@ -23,6 +23,7 @@
 #include "frontend/parser/node/OptimizeNode.cpp"
 #include "frontend/lexer/Lexer.cpp"
 #include "frontend/parser/node/Node.cpp"
+#include "frontend/parser/node/CreateArrayNode.cpp"
 #include "frontend/parser/node/IfNode.cpp"
 #include "frontend/parser/node/ForNode.cpp"
 #include "frontend/parser/node/RangeNode.cpp"

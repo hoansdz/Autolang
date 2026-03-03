@@ -39,6 +39,9 @@ std::vector<DeclarationNode *> loadListDeclaration(in_func, size_t &i,
                                                    bool allowVar = false);
 ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
                                        bool allowReturnVoid);
+void loadListGenericDeclarationType(in_func, size_t &i, uint32_t line,
+                                    bool allowReturnVoid,
+                                    std::vector<ClassDeclaration *> &inputVecs);
 HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i);
 HasClassIdNode *loadDeclaration(in_func, size_t &i);
 HasClassIdNode *parsePrimary(in_func, size_t &i);

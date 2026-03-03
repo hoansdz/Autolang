@@ -85,6 +85,8 @@ class Array<T>() {
 	func set(index: Int, value: T)
 	@native("arr_clear")
 	func clear()
+	@native("arr_to_string")
+	func toString(): String
 }
 
 @no_extends
@@ -145,6 +147,7 @@ func input(): String
 	        {"arr_get", &array::get},
 	        {"arr_set", &array::set},
 	        {"arr_clear", &array::clear},
+			{"arr_to_string", &array::to_string},
 	        {"string_size", &DefaultFunction::get_string_size},
 	        {"map_constructor", &map::constructor},
 	        {"map_clear", &map::clear},

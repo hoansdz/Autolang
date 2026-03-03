@@ -323,6 +323,20 @@ ExprNode *SetNode::resolve(in_func) {
 void SetNode::optimize(in_func) {
 	// Detach has nullClassId because it was not evaluated
 	detach->optimize(in_data);
+
+	if (value->kind == NodeType::CREATE_ARRAY &&
+	    value->classId == DefaultClass::nullClassId) {
+		auto createArrayNode = static_cast<CreateArrayNode *>(value);
+		if (!createArrayNode->classDeclaration) {
+			auto classInfo = context.classInfo[detach->classId];
+			if (classInfo->baseClassId != DefaultClass::arrayClassId) {
+				throwError("Type mismatch: Expected Array but '" +
+				           compile.classes[detach->classId]->name + "' found");
+			}
+			createArrayNode->classId = detach->classId;
+		}
+	}
+
 	value->optimize(in_data);
 
 	if (value->isNullable() && op != Lexer::TokenType::EQUAL) {

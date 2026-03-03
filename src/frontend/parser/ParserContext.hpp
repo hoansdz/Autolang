@@ -50,6 +50,8 @@ constexpr LexerStringId lexerId__LINE__ = 10;
 constexpr LexerStringId lexerId__FUNC__ = 11;
 constexpr LexerStringId lexerId__CLASS__ = 12;
 constexpr LexerStringId lexerIdgetClassId = 13;
+constexpr LexerStringId lexerIdArray = 14;
+constexpr LexerStringId lexerIdMap = 15;
 
 struct ParserContext {
 	// Optimize ram because reuse std::string instead of new std::string in
@@ -126,6 +128,7 @@ struct ParserContext {
 	ChunkArena<UnaryNode, 64> unaryNodePool;
 	ChunkArena<ForNode, 64> forPool;
 	ChunkArena<RangeNode, 32> rangeNode;
+	ChunkArena<CreateArrayNode, 64> createArrayPool;
 
 	std::optional<ClassId> currentClassId = std::nullopt;
 	uint32_t mainFunctionId;

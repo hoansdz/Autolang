@@ -62,7 +62,8 @@ enum NodeType : uint8_t {
 	THROW,
 	RUNTIME_CAST,
 	GENERIC_DECLARATION,
-	RANGE
+	RANGE,
+	CREATE_ARRAY
 };
 
 struct ExprNode {
@@ -521,15 +522,21 @@ struct RangeNode : HasClassIdNode {
 	~RangeNode();
 };
 
-// struct CreateArrayNode : HasClassIdNode {
-// 	std::vector<HasClassIdNode *> values;
-// 	CreateArrayNode(uint32_t line, std::vector<HasClassIdNode *>values)
-// 	    : HasClassIdNode(NodeType::THROW, DefaultClass::nullClassId, line),
-// values(values) {} 	ExprNode *resolve(in_func) override; 	void
-// optimize(in_func) override; 	void putBytecodes(in_func, std::vector<uint8_t>
-// &bytecodes) override; 	void rewrite(in_func, std::vector<uint8_t>
-// &bytecodes) override; 	ExprNode *copy(in_func) override; 	~CreateArrayNode();
-// };
+struct CreateArrayNode : HasClassIdNode {
+	ClassDeclaration *classDeclaration;
+	std::vector<HasClassIdNode *> values;
+	CreateArrayNode(uint32_t line, ClassDeclaration *classDeclaration,
+	                std::vector<HasClassIdNode *> values)
+	    : HasClassIdNode(NodeType::CREATE_ARRAY, DefaultClass::nullClassId,
+	                     line),
+	      classDeclaration(classDeclaration), values(std::move(values)) {}
+	ExprNode *resolve(in_func) override;
+	void optimize(in_func) override;
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
+	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
+	ExprNode *copy(in_func) override;
+	~CreateArrayNode();
+};
 
 } // namespace AutoLang
 

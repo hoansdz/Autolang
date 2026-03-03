@@ -7,6 +7,7 @@
 #include "shared/DefaultClass.hpp"
 #include <cstdlib>
 #include <iostream>
+#include <sstream>
 
 namespace AutoLang {
 class ACompiler;
@@ -21,6 +22,7 @@ inline AObject *string_constructor(NativeFuncInData);
 inline AObject *to_int(NativeFuncInData);
 inline AObject *to_float(NativeFuncInData);
 inline AObject *to_string(NativeFuncInData);
+inline std::string to_string(ANotifier &notifier, AObject *obj);
 inline AObject *get_string_size(NativeFuncInData);
 inline AObject *input_str(NativeFuncInData);
 inline AObject *str_get(NativeFuncInData);
@@ -33,6 +35,26 @@ AObject *data_constructor(NativeFuncInData) {
 		(*last)->retain();
 	}
 	return nullptr;
+}
+
+std::string to_string(ANotifier &notifier, AObject *obj) {
+	uint32_t type = obj->type;
+	switch (type) {
+		case AutoLang::DefaultClass::intClassId:
+			return std::to_string(obj->i);
+		case AutoLang::DefaultClass::floatClassId:
+			return std::to_string(obj->f);
+		case AutoLang::DefaultClass::stringClassId:
+			return std::string(obj->str->data);
+		case AutoLang::DefaultClass::nullClassId:
+			return "null";
+		case DefaultClass::boolClassId:
+			return (obj == DefaultClass::trueObject ? "true" : "false");
+		default:
+			std::stringstream ss;
+			ss << notifier.vm->data.classes[obj->type]->name << "@" << obj;
+			return ss.str();
+	}
 }
 
 AObject *print(NativeFuncInData) {

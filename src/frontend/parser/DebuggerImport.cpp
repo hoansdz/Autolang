@@ -15,7 +15,7 @@ LibraryData *loadImport(in_func, LibraryData* currentLibrary, std::vector<Lexer:
 	if (token->type != Lexer::TokenType::IMPORT) {
 		std::cerr<<token->toString(context)<<" "<<tokens[i+1].toString(context)<<" "<<tokens[i+2].toString(context)<<"\n";
 		int* x = nullptr;
-		*x = 5;
+		*x = 5; // gdb log stack trace
 	}
 	assert(token->type == Lexer::TokenType::IMPORT);
 	if (!nextTokenSameLine(&token, tokens, i, firstLine) ||

@@ -13,7 +13,7 @@ template <typename T> struct NormalArray {
 	uint32_t maxSize;
 
 	explicit NormalArray(uint32_t initialCapacity)
-	    : data(new T[initialCapacity]{}), size(0), maxSize(initialCapacity) {}
+	    : data(new T[initialCapacity]{}), size(initialCapacity), maxSize(initialCapacity) {}
 
 	// Rule of Three: Chống copy bậy bạ gây lỗi double free
 	NormalArray(const NormalArray &) = delete;

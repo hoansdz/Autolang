@@ -173,6 +173,13 @@ void AVM::log(Function *currentFunction) {
 				          << "     " << memberCount << "\n";
 				break;
 			}
+			case AutoLang::Opcode::FAST_SAVE_MEMBER: {
+				uint32_t classId = get_u32(bytecodes, i);
+				uint32_t memberCount = get_u32(bytecodes, i);
+				std::cerr << "FAST_SAVE_MEMBER	 " << data.classes[classId]->name
+				          << "     " << memberCount << "\n";
+				break;
+			}
 			case AutoLang::Opcode::CREATE_NATIVE_OBJECT: {
 				uint32_t classId = get_u32(bytecodes, i);
 				std::cerr << "CREATE_NATIVE_OBJECT	 "

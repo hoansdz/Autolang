@@ -132,6 +132,19 @@ AObject *clear(NativeFuncInData) {
 	return nullptr;
 }
 
+AObject *to_string(NativeFuncInData) {
+	auto obj = args[0];
+	if (obj->member->size == 0) {
+		return notifier.createString("[]");
+	}
+	std::string str = "[" + DefaultFunction::to_string(notifier, obj->member->data[0]);
+	for (int i = 1; i < obj->member->size; ++i) {
+		str += ", " + DefaultFunction::to_string(notifier, obj->member->data[i]);
+	}
+	str += ']';
+	return notifier.createString(str);
+}
+
 } // namespace array
 } // namespace Libs
 } // namespace AutoLang

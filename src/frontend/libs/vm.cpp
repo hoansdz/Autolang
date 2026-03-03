@@ -25,7 +25,7 @@ class VM {
 	static func getCountAreaAllocatorObject(): Int
 }
 	)###",
-	                            true,
+	                            false,
 	                            ANativeMap({
 	                                {"count_area_object", &count_area_object},
 	                            }));

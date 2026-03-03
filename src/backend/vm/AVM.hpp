@@ -132,7 +132,9 @@ enum Opcode : uint8_t {
 	GLOBAL_STORE_CONST,
 	LOCAL_STORE_GLOBAL,
 	LOCAL_STORE_LOCAL,
-	LOCAL_STORE_CONST
+	LOCAL_STORE_CONST,
+
+	FAST_SAVE_MEMBER
 };
 
 template <typename K, typename V>
