@@ -324,16 +324,60 @@ void SetNode::optimize(in_func) {
 	// Detach has nullClassId because it was not evaluated
 	detach->optimize(in_data);
 
-	if (value->kind == NodeType::CREATE_ARRAY &&
-	    value->classId == DefaultClass::nullClassId) {
-		auto createArrayNode = static_cast<CreateArrayNode *>(value);
-		if (!createArrayNode->classDeclaration) {
-			auto classInfo = context.classInfo[detach->classId];
-			if (classInfo->baseClassId != DefaultClass::arrayClassId) {
-				throwError("Type mismatch: Expected Array but '" +
-				           compile.classes[detach->classId]->name + "' found");
+	if (value->classId == DefaultClass::nullClassId) {
+		switch (value->kind) {
+			case NodeType::CREATE_ARRAY: {
+				auto createArrayNode = static_cast<CreateArrayNode *>(value);
+				if (!createArrayNode->classDeclaration) {
+					auto classInfo = context.classInfo[detach->classId];
+					if (classInfo->baseClassId != DefaultClass::arrayClassId) {
+						if (detach->classId == DefaultClass::nullClassId) {
+							throwError("Cannot infer type for initializer "
+							           ". Autolang requires explicit type "
+							           "parameters for collection sugar. "
+							           "Use <Type>[]");
+						}
+						throwError("Type mismatch: Expected Array<> but '" +
+						           compile.classes[detach->classId]->name +
+						           "' found");
+					}
+					createArrayNode->classId = detach->classId;
+				}
+				break;
 			}
-			createArrayNode->classId = detach->classId;
+			case NodeType::CREATE_SET: {
+				auto createSetNode = static_cast<CreateSetNode *>(value);
+				if (!createSetNode->classDeclaration) {
+					auto classInfo = context.classInfo[detach->classId];
+					if (classInfo->baseClassId != DefaultClass::setClassId) {
+						if (classInfo->baseClassId ==
+						        DefaultClass::mapClassId &&
+						    createSetNode->values.empty()) {
+							auto newValue = context.createMapPool.push(
+							    value->line, nullptr,
+							    std::vector<std::pair<HasClassIdNode *,
+							                          HasClassIdNode *>>());
+							value = newValue;
+							newValue->classId = detach->classId;
+						} else {
+							if (detach->classId == DefaultClass::nullClassId) {
+								throwError("Cannot infer type for initializer "
+								           ". Autolang requires explicit type "
+								           "parameters for collection sugar. "
+								           "Use <Type>{}");
+							}
+							throwError("Type mismatch: Expected " +
+							           compile.classes[detach->classId]->name +
+							           " but Set<> found");
+						}
+					} else {
+						createSetNode->classId = detach->classId;
+					}
+				}
+				break;
+			}
+			default:
+				break;
 		}
 	}
 
@@ -629,7 +673,34 @@ void ReturnNode::optimize(in_func) {
 	auto func = compile.functions[funcId];
 	// std::cerr<<"Loading "<<func->name<<"\n";
 	if (value) {
-		value->optimize(in_data);
+		switch (value->kind) {
+			case NodeType::CREATE_ARRAY: {
+				auto createArrayNode = static_cast<CreateArrayNode *>(value);
+				if (func->returnId == DefaultClass::nullClassId) {
+					value->optimize(in_data);
+					func->returnId = value->classId;
+					return;
+				}
+				value->classId = func->returnId;
+				value->optimize(in_data);
+				break;
+			}
+			case NodeType::CREATE_SET: {
+				auto createSetNode = static_cast<CreateSetNode *>(value);
+				if (func->returnId == DefaultClass::nullClassId) {
+					value->optimize(in_data);
+					func->returnId = value->classId;
+					return;
+				}
+				value->classId = func->returnId;
+				value->optimize(in_data);
+				break;
+			}
+			default: {
+				value->optimize(in_data);
+				break;
+			}
+		}
 		// Marks auto
 		switch (func->returnId) {
 			case DefaultClass::anyClassId: {

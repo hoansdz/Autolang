@@ -1,7 +1,6 @@
 #ifndef LIBS_VM_CPP
 #define LIBS_VM_CPP
 
-#include "array.hpp"
 #include "frontend/ACompiler.hpp"
 #include <chrono>
 #include <string>

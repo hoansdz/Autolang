@@ -7,13 +7,15 @@ namespace AutoLang {
 class ACompiler;
 namespace Libs {
 namespace map {
+AObject *constructor(ANotifier &notifier, ClassId classId, ClassId keyId);
 AObject *constructor(NativeFuncInData);
 AObject *remove(NativeFuncInData);
 AObject *size(NativeFuncInData);
 AObject *get(NativeFuncInData);
 AObject *set(NativeFuncInData);
 AObject *clear(NativeFuncInData);
-} // namespace list
+AObject *to_string(NativeFuncInData);
+} // namespace map
 } // namespace Libs
 } // namespace AutoLang
 

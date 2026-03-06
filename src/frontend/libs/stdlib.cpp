@@ -2,8 +2,9 @@
 #define LIBS_STDLIB_CPP
 
 #include "frontend/ACompiler.hpp"
-#include "frontend/libs/array.hpp"
-#include "frontend/libs/map.hpp"
+#include "backend/libs/array.hpp"
+#include "backend/libs/map.hpp"
+#include "backend/libs/set.hpp"
 #include "frontend/parser/Debugger.hpp"
 #include "shared/DefaultClass.hpp"
 #include "shared/DefaultFunction.hpp"
@@ -91,6 +92,27 @@ class Array<T>() {
 
 @no_extends
 @no_constructor
+class Set<T> {
+	@native("set_constructor")
+	private static func create(classId: Int, keyId: Int): Set<T>
+	
+	static func __CLASS__() = create(getClassId(Set<T>), getClassId(T))
+	@native("set_insert")
+	func insert(value: T)
+	@native("set_remove")
+	func remove(value: T)
+	@native("set_size")
+	func size(): Int
+	@native("set_contains")
+	func contains(value: T): Bool
+	@native("set_clear")
+	func clear()
+	@native("set_to_string")
+	func toString(): String
+}
+
+@no_extends
+@no_constructor
 class Map<K, V> {
 	@native("map_constructor")
 	private static func create(classId: Int, keyId: Int): Map<K, V>
@@ -111,6 +133,9 @@ class Map<K, V> {
 
 	@native("map_clear")
 	func clear()
+
+	@native("map_to_string")
+	func toString(): String
 }
 	
 @native("print")
@@ -131,7 +156,7 @@ func input(): String
 	)###",
 	    true,
 	    ANativeMap({
-	        {"string_constructor", &DefaultFunction::string_constructor},
+		    {"string_constructor", &DefaultFunction::string_constructor},
 	        {"print", &DefaultFunction::print},
 	        {"println", &DefaultFunction::println},
 	        {"get_refcount", &DefaultFunction::get_refcount},
@@ -148,6 +173,13 @@ func input(): String
 	        {"arr_set", &array::set},
 	        {"arr_clear", &array::clear},
 			{"arr_to_string", &array::to_string},
+			{"set_constructor", &set::constructor},
+			{"set_insert", &set::insert},
+	        {"set_remove", &set::remove},
+	        {"set_size", &set::size},
+	        {"set_contains", &set::contains},
+	        {"set_clear", &set::clear},
+			{"set_to_string", &set::to_string},
 	        {"string_size", &DefaultFunction::get_string_size},
 	        {"map_constructor", &map::constructor},
 	        {"map_clear", &map::clear},
@@ -155,6 +187,7 @@ func input(): String
 	        {"map_remove", &map::remove},
 	        {"map_get", &map::get},
 	        {"map_set", &map::set},
+			{"map_to_string", &map::to_string}
 	    }));
 }
 } // namespace stdlib

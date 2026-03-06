@@ -20,6 +20,8 @@ constexpr ClassId anyClassId = 5;
 constexpr ClassId voidClassId = 6;
 constexpr ClassId exceptionClassId = 7;
 constexpr ClassId arrayClassId = 8;
+constexpr ClassId setClassId = 9;
+constexpr ClassId mapClassId = 10;
 extern AObject* nullObject;
 extern AObject* trueObject;
 extern AObject* falseObject;

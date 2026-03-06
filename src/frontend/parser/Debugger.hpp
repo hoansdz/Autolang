@@ -42,6 +42,9 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 void loadListGenericDeclarationType(in_func, size_t &i, uint32_t line,
                                     bool allowReturnVoid,
                                     std::vector<ClassDeclaration *> &inputVecs);
+HasClassIdNode *loadSetOrMap(in_func, size_t &i, NodeType canBeNodeType);
+HasClassIdNode *loadSet(in_func, size_t &i, HasClassIdNode* firstExpression);
+HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode* firstExpression);
 HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i);
 HasClassIdNode *loadDeclaration(in_func, size_t &i);
 HasClassIdNode *parsePrimary(in_func, size_t &i);

@@ -103,20 +103,6 @@ void CallNode::optimize(in_func) {
 		// Caller.funcName() => Class.funcName()
 		caller->optimize(in_data);
 		if (caller->isNullable()) {
-			// switch (caller->kind) {
-			// 	case NodeType::GET_PROP: {
-			// 		std::cerr<<"GET_PROP\n";
-			// 		break;
-			// 	}
-			// 	case NodeType::UNKNOW: {
-			// 		std::cerr<<"UNKNOW\n";
-			// 		break;
-			// 	}
-			// 	case NodeType::CALL: {
-			// 		std::cerr<<"CALL\n";
-			// 		break;
-			// 	}
-			// }
 			if (!accessNullable) {
 				throwError("You can't use '.' with nullable valueb, you must "
 				           "use '?.'");

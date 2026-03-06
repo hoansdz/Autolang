@@ -134,7 +134,9 @@ enum Opcode : uint8_t {
 	LOCAL_STORE_LOCAL,
 	LOCAL_STORE_CONST,
 
-	FAST_SAVE_MEMBER
+	FAST_SAVE_MEMBER,
+	CREATE_SET_OBJECT,
+	CREATE_MAP_OBJECT
 };
 
 template <typename K, typename V>

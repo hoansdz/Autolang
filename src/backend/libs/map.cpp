@@ -51,9 +51,14 @@ using StringHashMap =
     HashMap<AObject *, AObject *, ObjStringHashable, ObjStringEqualable>;
 using ObjectHashMap = HashMap<AObject *, AObject *>;
 
-AObject *constructor(NativeFuncInData) {
+inline AObject *constructor(NativeFuncInData) {
 	ClassId classId = args[0]->i;
 	ClassId keyId = args[1]->i;
+	return constructor(notifier, classId, keyId);
+}
+
+inline AObject *constructor(ANotifier &notifier, ClassId classId,
+                            ClassId keyId) {
 	switch (keyId) {
 		case DefaultClass::intClassId: {
 			return notifier.createNativeData(
@@ -78,7 +83,7 @@ AObject *constructor(NativeFuncInData) {
 	}
 }
 
-AObject *remove(NativeFuncInData) {
+inline AObject *remove(NativeFuncInData) {
 	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
 
 	switch (hashMapData->type) {
@@ -132,7 +137,7 @@ AObject *remove(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *size(NativeFuncInData) {
+inline AObject *size(NativeFuncInData) {
 	AHashMap *hashMapData = static_cast<AHashMap *>(args[0]->data->data);
 	switch (hashMapData->type) {
 		case DefaultClass::intClassId: {
@@ -154,7 +159,7 @@ AObject *size(NativeFuncInData) {
 	}
 }
 
-AObject *get(NativeFuncInData) {
+inline AObject *get(NativeFuncInData) {
 	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
 
 	switch (hashMapData->type) {
@@ -213,7 +218,7 @@ AObject *get(NativeFuncInData) {
 	}
 }
 
-AObject *set(NativeFuncInData) {
+inline AObject *set(NativeFuncInData) {
 	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
 
 	AObject *key = args[1];
@@ -295,7 +300,7 @@ AObject *set(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *clear(NativeFuncInData) {
+inline AObject *clear(NativeFuncInData) {
 	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
 
 	switch (hashMapData->type) {
@@ -337,6 +342,87 @@ AObject *clear(NativeFuncInData) {
 	}
 
 	return nullptr;
+}
+
+AObject *to_string(NativeFuncInData) {
+	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
+	std::string str = "{";
+	switch (hashMapData->type) {
+		case DefaultClass::intClassId: {
+			auto map = static_cast<IntHashMap *>(hashMapData->data);
+			if (map->empty()) {
+				return notifier.createString("{}");
+			}
+			bool isFirst = true;
+			for (auto &[key, value] : *map) {
+				if (isFirst) {
+					str += std::to_string(key) + ": " +
+					       DefaultFunction::to_string(notifier, value);
+					isFirst = false;
+					continue;
+				}
+				str += ", " + std::to_string(key) + ": " +
+				       DefaultFunction::to_string(notifier, value);
+			}
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			auto map = static_cast<FloatHashMap *>(hashMapData->data);
+			if (map->empty()) {
+				return notifier.createString("{}");
+			}
+			bool isFirst = true;
+			for (auto &[key, value] : *map) {
+				if (isFirst) {
+					str += std::to_string(key) + ": " +
+					       DefaultFunction::to_string(notifier, value);
+					isFirst = false;
+					continue;
+				}
+				str += ", " + std::to_string(key) + ": " +
+				       DefaultFunction::to_string(notifier, value);
+			}
+			break;
+		}
+		case DefaultClass::stringClassId: {
+			auto map = static_cast<StringHashMap *>(hashMapData->data);
+			if (map->empty()) {
+				return notifier.createString("{}");
+			}
+			bool isFirst = true;
+			for (auto &[key, value] : *map) {
+				if (isFirst) {
+					str += std::string(key->str->data) + ": " +
+					       DefaultFunction::to_string(notifier, value);
+					isFirst = false;
+					continue;
+				}
+				str += ", " + std::string(key->str->data) + ": " +
+				       DefaultFunction::to_string(notifier, value);
+			}
+			break;
+		}
+		default: {
+			auto map = static_cast<ObjectHashMap *>(hashMapData->data);
+			if (map->empty()) {
+				return notifier.createString("{}");
+			}
+			bool isFirst = true;
+			for (auto &[key, value] : *map) {
+				if (isFirst) {
+					str += DefaultFunction::to_string(notifier, key) + ": " +
+					       DefaultFunction::to_string(notifier, value);
+					isFirst = false;
+					continue;
+				}
+				str += ", " + DefaultFunction::to_string(notifier, key) + ": " +
+				       DefaultFunction::to_string(notifier, value);
+			}
+			break;
+		}
+	}
+	str += '}';
+	return notifier.createString(str);
 }
 
 } // namespace map

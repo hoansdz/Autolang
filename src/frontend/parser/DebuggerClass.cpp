@@ -167,7 +167,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 		}
 		if (classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR) {
 			throw ParserError(context.tokens[i].line,
-			                  "@no_constructor is already applied");
+			                  "@no_constructor is already applied, cannot use primary constructor");
 		}
 		if (classFlags & ClassFlags::CLASS_NATIVE_DATA) {
 			throw ParserError(context.tokens[i].line,

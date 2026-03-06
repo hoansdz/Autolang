@@ -1,3 +1,45 @@
-val a = <Array<Int>?>[<Int>[1, 5, 7], null, null]
-println(a.toString())
-println(a[0].toString())
+// func test(): Set<Int> = {1, 2, 3}
+// println(<String, String>{})
+// println(<String>{})
+// println(<String, String>{"hello": "ok", "no": "yes", "no": "no"}.toString())
+// val hm = <Int, Int>{
+// 	1: 2, 
+// 	3: 4
+// }
+// println(hm.toString())
+// println(test().toString())
+// println(
+// 	<Int>{1, 2, 3, 4,4, 6, 9}.toString()
+// )
+// println(<Int>[1, 2, 3][0])
+// println(true)
+// val a = <Array<Int>>[
+// 	[1, 5, 7],
+// 	[3, 4, 6],
+// 	[9, 2, 5]
+// ]
+// println(a.toString())
+// println(a[0][1])
+// val x = Set<Int>()
+// x.insert(1)
+// x.insert(2)
+// x.insert(2)
+// if (x.contains(2)) {
+// 	println("ok")
+// }
+// println(x.size())
+// println(x.toString())
+
+func t() {
+	val n1 = <Int>[]
+	val n2: Array<Int> = []
+	val n3 = <Array<Int>> [
+		[], [], []
+	]
+
+	val n4 = <Int>{}
+	val n5: Set<Int> = {}
+
+	val n6 = <Int, Int>{}
+	val n7: String<Int, Int> = {}
+}

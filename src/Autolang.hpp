@@ -24,6 +24,8 @@
 #include "frontend/lexer/Lexer.cpp"
 #include "frontend/parser/node/Node.cpp"
 #include "frontend/parser/node/CreateArrayNode.cpp"
+#include "frontend/parser/node/CreateSetNode.cpp"
+#include "frontend/parser/node/CreateMapNode.cpp"
 #include "frontend/parser/node/IfNode.cpp"
 #include "frontend/parser/node/ForNode.cpp"
 #include "frontend/parser/node/RangeNode.cpp"
@@ -46,9 +48,10 @@
 #include "shared/AreaAllocator.cpp"
 #include "frontend/libs/math.cpp"
 #include "frontend/libs/stdlib.cpp"
-#include "frontend/libs/array.cpp"
+#include "backend/libs/array.cpp"
 #include "frontend/libs/time.cpp"
 #include "frontend/libs/vm.cpp"
-#include "frontend/libs/map.cpp"
+#include "backend/libs/map.cpp"
+#include "backend/libs/set.cpp"
 
 #endif

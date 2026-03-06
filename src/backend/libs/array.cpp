@@ -137,9 +137,11 @@ AObject *to_string(NativeFuncInData) {
 	if (obj->member->size == 0) {
 		return notifier.createString("[]");
 	}
-	std::string str = "[" + DefaultFunction::to_string(notifier, obj->member->data[0]);
+	std::string str =
+	    "[" + DefaultFunction::to_string(notifier, obj->member->data[0]);
 	for (int i = 1; i < obj->member->size; ++i) {
-		str += ", " + DefaultFunction::to_string(notifier, obj->member->data[i]);
+		str +=
+		    ", " + DefaultFunction::to_string(notifier, obj->member->data[i]);
 	}
 	str += ']';
 	return notifier.createString(str);

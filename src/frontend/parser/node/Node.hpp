@@ -63,7 +63,9 @@ enum NodeType : uint8_t {
 	RUNTIME_CAST,
 	GENERIC_DECLARATION,
 	RANGE,
-	CREATE_ARRAY
+	CREATE_ARRAY,
+	CREATE_SET,
+	CREATE_MAP
 };
 
 struct ExprNode {
@@ -536,6 +538,37 @@ struct CreateArrayNode : HasClassIdNode {
 	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
 	ExprNode *copy(in_func) override;
 	~CreateArrayNode();
+};
+
+struct CreateSetNode : HasClassIdNode {
+	ClassDeclaration *classDeclaration;
+	std::vector<HasClassIdNode *> values;
+	CreateSetNode(uint32_t line, ClassDeclaration *classDeclaration,
+	              std::vector<HasClassIdNode *> values)
+	    : HasClassIdNode(NodeType::CREATE_SET, DefaultClass::nullClassId, line),
+	      classDeclaration(classDeclaration), values(std::move(values)) {}
+	ExprNode *resolve(in_func) override;
+	void optimize(in_func) override;
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
+	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
+	ExprNode *copy(in_func) override;
+	~CreateSetNode();
+};
+
+struct CreateMapNode : HasClassIdNode {
+	ClassDeclaration *classDeclaration;
+	std::vector<std::pair<HasClassIdNode *, HasClassIdNode *>> values;
+	CreateMapNode(
+	    uint32_t line, ClassDeclaration *classDeclaration,
+	    std::vector<std::pair<HasClassIdNode *, HasClassIdNode *>> values)
+	    : HasClassIdNode(NodeType::CREATE_MAP, DefaultClass::nullClassId, line),
+	      classDeclaration(classDeclaration), values(std::move(values)) {}
+	ExprNode *resolve(in_func) override;
+	void optimize(in_func) override;
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
+	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
+	ExprNode *copy(in_func) override;
+	~CreateMapNode();
 };
 
 } // namespace AutoLang

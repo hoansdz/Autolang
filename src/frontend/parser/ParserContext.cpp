@@ -32,6 +32,7 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerString.emplace_back("__CLASS__");
 	lexerString.emplace_back("getClassId");
 	lexerString.emplace_back("Array");
+	lexerString.emplace_back("Set");
 	lexerString.emplace_back("Map");
 
 	lexerStringMap["super"] = lexerIdsuper;
@@ -49,6 +50,7 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerStringMap["__CLASS__"] = lexerId__CLASS__;
 	lexerStringMap["getClassId"] = lexerIdgetClassId;
 	lexerStringMap["Array"] = lexerIdArray;
+	lexerStringMap["Set"] = lexerIdSet;
 	lexerStringMap["Map"] = lexerIdMap;
 
 	constValue[lexerIdnull] = &constValues[0];

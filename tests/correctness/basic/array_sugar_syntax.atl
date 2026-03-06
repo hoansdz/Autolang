@@ -1,5 +1,9 @@
 func testArraySugarSyntax() {
-	val list = <Array<Int>?>[<Int>[1, 5, 7], null, null]
+	val list = <Array<Int>?>[
+		<Int>[1, 5, 7], 
+		null, 
+		null
+	]
 	assert(list is Array<Array<Int>?>, __FILE__, __LINE__)
 	println("Passes ${__FUNC__}")
 }

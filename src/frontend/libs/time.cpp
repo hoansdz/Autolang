@@ -2,7 +2,6 @@
 #define LIBS_TIME_CPP
 
 #include "frontend/ACompiler.hpp"
-#include "array.hpp"
 #include <chrono>
 #include <string>
 

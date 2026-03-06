@@ -3,6 +3,7 @@
 
 #include "ankerl/unordered_dense.h"
 #include <iostream>
+#include <ankerl/unordered_dense.h>
 
 namespace AutoLang {
 struct AObject;
@@ -28,6 +29,12 @@ template<
     class Equal = std::equal_to<K>
 >
 using HashMap = ankerl::unordered_dense::map<K, V, Hash, Equal>;
+template<
+    class T,
+    class Hash  = ankerl::unordered_dense::hash<T>,
+    class Equal = std::equal_to<T>
+>
+using HashSet = ankerl::unordered_dense::set<T, Hash, Equal>;
 using ANativeFunction = AutoLang::AObject*(*)(NativeFuncInput);
 using ANativeMap = HashMap<std::string, ANativeFunction>;
 

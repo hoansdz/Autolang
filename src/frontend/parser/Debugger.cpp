@@ -51,16 +51,18 @@ ClassId loadGenerics(in_func, std::string &name,
 	auto it =
 	    context.defaultClassMap.find(classDeclaration->baseClassLexerStringId);
 	if (it == context.defaultClassMap.end()) {
-		throw ParserError(
-		    classDeclaration->line,
+		classDeclaration->throwError(
 		    "Bug: Cannot find class " +
-		        context.lexerString[classDeclaration->baseClassLexerStringId]);
+		    context.lexerString[classDeclaration->baseClassLexerStringId]);
 	}
 	ClassId classId = it->second;
 	auto clazz = compile.classes[it->second];
 	auto classInfo = context.classInfo[it->second];
 	if (compile.classMap.find(name) != compile.classMap.end()) {
 		return classId;
+	}
+	if (!classInfo->genericData) {
+		classDeclaration->throwError(clazz->name + " is not generics");
 	}
 	auto baseCreateClassNode = context.findCreateClassNode(clazz->id);
 	LexerStringId newNameId;
@@ -110,6 +112,7 @@ ClassId loadGenerics(in_func, std::string &name,
 		auto newClassDeclaration = context.classDeclarationAllocator.push();
 		newClassDeclaration->classId = *inputClassId->classId;
 		newClassDeclaration->nullable = inputClassId->nullable;
+		newClassDeclaration->line = genericDeclaration->line;
 		genericTypeId.push_back(newClassDeclaration);
 
 		for (auto *classDeclaration :
@@ -151,10 +154,9 @@ ClassId loadGenerics(in_func, std::string &name,
 			if (!member->classDeclaration->classId) {
 				member->classDeclaration->load<true>(in_data);
 				if (!member->classDeclaration->classId) {
-					throw ParserError(
-					    classDeclaration->line,
+					classDeclaration->throwError(
 					    "Unsolved " +
-					        member->classDeclaration->getName(in_data));
+					    member->classDeclaration->getName(in_data));
 				}
 			}
 			// std::cerr
@@ -181,9 +183,8 @@ ClassId loadGenerics(in_func, std::string &name,
 		if (!classDeclaration) {
 			classDeclaration->load<true>(in_data);
 			if (!classDeclaration->classId) {
-				throw ParserError(classDeclaration->line,
-				                  "Unsolved " +
-				                      classDeclaration->getName(in_data));
+				classDeclaration->throwError(
+				    "Unsolved " + classDeclaration->getName(in_data));
 			}
 		}
 		switch (node->kind) {
@@ -192,9 +193,8 @@ ClassId loadGenerics(in_func, std::string &name,
 				auto it = context.lexerStringMap.find(
 				    classDeclaration->getName(in_data));
 				if (it == context.lexerStringMap.end()) {
-					throw ParserError(classDeclaration->line,
-					                  "AUnsolved " +
-					                      classDeclaration->getName(in_data));
+					classDeclaration->throwError(
+					    "Unsolved " + classDeclaration->getName(in_data));
 				}
 				unknowNode->nameId = it->second;
 				break;
@@ -204,9 +204,8 @@ ClassId loadGenerics(in_func, std::string &name,
 				auto it = context.lexerStringMap.find(
 				    classDeclaration->getName(in_data));
 				if (it == context.lexerStringMap.end()) {
-					throw ParserError(classDeclaration->line,
-					                  "BUnsolved " +
-					                      classDeclaration->getName(in_data));
+					classDeclaration->throwError(
+					    "BUnsolved " + classDeclaration->getName(in_data));
 				}
 				callNode->name = context.lexerString[it->second] + "()";
 				break;
@@ -221,11 +220,9 @@ ClassId loadGenerics(in_func, std::string &name,
 			if (!declarationNode->classDeclaration->classId) {
 				declarationNode->classDeclaration->load<false>(in_data);
 				if (!declarationNode->classDeclaration->classId) {
-					throw ParserError(
-					    declarationNode->classDeclaration->line,
+					classDeclaration->throwError(
 					    "Bug: Cannot find class name " +
-					        declarationNode->classDeclaration->getName(
-					            in_data));
+					    declarationNode->classDeclaration->getName(in_data));
 				}
 				// std::cerr << "loaded "
 				//           <<
@@ -314,7 +311,7 @@ ClassId loadGenerics(in_func, std::string &name,
 			if (!createFuncNode->classDeclaration->classId) {
 				createFuncNode->classDeclaration->load<false>(in_data);
 				if (!createFuncNode->classDeclaration->classId) {
-					throw ParserError(0, "wtf");
+					classDeclaration->throwError("wtf");
 				}
 				createFuncNode->classDeclaration->classId = std::nullopt;
 			}
@@ -754,12 +751,11 @@ std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 	char openBracket = getOpenBracket(token->type);
 	if (openBracket == '\0')
 		throw ParserError(token->line,
-		                  "Unexpected token " + token->toString(context));
+		                  "AUnexpected token " + token->toString(context));
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		throw ParserError(0, "Bug: Lexer not ensure close bracket");
 	}
-	token = &context.tokens[i];
 	std::vector<HasClassIdNode *> nodes;
 	switch (token->type) {
 		case Lexer::TokenType::RPAREN:
@@ -769,7 +765,7 @@ std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 				for (auto *node : nodes)
 					ExprNode::deleteNode(node);
 				throw ParserError(token->line,
-				                  "Bug: Lexer not ensure close bracket");
+				                  "Bug: ALexer not ensure close bracket");
 			}
 			return nodes;
 		}
@@ -781,6 +777,12 @@ std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 	while (nextToken(&token, context.tokens, i)) {
 		switch (token->type) {
 			using namespace Lexer;
+			case Lexer::TokenType::LPAREN:
+			case Lexer::TokenType::LBRACKET:
+			case Lexer::TokenType::LBRACE: {
+				nodes.push_back(loadExpression(in_data, 0, i));
+				break;
+			}
 			case Lexer::TokenType::RPAREN:
 			case Lexer::TokenType::RBRACKET:
 			case Lexer::TokenType::RBRACE: {
@@ -788,7 +790,7 @@ std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 					for (auto *node : nodes)
 						ExprNode::deleteNode(node);
 					throw ParserError(token->line,
-					                  "Bug: Lexer not ensure close bracket");
+					                  "Bug: BLexer not ensure close bracket");
 				}
 				return nodes;
 			}
@@ -798,14 +800,178 @@ std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 				nodes.push_back(loadExpression(in_data, 0, i));
 				break;
 			}
-			default:
-				goto expectedCloseBracket;
+			default: {
+				--i;
+				throw ParserError(token->line,
+				                  "Unknow token " + token->toString(context));
+			}
 		}
 	}
 expectedCloseBracket:
 	for (auto *node : nodes)
 		ExprNode::deleteNode(node);
-	throw ParserError(token->line, "Bug: Lexer not ensure close bracket");
+	throw ParserError(token->line, "Bug: CLexer not ensure close bracket");
+}
+
+HasClassIdNode *loadSetOrMap(in_func, size_t &i, NodeType canBeNodeType) {
+	Lexer::Token *token;
+	if (!nextToken(&token, context.tokens, i)) {
+		--i;
+		throw ParserError(0, "Bug: Lexer not ensure close bracket");
+	}
+	switch (token->type) {
+		case Lexer::TokenType::RPAREN:
+		case Lexer::TokenType::RBRACKET: {
+			throw ParserError(token->line,
+			                  "Bug: Lexer not ensure close bracket");
+		}
+		case Lexer::TokenType::RBRACE: {
+			switch (canBeNodeType) {
+				case NodeType::CREATE_SET: {
+					return context.createSetPool.push(
+					    token->line, nullptr, std::vector<HasClassIdNode *>());
+				}
+				case NodeType::CREATE_MAP: {
+					return context.createMapPool.push(
+					    token->line, nullptr,
+					    std::vector<
+					        std::pair<HasClassIdNode *, HasClassIdNode *>>());
+				}
+				default: {
+					return context.createSetPool.push(
+					    token->line, nullptr, std::vector<HasClassIdNode *>());
+				}
+			}
+			break;
+		}
+		default: {
+			auto firstExpression = loadExpression(in_data, 0, i);
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(0, "Bug: Lexer not ensure close bracket");
+			}
+			switch (token->type) {
+				case Lexer::TokenType::COMMA: {
+					if (canBeNodeType == NodeType::CREATE_MAP) {
+						throw ParserError(token->line,
+						                  "Expected Map<> but Set<> found");
+					}
+					return loadSet(in_data, i, firstExpression);
+				}
+				case Lexer::TokenType::COLON: {
+					if (canBeNodeType == NodeType::CREATE_SET) {
+						throw ParserError(token->line,
+						                  "Expected Set<> but Map<> found");
+					}
+					return loadMap(in_data, i, firstExpression);
+				}
+				case Lexer::TokenType::RPAREN:
+				case Lexer::TokenType::RBRACKET: {
+					throw ParserError(token->line,
+					                  "Bug: Lexer not ensure close bracket");
+				}
+				case Lexer::TokenType::RBRACE: {
+					return context.createSetPool.push(
+					    token->line, nullptr,
+					    std::vector<HasClassIdNode *>{firstExpression});
+				}
+			}
+			throw ParserError(token->line,
+			                  "BUnexpected token " + token->toString(context));
+		}
+	}
+}
+
+HasClassIdNode *loadSet(in_func, size_t &i, HasClassIdNode *firstExpression) {
+	Lexer::Token *token;
+	std::vector<HasClassIdNode *> values = {firstExpression};
+	--i;
+	while (nextToken(&token, context.tokens, i)) {
+		switch (token->type) {
+			using namespace Lexer;
+			case Lexer::TokenType::RPAREN:
+			case Lexer::TokenType::RBRACKET: {
+				throw ParserError(token->line,
+				                  "Bug: Lexer not ensure close bracket");
+			}
+			case Lexer::TokenType::RBRACE: {
+				return context.createSetPool.push(token->line, nullptr,
+				                                  std::move(values));
+			}
+			case TokenType::COMMA: {
+				if (!nextToken(&token, context.tokens, i)) {
+					--i;
+					throw ParserError(context.tokens[i].line,
+					                  "Bug: Lexer not ensure close bracket");
+				}
+				values.push_back(loadExpression(in_data, 0, i));
+				break;
+			}
+			default: {
+				--i;
+				throw ParserError(token->line,
+				                  "Unknow token " + token->toString(context));
+			}
+		}
+	}
+	--i;
+	throw ParserError(context.tokens[i].line,
+	                  "Bug: Lexer not ensure close bracket");
+}
+
+HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode *firstExpression) {
+	std::vector<std::pair<HasClassIdNode *, HasClassIdNode *>> values;
+	Lexer::Token *token;
+	if (!nextToken(&token, context.tokens, i)) {
+		--i;
+		throw ParserError(context.tokens[i].line,
+		                  "Bug: Lexer not ensure close bracket");
+	}
+	values.push_back(
+	    std::make_pair(firstExpression, loadExpression(in_data, 0, i)));
+	while (nextToken(&token, context.tokens, i)) {
+		switch (token->type) {
+			using namespace Lexer;
+			case Lexer::TokenType::RPAREN:
+			case Lexer::TokenType::RBRACKET: {
+				throw ParserError(token->line,
+				                  "Bug: Lexer not ensure close bracket");
+			}
+			case Lexer::TokenType::RBRACE: {
+				return context.createMapPool.push(token->line, nullptr,
+				                                  std::move(values));
+			}
+			case TokenType::COMMA: {
+				if (!nextToken(&token, context.tokens, i)) {
+					--i;
+					throw ParserError(context.tokens[i].line,
+					                  "Bug: Lexer not ensure close bracket");
+				}
+				auto key = loadExpression(in_data, 0, i);
+				if (!nextToken(&token, context.tokens, i) ||
+				    !expect(token, Lexer::TokenType::COLON)) {
+					--i;
+					throw ParserError(context.tokens[i].line, "Expected :");
+				}
+				if (!nextToken(&token, context.tokens, i)) {
+					--i;
+					throw ParserError(context.tokens[i].line,
+					                  "Bug: Lexer not ensure close bracket");
+				}
+				values.push_back(
+				    std::make_pair(key, loadExpression(in_data, 0, i)));
+				break;
+			}
+			default: {
+				--i;
+				throw ParserError(token->line,
+				                  "Unknow token " + token->toString(context));
+			}
+		}
+	}
+	--i;
+	throw ParserError(context.tokens[i].line,
+	                  "Bug: Lexer not ensure close bracket");
 }
 
 std::vector<DeclarationNode *> loadListDeclaration(in_func, size_t &i,
@@ -880,7 +1046,7 @@ std::vector<DeclarationNode *> loadListDeclaration(in_func, size_t &i,
 	}
 expectedCloseBracket:
 	--i;
-	throw ParserError(0, "Bug: Lexer not ensure close bracket");
+	throw ParserError(0, "Bug: DLexer not ensure close bracket");
 }
 
 HasClassIdNode *parsePrimary(in_func, size_t &i) {
@@ -930,10 +1096,38 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 					    context.classDeclarationAllocator.push();
 					classDeclaration->baseClassLexerStringId = lexerIdArray;
 					classDeclaration->inputClassId = std::move(inputVecs);
+					classDeclaration->line = firstLine;
 					context.allClassDeclarations.push_back(classDeclaration);
 					auto list = loadListArgument(in_data, i);
-					return context.createArrayPool.push(firstLine, classDeclaration,
-					                           std::move(list));
+					node = context.createArrayPool.push(
+					    firstLine, classDeclaration, std::move(list));
+					break;
+				}
+				case Lexer::TokenType::LBRACE: {
+					if (inputVecs.size() == 1) {
+						auto classDeclaration =
+						    context.classDeclarationAllocator.push();
+						classDeclaration->baseClassLexerStringId = lexerIdSet;
+						classDeclaration->inputClassId = std::move(inputVecs);
+						classDeclaration->line = firstLine;
+						context.allClassDeclarations.push_back(
+						    classDeclaration);
+						node = loadSetOrMap(in_data, i, NodeType::CREATE_SET);
+						static_cast<CreateSetNode *>(node)->classDeclaration =
+						    classDeclaration;
+					} else {
+						auto classDeclaration =
+						    context.classDeclarationAllocator.push();
+						classDeclaration->baseClassLexerStringId = lexerIdMap;
+						classDeclaration->inputClassId = std::move(inputVecs);
+						classDeclaration->line = firstLine;
+						context.allClassDeclarations.push_back(
+						    classDeclaration);
+						node = loadSetOrMap(in_data, i, NodeType::CREATE_MAP);
+						static_cast<CreateMapNode *>(node)->classDeclaration =
+						    classDeclaration;
+					}
+					break;
 				}
 				default: {
 					throw ParserError(firstLine, "Expected array after <Type>");
@@ -947,8 +1141,11 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 			                                    std::move(list));
 			break;
 		}
-		case Lexer::TokenType::LPAREN:
 		case Lexer::TokenType::LBRACE: {
+			node = loadSetOrMap(in_data, i, NodeType::UNKNOW);
+			break;
+		}
+		case Lexer::TokenType::LPAREN: {
 			auto list = loadListArgument(in_data, i);
 			if (list.size() != 1) {
 				if (list.empty()) {
@@ -1328,6 +1525,7 @@ ConstValueNode *findConstValueNode(in_func, size_t &i, LexerStringId nameId) {
 		return nullptr;
 	}
 	return static_cast<ConstValueNode *>(it->second->copy(in_data));
+	// return it->second;
 }
 
 void ensureNoKeyword(in_func, size_t &i) {

@@ -176,8 +176,27 @@ void AVM::log(Function *currentFunction) {
 			case AutoLang::Opcode::FAST_SAVE_MEMBER: {
 				uint32_t classId = get_u32(bytecodes, i);
 				uint32_t memberCount = get_u32(bytecodes, i);
-				std::cerr << "FAST_SAVE_MEMBER	 " << data.classes[classId]->name
-				          << "     " << memberCount << "\n";
+				std::cerr << "FAST_SAVE_MEMBER	 "
+				          << data.classes[classId]->name << "     "
+				          << memberCount << "\n";
+				break;
+			}
+			case AutoLang::Opcode::CREATE_SET_OBJECT: {
+				uint32_t classId = get_u32(bytecodes, i);
+				uint32_t keyId = get_u32(bytecodes, i);
+				uint32_t count = get_u32(bytecodes, i);
+				std::cerr << "CREATE_SET_OBJECT	 " << data.classes[classId]->name
+				          << "     " << data.classes[keyId]->name << " "
+				          << count << "\n";
+				break;
+			}
+			case AutoLang::Opcode::CREATE_MAP_OBJECT: {
+				uint32_t classId = get_u32(bytecodes, i);
+				uint32_t keyId = get_u32(bytecodes, i);
+				uint32_t count = get_u32(bytecodes, i);
+				std::cerr << "CREATE_MAP_OBJECT	 " << data.classes[classId]->name
+				          << "     " << data.classes[keyId]->name << " "
+				          << count << "\n";
 				break;
 			}
 			case AutoLang::Opcode::CREATE_NATIVE_OBJECT: {
@@ -257,15 +276,15 @@ void AVM::log(Function *currentFunction) {
 			case AutoLang::Opcode::GLOBAL_LOAD_MEMBER_AND_STORE: {
 				uint32_t pos = get_u32(bytecodes, i);
 				uint32_t memberId = get_u32(bytecodes, i);
-				std::cerr << "GLOBAL_LOAD_MEMBER_AND_STORE	 " << pos << " " << memberId
-				          << "\n";
+				std::cerr << "GLOBAL_LOAD_MEMBER_AND_STORE	 " << pos << " "
+				          << memberId << "\n";
 				break;
 			}
 			case AutoLang::Opcode::LOCAL_LOAD_MEMBER_AND_STORE: {
 				uint32_t pos = get_u32(bytecodes, i);
 				uint32_t memberId = get_u32(bytecodes, i);
-				std::cerr << "LOCAL_LOAD_MEMBER_AND_STORE	 " << pos << " " << memberId
-				          << "\n";
+				std::cerr << "LOCAL_LOAD_MEMBER_AND_STORE	 " << pos << " "
+				          << memberId << "\n";
 				break;
 			}
 			case AutoLang::Opcode::LOAD_MEMBER:

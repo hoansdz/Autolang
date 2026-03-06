@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
 			// compiler.generateBytecodes();
 			// compiler.run();
 			// compiler.refresh();
-			compiler.loadMainSource("tests/testCorrectness.atl", {{"hi", [](NativeFuncInput) -> AutoLang::AObject* {
+			compiler.loadMainSource("tests/source.atl", {{"hi", [](NativeFuncInput) -> AutoLang::AObject* {
 				std::cerr<<"Duoc roi ne!!!\n";
 				return nullptr;
 			}}});

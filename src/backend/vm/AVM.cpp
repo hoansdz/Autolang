@@ -2,6 +2,9 @@
 #define AVM_CPP
 
 #include "backend/vm/AVM.hpp"
+#include "backend/libs/array.hpp"
+#include "backend/libs/set.hpp"
+#include "backend/libs/map.hpp"
 #include "shared/DefaultOperator.hpp"
 #include <chrono>
 #include <functional>
@@ -366,6 +369,35 @@ resumeCallFrame:;
 					auto obj = data.manager.get(classId, count);
 					for (; count-- > 0;) {
 						obj->member->data[count] = stack.pop();
+					}
+					stack.push(obj);
+					stack.top()->retain();
+					break;
+				}
+				case AutoLang::Opcode::CREATE_SET_OBJECT: {
+					ClassId classId = get_u32(bytecodes, i);
+					ClassId keyId = get_u32(bytecodes, i);
+					uint32_t count = get_u32(bytecodes, i);
+					auto obj = AutoLang::Libs::set::constructor(*notifier, classId, keyId);
+					tempAllocateArea[0] = obj;
+					for (; count-- > 0;) {
+						tempAllocateArea[1] = stack.pop();
+						AutoLang::Libs::set::insert(*notifier, tempAllocateArea, 2);
+					}
+					stack.push(obj);
+					stack.top()->retain();
+					break;
+				}
+				case AutoLang::Opcode::CREATE_MAP_OBJECT: {
+					ClassId classId = get_u32(bytecodes, i);
+					ClassId keyId = get_u32(bytecodes, i);
+					uint32_t count = get_u32(bytecodes, i);
+					auto obj = AutoLang::Libs::map::constructor(*notifier, classId, keyId);
+					tempAllocateArea[0] = obj;
+					for (; count-- > 0;) {
+						tempAllocateArea[2] = stack.pop();
+						tempAllocateArea[1] = stack.pop();
+						AutoLang::Libs::map::set(*notifier, tempAllocateArea, 3);
 					}
 					stack.push(obj);
 					stack.top()->retain();

@@ -10,8 +10,10 @@ namespace AutoLang {
 
 struct ParserContext;
 struct CompiledProgram;
+struct LibraryData;
 
 struct ClassDeclaration {
+	LibraryData* mode;
 	uint32_t line;
 	LexerStringId baseClassLexerStringId;
 	bool nullable = false;
@@ -24,7 +26,8 @@ struct ClassDeclaration {
 	void load(in_func);
 	template <bool addNullable = false>
 	std::string getName(in_func);
-	ClassDeclaration() {}
+	ClassDeclaration();
+	[[noreturn]] inline void throwError(std::string message);
 };
 
 } // namespace AutoLang
