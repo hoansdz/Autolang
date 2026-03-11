@@ -40,6 +40,7 @@ class ACompiler {
 	std::vector<LibraryData *> generatedLibraries;
 	std::vector<LibraryData *> builtInLibraries;
 	HashMap<std::string, LibraryData*> autoImportMap;
+	HashMap<std::string, Offset> generatedLibraryMap;
 	HashMap<std::string, Offset> builtInLibrariesMap;
 	// Add built in library
 	void loadSource(LibraryData *library);

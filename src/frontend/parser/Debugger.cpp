@@ -494,8 +494,7 @@ initial:;
 			loadAnnotations(in_data, i);
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
-				throw ParserError(context.tokens[i].line,
-				                  "Annotation must be followed by function");
+				return nullptr;
 			}
 			goto initial;
 		}
@@ -710,7 +709,8 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 			}
 		}
 		// auto binaryNode = context.binaryNodePool.push(op, left, right);
-		left = context.binaryNodePool.push(firstLine, context.currentClassId, op, left, right);
+		left = context.binaryNodePool.push(firstLine, context.currentClassId,
+		                                   op, left, right);
 		// auto binaryNode =
 		//     std::make_unique<BinaryNode>(firstLine, op, left.release(),
 		//     right);

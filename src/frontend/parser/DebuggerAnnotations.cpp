@@ -22,6 +22,12 @@ void loadAnnotations(in_func, size_t &i) {
 				throw ParserError(firstLine, "Duplicate annotation @override");
 			}
 			context.annotationFlags |= AnnotationFlags::AN_OVERRIDE;
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(context.tokens[i].line,
+				                  "@override must be followed by function");
+			}
+			--i;
 			break;
 		}
 		case Lexer::TokenType::NO_OVERRIDE: {
@@ -30,6 +36,12 @@ void loadAnnotations(in_func, size_t &i) {
 				                  "Duplicate annotation @no_override");
 			}
 			context.annotationFlags |= AnnotationFlags::AN_NO_OVERRIDE;
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(context.tokens[i].line,
+				                  "@no_override must be followed by function");
+			}
+			--i;
 			break;
 		}
 		case Lexer::TokenType::WAIT_INPUT: {
@@ -38,6 +50,12 @@ void loadAnnotations(in_func, size_t &i) {
 				                  "Duplicate annotation @wait_input");
 			}
 			context.annotationFlags |= AnnotationFlags::AN_WAIT_INPUT;
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(context.tokens[i].line,
+				                  "@wait_input must be followed by function");
+			}
+			--i;
 			break;
 		}
 		case Lexer::TokenType::NATIVE: {
@@ -61,6 +79,12 @@ void loadAnnotations(in_func, size_t &i) {
 				throw ParserError(firstLine, "@native expects a constant "
 				                             "string value, not an expression");
 			}
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(context.tokens[i].line,
+				                  "@native must be followed by function");
+			}
+			--i;
 			break;
 		}
 		case Lexer::TokenType::NO_CONSTRUCTOR: {
@@ -69,6 +93,12 @@ void loadAnnotations(in_func, size_t &i) {
 				                  "Duplicate annotation @no_constructor");
 			}
 			context.annotationFlags |= AnnotationFlags::AN_NO_CONSTRUCTOR;
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(context.tokens[i].line,
+				                  "@no_constructor must be followed by class");
+			}
+			--i;
 			break;
 		}
 		case Lexer::TokenType::NO_EXTENDS: {
@@ -77,6 +107,12 @@ void loadAnnotations(in_func, size_t &i) {
 				                  "Duplicate annotation @no_extends");
 			}
 			context.annotationFlags |= AnnotationFlags::AN_NO_EXTENDS;
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(context.tokens[i].line,
+				                  "@no_extends must be followed by class");
+			}
+			--i;
 			break;
 		}
 		case Lexer::TokenType::NATIVE_DATA: {
@@ -85,6 +121,12 @@ void loadAnnotations(in_func, size_t &i) {
 				                  "Duplicate annotation @native_data");
 			}
 			context.annotationFlags |= AnnotationFlags::AN_NATIVE_DATA;
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(context.tokens[i].line,
+				                  "@native_data must be followed by class");
+			}
+			--i;
 			break;
 		}
 		case Lexer::TokenType::IMPORT: {

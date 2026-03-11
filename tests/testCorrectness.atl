@@ -12,5 +12,8 @@
 @import("./correctness/basic/generics.atl")
 @import("./correctness/basic/array_sugar_syntax.atl")
 @import("./correctness/basic/set_sugar_syntax.atl")
+@import("./correctness/basic/set_sugar_syntax.atl")
+@import("./correctness/basic/set_sugar_syntax.atl")
+@import("../tests/testCorrectness.atl")
 
 // @import("./correctness/basic/function.atl")

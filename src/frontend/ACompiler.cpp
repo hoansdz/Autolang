@@ -14,9 +14,11 @@ namespace AutoLang {
 
 LibraryData *ACompiler::requestImport(LibraryData *currentLibrary,
                                       const char *path) {
-	auto it = builtInLibrariesMap.find(std::string(path));
-	if (it != builtInLibrariesMap.end()) {
-		return builtInLibraries[it->second];
+	{
+		auto it = builtInLibrariesMap.find(std::string(path));
+		if (it != builtInLibrariesMap.end()) {
+			return builtInLibraries[it->second];
+		}
 	}
 
 #ifdef __EMSCRIPTEN__
@@ -28,7 +30,7 @@ LibraryData *ACompiler::requestImport(LibraryData *currentLibrary,
 		return nullptr;
 	std::filesystem::path input = path;
 	std::filesystem::path currentPath;
-	if (currentLibrary->isFile) {
+	if (currentLibrary && currentLibrary->isFile) {
 		currentPath = std::filesystem::path(currentLibrary->path).parent_path();
 	} else {
 		currentPath = std::filesystem::current_path();
@@ -37,9 +39,18 @@ LibraryData *ACompiler::requestImport(LibraryData *currentLibrary,
 	if (!std::filesystem::exists(resolved)) {
 		return nullptr;
 	}
-	// std::cout<<input<<"\n"<<currentPath<<"\n"<<resolved<<"\n";
-	LibraryData *library =
-	    new LibraryData(resolved.string(), 0, currentLibrary->nativeFuncMap);
+	std::string libPath = resolved.string();
+	{
+		auto it = generatedLibraryMap.find(libPath);
+		if (it != generatedLibraryMap.end()) {
+			return generatedLibraries[it->second];
+		}
+	}
+	// std::cout << "START    " << input << "\n" << currentPath << "\n" << resolved << "\n";
+	LibraryData *library = new LibraryData(
+	    libPath, 0,
+	    currentLibrary ? currentLibrary->nativeFuncMap : EMPTY_NATIVE_MAP);
+	generatedLibraryMap[libPath] = generatedLibraries.size();
 	generatedLibraries.push_back(library);
 	Lexer::loadFile(&parserContext, library);
 	return library;
@@ -138,9 +149,15 @@ void ACompiler::loadMainSource(const char *path,
 	if (!loadedBuiltIn) {
 		loadBuiltInFunctions();
 	}
-	LibraryData *library = new LibraryData(path, 0, nativeFuncMap);
-	generatedLibraries.push_back(library);
-	Lexer::loadFile(&parserContext, library);
+	if (!path || path[0] != '.') {
+		throw std::runtime_error("File must be started by './' or '../' ");
+	}
+	LibraryData *library = requestImport(nullptr, path);
+	if (!library) {
+		throw std::runtime_error("File " + std::string(path) +
+		                         " doesn't exists");
+	}
+	library->nativeFuncMap = nativeFuncMap;
 	loadMainSource(library);
 }
 
@@ -151,6 +168,7 @@ void ACompiler::loadMainSource(const char *path, const char *data,
 	}
 	LibraryData *library = new LibraryData(path, 0, nativeFuncMap);
 	library->rawData = data;
+	generatedLibraryMap[path] = generatedLibraries.size();
 	generatedLibraries.push_back(library);
 	loadMainSource(library);
 }
@@ -544,6 +562,7 @@ void ACompiler::refresh() {
 	for (auto *lib : generatedLibraries) {
 		delete lib;
 	}
+	generatedLibraryMap.clear();
 	generatedLibraries.clear();
 	vm.restart();
 	vm.data.destroy();
