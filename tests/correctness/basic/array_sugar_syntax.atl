@@ -1,10 +1,16 @@
 func testArraySugarSyntax() {
-	val list = <Array<Int>?>[
-		<Int>[1, 5, 7], 
-		null, 
-		null
+	val list = <Array<Int>>[
+		[1, 2, 3], 
+		[4, 5, 6]
 	]
-	assert(list is Array<Array<Int>?>, __FILE__, __LINE__)
+	var sum = 0
+	for (arr in list) {
+		for (num in arr) {
+			sum += num
+		}
+	}
+	assert(list is Array<Array<Int>>, __FILE__, __LINE__)
+	assert(sum == 21, __FILE__, __LINE__)
 	println("Passes ${__FUNC__}")
 }
 

@@ -12,16 +12,30 @@ ExprNode *RangeNode::resolve(in_func) {
 	return this;
 }
 
-void RangeNode::optimize(in_func) {}
+void RangeNode::optimize(in_func) {
+	from->optimize(in_data);
+	to->optimize(in_data);
+}
+
+void RangeNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	from->putBytecodes(in_data, bytecodes);
+	to->putBytecodes(in_data, bytecodes);
+}
+
+void RangeNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
+	from->rewrite(in_data, bytecodes);
+	to->rewrite(in_data, bytecodes);
+}
 
 ExprNode *RangeNode::copy(in_func) {
 	return context.rangeNode.push(
-	    line, static_cast<HasClassIdNode *>(from->copy(in_data)), static_cast<HasClassIdNode *>(to->copy(in_data)), lessThan);
+	    line, static_cast<HasClassIdNode *>(from->copy(in_data)),
+	    static_cast<HasClassIdNode *>(to->copy(in_data)), lessThan);
 }
 
-RangeNode::~RangeNode() { 
+RangeNode::~RangeNode() {
 	deleteNode(from);
-	deleteNode(to); 
+	deleteNode(to);
 }
 
 } // namespace AutoLang

@@ -9,9 +9,9 @@
 
 namespace AutoLang {
 
-inline bool isFunctionExist(in_func, std::string &name);
-inline bool isClassExist(in_func, std::string &name);
-inline bool isDeclarationExist(in_func, std::string &name);
+inline bool isFunctionExist(in_func, const std::string &name);
+inline bool isClassExist(in_func, const std::string &name);
+inline bool isDeclarationExist(in_func, const std::string &name);
 
 // var val name: className = value
 struct DeclarationNode : HasClassIdNode {
@@ -47,17 +47,17 @@ struct GenericDeclarationNode : NullableNode {
 
 struct CreateConstructorNode : HasClassIdNode {
 	ClassId classId;
-	std::string name;
+	LexerStringId nameId;
 	FunctionId funcId;
 	BlockNode body;
 	const std::vector<DeclarationNode *> arguments;
 	uint32_t functionFlags;
 	bool isPrimary;
-	CreateConstructorNode(uint32_t line, ClassId classId, std::string name,
+	CreateConstructorNode(uint32_t line, ClassId classId, LexerStringId nameId,
 	                      std::vector<DeclarationNode *> arguments,
 	                      bool isPrimary, uint32_t functionFlags)
 	    : HasClassIdNode(NodeType::CREATE_CONSTRUCTOR, 0, line),
-	      classId(classId), functionFlags(functionFlags), name(std::move(name)),
+	      classId(classId), functionFlags(functionFlags), nameId(nameId),
 	      arguments(std::move(arguments)), isPrimary(isPrimary), body(line) {}
 	void pushFunction(in_func);
 	void optimize(in_func) override;
@@ -71,8 +71,7 @@ struct CreateClassNode : HasClassIdNode {
 	uint32_t classFlags;
 	BlockNode body;
 	bool loadedSuper = false;
-	CreateClassNode(uint32_t line, LexerStringId nameId,
-	                uint32_t classFlags)
+	CreateClassNode(uint32_t line, LexerStringId nameId, uint32_t classFlags)
 	    : HasClassIdNode(NodeType::CREATE_CLASS, 0, line), body(line),
 	      nameId(nameId), superDeclaration(nullptr), classFlags(classFlags) {}
 	void pushClass(in_func);

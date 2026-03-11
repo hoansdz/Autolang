@@ -13,61 +13,63 @@ ExprNode *CallNode::resolve(in_func) {
 	}
 	if (caller) {
 		caller = static_cast<HasClassIdNode *>(caller->resolve(in_data));
-	} else if (!name.empty()) {
-		auto it =
-		    context.lexerStringMap.find(name.substr(0, name.length() - 2));
-		if (it != context.lexerStringMap.end()) {
-			LexerStringId nameId = it->second;
-			switch (nameId) {
-				case lexerIdInt: {
-					if (arguments.size() != 1) {
-						throwError("Invalid call: Int expects 1 "
-						           "argument, but " +
-						           std::to_string(arguments.size()) +
-						           " were provided");
-					}
-					auto result = context.castPool.push(
-					    arguments[0], DefaultClass::intClassId);
-					arguments.clear();
-					return result;
+	} else {
+		switch (nameId) {
+			case lexerIdInt: {
+				if (arguments.size() != 1) {
+					throwError("Invalid call: Int expects 1 "
+					           "argument, but " +
+					           std::to_string(arguments.size()) +
+					           " were provided");
 				}
-				case lexerIdFloat: {
-					if (arguments.size() != 1) {
-						throwError("Invalid call: Float expects 1 "
-						           "argument, but " +
-						           std::to_string(arguments.size()) +
-						           " were provided");
-					}
-					auto result = context.castPool.push(
-					    arguments[0], DefaultClass::floatClassId);
-					arguments.clear();
-					return result;
-				}
-				case lexerIdBool: {
-					if (arguments.size() != 1) {
-						throwError("Invalid call: Bool expects 1 "
-						           "argument, but " +
-						           std::to_string(arguments.size()) +
-						           " were provided");
-					}
-					auto result = context.castPool.push(
-					    arguments[0], DefaultClass::boolClassId);
-					arguments.clear();
-					return result;
-				}
-				case lexerIdgetClassId: {
-					if (arguments.size() != 1) {
-						throwError("Invalid call: getClassId() expects 1 "
-						           "argument, but " +
-						           std::to_string(arguments.size()) +
-						           " were provided");
-					}
-					auto result = context.constValuePool.push(
-					    line, static_cast<int64_t>(arguments[0]->classId));
-					arguments.clear();
-					return result;
-				}
+				auto result = context.castPool.push(arguments[0],
+				                                    DefaultClass::intClassId);
+				arguments.clear();
+				return result;
 			}
+			case lexerIdFloat: {
+				if (arguments.size() != 1) {
+					throwError("Invalid call: Float expects 1 "
+					           "argument, but " +
+					           std::to_string(arguments.size()) +
+					           " were provided");
+				}
+				auto result = context.castPool.push(arguments[0],
+				                                    DefaultClass::floatClassId);
+				arguments.clear();
+				return result;
+			}
+			case lexerIdBool: {
+				if (arguments.size() != 1) {
+					throwError("Invalid call: Bool expects 1 "
+					           "argument, but " +
+					           std::to_string(arguments.size()) +
+					           " were provided");
+				}
+				auto result = context.castPool.push(arguments[0],
+				                                    DefaultClass::boolClassId);
+				arguments.clear();
+				return result;
+			}
+			case lexerIdgetClassId: {
+				if (arguments.size() != 1) {
+					throwError("Invalid call: getClassId() expects 1 "
+					           "argument, but " +
+					           std::to_string(arguments.size()) +
+					           " were provided");
+				}
+				auto result = context.constValuePool.push(
+				    line, static_cast<int64_t>(arguments[0]->classId));
+				arguments.clear();
+				return result;
+			}
+				// case lexerId__CLASS__:
+				// case lexerId__FILE__:
+				// case lexerId__FUNC__:
+				// case lexerId__LINE__: {
+				// 	throwError("Invalid call: " + context.lexerString[nameId] +
+				// 	           " is magic const ");
+				// }
 		}
 	}
 	return this;
@@ -81,8 +83,10 @@ void CallNode::optimize(in_func) {
 	uint8_t count = 0;
 	std::vector<uint32_t> *funcVec[2];
 
-	if (name == "[]")
-		name = "get()";
+	if (nameId == lexerIdLRBRACKET)
+		nameId = lexerIdget;
+
+	const auto &name = context.lexerString[nameId];
 
 	for (auto &argument : arguments) {
 		argument->optimize(in_data);
@@ -140,8 +144,8 @@ void CallNode::optimize(in_func) {
 
 	} else {
 		// Check if constructor
-		if (name.back() == ')') {
-			auto it = compile.classMap.find(name.substr(0, name.length() - 2));
+		{
+			auto it = compile.classMap.find(name);
 			if (it == compile.classMap.end()) {
 				funcName = name;
 				if (contextCallClassId) {
@@ -214,7 +218,7 @@ void CallNode::optimize(in_func) {
 		i = 0;
 	}
 	if (!found) {
-		std::string currentFuncLog = funcName.substr(0, funcName.length() - 1);
+		std::string currentFuncLog = funcName + "(";
 		bool isFirst = true;
 		for (auto argument : arguments) {
 			if (isFirst)
@@ -233,7 +237,7 @@ void CallNode::optimize(in_func) {
 			}
 		}
 		throwError(std::string("Cannot find function has arguments : ") +
-		           currentFuncLog + (funcName.back() == ')' ? ")" : "]"));
+		           currentFuncLog + ")");
 	}
 	if (ambitiousCall) {
 		for (int j = 0; j < count; ++j) {
@@ -458,8 +462,8 @@ ExprNode *CallNode::copy(in_func) {
 		    static_cast<HasClassIdNode *>(argument->copy(in_data)));
 	}
 	auto newNode = context.callNodePool.push(
-	    line, context.currentClassId, newCaller, name, std::move(newArguments),
-	    justFindStatic, nullable, accessNullable);
+	    line, context.currentClassId, newCaller, nameId,
+	    std::move(newArguments), justFindStatic, nullable, accessNullable);
 	newNode->classId = classId;
 	return newNode;
 }

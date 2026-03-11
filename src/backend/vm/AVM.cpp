@@ -3,8 +3,8 @@
 
 #include "backend/vm/AVM.hpp"
 #include "backend/libs/array.hpp"
-#include "backend/libs/set.hpp"
 #include "backend/libs/map.hpp"
+#include "backend/libs/set.hpp"
 #include "shared/DefaultOperator.hpp"
 #include <chrono>
 #include <functional>
@@ -325,6 +325,186 @@ resumeCallFrame:;
 					i += 4;
 					break;
 				}
+				case AutoLang::Opcode::FOR_SET: {
+					auto unorderedSetData =
+					    static_cast<AutoLang::Libs::set::AUnorderedSet *>(
+					        stack.pop()->data->data);
+					bool isGlobal = bytecodes[i++] == Opcode::STORE_GLOBAL;
+					AObject **iterator;
+					AObject **container;
+					if (isGlobal) {
+						container = &globalVariables[get_u32(bytecodes, i)];
+						iterator = &globalVariables[get_u32(bytecodes, i)];
+					} else {
+						container = &stackAllocator[get_u32(bytecodes, i)];
+						iterator = &stackAllocator[get_u32(bytecodes, i)];
+					}
+
+					switch (unorderedSetData->type) {
+						case DefaultClass::intClassId: {
+							auto set =
+							    static_cast<AutoLang::Libs::set::IntHashSet *>(
+							        unorderedSetData->data);
+							if (*iterator == DefaultClass::nullObject) {
+								if (set->empty()) {
+									i = get_u32(bytecodes, i);
+									break;
+								}
+								auto it = new AutoLang::Libs::set::IntHashSet::
+								    iterator(set->begin());
+								*iterator = notifier->createNativeData(
+								    unorderedSetData->type, it,
+								    [](ANotifier &notifier,
+								       void *unorderedSetData) -> void {
+									    delete static_cast<
+									        AutoLang::Libs::set::IntHashSet::
+									            iterator *>(unorderedSetData);
+								    });
+								*container = notifier->createInt(**it);
+								i += 4;
+								break;
+							}
+							auto &it = *static_cast<
+							    AutoLang::Libs::set::IntHashSet::iterator *>(
+							    (*iterator)->data->data);
+							++it;
+							if (it == set->end()) {
+								i = get_u32(bytecodes, i);
+								break;
+							}
+							*container = notifier->createInt(*it);
+							i += 4;
+							break;
+						}
+
+						case DefaultClass::floatClassId: {
+							auto set = static_cast<
+							    AutoLang::Libs::set::FloatHashSet *>(
+							    unorderedSetData->data);
+							if (*iterator == DefaultClass::nullObject) {
+								if (set->empty()) {
+									i = get_u32(bytecodes, i);
+									break;
+								}
+								auto it = new AutoLang::Libs::set::
+								    FloatHashSet::iterator(set->begin());
+								*iterator = notifier->createNativeData(
+								    unorderedSetData->type, it,
+								    [](ANotifier &notifier,
+								       void *unorderedSetData) -> void {
+									    delete static_cast<
+									        AutoLang::Libs::set::FloatHashSet::
+									            iterator *>(unorderedSetData);
+								    });
+								*container = notifier->createFloat(**it);
+								i += 4;
+								break;
+							}
+							auto &it = *static_cast<
+							    AutoLang::Libs::set::FloatHashSet::iterator *>(
+							    (*iterator)->data->data);
+							++it;
+							if (it == set->end()) {
+								i = get_u32(bytecodes, i);
+								break;
+							}
+							*container = notifier->createFloat(*it);
+							i += 4;
+							break;
+						}
+
+						case DefaultClass::stringClassId: {
+							auto set = static_cast<
+							    AutoLang::Libs::set::StringHashSet *>(
+							    unorderedSetData->data);
+							if (*iterator == DefaultClass::nullObject) {
+								if (set->empty()) {
+									i = get_u32(bytecodes, i);
+									break;
+								}
+								auto it = new AutoLang::Libs::set::
+								    StringHashSet::iterator(set->begin());
+								*iterator = notifier->createNativeData(
+								    unorderedSetData->type, it,
+								    [](ANotifier &notifier,
+								       void *unorderedSetData) -> void {
+									    delete static_cast<
+									        AutoLang::Libs::set::StringHashSet::
+									            iterator *>(unorderedSetData);
+								    });
+								*container = **it;
+								i += 4;
+								break;
+							}
+							auto &it = *static_cast<
+							    AutoLang::Libs::set::StringHashSet::iterator *>(
+							    (*iterator)->data->data);
+							++it;
+							if (it == set->end()) {
+								i = get_u32(bytecodes, i);
+								break;
+							}
+							*container = *it;
+							i += 4;
+							break;
+						}
+
+						default: {
+							auto set = static_cast<
+							    AutoLang::Libs::set::ObjectHashSet *>(
+							    unorderedSetData->data);
+							if (*iterator == DefaultClass::nullObject) {
+								if (set->empty()) {
+									i = get_u32(bytecodes, i);
+									break;
+								}
+								auto it = new AutoLang::Libs::set::
+								    ObjectHashSet::iterator(set->begin());
+								*iterator = notifier->createNativeData(
+								    unorderedSetData->type, it,
+								    [](ANotifier &notifier,
+								       void *unorderedSetData) -> void {
+									    delete static_cast<
+									        AutoLang::Libs::set::ObjectHashSet::
+									            iterator *>(unorderedSetData);
+								    });
+								*container = **it;
+								i += 4;
+								break;
+							}
+							auto &it = *static_cast<
+							    AutoLang::Libs::set::ObjectHashSet::iterator *>(
+							    (*iterator)->data->data);
+							++it;
+							if (it == set->end()) {
+								i = get_u32(bytecodes, i);
+								break;
+							}
+							*container = *it;
+							i += 4;
+							break;
+						}
+					}
+
+					break;
+				}
+				case AutoLang::Opcode::IN_RANGE: {
+					auto obj2 = stack.pop();
+					auto obj1 = stack.pop();
+					auto obj = stack.pop();
+					bool isLessThan = bytecodes[i++];
+					if (isLessThan) {
+						stack.push(notifier->createBool(obj->i >= obj1->i &&
+						                                obj->i < obj2->i));
+					} else {
+						stack.push(notifier->createBool(obj->i >= obj1->i &&
+						                                obj->i <= obj2->i));
+					}
+					data.manager.release(obj);
+					data.manager.release(obj1);
+					data.manager.release(obj2);
+					break;
+				}
 				case AutoLang::Opcode::LOAD_CONST: {
 					stack.push(getConstObject(get_u32(bytecodes, i)));
 					// std::cerr<<stack.top()<<" created\n";
@@ -378,11 +558,13 @@ resumeCallFrame:;
 					ClassId classId = get_u32(bytecodes, i);
 					ClassId keyId = get_u32(bytecodes, i);
 					uint32_t count = get_u32(bytecodes, i);
-					auto obj = AutoLang::Libs::set::constructor(*notifier, classId, keyId);
+					auto obj = AutoLang::Libs::set::constructor(*notifier,
+					                                            classId, keyId);
 					tempAllocateArea[0] = obj;
 					for (; count-- > 0;) {
 						tempAllocateArea[1] = stack.pop();
-						AutoLang::Libs::set::insert(*notifier, tempAllocateArea, 2);
+						AutoLang::Libs::set::insert(*notifier, tempAllocateArea,
+						                            2);
 					}
 					stack.push(obj);
 					stack.top()->retain();
@@ -392,12 +574,14 @@ resumeCallFrame:;
 					ClassId classId = get_u32(bytecodes, i);
 					ClassId keyId = get_u32(bytecodes, i);
 					uint32_t count = get_u32(bytecodes, i);
-					auto obj = AutoLang::Libs::map::constructor(*notifier, classId, keyId);
+					auto obj = AutoLang::Libs::map::constructor(*notifier,
+					                                            classId, keyId);
 					tempAllocateArea[0] = obj;
 					for (; count-- > 0;) {
 						tempAllocateArea[2] = stack.pop();
 						tempAllocateArea[1] = stack.pop();
-						AutoLang::Libs::map::set(*notifier, tempAllocateArea, 3);
+						AutoLang::Libs::map::set(*notifier, tempAllocateArea,
+						                         3);
 					}
 					stack.push(obj);
 					stack.top()->retain();

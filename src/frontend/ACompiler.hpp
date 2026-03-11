@@ -7,7 +7,7 @@
 
 namespace AutoLang {
 
-enum class CompilerState { READY, ERROR, ANALYZED, BYTECODE_READY };
+enum class CompilerState { CT_READY, CT_ERROR, CT_ANALYZED, CT_BYTECODE_READY };
 
 enum LibraryFlags : uint32_t {
 	IS_BUILT_IN = 1u << 0,

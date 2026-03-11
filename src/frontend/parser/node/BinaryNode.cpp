@@ -93,7 +93,6 @@ ExprNode *BinaryNode::resolve(in_func) {
 					switch (left->kind) {
 						case NodeType::CLASS_ACCESS: {
 							throwError("Expected value but class name found");
-							break;
 						}
 						default: {
 							if (left->classId != DefaultClass::intClassId) {
@@ -101,12 +100,23 @@ ExprNode *BinaryNode::resolve(in_func) {
 								    "Type mismatch: expected 'Int' but '" +
 								    compile.classes[left->classId]->name +
 								    "' found");
-								break;
 							}
 							break;
 						}
 					}
 					break;
+				}
+				case NodeType::CLASS_ACCESS: {
+					throwError("Expected value but class name found");
+				}
+				default: {
+					auto *result = context.callNodePool.push(
+					    line, contextCallClassId, right, lexerIdcontains,
+					    std::vector<HasClassIdNode *>{left},
+					    context.justFindStatic, true, false);
+					left = nullptr;
+					right = nullptr;
+					return result;
 				}
 			}
 			classId = DefaultClass::boolClassId;
@@ -180,8 +190,13 @@ void BinaryNode::optimize(in_func) {
 			return;
 		}
 		case Lexer::TokenType::IN: {
+			if (left->isNullable() || right->isNullable()) {
+				throwError("Cannot use operator '" +
+				           Lexer::Token(0, op).toString(context) +
+				           "' with nullable value");
+			}
 			classId = DefaultClass::boolClassId;
-			break;
+			return;
 		}
 		case Lexer::TokenType::PLUS:
 		case Lexer::TokenType::MINUS:
@@ -277,9 +292,6 @@ bool BinaryNode::putOptimizedBytecode(in_func,
 			put_opcode_u32(bytecodes, right->classId);
 			return true;
 		}
-		case Lexer::TokenType::IN: {
-			throwError("In condition keywords doesn't support now");
-		}
 		default: {
 			auto it = context.operatorTable.find(op);
 			if (it == context.operatorTable.end())
@@ -334,7 +346,8 @@ bool BinaryNode::putOptimizedBytecode(in_func,
 							    static_cast<ConstValueNode *>(right);
 							if (right->classId ==
 							    AutoLang::DefaultClass::nullClassId) {
-								// throwError("Null must be cleared by optimizer");
+								// throwError("Null must be cleared by
+								// optimizer");
 								return false;
 							}
 							if (right->classId ==
@@ -358,7 +371,7 @@ bool BinaryNode::putOptimizedBytecode(in_func,
 					auto leftNode = static_cast<ConstValueNode *>(left);
 					if (leftNode->classId == DefaultClass::nullClassId) {
 						// throwError("Null must be cleared by optimizer");
-								return false;
+						return false;
 					}
 					if (leftNode->classId == DefaultClass::boolClassId) {
 						return false;
@@ -416,6 +429,17 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	left->putBytecodes(in_data, bytecodes);
 	right->putBytecodes(in_data, bytecodes);
 	switch (op) {
+		case Lexer::TokenType::IN: {
+			switch (right->kind) {
+				case NodeType::RANGE: {
+					bytecodes.emplace_back(Opcode::IN_RANGE);
+					bytecodes.emplace_back(
+					    static_cast<RangeNode *>(right)->lessThan);
+					return;
+				}
+			}
+			throwError("In condition keywords doesn't support now");
+		}
 		case Lexer::TokenType::PLUS: {
 			switch (left->classId) {
 				case DefaultClass::intClassId: {
@@ -534,7 +558,8 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 
 ExprNode *BinaryNode::copy(in_func) {
 	return context.binaryNodePool.push(
-	    line, op, static_cast<HasClassIdNode *>(left->copy(in_data)),
+	    line, contextCallClassId, op,
+	    static_cast<HasClassIdNode *>(left->copy(in_data)),
 	    static_cast<HasClassIdNode *>(right->copy(in_data)));
 }
 

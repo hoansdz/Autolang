@@ -48,11 +48,11 @@ LibraryData *ACompiler::requestImport(LibraryData *currentLibrary,
 
 void ACompiler::lexerTextToToken(LibraryData *library) {
 	switch (state) {
-		case CompilerState::BYTECODE_READY:
+		case CompilerState::CT_BYTECODE_READY:
 			throw std::logic_error("Bytecode already generated. Call run() to "
 			                       "execute or refresh() to register.");
 			break;
-		case CompilerState::ERROR:
+		case CompilerState::CT_ERROR:
 			throw std::logic_error("Compiler is in ERROR state. Call refresh() "
 			                       "before register source.");
 		default:
@@ -75,7 +75,7 @@ void ACompiler::loadSource(LibraryData *library) {
 	// }
 	// std::cerr<<"h "<<source.mode.path<<": "<<source.end<<"\n";
 	if (library->lexerContext.hasError) {
-		state = CompilerState::ERROR;
+		state = CompilerState::CT_ERROR;
 		return;
 	}
 	for (auto &pos : importOffset) {
@@ -87,7 +87,7 @@ void ACompiler::loadSource(LibraryData *library) {
 		library->dependencies[lib->path] = lib;
 	}
 
-	state = CompilerState::ANALYZED;
+	state = CompilerState::CT_ANALYZED;
 }
 
 void ACompiler::registerFromSource(const char *path, bool autoImport,
@@ -179,7 +179,7 @@ void ACompiler::loadMainSource(LibraryData *library) {
 	lexerData(in_data, *this, library, &importOffset);
 
 	if (mainSource->lexerContext.hasError) {
-		state = CompilerState::ERROR;
+		state = CompilerState::CT_ERROR;
 		return;
 	}
 
@@ -222,14 +222,14 @@ void ACompiler::loadMainSource(LibraryData *library) {
 
 void ACompiler::generateBytecodes() {
 	switch (state) {
-		case CompilerState::BYTECODE_READY:
+		case CompilerState::CT_BYTECODE_READY:
 			throw std::logic_error("Bytecode already generated. Call run() to "
 			                       "execute instead of generating again.");
 			break;
-		case CompilerState::ERROR:
+		case CompilerState::CT_ERROR:
 			throw std::logic_error("Compiler is in ERROR state. Call refresh() "
 			                       "before generate bytecode.");
-		case CompilerState::READY:
+		case CompilerState::CT_READY:
 			throw std::logic_error(
 			    "No bytecode generated. Compile source before generating.");
 		default:
@@ -291,7 +291,7 @@ void ACompiler::generateBytecodes() {
 	//           << " ms" << '\n';
 
 	if (context.hasError) {
-		state = CompilerState::ERROR;
+		state = CompilerState::CT_ERROR;
 		return;
 	}
 
@@ -511,26 +511,26 @@ void ACompiler::generateBytecodes() {
 	//           << " ms" << '\n';
 
 	if (context.hasError) {
-		state = CompilerState::ERROR;
+		state = CompilerState::CT_ERROR;
 		return;
 	}
 
-	state = CompilerState::BYTECODE_READY;
+	state = CompilerState::CT_BYTECODE_READY;
 }
 
 void ACompiler::run() {
 	switch (state) {
-		case CompilerState::BYTECODE_READY:
+		case CompilerState::CT_BYTECODE_READY:
 			break;
-		case CompilerState::ERROR:
+		case CompilerState::CT_ERROR:
 			throw std::logic_error("Compiler is in ERROR state. Call "
 			                       "refresh() before running.");
 
-		case CompilerState::READY:
+		case CompilerState::CT_READY:
 			throw std::logic_error("Bytecode not generated. Call "
 			                       "generateBytecodes() before running.");
 
-		case CompilerState::ANALYZED:
+		case CompilerState::CT_ANALYZED:
 			throw std::logic_error(
 			    "Source is analyzed but bytecode not generated. "
 			    "Call generateBytecodes() before running.");
@@ -558,7 +558,7 @@ void ACompiler::refresh() {
 	    parserContext.functionInfoAllocator.push());
 	new (&vm.data.functions[vm.data.mainFunctionId]->bytecodes)
 	    std::vector<uint8_t>();
-	state = CompilerState::ANALYZED;
+	state = CompilerState::CT_ANALYZED;
 	if (vm.globalVariables) {
 		delete[] vm.globalVariables;
 		vm.globalVariables = nullptr;
@@ -595,9 +595,9 @@ ACompiler::ACompiler() {
 	//                  std::chrono::high_resolution_clock::now() -
 	//                  startCompiler) .count()
 	//           << " ms" << '\n';
-	state = CompilerState::READY;
+	state = CompilerState::CT_READY;
 	AutoLang::Libs::Math::init(*this);
-	state = CompilerState::READY;
+	state = CompilerState::CT_READY;
 }
 
 ACompiler::~ACompiler() {

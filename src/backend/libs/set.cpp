@@ -11,29 +11,6 @@ namespace AutoLang {
 namespace Libs {
 namespace set {
 
-struct ObjStringHashable {
-	inline size_t operator()(const AObject *s) const {
-		size_t h = 1469598103934665603ULL;
-		for (size_t i = 0; i < s->str->size; ++i) {
-			h ^= (unsigned char)s->str->data[i];
-			h *= 1099511628211ULL;
-		}
-		return h;
-	}
-};
-
-struct ObjStringEqualable {
-	inline bool operator()(const AObject *a, const AObject *b) const {
-		return a->str->size == b->str->size &&
-		       memcmp(a->str->data, b->str->data, a->str->size) == 0;
-	}
-};
-
-struct AUnorderedSet {
-	ClassId type;
-	void *data;
-};
-
 template <typename SetType, bool ReleaseKey>
 static void destroySet(ANotifier &notifier, void *unorderedSetData) {
 	auto unorderedSetData_ = static_cast<AUnorderedSet *>(unorderedSetData);
@@ -48,11 +25,6 @@ static void destroySet(ANotifier &notifier, void *unorderedSetData) {
 	delete set;
 	delete unorderedSetData_;
 }
-
-using IntHashSet = HashSet<int64_t>;
-using FloatHashSet = HashSet<double>;
-using StringHashSet = HashSet<AObject *, ObjStringHashable, ObjStringEqualable>;
-using ObjectHashSet = HashSet<AObject *>;
 
 AObject *constructor(NativeFuncInData) {
 	ClassId classId = args[0]->i;

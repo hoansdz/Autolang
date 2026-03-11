@@ -6,7 +6,7 @@
 namespace AutoLang {
 
 AccessNode *ClassInfo::findDeclaration(in_func, uint32_t line,
-                                       std::string &name, bool isStatic) {
+                                       const std::string &name, bool isStatic) {
 	// Find static member
 	{
 		auto it = staticMember.find(name);

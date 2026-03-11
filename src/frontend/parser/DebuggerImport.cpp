@@ -27,7 +27,7 @@ LibraryData *loadImport(in_func, LibraryData* currentLibrary, std::vector<Lexer:
 	    !expect(token, Lexer::TokenType::STRING)) {
 		throw ParserError(firstLine, "@import expected string value (String");
 	}
-	std::string &path = context.lexerString[token->indexData];
+	const std::string &path = context.lexerString[token->indexData];
 	if (!nextTokenSameLine(&token, tokens, i, firstLine) ||
 	    !expect(token, Lexer::TokenType::RPAREN)) {
 		--i;

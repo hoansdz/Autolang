@@ -77,6 +77,7 @@ void ForNode::optimize(in_func) {
 			}
 			auto baseClassId = classInfo->baseClassId;
 			switch (baseClassId) {
+				case DefaultClass::setClassId:
 				case DefaultClass::arrayClassId: {
 					ClassId target = *classInfo->genericTypeId[0]->classId;
 					switch (detach->classId) {
@@ -267,6 +268,7 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			}
 			auto baseClassId = classInfo->baseClassId;
 			switch (baseClassId) {
+				case DefaultClass::setClassId:
 				case DefaultClass::arrayClassId: {
 					bytecodes.emplace_back(Opcode::LOAD_NULL);
 					bytecodes.emplace_back(iteratorNode->declaration->isGlobal
@@ -279,7 +281,10 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					// Skip
 					static_cast<AccessNode *>(data)->isStore = false;
 					data->putBytecodes(in_data, bytecodes);
-					bytecodes.emplace_back(Opcode::FOR_LIST);
+					bytecodes.emplace_back(baseClassId ==
+					                               DefaultClass::arrayClassId
+					                           ? Opcode::FOR_LIST
+					                           : Opcode::FOR_SET);
 					bytecodes.emplace_back(iteratorNode->declaration->isGlobal
 					                           ? Opcode::STORE_GLOBAL
 					                           : Opcode::STORE_LOCAL);

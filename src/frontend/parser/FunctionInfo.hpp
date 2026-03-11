@@ -27,7 +27,7 @@ struct FunctionInfo {
 		declaration -= scopes.back().size();
 		scopes.pop_back();
 	}
-	AccessNode *findDeclaration(in_func, uint32_t line, std::string &name,
+	AccessNode *findDeclaration(in_func, uint32_t line, const std::string &name,
 	                            bool isStatic = false);
 	~FunctionInfo();
 };

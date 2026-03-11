@@ -309,9 +309,9 @@ ExprNode *SetNode::resolve(in_func) {
 	value = static_cast<HasClassIdNode *>(value->resolve(in_data));
 	if (detach->kind == NodeType::CALL) {
 		auto result = static_cast<CallNode *>(detach);
-		if (result->name != "[]")
+		if (result->nameId != lexerIdLRBRACKET)
 			return this;
-		result->name = "set()";
+		result->nameId = lexerIdset;
 		result->arguments.push_back(value);
 		detach = nullptr;
 		value = nullptr;
@@ -546,9 +546,11 @@ void SetNode::optimize(in_func) {
 					std::string detachName;
 					detachName =
 					    static_cast<AccessNode *>(detach)->declaration->name;
-					throwError("Cannot detach nullable value " +
-					           static_cast<CallNode *>(value)->name +
-					           " to nonnull variable " + detachName);
+					throwError(
+					    "Cannot detach nullable value " +
+					    context.lexerString[static_cast<CallNode *>(value)
+					                            ->nameId] +
+					    " to nonnull variable " + detachName);
 				}
 				break;
 			}

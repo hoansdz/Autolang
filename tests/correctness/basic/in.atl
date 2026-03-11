@@ -1,0 +1,37 @@
+func testInExpression() {
+
+	val a = 1
+	val b = 2
+
+	assert((a + b) in 3..9, __FILE__, __LINE__)
+	assert(!((a - b) in 3..9), __FILE__, __LINE__)
+	assert((a + b) in 0..3, __FILE__, __LINE__)
+	assert(!((a + b) in 0..<3), __FILE__, __LINE__)
+
+	val list = <Int>[
+		1, 2, 3, 4, 5
+	]
+
+	assert(1 in list, __FILE__, __LINE__)
+	assert(2 in list, __FILE__, __LINE__)
+	assert(3 in list, __FILE__, __LINE__)
+	assert(4 in list, __FILE__, __LINE__)
+	assert(5 in list, __FILE__, __LINE__)
+	assert(!(6 in list), __FILE__, __LINE__)
+
+	val set = <String> {
+		"Hello everyone",
+		"My name is John",
+		"My name is John",
+		"My name is John",
+		"My name is John"
+	}
+
+	assert("My name is John" in set, __FILE__, __LINE__)
+	assert("Hello everyone" in set, __FILE__, __LINE__)
+	assert(!("f" in set), __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+testInExpression()

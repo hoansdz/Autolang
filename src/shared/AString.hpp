@@ -85,6 +85,14 @@ public:
         return size != other->size || memcmp(data, other->data, size) != 0;
     }
 
+	inline bool operator ==(const AString& other) const {
+        return size == other.size && memcmp(data, other.data, size) == 0;
+    }
+
+    inline bool operator !=(const AString& other) const {
+        return size != other.size || memcmp(data, other.data, size) != 0;
+    }
+
     template<typename T>
     inline static AString* plus(T value, AString* other) {
         std::string first = std::to_string(value);

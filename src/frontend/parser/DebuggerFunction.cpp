@@ -17,8 +17,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		                  "@no_constructor is only supported classes");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NATIVE_DATA) {
-		throw ParserError(firstLine,
-		                  "@native_data is only supported classes");
+		throw ParserError(firstLine, "@native_data is only supported classes");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_EXTENDS) {
 		throw ParserError(firstLine, "@no_extends is only supported classes");
@@ -68,7 +67,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		--i;
 		throw ParserError(firstLine, "Expected name but not found");
 	}
-	std::string name;
+	LexerStringId nameId = token->indexData;
 	// ClassDeclaration *mustRenameFunctionDeclaration = nullptr;
 	switch (token->type) {
 		case Lexer::TokenType::IDENTIFIER: {
@@ -91,17 +90,17 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 					auto clazz = context.getCurrentClass(in_data);
 					auto classInfo = context.getCurrentClassInfo(in_data);
 					if (!classInfo->genericData) {
-						name = clazz->name + "()";
+						nameId =
+						    context.createLexerStringIfNotExists(clazz->name);
 						break;
 					}
-					name = "__CLASS__()";
+					nameId = lexerId__CLASS__;
 					break;
 				}
 				case lexerIdsuper: {
 					throw ParserError(firstLine, "Super is a keyword");
 				}
 				default: {
-					name = context.lexerString[token->indexData] + "()";
 					break;
 				}
 			}
@@ -167,7 +166,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				    context.getCurrentClassInfo(in_data)->declarationThis);
 			}
 			CreateFuncNode *node = context.newFunctions.push(
-			    firstLine, context.currentClassId, name, classDeclaration,
+			    firstLine, context.currentClassId, nameId, classDeclaration,
 			    std::move(listDeclarationNode), functionFlags);
 			node->pushFunction(in_data);
 			auto func = compile.functions[node->id];
@@ -221,11 +220,11 @@ createFunc:;
 	}
 
 	CreateFuncNode *node = context.newFunctions.push(
-	    firstLine, context.currentClassId, name, classDeclaration,
+	    firstLine, context.currentClassId, nameId, classDeclaration,
 	    std::move(listDeclarationNode), functionFlags);
 	if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 		auto &token = context.annotationMetadata[AnnotationFlags::AN_NATIVE];
-		auto &name = context.lexerString[token.indexData];
+		const auto &name = context.lexerString[token.indexData];
 		auto it = context.mode->nativeFuncMap.find(name);
 		if (it == context.mode->nativeFuncMap.end()) {
 			throw ParserError(firstLine, "Native function name '" + name +

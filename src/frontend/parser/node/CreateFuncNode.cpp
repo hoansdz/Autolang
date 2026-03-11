@@ -10,8 +10,8 @@ void CreateFuncNode::pushFunction(in_func) {
 	AClass *clazz =
 	    contextCallClassId ? compile.classes[*contextCallClassId] : nullptr;
 	id = compile.registerFunction(
-	    clazz, name, new ClassId[arguments.size()]{}, arguments.size(),
-	    AutoLang::DefaultClass::voidClassId, functionFlags);
+	    clazz, context.lexerString[nameId], new ClassId[arguments.size()]{},
+	    arguments.size(), AutoLang::DefaultClass::voidClassId, functionFlags);
 	context.functionInfo.push_back(context.functionInfoAllocator.push());
 	auto func = compile.functions[id];
 	auto funcInfo = context.functionInfo[id];
@@ -26,8 +26,8 @@ void CreateFuncNode::pushNativeFunction(in_func, ANativeFunction native) {
 	AClass *clazz =
 	    contextCallClassId ? compile.classes[*contextCallClassId] : nullptr;
 	id = compile.registerFunction(
-	    clazz, name, new ClassId[arguments.size()]{}, arguments.size(),
-	    AutoLang::DefaultClass::voidClassId,
+	    clazz, context.lexerString[nameId], new ClassId[arguments.size()]{},
+	    arguments.size(), AutoLang::DefaultClass::voidClassId,
 	    functionFlags | FunctionFlags::FUNC_IS_NATIVE);
 	context.functionInfo.push_back(context.functionInfoAllocator.push());
 	auto func = compile.functions[id];
@@ -40,13 +40,11 @@ void CreateFuncNode::pushNativeFunction(in_func, ANativeFunction native) {
 }
 
 void CreateFuncNode::optimize(in_func) {
+	const auto &name = context.lexerString[nameId];
 	if (!contextCallClassId && isDeclarationExist(in_data, name))
 		throwError(
 		    "Cannot declare function with the same name as declaration name " +
 		    name);
-	if (isClassExist(in_data, name))
-		throwError("Cannot declare function with the same name as class name " +
-		           name);
 	auto func = compile.functions[id];
 	auto funcInfo = context.functionInfo[id];
 	if (classDeclaration) {

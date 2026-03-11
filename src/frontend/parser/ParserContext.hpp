@@ -5,12 +5,12 @@
 #include "frontend/parser/ClassDeclaration.hpp"
 #include "frontend/parser/ClassInfo.hpp"
 #include "frontend/parser/FunctionInfo.hpp"
+#include "frontend/parser/OperatorId.hpp"
 #include "frontend/parser/node/CreateFuncNode.hpp"
 #include "frontend/parser/node/CreateNode.hpp"
 #include "frontend/structure/NonReallocatePool.hpp"
 #include "shared/ChunkArena.hpp"
 #include "shared/FixedPool.hpp"
-#include "frontend/parser/OperatorId.hpp"
 #include <set>
 #include <vector>
 
@@ -53,6 +53,10 @@ constexpr LexerStringId lexerIdgetClassId = 13;
 constexpr LexerStringId lexerIdArray = 14;
 constexpr LexerStringId lexerIdSet = 15;
 constexpr LexerStringId lexerIdMap = 16;
+constexpr LexerStringId lexerIdLRBRACKET = 17;
+constexpr LexerStringId lexerIdget = 18;
+constexpr LexerStringId lexerIdset = 19;
+constexpr LexerStringId lexerIdcontains = 20;
 
 struct ParserContext {
 	// Optimize ram because reuse std::string instead of new std::string in
@@ -229,13 +233,23 @@ struct ParserContext {
 		}
 		return nullptr;
 	}
-	HasClassIdNode *findDeclaration(in_func, uint32_t line, std::string &name,
+	HasClassIdNode *findDeclaration(in_func, uint32_t line, const std::string &name,
 	                                bool inGlobal);
 	DeclarationNode *
 	makeDeclarationNode(in_func, uint32_t line, bool isTemp, std::string name,
 	                    ClassDeclaration *classDeclaration, bool isVal,
 	                    bool isGlobal, bool nullable, bool pushToScope = true);
 	inline size_t getBoolConstValuePosition(bool b) { return b ? 1 : 2; }
+	inline LexerStringId createLexerStringIfNotExists(const std::string &str) {
+		auto it = lexerStringMap.find(str);
+		if (it != lexerStringMap.end()) {
+			return it->second;
+		}
+		LexerStringId id = lexerString.size();
+		lexerStringMap[str] = id;
+		lexerString.push_back(str);
+		return id;
+	}
 	~ParserContext();
 };
 

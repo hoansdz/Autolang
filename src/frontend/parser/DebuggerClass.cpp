@@ -41,7 +41,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 		throw ParserError(firstLine, "Expected name but not found");
 	}
 	LexerStringId nameId = token->indexData;
-	std::string &name = context.lexerString[nameId];
+	const std::string &name = context.lexerString[nameId];
 
 	auto node = context.newClasses.push(firstLine, nameId,
 	                                    classFlags); // NewClasses managed
@@ -64,7 +64,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 			return node;
 		}
 		auto *constructor = context.createConstructorPool.push(
-		    firstLine, *context.currentClassId, name + "()",
+		    firstLine, *context.currentClassId, nameId,
 		    std::vector<DeclarationNode *>{}, false,
 		    FunctionFlags::FUNC_PUBLIC);
 		classInfo->secondaryConstructor.push_back(constructor);
@@ -167,14 +167,15 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 		}
 		if (classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR) {
 			throw ParserError(context.tokens[i].line,
-			                  "@no_constructor is already applied, cannot use primary constructor");
+			                  "@no_constructor is already applied, cannot use "
+			                  "primary constructor");
 		}
 		if (classFlags & ClassFlags::CLASS_NATIVE_DATA) {
 			throw ParserError(context.tokens[i].line,
 			                  "@native_data is already applied");
 		}
 		classInfo->primaryConstructor = context.createConstructorPool.push(
-		    firstLine, *context.currentClassId, name + "()",
+		    firstLine, *context.currentClassId, nameId,
 		    loadListDeclaration(in_data, i, true), true,
 		    FunctionFlags::FUNC_PUBLIC);
 		classInfo->primaryConstructor->pushFunction(in_data);
@@ -196,7 +197,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 				    firstLine, "Extended class must be declarated constructor");
 			}
 			auto *constructor = context.createConstructorPool.push(
-			    firstLine, *context.currentClassId, name + "()",
+			    firstLine, *context.currentClassId, nameId,
 			    std::vector<DeclarationNode *>{}, false,
 			    FunctionFlags::FUNC_PUBLIC);
 			classInfo->secondaryConstructor.push_back(constructor);
@@ -214,7 +215,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 				    firstLine, "Extended class must be declarated constructor");
 			}
 			classInfo->primaryConstructor = context.createConstructorPool.push(
-			    firstLine, *context.currentClassId, name + "()",
+			    firstLine, *context.currentClassId, nameId,
 			    std::vector<DeclarationNode *>{}, true,
 			    FunctionFlags::FUNC_PUBLIC);
 			classInfo->primaryConstructor->pushFunction(in_data);
@@ -315,7 +316,7 @@ void loadConstructor(in_func, size_t &i) {
 	}
 	// Create constructor
 	auto constructor = context.createConstructorPool.push(
-	    firstLine, *context.currentClassId, clazz->name + "()",
+	    firstLine, *context.currentClassId, context.lexerStringMap[clazz->name],
 	    std::move(listDeclarationNode), false, functionFlags);
 	classInfo->secondaryConstructor.push_back(constructor);
 	constructor->pushFunction(in_data);
@@ -328,7 +329,7 @@ void loadConstructor(in_func, size_t &i) {
 
 	if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 		auto &token = context.annotationMetadata[AnnotationFlags::AN_NATIVE];
-		auto &name = context.lexerString[token.indexData];
+		const auto &name = context.lexerString[token.indexData];
 
 		auto it = context.mode->nativeFuncMap.find(name);
 		if (it == context.mode->nativeFuncMap.end()) {

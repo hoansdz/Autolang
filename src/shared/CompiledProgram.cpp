@@ -62,6 +62,7 @@ FunctionId CompiledProgram::registerFunction(AClass *clazz, std::string name,
 	func->functionFlags = functionFlags;
 	functions.push_back(func);
 	funcMap[func->name].push_back(id);
+	// std::cerr << "Created " << func->name << " " << id << "\n";
 	// printDebug("END SIZE FUNC: "+std::to_string(functions.size()) + " " +
 	// std::to_string(funcMap.size()));
 	return id;
@@ -73,6 +74,7 @@ ClassId CompiledProgram::registerClass(std::string name, uint32_t classFlags) {
 		throw std::runtime_error("Class " + name + " has exist");
 	ClassId id = classes.size();
 	AClass *clazz = classAllocator.push();
+	// std::cerr << "Created class name: " << name << " " << id << "\n";
 	clazz->name = std::move(name);
 	clazz->id = id;
 	clazz->classFlags = classFlags;

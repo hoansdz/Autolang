@@ -19,12 +19,12 @@ void runCompiler(const char *path, const char *data) {
 		try {
 			static AutoLang::ACompiler compiler;
 			compiler.loadMainSource(path, data);
-			if (compiler.getState() == AutoLang::CompilerState::ERROR) {
+			if (compiler.getState() == AutoLang::CompilerState::CT_ERROR) {
 				compiler.refresh();
 				return;
 			}
 			compiler.generateBytecodes();
-			if (compiler.getState() == AutoLang::CompilerState::ERROR) {
+			if (compiler.getState() == AutoLang::CompilerState::CT_ERROR) {
 				compiler.refresh();
 				return;
 			}

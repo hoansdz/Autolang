@@ -2,6 +2,7 @@
 @import("./correctness/basic/divideByZero.atl")
 @import("./correctness/basic/for_loop.atl")
 @import("./correctness/basic/if_else.atl")
+@import("./correctness/basic/in.atl")
 @import("./correctness/basic/logic.atl")
 @import("./correctness/basic/precedence.atl")
 @import("./correctness/basic/function.atl")
@@ -10,5 +11,6 @@
 @import("./correctness/basic/null_access.atl")
 @import("./correctness/basic/generics.atl")
 @import("./correctness/basic/array_sugar_syntax.atl")
+@import("./correctness/basic/set_sugar_syntax.atl")
 
 // @import("./correctness/basic/function.atl")

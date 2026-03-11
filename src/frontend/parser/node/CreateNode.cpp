@@ -12,11 +12,12 @@ namespace AutoLang {
 void DeclarationNode::optimize(in_func) {
 	if (isFunctionExist(in_data, name))
 		throwError(
-		    "Cannot declare variable with the same name as function name " +
+		    "Cannot declare variable with the same name as function name: " +
 		    name);
 	if (isClassExist(in_data, name))
-		throwError("Cannot declare variable with the same name as class name " +
-		           name);
+		throwError(
+		    "Cannot declare variable with the same name as class name: " +
+		    name);
 	if (classDeclaration) {
 		// Doesn't changed
 		if (classDeclaration->isGenerics(in_data)) {
@@ -85,8 +86,9 @@ ExprNode *DeclarationNode::copy(in_func) {
 void CreateConstructorNode::pushFunction(in_func) {
 	AClass *clazz = compile.classes[classId];
 	funcId = compile.registerFunction<true>(
-	    clazz, name, new ClassId[arguments.size() + 1]{}, arguments.size() + 1,
-	    classId, functionFlags | FunctionFlags::FUNC_IS_CONSTRUCTOR);
+	    clazz, context.lexerString[nameId], new ClassId[arguments.size() + 1]{},
+	    arguments.size() + 1, classId,
+	    functionFlags | FunctionFlags::FUNC_IS_CONSTRUCTOR);
 	context.functionInfo.push_back(context.functionInfoAllocator.push());
 	auto func = compile.functions[funcId];
 	auto funcInfo = context.functionInfo[funcId];
@@ -114,6 +116,7 @@ void CreateConstructorNode::pushFunction(in_func) {
 }
 
 void CreateConstructorNode::optimize(in_func) {
+	const auto &name = context.lexerString[nameId];
 	auto func = compile.functions[funcId];
 	auto funcInfo = context.functionInfo[funcId];
 	AClass *clazz = compile.classes[classId];
@@ -162,13 +165,14 @@ void CreateConstructorNode::optimize(in_func) {
 		switch (n->kind) {
 			case NodeType::CALL: {
 				auto node = static_cast<CallNode *>(n);
-				if (node->caller || node->name != "super()") {
+				if (node->caller || node->nameId != lexerIdsuper) {
 					throwError(
 					    "super() must be called first in a derived class "
 					    "constructor.");
 				}
 				node->isSuper = true;
-				node->name = compile.classes[classInfo->parent]->name + "()";
+				node->nameId = context.createLexerStringIfNotExists(
+				    compile.classes[classInfo->parent]->name);
 				break;
 			}
 			default:
@@ -206,7 +210,7 @@ void CreateClassNode::pushClass(in_func) {
 }
 
 void CreateClassNode::optimize(in_func) {
-	auto &name = context.lexerString[nameId];
+	const auto &name = context.lexerString[nameId];
 	if (isFunctionExist(in_data, name))
 		throwError("Cannot declare class with the same name as function name " +
 		           name);
@@ -292,10 +296,6 @@ void CreateClassNode::loadSuper(in_func) {
 				           "'. Overriding is not supported yet.");
 			}
 			clazz->memberMap[declaration->name] = declaration->id;
-			if (context.lexerString[nameId] ==
-			    "GWrapperGenericTest<GCat,Int>") {
-				std::cerr << declaration->name << "\n";
-			}
 		}
 		classInfo->member.reserve(classInfo->member.size() +
 		                          superClassInfo->member.size());
@@ -380,10 +380,12 @@ void CreateClassNode::loadSuper(in_func) {
 						clazz->vtable[funcInfo->virtualPosition] = it->second;
 						func->functionFlags |= FunctionFlags::FUNC_IS_VIRTUAL;
 					}
-					// std::cerr<<superFunc->name<<" & "<<func->name<<"\n";
-					// std::cerr<<superFuncInfo->virtualPosition<<" &
-					// "<<funcInfo->virtualPosition<<"\n";
-					funcOverride.resize(superFunc->id);
+					funcOverride.resize(superFunc->id + 1);
+					// std::cerr << superFunc->name << " & " << func->name << "\n";
+					// std::cerr << superFuncInfo->virtualPosition << " & "
+					//           << funcInfo->virtualPosition << "\n"
+					//           << func->id << " & " << superFunc->id << "\n"
+					//           << funcOverride.getSize() << "\n";
 					funcOverride.set(superFunc->id);
 				}
 				hash[hashValue] = offset;
@@ -407,18 +409,17 @@ void CreateClassNode::loadSuper(in_func) {
 	}
 }
 
-bool isFunctionExist(in_func, std::string &name) {
-	std::string newName = name + "()";
-	auto it = compile.funcMap.find(newName);
+inline bool isFunctionExist(in_func, const std::string &name) {
+	auto it = compile.funcMap.find(name);
 	return it != compile.funcMap.end();
 }
 
-bool isClassExist(in_func, std::string &name) {
+inline bool isClassExist(in_func, const std::string &name) {
 	auto it = compile.classMap.find(name);
 	return it != compile.classMap.end();
 }
 
-bool isDeclarationExist(in_func, std::string &name) {
+inline bool isDeclarationExist(in_func, const std::string &name) {
 	return context.findDeclaration(in_data, 0, name, true);
 }
 

@@ -1,8 +1,8 @@
 val l = Array<Int>()
-for (val i in 0..10) {
+for (i in 0..10) {
 	l.add(i + 1)
 }
-for (val i in 0..10) {
+for (i in 0..10) {
 	println(l[10 - i])
 }
 l.clear()
@@ -63,7 +63,7 @@ class ListPerson {
             return
         }
         var currentNode? = beginNode
-        for (val i in 0..<index - 1) {
+        for (i in 0..<index - 1) {
         	currentNode = currentNode?.next
         }
         currentNode!.next = currentNode?.next?.next
@@ -75,21 +75,21 @@ func main(): ListPerson {
   val listPerson = ListPerson(5)
   println(getRefCount(listPerson))
 
-  for (val i in 0..10) {
+  for (i in 0..10) {
       listPerson.addPerson(Person("John " + i, 18 + i, 1.5 + i))
   }
-  /*listPerson.deletePerson(0)
-  for (val i in 0..<3) {
+  listPerson.deletePerson(0)
+  for (i in 0..<3) {
   	listPerson.deletePerson(2)
   }
 
   var currentNode? = listPerson.begin()
 
-  for (val i in 0..<listPerson.size) {
+  for (i in 0..<listPerson.size) {
       val person = currentNode?.currentPerson
       println("User "+person!.name+" has age: " + person!.age)
       currentNode = currentNode?.next
-  }*/
+  }
   return listPerson
 }
 val list = main()

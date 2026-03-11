@@ -35,7 +35,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i) {
 		throw ParserError(firstLine,
 		                  "Expected variable name after catch but not found");
 	}
-	std::string &name = context.lexerString[token->indexData];
+	const std::string &name = context.lexerString[token->indexData];
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::RPAREN)) {
 		--i;

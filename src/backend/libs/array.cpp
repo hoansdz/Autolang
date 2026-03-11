@@ -70,6 +70,22 @@ AObject *remove(NativeFuncInData) {
 	return nullptr;
 }
 
+AObject *contains(NativeFuncInData) {
+	auto arr = args[0];
+	auto obj = args[1];
+
+	if (arr->member->size == 0) {
+		return notifier.createBool(false);
+	}
+
+	for (int i = 0; i < arr->member->size; ++i) {
+		if (DefaultFunction::op_eqeq(arr->member->data[i], obj)) {
+			return notifier.createBool(true);
+		}
+	}
+	return notifier.createBool(false);
+}
+
 AObject *size(NativeFuncInData) {
 	auto obj = args[0];
 	return notifier.createInt(static_cast<int64_t>(obj->member->size));

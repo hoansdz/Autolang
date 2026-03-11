@@ -273,12 +273,13 @@ struct UnaryNode : HasClassIdNode {
 // 1 + 2 * 3 ...
 struct BinaryNode : HasClassIdNode {
 	Lexer::TokenType op;
+	std::optional<ClassId> contextCallClassId;
 	HasClassIdNode *left;
 	HasClassIdNode *right;
-	BinaryNode(uint32_t line, Lexer::TokenType op, HasClassIdNode *left,
-	           HasClassIdNode *right)
-	    : HasClassIdNode(NodeType::BINARY, 0, line), op(op), left(left),
-	      right(right) {}
+	BinaryNode(uint32_t line, std::optional<ClassId> contextCallClassId,
+	           Lexer::TokenType op, HasClassIdNode *left, HasClassIdNode *right)
+	    : HasClassIdNode(NodeType::BINARY, 0, line), op(op),
+	      contextCallClassId(contextCallClassId), left(left), right(right) {}
 	ExprNode *leftOpRight(in_func, ConstValueNode *l, ConstValueNode *r);
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;
@@ -458,7 +459,7 @@ struct MatchOverload {
 struct CallNode : NullableNode {
 	std::optional<ClassId> contextCallClassId;
 	HasClassIdNode *caller;
-	std::string name;
+	LexerStringId nameId;
 	std::vector<HasClassIdNode *> arguments;
 	FunctionId funcId;
 	BytecodePos jumpIfNullPos;
@@ -467,13 +468,13 @@ struct CallNode : NullableNode {
 	bool accessNullable;
 	bool isSuper = false;
 	CallNode(uint32_t line, std::optional<ClassId> contextCallClassId,
-	         HasClassIdNode *caller, std::string name,
+	         HasClassIdNode *caller, LexerStringId nameId,
 	         std::vector<HasClassIdNode *> arguments, bool justFindStatic,
 	         bool nullable, bool accessNullable)
 	    : NullableNode(NodeType::CALL, 0, nullable, line),
-	      contextCallClassId(contextCallClassId), caller(caller), name(name),
-	      arguments(std::move(arguments)), justFindStatic(justFindStatic),
-	      accessNullable(accessNullable) {}
+	      contextCallClassId(contextCallClassId), caller(caller),
+	      nameId(nameId), arguments(std::move(arguments)),
+	      justFindStatic(justFindStatic), accessNullable(accessNullable) {}
 	bool isNullable() override { return nullable; }
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;
@@ -518,8 +519,13 @@ struct RangeNode : HasClassIdNode {
 	          bool lessThan)
 	    : HasClassIdNode(NodeType::RANGE, DefaultClass::intClassId, line),
 	      from(from), to(to), lessThan(lessThan) {}
+	bool isNullable() override {
+		return from->isNullable() || to->isNullable();
+	}
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
+	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
 	ExprNode *copy(in_func) override;
 	~RangeNode();
 };

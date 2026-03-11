@@ -34,6 +34,10 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerString.emplace_back("Array");
 	lexerString.emplace_back("Set");
 	lexerString.emplace_back("Map");
+	lexerString.emplace_back("[]");
+	lexerString.emplace_back("get");
+	lexerString.emplace_back("set");
+	lexerString.emplace_back("contains");
 
 	lexerStringMap["super"] = lexerIdsuper;
 	lexerStringMap["Int"] = lexerIdInt;
@@ -52,6 +56,10 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerStringMap["Array"] = lexerIdArray;
 	lexerStringMap["Set"] = lexerIdSet;
 	lexerStringMap["Map"] = lexerIdMap;
+	lexerStringMap["[]"] = lexerIdLRBRACKET;
+	lexerStringMap["get"] = lexerIdget;
+	lexerStringMap["set"] = lexerIdset;
+	lexerStringMap["contains"] = lexerIdcontains;
 
 	constValue[lexerIdnull] = &constValues[0];
 	constValue[lexerIdtrue] = &constValues[1];
@@ -292,7 +300,7 @@ void ParserContext::warning(uint32_t line, const std::string &message) {
 }
 
 HasClassIdNode *ParserContext::findDeclaration(in_func, uint32_t line,
-                                               std::string &name,
+                                               const std::string &name,
                                                bool inGlobal) {
 	AccessNode *node = getCurrentFunctionInfo(in_data)->findDeclaration(
 	    in_data, line, name, justFindStatic);

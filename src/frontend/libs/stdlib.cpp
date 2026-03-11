@@ -37,55 +37,77 @@ class Bool {
 class String {
 	@native("string_constructor")
 	static func String(): String
+	
 	@native("string_constructor")
 	static func String(str: String): String
+
 	@native("string_constructor")
 	static func String(str: String, repeatTimes: Int): String
+
 	@native("string_size")
 	func size(): Int
+
 	@native("str_to_int")
 	func toInt(): Int
+
 	@native("str_to_float")
 	func toFloat(): Float
+
 	@native("str_get")
 	func get(position: Int): String
+
 	@native("str_substr")
 	func substr(from: Int): String
+
 	@native("str_substr")
 	func substr(from: Int, length: Int): String
 }
+
 @no_extends
 @no_constructor
 class Null {
 
 }
+
 @no_extends
 @no_constructor
 class Any {
 
 }
+
 @no_extends
 @no_constructor
 class Void {
 
 }
+
 class Exception(val message: String) {
 	
 }
+
 @no_extends
 class Array<T>() {
 	@native("arr_add")
 	func add(value: T)
+
 	@native("arr_remove")
 	func remove(index: Int)
+
 	@native("arr_size")
 	func size(): Int
+
 	@native("arr_get")
 	func get(index: Int): T
+
 	@native("arr_set")
 	func set(index: Int, value: T)
+
 	@native("arr_clear")
 	func clear()
+
+	@native("arr_contains")
+	func contains(value: T): Bool
+
 	@native("arr_to_string")
 	func toString(): String
 }
@@ -99,14 +121,19 @@ class Set<T> {
 	static func __CLASS__() = create(getClassId(Set<T>), getClassId(T))
 	@native("set_insert")
 	func insert(value: T)
+
 	@native("set_remove")
 	func remove(value: T)
+
 	@native("set_size")
 	func size(): Int
+
 	@native("set_contains")
 	func contains(value: T): Bool
+
 	@native("set_clear")
 	func clear()
+	
 	@native("set_to_string")
 	func toString(): String
 }
@@ -172,6 +199,7 @@ func input(): String
 	        {"arr_get", &array::get},
 	        {"arr_set", &array::set},
 	        {"arr_clear", &array::clear},
+			{"arr_contains", &array::contains},
 			{"arr_to_string", &array::to_string},
 			{"set_constructor", &set::constructor},
 			{"set_insert", &set::insert},

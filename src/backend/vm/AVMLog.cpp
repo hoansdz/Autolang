@@ -139,6 +139,19 @@ void AVM::log(Function *currentFunction) {
 				          << posJumpIfFalse << "\n";
 				break;
 			}
+			case AutoLang::Opcode::FOR_SET: {
+				bool isGlobal = bytecodes[i++] == Opcode::STORE_GLOBAL;
+				uint32_t containerPos = get_u32(bytecodes, i);
+				uint32_t pos = get_u32(bytecodes, i);
+				uint32_t posJumpIfFalse = get_u32(bytecodes, i);
+				std::cerr << "FOR_SET	 " << (isGlobal ? "GLOBAL " : "LOCAL ")
+				          << containerPos << " " << pos << " JUMP_IF_FALSE "
+				          << posJumpIfFalse << "\n";
+				break;
+			}
+			case AutoLang::Opcode::IN_RANGE:
+				std::cerr << "IN_RANGE	 " << (bytecodes[i++] ? "LT" : "LTE") << "\n";
+				break;
 			case AutoLang::Opcode::LOAD_CONST:
 				std::cerr << "LOAD_CONST	 " << get_u32(bytecodes, i) << "\n";
 				break;

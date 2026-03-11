@@ -31,7 +31,7 @@ struct ClassInfo {
 	DeclarationNode *declarationThis;
 	ClassId parent;
 
-	AccessNode *findDeclaration(in_func, uint32_t line, std::string &name,
+	AccessNode *findDeclaration(in_func, uint32_t line, const std::string &name,
 	                            bool isStatic = false);
 	GenericDeclarationNode *findGenericDeclaration(LexerStringId nameId) {
 		if (!genericData)
