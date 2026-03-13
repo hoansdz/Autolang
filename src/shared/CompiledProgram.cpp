@@ -110,6 +110,15 @@ Offset CompiledProgram::registerConstPool(
 	return id;
 }
 
+Offset CompiledProgram::registerEnumConstPool(ClassId classId) {
+	uint32_t id = constPool.size();
+	constPool.push_back(constObjectAllocator.push(classId));
+	AObject *obj = constPool.back();
+	obj->refCount = AutoLang::DefaultClass::refCountForGlobal;
+	obj->flags = AObject::Flags::OBJ_IS_CONST & AObject::Flags::OBJ_IS_NO_DATA;
+	return id;
+}
+
 template <typename T>
 Offset CompiledProgram::registerConstPool(HashMap<T, uint32_t> &map, T value) {
 	auto it = map.find(value);

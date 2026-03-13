@@ -474,6 +474,13 @@ initial:;
 			loadConstructor(in_data, i);
 			return nullptr;
 		}
+		case Lexer::TokenType::ENUM: {
+			if (context.currentClassId) {
+				throw ParserError(token->line, "Cannot declare enum in class");
+			}
+			loadEnum(in_data, i);
+			return nullptr;
+		}
 		case Lexer::TokenType::CLASS: {
 			if (context.currentClassId) {
 				throw ParserError(token->line, "Cannot declare class in class");
@@ -607,17 +614,20 @@ err_call_class:;
 	throw ParserError(token->line, "Cannot call command outside class ");
 }
 
+template <bool loadedLBrace>
 void loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i,
               bool createScope) {
 	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
 	if (createScope)
 		context.getCurrentFunctionInfo(in_data)->scopes.emplace_back();
-	if (token->type != Lexer::TokenType::LBRACE) {
-		nodes.push_back(loadLine(in_data, i));
-		if (createScope)
-			context.getCurrentFunctionInfo(in_data)->popBackScope();
-		return;
+	if constexpr (!loadedLBrace) {
+		if (token->type != Lexer::TokenType::LBRACE) {
+			nodes.push_back(loadLine(in_data, i));
+			if (createScope)
+				context.getCurrentFunctionInfo(in_data)->popBackScope();
+			return;
+		}
 	}
 	while (nextToken(&token, context.tokens, i)) {
 		if (token->type == Lexer::TokenType::RBRACE) {
@@ -733,6 +743,7 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 	return left;
 }
 
+template <bool trailingComma>
 std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
 	char openBracket = getOpenBracket(token->type);
@@ -784,6 +795,22 @@ std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 			case TokenType::COMMA: {
 				if (!nextToken(&token, context.tokens, i))
 					goto expectedCloseBracket;
+				if constexpr (trailingComma) {
+					switch (token->type) {
+						case Lexer::TokenType::RPAREN:
+						case Lexer::TokenType::RBRACKET:
+						case Lexer::TokenType::RBRACE: {
+							if (!isCloseBracket(openBracket, token->type)) {
+								for (auto *node : nodes)
+									ExprNode::deleteNode(node);
+								throw ParserError(
+								    token->line,
+								    "Bug: BLexer not ensure close bracket");
+							}
+							return nodes;
+						}
+					}
+				}
 				nodes.push_back(loadExpression(in_data, 0, i));
 				break;
 			}
@@ -891,6 +918,10 @@ HasClassIdNode *loadSet(in_func, size_t &i, HasClassIdNode *firstExpression) {
 					throw ParserError(context.tokens[i].line,
 					                  "Bug: Lexer not ensure close bracket");
 				}
+				if (expect(token, Lexer::TokenType::RBRACE)) {
+					return context.createSetPool.push(token->line, nullptr,
+					                                  std::move(values));
+				}
 				values.push_back(loadExpression(in_data, 0, i));
 				break;
 			}
@@ -933,6 +964,10 @@ HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode *firstExpression) {
 					--i;
 					throw ParserError(context.tokens[i].line,
 					                  "Bug: Lexer not ensure close bracket");
+				}
+				if (expect(token, Lexer::TokenType::RBRACE)) {
+					return context.createMapPool.push(token->line, nullptr,
+					                                  std::move(values));
 				}
 				auto key = loadExpression(in_data, 0, i);
 				if (!nextToken(&token, context.tokens, i) ||
@@ -1085,7 +1120,7 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 					classDeclaration->inputClassId = std::move(inputVecs);
 					classDeclaration->line = firstLine;
 					context.allClassDeclarations.push_back(classDeclaration);
-					auto list = loadListArgument(in_data, i);
+					auto list = loadListArgument<true>(in_data, i);
 					node = context.createArrayPool.push(
 					    firstLine, classDeclaration, std::move(list));
 					break;
@@ -1123,7 +1158,7 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 			break;
 		}
 		case Lexer::TokenType::LBRACKET: {
-			auto list = loadListArgument(in_data, i);
+			auto list = loadListArgument<true>(in_data, i);
 			node = context.createArrayPool.push(firstLine, nullptr,
 			                                    std::move(list));
 			break;
@@ -1497,15 +1532,16 @@ ConstValueNode *findConstValueNode(in_func, size_t &i, LexerStringId nameId) {
 			           ? context.getCurrentClass(in_data)->name
 			           : "");
 		}
+		case lexerIdtrue:
+		case lexerIdfalse:
+		case lexerIdnull: {
+			return static_cast<ConstValueNode *>(
+			    context.constValue[nameId]->copy(in_data));
+		}
 		default:
 			break;
 	}
-	auto it = context.constValue.find(nameId);
-	if (it == context.constValue.end()) {
-		return nullptr;
-	}
-	return static_cast<ConstValueNode *>(it->second->copy(in_data));
-	// return it->second;
+	return nullptr;
 }
 
 void ensureNoKeyword(in_func, size_t &i) {

@@ -8,11 +8,12 @@
 #include <string>
 
 #include "frontend/parser/Debugger.hpp"
+#include "frontend/parser/ParserContext.hpp"
 #include "frontend/parser/node/Node.hpp"
 #include "frontend/parser/node/OptimizeNode.hpp"
-#include "frontend/parser/ParserContext.hpp"
-#include "shared/CompiledProgram.hpp"
 #include "shared/AObject.hpp"
+#include "shared/ClassFlags.hpp"
+#include "shared/CompiledProgram.hpp"
 
 namespace AutoLang {
 void toInt(in_func, ConstValueNode *value);
@@ -20,7 +21,8 @@ void toFloat(in_func, ConstValueNode *value);
 void toBool(in_func, ConstValueNode *value);
 void toString(in_func, ConstValueNode *value);
 
-static void prepareOperands(in_func, ConstValueNode *left, ConstValueNode *right) {
+static void prepareOperands(in_func, ConstValueNode *left,
+                            ConstValueNode *right) {
 	if (left->classId == AutoLang::DefaultClass::boolClassId) {
 		toInt(in_data, left);
 	}
@@ -36,9 +38,11 @@ ConstValueNode *plus(in_func, ConstValueNode *left, ConstValueNode *right) {
 		case AutoLang::DefaultClass::intClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->i + right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->i + right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->i + right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->i + right->f);
 				case AutoLang::DefaultClass::stringClassId:
 					return context.constValuePool.push(
 					    left->line,
@@ -52,9 +56,11 @@ ConstValueNode *plus(in_func, ConstValueNode *left, ConstValueNode *right) {
 		case AutoLang::DefaultClass::floatClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->f + right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->f + right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->f + right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->f + right->f);
 				case AutoLang::DefaultClass::stringClassId:
 					return context.constValuePool.push(
 					    left->line,
@@ -96,9 +102,11 @@ ConstValueNode *minus(in_func, ConstValueNode *left, ConstValueNode *right) {
 		case AutoLang::DefaultClass::intClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->i - right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->i - right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->i - right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->i - right->f);
 				default:
 					break;
 			}
@@ -106,9 +114,11 @@ ConstValueNode *minus(in_func, ConstValueNode *left, ConstValueNode *right) {
 		case AutoLang::DefaultClass::floatClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->f - right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->f - right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->f - right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->f - right->f);
 				default:
 					break;
 			}
@@ -126,9 +136,11 @@ ConstValueNode *mul(in_func, ConstValueNode *left, ConstValueNode *right) {
 		case AutoLang::DefaultClass::intClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->i * right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->i * right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->i * right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->i * right->f);
 				default:
 					break;
 			}
@@ -136,9 +148,11 @@ ConstValueNode *mul(in_func, ConstValueNode *left, ConstValueNode *right) {
 		case AutoLang::DefaultClass::floatClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->f * right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->f * right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->f * right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->f * right->f);
 				default:
 					break;
 			}
@@ -164,9 +178,11 @@ ConstValueNode *divide(in_func, ConstValueNode *left, ConstValueNode *right) {
 		case AutoLang::DefaultClass::intClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->i / right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->i / right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->i / right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->i / right->f);
 				default:
 					break;
 			}
@@ -174,9 +190,11 @@ ConstValueNode *divide(in_func, ConstValueNode *left, ConstValueNode *right) {
 		case AutoLang::DefaultClass::floatClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->f / right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->f / right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->f / right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->f / right->f);
 				default:
 					break;
 			}
@@ -200,7 +218,8 @@ ConstValueNode *mod(in_func, ConstValueNode *left, ConstValueNode *right) {
 		case AutoLang::DefaultClass::intClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->i % right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->i % right->i);
 				case AutoLang::DefaultClass::floatClassId:
 					return context.constValuePool.push(
 					    left->line,
@@ -229,7 +248,8 @@ ConstValueNode *mod(in_func, ConstValueNode *left, ConstValueNode *right) {
 	throw ParserError(left->line, "Invalid types for operator %");
 }
 
-ConstValueNode *bitwise_and(in_func, ConstValueNode *left, ConstValueNode *right) {
+ConstValueNode *bitwise_and(in_func, ConstValueNode *left,
+                            ConstValueNode *right) {
 	if (left->classId == AutoLang::DefaultClass::intClassId &&
 	    right->classId == AutoLang::DefaultClass::intClassId) {
 		return context.constValuePool.push(left->line, left->i & right->i);
@@ -237,7 +257,8 @@ ConstValueNode *bitwise_and(in_func, ConstValueNode *left, ConstValueNode *right
 	throw ParserError(left->line, "Invalid types for operator &");
 }
 
-ConstValueNode *bitwise_or(in_func, ConstValueNode *left, ConstValueNode *right) {
+ConstValueNode *bitwise_or(in_func, ConstValueNode *left,
+                           ConstValueNode *right) {
 	if (left->classId == AutoLang::DefaultClass::intClassId &&
 	    right->classId == AutoLang::DefaultClass::intClassId) {
 		return context.constValuePool.push(left->line, left->i | right->i);
@@ -250,9 +271,11 @@ ConstValueNode *op_eqeq(in_func, ConstValueNode *left, ConstValueNode *right) {
 		case AutoLang::DefaultClass::intClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->i == right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->i == right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->i == right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->i == right->f);
 				default:
 					break;
 			}
@@ -260,39 +283,57 @@ ConstValueNode *op_eqeq(in_func, ConstValueNode *left, ConstValueNode *right) {
 		case AutoLang::DefaultClass::floatClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->f == right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->f == right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->f == right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->f == right->f);
 				default:
 					break;
 			}
 			break;
+		case AutoLang::DefaultClass::boolClassId: {
+			if (right->classId == AutoLang::DefaultClass::boolClassId) {
+				return context.constValuePool.push(
+				    left->line, left->obj->b == right->obj->b);
+			}
+		}
+		case AutoLang::DefaultClass::stringClassId: {
+			if (right->classId == AutoLang::DefaultClass::stringClassId) {
+				return context.constValuePool.push(
+				    left->line, *static_cast<std::string *>(left->str) ==
+				                    *static_cast<std::string *>(right->str));
+			}
+		}
 		default:
 			break;
 	}
 
-	if (left->classId == AutoLang::DefaultClass::boolClassId &&
-	    right->classId == AutoLang::DefaultClass::boolClassId) {
-		return context.constValuePool.push(left->line, left->obj->b == right->obj->b);
-	}
-	if (left->classId == AutoLang::DefaultClass::stringClassId &&
-	    right->classId == AutoLang::DefaultClass::stringClassId) {
-		return context.constValuePool.push(left->line,
-		                          *static_cast<std::string *>(left->str) ==
-		                              *static_cast<std::string *>(right->str));
+	if (left->classId == right->classId &&
+	    compile.classes[left->classId]->classFlags &
+	        ClassFlags::CLASS_IS_ENUM) {
+		return context.constValuePool.push(left->line, left == right);
 	}
 
-	throw ParserError(left->line, "Invalid types for operator ==");
+	std::cerr<<compile.classes[left->classId]->classFlags<<"\n";
+
+	throw ParserError(left->line, "Invalid types for operator == between " +
+	                                  compile.classes[left->classId]->name +
+	                                  " and " +
+	                                  compile.classes[right->classId]->name);
 }
 
-ConstValueNode *op_not_eq(in_func, ConstValueNode *left, ConstValueNode *right) {
+ConstValueNode *op_not_eq(in_func, ConstValueNode *left,
+                          ConstValueNode *right) {
 	switch (left->classId) {
 		case AutoLang::DefaultClass::intClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->i != right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->i != right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->i != right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->i != right->f);
 				default:
 					break;
 			}
@@ -300,40 +341,53 @@ ConstValueNode *op_not_eq(in_func, ConstValueNode *left, ConstValueNode *right) 
 		case AutoLang::DefaultClass::floatClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->f != right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->f != right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->f != right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->f != right->f);
 				default:
 					break;
 			}
 			break;
+		case AutoLang::DefaultClass::boolClassId: {
+			if (right->classId == AutoLang::DefaultClass::boolClassId) {
+				return context.constValuePool.push(
+				    left->line, left->obj->b != right->obj->b);
+			}
+		}
+		case AutoLang::DefaultClass::stringClassId: {
+			if (right->classId == AutoLang::DefaultClass::stringClassId) {
+				return context.constValuePool.push(
+				    left->line, *static_cast<std::string *>(left->str) !=
+				                    *static_cast<std::string *>(right->str));
+			}
+		}
 		default:
 			break;
 	}
 
-	if (left->classId == AutoLang::DefaultClass::boolClassId &&
-	    right->classId == AutoLang::DefaultClass::boolClassId) {
-		return context.constValuePool.push(left->line, left->obj->b != right->obj->b);
-	}
-	if (left->classId == AutoLang::DefaultClass::stringClassId &&
-	    right->classId == AutoLang::DefaultClass::stringClassId) {
-		return context.constValuePool.push(left->line,
-		                          *static_cast<std::string *>(left->str) !=
-		                              *static_cast<std::string *>(right->str));
+	if (left->classId == right->classId &&
+	    compile.classes[left->classId]->classFlags &
+	        ClassFlags::CLASS_IS_ENUM) {
+		return context.constValuePool.push(left->line, left != right);
 	}
 
 	throw ParserError(left->line, "Invalid types for operator !=");
 }
 
-ConstValueNode *op_greater_than(in_func, ConstValueNode *left, ConstValueNode *right) {
+ConstValueNode *op_greater_than(in_func, ConstValueNode *left,
+                                ConstValueNode *right) {
 	prepareOperands(in_data, left, right);
 	switch (left->classId) {
 		case AutoLang::DefaultClass::intClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->i > right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->i > right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->i > right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->i > right->f);
 				default:
 					break;
 			}
@@ -341,9 +395,11 @@ ConstValueNode *op_greater_than(in_func, ConstValueNode *left, ConstValueNode *r
 		case AutoLang::DefaultClass::floatClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->f > right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->f > right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->f > right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->f > right->f);
 				default:
 					break;
 			}
@@ -354,15 +410,18 @@ ConstValueNode *op_greater_than(in_func, ConstValueNode *left, ConstValueNode *r
 	throw ParserError(left->line, "Invalid types for operator >");
 }
 
-ConstValueNode *op_less_than(in_func, ConstValueNode *left, ConstValueNode *right) {
+ConstValueNode *op_less_than(in_func, ConstValueNode *left,
+                             ConstValueNode *right) {
 	prepareOperands(in_data, left, right);
 	switch (left->classId) {
 		case AutoLang::DefaultClass::intClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->i < right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->i < right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->i < right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->i < right->f);
 				default:
 					break;
 			}
@@ -370,9 +429,11 @@ ConstValueNode *op_less_than(in_func, ConstValueNode *left, ConstValueNode *righ
 		case AutoLang::DefaultClass::floatClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->f < right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->f < right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->f < right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->f < right->f);
 				default:
 					break;
 			}
@@ -383,17 +444,18 @@ ConstValueNode *op_less_than(in_func, ConstValueNode *left, ConstValueNode *righ
 	throw ParserError(left->line, "Invalid types for operator <");
 }
 
-ConstValueNode *op_greater_than_eq(in_func,
-                                   ConstValueNode *left,
+ConstValueNode *op_greater_than_eq(in_func, ConstValueNode *left,
                                    ConstValueNode *right) {
 	prepareOperands(in_data, left, right);
 	switch (left->classId) {
 		case AutoLang::DefaultClass::intClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->i >= right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->i >= right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->i >= right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->i >= right->f);
 				default:
 					break;
 			}
@@ -401,9 +463,11 @@ ConstValueNode *op_greater_than_eq(in_func,
 		case AutoLang::DefaultClass::floatClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->f >= right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->f >= right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->f >= right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->f >= right->f);
 				default:
 					break;
 			}
@@ -414,15 +478,18 @@ ConstValueNode *op_greater_than_eq(in_func,
 	throw ParserError(left->line, "Invalid types for operator >=");
 }
 
-ConstValueNode *op_less_than_eq(in_func, ConstValueNode *left, ConstValueNode *right) {
+ConstValueNode *op_less_than_eq(in_func, ConstValueNode *left,
+                                ConstValueNode *right) {
 	prepareOperands(in_data, left, right);
 	switch (left->classId) {
 		case AutoLang::DefaultClass::intClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->i <= right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->i <= right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->i <= right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->i <= right->f);
 				default:
 					break;
 			}
@@ -430,9 +497,11 @@ ConstValueNode *op_less_than_eq(in_func, ConstValueNode *left, ConstValueNode *r
 		case AutoLang::DefaultClass::floatClassId:
 			switch (right->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					return context.constValuePool.push(left->line, left->f <= right->i);
+					return context.constValuePool.push(left->line,
+					                                   left->f <= right->i);
 				case AutoLang::DefaultClass::floatClassId:
-					return context.constValuePool.push(left->line, left->f <= right->f);
+					return context.constValuePool.push(left->line,
+					                                   left->f <= right->f);
 				default:
 					break;
 			}

@@ -123,6 +123,8 @@ enum TokenType : uint8_t {
 	SAFE_CAST,
 	UNSAFE_CAST,
 	LATEINIT,
+	ENUM,
+	SEMI_COLON,
 
 	// ===== Special =====
 	END_OF_FILE, //	Kết thúc file
@@ -165,6 +167,7 @@ static const HashMap<std::string, TokenType> CAST = {
     {"as", TokenType::UNSAFE_CAST},
     {"wait_input", TokenType::WAIT_INPUT},
 	{"lateinit", TokenType::LATEINIT},
+	{"enum", TokenType::ENUM},
 
     {"/*", TokenType::START_COMMENT},
     {"&", TokenType::AND},

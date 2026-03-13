@@ -46,7 +46,8 @@ LibraryData *ACompiler::requestImport(LibraryData *currentLibrary,
 			return generatedLibraries[it->second];
 		}
 	}
-	// std::cout << "START    " << input << "\n" << currentPath << "\n" << resolved << "\n";
+	// std::cout << "START    " << input << "\n" << currentPath << "\n" <<
+	// resolved << "\n";
 	LibraryData *library = new LibraryData(
 	    libPath, 0,
 	    currentLibrary ? currentLibrary->nativeFuncMap : EMPTY_NATIVE_MAP);

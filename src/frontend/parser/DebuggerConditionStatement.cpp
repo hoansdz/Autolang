@@ -31,7 +31,7 @@ IfNode *loadIf(in_func, size_t &i, bool mustReturnValue) {
 		throw ParserError(context.tokens[i].line,
 		                  "Expected command after if but not found");
 	}
-	loadBody(in_data, node->ifTrue.nodes, i);
+	loadBody<false>(in_data, node->ifTrue.nodes, i);
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::ELSE)) {
 		--i;
@@ -47,7 +47,7 @@ IfNode *loadIf(in_func, size_t &i, bool mustReturnValue) {
 		                  "Expected command after else but not found");
 	}
 	node->ifFalse = context.blockNodePool.push(token->line);
-	loadBody(in_data, node->ifFalse->nodes, i);
+	loadBody<false>(in_data, node->ifFalse->nodes, i);
 	return node;
 }
 

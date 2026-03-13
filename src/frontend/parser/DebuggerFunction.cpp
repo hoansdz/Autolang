@@ -255,7 +255,7 @@ createFunc:;
 		scope[argument->name] = argument;
 	}
 
-	loadBody(in_data, node->body.nodes, i);
+	loadBody<false>(in_data, node->body.nodes, i);
 	if (classDeclaration) {
 		bool hasReturn = false;
 		for (size_t i = node->body.nodes.size(); i-- > 0;) {

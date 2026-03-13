@@ -17,7 +17,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i) {
 		throw ParserError(firstLine,
 		                  "Expected body open with { after try but not found");
 	}
-	loadBody(in_data, node->body.nodes, i, true);
+	loadBody<false>(in_data, node->body.nodes, i, true);
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::CATCH)) {
 		--i;
@@ -56,7 +56,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i) {
 	declarationNode->classId = AutoLang::DefaultClass::exceptionClassId;
 	funcInfo->scopes.back()[name] = declarationNode;
 	node->exceptionDeclaration = declarationNode;
-	loadBody(in_data, node->catchBody.nodes, i, true);
+	loadBody<false>(in_data, node->catchBody.nodes, i, true);
 	return node;
 }
 

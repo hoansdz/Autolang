@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
 			// compiler.run();
 			// compiler.refresh();
 			compiler.loadMainSource(
-			    "./tests/testCorrectness.atl",
+			    "./tests/source.atl",
 			    {{"hi", [](NativeFuncInput) -> AutoLang::AObject * {
 				      std::cerr << "Duoc roi ne!!!\n";
 				      return nullptr;
@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
 	auto duration =
 	    std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 	std::cout << '\n' << "Total time : " << duration.count() << " ms" << '\n';
-	#ifdef _WIN32
+#ifdef _WIN32
 	printMemoryUsage();
-	#endif
+#endif
 }

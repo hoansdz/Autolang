@@ -31,7 +31,7 @@ WhileNode *loadWhile(in_func, size_t &i) {
 		throw ParserError(context.tokens[i].line,
 		                  "Expected command after while but not found");
 	}
-	loadBody(in_data, node->body.nodes, i);
+	loadBody<false>(in_data, node->body.nodes, i);
 	return node;
 }
 
@@ -97,7 +97,7 @@ ExprNode *loadFor(in_func, size_t &i) {
 	}
 	auto node =
 	    context.forPool.push(firstLine, declaration, data, iteratorNode);
-	loadBody(in_data, node->body.nodes, i, false);
+	loadBody<false>(in_data, node->body.nodes, i, false);
 	context.getCurrentFunctionInfo(in_data)->popBackScope();
 	return node;
 	//}

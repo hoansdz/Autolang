@@ -42,20 +42,6 @@ void SkipNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
 	}
 }
 
-void ConstValueNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	if (classId == AutoLang::DefaultClass::nullClassId) {
-		bytecodes.emplace_back(Opcode::LOAD_NULL);
-		return;
-	}
-	if (classId == AutoLang::DefaultClass::boolClassId) {
-		bytecodes.emplace_back(obj->b ? Opcode::LOAD_TRUE : LOAD_FALSE);
-		return;
-	}
-	bytecodes.emplace_back(isLoadPrimary ? Opcode::LOAD_CONST_PRIMARY
-	                                     : Opcode::LOAD_CONST);
-	put_opcode_u32(bytecodes, id);
-}
-
 void CanBreakContinueNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
 	uint32_t lastContinuePos = context.continuePos;
 	uint32_t lastBreakPos = context.breakPos;
@@ -93,32 +79,6 @@ void WhileNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	breakPos = bytecodes.size();
 }
 
-#define operator_plus_case(type, op)                                           \
-	case Lexer::TokenType::type: {                                             \
-		auto _node = static_cast<AccessNode *>(detach);                        \
-		_node->isStore = false;                                                \
-		_node->putBytecodes(in_data, bytecodes);                               \
-		value->putBytecodes(in_data, bytecodes);                               \
-		bytecodes.emplace_back(Opcode::op);                                    \
-		return;                                                                \
-	}
-
-void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	switch (op) {
-		operator_plus_case(PLUS_EQUAL, PLUS_EQUAL);
-		operator_plus_case(MINUS_EQUAL, MINUS_EQUAL);
-		operator_plus_case(STAR_EQUAL, MUL_EQUAL);
-		operator_plus_case(SLASH_EQUAL, DIVIDE_EQUAL);
-		default: {
-			break;
-			// throwError("Unexpected op "+ Lexer::Token(0,
-			// op).toString(context));
-		}
-	}
-	value->putBytecodes(in_data, bytecodes);
-	detach->putBytecodes(in_data, bytecodes);
-}
-
 void ReturnNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	if (value) {
 		if (value->kind == NodeType::VAR) {
@@ -134,8 +94,8 @@ void ReturnNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		value->putBytecodes(in_data, bytecodes);
 		size_t f2 = bytecodes.size();
 		if (f1 == f2) {
-			std::cerr<<value->getNodeType();
-			std::cerr<<" WTF\n";
+			std::cerr << value->getNodeType();
+			std::cerr << " WTF\n";
 		}
 		bytecodes.emplace_back(Opcode::RETURN_VALUE);
 		return;

@@ -1,0 +1,28 @@
+enum State {
+	RUNNING, LOADED;
+	func getName(): String {
+		if (this == RUNNING) {
+			return "RUNNING"
+		}
+		if (this == LOADED) {
+			return "LOADED"
+		}
+		return "NO"
+	}
+}
+
+func testEnum() {
+	val a = State.RUNNING
+
+	assert(State.RUNNING == State.RUNNING, __FILE__, __LINE__)
+	assert(State.LOADED != State.RUNNING, __FILE__, __LINE__)
+	assert(a == State.RUNNING, __FILE__, __LINE__)
+	assert(a != State.LOADED, __FILE__, __LINE__)
+	assert(State.LOADED.getName() == "LOADED", __FILE__, __LINE__)
+	assert(State.RUNNING.getName() == "RUNNING", __FILE__, __LINE__)
+	assert(a.getName() == "RUNNING", __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+testEnum()

@@ -236,6 +236,13 @@ void BinaryNode::optimize(in_func) {
 				classId = AutoLang::DefaultClass::boolClassId;
 				return;
 			}
+			if (left->classId == right->classId &&
+			    compile.classes[left->classId]->classFlags &
+			        ClassFlags::CLASS_IS_ENUM) {
+				op = Lexer::TokenType::EQEQEQ;
+				classId = AutoLang::DefaultClass::boolClassId;
+				return;
+			}
 			break;
 		}
 		case Lexer::TokenType::NOTEQ: {
@@ -246,6 +253,13 @@ void BinaryNode::optimize(in_func) {
 			}
 			if (left->classId == AutoLang::DefaultClass::nullClassId ||
 			    right->classId == AutoLang::DefaultClass::nullClassId) {
+				op = Lexer::TokenType::NOTEQEQ;
+				classId = AutoLang::DefaultClass::boolClassId;
+				return;
+			}
+			if (left->classId == right->classId &&
+			    compile.classes[left->classId]->classFlags &
+			        ClassFlags::CLASS_IS_ENUM) {
 				op = Lexer::TokenType::NOTEQEQ;
 				classId = AutoLang::DefaultClass::boolClassId;
 				return;

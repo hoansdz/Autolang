@@ -43,6 +43,10 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 	LexerStringId nameId = token->indexData;
 	const std::string &name = context.lexerString[nameId];
 
+	if (isClassExist(in_data, name)) {
+		throw ParserError(firstLine, "Class " + name + " has exists");
+	}
+
 	auto node = context.newClasses.push(firstLine, nameId,
 	                                    classFlags); // NewClasses managed
 	node->pushClass(in_data);
@@ -61,6 +65,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 		--i;
 		context.newDefaultClassesMap[node->classId] = node;
 		if (classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR) {
+			context.gotoClass(lastClass);
 			return node;
 		}
 		auto *constructor = context.createConstructorPool.push(
@@ -187,7 +192,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 	}
 
 	if (expect(token, Lexer::TokenType::LBRACE)) {
-		loadBody(in_data, node->body.nodes, i, false);
+		loadBody<false>(in_data, node->body.nodes, i, false);
 		// Create constructor if it hasn't constructor
 		if (!(classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR) &&
 		    !classInfo->primaryConstructor &&
@@ -352,7 +357,7 @@ void loadConstructor(in_func, size_t &i) {
 			scope[argument->name] = argument;
 			argument->id = j + 1;
 		}
-		loadBody(in_data, constructor->body.nodes, i, false);
+		loadBody<false>(in_data, constructor->body.nodes, i, false);
 	}
 	context.gotoFunction(context.mainFunctionId);
 }

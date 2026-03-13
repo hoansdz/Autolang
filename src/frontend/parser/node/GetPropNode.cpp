@@ -11,6 +11,15 @@ ExprNode *GetPropNode::resolve(in_func) {
 	caller = static_cast<HasClassIdNode *>(caller->resolve(in_data));
 	if (caller->kind == NodeType::CLASS_ACCESS) {
 		auto *classInfo = context.classInfo[caller->classId];
+		{
+			auto it = context.lexerStringMap.find(name);
+			if (it != context.lexerStringMap.end()) {
+				auto itLoadConst = classInfo->constValue.find(it->second);
+				if (itLoadConst != classInfo->constValue.end()) {
+					return itLoadConst->second;
+				}
+			}
+		}
 		auto it = classInfo->staticMember.find(name);
 		if (it == classInfo->staticMember.end()) {
 			throwError("Cannot find static member name: '" + name + "'");
@@ -126,9 +135,10 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					throwError(
 					    "Bug: Setnode not ensure store data is non nullable");
 				}
-				bytecodes.emplace_back(varNode->declaration->isGlobal
-				                           ? Opcode::GLOBAL_LOAD_MEMBER_AND_STORE
-				                           : Opcode::LOCAL_LOAD_MEMBER_AND_STORE);
+				bytecodes.emplace_back(
+				    varNode->declaration->isGlobal
+				        ? Opcode::GLOBAL_LOAD_MEMBER_AND_STORE
+				        : Opcode::LOCAL_LOAD_MEMBER_AND_STORE);
 				put_opcode_u32(bytecodes, varNode->declaration->id);
 				put_opcode_u32(bytecodes, id);
 				return;

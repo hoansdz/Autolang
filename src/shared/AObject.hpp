@@ -11,15 +11,20 @@ namespace AutoLang {
 
 class AVM;
 
-using DestructorParameters = void (*)(ANotifier &notifier, void* data);
+using DestructorParameters = void (*)(ANotifier &notifier, void *data);
 
 struct ANativeData {
-	void* data;
+	void *data;
 	DestructorParameters destructor;
 };
 
 struct AObject {
-	enum Flags : uint32_t { OBJ_IS_FREE = 1u << 0, OBJ_IS_CONST = 1u << 1, OBJ_IS_NATIVE_DATA = 1u << 2 };
+	enum Flags : uint32_t {
+		OBJ_IS_FREE = 1u << 0,
+		OBJ_IS_CONST = 1u << 1,
+		OBJ_IS_NATIVE_DATA = 1u << 2,
+		OBJ_IS_NO_DATA = 1u << 3
+	};
 	ClassId type;
 	uint32_t refCount;
 	uint32_t flags = 0;
@@ -32,8 +37,8 @@ struct AObject {
 		ANativeData *data;
 	};
 	AObject() : type(0), refCount(0) {}
-	AObject(uint32_t type) : type(type), refCount(0) {}
-	AObject(uint32_t type, uint32_t memberCount)
+	AObject(ClassId type) : type(type), refCount(0) {}
+	AObject(ClassId type, uint32_t memberCount)
 	    : type(type), refCount(0),
 	      member(new NormalArray<AObject *>(memberCount)) {}
 	AObject(int64_t i)
@@ -42,14 +47,15 @@ struct AObject {
 	    : type(AutoLang::DefaultClass::floatClassId), refCount(0), f(f) {}
 	AObject(AString *str)
 	    : type(AutoLang::DefaultClass::stringClassId), refCount(0), str(str) {}
-	AObject(uint32_t type, ANativeData *data)
+	AObject(ClassId type, ANativeData *data)
 	    : type(type), refCount(0), data(data) {}
 	inline void retain() {
 		if (flags & AObject::Flags::OBJ_IS_CONST)
 			return;
 		++refCount;
 	};
-	template <bool checkRefCount = false> inline void free(ANotifier& notifier) {
+	template <bool checkRefCount = false>
+	inline void free(ANotifier &notifier) {
 		switch (type) {
 			case AutoLang::DefaultClass::intClassId:
 			case AutoLang::DefaultClass::floatClassId:
@@ -75,6 +81,9 @@ struct AObject {
 		// 	assert("what wrong");
 		// 	return;
 		// }
+		if (flags & Flags::OBJ_IS_NO_DATA) {
+			return;
+		}
 		if (flags & Flags::OBJ_IS_NATIVE_DATA) {
 			if (data->destructor) {
 				data->destructor(notifier, data->data);

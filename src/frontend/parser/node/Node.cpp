@@ -95,18 +95,8 @@ BinaryNode::~BinaryNode() {
 	deleteNode(right);
 }
 
-ConstValueNode::~ConstValueNode() {
-	if (classId != AutoLang::DefaultClass::stringClassId || !str) return;
-	delete str;
-}
-
 WhileNode::~WhileNode() {
 	deleteNode(condition);
-}
-
-SetNode::~SetNode() {
-	deleteNode(detach);
-	deleteNode(value);
 }
 
 AClass* findClass(in_func, std::string name) {

@@ -65,7 +65,8 @@ enum NodeType : uint8_t {
 	RANGE,
 	CREATE_ARRAY,
 	CREATE_SET,
-	CREATE_MAP
+	CREATE_MAP,
+	CREATE_ENUM_VALUE
 };
 
 struct ExprNode {
@@ -445,6 +446,15 @@ struct ForNode : CanBreakContinueNode {
 struct ClassAccessNode : HasClassIdNode {
 	ClassAccessNode(uint32_t line, uint32_t type)
 	    : HasClassIdNode(NodeType::CLASS_ACCESS, type, line) {}
+	ExprNode *copy(in_func) override { return this; }
+};
+
+struct CreateEnumValueNode : HasClassIdNode {
+	DeclarationNode *declarationNode;
+	CreateEnumValueNode(uint32_t line, uint32_t type,
+	                    DeclarationNode *declarationNode)
+	    : HasClassIdNode(NodeType::CREATE_ENUM_VALUE, type, line),
+	      declarationNode(declarationNode) {}
 	ExprNode *copy(in_func) override { return this; }
 };
 

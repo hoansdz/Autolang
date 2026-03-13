@@ -57,6 +57,7 @@ struct CompiledProgram {
 	Offset registerConstPool(
 	    HashMap<AString *, uint32_t, AString::Hash, AString::Equal> &map,
 	    AString *value);
+	Offset registerEnumConstPool(ClassId classId); //Enum
 	template <typename T>
 	Offset registerConstPool(HashMap<T, uint32_t> &map, T value);
 	~CompiledProgram();

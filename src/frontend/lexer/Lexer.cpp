@@ -6,11 +6,6 @@
 #include "frontend/parser/ParserContext.hpp"
 #include <fstream>
 
-#define TOKEN_CASE(ch, type)                                                   \
-	case ch:                                                                   \
-		context.tokens.emplace_back(context.linePos, TokenType::type);         \
-		break;
-
 #define ESTIMATE_CASE_ADD(op, val)                                             \
 	case TokenType::op:                                                        \
 		++context.estimate.val;                                                \
@@ -97,7 +92,59 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 			loadQuote(context, chr, i);
 			return true;
 		}
+		case '(':
+		case '{':
+		case '[': {
+			pushAndEnsureBracket(context, i);
+			return true;
+		}
+		case ')': {
+			if (context.bracketStack.empty() ||
+			    context.bracketStack.back() != '(')
+				throw LexerError(context.linePos,
+				                 "Unexpected ')', you must use '(' before");
+			context.bracketStack.pop_back();
+			context.tokens.emplace_back(context.linePos, TokenType::RPAREN);
+			// ++i;
+			return false;
+		}
+		case ']': {
+			if (context.bracketStack.empty() ||
+			    context.bracketStack.back() != '[')
+				throw LexerError(context.linePos,
+				                 "Unexpected ']', you must use '[' before");
+			context.bracketStack.pop_back();
+			context.tokens.emplace_back(context.linePos, TokenType::RBRACKET);
+			// ++i;
+			return false;
+		}
+		case '}': {
+			if (context.bracketStack.empty() ||
+			    context.bracketStack.back() != '{')
+				throw LexerError(context.linePos,
+				                 "Unexpected '{', you must use '}' before");
+			context.bracketStack.pop_back();
+			context.tokens.emplace_back(context.linePos, TokenType::RBRACE);
+			// ++i;
+			return false;
+		}
+		case ',': {
+			context.tokens.emplace_back(context.linePos, TokenType::COMMA);
+			++i;
+			return true;
+		}
+		case ':': {
+			context.tokens.emplace_back(context.linePos, TokenType::COLON);
+			++i;
+			return true;
+		}
+		case ';': {
+			context.tokens.emplace_back(context.linePos, TokenType::SEMI_COLON);
+			++i;
+			return true;
+		}
 	}
+
 	if (isOperator(chr)) {
 		auto op = loadOp(context, i);
 		switch (op) {
@@ -136,51 +183,8 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 		context.tokens.emplace_back(context.linePos, op);
 		return true;
 	}
-	switch (chr) {
-		case '(':
-		case '{':
-		case '[': {
-			pushAndEnsureBracket(context, i);
-			return true;
-		}
-		case ')': {
-			if (context.bracketStack.empty() ||
-			    context.bracketStack.back() != '(')
-				throw LexerError(context.linePos,
-				                 "Unexpected ')', you must use '(' before");
-			context.bracketStack.pop_back();
-			context.tokens.emplace_back(context.linePos, TokenType::RPAREN);
-			// ++i;
-			return false;
-		}
-		case ']': {
-			if (context.bracketStack.empty() ||
-			    context.bracketStack.back() != '[')
-				throw LexerError(context.linePos,
-				                 "Unexpected ']', you must use '[' before");
-			context.bracketStack.pop_back();
-			context.tokens.emplace_back(context.linePos, TokenType::RBRACKET);
-			// ++i;
-			return false;
-		}
-		case '}': {
-			if (context.bracketStack.empty() ||
-			    context.bracketStack.back() != '{')
-				throw LexerError(context.linePos,
-				                 "Unexpected '{', you must use '}' before");
-			context.bracketStack.pop_back();
-			context.tokens.emplace_back(context.linePos, TokenType::RBRACE);
-			// ++i;
-			return false;
-		}
-			TOKEN_CASE(',', COMMA)
-			TOKEN_CASE(':', COLON)
-		default:
-			throw LexerError(context.linePos,
-			                 std::string("Unknow character: '") + chr + "'");
-	}
-	++i;
-	return true;
+	throw LexerError(context.linePos,
+	                 std::string("Unknow character: '") + chr + "'");
 }
 
 void pushAndEnsureBracket(Context &context, uint32_t &i) {
@@ -631,6 +635,8 @@ std::string Token::toString(ParserContext &context) {
 			return "..";
 		case TokenType::COMMA:
 			return ",";
+		case TokenType::SEMI_COLON:
+			return ";";
 		case TokenType::COLON:
 			return ":";
 		case TokenType::EQUAL:

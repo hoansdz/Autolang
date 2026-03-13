@@ -34,6 +34,7 @@ inline void ensureNoAnnotations(in_func, size_t &i);
 Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t &i);
 void ensureEndline(in_func, size_t &i);
 ExprNode *loadLine(in_func, size_t &i);
+template <bool trailingComma = false>
 std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i);
 std::vector<DeclarationNode *> loadListDeclaration(in_func, size_t &i,
                                                    bool allowVar = false);
@@ -43,14 +44,17 @@ void loadListGenericDeclarationType(in_func, size_t &i, uint32_t line,
                                     bool allowReturnVoid,
                                     std::vector<ClassDeclaration *> &inputVecs);
 HasClassIdNode *loadSetOrMap(in_func, size_t &i, NodeType canBeNodeType);
-HasClassIdNode *loadSet(in_func, size_t &i, HasClassIdNode* firstExpression);
-HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode* firstExpression);
+HasClassIdNode *loadSet(in_func, size_t &i, HasClassIdNode *firstExpression);
+HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode *firstExpression);
+HasClassIdNode *parsePrimary(in_func, size_t &i);
 HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i);
+void loadEnum(in_func, size_t &i);
 HasClassIdNode *loadDeclaration(in_func, size_t &i);
 HasClassIdNode *parsePrimary(in_func, size_t &i);
 HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis = true);
 bool nextTokenIfMarkNonNull(in_func, size_t &i);
 void loadAnnotations(in_func, size_t &i);
+template <bool loadedLBrace>
 void loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i,
               bool createScope = true);
 IfNode *loadIf(in_func, size_t &i, bool mustReturnValue);

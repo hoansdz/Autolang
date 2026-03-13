@@ -17,7 +17,7 @@ struct CreateFuncNode : ExprNode {
 	FunctionId id;
 	BlockNode body;
 	const std::vector<DeclarationNode *> arguments;
-	uint32_t functionFlags;
+	uint32_t functionFlags;	
 	CreateFuncNode(uint32_t line, std::optional<ClassId> contextCallClassId,
 	               LexerStringId nameId, ClassDeclaration *classDeclaration,
 	               std::vector<DeclarationNode *> arguments,
