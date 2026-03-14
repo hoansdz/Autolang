@@ -93,8 +93,9 @@ void loadEnum(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
 
-	uint32_t classFlags =
-	    ClassFlags::CLASS_IS_ENUM | ClassFlags::CLASS_NO_EXTENDS;
+	uint32_t classFlags = ClassFlags::CLASS_IS_ENUM |
+	                      ClassFlags::CLASS_NO_EXTENDS |
+	                      ClassFlags::CLASS_NO_CONSTRUCTOR;
 
 	// Name
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||

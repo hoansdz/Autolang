@@ -66,7 +66,8 @@ enum NodeType : uint8_t {
 	CREATE_ARRAY,
 	CREATE_SET,
 	CREATE_MAP,
-	CREATE_ENUM_VALUE
+	CREATE_ENUM_VALUE,
+	WHEN
 };
 
 struct ExprNode {
@@ -585,6 +586,20 @@ struct CreateMapNode : HasClassIdNode {
 	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
 	ExprNode *copy(in_func) override;
 	~CreateMapNode();
+};
+
+struct WhenNode : HasClassIdNode {
+	HasClassIdNode *value;
+	IfNode *ifNode;
+	WhenNode(uint32_t line, HasClassIdNode *value, IfNode *ifNode)
+	    : HasClassIdNode(NodeType::WHEN, DefaultClass::nullClassId, line),
+	      value(value), ifNode(ifNode) {}
+	ExprNode *resolve(in_func) override;
+	void optimize(in_func) override;
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
+	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
+	ExprNode *copy(in_func) override;
+	~WhenNode();
 };
 
 } // namespace AutoLang

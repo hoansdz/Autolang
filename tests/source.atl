@@ -15,15 +15,17 @@ enum State {
 	}
 }
 
-val b = State.RUNNING
+var b = State.RUNNING
 
-println(State.RUNNING)
-println(State.LOADED)
-println(State.RUNNING == State.RUNNING)
-println(State.RUNNING != State.RUNNING)
-println(State.LOADED == State.RUNNING)
-println(State.LOADED != State.RUNNING)
-println(b == State.RUNNING)
-println(b != State.RUNNING)
-println(State.LOADED.getName())
-println(b.getName())
+println(when (b) {
+	State.RUNNING -> "RUNNING"
+	is State -> "WTF"
+	else -> "LOADED"
+})
+
+b = State.LOADED
+
+println(when (b) {
+	State.RUNNING -> "RUNNING"
+	else -> "LOADED"
+})

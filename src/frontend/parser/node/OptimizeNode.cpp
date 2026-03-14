@@ -315,8 +315,6 @@ ConstValueNode *op_eqeq(in_func, ConstValueNode *left, ConstValueNode *right) {
 		return context.constValuePool.push(left->line, left == right);
 	}
 
-	std::cerr<<compile.classes[left->classId]->classFlags<<"\n";
-
 	throw ParserError(left->line, "Invalid types for operator == between " +
 	                                  compile.classes[left->classId]->name +
 	                                  " and " +

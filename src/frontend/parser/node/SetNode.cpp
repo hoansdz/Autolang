@@ -364,6 +364,42 @@ void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			// op).toString(context));
 		}
 	}
+	switch (detach->kind) {
+		case NodeType::VAR: {
+			auto detachNode = static_cast<VarNode *>(detach);
+			switch (value->kind) {
+				case NodeType::VAR: {
+					auto valueNode = static_cast<VarNode *>(value);
+					if (detachNode->declaration->isGlobal) {
+						bytecodes.emplace_back(
+						    valueNode->declaration->isGlobal
+						        ? Opcode::GLOBAL_STORE_GLOBAL
+						        : Opcode::GLOBAL_STORE_LOCAL);
+						put_opcode_u32(bytecodes, detachNode->declaration->id);
+						put_opcode_u32(bytecodes, valueNode->declaration->id);
+						return;
+					}
+					bytecodes.emplace_back(valueNode->declaration->isGlobal
+					                           ? Opcode::LOCAL_STORE_GLOBAL
+					                           : Opcode::LOCAL_STORE_LOCAL);
+					put_opcode_u32(bytecodes, detachNode->declaration->id);
+					put_opcode_u32(bytecodes, valueNode->declaration->id);
+					return;
+				}
+				case NodeType::CONST: {
+					auto valueNode = static_cast<ConstValueNode *>(value);
+					bytecodes.emplace_back(detachNode->declaration->isGlobal
+					                           ? Opcode::GLOBAL_STORE_CONST
+					                           : Opcode::LOCAL_STORE_CONST);
+					put_opcode_u32(bytecodes, detachNode->declaration->id);
+					put_opcode_u32(bytecodes, valueNode->id);
+					return;
+				}
+			}
+
+			break;
+		}
+	}
 	value->putBytecodes(in_data, bytecodes);
 	detach->putBytecodes(in_data, bytecodes);
 }

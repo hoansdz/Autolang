@@ -1,0 +1,20 @@
+func testWhen() {
+	val a = 5
+	when (a) {
+		in 1..9 -> {}
+		else -> assert(false, __FILE__, __LINE__)
+	}
+
+	val b = 6
+	when (b) {
+		b != 6 -> assert(false, __FILE__, __LINE__)
+	}
+
+	when (b) {
+		is Int -> {}
+		else -> assert(false, __FILE__, __LINE__)
+	}
+	println("Passes ${__FUNC__}")
+}
+
+testWhen()

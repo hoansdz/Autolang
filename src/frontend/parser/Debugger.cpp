@@ -433,6 +433,11 @@ initial:;
 				goto err_call_func;
 			return loadIf(in_data, i, false);
 		}
+		case Lexer::TokenType::WHEN: {
+			if (!isInFunction)
+				goto err_call_func;
+			return loadWhen(in_data, i, false);
+		}
 		case Lexer::TokenType::FOR: {
 			if (!isInFunction)
 				goto err_call_func;
@@ -696,6 +701,10 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 		int precedence = getPrecedence(token->type);
 		if (precedence == -1 || precedence < minPrecedence)
 			break;
+		if (firstLine != token->line) {
+			--i;
+			return left;
+		}
 		Lexer::TokenType op = token->type;
 		if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 			--i;
@@ -1182,6 +1191,10 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 		}
 		case Lexer::TokenType::IF: {
 			node = loadIf(in_data, i, true);
+			break;
+		}
+		case Lexer::TokenType::WHEN: {
+			node = loadWhen(in_data, i, true);
 			break;
 		}
 		default:

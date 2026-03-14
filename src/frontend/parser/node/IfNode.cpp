@@ -47,7 +47,7 @@ void IfNode::optimize(in_func) {
 		throwError("Cannot use expression of type '" +
 		           condition->getClassName(in_data) +
 		           "' as a condition, expected 'Bool'");
-
+			
 	auto lastMustReturnValueNode = context.mustReturnValueNode;
 	if (mustReturnValue) {
 		context.mustReturnValueNode = this;

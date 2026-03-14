@@ -3,6 +3,7 @@
 
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "shared/ClassFlags.hpp"
 #include <iostream>
 
 namespace AutoLang {
@@ -90,19 +91,8 @@ ExprNode *BinaryNode::resolve(in_func) {
 		case Lexer::TokenType::IN: {
 			switch (right->kind) {
 				case NodeType::RANGE: {
-					switch (left->kind) {
-						case NodeType::CLASS_ACCESS: {
-							throwError("Expected value but class name found");
-						}
-						default: {
-							if (left->classId != DefaultClass::intClassId) {
-								throwError(
-								    "Type mismatch: expected 'Int' but '" +
-								    compile.classes[left->classId]->name +
-								    "' found");
-							}
-							break;
-						}
+					if (left->kind == NodeType::CLASS_ACCESS) {
+						throwError("Expected value but class name found");
 					}
 					break;
 				}
@@ -195,6 +185,12 @@ void BinaryNode::optimize(in_func) {
 				           Lexer::Token(0, op).toString(context) +
 				           "' with nullable value");
 			}
+			if (right->kind == NodeType::RANGE &&
+			    left->classId != DefaultClass::intClassId) {
+				throwError("Type mismatch: expected 'Int' but '" +
+				           compile.classes[left->classId]->name + "' found");
+			}
+
 			classId = DefaultClass::boolClassId;
 			return;
 		}

@@ -42,6 +42,10 @@ void ForNode::optimize(in_func) {
 			auto rangeNode = static_cast<RangeNode *>(data);
 			rangeNode->optimize(in_data);
 			rangeNode->from->optimize(in_data);
+			if (rangeNode->from->kind == NodeType::CONST) {
+				static_cast<ConstValueNode *>(rangeNode->from)->isLoadPrimary =
+				    false;
+			}
 			switch (rangeNode->from->classId) {
 				case AutoLang::DefaultClass::intClassId: {
 					break;

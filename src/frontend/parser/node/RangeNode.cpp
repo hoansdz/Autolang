@@ -14,7 +14,13 @@ ExprNode *RangeNode::resolve(in_func) {
 
 void RangeNode::optimize(in_func) {
 	from->optimize(in_data);
+	if (from->kind == NodeType::CONST) {
+		static_cast<ConstValueNode*>(from)->isLoadPrimary = true;
+	}
 	to->optimize(in_data);
+	if (to->kind == NodeType::CONST) {
+		static_cast<ConstValueNode*>(to)->isLoadPrimary = true;
+	}
 }
 
 void RangeNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {

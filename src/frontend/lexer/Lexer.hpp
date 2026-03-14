@@ -125,6 +125,9 @@ enum TokenType : uint8_t {
 	LATEINIT,
 	ENUM,
 	SEMI_COLON,
+	CONST,
+	WHEN,
+	MINUS_GT,
 
 	// ===== Special =====
 	END_OF_FILE, //	Kết thúc file
@@ -168,6 +171,8 @@ static const HashMap<std::string, TokenType> CAST = {
     {"wait_input", TokenType::WAIT_INPUT},
 	{"lateinit", TokenType::LATEINIT},
 	{"enum", TokenType::ENUM},
+	{"const", TokenType::CONST},
+	{"when", TokenType::WHEN},
 
     {"/*", TokenType::START_COMMENT},
     {"&", TokenType::AND},
@@ -202,6 +207,7 @@ static const HashMap<std::string, TokenType> CAST = {
     {"!==", TokenType::NOTEQEQ},
     {">=", TokenType::GTE},
     {"<=", TokenType::LTE},
+	{"->", TokenType::MINUS_GT},
 };
 
 struct Token {

@@ -136,6 +136,7 @@ struct ParserContext {
 	ChunkArena<CreateArrayNode, 32> createArrayPool;
 	ChunkArena<CreateSetNode, 32> createSetPool;
 	ChunkArena<CreateMapNode, 32> createMapPool;
+	ChunkArena<WhenNode, 32> whenNodePool;
 
 	std::optional<ClassId> currentClassId = std::nullopt;
 	uint32_t mainFunctionId;
@@ -233,8 +234,8 @@ struct ParserContext {
 		}
 		return nullptr;
 	}
-	HasClassIdNode *findDeclaration(in_func, uint32_t line, const std::string &name,
-	                                bool inGlobal);
+	HasClassIdNode *findDeclaration(in_func, uint32_t line,
+	                                const std::string &name, bool inGlobal);
 	DeclarationNode *
 	makeDeclarationNode(in_func, uint32_t line, bool isTemp, std::string name,
 	                    ClassDeclaration *classDeclaration, bool isVal,
