@@ -177,9 +177,9 @@ func assert(condition: Bool, fileName: String, line: Int) {
 	}
 	throw Exception("${fileName}:${line}: Wrong")
 }
-@wait_input
-@native("input")
-func input(): String
+// @wait_input
+// @native("input")
+// func input(): String
 	)###",
 	    true,
 	    ANativeMap({

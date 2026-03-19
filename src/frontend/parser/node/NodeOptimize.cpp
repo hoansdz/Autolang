@@ -229,6 +229,14 @@ ExprNode *UnknowNode::resolve(in_func) {
 }
 
 ExprNode *UnknowNode::copy(in_func) {
+	{
+		auto funcInfo = context.functionInfo[contextCallFuncId];
+		auto genericDeclaration = funcInfo->findGenericDeclaration(nameId);
+		if (genericDeclaration) {
+			return context.classAccessPool.push(line,
+			                                    genericDeclaration->classId);
+		}
+	}
 	if (contextCallClassId) {
 		switch (nameId) {
 			case lexerId__CLASS__: {
@@ -243,8 +251,8 @@ ExprNode *UnknowNode::copy(in_func) {
 			                                    genericDeclaration->classId);
 		}
 	}
-	return context.unknowNodePool.push(line, context.currentClassId, nameId,
-	                                   nullable);
+	return context.unknowNodePool.push(line, context.currentClassId,
+	                                   contextCallFuncId, nameId, nullable);
 }
 
 void UnknowNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
@@ -388,6 +396,10 @@ ExprNode *VarNode::copy(in_func) {
 	return context.varPool.push(
 	    line, static_cast<DeclarationNode *>(declaration->copy(in_data)),
 	    isStore, nullable);
+}
+
+bool VarNode::isStaticValue() {
+	return declaration && declaration->isGlobal;
 }
 
 } // namespace AutoLang

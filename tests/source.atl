@@ -1,31 +1,18 @@
-val a = <Int>[
-	1, 2, 3,
-]
-
-enum State {
-	RUNNING, LOADED;
-	func getName(): String {
-		if (this == RUNNING) {
-			return "RUNNING"
-		}
-		if (this == LOADED) {
-			return "LOADED"
-		}
-		return "WTF"
+func load<T, R>(value: T?, x: R) {
+	static var m: T?
+	m = value
+	println(m)
+}
+enum A {
+	
+}
+class M<T> {
+	lateinit val value: T
+	constructor (value: T) {
+		this.value = value
+		load<Int, Int>(1, 0)
+		load<Float, Int>(2, 0)
+		load<String, Int>("HELLO", 0)
 	}
 }
-
-var b = State.RUNNING
-
-println(when (b) {
-	State.RUNNING -> "RUNNING"
-	is State -> "WTF"
-	else -> "LOADED"
-})
-
-b = State.LOADED
-
-println(when (b) {
-	State.RUNNING -> "RUNNING"
-	else -> "LOADED"
-})
+// println(Map<Int, Int>.Map<Int, Int>())

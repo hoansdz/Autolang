@@ -85,6 +85,10 @@ void SetNode::optimize(in_func) {
 
 	value->optimize(in_data);
 
+	if (justDetachStatic && !value->isStaticValue()) {
+		throwError("Value must be static");
+	}
+
 	if (value->classId == DefaultClass::voidClassId) {
 		throwError("Cannot detach void value");
 	}
@@ -407,7 +411,7 @@ void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 ExprNode *SetNode::copy(in_func) {
 	return context.setValuePool.push(
 	    line, static_cast<HasClassIdNode *>(detach->copy(in_data)),
-	    static_cast<HasClassIdNode *>(value->copy(in_data)));
+	    static_cast<HasClassIdNode *>(value->copy(in_data)), justDetachStatic);
 }
 
 SetNode::~SetNode() {

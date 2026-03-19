@@ -297,9 +297,39 @@ void ACompiler::generateBytecodes() {
 			if (i >= context.tokens.size())
 				break;
 			uint32_t line = context.tokens[i].line;
-			Lexer::Token *_;
-			while (nextTokenSameLine(&_, context.tokens, i, line)) {
+			Lexer::Token *token;
+			int32_t countScope = 0;
+			while (nextTokenSameLine(&token, context.tokens, i, line)) {
+				switch (token->type) {
+					case Lexer::TokenType::LBRACE: {
+						++countScope;
+						break;
+					}
+					case Lexer::TokenType::RBRACE: {
+						--countScope;
+						break;
+					}
+				}
 			}
+			if (countScope >= 1) {
+				while (nextToken(&token, context.tokens, i)) {
+					switch (token->type) {
+						case Lexer::TokenType::LBRACE: {
+							++countScope;
+							break;
+						}
+						case Lexer::TokenType::RBRACE: {
+							--countScope;
+							if (countScope == 0) {
+								nextToken(&token, context.tokens, i);
+								goto finishedCatch;
+							}
+							break;
+						}
+					}
+				}
+			}
+		finishedCatch:;
 		}
 	}
 	// auto parserTime = std::chrono::high_resolution_clock::now();
@@ -316,6 +346,11 @@ void ACompiler::generateBytecodes() {
 
 	try {
 		printDebug("-----------------AST Node-----------------\n");
+
+		printDebug("Load all generic call");
+		for (auto *declaration : context.genericCallers) {
+			declaration->load<true, true>(in_data);
+		}
 
 		printDebug("Load all class declarations");
 		// Load class declaration (generics as T won't have class id)
@@ -360,6 +395,10 @@ void ACompiler::generateBytecodes() {
 		size_t sizeNewFunctions = context.newFunctions.getSize();
 		for (int i = 0; i < sizeNewFunctions; ++i) {
 			auto *createFunctionNode = context.newFunctions[i];
+			auto funcInfo = context.functionInfo[createFunctionNode->id];
+			if (funcInfo->genericData) {
+				continue;
+			}
 			if (createFunctionNode->contextCallClassId) {
 				auto classInfo =
 				    context.classInfo[*createFunctionNode->contextCallClassId];
@@ -446,6 +485,9 @@ void ACompiler::generateBytecodes() {
 		printDebug("Inference function type");
 		for (FunctionId id : context.mustInferenceFunctionType) {
 			auto *funcInfo = context.functionInfo[id];
+			if (funcInfo->genericData) {
+				continue;
+			}
 			if (!funcInfo->inferenceNode->loaded) {
 				funcInfo->inferenceNode->resolve(in_data);
 				funcInfo->inferenceNode->optimize(in_data);
@@ -469,6 +511,9 @@ void ACompiler::generateBytecodes() {
 			}
 			auto func = compile.functions[node->id];
 			auto funcInfo = context.functionInfo[node->id];
+			if (funcInfo->genericData) {
+				continue;
+			}
 			if ((func->functionFlags & FunctionFlags::FUNC_OVERRIDE) &&
 			    !(func->functionFlags & FunctionFlags::FUNC_IS_VIRTUAL)) {
 				throw ParserError(

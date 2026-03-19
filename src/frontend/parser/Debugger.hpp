@@ -27,8 +27,10 @@ LibraryData *loadImport(in_func, LibraryData *currentLibrary,
                         size_t i);
 void estimate(in_func, Lexer::Context &lexerContext);
 void freeData(in_func);
-ClassId loadGenerics(in_func, std::string &name,
-                     ClassDeclaration *classDeclaration);
+ClassId loadClassGenerics(in_func, std::string &name,
+                          ClassDeclaration *classDeclaration);
+FunctionId loadFunctionGenerics(in_func, std::string &name,
+                                ClassDeclaration *classDeclaration);
 inline void ensureNoKeyword(in_func, size_t &i);
 inline void ensureNoAnnotations(in_func, size_t &i);
 Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t &i);

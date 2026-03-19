@@ -16,8 +16,10 @@ ExprNode *WhenNode::resolve(in_func) {
 
 void WhenNode::optimize(in_func) {
 	value->optimize(in_data);
-	if (ifNode)
+	if (ifNode) {
 		ifNode->optimize(in_data);
+		classId = ifNode->classId;
+	}
 }
 
 void WhenNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {

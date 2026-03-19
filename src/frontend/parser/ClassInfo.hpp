@@ -14,6 +14,13 @@ struct GenericData {
 	HashMap<ClassDeclaration *, ExprNode *> mustRenameNodes;
 	std::vector<GenericDeclarationNode *> genericDeclarations;
 	HashMap<LexerStringId, Offset> genericDeclarationMap;
+	inline GenericDeclarationNode *findDeclaration(LexerStringId nameId) {
+		auto it = genericDeclarationMap.find(nameId);
+		if (it == genericDeclarationMap.end()) {
+			return nullptr;
+		}
+		return genericDeclarations[it->second];
+	}
 };
 
 struct ClassInfo {
@@ -34,14 +41,11 @@ struct ClassInfo {
 
 	AccessNode *findDeclaration(in_func, uint32_t line, const std::string &name,
 	                            bool isStatic = false);
-	GenericDeclarationNode *findGenericDeclaration(LexerStringId nameId) {
+	inline GenericDeclarationNode *
+	findGenericDeclaration(LexerStringId nameId) {
 		if (!genericData)
 			return nullptr;
-		auto it = genericData->genericDeclarationMap.find(nameId);
-		if (it == genericData->genericDeclarationMap.end()) {
-			return nullptr;
-		}
-		return genericData->genericDeclarations[it->second];
+		return genericData->findDeclaration(nameId);
 	}
 	~ClassInfo();
 };

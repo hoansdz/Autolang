@@ -91,6 +91,7 @@ WhenNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 		throw ParserError(firstLine,
 		                  "Expected body open with { after when but not found");
 	}
+	IfNode *mainIfNode = nullptr;
 	IfNode *currentIfNode = nullptr;
 	bool loadedElse = false;
 	while (true) {
@@ -100,8 +101,7 @@ WhenNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 		}
 		switch (token->type) {
 			case Lexer::TokenType::RBRACE: {
-				return context.whenNodePool.push(firstLine, value,
-				                                 currentIfNode);
+				return context.whenNodePool.push(firstLine, value, mainIfNode);
 			}
 			case Lexer::TokenType::ELSE: {
 				if (loadedElse) {
@@ -123,6 +123,7 @@ WhenNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 					IfNode *ifNode =
 					    context.ifPool.push(token->line, mustReturnValue);
 					currentIfNode = ifNode;
+					mainIfNode = ifNode;
 					loadBody<false>(in_data, ifNode->ifTrue.nodes, i, true);
 					break;
 				}
@@ -148,6 +149,7 @@ WhenNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 				    context.ifPool.push(token->line, mustReturnValue);
 				ifNode->condition = condition;
 				if (currentIfNode == nullptr) {
+					mainIfNode = ifNode;
 					currentIfNode = ifNode;
 				} else {
 					currentIfNode->ifFalse =

@@ -136,7 +136,7 @@ void CallNode::optimize(in_func) {
 
 		auto callerClass = compile.classes[caller->classId];
 		funcName = callerClass->name + "." + name;
-		auto it = callerClass->funcMap.find(name);
+		auto it = callerClass->funcMap.find(funcName);
 		if (it != callerClass->funcMap.end()) {
 			funcVec[count++] = &it->second;
 			callerCanCallId = caller->classId;
@@ -253,6 +253,12 @@ void CallNode::optimize(in_func) {
 	classId = first.func->returnId;
 	auto func = compile.functions[funcId];
 	auto funcInfo = context.functionInfo[funcId];
+	if (funcInfo->genericData) {
+		throwError(
+		    "Function " + funcName + " expects " +
+		    std::to_string(funcInfo->genericData->genericDeclarations.size()) +
+		    " type argument but 0 were given");
+	}
 
 	if (funcInfo->inferenceNode && !funcInfo->inferenceNode->loaded) {
 		funcInfo->inferenceNode->resolve(in_data);

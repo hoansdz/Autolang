@@ -22,7 +22,7 @@ struct ClassDeclaration {
 	std::vector<ClassDeclaration *> inputClassId;
 	std::optional<uint32_t> classId;
 	bool isGenerics(in_func);
-	template <bool changeGenericsClassId> 
+	template <bool changeGenericsClassId, bool canBeFunction = false> 
 	void load(in_func);
 	template <bool addNullable = false>
 	std::string getName(in_func);

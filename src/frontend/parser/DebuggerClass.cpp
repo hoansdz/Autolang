@@ -61,145 +61,14 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 	auto classInfo = context.getCurrentClassInfo(in_data);
 	classInfo->declarationThis = declarationThis;
 
-	if (!nextToken(&token, context.tokens, i)) {
-		--i;
-		context.newDefaultClassesMap[node->classId] = node;
-		if (classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR) {
-			context.gotoClass(lastClass);
-			return node;
-		}
-		auto *constructor = context.createConstructorPool.push(
-		    firstLine, *context.currentClassId, nameId,
-		    std::vector<DeclarationNode *>{}, false,
-		    FunctionFlags::FUNC_PUBLIC);
-		classInfo->secondaryConstructor.push_back(constructor);
-		constructor->pushFunction(in_data);
-		context.gotoClass(lastClass);
-		return node;
-	}
-	if (expect(token, Lexer::TokenType::LT)) {
-		classInfo->genericData = new GenericData();
-		context.newGenericClassesMap[node->classId] = node;
-		while (true) {
-			if (!nextToken(&token, context.tokens, i) ||
-			    !expect(token, Lexer::TokenType::IDENTIFIER)) {
-				--i;
-				throw ParserError(context.tokens[i].line,
-				                  "Expected class name but not found");
-			}
-			auto &genericDeclarationName =
-			    context.lexerString[token->indexData];
-			if (classInfo->findGenericDeclaration(token->indexData)) {
-				throw ParserError(firstLine,
-				                  "Redefined " + genericDeclarationName);
-			}
-			Offset id = classInfo->genericData->genericDeclarations.size();
-			auto declarationData =
-			    new GenericDeclarationNode(firstLine, token->indexData);
-			// declarationData->classDeclaration.baseClassLexerStringId =
-			// nameId; declarationData->classDeclaration.isGenericDeclaration =
-			// true; declarationData->classDeclaration.line = token->line;
-			classInfo->genericData->genericDeclarations.push_back(
-			    declarationData);
-			classInfo->genericData->genericDeclarationMap[token->indexData] =
-			    id;
-			if (!nextToken(&token, context.tokens, i)) {
-				--i;
-				throw ParserError(
-				    context.tokens[i].line,
-				    "Expected '>' after class name but not found");
-			}
-			switch (token->type) {
-				case Lexer::TokenType::COMMA: {
-					break;
-				}
-				case Lexer::TokenType::GT: {
-					goto finishedGenerics;
-				}
-				default: {
-					throw ParserError(
-					    firstLine,
-					    "Expected '>' after class name but not found");
-				}
-			}
-		}
-	finishedGenerics:;
+	try {
+
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
-			throw ParserError(context.tokens[i].line,
-			                  "Generics class must have body");
-		}
-	} else {
-		context.newDefaultClassesMap[node->classId] = node;
-	}
-
-	if (expect(token, Lexer::TokenType::EXTENDS)) {
-		node->superDeclaration =
-		    loadClassDeclaration(in_data, i, token->line, false);
-		context.allClassDeclarations.push_back(node->superDeclaration);
-		// auto name = node->superDeclaration->getName(in_data);
-		// std::cerr << "Created extends: " << name << "\n";
-		// LexerStringId newNameId;
-		// {
-		// 	auto it = context.lexerStringMap.find(name);
-		// 	if (it == context.lexerStringMap.end()) {
-		// 		newNameId = context.lexerString.size();
-		// 		context.lexerStringMap[name] = newNameId;
-		// 		context.lexerString.push_back(name);
-		// 	} else {
-		// 		newNameId = it->second;
-		// 	}
-		// }
-
-		classFlags |= ClassFlags::CLASS_HAS_PARENT;
-		clazz->classFlags |= ClassFlags::CLASS_HAS_PARENT;
-		node->classFlags |= ClassFlags::CLASS_HAS_PARENT;
-		if (!nextToken(&token, context.tokens, i)) {
-			--i;
-			throw ParserError(context.tokens[i].line,
-			                  "Extended class must have constructor");
-		}
-	}
-	// std::cerr<<"Clazz: "<<clazz->name<<" "<<declarationThis->id<<"\n";
-	// Has PrimaryConstructor
-	//  bool hasPrimaryConstructor = false;
-	if (expect(token, Lexer::TokenType::LPAREN)) {
-		if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
-			throw ParserError(context.tokens[i].line,
-			                  "Extended class doesn't support data class "
-			                  "constructor, you must "
-			                  "declare constructor and call super");
-		}
-		if (classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR) {
-			throw ParserError(context.tokens[i].line,
-			                  "@no_constructor is already applied, cannot use "
-			                  "primary constructor");
-		}
-		if (classFlags & ClassFlags::CLASS_NATIVE_DATA) {
-			throw ParserError(context.tokens[i].line,
-			                  "@native_data is already applied");
-		}
-		classInfo->primaryConstructor = context.createConstructorPool.push(
-		    firstLine, *context.currentClassId, nameId,
-		    loadListDeclaration(in_data, i, true), true,
-		    FunctionFlags::FUNC_PUBLIC);
-		classInfo->primaryConstructor->pushFunction(in_data);
-		if (!nextToken(&token, context.tokens, i)) {
-			context.gotoClass(lastClass);
-			--i;
-			return node;
-		}
-	}
-
-	if (expect(token, Lexer::TokenType::LBRACE)) {
-		loadBody<false>(in_data, node->body.nodes, i, false);
-		// Create constructor if it hasn't constructor
-		if (!(classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR) &&
-		    !classInfo->primaryConstructor &&
-		    classInfo->secondaryConstructor.empty()) {
-			if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
-				throw ParserError(
-				    firstLine, "Extended class must be declarated constructor");
+			context.newDefaultClassesMap[node->classId] = node;
+			if (classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR) {
+				context.gotoClass(lastClass);
+				return node;
 			}
 			auto *constructor = context.createConstructorPool.push(
 			    firstLine, *context.currentClassId, nameId,
@@ -207,28 +76,170 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 			    FunctionFlags::FUNC_PUBLIC);
 			classInfo->secondaryConstructor.push_back(constructor);
 			constructor->pushFunction(in_data);
+			context.gotoClass(lastClass);
+			return node;
+		}
+		if (expect(token, Lexer::TokenType::LT)) {
+			classInfo->genericData = new GenericData();
+			context.newGenericClassesMap[node->classId] = node;
+			while (true) {
+				if (!nextToken(&token, context.tokens, i) ||
+				    !expect(token, Lexer::TokenType::IDENTIFIER)) {
+					--i;
+					throw ParserError(context.tokens[i].line,
+					                  "Expected class name but not found");
+				}
+				auto &genericDeclarationName =
+				    context.lexerString[token->indexData];
+				if (classInfo->findGenericDeclaration(token->indexData)) {
+					throw ParserError(firstLine,
+					                  "Redefined " + genericDeclarationName);
+				}
+				Offset id = classInfo->genericData->genericDeclarations.size();
+				auto declarationData =
+				    new GenericDeclarationNode(firstLine, token->indexData);
+				// declarationData->classDeclaration.baseClassLexerStringId =
+				// nameId;
+				// declarationData->classDeclaration.isGenericDeclaration =
+				// true; declarationData->classDeclaration.line = token->line;
+				classInfo->genericData->genericDeclarations.push_back(
+				    declarationData);
+				classInfo->genericData
+				    ->genericDeclarationMap[token->indexData] = id;
+				if (!nextToken(&token, context.tokens, i)) {
+					--i;
+					throw ParserError(
+					    context.tokens[i].line,
+					    "Expected '>' after class name but not found");
+				}
+				switch (token->type) {
+					case Lexer::TokenType::COMMA: {
+						break;
+					}
+					case Lexer::TokenType::GT: {
+						goto finishedGenerics;
+					}
+					default: {
+						throw ParserError(
+						    firstLine,
+						    "Expected '>' after class name but not found");
+					}
+				}
+			}
+		finishedGenerics:;
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(context.tokens[i].line,
+				                  "Generics class must have body");
+			}
+		} else {
+			context.newDefaultClassesMap[node->classId] = node;
 		}
 
-		context.gotoClass(lastClass);
-	} else {
-		// Create constructor if it hasn't constructor
-		if (!(classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR) &&
-		    !classInfo->primaryConstructor &&
-		    classInfo->secondaryConstructor.empty()) {
+		if (expect(token, Lexer::TokenType::EXTENDS)) {
+			node->superDeclaration =
+			    loadClassDeclaration(in_data, i, token->line, false);
+			context.allClassDeclarations.push_back(node->superDeclaration);
+			// auto name = node->superDeclaration->getName(in_data);
+			// std::cerr << "Created extends: " << name << "\n";
+			// LexerStringId newNameId;
+			// {
+			// 	auto it = context.lexerStringMap.find(name);
+			// 	if (it == context.lexerStringMap.end()) {
+			// 		newNameId = context.lexerString.size();
+			// 		context.lexerStringMap[name] = newNameId;
+			// 		context.lexerString.push_back(name);
+			// 	} else {
+			// 		newNameId = it->second;
+			// 	}
+			// }
+
+			classFlags |= ClassFlags::CLASS_HAS_PARENT;
+			clazz->classFlags |= ClassFlags::CLASS_HAS_PARENT;
+			node->classFlags |= ClassFlags::CLASS_HAS_PARENT;
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(context.tokens[i].line,
+				                  "Extended class must have constructor");
+			}
+		}
+		// std::cerr<<"Clazz: "<<clazz->name<<" "<<declarationThis->id<<"\n";
+		// Has PrimaryConstructor
+		//  bool hasPrimaryConstructor = false;
+		if (expect(token, Lexer::TokenType::LPAREN)) {
 			if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
+				throw ParserError(context.tokens[i].line,
+				                  "Extended class doesn't support data class "
+				                  "constructor, you must "
+				                  "declare constructor and call super");
+			}
+			if (classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR) {
 				throw ParserError(
-				    firstLine, "Extended class must be declarated constructor");
+				    context.tokens[i].line,
+				    "@no_constructor is already applied, cannot use "
+				    "primary constructor");
+			}
+			if (classFlags & ClassFlags::CLASS_NATIVE_DATA) {
+				throw ParserError(context.tokens[i].line,
+				                  "@native_data is already applied");
 			}
 			classInfo->primaryConstructor = context.createConstructorPool.push(
 			    firstLine, *context.currentClassId, nameId,
-			    std::vector<DeclarationNode *>{}, true,
+			    loadListDeclaration(in_data, i, true), true,
 			    FunctionFlags::FUNC_PUBLIC);
 			classInfo->primaryConstructor->pushFunction(in_data);
+			if (!nextToken(&token, context.tokens, i)) {
+				context.gotoClass(lastClass);
+				--i;
+				return node;
+			}
 		}
+
+		if (expect(token, Lexer::TokenType::LBRACE)) {
+			loadBody<false>(in_data, node->body.nodes, i, false);
+			// Create constructor if it hasn't constructor
+			if (!(classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR) &&
+			    !classInfo->primaryConstructor &&
+			    classInfo->secondaryConstructor.empty()) {
+				if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
+					throw ParserError(
+					    firstLine,
+					    "Extended class must be declarated constructor");
+				}
+				auto *constructor = context.createConstructorPool.push(
+				    firstLine, *context.currentClassId, nameId,
+				    std::vector<DeclarationNode *>{}, false,
+				    FunctionFlags::FUNC_PUBLIC);
+				classInfo->secondaryConstructor.push_back(constructor);
+				constructor->pushFunction(in_data);
+			}
+
+			context.gotoClass(lastClass);
+		} else {
+			// Create constructor if it hasn't constructor
+			if (!(classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR) &&
+			    !classInfo->primaryConstructor &&
+			    classInfo->secondaryConstructor.empty()) {
+				if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
+					throw ParserError(
+					    firstLine,
+					    "Extended class must be declarated constructor");
+				}
+				classInfo->primaryConstructor =
+				    context.createConstructorPool.push(
+				        firstLine, *context.currentClassId, nameId,
+				        std::vector<DeclarationNode *>{}, true,
+				        FunctionFlags::FUNC_PUBLIC);
+				classInfo->primaryConstructor->pushFunction(in_data);
+			}
+			context.gotoClass(lastClass);
+			--i;
+		}
+		return node;
+	} catch (const ParserError &err) {
 		context.gotoClass(lastClass);
-		--i;
+		throw err;
 	}
-	return node;
 }
 
 void loadConstructor(in_func, size_t &i) {

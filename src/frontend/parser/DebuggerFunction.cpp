@@ -111,11 +111,78 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			throw ParserError(firstLine, "Expected name but not found");
 		}
 	}
-	// Arguments
-	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
-	    !expect(token, Lexer::TokenType::LPAREN)) {
+
+	if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 		--i;
 		throw ParserError(firstLine, "Expected ( but not found");
+	}
+
+	context.preloadGenericData = nullptr;
+
+	switch (token->type) {
+		case Lexer::TokenType::LT: {
+			if (context.currentClassId) {
+				throw ParserError(token->line, "Generic functions in class doesn't supported now");
+			}
+			context.preloadGenericData = new GenericData();
+			while (true) {
+				if (!nextToken(&token, context.tokens, i) ||
+				    !expect(token, Lexer::TokenType::IDENTIFIER)) {
+					--i;
+					throw ParserError(context.tokens[i].line,
+					                  "Expected class name but not found");
+				}
+				auto &genericDeclarationName =
+				    context.lexerString[token->indexData];
+
+				if (context.preloadGenericData->findDeclaration(
+				        token->indexData)) {
+					throw ParserError(firstLine,
+					                  "Redefined " + genericDeclarationName);
+				}
+
+				Offset id =
+				    context.preloadGenericData->genericDeclarations.size();
+				auto declarationData =
+				    new GenericDeclarationNode(firstLine, token->indexData);
+				context.preloadGenericData->genericDeclarations.push_back(
+				    declarationData);
+				context.preloadGenericData
+				    ->genericDeclarationMap[token->indexData] = id;
+				if (!nextToken(&token, context.tokens, i)) {
+					--i;
+					throw ParserError(
+					    context.tokens[i].line,
+					    "Expected '>' after class name but not found");
+				}
+				switch (token->type) {
+					case Lexer::TokenType::COMMA: {
+						break;
+					}
+					case Lexer::TokenType::GT: {
+						goto finishedGenerics;
+					}
+					default: {
+						throw ParserError(
+						    firstLine,
+						    "Expected '>' after class name but not found");
+					}
+				}
+			}
+		finishedGenerics:;
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(context.tokens[i].line,
+				                  "Generics class must have body");
+			}
+		}
+	}
+
+	// Arguments
+	if (!expect(token, Lexer::TokenType::LPAREN)) {
+		throw ParserError(firstLine, "Expected ( but '" +
+		                                 context.tokens[i].toString(context) +
+		                                 "' found");
 	}
 	auto listDeclarationNode = loadListDeclaration(in_data, i);
 	ClassDeclaration *classDeclaration = nullptr;
@@ -171,6 +238,10 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			node->pushFunction(in_data);
 			auto func = compile.functions[node->id];
 			auto funcInfo = context.functionInfo[node->id];
+			if (context.preloadGenericData) {
+				context.genericFunctionMap[func->name] = node;
+				funcInfo->genericData = context.preloadGenericData;
+			}
 			func->returnId = DefaultClass::nullClassId;
 			context.gotoFunction(node->id);
 			auto &scope =
@@ -198,6 +269,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				context.mustInferenceFunctionType.push_back(node->id);
 			}
 			context.gotoFunction(context.mainFunctionId);
+			context.preloadGenericData = nullptr;
 			return node;
 		}
 		default: {
@@ -244,6 +316,11 @@ createFunc:;
 	}
 	// compile.funcMap[compile.functions[node->id].name]->push_back(node->id);
 	auto func = compile.functions[node->id];
+	auto funcInfo = context.functionInfo[node->id];
+	if (context.preloadGenericData) {
+		context.genericFunctionMap[func->name] = node;
+		funcInfo->genericData = context.preloadGenericData;
+	}
 	// std::cerr<<"Created "<<name+"()"<<" ->
 	// "<<compile.classes[func->returnId]->name<<"\n";
 	context.gotoFunction(node->id);
@@ -269,6 +346,7 @@ createFunc:;
 			                                 " didn't declare return");
 	}
 	context.gotoFunction(context.mainFunctionId);
+	context.preloadGenericData = nullptr;
 	return node;
 }
 

@@ -330,7 +330,7 @@ isNotStatic:;
 }
 
 DeclarationNode *ParserContext::makeDeclarationNode(
-    in_func, uint32_t line, bool isTemp, std::string name,
+    in_func, uint32_t line, bool isTemp, const std::string &name,
     ClassDeclaration *classDeclaration, bool isVal, bool isGlobal,
     bool nullable, bool pushToScope) {
 	auto func =

@@ -58,6 +58,8 @@ constexpr LexerStringId lexerIdget = 18;
 constexpr LexerStringId lexerIdset = 19;
 constexpr LexerStringId lexerIdcontains = 20;
 
+using GenericCaller = ClassDeclaration;
+
 struct ParserContext {
 	// Optimize ram because reuse std::string instead of new std::string in
 	// lexer
@@ -81,7 +83,10 @@ struct ParserContext {
 	HashMap<AnnotationFlags, Lexer::Token> annotationMetadata;
 	// Declaration new functions by user
 	NonReallocatePool<CreateFuncNode> newFunctions;
+	HashMap<std::string, CreateFuncNode *> genericFunctionMap;
 	std::vector<FunctionId> mustInferenceFunctionType;
+	//Find, example func load<T>(a: T)
+	GenericData *preloadGenericData = nullptr;
 	// Declaration new classes by user
 	NonReallocatePool<CreateClassNode> newClasses;
 	HashMap<LexerStringId, ClassId> defaultClassMap;
@@ -101,6 +106,9 @@ struct ParserContext {
 	size_t currentTokenPos = 0;
 	JumpIfNullNode *jumpIfNullNode = nullptr;
 	IfNode *mustReturnValueNode = nullptr;
+
+	std::vector<GenericCaller *> genericCallers;
+
 	// Function information in compiler time
 	ChunkArena<FunctionInfo, 64> functionInfoAllocator;
 	std::vector<FunctionInfo *> functionInfo;
@@ -237,7 +245,7 @@ struct ParserContext {
 	HasClassIdNode *findDeclaration(in_func, uint32_t line,
 	                                const std::string &name, bool inGlobal);
 	DeclarationNode *
-	makeDeclarationNode(in_func, uint32_t line, bool isTemp, std::string name,
+	makeDeclarationNode(in_func, uint32_t line, bool isTemp, const std::string& name,
 	                    ClassDeclaration *classDeclaration, bool isVal,
 	                    bool isGlobal, bool nullable, bool pushToScope = true);
 	inline size_t getBoolConstValuePosition(bool b) { return b ? 1 : 2; }

@@ -1,23 +1,22 @@
 enum State {
-	RUNNING, LOADED;
-	func getName(): String {
-		if (this == RUNNING) {
-			return "RUNNING"
-		}
-		if (this == LOADED) {
-			return "LOADED"
-		}
-		return "NO"
+	INITIAL, RUNNING, LOADED;
+	func getName(): String = when (this) {
+		INITIAL -> "INITIAL"
+		RUNNING -> "RUNNING"
+		LOADED -> "LOADED"
+		else -> "NOTHING"
 	}
 }
 
 func testEnum() {
 	val a = State.RUNNING
 
+	assert(State.INITIAL != State.RUNNING, __FILE__, __LINE__)
 	assert(State.RUNNING == State.RUNNING, __FILE__, __LINE__)
 	assert(State.LOADED != State.RUNNING, __FILE__, __LINE__)
 	assert(a == State.RUNNING, __FILE__, __LINE__)
 	assert(a != State.LOADED, __FILE__, __LINE__)
+	assert(State.INITIAL.getName() == "INITIAL", __FILE__, __LINE__)
 	assert(State.LOADED.getName() == "LOADED", __FILE__, __LINE__)
 	assert(State.RUNNING.getName() == "RUNNING", __FILE__, __LINE__)
 	assert(a.getName() == "RUNNING", __FILE__, __LINE__)

@@ -1,0 +1,477 @@
+#ifndef DEBUGGER_GENERIC_CPP
+#define DEBUGGER_GENERIC_CPP
+
+#include "frontend/ACompiler.hpp"
+#include "frontend/parser/Debugger.hpp"
+#include "shared/ClassFlags.hpp"
+#include <memory>
+
+namespace AutoLang {
+
+ClassId loadClassGenerics(in_func, std::string &name,
+                          ClassDeclaration *classDeclaration) {
+	auto it =
+	    context.defaultClassMap.find(classDeclaration->baseClassLexerStringId);
+	if (it == context.defaultClassMap.end()) {
+		classDeclaration->throwError(
+		    "Bug: Cannot find class " +
+		    context.lexerString[classDeclaration->baseClassLexerStringId]);
+	}
+	ClassId classId = it->second;
+	auto clazz = compile.classes[it->second];
+	auto classInfo = context.classInfo[it->second];
+	{
+		auto it = compile.classMap.find(name);
+		if (it != compile.classMap.end()) {
+			return it->second;
+		}
+	}
+	if (!classInfo->genericData) {
+		classDeclaration->throwError(clazz->name + " is not generics");
+	}
+	auto baseCreateClassNode = context.findCreateClassNode(clazz->id);
+	LexerStringId newNameId = context.createLexerStringIfNotExists(name);
+
+	auto newCreateClassNode = context.newClasses.push(
+	    baseCreateClassNode->line, newNameId, baseCreateClassNode->classFlags);
+	newCreateClassNode->pushClass(in_data);
+	// std::cerr<<"Created create class node
+	// "<<context.lexerString[newNameId]<<"\n";
+	newCreateClassNode->superDeclaration =
+	    baseCreateClassNode->superDeclaration;
+	auto newClassId = newCreateClassNode->classId;
+	context.defaultClassMap[newNameId] = newClassId;
+	context.newDefaultClassesMap[newClassId] = newCreateClassNode;
+
+	std::vector<ClassDeclaration *> genericTypeId;
+
+	for (size_t i = 0; i < classInfo->genericData->genericDeclarations.size();
+	     ++i) {
+		auto &genericDeclaration =
+		    classInfo->genericData->genericDeclarations[i];
+		auto &inputClassId = classDeclaration->inputClassId[i];
+
+		// Change callnode name
+		if (!genericDeclaration->allCallNodes.empty()) {
+			const std::string &name =
+			    compile.classes[*inputClassId->classId]->name;
+			for (auto *callNode : genericDeclaration->allCallNodes) {
+				callNode->nameId = context.createLexerStringIfNotExists(name);
+			}
+		}
+		// Change generics type
+		genericDeclaration->classId = *inputClassId->classId;
+		genericDeclaration->nullable = inputClassId->nullable;
+		auto newClassDeclaration = context.classDeclarationAllocator.push();
+		newClassDeclaration->classId = *inputClassId->classId;
+		newClassDeclaration->nullable = inputClassId->nullable;
+		newClassDeclaration->line = genericDeclaration->line;
+		genericTypeId.push_back(newClassDeclaration);
+
+		for (auto *classDeclaration :
+		     genericDeclaration->allClassDeclarations) {
+			classDeclaration->classId = *inputClassId->classId;
+			if (classDeclaration->mustInference) {
+				classDeclaration->nullable = inputClassId->nullable;
+				classDeclaration->mustInference = false;
+			}
+			classDeclaration->baseClassLexerStringId =
+			    inputClassId->baseClassLexerStringId;
+		}
+	}
+
+	auto newClass = compile.classes[newClassId];
+	newClass->memberMap = clazz->memberMap;
+	newClass->memberId = clazz->memberId;
+	auto newClassInfo = context.classInfo[newClassId];
+	newClassInfo->baseClassId = classId;
+	newClassInfo->genericTypeId = std::move(genericTypeId);
+	newClassInfo->declarationThis = context.declarationNodePool.push(
+	    classInfo->declarationThis->line, newClassId, "this", nullptr, true,
+	    false, false);
+	newClassInfo->declarationThis->id = 0;
+	newClassInfo->declarationThis->classId = newClassId;
+	auto lastCurrentClassId = context.currentClassId;
+	context.currentClassId = newClassId;
+
+	if (newCreateClassNode->superDeclaration &&
+	    !newCreateClassNode->superDeclaration->classId) {
+		newCreateClassNode->superDeclaration->load<true>(in_data);
+		// std::cerr << "Created "
+		//           << newCreateClassNode->superDeclaration->getName(in_data)
+		//           << "\n ";
+	}
+
+	for (auto *member : classInfo->member) {
+		if (member->classDeclaration) {
+			if (!member->classDeclaration->classId) {
+				member->classDeclaration->load<true>(in_data);
+				if (!member->classDeclaration->classId) {
+					classDeclaration->throwError(
+					    "Unsolved " +
+					    member->classDeclaration->getName(in_data));
+				}
+			}
+			// std::cerr
+			//     << "Member declaration: "
+			//     << compile.classes[*member->classDeclaration->classId]->name
+			//     << "\n";
+		} else {
+			// std::cerr << "No" << "\n";
+		}
+		newClassInfo->member.push_back(
+		    static_cast<DeclarationNode *>(member->copy(in_data)));
+	}
+
+	newClassInfo->declarationThis->classId = newClassId;
+	// newClassInfo->func = classInfo->func;
+	newClassInfo->staticMember = classInfo->staticMember;
+	newClassInfo->parent = classInfo->parent;
+	newClassInfo->staticFunc = classInfo->staticFunc;
+
+	// newClass->funcMap = clazz->funcMap;
+
+	for (auto &[classDeclaration, node] :
+	     classInfo->genericData->mustRenameNodes) {
+		if (!classDeclaration) {
+			classDeclaration->load<true>(in_data);
+			if (!classDeclaration->classId) {
+				classDeclaration->throwError(
+				    "Unsolved " + classDeclaration->getName(in_data));
+			}
+		}
+		switch (node->kind) {
+			case NodeType::UNKNOW: {
+				auto unknowNode = static_cast<UnknowNode *>(node);
+				auto it = context.lexerStringMap.find(
+				    classDeclaration->getName(in_data));
+				if (it == context.lexerStringMap.end()) {
+					classDeclaration->throwError(
+					    "Unsolved " + classDeclaration->getName(in_data));
+				}
+				unknowNode->nameId = it->second;
+				break;
+			}
+			case NodeType::CALL: {
+				auto callNode = static_cast<CallNode *>(node);
+				auto it = context.lexerStringMap.find(
+				    classDeclaration->getName(in_data));
+				if (it == context.lexerStringMap.end()) {
+					classDeclaration->throwError(
+					    "BUnsolved " + classDeclaration->getName(in_data));
+				}
+				callNode->nameId = it->second;
+				break;
+			}
+		}
+	}
+
+	ParserContext::mode = baseCreateClassNode->mode;
+
+	for (auto *declarationNode : classInfo->allDeclarationNode) {
+		if (declarationNode->classDeclaration) {
+			if (!declarationNode->classDeclaration->classId) {
+				declarationNode->classDeclaration->load<false>(in_data);
+				if (!declarationNode->classDeclaration->classId) {
+					classDeclaration->throwError(
+					    "Bug: Cannot find class name " +
+					    declarationNode->classDeclaration->getName(in_data));
+				}
+				// std::cerr << "loaded "
+				//           <<
+				//           declarationNode->classDeclaration->getName(in_data)
+				//           << "\n";
+				declarationNode->optimize(in_data);
+				declarationNode->classDeclaration->classId = std::nullopt;
+				// declarationNode->classDeclaration = nullptr;
+				continue;
+			}
+		}
+		declarationNode->optimize(in_data);
+		// declarationNode->classDeclaration = nullptr;
+	}
+
+	newCreateClassNode->body.nodes.reserve(
+	    baseCreateClassNode->body.nodes.size());
+	for (auto *node : baseCreateClassNode->body.nodes) {
+		newCreateClassNode->body.nodes.push_back(node->copy(in_data));
+	}
+
+	if (classInfo->primaryConstructor) {
+		std::vector<DeclarationNode *> arguments;
+		arguments.reserve(classInfo->primaryConstructor->arguments.size());
+		for (auto argument : classInfo->primaryConstructor->arguments) {
+			arguments.push_back(
+			    static_cast<DeclarationNode *>(argument->copy(in_data)));
+		}
+		auto constructor = context.createConstructorPool.push(
+		    classInfo->primaryConstructor->line, newClassId, newNameId,
+		    arguments, true, classInfo->primaryConstructor->functionFlags);
+		newClassInfo->primaryConstructor = constructor;
+		newClassInfo->primaryConstructor->pushFunction(in_data);
+	} else {
+		newClassInfo->secondaryConstructor.reserve(
+		    classInfo->secondaryConstructor.size());
+		for (auto *constructor : classInfo->secondaryConstructor) {
+			std::vector<DeclarationNode *> arguments;
+			arguments.reserve(constructor->arguments.size());
+			for (auto argument : constructor->arguments) {
+				arguments.push_back(
+				    static_cast<DeclarationNode *>(argument->copy(in_data)));
+			}
+			auto newConstructor = context.createConstructorPool.push(
+			    constructor->line, newClassId, newNameId, arguments, false,
+			    constructor->functionFlags);
+			newClassInfo->secondaryConstructor.push_back(newConstructor);
+			newConstructor->pushFunction(in_data);
+			// ParserContext::mode = constructor->mode;
+			auto lastCurrentFunctionId = context.currentFunctionId;
+			context.currentFunctionId = newConstructor->funcId;
+			newConstructor->body.nodes.reserve(constructor->body.nodes.size());
+			for (auto *node : constructor->body.nodes) {
+				newConstructor->body.nodes.push_back(node->copy(in_data));
+			}
+			context.currentFunctionId = lastCurrentFunctionId;
+		}
+	}
+
+	auto lastCurrentFunctionId = context.currentFunctionId;
+
+	for (auto *createFuncNode : classInfo->createFunctionNodes) {
+		auto funcInfo = context.functionInfo[createFuncNode->id];
+		std::vector<DeclarationNode *> arguments;
+		arguments.reserve(createFuncNode->arguments.size());
+		for (auto argument : createFuncNode->arguments) {
+			arguments.push_back(
+			    static_cast<DeclarationNode *>(argument->copy(in_data)));
+		}
+		auto newCreateFuncNode = context.newFunctions.push(
+		    createFuncNode->line, newClassId,
+		    createFuncNode->nameId == lexerId__CLASS__ ? newNameId
+		                                               : createFuncNode->nameId,
+		    nullptr, arguments, createFuncNode->functionFlags);
+		if (createFuncNode->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
+			newCreateFuncNode->pushNativeFunction(
+			    in_data, compile.functions[createFuncNode->id]->native);
+		} else {
+			newCreateFuncNode->pushFunction(in_data);
+		}
+		auto newFunc = compile.functions[newCreateFuncNode->id];
+		auto newFuncInfo = context.functionInfo[newCreateFuncNode->id];
+		newFunc->returnId = compile.functions[createFuncNode->id]->returnId;
+		if (createFuncNode->classDeclaration) {
+			if (!createFuncNode->classDeclaration->classId) {
+				createFuncNode->classDeclaration->load<false>(in_data);
+				if (!createFuncNode->classDeclaration->classId) {
+					classDeclaration->throwError("wtf");
+				}
+				createFuncNode->classDeclaration->classId = std::nullopt;
+			}
+			newFunc->returnId = *createFuncNode->classDeclaration->classId;
+		}
+		context.currentFunctionId = newCreateFuncNode->id;
+		// ParserContext::mode = createFuncNode->mode; //Loaded in new class
+		newCreateFuncNode->body.nodes.reserve(
+		    createFuncNode->body.nodes.size());
+		for (auto *node : createFuncNode->body.nodes) {
+			newCreateFuncNode->body.nodes.push_back(node->copy(in_data));
+		}
+		if (funcInfo->inferenceNode) {
+			newFuncInfo->inferenceNode =
+			    static_cast<ReturnNode *>(newCreateFuncNode->body.nodes[0]);
+			context.mustInferenceFunctionType.push_back(newFunc->id);
+		}
+	}
+
+	context.currentFunctionId = lastCurrentFunctionId;
+	context.currentClassId = lastCurrentClassId;
+
+	// std::cerr << "Created " << newClass->name << "\n";
+	return newClassId;
+}
+
+FunctionId loadFunctionGenerics(in_func, std::string &name,
+                                ClassDeclaration *classDeclaration) {
+	auto it = compile.funcMap.find(
+	    context.lexerString[classDeclaration->baseClassLexerStringId]);
+	if (it == compile.funcMap.end()) {
+		classDeclaration->throwError(
+		    "Bug: Cannot find function " +
+		    context.lexerString[classDeclaration->baseClassLexerStringId]);
+	}
+	{
+		auto it = compile.funcMap.find(name);
+		if (it != compile.funcMap.end()) {
+			return it->second[0];
+		}
+	}
+	FunctionId funcId = it->second[0];
+	auto func = compile.functions[funcId];
+	auto funcInfo = context.functionInfo[funcId];
+	if (!funcInfo->genericData) {
+		classDeclaration->throwError(func->name + " is not generics");
+	}
+	auto createFuncNode = context.genericFunctionMap[func->name];
+	ParserContext::mode = createFuncNode->mode;
+
+	std::vector<ClassDeclaration *> genericTypeId;
+
+	for (size_t i = 0; i < funcInfo->genericData->genericDeclarations.size();
+	     ++i) {
+		auto &genericDeclaration =
+		    funcInfo->genericData->genericDeclarations[i];
+		auto &inputClassId = classDeclaration->inputClassId[i];
+
+		// Change callnode name
+		if (!genericDeclaration->allCallNodes.empty()) {
+			const std::string &name =
+			    compile.classes[*inputClassId->classId]->name;
+			for (auto *callNode : genericDeclaration->allCallNodes) {
+				callNode->nameId = context.createLexerStringIfNotExists(name);
+			}
+		}
+		// Change generics type
+		genericDeclaration->classId = *inputClassId->classId;
+		genericDeclaration->nullable = inputClassId->nullable;
+		auto newClassDeclaration = context.classDeclarationAllocator.push();
+		newClassDeclaration->classId = *inputClassId->classId;
+		newClassDeclaration->nullable = inputClassId->nullable;
+		newClassDeclaration->line = genericDeclaration->line;
+		genericTypeId.push_back(newClassDeclaration);
+
+		for (auto *classDeclaration :
+		     genericDeclaration->allClassDeclarations) {
+			classDeclaration->classId = *inputClassId->classId;
+			if (classDeclaration->mustInference) {
+				classDeclaration->nullable = inputClassId->nullable;
+				classDeclaration->mustInference = false;
+			}
+			classDeclaration->baseClassLexerStringId =
+			    inputClassId->baseClassLexerStringId;
+		}
+	}
+
+	auto lastCurrentFunctionId = context.currentFunctionId;
+	std::vector<DeclarationNode *> arguments;
+	arguments.reserve(createFuncNode->arguments.size());
+	for (auto argument : createFuncNode->arguments) {
+		arguments.push_back(
+		    static_cast<DeclarationNode *>(argument->copy(in_data)));
+	}
+	auto newCreateFuncNode = context.newFunctions.push(
+	    createFuncNode->line, createFuncNode->contextCallClassId,
+	    context.createLexerStringIfNotExists(name), nullptr, arguments,
+	    createFuncNode->functionFlags);
+
+	if (createFuncNode->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
+		newCreateFuncNode->pushNativeFunction(
+		    in_data, compile.functions[createFuncNode->id]->native);
+	} else {
+		newCreateFuncNode->pushFunction(in_data);
+	}
+	auto newFunc = compile.functions[newCreateFuncNode->id];
+	auto newFuncInfo = context.functionInfo[newCreateFuncNode->id];
+	newFunc->maxDeclaration = func->maxDeclaration;
+	newFuncInfo->declaration = funcInfo->declaration;
+	newFunc->returnId = compile.functions[createFuncNode->id]->returnId;
+	std::cerr << "THIS " << newFunc->name << "\n";
+	if (createFuncNode->classDeclaration) {
+		if (!createFuncNode->classDeclaration->classId) {
+			createFuncNode->classDeclaration->load<false>(in_data);
+			if (!createFuncNode->classDeclaration->classId) {
+				classDeclaration->throwError("wtf");
+			}
+			createFuncNode->classDeclaration->classId = std::nullopt;
+		}
+		newFunc->returnId = *createFuncNode->classDeclaration->classId;
+	}
+	context.currentFunctionId = newCreateFuncNode->id;
+	// ParserContext::mode = createFuncNode->mode; //Loaded in new class
+	newCreateFuncNode->body.nodes.reserve(createFuncNode->body.nodes.size());
+	for (auto *node : createFuncNode->body.nodes) {
+		newCreateFuncNode->body.nodes.push_back(node->copy(in_data));
+	}
+	if (funcInfo->inferenceNode) {
+		newFuncInfo->inferenceNode =
+		    static_cast<ReturnNode *>(newCreateFuncNode->body.nodes[0]);
+		context.mustInferenceFunctionType.push_back(newFunc->id);
+	}
+
+	context.currentFunctionId = lastCurrentFunctionId;
+
+	for (auto &[classDeclaration, node] :
+	     funcInfo->genericData->mustRenameNodes) {
+		if (!classDeclaration) {
+			classDeclaration->load<true>(in_data);
+			if (!classDeclaration->classId) {
+				classDeclaration->throwError(
+				    "Unsolved " + classDeclaration->getName(in_data));
+			}
+		}
+		switch (node->kind) {
+			case NodeType::UNKNOW: {
+				auto unknowNode = static_cast<UnknowNode *>(node);
+				auto it = context.lexerStringMap.find(
+				    classDeclaration->getName(in_data));
+				if (it == context.lexerStringMap.end()) {
+					classDeclaration->throwError(
+					    "Unsolved " + classDeclaration->getName(in_data));
+				}
+				unknowNode->nameId = it->second;
+				break;
+			}
+			case NodeType::CALL: {
+				auto callNode = static_cast<CallNode *>(node);
+				auto it = context.lexerStringMap.find(
+				    classDeclaration->getName(in_data));
+				if (it == context.lexerStringMap.end()) {
+					classDeclaration->throwError(
+					    "Unsolved " + classDeclaration->getName(in_data));
+				}
+				callNode->nameId = it->second;
+				break;
+			}
+		}
+	}
+
+	for (auto &[declarationNode, value] : funcInfo->staticDeclaration) {
+		auto node = context.makeDeclarationNode(
+		    in_data, declarationNode->line, false,
+		    newFunc->name + declarationNode->name,
+		    declarationNode->classDeclaration, declarationNode->isVal, true,
+		    declarationNode->nullable, true);
+		if (node->classDeclaration) {
+			if (!node->classDeclaration->classId) {
+				node->classDeclaration->load<false>(in_data);
+				if (!node->classDeclaration->classId) {
+					classDeclaration->throwError(
+					    "Bug: Cannot find class name " +
+					    node->classDeclaration->getName(in_data));
+				}
+				// std::cerr << "loaded "
+				//           <<
+				//           declarationNode->classDeclaration->getName(in_data)
+				//           << "\n";
+				node->optimize(in_data);
+				node->classDeclaration->classId = std::nullopt;
+				node->classDeclaration = nullptr;
+				// declarationNode->classDeclaration = nullptr;
+				continue;
+			}
+		}
+		node->optimize(in_data);
+		if (value) {
+			auto varNode =
+			    context.varPool.push(declarationNode->line, node, false, true);
+			auto setNode = context.setValuePool.push(declarationNode->line,
+			                                         varNode, value, true);
+			context.staticNode.push_back(setNode);
+		}
+		// declarationNode->classDeclaration = nullptr;
+	}
+
+	return newFunc->id;
+}
+
+} // namespace AutoLang
+#endif

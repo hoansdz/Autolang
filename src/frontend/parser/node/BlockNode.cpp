@@ -58,6 +58,8 @@ void BlockNode::loadReturnValueClassId(in_func, uint32_t line,
 
 void BlockNode::loadClassAndOptimize(in_func) {
 	std::optional<ClassId> currentClassId;
+	bool nullable = false;
+	bool isStatic = true;
 	for (size_t i = 0; i < nodes.size(); ++i) {
 		auto *node = nodes[i];
 		node->optimize(in_data);
@@ -68,15 +70,19 @@ void BlockNode::loadClassAndOptimize(in_func) {
 					break;
 				loadReturnValueClassId(in_data, line, currentClassId,
 				                       n->classId);
+				nullable = nullable || n->isNullable();
+				isStatic = isStatic && n->isStaticValue();
 				break;
 			}
 			case NodeType::CONST:
 			case NodeType::BINARY:
 			case NodeType::GET_PROP:
 			case NodeType::VAR: {
-				loadReturnValueClassId(
-				    in_data, line, currentClassId,
-				    static_cast<HasClassIdNode *>(node)->classId);
+				auto n = static_cast<HasClassIdNode *>(node);
+				loadReturnValueClassId(in_data, line, currentClassId,
+				                       n->classId);
+				nullable = nullable || n->isNullable();
+				isStatic = isStatic && n->isStaticValue();
 				break;
 			}
 			case NodeType::IF: {
@@ -84,6 +90,8 @@ void BlockNode::loadClassAndOptimize(in_func) {
 				if (n->mustReturnValue) {
 					loadReturnValueClassId(in_data, line, currentClassId,
 					                       n->classId);
+					nullable = nullable || n->isNullable();
+					isStatic = isStatic && n->isStaticValue();
 					break;
 				}
 				break;
@@ -95,6 +103,8 @@ void BlockNode::loadClassAndOptimize(in_func) {
 	if (!currentClassId) {
 		throwError("Expression branch must return a value");
 	}
+	context.mustReturnValueNode->nullable = nullable;
+	context.mustReturnValueNode->isStatic = isStatic;
 	if (context.mustReturnValueNode->classId == DefaultClass::nullClassId) {
 		context.mustReturnValueNode->classId = *currentClassId;
 		return;

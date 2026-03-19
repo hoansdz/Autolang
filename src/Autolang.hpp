@@ -10,6 +10,7 @@
 #include "frontend/parser/FunctionInfo.cpp"
 #include "shared/CompiledProgram.cpp"
 #include "frontend/parser/ClassDeclaration.cpp"
+#include "frontend/parser/DebuggerGeneric.cpp"
 #include "frontend/parser/DebuggerWhen.cpp"
 #include "frontend/parser/DebuggerEnum.cpp"
 #include "frontend/parser/DebuggerAnnotations.cpp"
