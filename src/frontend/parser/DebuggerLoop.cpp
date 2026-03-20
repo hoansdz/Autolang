@@ -53,12 +53,13 @@ ExprNode *loadFor(in_func, size_t &i) {
 		throw ParserError(context.tokens[i].line,
 		                  "Expected name but not found");
 	}
+	auto baseName = token->indexData;
 	const std::string &name = context.lexerString[token->indexData];
 	VarNode *declaration;
 	context.getCurrentFunctionInfo(in_data)->scopes.emplace_back();
 	// Create temp declaration
 	auto declarationNode = context.makeDeclarationNode(
-	    in_data, token->line, true, name, nullptr, true,
+	    in_data, token->line, true, baseName, name, nullptr, true,
 	    context.currentFunctionId == context.mainFunctionId, false, true);
 	declarationNode->classId = AutoLang::DefaultClass::nullClassId;
 	declaration =
@@ -79,8 +80,10 @@ ExprNode *loadFor(in_func, size_t &i) {
 	if (data->kind != NodeType::RANGE) {
 		// Create temp declaration
 		auto declarationNode = context.makeDeclarationNode(
-		    in_data, token->line, true, ".iterator", nullptr, true,
-		    context.currentFunctionId == context.mainFunctionId, false, true);
+		    in_data, token->line, true,
+		    context.createLexerStringIfNotExists(".iterator"), ".iterator",
+		    nullptr, true, context.currentFunctionId == context.mainFunctionId,
+		    false, true);
 		declarationNode->classId = AutoLang::DefaultClass::intClassId;
 		iteratorNode =
 		    context.varPool.push(firstLine, declarationNode, false, false);

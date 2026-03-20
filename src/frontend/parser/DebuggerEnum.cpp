@@ -44,7 +44,8 @@ inline void loadEnumBody(in_func, size_t &i, CreateClassNode *node,
 				}
 				Offset id = compile.registerEnumConstPool(node->classId);
 				classInfo->constValue[token->indexData] =
-				    new ConstValueNode(token->line, compile.constPool[id], id);
+				    context.constValuePool.push(token->line,
+				                                compile.constPool[id], id);
 				if (!nextToken(&token, context.tokens, i)) {
 					throw ParserError(firstLine,
 					                  "Bug: Lexer is not ensure close bracket");
@@ -117,7 +118,8 @@ void loadEnum(in_func, size_t &i) {
 	auto clazz = compile.classes[node->classId];
 	context.gotoClass(clazz);
 	auto declarationThis = context.declarationNodePool.push(
-	    firstLine, context.currentClassId, "this", nullptr, true, false, false);
+	    firstLine, context.currentClassId, lexerIdthis, "this", nullptr, true,
+	    false, false);
 	declarationThis->classId = node->classId;
 	//'this' is always input at first position
 	declarationThis->id = 0;

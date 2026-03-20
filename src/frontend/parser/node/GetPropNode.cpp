@@ -12,17 +12,15 @@ ExprNode *GetPropNode::resolve(in_func) {
 	if (caller->kind == NodeType::CLASS_ACCESS) {
 		auto *classInfo = context.classInfo[caller->classId];
 		{
-			auto it = context.lexerStringMap.find(name);
-			if (it != context.lexerStringMap.end()) {
-				auto itLoadConst = classInfo->constValue.find(it->second);
-				if (itLoadConst != classInfo->constValue.end()) {
-					return itLoadConst->second;
-				}
+			auto itLoadConst = classInfo->constValue.find(nameId);
+			if (itLoadConst != classInfo->constValue.end()) {
+				return itLoadConst->second;
 			}
 		}
-		auto it = classInfo->staticMember.find(name);
+		auto it = classInfo->staticMember.find(nameId);
 		if (it == classInfo->staticMember.end()) {
-			throwError("Cannot find static member name: '" + name + "'");
+			throwError("Cannot find static member name: '" +
+			           context.lexerString[nameId] + "'");
 		}
 		auto declarationNode = it->second;
 		ExprNode::deleteNode(caller);
@@ -59,10 +57,11 @@ void GetPropNode::optimize(in_func) {
 	}
 	auto clazz = compile.classes[caller->classId];
 	auto classInfo = context.classInfo[clazz->id];
+	const auto &name = context.lexerString[nameId];
 	auto it = clazz->memberMap.find(name);
 	if (it == clazz->memberMap.end()) {
 		// Find static member
-		auto it_ = classInfo->staticMember.find(name);
+		auto it_ = classInfo->staticMember.find(nameId);
 		if (it_ == classInfo->staticMember.end())
 			throwError("Cannot find member name '" + name + "' in class " +
 			           clazz->name);
@@ -110,7 +109,7 @@ ExprNode *GetPropNode::copy(in_func) {
 	                : nullptr,
 	    contextCallClassId,
 	    caller ? static_cast<HasClassIdNode *>(caller->copy(in_data)) : nullptr,
-	    name, isInitial, nullable, accessNullable);
+	    nameId, isInitial, nullable, accessNullable);
 	newNode->isStore = isStore;
 	return newNode;
 }
@@ -185,7 +184,7 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		}
 		warning(in_data, "Access static variables: we recommend call " +
 		                     compile.classes[caller->classId]->name + "." +
-		                     name);
+		                     context.lexerString[nameId]);
 		accessNullable = false;
 	}
 	bytecodes.emplace_back(isStore ? Opcode::STORE_GLOBAL

@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
 			// compiler.run();
 			// compiler.refresh();
 			compiler.loadMainSource(
-			    "./tests/source.atl",
+			    "./tests/testCorrectness.atl",
 			    {{"hi", [](NativeFuncInput) -> AutoLang::AObject * {
 				      std::cerr << "Duoc roi ne!!!\n";
 				      return nullptr;

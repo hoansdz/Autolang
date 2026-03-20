@@ -417,6 +417,24 @@ void ACompiler::generateBytecodes() {
 			newClass->loadSuper(in_data);
 		}
 
+		printDebug("Validate generic declaration condition");
+		for (auto &[declaration, vec] : context.checkValidateExtends) {
+			ClassId conditionClassId =
+			    *(*declaration->condition).classDeclaration->classId;
+			for (auto *inputClass : vec) {
+				ClassId inputClassId = *inputClass->classId;
+				if (conditionClassId != inputClassId &&
+				    !compile.classes[inputClassId]->inheritance.get(
+				        conditionClassId)) {
+					inputClass->throwError(
+					    context.lexerString[declaration->nameId] +
+					    " must be extends " +
+					    compile.classes[conditionClassId]->name + " but " +
+					    compile.classes[inputClassId]->name + " found");
+				}
+			}
+		}
+
 		printDebug("Start optimize detach member default value");
 		for (size_t i = 0; i < sizeNewClasses; ++i) {
 			auto *newClass = context.newClasses[i];

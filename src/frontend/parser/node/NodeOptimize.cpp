@@ -205,8 +205,8 @@ ExprNode *UnknowNode::resolve(in_func) {
 			auto *classInfo = context.classInfo[*contextCallClassId];
 
 			{
-				auto correctNode = classInfo->findDeclaration(
-				    in_data, line, context.lexerString[nameId]);
+				auto correctNode =
+				    classInfo->findDeclaration(in_data, line, nameId);
 				if (correctNode) {
 					static_cast<AccessNode *>(correctNode)->nullable = nullable;
 					ExprNode::deleteNode(this);
@@ -398,9 +398,7 @@ ExprNode *VarNode::copy(in_func) {
 	    isStore, nullable);
 }
 
-bool VarNode::isStaticValue() {
-	return declaration && declaration->isGlobal;
-}
+bool VarNode::isStaticValue() { return declaration && declaration->isGlobal; }
 
 } // namespace AutoLang
 

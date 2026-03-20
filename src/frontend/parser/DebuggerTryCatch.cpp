@@ -35,6 +35,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i) {
 		throw ParserError(firstLine,
 		                  "Expected variable name after catch but not found");
 	}
+	LexerStringId baseName = token->indexData;
 	const std::string &name = context.lexerString[token->indexData];
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::RPAREN)) {
@@ -51,7 +52,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i) {
 	auto funcInfo = context.getCurrentFunctionInfo(in_data);
 	funcInfo->scopes.emplace_back();
 	auto declarationNode = context.makeDeclarationNode(
-	    in_data, token->line, true, name, nullptr, true,
+	    in_data, token->line, true, baseName, name, nullptr, true,
 	    context.currentFunctionId == context.mainFunctionId, false);
 	declarationNode->classId = AutoLang::DefaultClass::exceptionClassId;
 	funcInfo->scopes.back()[name] = declarationNode;

@@ -141,7 +141,8 @@ void SetNode::optimize(in_func) {
 			if (detachNode->isVal) {
 				throwError("Cannot change " +
 				           compile.classes[detachNode->caller->classId]->name +
-				           "." + detachNode->name + " because it's val");
+				           "." + context.lexerString[detachNode->nameId] +
+				           " because it's val");
 			}
 			// Nullable
 			if (value->classId == AutoLang::DefaultClass::nullClassId) {

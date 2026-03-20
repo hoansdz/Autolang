@@ -768,6 +768,7 @@ std::vector<DeclarationNode *> loadListDeclaration(in_func, size_t &i,
 		if (!expect(token, Lexer::TokenType::IDENTIFIER)) {
 			throw ParserError(token->line, "Expected identifier but not found");
 		}
+		LexerStringId baseName = token->indexData;
 		const std::string &name = context.lexerString[token->indexData];
 		if (!nextToken(&token, context.tokens, i) ||
 		    !expect(token, Lexer::TokenType::COLON)) {
@@ -781,8 +782,8 @@ std::vector<DeclarationNode *> loadListDeclaration(in_func, size_t &i,
 		if (!nextToken(&token, context.tokens, i))
 			break;
 		auto node = context.makeDeclarationNode(
-		    in_data, token->line, false, name, classDeclaration, isVal, false,
-		    classDeclaration->nullable, false);
+		    in_data, token->line, false, baseName, name, classDeclaration,
+		    isVal, false, classDeclaration->nullable, false);
 		nodes.push_back(node);
 		switch (token->type) {
 			using namespace Lexer;
@@ -957,15 +958,15 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 					case NodeType::VAR: {
 						node = context.getPropPool.push(
 						    token->line, nullptr, context.currentClassId, node,
-						    context.lexerString[token->indexData], false,
-						    temp->isNullable(), accessNullable);
+						    token->indexData, false, temp->isNullable(),
+						    accessNullable);
 						ExprNode::deleteNode(temp);
 						break;
 					}
 					case NodeType::UNKNOW: {
 						node = context.getPropPool.push(
 						    token->line, nullptr, context.currentClassId, node,
-						    context.lexerString[token->indexData], false,
+						    token->indexData, false,
 						    static_cast<UnknowNode *>(temp)->nullable,
 						    accessNullable);
 						ExprNode::deleteNode(temp);
@@ -1096,7 +1097,9 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 				context.allClassDeclarations.push_back(classDeclaration);
 				--i;
 				auto name = classDeclaration->getName(in_data);
-				std::cerr << "Created unknownode: " << name << "\n";
+				// std::cerr << "Created unknownode: " << name << "\n";
+				// std::cerr << ParserContext::mode->path << ":" << token->line
+				//           << "\n";
 				LexerStringId newNameId =
 				    context.createLexerStringIfNotExists(name);
 
@@ -1110,8 +1113,8 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 				}
 				return node;
 			}
-			std::cerr << "Created callnode "
-			          << classDeclaration->getName(in_data) << "\n";
+			// std::cerr << "Created callnode "
+			//           << classDeclaration->getName(in_data) << "\n";
 			auto arguments = loadListArgument(in_data, i);
 			auto callNode = context.callNodePool.push(
 			    firstLine, context.currentClassId, nullptr,
@@ -1124,7 +1127,7 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			// Must rename in both if T in class, R in function
 			context.genericCallers.push_back(classDeclaration);
 			// funcInfo->genericData->mustRenameNodes[classDeclaration] =
-				//     callNode;
+			//     callNode;
 			if (context.currentClassId) {
 				auto classInfo = context.getCurrentClassInfo(in_data);
 				if (classInfo->genericData) {
@@ -1260,8 +1263,8 @@ HasClassIdNode *findVarNode(in_func, size_t &i, LexerStringId nameId,
 	auto constValueNode = findConstValueNode(in_data, i, nameId);
 	if (constValueNode != nullptr)
 		return constValueNode;
-	auto node = context.findDeclaration(in_data, context.tokens[i].line,
-	                                    context.lexerString[nameId], true);
+	auto node =
+	    context.findDeclaration(in_data, context.tokens[i].line, nameId, true);
 	if (!node)
 		return nullptr;
 	if (static_cast<AccessNode *>(node)->nullable) // #

@@ -6,10 +6,10 @@
 namespace AutoLang {
 
 AccessNode *ClassInfo::findDeclaration(in_func, uint32_t line,
-                                       const std::string &name, bool isStatic) {
+                                       LexerStringId nameId, bool isStatic) {
 	// Find static member
 	{
-		auto it = staticMember.find(name);
+		auto it = staticMember.find(nameId);
 		if (it != staticMember.end()) {
 			return context.varPool.push(line, it->second, false,
 			                            it->second->nullable);
@@ -17,6 +17,7 @@ AccessNode *ClassInfo::findDeclaration(in_func, uint32_t line,
 		// Not found
 	}
 	// if (declarationThis) {
+	const auto &name = context.lexerString[nameId];
 	auto clazz = compile.classes[declarationThis->classId];
 	auto it = clazz->memberMap.find(name);
 	if (it != clazz->memberMap.end()) {
@@ -25,21 +26,14 @@ AccessNode *ClassInfo::findDeclaration(in_func, uint32_t line,
 			ParserError(line, name + " is not static");
 		return context.getPropPool.push(
 		    line, node, declarationThis->classId,
-		    context.varPool.push(line, declarationThis, false, false), name,
+		    context.varPool.push(line, declarationThis, false, false), nameId,
 		    false, node->nullable, false);
 	}
 	// }
 	return nullptr;
 }
 
-ClassInfo::~ClassInfo() {
-	if (genericData) {
-		for (auto declaration : genericData->genericDeclarations) {
-			delete declaration;
-		}
-		delete genericData;
-	}
-}
+ClassInfo::~ClassInfo() {}
 
 } // namespace AutoLang
 

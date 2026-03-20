@@ -11,33 +11,42 @@ namespace AutoLang {
 
 inline bool isFunctionExist(in_func, const std::string &name);
 inline bool isClassExist(in_func, const std::string &name);
-inline bool isDeclarationExist(in_func, const std::string &name);
+inline bool isDeclarationExist(in_func, LexerStringId nameId);
 
 // var val name: className = value
 struct DeclarationNode : HasClassIdNode {
 	std::optional<ClassId> contextCallClassId;
 	Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC;
+	LexerStringId baseName;
 	std::string name;
-	FunctionId id;
+	DeclarationOffset id;
 	ClassDeclaration *classDeclaration;
 	bool isGlobal;
 	bool isVal;
 	bool nullable;
 	bool mustInferenceNullable = false;
 	DeclarationNode(uint32_t line, std::optional<ClassId> contextCallClassId,
-	                std::string name, ClassDeclaration *classDeclaration,
-	                bool isVal, bool isGlobal, bool nullable)
+	                LexerStringId baseName, std::string name,
+	                ClassDeclaration *classDeclaration, bool isVal,
+	                bool isGlobal, bool nullable)
 	    : HasClassIdNode(NodeType::DECLARATION, 0, line),
-	      contextCallClassId(contextCallClassId), name(std::move(name)),
-	      classDeclaration(classDeclaration), isGlobal(isGlobal), isVal(isVal),
-	      nullable(nullable) {}
+	      contextCallClassId(contextCallClassId), baseName(baseName),
+	      name(std::move(name)), classDeclaration(classDeclaration),
+	      isGlobal(isGlobal), isVal(isVal), nullable(nullable) {}
 	void optimize(in_func) override;
 	ExprNode *copy(in_func) override;
 	~DeclarationNode() {}
 };
 
+struct GenericDeclarationCondition {
+	// enum Condition : uint32_t { MUST_EXTENDS, MUST_IS };
+	// Condition condition;
+	ClassDeclaration *classDeclaration;
+};
+
 struct GenericDeclarationNode : NullableNode {
 	LexerStringId nameId;
+	std::optional<GenericDeclarationCondition> condition;
 	std::vector<ClassDeclaration *> allClassDeclarations;
 	std::vector<CallNode *> allCallNodes;
 	GenericDeclarationNode(uint32_t line, LexerStringId nameId)

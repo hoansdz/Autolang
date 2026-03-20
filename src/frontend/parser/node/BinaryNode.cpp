@@ -269,6 +269,7 @@ void BinaryNode::optimize(in_func) {
 				throwError("Expected value if use operator '" +
 				           Lexer::Token(0, op).toString(context) + "'");
 			}
+			classId = DefaultClass::boolClassId;
 			return;
 		}
 		default: {

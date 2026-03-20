@@ -1,18 +1,37 @@
-func load<T, R>(value: T?, x: R) {
-	static var m: T?
-	m = value
-	println(m)
-}
-enum A {
-	
-}
+
 class M<T> {
-	lateinit val value: T
+	static var value: T?
 	constructor (value: T) {
+		println(this.value)
 		this.value = value
-		load<Int, Int>(1, 0)
-		load<Float, Int>(2, 0)
-		load<String, Int>("HELLO", 0)
+		println(this.value)
 	}
 }
+
+M<Int>(5)
+M<String>("Hello")
+println(M<Int>.value)
+println(M<Float>.value)
+println(M<String>.value)
 // println(Map<Int, Int>.Map<Int, Int>())
+
+class GAnimal() {
+	func sound() = "Nothing"
+}
+
+class GDog extends GAnimal {
+	constructor () {
+		super()
+	}
+	func sound() = "Go"
+}
+
+class GCat extends GAnimal {
+	constructor () {
+		super()
+	}
+	func sound() = "Meow"
+}
+
+val a: GCat = GCat()
+println(a.sound())

@@ -19,8 +19,6 @@ struct FunctionInfo {
 	bool *nullableArgs = nullptr;
 	ReturnNode *inferenceNode = nullptr;
 	std::vector<ClassDeclaration *> genericTypeId;
-	std::vector<std::pair<DeclarationNode *, HasClassIdNode *>>
-	    staticDeclaration;
 	Offset virtualPosition;
 	int64_t hash;
 	FunctionInfo() : declaration(0), block(0) { scopes.emplace_back(); }

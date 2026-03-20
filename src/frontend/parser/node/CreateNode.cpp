@@ -59,13 +59,24 @@ void DeclarationNode::optimize(in_func) {
 
 ExprNode *DeclarationNode::copy(in_func) {
 	if (context.currentClassId) {
-		if (name == "this") {
+		if (baseName == lexerIdthis) {
 			return context.classInfo[*context.currentClassId]->declarationThis;
 		}
 	}
 	auto newNode = context.declarationNodePool.push(
-	    line, context.currentClassId, name, nullptr, isVal, isGlobal, nullable);
-	newNode->id = id;
+	    line, context.currentClassId, baseName, name, nullptr, isVal, isGlobal,
+	    nullable);
+	if (isGlobal && context.newPositionOfStaticDeclaration) {
+		auto it = context.newPositionOfStaticDeclaration->find(id);
+		if (it != context.newPositionOfStaticDeclaration->end()) {
+			newNode->id = it->second;
+		} else {
+			newNode->id = id;
+		}
+	} else {
+		newNode->id = id;
+	}
+
 	if (classDeclaration) {
 		if (!classDeclaration->classId) {
 			classDeclaration->load<true>(in_data);
@@ -214,7 +225,7 @@ void CreateClassNode::optimize(in_func) {
 	if (isFunctionExist(in_data, name))
 		throwError("Cannot declare class with the same name as function name " +
 		           name);
-	if (isDeclarationExist(in_data, name))
+	if (isDeclarationExist(in_data, nameId))
 		throwError("Cannot declare class with the same name as variable name " +
 		           name);
 	auto classInfo = context.classInfo[classId];
@@ -381,8 +392,9 @@ void CreateClassNode::loadSuper(in_func) {
 						func->functionFlags |= FunctionFlags::FUNC_IS_VIRTUAL;
 					}
 					funcOverride.resize(superFunc->id + 1);
-					// std::cerr << superFunc->name << " & " << func->name << "\n";
-					// std::cerr << superFuncInfo->virtualPosition << " & "
+					// std::cerr << superFunc->name << " & " << func->name <<
+					// "\n"; std::cerr << superFuncInfo->virtualPosition << " &
+					// "
 					//           << funcInfo->virtualPosition << "\n"
 					//           << func->id << " & " << superFunc->id << "\n"
 					//           << funcOverride.getSize() << "\n";
@@ -419,8 +431,8 @@ inline bool isClassExist(in_func, const std::string &name) {
 	return it != compile.classMap.end();
 }
 
-inline bool isDeclarationExist(in_func, const std::string &name) {
-	return context.findDeclaration(in_data, 0, name, true);
+inline bool isDeclarationExist(in_func, LexerStringId nameId) {
+	return context.findDeclaration(in_data, 0, nameId, true);
 }
 
 } // namespace AutoLang

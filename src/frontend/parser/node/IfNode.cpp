@@ -47,7 +47,7 @@ void IfNode::optimize(in_func) {
 		throwError("Cannot use expression of type '" +
 		           condition->getClassName(in_data) +
 		           "' as a condition, expected 'Bool'");
-			
+
 	auto lastMustReturnValueNode = context.mustReturnValueNode;
 	if (mustReturnValue) {
 		context.mustReturnValueNode = this;
@@ -62,6 +62,7 @@ void IfNode::optimize(in_func) {
 
 ExprNode *IfNode::copy(in_func) {
 	auto newNode = context.ifPool.push(line, mustReturnValue);
+	newNode->condition = static_cast<HasClassIdNode *>(condition->copy(in_data));
 	newNode->ifTrue.nodes.reserve(ifTrue.nodes.size());
 	for (auto node : ifTrue.nodes) {
 		newNode->ifTrue.nodes.push_back(node->copy(in_data));

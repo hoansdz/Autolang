@@ -150,11 +150,16 @@ void AVM::log(Function *currentFunction) {
 				break;
 			}
 			case AutoLang::Opcode::IN_RANGE:
-				std::cerr << "IN_RANGE	 " << (bytecodes[i++] ? "LT" : "LTE") << "\n";
+				std::cerr << "IN_RANGE	 " << (bytecodes[i++] ? "LT" : "LTE")
+				          << "\n";
 				break;
-			case AutoLang::Opcode::LOAD_CONST:
-				std::cerr << "LOAD_CONST	 " << get_u32(bytecodes, i) << "\n";
+			case AutoLang::Opcode::LOAD_CONST: {
+				auto obj = data.constPool[get_u32(bytecodes, i)];
+				std::cerr << "LOAD_CONST	 "
+				          << DefaultFunction::to_string(*notifier, obj) << "\n";
+				// std::cerr << "LOAD_CONST	 " << get_u32(bytecodes, i) << "\n";
 				break;
+			}
 			case AutoLang::Opcode::IS:
 				std::cerr << "IS	 " << get_u32(bytecodes, i) << "\n";
 				break;
@@ -173,9 +178,13 @@ void AVM::log(Function *currentFunction) {
 				std::cerr << "REMOVE_TRY_AND_JUMP	 " << get_u32(bytecodes, i)
 				          << "\n";
 				break;
-			case AutoLang::Opcode::LOAD_CONST_PRIMARY:
-				std::cerr << "CONST_PRIMARY	 " << get_u32(bytecodes, i) << "\n";
+			case AutoLang::Opcode::LOAD_CONST_PRIMARY: {
+				auto obj = data.constPool[get_u32(bytecodes, i)];
+				std::cerr << "CONST_PRIMARY	 "
+				          << DefaultFunction::to_string(*notifier, obj) << "\n";
+				// std::cerr << "CONST_PRIMARY	 " << get_u32(bytecodes, i) << "\n";
 				break;
+			}
 			case AutoLang::Opcode::RETURN_LOCAL:
 				std::cerr << "RETURN_LOCAL	 " << get_u32(bytecodes, i) << "\n";
 				break;
@@ -198,18 +207,18 @@ void AVM::log(Function *currentFunction) {
 				uint32_t classId = get_u32(bytecodes, i);
 				uint32_t keyId = get_u32(bytecodes, i);
 				uint32_t count = get_u32(bytecodes, i);
-				std::cerr << "CREATE_SET_OBJECT	 " << data.classes[classId]->name
-				          << "     " << data.classes[keyId]->name << " "
-				          << count << "\n";
+				std::cerr << "CREATE_SET_OBJECT	 "
+				          << data.classes[classId]->name << "     "
+				          << data.classes[keyId]->name << " " << count << "\n";
 				break;
 			}
 			case AutoLang::Opcode::CREATE_MAP_OBJECT: {
 				uint32_t classId = get_u32(bytecodes, i);
 				uint32_t keyId = get_u32(bytecodes, i);
 				uint32_t count = get_u32(bytecodes, i);
-				std::cerr << "CREATE_MAP_OBJECT	 " << data.classes[classId]->name
-				          << "     " << data.classes[keyId]->name << " "
-				          << count << "\n";
+				std::cerr << "CREATE_MAP_OBJECT	 "
+				          << data.classes[classId]->name << "     "
+				          << data.classes[keyId]->name << " " << count << "\n";
 				break;
 			}
 			case AutoLang::Opcode::CREATE_NATIVE_OBJECT: {

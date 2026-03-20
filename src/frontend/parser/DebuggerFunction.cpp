@@ -122,9 +122,11 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 	switch (token->type) {
 		case Lexer::TokenType::LT: {
 			if (context.currentClassId) {
-				throw ParserError(token->line, "Generic functions in class doesn't supported now");
+				throw ParserError(
+				    token->line,
+				    "Generic functions in class doesn't supported now");
 			}
-			context.preloadGenericData = new GenericData();
+			context.preloadGenericData = context.genericDataPool.push();
 			while (true) {
 				if (!nextToken(&token, context.tokens, i) ||
 				    !expect(token, Lexer::TokenType::IDENTIFIER)) {
@@ -156,6 +158,36 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 					    "Expected '>' after class name but not found");
 				}
 				switch (token->type) {
+					// case Lexer::TokenType::IS:
+					case Lexer::TokenType::EXTENDS: {
+						// auto condition =
+						//     (token->type == Lexer::TokenType::EXTENDS)
+						//         ? GenericDeclarationCondition::MUST_EXTENDS
+						//         : GenericDeclarationCondition::MUST_IS;
+						auto classDeclaration = loadClassDeclaration(
+						    in_data, i, token->line, false);
+						if (!nextToken(&token, context.tokens, i)) {
+							throw ParserError(
+							    firstLine,
+							    "Expected '>' after class name but not found");
+						}
+						declarationData->condition =
+						    GenericDeclarationCondition{classDeclaration};
+						switch (token->type) {
+							case Lexer::TokenType::COMMA: {
+								break;
+							}
+							case Lexer::TokenType::GT: {
+								goto finishedGenerics;
+							}
+							default: {
+								throw ParserError(firstLine,
+								                  "Expected '>' after class "
+								                  "name but not found");
+							}
+						}
+						break;
+					}
 					case Lexer::TokenType::COMMA: {
 						break;
 					}

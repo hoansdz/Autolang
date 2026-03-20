@@ -57,6 +57,7 @@ constexpr LexerStringId lexerIdLRBRACKET = 17;
 constexpr LexerStringId lexerIdget = 18;
 constexpr LexerStringId lexerIdset = 19;
 constexpr LexerStringId lexerIdcontains = 20;
+constexpr LexerStringId lexerIdthis = 21;
 
 using GenericCaller = ClassDeclaration;
 
@@ -85,8 +86,13 @@ struct ParserContext {
 	NonReallocatePool<CreateFuncNode> newFunctions;
 	HashMap<std::string, CreateFuncNode *> genericFunctionMap;
 	std::vector<FunctionId> mustInferenceFunctionType;
-	//Find, example func load<T>(a: T)
+	// Find, example func load<T>(a: T)
 	GenericData *preloadGenericData = nullptr;
+	ChunkArena<GenericData, 8> genericDataPool;
+	HashMap<DeclarationOffset, DeclarationOffset>
+	    *newPositionOfStaticDeclaration = nullptr;
+	HashMap<GenericDeclarationNode *, std::vector<ClassDeclaration *>>
+	    checkValidateExtends;
 	// Declaration new classes by user
 	NonReallocatePool<CreateClassNode> newClasses;
 	HashMap<LexerStringId, ClassId> defaultClassMap;
@@ -243,9 +249,10 @@ struct ParserContext {
 		return nullptr;
 	}
 	HasClassIdNode *findDeclaration(in_func, uint32_t line,
-	                                const std::string &name, bool inGlobal);
+	                                LexerStringId nameId, bool inGlobal);
 	DeclarationNode *
-	makeDeclarationNode(in_func, uint32_t line, bool isTemp, const std::string& name,
+	makeDeclarationNode(in_func, uint32_t line, bool isTemp,
+	                    LexerStringId baseName, const std::string &name,
 	                    ClassDeclaration *classDeclaration, bool isVal,
 	                    bool isGlobal, bool nullable, bool pushToScope = true);
 	inline size_t getBoolConstValuePosition(bool b) { return b ? 1 : 2; }

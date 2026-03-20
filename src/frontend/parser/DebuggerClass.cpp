@@ -54,7 +54,8 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 	auto clazz = compile.classes[node->classId];
 	context.gotoClass(clazz);
 	auto declarationThis = context.declarationNodePool.push(
-	    firstLine, context.currentClassId, "this", nullptr, true, false, false);
+	    firstLine, context.currentClassId, lexerIdthis, "this", nullptr, true,
+	    false, false);
 	declarationThis->classId = node->classId;
 	//'this' is always input at first position
 	declarationThis->id = 0;
@@ -80,7 +81,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 			return node;
 		}
 		if (expect(token, Lexer::TokenType::LT)) {
-			classInfo->genericData = new GenericData();
+			classInfo->genericData = context.genericDataPool.push();
 			context.newGenericClassesMap[node->classId] = node;
 			while (true) {
 				if (!nextToken(&token, context.tokens, i) ||
@@ -113,6 +114,36 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 					    "Expected '>' after class name but not found");
 				}
 				switch (token->type) {
+					// case Lexer::TokenType::IS:
+					case Lexer::TokenType::EXTENDS: {
+						// auto condition =
+						//     (token->type == Lexer::TokenType::EXTENDS)
+						//         ? GenericDeclarationCondition::MUST_EXTENDS
+						//         : GenericDeclarationCondition::MUST_IS;
+						auto classDeclaration = loadClassDeclaration(
+						    in_data, i, token->line, false);
+						if (!nextToken(&token, context.tokens, i)) {
+							throw ParserError(
+							    firstLine,
+							    "Expected '>' after class name but not found");
+						}
+						declarationData->condition =
+						    GenericDeclarationCondition{classDeclaration};
+						switch (token->type) {
+							case Lexer::TokenType::COMMA: {
+								break;
+							}
+							case Lexer::TokenType::GT: {
+								goto finishedGenerics;
+							}
+							default: {
+								throw ParserError(firstLine,
+								                  "Expected '>' after class "
+								                  "name but not found");
+							}
+						}
+						break;
+					}
 					case Lexer::TokenType::COMMA: {
 						break;
 					}

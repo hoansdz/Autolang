@@ -11,8 +11,11 @@
 namespace AutoLang {
 
 struct GenericData {
+	HashMap<DeclarationOffset, DeclarationOffset> newPositionOfStaticDeclaration;
 	HashMap<ClassDeclaration *, ExprNode *> mustRenameNodes;
 	std::vector<GenericDeclarationNode *> genericDeclarations;
+	std::vector<std::pair<DeclarationNode *, HasClassIdNode *>>
+	    staticDeclaration;
 	HashMap<LexerStringId, Offset> genericDeclarationMap;
 	inline GenericDeclarationNode *findDeclaration(LexerStringId nameId) {
 		auto it = genericDeclarationMap.find(nameId);
@@ -21,6 +24,11 @@ struct GenericData {
 		}
 		return genericDeclarations[it->second];
 	}
+	~GenericData() {
+		for (auto declaration : genericDeclarations) {
+			delete declaration;
+		}
+	}
 };
 
 struct ClassInfo {
@@ -28,7 +36,7 @@ struct ClassInfo {
 	GenericData *genericData = nullptr;
 	std::vector<DeclarationNode *> allDeclarationNode;
 	std::vector<DeclarationNode *> member;
-	HashMap<std::string, DeclarationNode *> staticMember;
+	HashMap<LexerStringId, DeclarationNode *> staticMember;
 	HashMap<std::string, HashMap<HashValue, FunctionId>> func;
 	HashMap<std::string, HashMap<HashValue, FunctionId>> staticFunc;
 	HashMap<LexerStringId, ConstValueNode *> constValue;
@@ -39,7 +47,7 @@ struct ClassInfo {
 	DeclarationNode *declarationThis;
 	ClassId parent;
 
-	AccessNode *findDeclaration(in_func, uint32_t line, const std::string &name,
+	AccessNode *findDeclaration(in_func, uint32_t line, LexerStringId nameId,
 	                            bool isStatic = false);
 	inline GenericDeclarationNode *
 	findGenericDeclaration(LexerStringId nameId) {

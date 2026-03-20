@@ -38,6 +38,7 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerString.emplace_back("get");
 	lexerString.emplace_back("set");
 	lexerString.emplace_back("contains");
+	lexerString.emplace_back("this");
 
 	lexerStringMap["super"] = lexerIdsuper;
 	lexerStringMap["Int"] = lexerIdInt;
@@ -60,6 +61,7 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerStringMap["get"] = lexerIdget;
 	lexerStringMap["set"] = lexerIdset;
 	lexerStringMap["contains"] = lexerIdcontains;
+	lexerStringMap["this"] = lexerIdthis;
 
 	constValue[lexerIdnull] = &constValues[0];
 	constValue[lexerIdtrue] = &constValues[1];
@@ -300,16 +302,18 @@ void ParserContext::warning(uint32_t line, const std::string &message) {
 }
 
 HasClassIdNode *ParserContext::findDeclaration(in_func, uint32_t line,
-                                               const std::string &name,
+                                               LexerStringId nameId,
                                                bool inGlobal) {
-	AccessNode *node = getCurrentFunctionInfo(in_data)->findDeclaration(
-	    in_data, line, name, justFindStatic);
+	const auto &name = context.lexerString[nameId];
+	auto funcInfo = getCurrentFunctionInfo(in_data);
+	AccessNode *node =
+	    funcInfo->findDeclaration(in_data, line, name, justFindStatic);
 	auto func = getCurrentFunction(in_data);
 	if (node)
 		return node;
 	if (currentClassId) {
 		node = getCurrentClassInfo(in_data)->findDeclaration(
-		    in_data, line, name, justFindStatic);
+		    in_data, line, nameId, justFindStatic);
 		// Static in function is VarNode, NonStatic is GetPropNode
 		if ((func->functionFlags & FunctionFlags::FUNC_IS_STATIC) && node &&
 		    node->kind == NodeType::GET_PROP)
@@ -319,7 +323,7 @@ HasClassIdNode *ParserContext::findDeclaration(in_func, uint32_t line,
 	}
 	if (!inGlobal || currentFunctionId == mainFunctionId)
 		return node;
-	node = getMainFunctionInfo(in_data)->findDeclaration(in_data, line, name);
+	node = funcInfo->findDeclaration(in_data, line, name);
 	if (node == nullptr)
 		return node;
 	if (justFindStatic)
@@ -330,9 +334,9 @@ isNotStatic:;
 }
 
 DeclarationNode *ParserContext::makeDeclarationNode(
-    in_func, uint32_t line, bool isTemp, const std::string &name,
-    ClassDeclaration *classDeclaration, bool isVal, bool isGlobal,
-    bool nullable, bool pushToScope) {
+    in_func, uint32_t line, bool isTemp, LexerStringId baseName,
+    const std::string &name, ClassDeclaration *classDeclaration, bool isVal,
+    bool isGlobal, bool nullable, bool pushToScope) {
 	auto func =
 	    isGlobal ? getMainFunction(in_data) : getCurrentFunction(in_data);
 	auto funcInfo = isGlobal ? getMainFunctionInfo(in_data)
@@ -343,7 +347,7 @@ DeclarationNode *ParserContext::makeDeclarationNode(
 			throw ParserError(line, name + " has exist");
 	}
 	DeclarationNode *node =
-	    declarationNodePool.push(line, context.currentClassId, std::move(name),
+	    declarationNodePool.push(line, context.currentClassId, baseName, name,
 	                             classDeclaration, isVal, isGlobal, nullable);
 	node->classId = AutoLang::DefaultClass::nullClassId;
 	node->id = pushToScope ? funcInfo->declaration++ : 0;

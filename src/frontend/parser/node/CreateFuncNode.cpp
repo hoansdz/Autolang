@@ -41,7 +41,7 @@ void CreateFuncNode::pushNativeFunction(in_func, ANativeFunction native) {
 
 void CreateFuncNode::optimize(in_func) {
 	const auto &name = context.lexerString[nameId];
-	if (!contextCallClassId && isDeclarationExist(in_data, name))
+	if (!contextCallClassId && isDeclarationExist(in_data, nameId))
 		throwError(
 		    "Cannot declare function with the same name as declaration name " +
 		    name);

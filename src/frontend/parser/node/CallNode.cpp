@@ -136,11 +136,20 @@ void CallNode::optimize(in_func) {
 
 		auto callerClass = compile.classes[caller->classId];
 		funcName = callerClass->name + "." + name;
-		auto it = callerClass->funcMap.find(funcName);
-		if (it != callerClass->funcMap.end()) {
-			funcVec[count++] = &it->second;
-			callerCanCallId = caller->classId;
+		{
+			auto it = callerClass->funcMap.find(name);
+			if (it != callerClass->funcMap.end()) {
+				funcVec[count++] = &it->second;
+				callerCanCallId = caller->classId;
+			}
 		}
+
+		// {
+		// 	auto it = compile.funcMap.find(funcName);
+		// 	if (it != compile.funcMap.end()) {
+		// 		funcVec[count++] = &it->second;
+		// 	}
+		// }
 
 	} else {
 		// Check if constructor

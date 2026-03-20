@@ -49,34 +49,52 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	     ++i) {
 		auto &genericDeclaration =
 		    classInfo->genericData->genericDeclarations[i];
-		auto &inputClassId = classDeclaration->inputClassId[i];
+		auto &inputClass = classDeclaration->inputClassId[i];
+
+		ClassId inputClassId = *inputClass->classId;
+
+		if (genericDeclaration->condition) {
+			auto &condition = *genericDeclaration->condition;
+			// if (condition.condition ==
+			// GenericDeclarationCondition::MUST_EXTENDS) {
+			if (!condition.classDeclaration->classId) {
+				condition.classDeclaration->load<true>(in_data);
+				if (!condition.classDeclaration->classId) {
+					condition.classDeclaration->throwError(
+					    "Unresolved " +
+					    condition.classDeclaration->getName(in_data));
+				}
+			}
+			context.checkValidateExtends[genericDeclaration].push_back(
+			    inputClass);
+			// }
+		}
 
 		// Change callnode name
 		if (!genericDeclaration->allCallNodes.empty()) {
-			const std::string &name =
-			    compile.classes[*inputClassId->classId]->name;
+			const std::string &name = compile.classes[inputClassId]->name;
 			for (auto *callNode : genericDeclaration->allCallNodes) {
 				callNode->nameId = context.createLexerStringIfNotExists(name);
 			}
 		}
 		// Change generics type
-		genericDeclaration->classId = *inputClassId->classId;
-		genericDeclaration->nullable = inputClassId->nullable;
+		genericDeclaration->classId = inputClassId;
+		genericDeclaration->nullable = inputClass->nullable;
 		auto newClassDeclaration = context.classDeclarationAllocator.push();
-		newClassDeclaration->classId = *inputClassId->classId;
-		newClassDeclaration->nullable = inputClassId->nullable;
+		newClassDeclaration->classId = inputClassId;
+		newClassDeclaration->nullable = inputClass->nullable;
 		newClassDeclaration->line = genericDeclaration->line;
 		genericTypeId.push_back(newClassDeclaration);
 
 		for (auto *classDeclaration :
 		     genericDeclaration->allClassDeclarations) {
-			classDeclaration->classId = *inputClassId->classId;
+			classDeclaration->classId = inputClassId;
 			if (classDeclaration->mustInference) {
-				classDeclaration->nullable = inputClassId->nullable;
+				classDeclaration->nullable = inputClass->nullable;
 				classDeclaration->mustInference = false;
 			}
 			classDeclaration->baseClassLexerStringId =
-			    inputClassId->baseClassLexerStringId;
+			    inputClass->baseClassLexerStringId;
 		}
 	}
 
@@ -87,8 +105,8 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	newClassInfo->baseClassId = classId;
 	newClassInfo->genericTypeId = std::move(genericTypeId);
 	newClassInfo->declarationThis = context.declarationNodePool.push(
-	    classInfo->declarationThis->line, newClassId, "this", nullptr, true,
-	    false, false);
+	    classInfo->declarationThis->line, newClassId, lexerIdthis, "this",
+	    nullptr, true, false, false);
 	newClassInfo->declarationThis->id = 0;
 	newClassInfo->declarationThis->classId = newClassId;
 	auto lastCurrentClassId = context.currentClassId;
@@ -125,7 +143,6 @@ ClassId loadClassGenerics(in_func, std::string &name,
 
 	newClassInfo->declarationThis->classId = newClassId;
 	// newClassInfo->func = classInfo->func;
-	newClassInfo->staticMember = classInfo->staticMember;
 	newClassInfo->parent = classInfo->parent;
 	newClassInfo->staticFunc = classInfo->staticFunc;
 
@@ -188,6 +205,47 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			}
 		}
 		declarationNode->optimize(in_data);
+		// declarationNode->classDeclaration = nullptr;
+	}
+
+	for (auto &[declarationNode, value] :
+	     classInfo->genericData->staticDeclaration) {
+		auto node = context.makeDeclarationNode(
+		    in_data, declarationNode->line, false, declarationNode->baseName,
+		    newClass->name + "." +
+		        context.lexerString[declarationNode->baseName],
+		    declarationNode->classDeclaration, declarationNode->isVal, true,
+		    declarationNode->nullable, true);
+		newClassInfo->staticMember[declarationNode->baseName] = node;
+		if (node->classDeclaration) {
+			if (!node->classDeclaration->classId) {
+				node->classDeclaration->load<false>(in_data);
+				if (!node->classDeclaration->classId) {
+					classDeclaration->throwError(
+					    "Bug: Cannot find class name " +
+					    node->classDeclaration->getName(in_data));
+				}
+				node->optimize(in_data);
+				node->classDeclaration->classId = std::nullopt;
+				// declarationNode->classDeclaration = nullptr;
+			} else {
+				node->classId = *node->classDeclaration->classId;
+			}
+			node->classDeclaration = nullptr;
+			// std::cerr << "loaded " << (compile.classes[node->classId]->name)
+			//           << " "
+			//           << declarationNode->classDeclaration->getName(in_data)
+			//           << "\n";
+		}
+		node->optimize(in_data);
+		if (value) {
+			auto varNode =
+			    context.varPool.push(declarationNode->line, node, false, true);
+			auto setNode = context.setValuePool.push(declarationNode->line,
+			                                         varNode, value, true);
+			context.staticNode.push_back(setNode);
+			// std::cerr << "Added " << node->name << "\n";
+		}
 		// declarationNode->classDeclaration = nullptr;
 	}
 
@@ -320,34 +378,52 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 	     ++i) {
 		auto &genericDeclaration =
 		    funcInfo->genericData->genericDeclarations[i];
-		auto &inputClassId = classDeclaration->inputClassId[i];
+		auto &inputClass = classDeclaration->inputClassId[i];
+
+		ClassId inputClassId = *inputClass->classId;
+
+		if (genericDeclaration->condition) {
+			auto &condition = *genericDeclaration->condition;
+			// if (condition.condition ==
+			// GenericDeclarationCondition::MUST_EXTENDS) {
+			if (!condition.classDeclaration->classId) {
+				condition.classDeclaration->load<true>(in_data);
+				if (!condition.classDeclaration->classId) {
+					condition.classDeclaration->throwError(
+					    "Unresolved " +
+					    condition.classDeclaration->getName(in_data));
+				}
+			}
+			context.checkValidateExtends[genericDeclaration].push_back(
+			    inputClass);
+			// }
+		}
 
 		// Change callnode name
 		if (!genericDeclaration->allCallNodes.empty()) {
-			const std::string &name =
-			    compile.classes[*inputClassId->classId]->name;
+			const std::string &name = compile.classes[inputClassId]->name;
 			for (auto *callNode : genericDeclaration->allCallNodes) {
 				callNode->nameId = context.createLexerStringIfNotExists(name);
 			}
 		}
 		// Change generics type
-		genericDeclaration->classId = *inputClassId->classId;
-		genericDeclaration->nullable = inputClassId->nullable;
+		genericDeclaration->classId = inputClassId;
+		genericDeclaration->nullable = inputClass->nullable;
 		auto newClassDeclaration = context.classDeclarationAllocator.push();
-		newClassDeclaration->classId = *inputClassId->classId;
-		newClassDeclaration->nullable = inputClassId->nullable;
+		newClassDeclaration->classId = inputClassId;
+		newClassDeclaration->nullable = inputClass->nullable;
 		newClassDeclaration->line = genericDeclaration->line;
 		genericTypeId.push_back(newClassDeclaration);
 
 		for (auto *classDeclaration :
 		     genericDeclaration->allClassDeclarations) {
-			classDeclaration->classId = *inputClassId->classId;
+			classDeclaration->classId = inputClassId;
 			if (classDeclaration->mustInference) {
-				classDeclaration->nullable = inputClassId->nullable;
+				classDeclaration->nullable = inputClass->nullable;
 				classDeclaration->mustInference = false;
 			}
 			classDeclaration->baseClassLexerStringId =
-			    inputClassId->baseClassLexerStringId;
+			    inputClass->baseClassLexerStringId;
 		}
 	}
 
@@ -374,7 +450,7 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 	newFunc->maxDeclaration = func->maxDeclaration;
 	newFuncInfo->declaration = funcInfo->declaration;
 	newFunc->returnId = compile.functions[createFuncNode->id]->returnId;
-	std::cerr << "THIS " << newFunc->name << "\n";
+	// std::cerr << "THIS " << newFunc->name << "\n";
 	if (createFuncNode->classDeclaration) {
 		if (!createFuncNode->classDeclaration->classId) {
 			createFuncNode->classDeclaration->load<false>(in_data);
@@ -386,7 +462,51 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 		newFunc->returnId = *createFuncNode->classDeclaration->classId;
 	}
 	context.currentFunctionId = newCreateFuncNode->id;
+
+	for (auto &[declarationNode, value] :
+	     funcInfo->genericData->staticDeclaration) {
+		auto node = context.makeDeclarationNode(
+		    in_data, declarationNode->line, false, declarationNode->baseName,
+		    newFunc->name + context.lexerString[declarationNode->baseName],
+		    declarationNode->classDeclaration, declarationNode->isVal, true,
+		    declarationNode->nullable, true);
+		funcInfo->genericData
+		    ->newPositionOfStaticDeclaration[declarationNode->id] = node->id;
+		if (node->classDeclaration) {
+			if (!node->classDeclaration->classId) {
+				node->classDeclaration->load<false>(in_data);
+				if (!node->classDeclaration->classId) {
+					classDeclaration->throwError(
+					    "Bug: Cannot find class name " +
+					    node->classDeclaration->getName(in_data));
+				}
+				// std::cerr << "loaded "
+				//           <<
+				//           declarationNode->classDeclaration->getName(in_data)
+				//           << "\n";
+				node->optimize(in_data);
+				node->classDeclaration->classId = std::nullopt;
+			} else {
+				node->classId = *node->classDeclaration->classId;
+			}
+		}
+		node->classDeclaration = nullptr;
+		node->optimize(in_data);
+		if (value) {
+			auto varNode =
+			    context.varPool.push(declarationNode->line, node, false, true);
+			auto setNode = context.setValuePool.push(declarationNode->line,
+			                                         varNode, value, true);
+			context.staticNode.push_back(setNode);
+		}
+		// declarationNode->classDeclaration = nullptr;
+	}
+
 	// ParserContext::mode = createFuncNode->mode; //Loaded in new class
+	auto lastNewPositionOfStaticDeclaration =
+	    context.newPositionOfStaticDeclaration;
+	context.newPositionOfStaticDeclaration =
+	    &funcInfo->genericData->newPositionOfStaticDeclaration;
 	newCreateFuncNode->body.nodes.reserve(createFuncNode->body.nodes.size());
 	for (auto *node : createFuncNode->body.nodes) {
 		newCreateFuncNode->body.nodes.push_back(node->copy(in_data));
@@ -396,7 +516,7 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 		    static_cast<ReturnNode *>(newCreateFuncNode->body.nodes[0]);
 		context.mustInferenceFunctionType.push_back(newFunc->id);
 	}
-
+	context.newPositionOfStaticDeclaration = lastNewPositionOfStaticDeclaration;
 	context.currentFunctionId = lastCurrentFunctionId;
 
 	for (auto &[classDeclaration, node] :
@@ -417,6 +537,8 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 					classDeclaration->throwError(
 					    "Unsolved " + classDeclaration->getName(in_data));
 				}
+				std::cerr << "OK " << classDeclaration->getName(in_data)
+				          << "\n";
 				unknowNode->nameId = it->second;
 				break;
 			}
@@ -432,42 +554,6 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 				break;
 			}
 		}
-	}
-
-	for (auto &[declarationNode, value] : funcInfo->staticDeclaration) {
-		auto node = context.makeDeclarationNode(
-		    in_data, declarationNode->line, false,
-		    newFunc->name + declarationNode->name,
-		    declarationNode->classDeclaration, declarationNode->isVal, true,
-		    declarationNode->nullable, true);
-		if (node->classDeclaration) {
-			if (!node->classDeclaration->classId) {
-				node->classDeclaration->load<false>(in_data);
-				if (!node->classDeclaration->classId) {
-					classDeclaration->throwError(
-					    "Bug: Cannot find class name " +
-					    node->classDeclaration->getName(in_data));
-				}
-				// std::cerr << "loaded "
-				//           <<
-				//           declarationNode->classDeclaration->getName(in_data)
-				//           << "\n";
-				node->optimize(in_data);
-				node->classDeclaration->classId = std::nullopt;
-				node->classDeclaration = nullptr;
-				// declarationNode->classDeclaration = nullptr;
-				continue;
-			}
-		}
-		node->optimize(in_data);
-		if (value) {
-			auto varNode =
-			    context.varPool.push(declarationNode->line, node, false, true);
-			auto setNode = context.setValuePool.push(declarationNode->line,
-			                                         varNode, value, true);
-			context.staticNode.push_back(setNode);
-		}
-		// declarationNode->classDeclaration = nullptr;
 	}
 
 	return newFunc->id;

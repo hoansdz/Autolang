@@ -21,6 +21,7 @@ using LexerStringId = uint32_t;
 using Offset = uint32_t;
 using BytecodePos = uint32_t;
 using MemberOffset = uint32_t;
+using DeclarationOffset = uint32_t;
 using HashValue = int64_t;
 template<
     class K,

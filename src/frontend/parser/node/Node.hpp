@@ -346,7 +346,7 @@ struct RuntimeCastNode : NullableNode { // #
 struct GetPropNode : AccessNode {
 	std::optional<ClassId> contextCallClassId;
 	HasClassIdNode *caller;
-	std::string name;
+	LexerStringId nameId;
 	MemberOffset id;
 	BytecodePos jumpIfNullPos;
 	bool isInitial;
@@ -354,12 +354,12 @@ struct GetPropNode : AccessNode {
 	bool accessNullable;
 	GetPropNode(uint32_t line, DeclarationNode *declaration,
 	            std::optional<ClassId> contextCallClassId,
-	            HasClassIdNode *caller, std::string name, bool isInitial,
+	            HasClassIdNode *caller, LexerStringId nameId, bool isInitial,
 	            bool nullable, bool accessNullable)
 	    : AccessNode(NodeType::GET_PROP, line, declaration, nullable,
 	                 AutoLang::DefaultClass::nullClassId),
 	      contextCallClassId(contextCallClassId), caller(caller),
-	      name(std::move(name)), isInitial(isInitial), isStatic(false),
+	      nameId(nameId), isInitial(isInitial), isStatic(false),
 	      accessNullable(accessNullable) {}
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;
