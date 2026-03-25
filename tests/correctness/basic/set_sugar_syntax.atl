@@ -1,3 +1,7 @@
+func testInputSugarSyntax(data: Set<Set<Int>>) {
+
+}
+
 func testSetSugarSyntax() {
 	val set = <Int>{
 		1, 2, 3, 4, 5, 6, 7, 8, 9, 
@@ -7,6 +11,9 @@ func testSetSugarSyntax() {
 	for (num in set) {
 		sum += num
 	}
+	testInputSugarSyntax({{1, 2, 3}, {4, 5, 6}})
+	testInputSugarSyntax({{}, {}})
+	testInputSugarSyntax({})
 	assert(set is Set<Int>, __FILE__, __LINE__)
 	assert(sum == 45, __FILE__, __LINE__)
 	println("Passes ${__FUNC__}")

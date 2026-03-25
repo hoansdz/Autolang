@@ -227,7 +227,9 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 	}
 	if (token->type == Lexer::TokenType::COLON) {
 		classDeclaration = loadClassDeclaration(in_data, i, token->line, true);
-		context.allClassDeclarations.push_back(classDeclaration);
+		if (!classDeclaration->isGenerics(in_data)) {
+			context.allClassDeclarations.push_back(classDeclaration);
+		}
 		if (classDeclaration->nullable) {
 			functionFlags |= FunctionFlags::FUNC_RETURN_NULLABLE;
 		}
@@ -276,13 +278,12 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			}
 			func->returnId = DefaultClass::nullClassId;
 			context.gotoFunction(node->id);
-			auto &scope =
-			    context.getCurrentFunctionInfo(in_data)->scopes.back();
+			auto &scope = funcInfo->scopes.back();
 
-			for (size_t i = 0; i < node->arguments.size(); ++i) {
-				auto *argument = node->arguments[i];
-				argument->id = i;
-				scope[argument->name] = argument;
+			for (size_t i = 0; i < node->parameters.size(); ++i) {
+				auto *param = node->parameters[i];
+				param->id = i;
+				scope[param->baseName] = param;
 			}
 
 			auto returnNode =
@@ -337,9 +338,9 @@ createFunc:;
 		node->pushNativeFunction(in_data, it->second);
 		auto func = compile.functions[node->id];
 		context.gotoFunction(node->id);
-		for (size_t i = 0; i < node->arguments.size(); ++i) {
-			auto *argument = node->arguments[i];
-			argument->id = i;
+		for (size_t i = 0; i < node->parameters.size(); ++i) {
+			auto *param = node->parameters[i];
+			param->id = i;
 		}
 		context.gotoFunction(context.mainFunctionId);
 		return node;
@@ -356,15 +357,23 @@ createFunc:;
 	// std::cerr<<"Created "<<name+"()"<<" ->
 	// "<<compile.classes[func->returnId]->name<<"\n";
 	context.gotoFunction(node->id);
-	auto &scope = context.getCurrentFunctionInfo(in_data)->scopes.back();
+	auto &scope = funcInfo->scopes.back();
 
-	for (size_t i = 0; i < node->arguments.size(); ++i) {
-		auto *argument = node->arguments[i];
-		argument->id = i;
-		scope[argument->name] = argument;
+	for (size_t i = 0; i < node->parameters.size(); ++i) {
+		auto *param = node->parameters[i];
+		param->id = i;
+		scope[param->baseName] = param;
+	}
+	try {
+		loadBody<false>(in_data, node->body.nodes, i);
+		context.gotoFunction(context.mainFunctionId);
+		context.preloadGenericData = nullptr;
+	} catch (const ParserError &err) {
+		context.gotoFunction(context.mainFunctionId);
+		context.preloadGenericData = nullptr;
+		throw err;
 	}
 
-	loadBody<false>(in_data, node->body.nodes, i);
 	if (classDeclaration) {
 		bool hasReturn = false;
 		for (size_t i = node->body.nodes.size(); i-- > 0;) {
@@ -373,12 +382,12 @@ createFunc:;
 				break;
 			}
 		}
-		if (!hasReturn)
+		if (!hasReturn) {
 			throw ParserError(firstLine, "Function " + func->name +
 			                                 " didn't declare return");
+		}
 	}
-	context.gotoFunction(context.mainFunctionId);
-	context.preloadGenericData = nullptr;
+
 	return node;
 }
 

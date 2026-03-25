@@ -39,6 +39,7 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerString.emplace_back("set");
 	lexerString.emplace_back("contains");
 	lexerString.emplace_back("this");
+	lexerString.emplace_back("Function");
 
 	lexerStringMap["super"] = lexerIdsuper;
 	lexerStringMap["Int"] = lexerIdInt;
@@ -46,6 +47,7 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerStringMap["Bool"] = lexerIdBool;
 	lexerStringMap["Null"] = lexerIdNull;
 	lexerStringMap["Void"] = lexerIdVoid;
+	lexerStringMap["Function"] = lexerIdFunction;
 	lexerStringMap["null"] = lexerIdnull;
 	lexerStringMap["true"] = lexerIdtrue;
 	lexerStringMap["false"] = lexerIdfalse;
@@ -248,9 +250,12 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	functionInfoAllocator.destroy();
 	classInfoAllocator.destroy();
 	functionInfo.clear();
+	globalFunction.clear();
+	genericFunctionMap.clear();
 	for (auto *funcInfo : functionInfo) {
 		delete[] funcInfo->nullableArgs;
 	}
+	defaultClassMap.clear();
 	classInfo.clear();
 
 	createConstructorPool.destroy();
@@ -307,7 +312,7 @@ HasClassIdNode *ParserContext::findDeclaration(in_func, uint32_t line,
 	const auto &name = context.lexerString[nameId];
 	auto funcInfo = getCurrentFunctionInfo(in_data);
 	AccessNode *node =
-	    funcInfo->findDeclaration(in_data, line, name, justFindStatic);
+	    funcInfo->findDeclaration(in_data, line, nameId, justFindStatic);
 	auto func = getCurrentFunction(in_data);
 	if (node)
 		return node;
@@ -323,7 +328,7 @@ HasClassIdNode *ParserContext::findDeclaration(in_func, uint32_t line,
 	}
 	if (!inGlobal || currentFunctionId == mainFunctionId)
 		return node;
-	node = funcInfo->findDeclaration(in_data, line, name);
+	node = funcInfo->findDeclaration(in_data, line, nameId);
 	if (node == nullptr)
 		return node;
 	if (justFindStatic)
@@ -334,33 +339,40 @@ isNotStatic:;
 }
 
 DeclarationNode *ParserContext::makeDeclarationNode(
-    in_func, uint32_t line, bool isTemp, LexerStringId baseName,
-    const std::string &name, ClassDeclaration *classDeclaration, bool isVal,
-    bool isGlobal, bool nullable, bool pushToScope) {
+    in_func, uint32_t line, LexerStringId baseName, const std::string &name,
+    ClassDeclaration *classDeclaration, bool isVal, bool isGlobal,
+    bool nullable, bool addToScope, bool loadId) {
 	auto func =
 	    isGlobal ? getMainFunction(in_data) : getCurrentFunction(in_data);
 	auto funcInfo = isGlobal ? getMainFunctionInfo(in_data)
 	                         : getCurrentFunctionInfo(in_data);
-	if (pushToScope) {
-		auto it = funcInfo->scopes.back().find(name);
-		if (it != funcInfo->scopes.back().end())
-			throw ParserError(line, name + " has exist");
+	if (addToScope) {
+		auto &scope = funcInfo->scopes.back();
+		auto it = scope.find(baseName);
+		if (it != scope.end()) {
+			throw ParserError(
+			    line, "Redefinition of variable '" + context.lexerString[baseName] +
+			              "'. Previous definition here: " + it->second->mode->path + ":" +
+			              std::to_string(it->second->line) + "");
+		}
 	}
 	DeclarationNode *node =
 	    declarationNodePool.push(line, context.currentClassId, baseName, name,
 	                             classDeclaration, isVal, isGlobal, nullable);
 	node->classId = AutoLang::DefaultClass::nullClassId;
-	node->id = pushToScope ? funcInfo->declaration++ : 0;
+	node->id = loadId ? funcInfo->declaration++ : 0;
 	if (context.currentClassId) {
 		auto classInfo = context.classInfo[*context.currentClassId];
 		classInfo->allDeclarationNode.push_back(node);
 	}
 	// funcInfo->declarationNodes.push_back(node);
-	if (pushToScope) {
+	if (loadId) {
 		size_t newSize = funcInfo->declaration;
 		if (newSize > func->maxDeclaration)
 			func->maxDeclaration = newSize;
-		funcInfo->scopes.back()[node->name] = node;
+		if (addToScope) {
+			funcInfo->scopes.back()[node->baseName] = node;
+		}
 	}
 	return node;
 }

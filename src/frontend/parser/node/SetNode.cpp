@@ -26,60 +26,74 @@ void SetNode::optimize(in_func) {
 	// Detach has nullClassId because it was not evaluated
 	detach->optimize(in_data);
 
-	if (value->classId == DefaultClass::nullClassId) {
-		switch (value->kind) {
-			case NodeType::CREATE_ARRAY: {
-				auto createArrayNode = static_cast<CreateArrayNode *>(value);
-				if (!createArrayNode->classDeclaration) {
-					auto classInfo = context.classInfo[detach->classId];
-					if (classInfo->baseClassId != DefaultClass::arrayClassId) {
-						if (detach->classId == DefaultClass::nullClassId) {
-							throwError("Cannot infer type for initializer "
-							           ". Autolang requires explicit type "
-							           "parameters for collection sugar. "
-							           "Use <Type>[]");
-						}
-						throwError("Type mismatch: Expected Array<> but '" +
-						           compile.classes[detach->classId]->name +
-						           "' found");
-					}
-					createArrayNode->classId = detach->classId;
-				}
-				break;
-			}
-			case NodeType::CREATE_SET: {
-				auto createSetNode = static_cast<CreateSetNode *>(value);
-				if (!createSetNode->classDeclaration) {
-					auto classInfo = context.classInfo[detach->classId];
-					if (classInfo->baseClassId != DefaultClass::setClassId) {
-						if (classInfo->baseClassId ==
-						        DefaultClass::mapClassId &&
-						    createSetNode->values.empty()) {
-							auto newValue = context.createMapPool.push(
-							    value->line, nullptr,
-							    std::vector<std::pair<HasClassIdNode *,
-							                          HasClassIdNode *>>());
-							value = newValue;
-							newValue->classId = detach->classId;
-						} else {
+	switch (value->classId) {
+		case DefaultClass::nullClassId: {
+			switch (value->kind) {
+				case NodeType::CREATE_ARRAY: {
+					auto createArrayNode =
+					    static_cast<CreateArrayNode *>(value);
+					if (!createArrayNode->classDeclaration) {
+						auto classInfo = context.classInfo[detach->classId];
+						if (classInfo->baseClassId !=
+						    DefaultClass::arrayClassId) {
 							if (detach->classId == DefaultClass::nullClassId) {
 								throwError("Cannot infer type for initializer "
 								           ". Autolang requires explicit type "
 								           "parameters for collection sugar. "
-								           "Use <Type>{}");
+								           "Use <Type>[]");
 							}
-							throwError("Type mismatch: Expected " +
+							throwError("Type mismatch: Expected Array<> but '" +
 							           compile.classes[detach->classId]->name +
-							           " but Set<> found");
+							           "' found");
 						}
-					} else {
-						createSetNode->classId = detach->classId;
+						createArrayNode->classId = detach->classId;
 					}
+					break;
 				}
-				break;
+				case NodeType::CREATE_SET: {
+					auto createSetNode = static_cast<CreateSetNode *>(value);
+					if (!createSetNode->classDeclaration) {
+						auto classInfo = context.classInfo[detach->classId];
+						if (classInfo->baseClassId !=
+						    DefaultClass::setClassId) {
+							if (classInfo->baseClassId ==
+							        DefaultClass::mapClassId &&
+							    createSetNode->values.empty()) {
+								auto newValue = context.createMapPool.push(
+								    value->line, nullptr,
+								    std::vector<std::pair<HasClassIdNode *,
+								                          HasClassIdNode *>>());
+								value = newValue;
+								newValue->classId = detach->classId;
+							} else {
+								if (detach->classId ==
+								    DefaultClass::nullClassId) {
+									throwError(
+									    "Cannot infer type for initializer "
+									    ". Autolang requires explicit type "
+									    "parameters for collection sugar. "
+									    "Use <Type>{}");
+								}
+								throwError(
+								    "Type mismatch: Expected " +
+								    compile.classes[detach->classId]->name +
+								    " but Set<> found");
+							}
+						} else {
+							createSetNode->classId = detach->classId;
+						}
+					}
+					break;
+				}
+				default:
+					break;
 			}
-			default:
-				break;
+			break;
+		}
+		case DefaultClass::functionClassId: {
+			auto n = static_cast<FunctionAccessNode *>(value);
+			n->classDeclaration = detach->classDeclaration;
+			break;
 		}
 	}
 
@@ -118,6 +132,8 @@ void SetNode::optimize(in_func) {
 						throwError("Ambigous inference member class id");
 					}
 					detachNode->declaration->classId = value->classId;
+					detachNode->declaration->classDeclaration =
+					    value->classDeclaration;
 					compile.classes[detachNode->caller->classId]
 					    ->memberId[detachNode->declaration->id] =
 					    detachNode->declaration->classId;
@@ -133,6 +149,7 @@ void SetNode::optimize(in_func) {
 					// compile.classes[value->classId]->name);
 				}
 				detach->classId = value->classId;
+				detach->classDeclaration = value->classDeclaration;
 			}
 			// if (detachNode->declaration->accessModifier ==
 			// Lexer::TokenType::PRIVATE) { 	if (detachNode->classId !=
@@ -165,6 +182,7 @@ void SetNode::optimize(in_func) {
 			auto clazz = compile.classes[detachNode->caller->classId];
 			// clazz->memberId[detach->declaration->id] = value->classId;
 			detachNode->declaration->classId = value->classId;
+			detachNode->declaration->classDeclaration = value->classDeclaration;
 			break;
 		}
 		case NodeType::VAR: {
@@ -181,6 +199,8 @@ void SetNode::optimize(in_func) {
 				        AutoLang::DefaultClass::nullClassId &&
 				    value->classId != AutoLang::DefaultClass::nullClassId) {
 					node->declaration->classId = value->classId;
+					node->declaration->classDeclaration =
+					    value->classDeclaration;
 					// Marked non null won't run example val a! = 1
 					if (node->declaration->mustInferenceNullable) {
 						node->declaration->nullable = value->isNullable();
@@ -197,6 +217,7 @@ void SetNode::optimize(in_func) {
 					// compile.classes[value->classId]->name);
 				}
 				detach->classId = value->classId;
+				detach->classDeclaration = value->classDeclaration;
 			}
 			// Nullable
 			if (value->classId == AutoLang::DefaultClass::nullClassId) {
@@ -292,6 +313,30 @@ void SetNode::optimize(in_func) {
 			           " operator with " +
 			           compile.classes[detach->classId]->name + " and " +
 			           compile.classes[value->classId]->name);
+		} else {
+			if (detach->classId == DefaultClass::functionClassId &&
+			    detach->classDeclaration != value->classDeclaration) {
+				size_t size = detach->classDeclaration->inputClassId.size();
+				if (size == value->classDeclaration->inputClassId.size()) {
+					for (int i = 0; i < size; ++i) {
+						if (detach->classDeclaration->inputClassId[i]
+						        ->classId !=
+						    value->classDeclaration->inputClassId[i]->classId) {
+							throwError(
+							    "Type mismatch: expected '" +
+							    detach->classDeclaration->getName(in_data) +
+							    "' but found '" +
+							    value->classDeclaration->getName(in_data));
+						}
+					}
+					return;
+				} else {
+					throwError("Type mismatch: expected '" +
+					           detach->classDeclaration->getName(in_data) +
+					           "' but found '" +
+					           value->classDeclaration->getName(in_data));
+				}
+			}
 		}
 		return;
 	}

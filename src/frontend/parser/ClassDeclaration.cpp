@@ -16,6 +16,14 @@ void ClassDeclaration::throwError(std::string message) {
 template <bool changeGenericsClassId, bool canBeFunction>
 void ClassDeclaration::load(in_func) {
 	if (classId) {
+		if (classId == DefaultClass::functionClassId) {
+			for (size_t i = 0; i < inputClassId.size(); ++i) {
+				auto *classDeclaration = inputClassId[i];
+				if (!classDeclaration->classId) {
+					classDeclaration->load<true>(in_data);
+				}
+			}
+		}
 		return;
 	}
 	if (inputClassId.empty()) {
@@ -184,7 +192,7 @@ bool ClassDeclaration::isGenerics(in_func) {
 	if (isGenericDeclaration)
 		return true;
 	for (auto classDeclaration : inputClassId) {
-		if (classDeclaration->isGenericDeclaration)
+		if (classDeclaration->isGenerics(in_data))
 			return true;
 	}
 	return false;
@@ -192,6 +200,23 @@ bool ClassDeclaration::isGenerics(in_func) {
 
 template <bool addNullable> std::string ClassDeclaration::getName(in_func) {
 	if (classId) {
+		if (classId == DefaultClass::functionClassId) {
+			std::string result = "Function (";
+			bool isFirst = true;
+			for (int i = 1; i < inputClassId.size(); ++i) {
+				if (isFirst) {
+					isFirst = false;
+				} else {
+					result += ", ";
+				}
+				result += inputClassId[i]->getName(in_data);
+			}
+			result += ")->";
+			result += inputClassId[0]->getName(in_data);
+			if (nullable)
+				result += "?";
+			return result;
+		}
 		if constexpr (!addNullable) {
 			return compile.classes[*classId]->name;
 		}

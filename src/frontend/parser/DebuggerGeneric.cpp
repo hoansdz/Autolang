@@ -211,11 +211,11 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	for (auto &[declarationNode, value] :
 	     classInfo->genericData->staticDeclaration) {
 		auto node = context.makeDeclarationNode(
-		    in_data, declarationNode->line, false, declarationNode->baseName,
+		    in_data, declarationNode->line, declarationNode->baseName,
 		    newClass->name + "." +
 		        context.lexerString[declarationNode->baseName],
 		    declarationNode->classDeclaration, declarationNode->isVal, true,
-		    declarationNode->nullable, true);
+		    declarationNode->nullable, false, true);
 		newClassInfo->staticMember[declarationNode->baseName] = node;
 		if (node->classDeclaration) {
 			if (!node->classDeclaration->classId) {
@@ -231,7 +231,6 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			} else {
 				node->classId = *node->classDeclaration->classId;
 			}
-			node->classDeclaration = nullptr;
 			// std::cerr << "loaded " << (compile.classes[node->classId]->name)
 			//           << " "
 			//           << declarationNode->classDeclaration->getName(in_data)
@@ -256,30 +255,31 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	}
 
 	if (classInfo->primaryConstructor) {
-		std::vector<DeclarationNode *> arguments;
-		arguments.reserve(classInfo->primaryConstructor->arguments.size());
-		for (auto argument : classInfo->primaryConstructor->arguments) {
-			arguments.push_back(
-			    static_cast<DeclarationNode *>(argument->copy(in_data)));
+		std::vector<DeclarationNode *> parameters;
+		parameters.reserve(classInfo->primaryConstructor->parameters.size());
+		for (auto *param : classInfo->primaryConstructor->parameters) {
+			parameters.push_back(
+			    static_cast<DeclarationNode *>(param->copy(in_data)));
 		}
 		auto constructor = context.createConstructorPool.push(
 		    classInfo->primaryConstructor->line, newClassId, newNameId,
-		    arguments, true, classInfo->primaryConstructor->functionFlags);
+		    std::move(parameters), true,
+		    classInfo->primaryConstructor->functionFlags);
 		newClassInfo->primaryConstructor = constructor;
-		newClassInfo->primaryConstructor->pushFunction(in_data);
+		constructor->pushFunction(in_data);
 	} else {
 		newClassInfo->secondaryConstructor.reserve(
 		    classInfo->secondaryConstructor.size());
 		for (auto *constructor : classInfo->secondaryConstructor) {
-			std::vector<DeclarationNode *> arguments;
-			arguments.reserve(constructor->arguments.size());
-			for (auto argument : constructor->arguments) {
-				arguments.push_back(
-				    static_cast<DeclarationNode *>(argument->copy(in_data)));
+			std::vector<DeclarationNode *> parameters;
+			parameters.reserve(constructor->parameters.size());
+			for (auto param : constructor->parameters) {
+				parameters.push_back(
+				    static_cast<DeclarationNode *>(param->copy(in_data)));
 			}
 			auto newConstructor = context.createConstructorPool.push(
-			    constructor->line, newClassId, newNameId, arguments, false,
-			    constructor->functionFlags);
+			    constructor->line, newClassId, newNameId, std::move(parameters),
+			    false, constructor->functionFlags);
 			newClassInfo->secondaryConstructor.push_back(newConstructor);
 			newConstructor->pushFunction(in_data);
 			// ParserContext::mode = constructor->mode;
@@ -298,8 +298,8 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	for (auto *createFuncNode : classInfo->createFunctionNodes) {
 		auto funcInfo = context.functionInfo[createFuncNode->id];
 		std::vector<DeclarationNode *> arguments;
-		arguments.reserve(createFuncNode->arguments.size());
-		for (auto argument : createFuncNode->arguments) {
+		arguments.reserve(createFuncNode->parameters.size());
+		for (auto argument : createFuncNode->parameters) {
 			arguments.push_back(
 			    static_cast<DeclarationNode *>(argument->copy(in_data)));
 		}
@@ -429,8 +429,8 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 
 	auto lastCurrentFunctionId = context.currentFunctionId;
 	std::vector<DeclarationNode *> arguments;
-	arguments.reserve(createFuncNode->arguments.size());
-	for (auto argument : createFuncNode->arguments) {
+	arguments.reserve(createFuncNode->parameters.size());
+	for (auto argument : createFuncNode->parameters) {
 		arguments.push_back(
 		    static_cast<DeclarationNode *>(argument->copy(in_data)));
 	}
@@ -466,10 +466,10 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 	for (auto &[declarationNode, value] :
 	     funcInfo->genericData->staticDeclaration) {
 		auto node = context.makeDeclarationNode(
-		    in_data, declarationNode->line, false, declarationNode->baseName,
+		    in_data, declarationNode->line, declarationNode->baseName,
 		    newFunc->name + context.lexerString[declarationNode->baseName],
 		    declarationNode->classDeclaration, declarationNode->isVal, true,
-		    declarationNode->nullable, true);
+		    declarationNode->nullable, false, true);
 		funcInfo->genericData
 		    ->newPositionOfStaticDeclaration[declarationNode->id] = node->id;
 		if (node->classDeclaration) {
@@ -490,7 +490,6 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 				node->classId = *node->classDeclaration->classId;
 			}
 		}
-		node->classDeclaration = nullptr;
 		node->optimize(in_data);
 		if (value) {
 			auto varNode =
@@ -537,8 +536,6 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 					classDeclaration->throwError(
 					    "Unsolved " + classDeclaration->getName(in_data));
 				}
-				std::cerr << "OK " << classDeclaration->getName(in_data)
-				          << "\n";
 				unknowNode->nameId = it->second;
 				break;
 			}

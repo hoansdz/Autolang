@@ -43,7 +43,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 	LexerStringId nameId = token->indexData;
 	const std::string &name = context.lexerString[nameId];
 
-	if (isClassExist(in_data, name)) {
+	if (context.defaultClassMap.find(nameId) != context.defaultClassMap.end()) {
 		throw ParserError(firstLine, "Class " + name + " has exists");
 	}
 
@@ -73,8 +73,8 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 			}
 			auto *constructor = context.createConstructorPool.push(
 			    firstLine, *context.currentClassId, nameId,
-			    std::vector<DeclarationNode *>{}, false,
-			    FunctionFlags::FUNC_PUBLIC);
+			    std::vector<DeclarationNode *>{classInfo->declarationThis},
+			    false, FunctionFlags::FUNC_PUBLIC);
 			classInfo->secondaryConstructor.push_back(constructor);
 			constructor->pushFunction(in_data);
 			context.gotoClass(lastClass);
@@ -170,7 +170,9 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 		if (expect(token, Lexer::TokenType::EXTENDS)) {
 			node->superDeclaration =
 			    loadClassDeclaration(in_data, i, token->line, false);
-			context.allClassDeclarations.push_back(node->superDeclaration);
+			if (!node->superDeclaration->isGenerics(in_data)) {
+				context.allClassDeclarations.push_back(node->superDeclaration);
+			}
 			// auto name = node->superDeclaration->getName(in_data);
 			// std::cerr << "Created extends: " << name << "\n";
 			// LexerStringId newNameId;
@@ -214,10 +216,11 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 				throw ParserError(context.tokens[i].line,
 				                  "@native_data is already applied");
 			}
+			auto parameters = loadListDeclaration(in_data, i, true);
+			parameters.insert(parameters.begin(), classInfo->declarationThis);
 			classInfo->primaryConstructor = context.createConstructorPool.push(
 			    firstLine, *context.currentClassId, nameId,
-			    loadListDeclaration(in_data, i, true), true,
-			    FunctionFlags::FUNC_PUBLIC);
+			    std::move(parameters), true, FunctionFlags::FUNC_PUBLIC);
 			classInfo->primaryConstructor->pushFunction(in_data);
 			if (!nextToken(&token, context.tokens, i)) {
 				context.gotoClass(lastClass);
@@ -239,8 +242,8 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 				}
 				auto *constructor = context.createConstructorPool.push(
 				    firstLine, *context.currentClassId, nameId,
-				    std::vector<DeclarationNode *>{}, false,
-				    FunctionFlags::FUNC_PUBLIC);
+				    std::vector<DeclarationNode *>{classInfo->declarationThis},
+				    false, FunctionFlags::FUNC_PUBLIC);
 				classInfo->secondaryConstructor.push_back(constructor);
 				constructor->pushFunction(in_data);
 			}
@@ -259,8 +262,9 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 				classInfo->primaryConstructor =
 				    context.createConstructorPool.push(
 				        firstLine, *context.currentClassId, nameId,
-				        std::vector<DeclarationNode *>{}, true,
-				        FunctionFlags::FUNC_PUBLIC);
+				        std::vector<DeclarationNode *>{
+				            classInfo->declarationThis},
+				        true, FunctionFlags::FUNC_PUBLIC);
 				classInfo->primaryConstructor->pushFunction(in_data);
 			}
 			context.gotoClass(lastClass);
@@ -362,6 +366,8 @@ void loadConstructor(in_func, size_t &i) {
 		}
 	}
 	// Create constructor
+	listDeclarationNode.insert(listDeclarationNode.begin(),
+	                           classInfo->declarationThis);
 	auto constructor = context.createConstructorPool.push(
 	    firstLine, *context.currentClassId, context.lexerStringMap[clazz->name],
 	    std::move(listDeclarationNode), false, functionFlags);
@@ -369,6 +375,7 @@ void loadConstructor(in_func, size_t &i) {
 	constructor->pushFunction(in_data);
 	context.gotoFunction(constructor->funcId);
 	auto func = compile.functions[constructor->funcId];
+	auto funcInfo = context.functionInfo[constructor->funcId];
 	// compile
 	//     .funcMap[compile.classes[*context.currentClassId]->name + "." +
 	//              compile.classes[*context.currentClassId]->name]
@@ -383,21 +390,21 @@ void loadConstructor(in_func, size_t &i) {
 			throw ParserError(firstLine, "Native function name '" + name +
 			                                 "' could not be found");
 		}
-		for (size_t j = 0; j < constructor->arguments.size(); ++j) {
-			auto *argument = constructor->arguments[j];
-			argument->id = j + 1;
+		for (size_t j = 0; j < constructor->parameters.size(); ++j) {
+			auto *param = constructor->parameters[j];
+			param->id = j;
 		}
 		func->native = it->second;
 	} else {
 		// Add to scope
-		auto &scope = context.getCurrentFunctionInfo(in_data)->scopes.back();
-		scope["this"] = classInfo->declarationThis;
+		auto &scope = funcInfo->scopes.back();
+		scope[lexerIdthis] = classInfo->declarationThis;
 
 		// context.getCurrentFunctionInfo(in_data)->declaration = 1;
-		for (size_t j = 0; j < constructor->arguments.size(); ++j) {
-			auto *argument = constructor->arguments[j];
-			scope[argument->name] = argument;
-			argument->id = j + 1;
+		for (size_t j = 0; j < constructor->parameters.size(); ++j) {
+			auto *param = constructor->parameters[j];
+			scope[param->baseName] = param;
+			param->id = j;
 		}
 		loadBody<false>(in_data, constructor->body.nodes, i, false);
 	}

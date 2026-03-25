@@ -104,6 +104,11 @@ void AVM::log(Function *currentFunction) {
 				          << "\n";
 				break;
 			}
+			case AutoLang::Opcode::CALL_FUNCTION_OBJECT: {
+				std::cerr << "CALL_FUNCTION_OBJECT	 "
+				          << "\n";
+				break;
+			}
 			case AutoLang::Opcode::CALL_VOID_FUNCTION: {
 				uint32_t funcId = get_u32(bytecodes, i);
 				std::cerr << "CALL_VOID_FUNCTION	 "
@@ -127,6 +132,13 @@ void AVM::log(Function *currentFunction) {
 			case AutoLang::Opcode::CALL_DATA_CONTRUCTOR: {
 				uint32_t funcPos = get_u32(bytecodes, i);
 				std::cerr << "CALL_DATA_CONTRUCTOR	 " << funcPos << "\n";
+				break;
+			}
+			case AutoLang::Opcode::CREATE_FUNCTION_OBJECT: {
+				Function *func = data.functions[get_u32(bytecodes, i)];
+				uint32_t size = get_u32(bytecodes, i);
+				std::cerr << "CREATE_FUNCTION_OBJECT   " << func->name << " "
+				          << size << "\n";
 				break;
 			}
 			case AutoLang::Opcode::FOR_LIST: {
@@ -182,7 +194,8 @@ void AVM::log(Function *currentFunction) {
 				auto obj = data.constPool[get_u32(bytecodes, i)];
 				std::cerr << "CONST_PRIMARY	 "
 				          << DefaultFunction::to_string(*notifier, obj) << "\n";
-				// std::cerr << "CONST_PRIMARY	 " << get_u32(bytecodes, i) << "\n";
+				// std::cerr << "CONST_PRIMARY	 " << get_u32(bytecodes, i) <<
+				// "\n";
 				break;
 			}
 			case AutoLang::Opcode::RETURN_LOCAL:

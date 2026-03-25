@@ -81,6 +81,13 @@ class Void {
 
 }
 
+@no_extends
+@no_constructor
+class Function {
+
+}
+
+
 class Exception(val message: String) {
 	
 }

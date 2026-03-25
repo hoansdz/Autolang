@@ -59,8 +59,8 @@ ExprNode *loadFor(in_func, size_t &i) {
 	context.getCurrentFunctionInfo(in_data)->scopes.emplace_back();
 	// Create temp declaration
 	auto declarationNode = context.makeDeclarationNode(
-	    in_data, token->line, true, baseName, name, nullptr, true,
-	    context.currentFunctionId == context.mainFunctionId, false, true);
+	    in_data, token->line, baseName, name, nullptr, true,
+	    context.currentFunctionId == context.mainFunctionId, false, true, true);
 	declarationNode->classId = AutoLang::DefaultClass::nullClassId;
 	declaration =
 	    context.varPool.push(firstLine, declarationNode, false, false);
@@ -80,10 +80,10 @@ ExprNode *loadFor(in_func, size_t &i) {
 	if (data->kind != NodeType::RANGE) {
 		// Create temp declaration
 		auto declarationNode = context.makeDeclarationNode(
-		    in_data, token->line, true,
+		    in_data, token->line,
 		    context.createLexerStringIfNotExists(".iterator"), ".iterator",
 		    nullptr, true, context.currentFunctionId == context.mainFunctionId,
-		    false, true);
+		    false, true, true);
 		declarationNode->classId = AutoLang::DefaultClass::intClassId;
 		iteratorNode =
 		    context.varPool.push(firstLine, declarationNode, false, false);

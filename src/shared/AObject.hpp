@@ -3,6 +3,7 @@
 
 #include "AString.hpp"
 #include "shared/DefaultClass.hpp"
+#include "shared/FunctionObject.hpp"
 #include "shared/NormalArray.hpp"
 #include "shared/Type.hpp"
 #include <iostream>
@@ -32,6 +33,7 @@ struct AObject {
 		int64_t i;
 		double f;
 		uint8_t b;
+		FunctionObject *function;
 		NormalArray<AObject *> *member;
 		AString *str;
 		ANativeData *data;
@@ -47,6 +49,9 @@ struct AObject {
 	    : type(AutoLang::DefaultClass::floatClassId), refCount(0), f(f) {}
 	AObject(AString *str)
 	    : type(AutoLang::DefaultClass::stringClassId), refCount(0), str(str) {}
+	AObject(FunctionObject *function)
+	    : type(AutoLang::DefaultClass::functionClassId), refCount(0),
+	      function(function) {}
 	AObject(ClassId type, ANativeData *data)
 	    : type(type), refCount(0), data(data) {}
 	inline void retain() {
@@ -64,13 +69,20 @@ struct AObject {
 				return;
 			}
 			case AutoLang::DefaultClass::stringClassId: {
-				if constexpr (checkRefCount) {
-					if (refCount > 0)
-						--refCount;
-					if (refCount != 0)
-						return;
-				}
+				// if constexpr (checkRefCount) {
+				// 	if (refCount > 0)
+				// 		--refCount;
+				// 	if (refCount != 0)
+				// 		return;
+				// }
 				delete str;
+				return;
+			}
+			case AutoLang::DefaultClass::functionClassId: {
+				for (int i = function->size; i-- > 0;) {
+					--function->args[i]->refCount;
+				}
+				delete function;
 				return;
 			}
 			default:

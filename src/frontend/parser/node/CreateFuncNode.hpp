@@ -16,15 +16,15 @@ struct CreateFuncNode : ExprNode {
 	ClassDeclaration *classDeclaration;
 	FunctionId id;
 	BlockNode body;
-	const std::vector<DeclarationNode *> arguments;
-	uint32_t functionFlags;	
+	const std::vector<DeclarationNode *> parameters;
+	uint32_t functionFlags;
 	CreateFuncNode(uint32_t line, std::optional<ClassId> contextCallClassId,
 	               LexerStringId nameId, ClassDeclaration *classDeclaration,
-	               std::vector<DeclarationNode *> arguments,
+	               std::vector<DeclarationNode *> parameters,
 	               uint32_t functionFlags)
 	    : ExprNode(NodeType::CREATE_FUNC, line),
 	      contextCallClassId(contextCallClassId), nameId(nameId),
-	      classDeclaration(classDeclaration), arguments(std::move(arguments)),
+	      classDeclaration(classDeclaration), parameters(std::move(parameters)),
 	      body(line), functionFlags(functionFlags) {}
 	void pushFunction(in_func);
 	void pushNativeFunction(in_func, ANativeFunction native);

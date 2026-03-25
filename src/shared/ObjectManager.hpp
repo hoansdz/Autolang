@@ -70,6 +70,12 @@ class ObjectManager {
 		obj->str = str;
 		return obj;
 	}
+	inline AObject *get(FunctionObject *function) {
+		auto obj = areaAllocator.getObject();
+		obj->type = AutoLang::DefaultClass::functionClassId;
+		obj->function = function;
+		return obj;
+	}
 	inline AObject *get(ClassId classId, ANativeData *nativeData) {
 		auto obj = areaAllocator.getObject();
 		obj->type = classId;
@@ -90,6 +96,13 @@ class ObjectManager {
 			}
 			case AutoLang::DefaultClass::stringClassId: {
 				delete obj->str;
+				return;
+			}
+			case AutoLang::DefaultClass::functionClassId: {
+				for (int i = obj->function->size; i-- > 0;) {
+					release(obj->function->args[i]);
+				}
+				delete obj->function;
 				return;
 			}
 			default:

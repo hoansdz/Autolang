@@ -40,6 +40,9 @@ template <bool trailingComma = false>
 std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i);
 std::vector<DeclarationNode *> loadListDeclaration(in_func, size_t &i,
                                                    bool allowVar = false);
+std::vector<ClassDeclaration *> loadListClassDeclaration(in_func, size_t &i,
+                                                         uint32_t line,
+                                                         bool allowReturnVoid);
 ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
                                        bool allowReturnVoid);
 void loadListGenericDeclarationType(in_func, size_t &i, uint32_t line,

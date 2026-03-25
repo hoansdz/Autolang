@@ -56,6 +56,7 @@ enum NodeType : uint8_t {
 	RET,
 	SKIP,
 	CLASS_ACCESS,
+	FUNCTION_ACCESS,
 	OPTIONAL_ACCESS,
 	NULL_COALESCING,
 	TRY_CATCH,
@@ -67,7 +68,7 @@ enum NodeType : uint8_t {
 	CREATE_SET,
 	CREATE_MAP,
 	CREATE_ENUM_VALUE,
-	WHEN
+	WHEN,
 };
 
 struct ExprNode {
@@ -123,12 +124,15 @@ struct CanBreakContinueNode : ExprNode {
 };
 
 struct HasClassIdNode : ExprNode {
+	ClassDeclaration *classDeclaration;
 	ClassId classId;
 	inline std::string &getClassName(in_func) {
 		return compile.classes[classId]->name;
 	}
-	HasClassIdNode(NodeType kind, ClassId classId, uint32_t line)
-	    : ExprNode(kind, line), classId(classId) {}
+	HasClassIdNode(NodeType kind, ClassId classId, uint32_t line,
+	               ClassDeclaration *classDeclaration = nullptr)
+	    : ExprNode(kind, line), classId(classId),
+	      classDeclaration(classDeclaration) {}
 	virtual bool isNullable() { return false; }
 	virtual bool isStaticValue() { return false; }
 	virtual ~HasClassIdNode() {}
@@ -468,9 +472,30 @@ struct ForNode : CanBreakContinueNode {
 };
 
 struct ClassAccessNode : HasClassIdNode {
-	ClassAccessNode(uint32_t line, uint32_t type)
+	ClassAccessNode(uint32_t line, ClassId type)
 	    : HasClassIdNode(NodeType::CLASS_ACCESS, type, line) {}
 	ExprNode *copy(in_func) override { return this; }
+	bool isStaticValue() override { return true; }
+};
+
+struct FunctionAccessNode : HasClassIdNode {
+	LexerStringId nameId;
+	uint32_t count;
+	std::vector<FunctionId> *funcs[2];
+	FunctionId funcId;
+	FunctionAccessNode(uint32_t line, LexerStringId nameId, uint32_t count,
+	                   std::vector<FunctionId> **funcs)
+	    : HasClassIdNode(NodeType::FUNCTION_ACCESS,
+	                     DefaultClass::functionClassId, line),
+	      nameId(nameId), count(count) {
+		if (count >= 1)
+			this->funcs[0] = funcs[0];
+		if (count >= 2)
+			this->funcs[1] = funcs[1];
+	}
+	ExprNode *copy(in_func) override { return this; }
+	void optimize(in_func) override;
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	bool isStaticValue() override { return true; }
 };
 
@@ -487,13 +512,14 @@ struct MatchOverload {
 	Function *func;
 	FunctionId id;
 	uint8_t score;
-	bool errorNonNullIfMatch = false;
+	uint8_t errorNonNullIfMatchCount = 0;
 };
 
 // caller.name(arguments)
 struct CallNode : NullableNode {
 	std::optional<ClassId> contextCallClassId;
 	HasClassIdNode *caller;
+	HasClassIdNode *funcObject;
 	LexerStringId nameId;
 	std::vector<HasClassIdNode *> arguments;
 	ClassDeclaration *inputGenericArguments;
@@ -509,16 +535,29 @@ struct CallNode : NullableNode {
 	         bool nullable, bool accessNullable)
 	    : NullableNode(NodeType::CALL, 0, nullable, line),
 	      contextCallClassId(contextCallClassId), caller(caller),
-	      nameId(nameId), arguments(std::move(arguments)),
+	      funcObject(nullptr), nameId(nameId), arguments(std::move(arguments)),
 	      justFindStatic(justFindStatic), accessNullable(accessNullable) {}
+	CallNode(uint32_t line, std::optional<ClassId> contextCallClassId,
+	         HasClassIdNode *funcObject, LexerStringId nameId,
+	         bool justFindStatic, std::vector<HasClassIdNode *> arguments,
+	         bool nullable, bool accessNullable)
+	    : NullableNode(NodeType::CALL, 0, nullable, line),
+	      contextCallClassId(contextCallClassId), caller(nullptr),
+	      funcObject(funcObject), nameId(nameId),
+	      arguments(std::move(arguments)), accessNullable(accessNullable) {}
 	bool isNullable() override { return nullable; }
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
 	ExprNode *copy(in_func) override;
-	bool match(in_func, MatchOverload &match, std::vector<uint32_t> &functions,
-	           int &i);
+	bool match(in_func, MatchOverload &match,
+	           std::vector<FunctionId> &functions, int &i,
+	           bool mustInferenceGenericType);
+	void matchFunction(in_func, bool mustInferenceGenericType);
+	void matchFunction(in_func, ClassDeclaration *detach,
+	                   ClassDeclaration *value);
+	FunctionId matchObjectFunction(in_func, std::vector<FunctionId> &funcs);
 	bool isStaticValue() override { return false; }
 	~CallNode();
 };

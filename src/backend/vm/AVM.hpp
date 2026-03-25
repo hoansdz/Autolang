@@ -137,7 +137,9 @@ enum Opcode : uint8_t {
 
 	FAST_SAVE_MEMBER,
 	CREATE_SET_OBJECT,
-	CREATE_MAP_OBJECT
+	CREATE_MAP_OBJECT,
+	CREATE_FUNCTION_OBJECT,
+	CALL_FUNCTION_OBJECT
 };
 
 template <typename K, typename V>
@@ -212,6 +214,10 @@ class AVM {
 	inline bool callFunction(CallFrame *&currentCallFrame,
 	                         Function *currentFunction, uint8_t *bytecodes,
 	                         uint32_t &i);
+	inline bool callFunctionObject(AObject* obj);
+	inline bool callFunction(Function *currentFunction);
+	inline bool callFunction(CallFrame *currentCallFrame,
+	                         uint32_t argumentCount);
 	void resume();
 	void run();
 	void input(AObject *inputData);

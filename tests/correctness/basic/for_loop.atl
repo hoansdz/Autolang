@@ -6,7 +6,7 @@ func testForLoop() {
 		a += i
 	}
 	assert(a == 55, __FILE__, __LINE__)
-	println("Passes ${__FUNC__}")
+	println("Passed ${__FUNC__}")
 }
 
 testForLoop()

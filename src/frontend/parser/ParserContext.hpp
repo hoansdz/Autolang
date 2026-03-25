@@ -10,7 +10,7 @@
 #include "frontend/parser/node/CreateNode.hpp"
 #include "frontend/structure/NonReallocatePool.hpp"
 #include "shared/ChunkArena.hpp"
-#include "shared/FixedPool.hpp"
+#include "shared/ClassFlags.hpp"
 #include <set>
 #include <vector>
 
@@ -58,6 +58,7 @@ constexpr LexerStringId lexerIdget = 18;
 constexpr LexerStringId lexerIdset = 19;
 constexpr LexerStringId lexerIdcontains = 20;
 constexpr LexerStringId lexerIdthis = 21;
+constexpr LexerStringId lexerIdFunction = 22;
 
 using GenericCaller = ClassDeclaration;
 
@@ -86,6 +87,7 @@ struct ParserContext {
 	NonReallocatePool<CreateFuncNode> newFunctions;
 	HashMap<std::string, CreateFuncNode *> genericFunctionMap;
 	std::vector<FunctionId> mustInferenceFunctionType;
+	HashMap<LexerStringId, std::vector<FunctionId>> globalFunction;
 	// Find, example func load<T>(a: T)
 	GenericData *preloadGenericData = nullptr;
 	ChunkArena<GenericData, 8> genericDataPool;
@@ -142,6 +144,7 @@ struct ParserContext {
 	ChunkArena<NullCoalescingNode, 64> nullCoalescingPool;
 	ChunkArena<BlockNode, 64> blockNodePool;
 	ChunkArena<CallNode, 64> callNodePool;
+	ChunkArena<CallNode, 16> callFuncObjectNodePool;
 	ChunkArena<ClassAccessNode, 64> classAccessPool;
 	ChunkArena<ConstValueNode, 128> constValuePool;
 	ChunkArena<UnaryNode, 64> unaryNodePool;
@@ -151,6 +154,7 @@ struct ParserContext {
 	ChunkArena<CreateSetNode, 32> createSetPool;
 	ChunkArena<CreateMapNode, 32> createMapPool;
 	ChunkArena<WhenNode, 32> whenNodePool;
+	ChunkArena<FunctionAccessNode, 16> functionAccessPool;
 
 	std::optional<ClassId> currentClassId = std::nullopt;
 	uint32_t mainFunctionId;
@@ -251,10 +255,11 @@ struct ParserContext {
 	HasClassIdNode *findDeclaration(in_func, uint32_t line,
 	                                LexerStringId nameId, bool inGlobal);
 	DeclarationNode *
-	makeDeclarationNode(in_func, uint32_t line, bool isTemp,
-	                    LexerStringId baseName, const std::string &name,
+	makeDeclarationNode(in_func, uint32_t line, LexerStringId baseName,
+	                    const std::string &name,
 	                    ClassDeclaration *classDeclaration, bool isVal,
-	                    bool isGlobal, bool nullable, bool pushToScope = true);
+	                    bool isGlobal, bool nullable,
+	                    bool addToScope = true, bool loadId = true);
 	inline size_t getBoolConstValuePosition(bool b) { return b ? 1 : 2; }
 	inline LexerStringId createLexerStringIfNotExists(const std::string &str) {
 		auto it = lexerStringMap.find(str);

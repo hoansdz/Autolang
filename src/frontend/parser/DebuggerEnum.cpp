@@ -107,7 +107,7 @@ void loadEnum(in_func, size_t &i) {
 	LexerStringId nameId = token->indexData;
 	const std::string &name = context.lexerString[nameId];
 
-	if (isClassExist(in_data, name)) {
+	if (context.defaultClassMap.find(nameId) != context.defaultClassMap.end()) {
 		throw ParserError(firstLine, "Class " + name + " has exists");
 	}
 

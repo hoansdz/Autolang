@@ -56,7 +56,6 @@ func testGenericFunctionWithStatic<T>(value: T): T {
 }
 
 func testGenerics() {
-	// GenericTest<Int>()
 	val f1 = GenericTest<GAnimal>()
 	assert(f1 is GenericTest<GAnimal> && f1.value.sound() == f1.sound() && f1.sound() == "Nothing", __FILE__, __LINE__)
 	val f2 = GenericTest<GDog>()

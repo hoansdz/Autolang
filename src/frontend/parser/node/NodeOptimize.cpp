@@ -198,34 +198,69 @@ ExprNode *UnaryNode::copy(in_func) {
 }
 
 ExprNode *UnknowNode::resolve(in_func) {
-	auto it = context.defaultClassMap.find(nameId);
-	if (it == context.defaultClassMap.end()) {
-		if (contextCallClassId) {
-			auto *clazz = compile.classes[*contextCallClassId];
-			auto *classInfo = context.classInfo[*contextCallClassId];
+	{
+		auto it = context.defaultClassMap.find(nameId);
+		if (it != context.defaultClassMap.end()) {
+			auto result = context.classAccessPool.push(line, it->second);
+			return result;
+		}
+	}
 
-			{
-				auto correctNode =
-				    classInfo->findDeclaration(in_data, line, nameId);
-				if (correctNode) {
-					static_cast<AccessNode *>(correctNode)->nullable = nullable;
-					ExprNode::deleteNode(this);
-					return correctNode;
-				}
+	if (contextCallClassId) {
+		auto *clazz = compile.classes[*contextCallClassId];
+		auto *classInfo = context.classInfo[*contextCallClassId];
+
+		{
+			auto correctNode =
+			    classInfo->findDeclaration(in_data, line, nameId);
+			if (correctNode) {
+				static_cast<AccessNode *>(correctNode)->nullable = nullable;
+				ExprNode::deleteNode(this);
+				return correctNode;
 			}
+		}
 
+		{
 			auto it = classInfo->constValue.find(nameId);
 			if (it != classInfo->constValue.end()) {
 				return it->second;
 			}
 		}
-		throwError("UnknowNode: Variable name: " + context.lexerString[nameId] +
-		           " is not be declarated");
+
+		{
+			uint32_t count = 0;
+			std::vector<FunctionId> *funcs[2];
+
+			{
+				auto it = classInfo->allFunction.find(nameId);
+				if (it != classInfo->allFunction.end()) {
+					funcs[count++] = &it->second;
+				}
+			}
+
+			{
+				auto it = context.globalFunction.find(nameId);
+				if (it != context.globalFunction.end()) {
+					funcs[count++] = &it->second;
+				}
+			}
+
+			if (count) {
+				return context.functionAccessPool.push(line, nameId, count, funcs);
+			}
+		}
+	} else {
+		{
+			std::vector<FunctionId> *funcs[1];
+			auto it = context.globalFunction.find(nameId);
+			if (it != context.globalFunction.end()) {
+				funcs[0] = &it->second;
+				return context.functionAccessPool.push(line, nameId, 1, funcs);
+			}
+		}
 	}
-	// Founded class
-	auto result = context.classAccessPool.push(line, it->second);
-	ExprNode::deleteNode(this);
-	return result;
+	throwError("UnknowNode: Variable name: " + context.lexerString[nameId] +
+	           " is not be declarated");
 }
 
 ExprNode *UnknowNode::copy(in_func) {
@@ -364,6 +399,7 @@ void ReturnNode::optimize(in_func) {
 				           "nonnull value");
 			}
 			if (value->isNullable()) {
+				std::cerr<<value->getNodeType()<<"\n";
 				throwError("Cannot return nullable variable because functions "
 				           "returns nonnull value");
 			}
@@ -387,6 +423,7 @@ void VarNode::optimize(in_func) {
 	//           << compile.classes[declaration->classId]->name << "\n";
 	classId = declaration->classId;
 	isVal = declaration->isVal;
+	classDeclaration = declaration->classDeclaration;
 	if (nullable) {
 		nullable = declaration->nullable; // #
 	}

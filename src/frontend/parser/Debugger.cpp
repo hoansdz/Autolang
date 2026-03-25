@@ -778,12 +778,16 @@ std::vector<DeclarationNode *> loadListDeclaration(in_func, size_t &i,
 		}
 		auto classDeclaration =
 		    loadClassDeclaration(in_data, i, token->line, false);
-		context.allClassDeclarations.push_back(classDeclaration);
-		if (!nextToken(&token, context.tokens, i))
+		if (!classDeclaration->isGenerics(in_data)) {
+			context.allClassDeclarations.push_back(classDeclaration);
+		}
+		if (!nextToken(&token, context.tokens, i)) {
+			--i;
 			break;
+		}
 		auto node = context.makeDeclarationNode(
-		    in_data, token->line, false, baseName, name, classDeclaration,
-		    isVal, false, classDeclaration->nullable, false);
+		    in_data, token->line, baseName, name, classDeclaration, isVal,
+		    false, classDeclaration->nullable, false, false);
 		nodes.push_back(node);
 		switch (token->type) {
 			using namespace Lexer;
@@ -793,13 +797,18 @@ std::vector<DeclarationNode *> loadListDeclaration(in_func, size_t &i,
 			case TokenType::COMMA: {
 				break;
 			}
-			default:
-				goto expectedCloseBracket;
+			default: {
+				throw ParserError(token->line, "Unexpected token '" +
+				                                   token->toString(context) +
+				                                   "'");
+			}
 		}
 	}
 expectedCloseBracket:
 	--i;
-	throw ParserError(0, "Bug: DLexer not ensure close bracket");
+	std::cerr << context.tokens[i].toString(context) << "\n";
+	throw ParserError(context.tokens[i].line,
+	                  "Bug: DLexer not ensure close bracket");
 }
 
 HasClassIdNode *parsePrimary(in_func, size_t &i) {
@@ -809,6 +818,17 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 	switch (token->type) {
 		case Lexer::TokenType::IDENTIFIER: {
 			node = loadIdentifier(in_data, i);
+			if (node->kind != NodeType::CALL ||
+			    (context.currentClassId &&
+			     context.currentFunctionId == context.mainFunctionId)) {
+				break;
+			}
+			auto n = static_cast<CallNode *>(node);
+			if (!n->caller) {
+				auto declarationNode = context.findDeclaration(
+				    in_data, token->line, n->nameId, true);
+				n->funcObject = declarationNode;
+			}
 			break;
 		}
 		case Lexer::TokenType::PLUS:
@@ -850,7 +870,10 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 					classDeclaration->baseClassLexerStringId = lexerIdArray;
 					classDeclaration->inputClassId = std::move(inputVecs);
 					classDeclaration->line = firstLine;
-					context.allClassDeclarations.push_back(classDeclaration);
+					if (!classDeclaration->isGenerics(in_data)) {
+						context.allClassDeclarations.push_back(
+						    classDeclaration);
+					}
 					auto list = loadListArgument<true>(in_data, i);
 					node = context.createArrayPool.push(
 					    firstLine, classDeclaration, std::move(list));
@@ -863,8 +886,10 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 						classDeclaration->baseClassLexerStringId = lexerIdSet;
 						classDeclaration->inputClassId = std::move(inputVecs);
 						classDeclaration->line = firstLine;
-						context.allClassDeclarations.push_back(
-						    classDeclaration);
+						if (!classDeclaration->isGenerics(in_data)) {
+							context.allClassDeclarations.push_back(
+							    classDeclaration);
+						}
 						node = loadSetOrMap(in_data, i, NodeType::CREATE_SET);
 						static_cast<CreateSetNode *>(node)->classDeclaration =
 						    classDeclaration;
@@ -1061,10 +1086,11 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 	Lexer::Token *identifier = &context.tokens[i];
 	Lexer::Token *token;
 	if (!nextToken(&token, context.tokens, i)) {
+		--i;
 		if (!allowAddThis) {
 			return context.unknowNodePool.push(
-			    token->line, context.currentClassId, context.currentFunctionId,
-			    identifier->indexData, true);
+			    context.tokens[i].line, context.currentClassId,
+			    context.currentFunctionId, identifier->indexData, true);
 		}
 		return findIdentifierNode(in_data, i, identifier->indexData, true);
 	}
@@ -1094,10 +1120,13 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			auto funcInfo = context.getCurrentFunctionInfo(in_data);
 			if (!nextToken(&token, context.tokens, i) ||
 			    !expect(token, Lexer::TokenType::LPAREN)) {
-				context.allClassDeclarations.push_back(classDeclaration);
+				if (!classDeclaration->isGenerics(in_data)) {
+					context.allClassDeclarations.push_back(classDeclaration);
+				}
 				--i;
 				auto name = classDeclaration->getName(in_data);
-				// std::cerr << "Created unknownode: " << name << "\n";
+				// std::cerr << "Created unknownode: " << name << " "
+				//           << classDeclaration->isGenerics(in_data) << "\n";
 				// std::cerr << ParserContext::mode->path << ":" << token->line
 				//           << "\n";
 				LexerStringId newNameId =
@@ -1186,6 +1215,19 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 					break;
 				}
 			}
+
+			{
+				auto funcObject = context.findDeclaration(
+				    in_data, token->line, token->indexData, false);
+				if (funcObject) {
+					return context.callNodePool.push(
+					    firstLine, context.currentClassId, nullptr,
+					    identifier->indexData, context.justFindStatic,
+					    std::move(arguments),
+					    !nextTokenIfMarkNonNull(in_data, i), false);
+				}
+			}
+
 			auto callNode = context.callNodePool.push(
 			    firstLine, context.currentClassId, nullptr,
 			    identifier->indexData, std::move(arguments),

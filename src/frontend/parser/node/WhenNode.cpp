@@ -29,6 +29,7 @@ void WhenNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 }
 
 void WhenNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
+	value->rewrite(in_data, bytecodes);
 	if (ifNode == nullptr)
 		return;
 	ifNode->rewrite(in_data, bytecodes);

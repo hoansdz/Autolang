@@ -44,6 +44,13 @@ class ANotifier {
 	inline void throwException(T message) {
 		callFrame->exception = createException(message);
 	}
+	template <typename... Args>
+	inline void callFunction(Function* function, Args&&... args) {
+		//vm->callFunction
+	}
+	inline void callFunctionObject(AObject* functionObject) {
+		
+	}
 	inline void input(AObject* obj) {
 		vm->input(obj);
 	}

@@ -1,0 +1,26 @@
+
+
+
+func square(value: Float): Int {
+	return value * value
+}
+func load(onLoad: (Float)->Int): Int {
+	return onLoad(125)
+}
+func testEmptyParams(): Int {
+	return 0
+}
+
+func testFunctional() {
+
+	val a: Float -> Int = square
+	val b = a
+	val c: () -> Int = testEmptyParams
+	val d: ((Float) -> Int) -> Int = load
+
+	assert(d(b) == 15625, __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+testFunctional()

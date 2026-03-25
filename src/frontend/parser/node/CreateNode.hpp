@@ -9,30 +9,26 @@
 
 namespace AutoLang {
 
-inline bool isFunctionExist(in_func, const std::string &name);
-inline bool isClassExist(in_func, const std::string &name);
-inline bool isDeclarationExist(in_func, LexerStringId nameId);
-
 // var val name: className = value
 struct DeclarationNode : HasClassIdNode {
 	std::optional<ClassId> contextCallClassId;
-	Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC;
 	LexerStringId baseName;
 	std::string name;
 	DeclarationOffset id;
-	ClassDeclaration *classDeclaration;
+	Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC;
 	bool isGlobal;
 	bool isVal;
 	bool nullable;
 	bool mustInferenceNullable = false;
+	bool loaded = false;
 	DeclarationNode(uint32_t line, std::optional<ClassId> contextCallClassId,
 	                LexerStringId baseName, std::string name,
 	                ClassDeclaration *classDeclaration, bool isVal,
 	                bool isGlobal, bool nullable)
-	    : HasClassIdNode(NodeType::DECLARATION, 0, line),
+	    : HasClassIdNode(NodeType::DECLARATION, 0, line, classDeclaration),
 	      contextCallClassId(contextCallClassId), baseName(baseName),
-	      name(std::move(name)), classDeclaration(classDeclaration),
-	      isGlobal(isGlobal), isVal(isVal), nullable(nullable) {}
+	      name(std::move(name)), isGlobal(isGlobal), isVal(isVal),
+	      nullable(nullable) {}
 	void optimize(in_func) override;
 	ExprNode *copy(in_func) override;
 	~DeclarationNode() {}
@@ -59,15 +55,15 @@ struct CreateConstructorNode : HasClassIdNode {
 	LexerStringId nameId;
 	FunctionId funcId;
 	BlockNode body;
-	const std::vector<DeclarationNode *> arguments;
+	const std::vector<DeclarationNode *> parameters;
 	uint32_t functionFlags;
 	bool isPrimary;
 	CreateConstructorNode(uint32_t line, ClassId classId, LexerStringId nameId,
-	                      std::vector<DeclarationNode *> arguments,
+	                      std::vector<DeclarationNode *> parameters,
 	                      bool isPrimary, uint32_t functionFlags)
 	    : HasClassIdNode(NodeType::CREATE_CONSTRUCTOR, 0, line),
 	      classId(classId), functionFlags(functionFlags), nameId(nameId),
-	      arguments(std::move(arguments)), isPrimary(isPrimary), body(line) {}
+	      parameters(std::move(parameters)), isPrimary(isPrimary), body(line) {}
 	void pushFunction(in_func);
 	void optimize(in_func) override;
 	//~CreateConstructorNode(){}

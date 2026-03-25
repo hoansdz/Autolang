@@ -52,10 +52,10 @@ TryCatchNode *loadTryCatch(in_func, size_t &i) {
 	auto funcInfo = context.getCurrentFunctionInfo(in_data);
 	funcInfo->scopes.emplace_back();
 	auto declarationNode = context.makeDeclarationNode(
-	    in_data, token->line, true, baseName, name, nullptr, true,
-	    context.currentFunctionId == context.mainFunctionId, false);
+	    in_data, token->line, baseName, name, nullptr, true,
+	    context.currentFunctionId == context.mainFunctionId, false, true, true);
 	declarationNode->classId = AutoLang::DefaultClass::exceptionClassId;
-	funcInfo->scopes.back()[name] = declarationNode;
+	funcInfo->scopes.back()[baseName] = declarationNode;
 	node->exceptionDeclaration = declarationNode;
 	loadBody<false>(in_data, node->catchBody.nodes, i, true);
 	return node;

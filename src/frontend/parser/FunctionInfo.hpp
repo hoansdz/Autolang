@@ -13,12 +13,13 @@ namespace AutoLang {
 struct FunctionInfo {
 	AClass *clazz; // Context class
 	GenericData *genericData = nullptr;
-	std::vector<HashMap<std::string, DeclarationNode *>> scopes;
+	std::vector<HashMap<LexerStringId, DeclarationNode *>> scopes;
 	uint32_t declaration; // Count declaration
 	BlockNode block;
 	bool *nullableArgs = nullptr;
 	ReturnNode *inferenceNode = nullptr;
 	std::vector<ClassDeclaration *> genericTypeId;
+	std::vector<DeclarationNode *> parameters;
 	Offset virtualPosition;
 	int64_t hash;
 	FunctionInfo() : declaration(0), block(0) { scopes.emplace_back(); }
@@ -33,7 +34,7 @@ struct FunctionInfo {
 			return nullptr;
 		return genericData->findDeclaration(nameId);
 	}
-	AccessNode *findDeclaration(in_func, uint32_t line, const std::string &name,
+	AccessNode *findDeclaration(in_func, uint32_t line, LexerStringId nameId,
 	                            bool isStatic = false);
 	~FunctionInfo();
 };

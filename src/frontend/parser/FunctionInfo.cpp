@@ -6,10 +6,10 @@
 namespace AutoLang {
 
 AccessNode *FunctionInfo::findDeclaration(in_func, uint32_t line,
-                                          const std::string &name, bool isStatic) {
+                                          LexerStringId nameId, bool isStatic) {
 	for (size_t i = scopes.size(); i-- > 0;) {
 		auto scope = scopes[i];
-		auto it = scope.find(name);
+		auto it = scope.find(nameId);
 		if (it == scope.end())
 			continue;
 		if (isStatic && i != 0 && !it->second->isGlobal)

@@ -1,37 +1,17 @@
 
-class M<T> {
-	static var value: T?
-	constructor (value: T) {
-		println(this.value)
-		this.value = value
-		println(this.value)
-	}
+func square(value: Float): Int {
+	return value * value
 }
-
-M<Int>(5)
-M<String>("Hello")
-println(M<Int>.value)
-println(M<Float>.value)
-println(M<String>.value)
-// println(Map<Int, Int>.Map<Int, Int>())
-
-class GAnimal() {
-	func sound() = "Nothing"
+func load(onLoad: (Float)->Int): Int {
+	return onLoad(125)
 }
-
-class GDog extends GAnimal {
-	constructor () {
-		super()
-	}
-	func sound() = "Go"
+func s(): Int {
+	return 0
 }
-
-class GCat extends GAnimal {
-	constructor () {
-		super()
-	}
-	func sound() = "Meow"
-}
-
-val a: GCat = GCat()
-println(a.sound())
+val a: Float -> Int = square
+val b: Float -> Int = a
+val c: ((Float) -> Int) -> Int = load
+println(c(b))
+// for (i in 1..100) {
+// 	println(a(i))
+// }
