@@ -99,9 +99,9 @@ class ObjectManager {
 				return;
 			}
 			case AutoLang::DefaultClass::functionClassId: {
-				for (int i = obj->function->size; i-- > 0;) {
-					release(obj->function->args[i]);
-				}
+				// for (int i = obj->function->size; i-- > 0;) {
+				// 	release(obj->function->args[i]);
+				// }
 				delete obj->function;
 				return;
 			}

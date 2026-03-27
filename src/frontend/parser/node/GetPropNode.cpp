@@ -17,24 +17,26 @@ ExprNode *GetPropNode::resolve(in_func) {
 				return itLoadConst->second;
 			}
 		}
-		auto it = classInfo->staticMember.find(nameId);
-		if (it == classInfo->staticMember.end()) {
-			throwError("Cannot find static member name: '" +
-			           context.lexerString[nameId] + "'");
-		}
-		auto declarationNode = it->second;
-		ExprNode::deleteNode(caller);
-		return context.varPool.push(line, declarationNode, isStore, nullable);
+		// auto it = classInfo->staticMember.find(nameId);
+		// if (it == classInfo->staticMember.end()) {
+		// 	throwError("Cannot find static member name: '" +
+		// 	           context.lexerString[nameId] + "'");
+		// }
+		// auto declarationNode = it->second;
+		// ExprNode::deleteNode(caller);
+		// return context.varPool.push(line, declarationNode, isStore,
+		// nullable);
 	}
 	return this;
 }
 
-void GetPropNode::optimize(in_func) {
+bool GetPropNode::optimizeSkipIfNotFoundMember(in_func) {
 	caller->optimize(in_data);
 	if (caller->isNullable()) {
-		if (!accessNullable)
+		if (!accessNullable) {
 			throwError(
 			    "You can't use '.' with nullable value, you must use '?.'");
+		}
 	} else {
 		if (accessNullable) {
 			warning(in_data,
@@ -43,6 +45,91 @@ void GetPropNode::optimize(in_func) {
 		}
 	}
 	switch (caller->kind) {
+		case NodeType::CLASS_ACCESS: {
+			isStatic = true;
+			break;
+		}
+		case NodeType::CALL:
+		case NodeType::GET_PROP: {
+			break;
+		}
+		case NodeType::VAR: {
+			static_cast<VarNode *>(caller)->isStore = false;
+			break;
+		}
+		default: {
+			throwError("Cannot find caller");
+		}
+	}
+	auto clazz = compile.classes[caller->classId];
+	auto classInfo = context.classInfo[clazz->id];
+	const auto &name = context.lexerString[nameId];
+	auto it = clazz->memberMap.find(name);
+	if (it == clazz->memberMap.end()) {
+		// Find static member
+		auto it_ = classInfo->staticMember.find(nameId);
+		if (it_ == classInfo->staticMember.end()) {
+			return true;
+		}
+		declaration = it_->second;
+		if (declaration->accessModifier != Lexer::TokenType::PUBLIC &&
+		    (!contextCallClassId || *contextCallClassId != clazz->id)) {
+			throwError("Cannot access private -a member name '" + name + "'");
+		}
+		isStatic = true;
+		isVal = declaration->isVal;
+		id = declaration->id;
+		classId = declaration->classId;
+	} else if (isStatic) {
+		throwError("Cannot access non static member " + name);
+	}
+	if (!isStatic) {
+		// a.a = ...
+		declaration = classInfo->member[it->second];
+		isVal = !isInitial && declaration->isVal;
+		if (declaration->accessModifier != Lexer::TokenType::PUBLIC &&
+		    (!contextCallClassId || *contextCallClassId != clazz->id)) {
+			throwError("Cannot access private member name '" + name + "'");
+		}
+		id = it->second;
+		// for (int i = 0; i<clazz->memberId.size(); ++i) {
+		// 	printDebug("MemId: "+std::to_string(clazz->memberId[i]));
+		// }
+		// printDebug("Class " + clazz->name + " GetProp: "+name+" "+" has:
+		// "+std::to_string((uintptr_t)declarationNode));
+		if (clazz->memberId[id] != declaration->classId)
+			clazz->memberId[id] = declaration->classId;
+		classId = declaration->classId; // clazz->memberId[id];
+		// printDebug("Class " + clazz->name + " GetProp: " + name + " " +
+		//            " has id: " + std::to_string(id) + " " +
+		//            std::to_string(classId) + " " +
+		//            compile.classes[classId]->name);
+	}
+	if (nullable) {
+		nullable = declaration->nullable;
+	}
+	return false;
+}
+
+void GetPropNode::optimize(in_func) {
+	caller->optimize(in_data);
+	if (caller->isNullable()) {
+		if (!accessNullable) {
+			throwError(
+			    "You can't use '.' with nullable value, you must use '?.'");
+		}
+	} else {
+		if (accessNullable) {
+			warning(in_data,
+			        "You should use '.' with non null value instead of '?.'");
+			accessNullable = false;
+		}
+	}
+	switch (caller->kind) {
+		case NodeType::CLASS_ACCESS: {
+			isStatic = true;
+			break;
+		}
 		case NodeType::CALL:
 		case NodeType::GET_PROP: {
 			break;
@@ -74,6 +161,9 @@ void GetPropNode::optimize(in_func) {
 		isVal = declaration->isVal;
 		id = declaration->id;
 		classId = declaration->classId;
+		classDeclaration = declaration->classDeclaration;
+	} else if (isStatic) {
+		throwError("Cannot access non static member " + name);
 	}
 	if (!isStatic) {
 		// a.a = ...
@@ -91,7 +181,8 @@ void GetPropNode::optimize(in_func) {
 		// "+std::to_string((uintptr_t)declarationNode));
 		if (clazz->memberId[id] != declaration->classId)
 			clazz->memberId[id] = declaration->classId;
-		classId = declaration->classId; // clazz->memberId[id];
+		classId = declaration->classId;
+		classDeclaration = declaration->classDeclaration;
 		// printDebug("Class " + clazz->name + " GetProp: " + name + " " +
 		//            " has id: " + std::to_string(id) + " " +
 		//            std::to_string(classId) + " " +
@@ -103,14 +194,24 @@ void GetPropNode::optimize(in_func) {
 }
 
 ExprNode *GetPropNode::copy(in_func) {
+	DeclarationNode *newDeclaration = nullptr;
+	if (declaration) {
+		auto funcInfo = context.getCurrentFunctionInfo(in_data);
+		auto it = funcInfo->reflectDeclarationMap.find(declaration);
+		if (it != funcInfo->reflectDeclarationMap.end()) {
+			newDeclaration = it->second;
+		} else {
+			newDeclaration =
+			    static_cast<DeclarationNode *>(declaration->copy(in_data));
+		}
+	}
+	auto newCaller =
+	    caller ? static_cast<HasClassIdNode *>(caller->copy(in_data)) : nullptr;
 	auto newNode = context.getPropPool.push(
-	    line,
-	    declaration ? static_cast<DeclarationNode *>(declaration->copy(in_data))
-	                : nullptr,
-	    contextCallClassId,
-	    caller ? static_cast<HasClassIdNode *>(caller->copy(in_data)) : nullptr,
-	    nameId, isInitial, nullable, accessNullable);
+	    line, newDeclaration, contextCallClassId, newCaller, nameId, isInitial,
+	    nullable, accessNullable);
 	newNode->isStore = isStore;
+	newNode->classId = classId;
 	return newNode;
 }
 
@@ -169,6 +270,7 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		return;
 	}
 	switch (caller->kind) {
+		case NodeType::CLASS_ACCESS:
 		case NodeType::VAR: {
 			break;
 		}

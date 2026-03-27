@@ -100,6 +100,10 @@ void ClassDeclaration::load(in_func) {
 			auto funcId = it->second[0];
 			auto func = compile.functions[funcId];
 			auto funcInfo = context.functionInfo[funcId];
+			if (!funcInfo->genericData) {
+				throwError("'" + context.lexerString[baseClassLexerStringId] +
+				           "' isn't generic function");
+			}
 			if (inputClassId.size() !=
 			    funcInfo->genericData->genericDeclarations.size()) {
 				// int* x = nullptr; *x = 5;
@@ -120,7 +124,9 @@ void ClassDeclaration::load(in_func) {
 				}
 			}
 			std::string name = getName(in_data);
-			loadFunctionGenerics(in_data, name, this);
+			if (!isGenerics(in_data)) {
+				loadFunctionGenerics(in_data, name, this);
+			}
 			return;
 		}
 	}

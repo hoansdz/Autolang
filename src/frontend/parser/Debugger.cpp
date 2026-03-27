@@ -1120,7 +1120,8 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			auto funcInfo = context.getCurrentFunctionInfo(in_data);
 			if (!nextToken(&token, context.tokens, i) ||
 			    !expect(token, Lexer::TokenType::LPAREN)) {
-				if (!classDeclaration->isGenerics(in_data)) {
+				bool isGeneric = classDeclaration->isGenerics(in_data);
+				if (!isGeneric) {
 					context.allClassDeclarations.push_back(classDeclaration);
 				}
 				--i;
@@ -1135,10 +1136,15 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 				auto node = context.unknowNodePool.push(
 				    context.tokens[i].line, context.currentClassId,
 				    context.currentFunctionId, newNameId, true);
-				if (context.currentClassId) {
-					auto classInfo = context.getCurrentClassInfo(in_data);
-					classInfo->genericData->mustRenameNodes[classDeclaration] =
-					    node;
+				if (isGeneric) {
+					if (context.currentClassId) {
+						auto classInfo = context.getCurrentClassInfo(in_data);
+						classInfo->genericData
+						    ->mustRenameNodes[classDeclaration] = node;
+					} else if (funcInfo->genericData) {
+						funcInfo->genericData
+						    ->mustRenameNodes[classDeclaration] = node;
+					}
 				}
 				return node;
 			}
@@ -1154,13 +1160,18 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			// if (classDeclaration->isGenerics(in_data)) {
 
 			// Must rename in both if T in class, R in function
-			context.genericCallers.push_back(classDeclaration);
-			// funcInfo->genericData->mustRenameNodes[classDeclaration] =
-			//     callNode;
-			if (context.currentClassId) {
-				auto classInfo = context.getCurrentClassInfo(in_data);
-				if (classInfo->genericData) {
-					classInfo->genericData->mustRenameNodes[classDeclaration] =
+			bool isGeneric = classDeclaration->isGenerics(in_data);
+			if (!isGeneric) {
+				context.genericCallers.push_back(classDeclaration);
+			} else {
+				if (context.currentClassId) {
+					auto classInfo = context.getCurrentClassInfo(in_data);
+					if (classInfo->genericData) {
+						classInfo->genericData
+						    ->mustRenameNodes[classDeclaration] = callNode;
+					}
+				} else if (funcInfo->genericData) {
+					funcInfo->genericData->mustRenameNodes[classDeclaration] =
 					    callNode;
 				}
 			}

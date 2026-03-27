@@ -112,6 +112,8 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	auto lastCurrentClassId = context.currentClassId;
 	context.currentClassId = newClassId;
 
+	// std::cerr << "Created " << newClass->name << "\n ";
+
 	if (newCreateClassNode->superDeclaration &&
 	    !newCreateClassNode->superDeclaration->classId) {
 		newCreateClassNode->superDeclaration->load<true>(in_data);
@@ -130,6 +132,9 @@ ClassId loadClassGenerics(in_func, std::string &name,
 					    member->classDeclaration->getName(in_data));
 				}
 			}
+			member->classId = *member->classDeclaration->classId;
+			newClass->memberId[member->id] = *member->classDeclaration->classId;
+			member->nullable = member->classDeclaration->nullable;
 			// std::cerr
 			//     << "Member declaration: "
 			//     << compile.classes[*member->classDeclaration->classId]->name
@@ -150,32 +155,29 @@ ClassId loadClassGenerics(in_func, std::string &name,
 
 	for (auto &[classDeclaration, node] :
 	     classInfo->genericData->mustRenameNodes) {
-		if (!classDeclaration) {
-			classDeclaration->load<true>(in_data);
+		if (!classDeclaration->classId) {
+			classDeclaration->load<true, true>(in_data);
 			if (!classDeclaration->classId) {
 				classDeclaration->throwError(
 				    "Unsolved " + classDeclaration->getName(in_data));
 			}
 		}
+		auto name = classDeclaration->getName(in_data);
 		switch (node->kind) {
 			case NodeType::UNKNOW: {
 				auto unknowNode = static_cast<UnknowNode *>(node);
-				auto it = context.lexerStringMap.find(
-				    classDeclaration->getName(in_data));
+				auto it = context.lexerStringMap.find(name);
 				if (it == context.lexerStringMap.end()) {
-					classDeclaration->throwError(
-					    "Unsolved " + classDeclaration->getName(in_data));
+					classDeclaration->throwError("CUnsolved " + name);
 				}
 				unknowNode->nameId = it->second;
 				break;
 			}
 			case NodeType::CALL: {
 				auto callNode = static_cast<CallNode *>(node);
-				auto it = context.lexerStringMap.find(
-				    classDeclaration->getName(in_data));
+				auto it = context.lexerStringMap.find(name);
 				if (it == context.lexerStringMap.end()) {
-					classDeclaration->throwError(
-					    "BUnsolved " + classDeclaration->getName(in_data));
+					classDeclaration->throwError("DUnsolved " + name);
 				}
 				callNode->nameId = it->second;
 				break;
@@ -284,12 +286,18 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			newConstructor->pushFunction(in_data);
 			// ParserContext::mode = constructor->mode;
 			auto lastCurrentFunctionId = context.currentFunctionId;
-			context.currentFunctionId = newConstructor->funcId;
+			context.gotoFunction(newConstructor->funcId);
 			newConstructor->body.nodes.reserve(constructor->body.nodes.size());
+			for (auto &[declarationNode, value] :
+			     context.functionInfo[constructor->funcId]
+			         ->reflectDeclarationMap) {
+				value = static_cast<DeclarationNode *>(
+				    declarationNode->copy(in_data));
+			}
 			for (auto *node : constructor->body.nodes) {
 				newConstructor->body.nodes.push_back(node->copy(in_data));
 			}
-			context.currentFunctionId = lastCurrentFunctionId;
+			context.gotoFunction(lastCurrentFunctionId);
 		}
 	}
 
@@ -327,10 +335,14 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			}
 			newFunc->returnId = *createFuncNode->classDeclaration->classId;
 		}
-		context.currentFunctionId = newCreateFuncNode->id;
+		context.gotoFunction(newCreateFuncNode->id);
 		// ParserContext::mode = createFuncNode->mode; //Loaded in new class
 		newCreateFuncNode->body.nodes.reserve(
 		    createFuncNode->body.nodes.size());
+		for (auto &[declarationNode, value] : funcInfo->reflectDeclarationMap) {
+			value =
+			    static_cast<DeclarationNode *>(declarationNode->copy(in_data));
+		}
 		for (auto *node : createFuncNode->body.nodes) {
 			newCreateFuncNode->body.nodes.push_back(node->copy(in_data));
 		}
@@ -341,7 +353,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 		}
 	}
 
-	context.currentFunctionId = lastCurrentFunctionId;
+	context.gotoFunction(lastCurrentFunctionId);
 	context.currentClassId = lastCurrentClassId;
 
 	// std::cerr << "Created " << newClass->name << "\n";
@@ -426,14 +438,13 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 			    inputClass->baseClassLexerStringId;
 		}
 	}
-
-	auto lastCurrentFunctionId = context.currentFunctionId;
 	std::vector<DeclarationNode *> arguments;
 	arguments.reserve(createFuncNode->parameters.size());
 	for (auto argument : createFuncNode->parameters) {
 		arguments.push_back(
 		    static_cast<DeclarationNode *>(argument->copy(in_data)));
 	}
+	auto lastCurrentFunctionId = context.currentFunctionId;
 	auto newCreateFuncNode = context.newFunctions.push(
 	    createFuncNode->line, createFuncNode->contextCallClassId,
 	    context.createLexerStringIfNotExists(name), nullptr, arguments,
@@ -450,6 +461,7 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 	newFunc->maxDeclaration = func->maxDeclaration;
 	newFuncInfo->declaration = funcInfo->declaration;
 	newFunc->returnId = compile.functions[createFuncNode->id]->returnId;
+	context.gotoFunction(newCreateFuncNode->id);
 	// std::cerr << "THIS " << newFunc->name << "\n";
 	if (createFuncNode->classDeclaration) {
 		if (!createFuncNode->classDeclaration->classId) {
@@ -461,7 +473,49 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 		}
 		newFunc->returnId = *createFuncNode->classDeclaration->classId;
 	}
-	context.currentFunctionId = newCreateFuncNode->id;
+
+	for (auto &[classDeclaration, node] :
+	     funcInfo->genericData->mustRenameNodes) {
+		if (!classDeclaration->classId) {
+			classDeclaration->load<true, true>(in_data);
+			if (!classDeclaration->classId) {
+				classDeclaration->throwError(
+				    "Unsolved " + classDeclaration->getName(in_data));
+			}
+		}
+		auto name = classDeclaration->getName(in_data);
+		switch (node->kind) {
+			case NodeType::UNKNOW: {
+				auto unknowNode = static_cast<UnknowNode *>(node);
+				auto it = context.lexerStringMap.find(name);
+				if (it == context.lexerStringMap.end()) {
+					classDeclaration->throwError("AUnsolved " + name);
+				}
+				unknowNode->nameId = it->second;
+				break;
+			}
+			case NodeType::CALL: {
+				auto callNode = static_cast<CallNode *>(node);
+				auto it = context.lexerStringMap.find(name);
+				if (it == context.lexerStringMap.end()) {
+					classDeclaration->throwError("BUnsolved " + name);
+				}
+				callNode->nameId = it->second;
+				break;
+			}
+		}
+	}
+
+	newFuncInfo->reflectDeclarationMap.reserve(
+	    funcInfo->reflectDeclarationMap.size());
+
+	for (auto &[declarationNode, value] : funcInfo->reflectDeclarationMap) {
+		newFuncInfo->reflectDeclarationMap[declarationNode] =
+		    static_cast<DeclarationNode *>(declarationNode->copy(in_data));
+		// std::cerr << "Created declaration: " << declarationNode << " "
+		//           << newFuncInfo->reflectDeclarationMap[declarationNode]
+		//           << "\n";
+	}
 
 	for (auto &[declarationNode, value] :
 	     funcInfo->genericData->staticDeclaration) {
@@ -516,7 +570,7 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 		context.mustInferenceFunctionType.push_back(newFunc->id);
 	}
 	context.newPositionOfStaticDeclaration = lastNewPositionOfStaticDeclaration;
-	context.currentFunctionId = lastCurrentFunctionId;
+	context.gotoFunction(lastCurrentFunctionId);
 
 	for (auto &[classDeclaration, node] :
 	     funcInfo->genericData->mustRenameNodes) {

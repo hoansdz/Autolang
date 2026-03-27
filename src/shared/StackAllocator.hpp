@@ -7,7 +7,6 @@
 #include <string>
 #include <vector>
 
-
 namespace AutoLang {
 
 class AVM;
@@ -68,6 +67,13 @@ class StackAllocator {
 
 	inline void clear(ObjectManager &manager, int from, int to) {
 		AObject **base = &args[from];
+		for (int i = from; i <= to; ++i) {
+			if (base[i]) {
+				manager.release(base[i]);
+				base[i] = nullptr;
+			}
+		}
+		return;
 		int count = to - from + 1;
 		int j = 0;
 

@@ -1,17 +1,19 @@
+class A {
+	lateinit var name: String
+	val x: Int = 1
+	constructor(name: String) {
+		this.name = name
+		val a: () -> String = this.test
+		println(a())
+		val b: () -> Void = hm
+		b()
+	}
+	func test(): String {
+		return this.name
+	}
+	static func hm() {
+		println("OK")
+	}
+}
 
-func square(value: Float): Int {
-	return value * value
-}
-func load(onLoad: (Float)->Int): Int {
-	return onLoad(125)
-}
-func s(): Int {
-	return 0
-}
-val a: Float -> Int = square
-val b: Float -> Int = a
-val c: ((Float) -> Int) -> Int = load
-println(c(b))
-// for (i in 1..100) {
-// 	println(a(i))
-// }
+A("Hello nha")

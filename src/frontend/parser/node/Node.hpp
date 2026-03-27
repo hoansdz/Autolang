@@ -366,6 +366,7 @@ struct GetPropNode : AccessNode {
 	      nameId(nameId), isInitial(isInitial), isStatic(false),
 	      accessNullable(accessNullable) {}
 	ExprNode *resolve(in_func) override;
+	bool optimizeSkipIfNotFoundMember(in_func);
 	void optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
@@ -481,13 +482,17 @@ struct ClassAccessNode : HasClassIdNode {
 struct FunctionAccessNode : HasClassIdNode {
 	LexerStringId nameId;
 	uint32_t count;
+	HasClassIdNode *caller;
+	std::vector<HasClassIdNode *> objects;
 	std::vector<FunctionId> *funcs[2];
 	FunctionId funcId;
-	FunctionAccessNode(uint32_t line, LexerStringId nameId, uint32_t count,
+	FunctionAccessNode(uint32_t line, HasClassIdNode *caller,
+	                   LexerStringId nameId, uint32_t count,
+	                   std::vector<HasClassIdNode *> objects,
 	                   std::vector<FunctionId> **funcs)
 	    : HasClassIdNode(NodeType::FUNCTION_ACCESS,
 	                     DefaultClass::functionClassId, line),
-	      nameId(nameId), count(count) {
+	      caller(caller), nameId(nameId), count(count) {
 		if (count >= 1)
 			this->funcs[0] = funcs[0];
 		if (count >= 2)

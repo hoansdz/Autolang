@@ -56,6 +56,16 @@ void FunctionAccessNode::optimize(in_func) {
 	}
 
 	funcId = *matchFuncId;
+	auto func = compile.functions[funcId];
+
+	if (!(func->functionFlags & FunctionFlags::FUNC_IS_STATIC)) {
+		if (!caller) {
+			throwError("Expected static function but found non static function: " +
+			           compile.functions[funcId]->name);
+		}
+		objects.push_back(caller);
+		return;
+	}
 }
 
 void FunctionAccessNode::putBytecodes(in_func,
@@ -66,11 +76,12 @@ void FunctionAccessNode::putBytecodes(in_func,
 		put_opcode_u32(bytecodes, funcId);
 		put_opcode_u32(bytecodes, 0);
 	} else {
-		bytecodes.push_back(Opcode::LOAD_LOCAL);
-		put_opcode_u32(bytecodes, 0);
+		for (auto obj : objects) {
+			obj->putBytecodes(in_data, bytecodes);
+		}
 		bytecodes.push_back(Opcode::CREATE_FUNCTION_OBJECT);
 		put_opcode_u32(bytecodes, funcId);
-		put_opcode_u32(bytecodes, 1);
+		put_opcode_u32(bytecodes, objects.size());
 	}
 }
 

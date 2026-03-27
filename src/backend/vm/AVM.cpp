@@ -73,9 +73,9 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
                        uint8_t *bytecodes, uint32_t &i) {
 	currentCallFrame = callFrames.push();
 	currentCallFrame->fromStackAllocator =
-	    stackAllocator.top + currentFunction->maxDeclaration + hasValue;
+	    stackAllocator.top + currentFunction->maxDeclaration;
 	currentCallFrame->exception = nullptr;
-	currentCallFrame->startStackCount = stack.getSize() + hasValue;
+	currentCallFrame->startStackCount = stack.getSize();
 	currentCallFrame->catchPosition.clear();
 	stackAllocator.setTop(currentCallFrame->fromStackAllocator);
 	uint32_t argumentCount;
@@ -171,11 +171,9 @@ bool AVM::callFunctionObject(AObject *obj) {
 	currentCallFrame->fromStackAllocator = fromStackAllocator;
 	currentCallFrame->exception = nullptr;
 	currentCallFrame->func = funcObj->function;
-	currentCallFrame->startStackCount =
-	    stack.getSize() +
-	    (funcObj->function->returnId != DefaultClass::voidClassId);
+	currentCallFrame->startStackCount = stack.getSize();
 	currentCallFrame->catchPosition.clear();
-	stackAllocator.setTop(currentCallFrame->fromStackAllocator);
+	stackAllocator.setTop(fromStackAllocator);
 
 	if (funcObj->function->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 		for (uint32_t i = argumentCount; i-- > funcObj->size;) {
@@ -197,15 +195,16 @@ bool AVM::callFunctionObject(AObject *obj) {
 		notifier->callFrame = currentCallFrame;
 		stackAllocator.freeTo(currentCallFrame->fromStackAllocator);
 		return true;
-	} else {
-		for (uint32_t i = argumentCount; i-- > funcObj->size;) {
-			stackAllocator.currentPtr[i] = stack.pop();
-		}
-		for (uint32_t i = 0; i < funcObj->size; ++i) {
-			stackAllocator.currentPtr[i] = funcObj->args[i];
-		}
-		return callFunction(currentCallFrame, argumentCount);
 	}
+	for (uint32_t i = argumentCount; i-- > funcObj->size;) {
+		stackAllocator[i] = stack.pop();
+	}
+	for (uint32_t i = 0; i < funcObj->size; ++i) {
+		auto obj = funcObj->args[i];
+		stackAllocator[i] = obj;
+		obj->retain();
+	}
+	return callFunction(currentCallFrame, argumentCount);
 }
 
 inline bool AVM::callFunction(Function *currentFunction) {
@@ -213,9 +212,7 @@ inline bool AVM::callFunction(Function *currentFunction) {
 	currentCallFrame->fromStackAllocator =
 	    stackAllocator.top + currentFunction->maxDeclaration;
 	currentCallFrame->exception = nullptr;
-	currentCallFrame->startStackCount =
-	    stack.getSize() +
-	    (currentFunction->returnId != DefaultClass::voidClassId);
+	currentCallFrame->startStackCount = stack.getSize();
 	currentCallFrame->catchPosition.clear();
 	stackAllocator.setTop(currentCallFrame->fromStackAllocator);
 	uint32_t argumentCount = currentFunction->argSize;
@@ -255,32 +252,31 @@ bool AVM::callFunction(CallFrame *currentCallFrame, uint32_t argumentCount) {
 		currentCallFrame = callFrames.top();
 		notifier->callFrame = currentCallFrame;
 		stackAllocator.freeTo(currentCallFrame->fromStackAllocator);
-	} else {
-		if (currentCallFrame->func->functionFlags &
-		    FunctionFlags::FUNC_IS_DATA_CONSTRUCTOR) {
-			AutoLang::DefaultFunction::data_constructor(
-			    *notifier, stackAllocator.currentPtr, argumentCount);
-			// if (currentCallFrame->func->)
-			// stack.push(stackAllocator[0]);
-			// stackAllocator[0] = nullptr;
-			// stackAllocator.clear(
-			//     data.manager, currentCallFrame->fromStackAllocator + 1,
-			//     stackAllocator.top + currentCallFrame->func->maxDeclaration -
-			//         1);
-			// callFrames.pop();
-			// currentCallFrame = callFrames.top();
-			// notifier->callFrame = currentCallFrame;
-			// stackAllocator.freeTo(currentCallFrame->fromStackAllocator);
-			// return true;
-		}
-		currentCallFrame->i = 0;
-		resume();
-
-		if (currentCallFrame->exception) {
-			return false;
-		}
+		return true;
 	}
-	return true;
+	if (currentCallFrame->func->functionFlags &
+	    FunctionFlags::FUNC_IS_DATA_CONSTRUCTOR) {
+		AutoLang::DefaultFunction::data_constructor(
+		    *notifier, stackAllocator.currentPtr, argumentCount);
+		// if (currentCallFrame->func->)
+		// stack.push(stackAllocator[0]);
+		// stackAllocator[0] = nullptr;
+		// stackAllocator.clear(
+		//     data.manager, currentCallFrame->fromStackAllocator + 1,
+		//     stackAllocator.top + currentCallFrame->func->maxDeclaration -
+		//         1);
+		// callFrames.pop();
+		// currentCallFrame = callFrames.top();
+		// notifier->callFrame = currentCallFrame;
+		// stackAllocator.freeTo(currentCallFrame->fromStackAllocator);
+		// return true;
+	}
+	currentCallFrame->i = 0;
+	// std::cerr << DefaultFunction::to_string(*notifier, stackAllocator[1])
+	//           << "\n";
+	resume();
+
+	return !(currentCallFrame->exception);
 }
 
 void AVM::resume() {
@@ -337,13 +333,15 @@ resumeCallFrame:;
 			}
 			if (callFrames.getSize() == topCallFrame) {
 				callFrames.pop();
-				stackAllocator.freeTo(0);
 				state = VMState::ERROR;
 				if (callFrames.getSize() != 0) {
 					auto oldCallFrame = callFrames.top();
 					oldCallFrame->exception = currentCallFrame->exception;
 					currentCallFrame = oldCallFrame;
+					stackAllocator.freeTo(oldCallFrame->fromStackAllocator);
+					return;
 				}
+				stackAllocator.freeTo(0);
 				return;
 			}
 			callFrames.pop();
@@ -685,10 +683,15 @@ resumeCallFrame:;
 					break;
 				}
 				case AutoLang::Opcode::RETURN_LOCAL: {
-					AObject **last = &stackAllocator[get_u32(bytecodes, i)];
-					stack.push(*last);
-					*last = nullptr;
-					goto endFunction;
+					while (stack.getSize() >
+					       currentCallFrame->startStackCount) {
+						auto obj = stack.pop();
+						data.manager.release(obj);
+					}
+					AObject *&last = stackAllocator[get_u32(bytecodes, i)];
+					stack.push(last);
+					last = nullptr;
+					goto doneReturnFunction;
 				}
 				case AutoLang::Opcode::CREATE_OBJECT: {
 					ClassId classId = get_u32(bytecodes, i);
@@ -909,10 +912,20 @@ resumeCallFrame:;
 					break;
 				}
 				case AutoLang::Opcode::RETURN: {
-					goto endFunction;
+					while (stack.getSize() >
+					       currentCallFrame->startStackCount) {
+						auto obj = stack.pop();
+						data.manager.release(obj);
+					}
+					goto doneReturnFunction;
 				}
 				case AutoLang::Opcode::RETURN_VALUE: {
-					goto endFunction;
+					uint32_t pos = currentCallFrame->startStackCount + 1;
+					while (stack.getSize() > pos) {
+						auto obj = stack.pop();
+						data.manager.release(obj);
+					}
+					goto doneReturnFunction;
 				}
 				case AutoLang::Opcode::JUMP_IF_FALSE: {
 					AObject *obj = stack.pop();
@@ -1586,11 +1599,15 @@ resumeCallFrame:;
 			auto obj = stack.pop();
 			data.manager.release(obj);
 		}
+	doneReturnFunction:;
 		stackAllocator.clear(data.manager, currentCallFrame->fromStackAllocator,
 		                     stackAllocator.top +
 		                         currentCallFrame->func->maxDeclaration - 1);
 		if (callFrames.getSize() == topCallFrame) {
 			callFrames.pop();
+			stackAllocator.freeTo(callFrames.getSize() != 0
+			                          ? callFrames.top()->fromStackAllocator
+			                          : 0);
 			state = VMState::HALTED;
 			return;
 		}

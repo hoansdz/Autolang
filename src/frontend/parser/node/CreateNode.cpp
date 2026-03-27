@@ -90,8 +90,9 @@ ExprNode *DeclarationNode::copy(in_func) {
 		}
 	}
 	auto newNode = context.declarationNodePool.push(
-	    line, context.currentClassId, baseName, name, nullptr, isVal, isGlobal,
-	    nullable);
+	    line, context.currentClassId, baseName, name, classDeclaration, isVal,
+	    isGlobal, nullable);
+	newNode->mustInferenceNullable = mustInferenceNullable;
 	if (isGlobal && context.newPositionOfStaticDeclaration) {
 		auto it = context.newPositionOfStaticDeclaration->find(id);
 		if (it != context.newPositionOfStaticDeclaration->end()) {
@@ -112,7 +113,7 @@ ExprNode *DeclarationNode::copy(in_func) {
 			}
 		}
 		newNode->classId = *classDeclaration->classId;
-		newNode->mustInferenceNullable = classDeclaration->mustInference;
+		// newNode->mustInferenceNullable = classDeclaration->mustInference;
 		newNode->nullable = classDeclaration->nullable;
 	} else {
 		newNode->classId = classId;

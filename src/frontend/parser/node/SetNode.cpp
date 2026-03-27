@@ -97,7 +97,33 @@ void SetNode::optimize(in_func) {
 		}
 	}
 
-	value->optimize(in_data);
+	if (detach->classId == DefaultClass::functionClassId &&
+	    value->kind == NodeType::GET_PROP) {
+		auto valueNode = static_cast<GetPropNode *>(value);
+		if (valueNode->optimizeSkipIfNotFoundMember(in_data)) {
+			// Skiped
+			auto callClassInfo = context.classInfo[valueNode->caller->classId];
+			auto it = callClassInfo->allFunction.find(valueNode->nameId);
+			if (it == callClassInfo->allFunction.end()) {
+				auto clazz = compile.classes[valueNode->caller->classId];
+				throwError("Cannot find member name '" +
+				           context.lexerString[valueNode->nameId] +
+				           "' in class " + clazz->name);
+			}
+			std::vector<FunctionId> *funcs[1];
+			funcs[0] = &it->second;
+			auto caller = valueNode->caller->isStaticValue()
+			                  ? nullptr
+			                  : valueNode->caller;
+			value = context.functionAccessPool.push(
+			    valueNode->line, caller, valueNode->nameId, 1,
+			    std::vector<HasClassIdNode *>{}, funcs);
+			value->classDeclaration = detach->classDeclaration;
+			value->optimize(in_data);
+		}
+	} else {
+		value->optimize(in_data);
+	}
 
 	if (justDetachStatic && !value->isStaticValue()) {
 		throwError("Value must be static");
@@ -455,9 +481,10 @@ void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 }
 
 ExprNode *SetNode::copy(in_func) {
-	return context.setValuePool.push(
-	    line, static_cast<HasClassIdNode *>(detach->copy(in_data)),
-	    static_cast<HasClassIdNode *>(value->copy(in_data)), justDetachStatic);
+	auto newDetachNode = static_cast<HasClassIdNode *>(detach->copy(in_data));
+	auto newValueNode = static_cast<HasClassIdNode *>(value->copy(in_data));
+	return context.setValuePool.push(line, newDetachNode, newValueNode,
+	                                 justDetachStatic);
 }
 
 SetNode::~SetNode() {

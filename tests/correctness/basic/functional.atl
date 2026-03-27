@@ -1,26 +1,58 @@
+class FunctionalTest {
+	var value = 5
+	
+	func plus_plus() {
+		value += 1
+	} 
+	
+	constructor () {
+		
+	}
+}
 
+class FunctionalTestGeneric<T, R> {
+	lateinit val f: (T) -> R
 
+	func get(): R = f(1)
+	
+	constructor (f: (T) -> R) {
+		this.f = f
+	}
+}
 
-func square(value: Float): Int {
+func testFunctionalSquare(value: Float): Int {
 	return value * value
 }
-func load(onLoad: (Float)->Int): Int {
+func testFunctionalLoad(onLoad: (Float)->Int): Int {
 	return onLoad(125)
 }
-func testEmptyParams(): Int {
+func testFunctionalEmptyParams(): Int {
 	return 0
 }
 
-func testFunctional() {
+func testFunctionalInput(value: Int) = "OK"
 
-	val a: Float -> Int = square
+func testFunctional<T, R>() {
+
+	val a: Float -> Int = testFunctionalSquare
 	val b = a
-	val c: () -> Int = testEmptyParams
-	val d: ((Float) -> Int) -> Int = load
+	val c: () -> Int = testFunctionalEmptyParams
+	val d: ((Float) -> Int) -> Int = testFunctionalLoad
+	val e = FunctionalTest()
+	val f: () -> Void = e.plus_plus
+
+	val g: (T) -> R = testFunctionalInput
+	val h = FunctionalTestGeneric<T, R>(g)
 
 	assert(d(b) == 15625, __FILE__, __LINE__)
+
+	f()
+	f()
+	f()
+	assert(e.value == 8, __FILE__, __LINE__)
+	assert(h.get() == "OK", __FILE__, __LINE__)
 
 	println("Passed ${__FUNC__}")
 }
 
-testFunctional()
+testFunctional<Int, String>()

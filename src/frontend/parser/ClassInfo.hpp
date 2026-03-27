@@ -18,6 +18,8 @@ struct GenericData {
 	std::vector<std::pair<DeclarationNode *, HasClassIdNode *>>
 	    staticDeclaration;
 	HashMap<LexerStringId, Offset> genericDeclarationMap;
+	HashMap<DeclarationNode *, DeclarationNode *> reflectDeclarationMap;
+	std::vector<DeclarationNode *> allDeclaration;
 	inline GenericDeclarationNode *findDeclaration(LexerStringId nameId) {
 		auto it = genericDeclarationMap.find(nameId);
 		if (it == genericDeclarationMap.end()) {

@@ -231,10 +231,14 @@ ExprNode *UnknowNode::resolve(in_func) {
 			uint32_t count = 0;
 			std::vector<FunctionId> *funcs[2];
 
+			HasClassIdNode *caller = nullptr;
+
 			{
 				auto it = classInfo->allFunction.find(nameId);
 				if (it != classInfo->allFunction.end()) {
 					funcs[count++] = &it->second;
+					caller = context.varPool.push(
+					    line, classInfo->declarationThis, false, false);
 				}
 			}
 
@@ -246,7 +250,9 @@ ExprNode *UnknowNode::resolve(in_func) {
 			}
 
 			if (count) {
-				return context.functionAccessPool.push(line, nameId, count, funcs);
+				return context.functionAccessPool.push(
+				    line, caller, nameId, count,
+				    std::vector<HasClassIdNode *>{}, funcs);
 			}
 		}
 	} else {
@@ -255,7 +261,9 @@ ExprNode *UnknowNode::resolve(in_func) {
 			auto it = context.globalFunction.find(nameId);
 			if (it != context.globalFunction.end()) {
 				funcs[0] = &it->second;
-				return context.functionAccessPool.push(line, nameId, 1, funcs);
+				return context.functionAccessPool.push(
+				    line, nullptr, nameId, 1, std::vector<HasClassIdNode *>{},
+				    funcs);
 			}
 		}
 	}
@@ -399,7 +407,7 @@ void ReturnNode::optimize(in_func) {
 				           "nonnull value");
 			}
 			if (value->isNullable()) {
-				std::cerr<<value->getNodeType()<<"\n";
+				std::cerr << value->getNodeType() << "\n";
 				throwError("Cannot return nullable variable because functions "
 				           "returns nonnull value");
 			}
@@ -430,9 +438,19 @@ void VarNode::optimize(in_func) {
 }
 
 ExprNode *VarNode::copy(in_func) {
-	return context.varPool.push(
-	    line, static_cast<DeclarationNode *>(declaration->copy(in_data)),
-	    isStore, nullable);
+	DeclarationNode *newDeclaration;
+	auto funcInfo = context.getCurrentFunctionInfo(in_data);
+	auto it = funcInfo->reflectDeclarationMap.find(declaration);
+	if (it != funcInfo->reflectDeclarationMap.end()) {
+		newDeclaration = it->second;
+	} else {
+		newDeclaration =
+		    static_cast<DeclarationNode *>(declaration->copy(in_data));
+	}
+	auto newNode =
+	    context.varPool.push(line, newDeclaration, isStore, nullable);
+	newNode->classId = classId;
+	return newNode;
 }
 
 bool VarNode::isStaticValue() { return declaration && declaration->isGlobal; }

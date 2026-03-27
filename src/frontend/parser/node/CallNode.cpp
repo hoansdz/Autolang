@@ -443,6 +443,10 @@ void CallNode::matchFunction(in_func, ClassDeclaration *detach,
 void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 	funcObject->optimize(in_data);
 
+	if (funcObject->classId != DefaultClass::functionClassId) {
+		throwError("Cannot call non class object");
+	}
+
 	if (!funcObject->classDeclaration) {
 		throwError("Bug: Class not ensure is Function");
 	}
@@ -738,6 +742,7 @@ ExprNode *CallNode::copy(in_func) {
 	    line, context.currentClassId, newCaller, nameId,
 	    std::move(newArguments), justFindStatic, nullable, accessNullable);
 	newNode->classId = classId;
+	newNode->classDeclaration = classDeclaration;
 	if (funcObject) {
 		newNode->funcObject = funcObject;
 	}
