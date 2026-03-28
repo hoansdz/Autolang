@@ -138,27 +138,14 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 		currentCallFrame = callFrames.top();
 		notifier->callFrame = currentCallFrame;
 		stackAllocator.freeTo(currentCallFrame->fromStackAllocator);
-	} else {
-		if constexpr (isConstructor) {
-			AutoLang::DefaultFunction::data_constructor(
-			    *notifier, stackAllocator.currentPtr, argumentCount);
-			// if (currentCallFrame->func->)
-			// stack.push(stackAllocator[0]);
-			// stackAllocator[0] = nullptr;
-			// stackAllocator.clear(
-			//     data.manager, currentCallFrame->fromStackAllocator + 1,
-			//     stackAllocator.top + currentCallFrame->func->maxDeclaration -
-			//         1);
-			// callFrames.pop();
-			// currentCallFrame = callFrames.top();
-			// notifier->callFrame = currentCallFrame;
-			// stackAllocator.freeTo(currentCallFrame->fromStackAllocator);
-			// return true;
-		}
-		currentCallFrame->i = 0;
-		return false;
+		return true;
 	}
-	return true;
+	if constexpr (isConstructor) {
+		AutoLang::DefaultFunction::data_constructor(
+		    *notifier, stackAllocator.currentPtr, argumentCount);
+	}
+	currentCallFrame->i = 0;
+	return false;
 }
 
 bool AVM::callFunctionObject(AObject *obj) {

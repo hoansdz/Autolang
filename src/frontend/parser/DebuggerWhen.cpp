@@ -11,6 +11,11 @@ HasClassIdNode *loadWhenExpression(in_func, size_t &i, HasClassIdNode *value) {
 	switch (token->type) {
 		case Lexer::TokenType::IN:
 		case Lexer::TokenType::IS: {
+			if (!value) {
+				throw ParserError(
+				    firstLine,
+				    "Cannot use 'is', 'in' because 'when' has no value");
+			}
 			auto op = token->type;
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 				--i;
@@ -69,24 +74,31 @@ HasClassIdNode *loadWhenCondition(in_func, size_t &i, HasClassIdNode *value) {
 WhenNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
-	if (!nextToken(&token, context.tokens, i) ||
-	    !expect(token, Lexer::TokenType::LPAREN)) {
+	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		throw ParserError(firstLine, "Expected ( after when but not found");
 	}
-	if (!nextToken(&token, context.tokens, i)) {
-		--i;
-		throw ParserError(firstLine,
-		                  "Expected expression after when but not found");
+	HasClassIdNode *value = nullptr;
+	if (expect(token, Lexer::TokenType::LPAREN)) {
+		if (!nextToken(&token, context.tokens, i)) {
+			--i;
+			throw ParserError(firstLine,
+			                  "Expected expression after when but not found");
+		}
+		value = loadExpression(in_data, 0, i);
+		if (!nextToken(&token, context.tokens, i) ||
+		    !expect(token, Lexer::TokenType::RPAREN)) {
+			--i;
+			throw ParserError(firstLine, "Expected ) after when but not found");
+		}
+		if (!nextToken(&token, context.tokens, i)) {
+			--i;
+			throw ParserError(
+			    firstLine,
+			    "Expected body open with { after when but not found");
+		}
 	}
-	auto value = loadExpression(in_data, 0, i);
-	if (!nextToken(&token, context.tokens, i) ||
-	    !expect(token, Lexer::TokenType::RPAREN)) {
-		--i;
-		throw ParserError(firstLine, "Expected ) after when but not found");
-	}
-	if (!nextToken(&token, context.tokens, i) ||
-	    !expect(token, Lexer::TokenType::LBRACE)) {
+	if (!expect(token, Lexer::TokenType::LBRACE)) {
 		--i;
 		throw ParserError(firstLine,
 		                  "Expected body open with { after when but not found");

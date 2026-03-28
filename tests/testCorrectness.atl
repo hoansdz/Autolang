@@ -16,6 +16,9 @@
 @import("./correctness/basic/when.atl")
 @import("./correctness/basic/functional.atl")
 
+@import("./correctness/stdlib/array.atl")
+@import("./correctness/stdlib/set.atl")
+
 @import("./correctness/basic/set_sugar_syntax.atl")
 @import("./correctness/basic/set_sugar_syntax.atl")
 @import("../tests/testCorrectness.atl")

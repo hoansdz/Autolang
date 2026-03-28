@@ -9,13 +9,15 @@ namespace AutoLang {
 ExprNode *WhenNode::resolve(in_func) {
 	if (ifNode == nullptr)
 		return this;
-	value = static_cast<HasClassIdNode *>(value->resolve(in_data));
+	if (value)
+		value = static_cast<HasClassIdNode *>(value->resolve(in_data));
 	ifNode->resolve(in_data);
 	return this;
 }
 
 void WhenNode::optimize(in_func) {
-	value->optimize(in_data);
+	if (value)
+		value->optimize(in_data);
 	if (ifNode) {
 		ifNode->optimize(in_data);
 		classId = ifNode->classId;
@@ -29,7 +31,8 @@ void WhenNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 }
 
 void WhenNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
-	value->rewrite(in_data, bytecodes);
+	if (value)
+		value->rewrite(in_data, bytecodes);
 	if (ifNode == nullptr)
 		return;
 	ifNode->rewrite(in_data, bytecodes);
@@ -38,9 +41,10 @@ void WhenNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
 ExprNode *WhenNode::copy(in_func) {
 	if (ifNode == nullptr)
 		this;
+	auto newValue =
+	    value ? static_cast<HasClassIdNode *>(value->copy(in_data)) : nullptr;
 	return context.whenNodePool.push(
-	    line, static_cast<HasClassIdNode *>(value->copy(in_data)),
-	    static_cast<IfNode *>(ifNode->copy(in_data)));
+	    line, newValue, static_cast<IfNode *>(ifNode->copy(in_data)));
 }
 
 WhenNode::~WhenNode() {}

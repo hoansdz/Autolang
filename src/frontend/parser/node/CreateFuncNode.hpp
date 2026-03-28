@@ -28,6 +28,7 @@ struct CreateFuncNode : ExprNode {
 	      body(line), functionFlags(functionFlags) {}
 	void pushFunction(in_func);
 	void pushNativeFunction(in_func, ANativeFunction native);
+	ExprNode *copy(in_func) override;
 	void optimize(in_func) override;
 	~CreateFuncNode() {}
 };

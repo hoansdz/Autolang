@@ -65,6 +65,7 @@ struct CreateConstructorNode : HasClassIdNode {
 	      classId(classId), functionFlags(functionFlags), nameId(nameId),
 	      parameters(std::move(parameters)), isPrimary(isPrimary), body(line) {}
 	void pushFunction(in_func);
+	ExprNode *copy(in_func) override;
 	void optimize(in_func) override;
 	//~CreateConstructorNode(){}
 };

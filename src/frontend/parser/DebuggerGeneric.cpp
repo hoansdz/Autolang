@@ -103,6 +103,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	newClass->memberId = clazz->memberId;
 	auto newClassInfo = context.classInfo[newClassId];
 	newClassInfo->baseClassId = classId;
+	newClassInfo->memberMap = classInfo->memberMap;
 	newClassInfo->genericTypeId = std::move(genericTypeId);
 	newClassInfo->declarationThis = context.declarationNodePool.push(
 	    classInfo->declarationThis->line, newClassId, lexerIdthis, "this",
@@ -156,7 +157,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	for (auto &[classDeclaration, node] :
 	     classInfo->genericData->mustRenameNodes) {
 		if (!classDeclaration->classId) {
-			classDeclaration->load<true, true>(in_data);
+			classDeclaration->load<false, true>(in_data);
 			if (!classDeclaration->classId) {
 				classDeclaration->throwError(
 				    "Unsolved " + classDeclaration->getName(in_data));
@@ -170,6 +171,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 				if (it == context.lexerStringMap.end()) {
 					classDeclaration->throwError("CUnsolved " + name);
 				}
+				// std::cerr<<"Loaded "<< name<<"\n";
 				unknowNode->nameId = it->second;
 				break;
 			}
@@ -183,6 +185,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 				break;
 			}
 		}
+		classDeclaration->classId = std::nullopt;
 	}
 
 	ParserContext::mode = baseCreateClassNode->mode;
@@ -477,7 +480,7 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 	for (auto &[classDeclaration, node] :
 	     funcInfo->genericData->mustRenameNodes) {
 		if (!classDeclaration->classId) {
-			classDeclaration->load<true, true>(in_data);
+			classDeclaration->load<false, true>(in_data);
 			if (!classDeclaration->classId) {
 				classDeclaration->throwError(
 				    "Unsolved " + classDeclaration->getName(in_data));
@@ -504,6 +507,7 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 				break;
 			}
 		}
+		classDeclaration->classId = std::nullopt;
 	}
 
 	newFuncInfo->reflectDeclarationMap.reserve(
@@ -575,7 +579,7 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 	for (auto &[classDeclaration, node] :
 	     funcInfo->genericData->mustRenameNodes) {
 		if (!classDeclaration) {
-			classDeclaration->load<true>(in_data);
+			classDeclaration->load<false>(in_data);
 			if (!classDeclaration->classId) {
 				classDeclaration->throwError(
 				    "Unsolved " + classDeclaration->getName(in_data));
@@ -605,6 +609,7 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 				break;
 			}
 		}
+		classDeclaration->classId = std::nullopt;
 	}
 
 	return newFunc->id;

@@ -115,6 +115,9 @@ void CallNode::optimize(in_func) {
 				}
 				break;
 			}
+			case NodeType::FUNCTION_ACCESS: {
+				break;
+			}
 			default: {
 				argument->optimize(in_data);
 				break;
@@ -163,7 +166,12 @@ void CallNode::optimize(in_func) {
 				auto member = callerClassInfo->findAllMember(
 				    in_data, line, nameId, justFindStatic);
 				if (member) {
-					funcObject = member;
+					funcObject = context.getPropPool.push(
+					    line, member, caller->classId,
+					    context.varPool.push(line,
+					                         callerClassInfo->declarationThis,
+					                         false, false),
+					    nameId, true, true, false);
 					matchFunction(in_data, mustInferenceGenericType);
 					return;
 				}
@@ -215,6 +223,21 @@ void CallNode::optimize(in_func) {
 			auto it = compile.funcMap.find(funcName);
 			if (it != compile.funcMap.end()) {
 				funcVec[count++] = &it->second;
+			}
+		}
+
+		if (count == 0 && contextCallClassId) {
+			auto classInfo = context.classInfo[*contextCallClassId];
+			auto member =
+			    classInfo->findAllMember(in_data, line, nameId, justFindStatic);
+			if (member) {
+				funcObject = context.getPropPool.push(
+				    line, member, contextCallClassId,
+				    context.varPool.push(line, classInfo->declarationThis,
+				                         false, false),
+				    nameId, true, true, false);
+				matchFunction(in_data, mustInferenceGenericType);
+				return;
 			}
 		}
 	}
@@ -316,6 +339,12 @@ void CallNode::optimize(in_func) {
 				}
 				case DefaultClass::functionClassId: {
 					auto funcInputClass = funcInfo->parameters[i - 1];
+					if (argument->kind == NodeType::FUNCTION_ACCESS) {
+						argument->classDeclaration =
+						    funcInputClass->classDeclaration;
+						argument->classDeclaration->load<true>(in_data);
+						argument->optimize(in_data);
+					}
 					matchFunction(in_data, funcInputClass->classDeclaration,
 					              argument->classDeclaration);
 					break;
@@ -423,11 +452,19 @@ void CallNode::optimize(in_func) {
 
 void CallNode::matchFunction(in_func, ClassDeclaration *detach,
                              ClassDeclaration *value) {
+	detach->load<true>(in_data);
 	size_t size = detach->inputClassId.size();
 	if (size == detach->inputClassId.size()) {
 		for (int i = 0; i < size; ++i) {
+			// if (!detach->inputClassId[i]->classId) {
+			// 	std::cerr << "WTF1\n";
+			// }
+			// if (!value->inputClassId[i]->classId) {
+			// 	std::cerr << "WTF2\n";
+			// }
 			if (detach->inputClassId[i]->classId !=
 			    value->inputClassId[i]->classId) {
+
 				throwError("Type mismatch: expected '" +
 				           detach->getName(in_data) + "' but found '" +
 				           value->getName(in_data));

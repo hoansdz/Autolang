@@ -215,6 +215,76 @@ AObject *str_get(NativeFuncInData) {
 	return notifier.createString(AString::from(str->data[pos]));
 }
 
+AObject *str_contains(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AString *sub = args[1]->str;
+
+	std::string_view full(str->data, str->size);
+	std::string_view target(sub->data, sub->size);
+
+	bool found = full.find(target) != std::string_view::npos;
+	return found ? DefaultClass::trueObject : DefaultClass::falseObject;
+}
+
+AObject *str_index_of(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AString *sub = args[1]->str;
+
+	std::string_view full(str->data, str->size);
+	std::string_view target(sub->data, sub->size);
+
+	auto pos = full.find(target);
+	if (pos == std::string_view::npos) {
+		return notifier.createInt(-1);
+	}
+	return notifier.createInt(static_cast<int64_t>(pos));
+}
+
+AObject *str_replace(NativeFuncInData) {
+	std::string full(args[0]->str->data, args[0]->str->size);
+	std::string oldStr(args[1]->str->data, args[1]->str->size);
+	std::string newStr(args[2]->str->data, args[2]->str->size);
+
+	if (oldStr.empty())
+		return notifier.createString(AString::copy(args[0]->str));
+
+	size_t pos = 0;
+	while ((pos = full.find(oldStr, pos)) != std::string::npos) {
+		full.replace(pos, oldStr.length(), newStr);
+		pos += newStr.length();
+	}
+
+	return notifier.createString(AString::from(full));
+}
+
+AObject *str_split(NativeFuncInData) {
+	std::string full(args[0]->str->data, args[0]->str->size);
+	std::string delim(args[1]->str->data, args[1]->str->size);
+	ClassId classId = args[2]->i;
+
+	AObject *arrayObj = notifier.createArray(classId);
+
+	if (delim.empty()) {
+		notifier.arrayAdd(arrayObj,
+		                  notifier.createString(AString::copy(args[0]->str)));
+		return arrayObj;
+	}
+
+	size_t start = 0;
+	size_t end = full.find(delim);
+	while (end != std::string::npos) {
+		std::string token = full.substr(start, end - start);
+		notifier.arrayAdd(arrayObj,
+		                  notifier.createString(AString::from(token)));
+		start = end + delim.length();
+		end = full.find(delim, start);
+	}
+	notifier.arrayAdd(arrayObj,
+	                  notifier.createString(AString::from(full.substr(start))));
+
+	return arrayObj;
+}
+
 AObject *str_substr(NativeFuncInData) {
 	AString *str = args[0]->str;
 	int64_t len = str->size;

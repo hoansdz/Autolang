@@ -105,14 +105,15 @@ ExprNode *DeclarationNode::copy(in_func) {
 	}
 
 	if (classDeclaration) {
+		classDeclaration->load<true>(in_data);
 		if (!classDeclaration->classId) {
-			classDeclaration->load<true>(in_data);
-			if (!classDeclaration->classId) {
-				throwError("Bug: DeclarationNode copy: Unresolved class " +
-				           classDeclaration->getName(in_data));
-			}
+			throwError("Bug: DeclarationNode copy: Unresolved class " +
+			           classDeclaration->getName(in_data));
 		}
 		newNode->classId = *classDeclaration->classId;
+		if (newNode->classId == DefaultClass::functionClassId) {
+			newNode->classDeclaration = classDeclaration->copy(in_data);
+		}
 		// newNode->mustInferenceNullable = classDeclaration->mustInference;
 		newNode->nullable = classDeclaration->nullable;
 	} else {
@@ -157,6 +158,21 @@ void CreateConstructorNode::pushFunction(in_func) {
 			classInfo->member.push_back(param);
 		}
 	}
+}
+
+ExprNode *CreateConstructorNode::copy(in_func) {
+	std::vector<DeclarationNode *> newParams;
+	newParams.reserve(parameters.size());
+	for (auto *param : parameters) {
+		newParams.push_back(
+		    static_cast<DeclarationNode *>(param->copy(in_data)));
+	}
+	auto constructor = context.createConstructorPool.push(
+	    line, *context.currentClassId,
+	    context.lexerStringMap[compile.classes[*context.currentClassId]->name],
+	    std::move(newParams), true, functionFlags);
+	constructor->pushFunction(in_data);
+	return constructor;
 }
 
 void CreateConstructorNode::optimize(in_func) {

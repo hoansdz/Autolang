@@ -12,20 +12,17 @@ func testNestedSetSyntax(data: Set<Set<Int>>) {
 }
 
 func testAllSetFeatures() {
-    println("--- Starting Exhaustive Set Features Test ---")
 
     // 1. Test: __CLASS__() explicit constructor (and private create)
     val explicitSet = Set<Int>()
     explicitSet.insert(100)
     assert(explicitSet.size() == 1, __FILE__, __LINE__)
     assert(explicitSet.contains(100) == true, __FILE__, __LINE__)
-    println("Test 1: Explicit __CLASS__() Constructor - Passed")
 
     // 2. Test: insert, size, isEmpty, and Sugar Syntax
     val s1 = <Int>{1, 2, 3, 4, 5, 5, 4, 3, 2, 1} // Sugar syntax calls insert under the hood
     assert(s1.size() == 5, __FILE__, __LINE__)
     assert(s1.isEmpty() == false, __FILE__, __LINE__)
-    println("Test 2: Sugar Syntax, insert, size, isEmpty - Passed")
 
     // 3. Test: contains
     val s2 = <String>{"Apple", "Banana"}
@@ -33,7 +30,6 @@ func testAllSetFeatures() {
     s2.insert("Apple") // Duplicate, should be ignored
     assert(s2.contains("Orange") == true, __FILE__, __LINE__)
     assert(s2.contains("Grapes") == false, __FILE__, __LINE__)
-    println("Test 3: contains - Passed")
 
     // 4. Test: remove and clear
     s2.remove("Banana")
@@ -43,14 +39,12 @@ func testAllSetFeatures() {
     s2.clear()
     assert(s2.size() == 0, __FILE__, __LINE__)
     assert(s2.isEmpty() == true, __FILE__, __LINE__)
-    println("Test 4: remove and clear - Passed")
 
     // // 5. Test: forEach (using a named function callback)
     val s3 = <Int>{10, 20, 30}
     globalSum = 0 // Reset global state
     s3.forEach(accumulateSum) // Passing the function by name
     assert(globalSum == 60, __FILE__, __LINE__)
-    println("Test 5: forEach (Native Callback) - Passed")
 
     // // 6. Test: toArray (Public and Private)
     val s4 = <String>{"X", "Y", "Z"}
@@ -58,7 +52,6 @@ func testAllSetFeatures() {
     assert(arr is Array<String>, __FILE__, __LINE__)
     assert(arr.size() == 3, __FILE__, __LINE__)
     assert(arr.contains("X") && arr.contains("Y") && arr.contains("Z"), __FILE__, __LINE__)
-    println("Test 6: toArray - Passed")
 
     // // 7. Test: union, intersect, difference
     val setA = <Int>{1, 2, 3, 4}
@@ -74,18 +67,15 @@ func testAllSetFeatures() {
     val diffSet = setA.difference(setB)
     assert(diffSet.size() == 2, __FILE__, __LINE__)
     assert(diffSet.contains(1) && !diffSet.contains(3), __FILE__, __LINE__)
-    println("Test 7: union, intersect, difference - Passed")
 
     // 8. Test: toString
     val str = s3.toString()
     assert(str is String, __FILE__, __LINE__)
-    println("Test 8: toString - Passed")
 
     // 9. Test: Nested Sets
     testNestedSetSyntax({{1, 2}, {3, 4}, {1, 2}})
-    println("Test 9: Nested Set Syntax - Passed")
 
-    println("--- ALL SET FEATURES EXHAUSTIVELY TESTED (${__FUNC__}) ---")
+    println("Passed ${__FUNC__}")
 }
 
 // Execute the test

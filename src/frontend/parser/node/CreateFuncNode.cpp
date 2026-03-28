@@ -59,6 +59,35 @@ void CreateFuncNode::pushNativeFunction(in_func, ANativeFunction native) {
 	funcInfo->parameters = parameters;
 }
 
+ExprNode *CreateFuncNode::copy(in_func) {
+	auto funcInfo = context.functionInfo[id];
+	std::vector<DeclarationNode *> newParams;
+	newParams.reserve(parameters.size());
+	for (auto param : parameters) {
+		newParams.push_back(
+		    static_cast<DeclarationNode *>(param->copy(in_data)));
+	}
+	LexerStringId newNameId = nameId;
+	if (nameId == lexerId__CLASS__) {
+		if (!context.currentClassId) {
+			throwError("Cannot find __CLASS__");
+		}
+		newNameId =
+		    context
+		        .lexerStringMap[compile.classes[*context.currentClassId]->name];
+	}
+	auto newCreateFuncNode =
+	    context.newFunctions.push(line, context.currentClassId, newNameId,
+	                              nullptr, newParams, functionFlags);
+	if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
+		newCreateFuncNode->pushNativeFunction(in_data,
+		                                      compile.functions[id]->native);
+	} else {
+		newCreateFuncNode->pushFunction(in_data);
+	}
+	return newCreateFuncNode;
+}
+
 void CreateFuncNode::optimize(in_func) {
 	const auto &name = context.lexerString[nameId];
 	auto func = compile.functions[id];

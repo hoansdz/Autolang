@@ -313,22 +313,22 @@ HasClassIdNode *ParserContext::findDeclaration(in_func, uint32_t line,
 	auto funcInfo = getCurrentFunctionInfo(in_data);
 	AccessNode *node =
 	    funcInfo->findDeclaration(in_data, line, nameId, justFindStatic);
-	auto func = getCurrentFunction(in_data);
 	if (node)
 		return node;
-	if (currentClassId) {
-		node = getCurrentClassInfo(in_data)->findDeclaration(
-		    in_data, line, nameId, justFindStatic);
-		// Static in function is VarNode, NonStatic is GetPropNode
-		if ((func->functionFlags & FunctionFlags::FUNC_IS_STATIC) && node &&
-		    node->kind == NodeType::GET_PROP)
-			goto isNotStatic;
-		if (node)
-			return node;
-	}
+	// if (currentClassId) {
+	// 	auto func = getCurrentFunction(in_data);
+	// 	node = getCurrentClassInfo(in_data)->findDeclaration(
+	// 	    in_data, line, nameId, justFindStatic);
+	// 	// Static in function is VarNode, NonStatic is GetPropNode
+	// 	if ((func->functionFlags & FunctionFlags::FUNC_IS_STATIC) && node &&
+	// 	    node->kind == NodeType::GET_PROP)
+	// 		goto isNotStatic;
+	// 	if (node)
+	// 		return node;
+	// }
 	if (!inGlobal || currentFunctionId == mainFunctionId)
 		return node;
-	node = funcInfo->findDeclaration(in_data, line, nameId);
+	node = getMainFunctionInfo(in_data)->findDeclaration(in_data, line, nameId);
 	if (node == nullptr)
 		return node;
 	if (justFindStatic)
@@ -351,9 +351,10 @@ DeclarationNode *ParserContext::makeDeclarationNode(
 		auto it = scope.find(baseName);
 		if (it != scope.end()) {
 			throw ParserError(
-			    line, "Redefinition of variable '" + context.lexerString[baseName] +
-			              "'. Previous definition here: " + it->second->mode->path + ":" +
-			              std::to_string(it->second->line) + "");
+			    line,
+			    "Redefinition of variable '" + context.lexerString[baseName] +
+			        "'. Previous definition here: " + it->second->mode->path +
+			        ":" + std::to_string(it->second->line) + "");
 		}
 	}
 	DeclarationNode *node =

@@ -3,6 +3,7 @@
 
 #include "array.hpp"
 #include "frontend/ACompiler.hpp"
+#include <algorithm>
 #include <string>
 
 namespace AutoLang {
@@ -70,6 +71,157 @@ AObject *remove(NativeFuncInData) {
 	return nullptr;
 }
 
+AObject *reserve(NativeFuncInData) {
+	auto obj = args[0];
+	int64_t capacity = args[1]->i;
+
+	if (capacity > obj->member->maxSize) {
+		obj->member->reallocate(static_cast<size_t>(capacity));
+		obj->member->maxSize = capacity;
+	}
+	return nullptr;
+}
+
+AObject *insert(NativeFuncInData) {
+	auto obj = args[0];
+	int64_t index = args[1]->i;
+	AObject *value = args[2];
+
+	if (index < 0 || index > obj->member->size) {
+		notifier.throwException("Array.insert: index out of range");
+		return nullptr;
+	}
+
+	if (obj->member->size == obj->member->maxSize) {
+		size_t newMax =
+		    (obj->member->maxSize == 0) ? 1 : obj->member->maxSize * 2;
+		obj->member->reallocate(newMax);
+		obj->member->maxSize = static_cast<int64_t>(newMax);
+	}
+
+	for (int64_t i = obj->member->size; i > index; --i) {
+		obj->member->data[i] = obj->member->data[i - 1];
+	}
+
+	value->retain();
+	obj->member->data[index] = value;
+	obj->member->size++;
+
+	return nullptr;
+}
+
+AObject *pop(NativeFuncInData) {
+	auto obj = args[0];
+	if (obj->member->size == 0) {
+		return notifier.getNullObject();
+	}
+
+	AObject *lastObj = obj->member->data[obj->member->size - 1];
+
+	obj->member->data[obj->member->size - 1] = nullptr;
+	obj->member->size--;
+
+	return lastObj;
+}
+
+AObject *for_each(NativeFuncInData) {
+	auto arr = args[0];
+	auto funcObject = args[1];
+
+	for (int i = 0; i < arr->member->size; ++i) {
+		auto value =
+		    notifier.callFunctionObject(funcObject, arr->member->data[i]);
+		if (notifier.hasException()) {
+			return nullptr;
+		}
+	}
+
+	return nullptr;
+}
+
+AObject *filter(NativeFuncInData) {
+	auto arr = args[0];
+	auto funcObject = args[1];
+
+	auto newArr = notifier.createArray(arr->type);
+	for (int i = 0; i < arr->member->size; ++i) {
+		auto obj = arr->member->data[i];
+		auto value = notifier.callFunctionObject(funcObject, obj);
+		if (notifier.hasException()) {
+			return nullptr;
+		}
+		if (value == notifier.getTrueObject()) {
+			notifier.arrayAdd(newArr, obj);
+		}
+	}
+
+	return newArr;
+}
+
+AObject *sort(NativeFuncInData) {
+	auto arr = args[0];
+	auto comparator = args[1];
+
+	if (arr->member->size <= 1) {
+		return nullptr;
+	}
+
+	bool hasErr = false;
+
+	std::stable_sort(arr->member->data, arr->member->data + arr->member->size,
+	                 [&](AObject *a, AObject *b) {
+		                 if (hasErr) {
+			                 return false;
+		                 }
+
+		                 AObject *result =
+		                     notifier.callFunctionObject(comparator, a, b);
+
+		                 if (notifier.hasException()) {
+			                 hasErr = true;
+			                 return false;
+		                 }
+
+		                 bool val = result->i < 0;
+
+		                 notifier.release(result);
+
+		                 return val;
+	                 });
+
+	return nullptr;
+}
+
+AObject *slice(NativeFuncInData) {
+	auto arr = args[0];
+	int64_t len = arr->member->size;
+
+	int64_t from = args[1]->i;
+	int64_t to = args[2]->i;
+
+	if (from < 0)
+		from += len;
+	if (to < 0)
+		to += len;
+
+	if (from < 0)
+		from = 0;
+	if (to > len)
+		to = len;
+
+	if (from >= to || from >= len) {
+		return notifier.createArray(arr->type);
+	}
+
+	auto newArr = notifier.createArray(arr->type);
+
+	for (int64_t i = from; i < to; ++i) {
+		notifier.arrayAdd(newArr, arr->member->data[i]);
+	}
+
+	return newArr;
+}
+
 AObject *contains(NativeFuncInData) {
 	auto arr = args[0];
 	auto obj = args[1];
@@ -89,6 +241,31 @@ AObject *contains(NativeFuncInData) {
 AObject *size(NativeFuncInData) {
 	auto obj = args[0];
 	return notifier.createInt(static_cast<int64_t>(obj->member->size));
+}
+
+AObject *is_empty(NativeFuncInData) {
+	auto obj = args[0];
+	return notifier.createBool(obj->member->size == 0);
+}
+
+AObject *index_of(NativeFuncInData) {
+	auto arr = args[0];
+	auto target = args[1];
+
+	uint32_t memberSize = arr->member->size;
+	if (memberSize == 0) {
+		return notifier.createInt(-1);
+	}
+
+	for (uint32_t i = 0; i < memberSize; ++i) {
+		AObject *currentItem = arr->member->data[i];
+
+		if (DefaultFunction::op_eqeq(currentItem, target)) {
+			return notifier.createInt(i);
+		}
+	}
+
+	return notifier.createInt(-1);
 }
 
 AObject *get(NativeFuncInData) {

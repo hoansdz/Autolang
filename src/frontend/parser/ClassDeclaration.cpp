@@ -13,15 +13,34 @@ void ClassDeclaration::throwError(std::string message) {
 	throw ParserError(line, message);
 }
 
+ClassDeclaration *ClassDeclaration::copy(in_func) {
+	if (!classId) {
+		int *a = nullptr;
+		*a = 5;
+		throwError("Cannot copy class declaration because class not exists");
+	}
+	auto newClassDeclaration = context.classDeclarationAllocator.push();
+	newClassDeclaration->baseClassLexerStringId = baseClassLexerStringId;
+	newClassDeclaration->mode = mode;
+	newClassDeclaration->line = line;
+	newClassDeclaration->nullable = nullable;
+	newClassDeclaration->isGenericDeclaration = isGenericDeclaration;
+	newClassDeclaration->mustInference = mustInference;
+	newClassDeclaration->inputClassId.reserve(inputClassId.size());
+	for (auto *inputClass : inputClassId) {
+		newClassDeclaration->inputClassId.push_back(inputClass->copy(in_data));
+	}
+	newClassDeclaration->classId = classId;
+	return newClassDeclaration;
+}
+
 template <bool changeGenericsClassId, bool canBeFunction>
 void ClassDeclaration::load(in_func) {
 	if (classId) {
 		if (classId == DefaultClass::functionClassId) {
 			for (size_t i = 0; i < inputClassId.size(); ++i) {
 				auto *classDeclaration = inputClassId[i];
-				if (!classDeclaration->classId) {
-					classDeclaration->load<true>(in_data);
-				}
+				classDeclaration->load<true>(in_data);
 			}
 		}
 		return;
@@ -207,7 +226,7 @@ bool ClassDeclaration::isGenerics(in_func) {
 template <bool addNullable> std::string ClassDeclaration::getName(in_func) {
 	if (classId) {
 		if (classId == DefaultClass::functionClassId) {
-			std::string result = "Function (";
+			std::string result = "(";
 			bool isFirst = true;
 			for (int i = 1; i < inputClassId.size(); ++i) {
 				if (isFirst) {

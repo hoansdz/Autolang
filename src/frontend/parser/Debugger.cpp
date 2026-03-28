@@ -104,6 +104,22 @@ initial:;
 	bool isInFunction = !context.currentClassId ||
 	                    context.currentFunctionId != context.mainFunctionId;
 	switch (token->type) {
+		case Lexer::TokenType::PLUS:
+		case Lexer::TokenType::EXMARK:
+		case Lexer::TokenType::MINUS: {
+			auto op = token->type;
+			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
+				--i;
+				throw ParserError(context.tokens[i].line,
+				                  "Expected value after '" +
+				                      Lexer::Token(0, op).toString(context) +
+				                      "'");
+			}
+			return context.unaryNodePool.push(
+			    token->line,
+			    op == Lexer::TokenType::EXMARK ? Lexer::TokenType::NOT : op,
+			    parsePrimary(in_data, i));
+		}
 		case Lexer::TokenType::END_IMPORT: {
 			context.loadingLibs.pop_back();
 			ParserContext::mode = context.loadingLibs.back();
@@ -1137,6 +1153,10 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 				    context.tokens[i].line, context.currentClassId,
 				    context.currentFunctionId, newNameId, true);
 				if (isGeneric) {
+					// std::cerr << "Created unknownode: "
+					//           << classDeclaration->getName(in_data) << "\n";
+					// std::cerr << ParserContext::mode->path << ":" << token->line
+					//           << "\n";
 					if (context.currentClassId) {
 						auto classInfo = context.getCurrentClassInfo(in_data);
 						classInfo->genericData

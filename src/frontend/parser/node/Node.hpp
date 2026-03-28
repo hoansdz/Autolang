@@ -672,8 +672,12 @@ struct WhenNode : HasClassIdNode {
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	void rewrite(in_func, std::vector<uint8_t> &bytecodes) override;
 	ExprNode *copy(in_func) override;
-	bool isNullable() override { return value->isNullable(); }
-	bool isStaticValue() override { return value->isStaticValue(); }
+	bool isNullable() override {
+		return !ifNode ? false : ifNode->isNullable();
+	}
+	bool isStaticValue() override {
+		return !ifNode ? true : ifNode->isStaticValue();
+	}
 	~WhenNode();
 };
 

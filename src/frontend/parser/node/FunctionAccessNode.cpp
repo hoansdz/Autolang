@@ -30,7 +30,6 @@ void FunctionAccessNode::optimize(in_func) {
 				continue;
 			}
 			int j = !(func->functionFlags & FunctionFlags::FUNC_IS_STATIC);
-			// std::cerr << func->name << "\n";
 			if (classDeclaration->inputClassId.size() - 1 !=
 			    func->argSize - j) {
 				continue;
@@ -60,8 +59,9 @@ void FunctionAccessNode::optimize(in_func) {
 
 	if (!(func->functionFlags & FunctionFlags::FUNC_IS_STATIC)) {
 		if (!caller) {
-			throwError("Expected static function but found non static function: " +
-			           compile.functions[funcId]->name);
+			throwError(
+			    "Expected static function but found non static function: " +
+			    compile.functions[funcId]->name);
 		}
 		objects.push_back(caller);
 		return;

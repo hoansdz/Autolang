@@ -26,6 +26,7 @@ struct ClassDeclaration {
 	void load(in_func);
 	template <bool addNullable = false>
 	std::string getName(in_func);
+	ClassDeclaration* copy(in_func);
 	ClassDeclaration();
 	[[noreturn]] inline void throwError(std::string message);
 };
