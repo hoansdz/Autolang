@@ -18,6 +18,8 @@
 
 @import("./correctness/stdlib/array.atl")
 @import("./correctness/stdlib/set.atl")
+@import("./correctness/stdlib/map.atl")
+@import("./correctness/stdlib/file.atl")
 
 @import("./correctness/basic/set_sugar_syntax.atl")
 @import("./correctness/basic/set_sugar_syntax.atl")

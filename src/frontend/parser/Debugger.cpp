@@ -3,7 +3,10 @@
 
 #include "frontend/parser/Debugger.hpp"
 #include "frontend/ACompiler.hpp"
+#include "frontend/parser/ParserContext.hpp"
 #include "shared/Import.hpp"
+#include "shared/DefaultFunction.hpp"
+#include "shared/DefaultOperator.hpp"
 #include <cctype>
 #include <chrono>
 #include <cstdlib>
@@ -26,7 +29,7 @@ void lexerData(in_func, ACompiler &compiler, LibraryData *library,
 
 void freeData(in_func) {
 	for (auto *funcInfo : context.functionInfo) {
-		funcInfo->block.refresh();
+		funcInfo->body.refresh();
 	}
 	// size_t sizeNewClasses = context.newClasses.getSize();
 	// for (size_t i = 0 ; i < sizeNewClasses; ++i) {
@@ -412,6 +415,8 @@ void loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i,
 						}
 						break;
 					}
+					default:
+						break;
 				}
 			}
 		}
@@ -555,6 +560,8 @@ std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 							}
 							return nodes;
 						}
+						default:
+							break;
 					}
 				}
 				nodes.push_back(loadExpression(in_data, 0, i));
@@ -742,15 +749,18 @@ HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode *firstExpression) {
 	                  "Bug: Lexer not ensure close bracket");
 }
 
-std::vector<DeclarationNode *> loadListDeclaration(in_func, size_t &i,
-                                                   bool allowVar) {
+Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 	Lexer::Token *token = &context.tokens[i];
-	std::vector<DeclarationNode *> nodes;
-	if (!nextToken(&token, context.tokens, i))
-		goto expectedCloseBracket;
+	if (!nextToken(&token, context.tokens, i)) {
+		--i;
+		throw ParserError(context.tokens[i].line,
+		                  "Bug: DLexer not ensure close bracket");
+	}
+	auto parameter = context.parameterPool.push();
 	switch (token->type) {
 		case Lexer::TokenType::RPAREN: {
-			return nodes;
+			parameter->defaultValuePos = 0;
+			return parameter;
 		}
 		case Lexer::TokenType::VAR:
 		case Lexer::TokenType::VAL: {
@@ -765,6 +775,7 @@ std::vector<DeclarationNode *> loadListDeclaration(in_func, size_t &i,
 		default:
 			throw ParserError(token->line, "Expected name but not found");
 	}
+	bool addedDefaultValue = false;
 	while (nextToken(&token, context.tokens, i)) {
 		bool isVal = true;
 		if (allowVar) {
@@ -804,11 +815,35 @@ std::vector<DeclarationNode *> loadListDeclaration(in_func, size_t &i,
 		auto node = context.makeDeclarationNode(
 		    in_data, token->line, baseName, name, classDeclaration, isVal,
 		    false, classDeclaration->nullable, false, false);
-		nodes.push_back(node);
+		parameter->parameters.push_back(node);
+		if (expect(token, Lexer::TokenType::EQUAL)) {
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(context.tokens[i].line,
+				                  "Expected value after '=' but not found");
+			}
+			if (!addedDefaultValue) {
+				addedDefaultValue = true;
+				parameter->defaultValuePos = parameter->parameters.size() - 1;
+			}
+			auto value = loadExpression(in_data, 0, i);
+			parameter->parameterDefaultValues.push_back(value);
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				break;
+			}
+		} else if (addedDefaultValue) {
+			throw ParserError(token->line,
+			                  "Parameter with default value cannot "
+			                  "precede parameter without default value");
+		}
 		switch (token->type) {
 			using namespace Lexer;
 			case Lexer::TokenType::RPAREN: {
-				return nodes;
+				if (!addedDefaultValue) {
+					parameter->defaultValuePos = parameter->parameters.size();
+				}
+				return parameter;
 			}
 			case TokenType::COMMA: {
 				break;
@@ -820,9 +855,7 @@ std::vector<DeclarationNode *> loadListDeclaration(in_func, size_t &i,
 			}
 		}
 	}
-expectedCloseBracket:
 	--i;
-	std::cerr << context.tokens[i].toString(context) << "\n";
 	throw ParserError(context.tokens[i].line,
 	                  "Bug: DLexer not ensure close bracket");
 }
@@ -872,9 +905,10 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 			break;
 		}
 		case Lexer::TokenType::LT: {
+			bool isGeneric = false;
 			std::vector<ClassDeclaration *> inputVecs;
 			loadListGenericDeclarationType(in_data, i, firstLine, false,
-			                               inputVecs);
+			                               inputVecs, isGeneric);
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 				--i;
 				throw ParserError(firstLine, "Expected array after <Type>");
@@ -886,7 +920,8 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 					classDeclaration->baseClassLexerStringId = lexerIdArray;
 					classDeclaration->inputClassId = std::move(inputVecs);
 					classDeclaration->line = firstLine;
-					if (!classDeclaration->isGenerics(in_data)) {
+					classDeclaration->isGeneric = isGeneric;
+					if (!isGeneric) {
 						context.allClassDeclarations.push_back(
 						    classDeclaration);
 					}
@@ -902,7 +937,8 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 						classDeclaration->baseClassLexerStringId = lexerIdSet;
 						classDeclaration->inputClassId = std::move(inputVecs);
 						classDeclaration->line = firstLine;
-						if (!classDeclaration->isGenerics(in_data)) {
+						classDeclaration->isGeneric = isGeneric;
+						if (!isGeneric) {
 							context.allClassDeclarations.push_back(
 							    classDeclaration);
 						}
@@ -915,6 +951,7 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 						classDeclaration->baseClassLexerStringId = lexerIdMap;
 						classDeclaration->inputClassId = std::move(inputVecs);
 						classDeclaration->line = firstLine;
+						classDeclaration->isGeneric = isGeneric;
 						context.allClassDeclarations.push_back(
 						    classDeclaration);
 						node = loadSetOrMap(in_data, i, NodeType::CREATE_MAP);
@@ -1155,14 +1192,15 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 				if (isGeneric) {
 					// std::cerr << "Created unknownode: "
 					//           << classDeclaration->getName(in_data) << "\n";
-					// std::cerr << ParserContext::mode->path << ":" << token->line
+					// std::cerr << ParserContext::mode->path << ":" <<
+					// token->line
 					//           << "\n";
 					if (context.currentClassId) {
 						auto classInfo = context.getCurrentClassInfo(in_data);
 						classInfo->genericData
 						    ->mustRenameNodes[classDeclaration] = node;
-					} else if (funcInfo->genericData) {
-						funcInfo->genericData
+					} else if (context.preloadGenericData) {
+						context.preloadGenericData
 						    ->mustRenameNodes[classDeclaration] = node;
 					}
 				}
@@ -1190,9 +1228,9 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 						classInfo->genericData
 						    ->mustRenameNodes[classDeclaration] = callNode;
 					}
-				} else if (funcInfo->genericData) {
-					funcInfo->genericData->mustRenameNodes[classDeclaration] =
-					    callNode;
+				} else if (context.preloadGenericData) {
+					context.preloadGenericData
+					    ->mustRenameNodes[classDeclaration] = callNode;
 				}
 			}
 			// }

@@ -457,6 +457,7 @@ ended:;
 	return std::string(context.line + context.pos, i - context.pos);
 }
 
+template <bool addLParen>
 void loadQuote(Context &context, char quote, uint32_t &i) {
 	bool isSpecialCase = false;
 	std::string newStr;
@@ -470,7 +471,7 @@ first:;
 					isSpecialCase = true;
 					continue;
 				}
-				//"Hello ${value + value}"
+				//("Hello ${value + value} ${value}")
 				case '$': {
 					if (isEndOfLine(context, ++i))
 						throw LexerError(context.linePos,
@@ -483,6 +484,10 @@ first:;
 							chr = context.line[i];
 							break;
 						}
+						if constexpr (addLParen) {
+							context.tokens.emplace_back(context.linePos,
+							                            TokenType::LPAREN);
+						}
 						context.tokens.emplace_back(
 						    context.linePos, TokenType::STRING,
 						    pushLexerString(context, std::move(newStr)));
@@ -492,15 +497,25 @@ first:;
 						pushIdentifier(context, i);
 						if (context.line[i] == quote) {
 							++i;
+							if constexpr (addLParen) {
+								context.tokens.emplace_back(context.linePos,
+								                            TokenType::RPAREN);
+							}
 							return;
 						}
 						context.tokens.emplace_back(context.linePos,
 						                            TokenType::PLUS);
-						newStr = "";
-						goto first;
+						loadQuote<false>(context, quote, i);
+						if constexpr (addLParen) {
+							context.tokens.emplace_back(context.linePos,
+							                            TokenType::RPAREN);
+						}
+						return;
 					}
-					context.tokens.emplace_back(context.linePos,
-					                            TokenType::LPAREN);
+					if constexpr (addLParen) {
+						context.tokens.emplace_back(context.linePos,
+						                            TokenType::LPAREN);
+					}
 					context.tokens.emplace_back(
 					    context.linePos, TokenType::STRING,
 					    pushLexerString(context, std::move(newStr)));
@@ -518,15 +533,19 @@ first:;
 						                     " but not found");
 					if (context.line[i] == quote) {
 						++i;
-						context.tokens.emplace_back(context.linePos,
-						                            TokenType::RPAREN);
+						if constexpr (addLParen) {
+							context.tokens.emplace_back(context.linePos,
+							                            TokenType::RPAREN);
+						}
 						return;
 					}
 					context.tokens.emplace_back(context.linePos,
 					                            TokenType::PLUS);
-					loadQuote(context, quote, i);
-					context.tokens.emplace_back(context.linePos,
-					                            TokenType::RPAREN);
+					loadQuote<false>(context, quote, i);
+					if constexpr (addLParen) {
+						context.tokens.emplace_back(context.linePos,
+						                            TokenType::RPAREN);
+					}
 					return;
 				}
 			}

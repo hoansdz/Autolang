@@ -1,6 +1,10 @@
 #ifndef AUTOLANG_HPP
 #define AUTOLANG_HPP
 
+#ifndef NO_INCLUDE_FILE
+#include "frontend/libs/file.cpp"
+#endif
+#include "frontend/ACompiler.hpp"
 #include "backend/libs/array.cpp"
 #include "backend/libs/map.cpp"
 #include "backend/libs/set.cpp"
@@ -28,6 +32,7 @@
 #include "frontend/parser/DebuggerTryCatch.cpp"
 #include "frontend/parser/DebuggerWhen.cpp"
 #include "frontend/parser/FunctionInfo.cpp"
+#include "frontend/parser/Parameter.cpp"
 #include "frontend/parser/ParserContext.cpp"
 #include "frontend/parser/node/BinaryNode.cpp"
 #include "frontend/parser/node/BlockNode.cpp"
@@ -53,6 +58,7 @@
 #include "frontend/parser/node/SetNode.cpp"
 #include "frontend/parser/node/ThrowNode.cpp"
 #include "frontend/parser/node/TryCatchNode.cpp"
+#include "frontend/parser/node/UnaryNode.cpp"
 #include "frontend/parser/node/WhenNode.cpp"
 #include "shared/AreaAllocator.cpp"
 #include "shared/CompiledProgram.cpp"

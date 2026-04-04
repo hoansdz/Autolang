@@ -3,27 +3,30 @@
 
 #include "backend/vm/AVM.hpp"
 #include "frontend/lexer/Lexer.hpp"
-#include "frontend/parser/Debugger.hpp"
+#include "frontend/parser/Parameter.hpp"
+#include "frontend/parser/GenericData.hpp"
+#include "frontend/parser/node/CreateNode.hpp"
 #include "frontend/parser/node/Node.hpp"
 #include "frontend/parser/node/OptimizeNode.hpp"
 #include <vector>
 
 namespace AutoLang {
 
+
+
 struct FunctionInfo {
 	AClass *clazz; // Context class
 	GenericData *genericData = nullptr;
 	std::vector<HashMap<LexerStringId, DeclarationNode *>> scopes;
 	uint32_t declaration; // Count declaration
-	BlockNode block;
-	bool *nullableArgs = nullptr;
+	BlockNode body;
 	ReturnNode *inferenceNode = nullptr;
-	std::vector<DeclarationNode *> parameters;
+	Parameter *parameter;
 	std::vector<ClassDeclaration *> genericTypeId;
 	HashMap<DeclarationNode *, DeclarationNode *> reflectDeclarationMap;
 	Offset virtualPosition;
 	int64_t hash;
-	FunctionInfo() : declaration(0), block(0) { scopes.emplace_back(); }
+	FunctionInfo() : declaration(0), body(0) { scopes.emplace_back(); }
 	void loadHash();
 	inline void popBackScope() {
 		declaration -= scopes.back().size();

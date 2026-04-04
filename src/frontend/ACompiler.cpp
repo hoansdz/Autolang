@@ -2,10 +2,16 @@
 #define ACOMPILER_CPP
 
 #include "ACompiler.hpp"
+#include "shared/DefaultFunction.hpp"
 #include "frontend/libs/math.hpp"
 #include "frontend/libs/stdlib.hpp"
 #include "frontend/libs/time.hpp"
 #include "frontend/libs/vm.hpp"
+
+#ifndef NO_INCLUDE_FILE
+#include "frontend/libs/file.hpp"
+#endif
+
 #include <chrono>
 #include <filesystem>
 #include <iostream>
@@ -286,8 +292,7 @@ void ACompiler::generateBytecodes() {
 				ensureNoKeyword(in_data, i);
 				ensureNoAnnotations(in_data, i);
 			}
-			context.getCurrentFunctionInfo(in_data)->block.nodes.push_back(
-			    node);
+			context.getCurrentFunctionInfo(in_data)->body.nodes.push_back(node);
 		} catch (const std::runtime_error &err) {
 			context.hasError = true;
 			std::cout << "Unexpected exception: " << err.what() << '\n';
@@ -435,6 +440,15 @@ void ACompiler::generateBytecodes() {
 			}
 		}
 
+		printDebug("Start optimize parameter default value");
+		for (auto parameters : context.defaultValueParameter) {
+			for (auto &parameter : parameters->parameterDefaultValues) {
+				parameter =
+				    static_cast<HasClassIdNode *>(parameter->resolve(in_data));
+				parameter->optimize(in_data);
+			}
+		}
+
 		printDebug("Start optimize detach member default value");
 		for (size_t i = 0; i < sizeNewClasses; ++i) {
 			auto *newClass = context.newClasses[i];
@@ -464,6 +478,7 @@ void ACompiler::generateBytecodes() {
 				//  node->body.optimize(in_data);
 				auto func =
 				    compile.functions[classInfo->primaryConstructor->funcId];
+
 				auto &bytecodes = func->bytecodes;
 				node->body.resolve(in_data);
 				node->body.putBytecodes(in_data, bytecodes);
@@ -478,6 +493,7 @@ void ACompiler::generateBytecodes() {
 			} else {
 				for (auto &constructor : classInfo->secondaryConstructor) {
 					auto func = compile.functions[constructor->funcId];
+
 					// Put initial bytecodes, example val a = 5 => SetNode a
 					// and value 5
 					//  node->body.optimize(in_data);
@@ -514,11 +530,12 @@ void ACompiler::generateBytecodes() {
 		}
 
 		printDebug("Start optimize bytecodes in main");
-		for (auto *&node : context.getMainFunctionInfo(in_data)->block.nodes) {
+		auto mainFuncInfo = context.getMainFunctionInfo(in_data);
+		for (auto *&node : mainFuncInfo->body.nodes) {
 			ParserContext::mode = node->mode;
 			node = node->resolve(in_data);
 		}
-		context.getMainFunctionInfo(in_data)->block.optimize(in_data);
+		mainFuncInfo->body.optimize(in_data);
 		printDebug("Start put bytecodes in functions");
 		for (int i = 0; i < sizeNewFunctions; ++i) {
 			auto *node = context.newFunctions[i];
@@ -543,17 +560,17 @@ void ACompiler::generateBytecodes() {
 			if (func->functionFlags & FunctionFlags::FUNC_IS_NATIVE)
 				continue;
 			if (!funcInfo->inferenceNode) {
-				node->body.resolve(in_data);
-				node->body.optimize(in_data);
+				funcInfo->body.resolve(in_data);
+				funcInfo->body.optimize(in_data);
 			}
-			node->body.putBytecodes(in_data, func->bytecodes);
-			node->body.rewrite(in_data, func->bytecodes);
+			funcInfo->body.putBytecodes(in_data, func->bytecodes);
+			funcInfo->body.rewrite(in_data, func->bytecodes);
 		}
 		printDebug("Start put bytecodes in main");
-		context.getMainFunctionInfo(in_data)->block.putBytecodes(
+		mainFuncInfo->body.putBytecodes(
 		    in_data, context.getMainFunction(in_data)->bytecodes);
-		context.getMainFunctionInfo(in_data)->block.rewrite(
-		    in_data, context.getMainFunction(in_data)->bytecodes);
+		mainFuncInfo->body.rewrite(in_data,
+		                           context.getMainFunction(in_data)->bytecodes);
 
 		printDebug("Real Declarations: " +
 		           std::to_string(context.declarationNodePool.index +
@@ -681,6 +698,10 @@ ACompiler::ACompiler() {
 	state = CompilerState::CT_READY;
 	AutoLang::Libs::Math::init(*this);
 	state = CompilerState::CT_READY;
+#ifndef NO_INCLUDE_FILE
+	AutoLang::Libs::file::init(*this);
+	state = CompilerState::CT_READY;
+#endif
 }
 
 ACompiler::~ACompiler() {

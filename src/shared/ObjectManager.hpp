@@ -115,7 +115,7 @@ class ObjectManager {
 			delete obj->data;
 			return;
 		}
-		for (int i = 0; i < obj->member->size; ++i) {
+		for (uint32_t i = 0; i < obj->member->size; ++i) {
 			auto *mem = (*obj->member)[i];
 			if (!mem)
 				continue;

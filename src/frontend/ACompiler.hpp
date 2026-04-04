@@ -3,6 +3,7 @@
 
 #include "frontend/lexer/Lexer.hpp"
 #include "frontend/parser/Debugger.hpp"
+#include "frontend/parser/ParserContext.hpp"
 #include <iostream>
 
 namespace AutoLang {
@@ -19,19 +20,20 @@ static const ANativeMap EMPTY_NATIVE_MAP;
 struct LibraryData {
 	std::string path;
 	Lexer::Context lexerContext;
-	HashMap<std::string, LibraryData*> dependencies;
+	HashMap<std::string, LibraryData *> dependencies;
 	uint32_t flags;
 	ANativeMap nativeFuncMap;
 	std::string rawData;
 	bool isFile = false;
-	LibraryData(std::string path, uint32_t flags, ANativeMap nativeFuncMap = EMPTY_NATIVE_MAP)
+	LibraryData(std::string path, uint32_t flags,
+	            ANativeMap nativeFuncMap = EMPTY_NATIVE_MAP)
 	    : path(std::move(path)), flags(flags),
 	      nativeFuncMap(std::move(nativeFuncMap)) {}
 };
 
 class ACompiler {
   public:
-  	LibraryData* mainSource;
+	LibraryData *mainSource;
 	ParserContext parserContext;
 	CompilerState state;
 	bool loadedMainSource = false;
@@ -39,17 +41,18 @@ class ACompiler {
 
 	std::vector<LibraryData *> generatedLibraries;
 	std::vector<LibraryData *> builtInLibraries;
-	HashMap<std::string, LibraryData*> autoImportMap;
+	HashMap<std::string, LibraryData *> autoImportMap;
 	HashMap<std::string, Offset> generatedLibraryMap;
 	HashMap<std::string, Offset> builtInLibrariesMap;
 	// Add built in library
 	void loadSource(LibraryData *library);
 	void lexerTextToToken(LibraryData *library);
 	void loadMainSource(LibraryData *library);
-	void loadMainSource(const char *path, const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP);
+	void loadMainSource(const char *path,
+	                    const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP);
 	void loadMainSource(const char *path, const char *data,
 	                    const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP);
-	LibraryData *requestImport(LibraryData* currentLibrary, const char *path);
+	LibraryData *requestImport(LibraryData *currentLibrary, const char *path);
 
 	AVM vm = AVM(false);
 	ACompiler();

@@ -112,6 +112,9 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 	if (currentCallFrame->func->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 		auto obj = currentCallFrame->func->native(
 		    *notifier, stackAllocator.currentPtr, argumentCount);
+		stackAllocator.clear(data.manager, currentCallFrame->fromStackAllocator,
+		                     stackAllocator.top +
+		                         currentCallFrame->func->maxDeclaration - 1);
 		if (currentCallFrame->exception) {
 			// stackAllocator.clear(
 			//     data.manager, currentCallFrame->fromStackAllocator,
@@ -124,16 +127,13 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 			return false;
 		}
 		if constexpr (hasValue) {
+			obj->retain();
 			stack.push(obj);
-			stack.top()->retain();
 		}
 		// std::cerr << currentCallFrame->fromStackAllocator << " "
 		//           << stackAllocator.top +
 		//                  currentCallFrame->func->maxDeclaration - 1
 		//           << "\n";
-		stackAllocator.clear(data.manager, currentCallFrame->fromStackAllocator,
-		                     stackAllocator.top +
-		                         currentCallFrame->func->maxDeclaration - 1);
 		callFrames.pop();
 		currentCallFrame = callFrames.top();
 		notifier->callFrame = currentCallFrame;
@@ -146,6 +146,45 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 	}
 	currentCallFrame->i = 0;
 	return false;
+}
+
+template <bool hasValue>
+bool AVM::callNativeFunction(CallFrame *&currentCallFrame,
+                             Function *currentFunction, uint8_t *bytecodes,
+                             uint32_t &i) {
+	uint32_t fromStackAllocator =
+	    stackAllocator.top + currentFunction->maxDeclaration;
+	stackAllocator.setTop(fromStackAllocator);
+	auto *func = data.functions[get_u32(bytecodes, i)];
+	stackAllocator.ensure(func->argSize);
+	for (size_t size = func->argSize; size-- > 0;) {
+		auto object = stack.pop();
+		assert(object != nullptr);
+		stackAllocator[size] = object;
+	}
+
+	auto obj =
+	    func->native(*notifier, stackAllocator.currentPtr, func->argSize);
+	stackAllocator.clear(data.manager, fromStackAllocator,
+	                     fromStackAllocator + func->argSize - 1);
+	if (currentCallFrame->exception) {
+		auto callFrame = callFrames.push();
+		callFrame->fromStackAllocator = fromStackAllocator;
+		callFrame->func = func;
+		callFrame->startStackCount = stack.getSize();
+		callFrame->exception = currentCallFrame->exception;
+		callFrame->catchPosition.clear();
+		currentCallFrame->exception->retain();
+		currentCallFrame->exception = nullptr;
+		return false;
+	}
+	if constexpr (hasValue) {
+		assert(obj != nullptr);
+		obj->retain();
+		stack.push(obj);
+	}
+	stackAllocator.freeTo(currentCallFrame->fromStackAllocator);
+	return true;
 }
 
 bool AVM::callFunctionObject(AObject *obj) {
@@ -174,8 +213,8 @@ bool AVM::callFunctionObject(AObject *obj) {
 			return false;
 		}
 		if (currentCallFrame->func->returnId != DefaultClass::voidClassId) {
+			obj->retain();
 			stack.push(obj);
-			stack.top()->retain();
 		}
 		callFrames.pop();
 		currentCallFrame = callFrames.top();
@@ -224,8 +263,8 @@ bool AVM::callFunction(CallFrame *currentCallFrame, uint32_t argumentCount) {
 			return false;
 		}
 		if (currentCallFrame->func->returnId != DefaultClass::voidClassId) {
+			obj->retain();
 			stack.push(obj);
-			stack.top()->retain();
 		}
 		// std::cerr << currentCallFrame->fromStackAllocator << " "
 		//           << stackAllocator.top +
@@ -265,6 +304,52 @@ bool AVM::callFunction(CallFrame *currentCallFrame, uint32_t argumentCount) {
 
 	return !(currentCallFrame->exception);
 }
+
+#define DATA_CAL_DATA(opcode, data1, data2)                                    \
+	case AutoLang::Opcode::opcode: {                                           \
+		uint8_t tablePos = bytecodes[i++];                                     \
+		tempAllocateArea[0] = data1[get_u32(bytecodes, i)];                    \
+		tempAllocateArea[1] = data2[get_u32(bytecodes, i)];                    \
+		if (!fastOperate<2>(operatorTable[tablePos]))                          \
+			goto resumeCallFrame;                                              \
+		break;                                                                 \
+	}
+
+#define DATA_MEMBER_CAL_DATA(opcode, data1, data2)                             \
+	case AutoLang::Opcode::opcode: {                                           \
+		uint8_t tablePos = bytecodes[i++];                                     \
+		uint32_t pos = get_u32(bytecodes, i);                                  \
+		tempAllocateArea[0] = data1[pos]->member->data[get_u32(bytecodes, i)]; \
+		tempAllocateArea[1] = data2[get_u32(bytecodes, i)];                    \
+		if (!fastOperate<2>(operatorTable[tablePos]))                          \
+			goto resumeCallFrame;                                              \
+		break;                                                                 \
+	}
+
+#define DATA_CAL_DATA_MEMBER(opcode, data1, data2)                             \
+	case AutoLang::Opcode::opcode: {                                           \
+		uint8_t tablePos = bytecodes[i++];                                     \
+		tempAllocateArea[0] = data1[get_u32(bytecodes, i)];                    \
+		uint32_t pos = get_u32(bytecodes, i);                                  \
+		tempAllocateArea[1] = data2[pos]->member->data[get_u32(bytecodes, i)]; \
+		if (!fastOperate<2>(operatorTable[tablePos]))                          \
+			goto resumeCallFrame;                                              \
+		break;                                                                 \
+	}
+
+#define DATA_MEMBER_CAL_DATA_MEMBER(opcode, data1, data2)                      \
+	case AutoLang::Opcode::opcode: {                                           \
+		uint8_t tablePos = bytecodes[i++];                                     \
+		uint32_t pos1 = get_u32(bytecodes, i);                                 \
+		tempAllocateArea[0] =                                                  \
+		    data1[pos1]->member->data[get_u32(bytecodes, i)];                  \
+		uint32_t pos2 = get_u32(bytecodes, i);                                 \
+		tempAllocateArea[1] =                                                  \
+		    data2[pos2]->member->data[get_u32(bytecodes, i)];                  \
+		if (!fastOperate<2>(operatorTable[tablePos]))                          \
+			goto resumeCallFrame;                                              \
+		break;                                                                 \
+	}
 
 void AVM::resume() {
 	static ANativeFunction operatorTable[] = {
@@ -383,6 +468,23 @@ resumeCallFrame:;
 				}
 				case AutoLang::Opcode::CALL_VOID_FUNCTION: {
 					if (!callFunction<false, false, false>(
+					        currentCallFrame, currentFunction, bytecodes, i)) {
+						goto resumeCallFrame;
+					}
+					// if (state == VMState::WAITING) {
+					// 	return;
+					// }
+					break;
+				}
+				case AutoLang::Opcode::CALL_NATIVE_FUNCTION: {
+					if (!callNativeFunction<true>(
+					        currentCallFrame, currentFunction, bytecodes, i)) {
+						goto resumeCallFrame;
+					}
+					break;
+				}
+				case AutoLang::Opcode::CALL_VOID_NATIVE_FUNCTION: {
+					if (!callNativeFunction<false>(
 					        currentCallFrame, currentFunction, bytecodes, i)) {
 						goto resumeCallFrame;
 					}
@@ -914,6 +1016,52 @@ resumeCallFrame:;
 					}
 					goto doneReturnFunction;
 				}
+				case AutoLang::Opcode::RETURN_CONST: {
+					uint32_t pos = currentCallFrame->startStackCount;
+					while (stack.getSize() > pos) {
+						auto obj = stack.pop();
+						data.manager.release(obj);
+					}
+					stack.push(getConstObject(get_u32(bytecodes, i)));
+					goto doneReturnFunction;
+				}
+				case AutoLang::Opcode::RETURN_GLOBAL: {
+					uint32_t pos = currentCallFrame->startStackCount;
+					while (stack.getSize() > pos) {
+						auto obj = stack.pop();
+						data.manager.release(obj);
+					}
+					auto obj = globalVariables[get_u32(bytecodes, i)];
+					obj->retain();
+					stack.push(obj);
+					goto doneReturnFunction;
+				}
+				case AutoLang::Opcode::RETURN_LOCAL_MEMBER: {
+					uint32_t pos = currentCallFrame->startStackCount;
+					while (stack.getSize() > pos) {
+						auto obj = stack.pop();
+						data.manager.release(obj);
+					}
+					uint32_t localPos = get_u32(bytecodes, i);
+					auto obj = stackAllocator[localPos]
+					               ->member->data[get_u32(bytecodes, i)];
+					obj->retain();
+					stack.push(obj);
+					goto doneReturnFunction;
+				}
+				case AutoLang::Opcode::RETURN_GLOBAL_MEMBER: {
+					uint32_t pos = currentCallFrame->startStackCount;
+					while (stack.getSize() > pos) {
+						auto obj = stack.pop();
+						data.manager.release(obj);
+					}
+					uint32_t globalPos = get_u32(bytecodes, i);
+					auto obj = globalVariables[globalPos]
+					               ->member->data[get_u32(bytecodes, i)];
+					obj->retain();
+					stack.push(obj);
+					goto doneReturnFunction;
+				}
 				case AutoLang::Opcode::JUMP_IF_FALSE: {
 					AObject *obj = stack.pop();
 					if (obj == DefaultClass::falseObject) {
@@ -1075,76 +1223,61 @@ resumeCallFrame:;
 						goto resumeCallFrame;
 					break;
 				}
-				case AutoLang::Opcode::GLOBAL_CAL_GLOBAL: {
-					uint8_t tablePos = bytecodes[i++];
-					tempAllocateArea[0] =
-					    globalVariables[get_u32(bytecodes, i)];
-					tempAllocateArea[1] =
-					    globalVariables[get_u32(bytecodes, i)];
-					if (!fastOperate<2>(operatorTable[tablePos]))
-						goto resumeCallFrame;
-					break;
-				}
-				case AutoLang::Opcode::GLOBAL_CAL_LOCAL: {
-					uint8_t tablePos = bytecodes[i++];
-					tempAllocateArea[0] =
-					    globalVariables[get_u32(bytecodes, i)];
-					tempAllocateArea[1] = stackAllocator[get_u32(bytecodes, i)];
-					if (!fastOperate<2>(operatorTable[tablePos]))
-						goto resumeCallFrame;
-					break;
-				}
-				case AutoLang::Opcode::LOCAL_CAL_GLOBAL: {
-					uint8_t tablePos = bytecodes[i++];
-					tempAllocateArea[0] = stackAllocator[get_u32(bytecodes, i)];
-					tempAllocateArea[1] =
-					    globalVariables[get_u32(bytecodes, i)];
-					if (!fastOperate<2>(operatorTable[tablePos]))
-						goto resumeCallFrame;
-					break;
-				}
-				case AutoLang::Opcode::GLOBAL_CAL_CONST: {
-					uint8_t tablePos = bytecodes[i++];
-					tempAllocateArea[0] =
-					    globalVariables[get_u32(bytecodes, i)];
-					tempAllocateArea[1] = data.constPool[get_u32(bytecodes, i)];
-					if (!fastOperate<2>(operatorTable[tablePos]))
-						goto resumeCallFrame;
-					break;
-				}
-				case AutoLang::Opcode::CONST_CAL_GLOBAL: {
-					uint8_t tablePos = bytecodes[i++];
-					tempAllocateArea[0] = data.constPool[get_u32(bytecodes, i)];
-					tempAllocateArea[1] =
-					    globalVariables[get_u32(bytecodes, i)];
-					if (!fastOperate<2>(operatorTable[tablePos]))
-						goto resumeCallFrame;
-					break;
-				}
-				case AutoLang::Opcode::LOCAL_CAL_LOCAL: {
-					uint8_t tablePos = bytecodes[i++];
-					tempAllocateArea[0] = stackAllocator[get_u32(bytecodes, i)];
-					tempAllocateArea[1] = stackAllocator[get_u32(bytecodes, i)];
-					if (!fastOperate<2>(operatorTable[tablePos]))
-						goto resumeCallFrame;
-					break;
-				}
-				case AutoLang::Opcode::LOCAL_CAL_CONST: {
-					uint8_t tablePos = bytecodes[i++];
-					tempAllocateArea[0] = stackAllocator[get_u32(bytecodes, i)];
-					tempAllocateArea[1] = data.constPool[get_u32(bytecodes, i)];
-					if (!fastOperate<2>(operatorTable[tablePos]))
-						goto resumeCallFrame;
-					break;
-				}
-				case AutoLang::Opcode::CONST_CAL_LOCAL: {
-					uint8_t tablePos = bytecodes[i++];
-					tempAllocateArea[0] = data.constPool[get_u32(bytecodes, i)];
-					tempAllocateArea[1] = stackAllocator[get_u32(bytecodes, i)];
-					if (!fastOperate<2>(operatorTable[tablePos]))
-						goto resumeCallFrame;
-					break;
-				}
+
+					DATA_CAL_DATA(GLOBAL_CAL_GLOBAL, globalVariables,
+					              globalVariables)
+					DATA_CAL_DATA(GLOBAL_CAL_LOCAL, globalVariables,
+					              stackAllocator)
+					DATA_CAL_DATA(GLOBAL_CAL_CONST, globalVariables,
+					              data.constPool)
+					DATA_CAL_DATA_MEMBER(GLOBAL_CAL_GLOBAL_MEMBER,
+					                     globalVariables, globalVariables)
+					DATA_CAL_DATA_MEMBER(GLOBAL_CAL_LOCAL_MEMBER,
+					                     globalVariables, stackAllocator)
+
+					DATA_CAL_DATA(LOCAL_CAL_GLOBAL, stackAllocator,
+					              globalVariables)
+					DATA_CAL_DATA(LOCAL_CAL_LOCAL, stackAllocator,
+					              stackAllocator)
+					DATA_CAL_DATA(LOCAL_CAL_CONST, stackAllocator,
+					              data.constPool)
+					DATA_CAL_DATA_MEMBER(LOCAL_CAL_GLOBAL_MEMBER,
+					                     stackAllocator, globalVariables)
+					DATA_CAL_DATA_MEMBER(LOCAL_CAL_LOCAL_MEMBER, stackAllocator,
+					                     stackAllocator)
+
+					DATA_CAL_DATA(CONST_CAL_GLOBAL, data.constPool,
+					              globalVariables)
+					DATA_CAL_DATA(CONST_CAL_LOCAL, data.constPool,
+					              stackAllocator)
+					DATA_CAL_DATA_MEMBER(CONST_CAL_GLOBAL_MEMBER,
+					                     data.constPool, globalVariables)
+					DATA_CAL_DATA_MEMBER(CONST_CAL_LOCAL_MEMBER, data.constPool,
+					                     stackAllocator)
+
+					DATA_MEMBER_CAL_DATA(GLOBAL_MEMBER_CAL_GLOBAL,
+					                     globalVariables, globalVariables)
+					DATA_MEMBER_CAL_DATA(GLOBAL_MEMBER_CAL_LOCAL,
+					                     globalVariables, stackAllocator)
+					DATA_MEMBER_CAL_DATA(GLOBAL_MEMBER_CAL_CONST,
+					                     globalVariables, data.constPool)
+					DATA_MEMBER_CAL_DATA_MEMBER(GLOBAL_MEMBER_CAL_GLOBAL_MEMBER,
+					                            globalVariables,
+					                            globalVariables)
+					DATA_MEMBER_CAL_DATA_MEMBER(GLOBAL_MEMBER_CAL_LOCAL_MEMBER,
+					                            globalVariables, stackAllocator)
+
+					DATA_MEMBER_CAL_DATA(LOCAL_MEMBER_CAL_GLOBAL,
+					                     stackAllocator, globalVariables)
+					DATA_MEMBER_CAL_DATA(LOCAL_MEMBER_CAL_LOCAL, stackAllocator,
+					                     stackAllocator)
+					DATA_MEMBER_CAL_DATA(LOCAL_MEMBER_CAL_CONST, stackAllocator,
+					                     data.constPool)
+					DATA_MEMBER_CAL_DATA_MEMBER(LOCAL_MEMBER_CAL_GLOBAL_MEMBER,
+					                            stackAllocator, globalVariables)
+					DATA_MEMBER_CAL_DATA_MEMBER(LOCAL_MEMBER_CAL_LOCAL_MEMBER,
+					                            stackAllocator, stackAllocator)
+
 				case AutoLang::Opcode::GLOBAL_CAL_CONST_JUMP: {
 					uint8_t tablePos = bytecodes[i++];
 					tempAllocateArea[0] =
@@ -1267,11 +1400,9 @@ resumeCallFrame:;
 					break;
 				}
 				case AutoLang::Opcode::PLUS_EQUAL: {
-					tempAllocateArea[1] = stack.pop();
-					tempAllocateArea[0] = stack.pop();
-					if (!fastOperate<2>(AutoLang::DefaultFunction::plus_eq))
+					if (!operate<AutoLang::DefaultFunction::plus_eq, 2,
+					             false>())
 						goto resumeCallFrame;
-					data.manager.release(tempAllocateArea[1]);
 					break;
 				}
 				case AutoLang::Opcode::MINUS_EQUAL:

@@ -2,6 +2,7 @@
 #define CREATE_NODE_HPP
 
 #include "frontend/parser/ClassDeclaration.hpp"
+#include "frontend/parser/Parameter.hpp"
 #include "frontend/parser/node/Node.hpp"
 #include <cmath>
 #include <iostream>
@@ -55,15 +56,15 @@ struct CreateConstructorNode : HasClassIdNode {
 	LexerStringId nameId;
 	FunctionId funcId;
 	BlockNode body;
-	const std::vector<DeclarationNode *> parameters;
+	Parameter *parameter;
 	uint32_t functionFlags;
 	bool isPrimary;
 	CreateConstructorNode(uint32_t line, ClassId classId, LexerStringId nameId,
-	                      std::vector<DeclarationNode *> parameters,
-	                      bool isPrimary, uint32_t functionFlags)
+	                      Parameter *parameter, bool isPrimary,
+	                      uint32_t functionFlags)
 	    : HasClassIdNode(NodeType::CREATE_CONSTRUCTOR, 0, line),
-	      classId(classId), functionFlags(functionFlags), nameId(nameId),
-	      parameters(std::move(parameters)), isPrimary(isPrimary), body(line) {}
+	      classId(classId), nameId(nameId), body(line), parameter(parameter),
+	      functionFlags(functionFlags), isPrimary(isPrimary) {}
 	void pushFunction(in_func);
 	ExprNode *copy(in_func) override;
 	void optimize(in_func) override;

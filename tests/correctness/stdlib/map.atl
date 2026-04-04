@@ -1,0 +1,76 @@
+class TestMapFeaturesExhaustive {
+	var mapKeySum = 0
+	var mapValueSum = 0
+
+	func mapForEachTest(key: Int, value: Int) {
+		mapKeySum += key
+		mapValueSum += value
+	}
+
+	func testMapFeaturesExhaustive() {
+		// 1. Test: Explicit Constructor, isEmpty, size
+		val explicitMap = Map<String, Int>()
+		assert(explicitMap.isEmpty() == true, __FILE__, __LINE__)
+		assert(explicitMap.size() == 0, __FILE__, __LINE__)
+
+		// 2. Test: Sugar Syntax, set, get, size
+		val m = <String, Int>{"Apple": 10, "Banana": 20, "Cherry": 30}
+		assert(m.size() == 3, __FILE__, __LINE__)
+		assert(m.get("Banana") == 20, __FILE__, __LINE__)
+		assert(m.get("Durian") == null, __FILE__, __LINE__) // Key không tồn tại trả về null
+
+		// 3. Test: Update existing key (set) và containsKey
+		m.set("Apple", 15) // Cập nhật Apple từ 10 thành 15
+		assert(m.get("Apple") == 15, __FILE__, __LINE__)
+		assert(m.size() == 3, __FILE__, __LINE__) // Size không đổi
+		
+		assert(m.containsKey("Cherry") == true, __FILE__, __LINE__)
+		assert(m.containsKey("Mango") == false, __FILE__, __LINE__)
+
+		// 4. Test: remove
+		m.remove("Banana")
+		assert(m.get("Banana") == null, __FILE__, __LINE__)
+		assert(m.containsKey("Banana") == false, __FILE__, __LINE__)
+		assert(m.size() == 2, __FILE__, __LINE__) // Chỉ còn Apple và Cherry
+
+		// 5. Test: forEach (Tạo một map Int, Int để dễ tính tổng)
+		val numMap = <Int, Int>{1: 100, 2: 200, 3: 300}
+		mapKeySum = 0
+		mapValueSum = 0
+		numMap.forEach(mapForEachTest)
+		// Tổng keys: 1 + 2 + 3 = 6
+		// Tổng values: 100 + 200 + 300 = 600
+		assert(mapKeySum == 6, __FILE__, __LINE__)
+		assert(mapValueSum == 600, __FILE__, __LINE__)
+
+		// 6. Test: keys() và values()
+		val keysArr = numMap.keys()
+		assert(keysArr is Array<Int>, __FILE__, __LINE__)
+		assert(keysArr.size() == 3, __FILE__, __LINE__)
+		assert(keysArr.contains(1) && keysArr.contains(2) && keysArr.contains(3), __FILE__, __LINE__)
+
+		val valuesArr = numMap.values()
+		assert(valuesArr is Array<Int>, __FILE__, __LINE__)
+		assert(valuesArr.size() == 3, __FILE__, __LINE__)
+		assert(valuesArr.contains(100) && valuesArr.contains(200) && valuesArr.contains(300), __FILE__, __LINE__)
+
+		// 7. Test: toString
+		val str = numMap.toString()
+		assert(str is String, __FILE__, __LINE__)
+		assert(str.size() > 0, __FILE__, __LINE__)
+
+		// 8. Clean up test (clear)
+		numMap.clear()
+		assert(numMap.isEmpty() == true, __FILE__, __LINE__)
+		assert(numMap.size() == 0, __FILE__, __LINE__)
+		assert(numMap.containsKey(1) == false, __FILE__, __LINE__)
+
+		// Only prints if all assertions pass
+		println("Passed ${__FUNC__}")
+	}
+
+}
+
+
+// Execute the test
+TestMapFeaturesExhaustive().testMapFeaturesExhaustive()

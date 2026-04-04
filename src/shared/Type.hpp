@@ -12,7 +12,7 @@ class ACompiler;
 }
 
 #define NativeFuncInput AutoLang::ANotifier&, AutoLang::AObject ** ,size_t
-#define NativeFuncInData AutoLang::ANotifier& notifier, AutoLang::AObject **args, size_t size
+#define NativeFuncInData AutoLang::ANotifier& notifier, AutoLang::AObject **args, size_t argSize
 
 using InitLibFn = const char* (*)();
 using ClassId = uint32_t;

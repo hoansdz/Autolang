@@ -1,11 +1,10 @@
 #ifndef DEBUGGER_HPP
 #define DEBUGGER_HPP
 
-#include "frontend/parser/ParserContext.hpp"
+#include "frontend/parser/node/CreateFuncNode.hpp"
 #include "frontend/parser/node/CreateNode.hpp"
+#include "frontend/parser/node/Node.hpp"
 #include "shared/DefaultClass.hpp"
-#include "shared/DefaultFunction.hpp"
-#include "shared/DefaultOperator.hpp"
 #include <exception>
 #include <fstream>
 #include <iostream>
@@ -14,6 +13,8 @@
 #include <vector>
 
 namespace AutoLang {
+
+struct ParserContext;
 
 struct ParserError : AutoLang::Lexer::LexerError {
 	ParserError(uint32_t line, std::string msg)
@@ -38,16 +39,17 @@ void ensureEndline(in_func, size_t &i);
 ExprNode *loadLine(in_func, size_t &i);
 template <bool trailingComma = false>
 std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i);
-std::vector<DeclarationNode *> loadListDeclaration(in_func, size_t &i,
-                                                   bool allowVar = false);
+Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar = false);
 std::vector<ClassDeclaration *> loadListClassDeclaration(in_func, size_t &i,
                                                          uint32_t line,
-                                                         bool allowReturnVoid);
+                                                         bool allowReturnVoid,
+                                                         bool &isGeneric);
 ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
                                        bool allowReturnVoid);
 void loadListGenericDeclarationType(in_func, size_t &i, uint32_t line,
                                     bool allowReturnVoid,
-                                    std::vector<ClassDeclaration *> &inputVecs);
+                                    std::vector<ClassDeclaration *> &inputVecs,
+                                    bool &isGeneric);
 HasClassIdNode *loadSetOrMap(in_func, size_t &i, NodeType canBeNodeType);
 HasClassIdNode *loadSet(in_func, size_t &i, HasClassIdNode *firstExpression);
 HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode *firstExpression);

@@ -16,7 +16,7 @@ func testSetSugarSyntax() {
 	testInputSugarSyntax({})
 	assert(set is Set<Int>, __FILE__, __LINE__)
 	assert(sum == 45, __FILE__, __LINE__)
-	println("Passes ${__FUNC__}")
+	println("Passed ${__FUNC__}")
 }
 
 testSetSugarSyntax()

@@ -4,6 +4,7 @@
 #include "frontend/ACompiler.hpp"
 #include "frontend/parser/Debugger.hpp"
 #include "shared/ClassFlags.hpp"
+#include "frontend/parser/ParserContext.hpp"
 #include <memory>
 
 namespace AutoLang {
@@ -71,10 +72,13 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 				context.gotoClass(lastClass);
 				return node;
 			}
+			auto parameter = context.parameterPool.push();
+			parameter->defaultValuePos = 1;
+			parameter->parameters =
+			    std::vector<DeclarationNode *>{classInfo->declarationThis};
 			auto *constructor = context.createConstructorPool.push(
-			    firstLine, *context.currentClassId, nameId,
-			    std::vector<DeclarationNode *>{classInfo->declarationThis},
-			    false, FunctionFlags::FUNC_PUBLIC);
+			    firstLine, *context.currentClassId, nameId, parameter, false,
+			    FunctionFlags::FUNC_PUBLIC);
 			classInfo->secondaryConstructor.push_back(constructor);
 			constructor->pushFunction(in_data);
 			context.gotoClass(lastClass);
@@ -97,6 +101,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 					                  "Redefined " + genericDeclarationName);
 				}
 				Offset id = classInfo->genericData->genericDeclarations.size();
+				context.isInGeneric = true;
 				auto declarationData =
 				    new GenericDeclarationNode(firstLine, token->indexData);
 				// declarationData->classDeclaration.baseClassLexerStringId =
@@ -216,13 +221,20 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 				throw ParserError(context.tokens[i].line,
 				                  "@native_data is already applied");
 			}
-			auto parameters = loadListDeclaration(in_data, i, true);
-			parameters.insert(parameters.begin(), classInfo->declarationThis);
+			auto parameter = loadListDeclaration(in_data, i, true);
+			if (!parameter->parameterDefaultValues.empty() &&
+			    !classInfo->genericData) {
+				context.defaultValueParameter.push_back(parameter);
+			}
+			parameter->parameters.insert(parameter->parameters.begin(),
+			                             classInfo->declarationThis);
+			parameter->defaultValuePos += 1;
 			classInfo->primaryConstructor = context.createConstructorPool.push(
-			    firstLine, *context.currentClassId, nameId,
-			    std::move(parameters), true, FunctionFlags::FUNC_PUBLIC);
+			    firstLine, *context.currentClassId, nameId, parameter, true,
+			    FunctionFlags::FUNC_PUBLIC);
 			classInfo->primaryConstructor->pushFunction(in_data);
 			if (!nextToken(&token, context.tokens, i)) {
+				context.isInGeneric = false;
 				context.gotoClass(lastClass);
 				--i;
 				return node;
@@ -240,9 +252,12 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 					    firstLine,
 					    "Extended class must be declarated constructor");
 				}
+				auto parameter = context.parameterPool.push();
+				parameter->defaultValuePos = 1;
+				parameter->parameters =
+				    std::vector<DeclarationNode *>{classInfo->declarationThis};
 				auto *constructor = context.createConstructorPool.push(
-				    firstLine, *context.currentClassId, nameId,
-				    std::vector<DeclarationNode *>{classInfo->declarationThis},
+				    firstLine, *context.currentClassId, nameId, parameter,
 				    false, FunctionFlags::FUNC_PUBLIC);
 				classInfo->secondaryConstructor.push_back(constructor);
 				constructor->pushFunction(in_data);
@@ -259,19 +274,26 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 					    firstLine,
 					    "Extended class must be declarated constructor");
 				}
+
+				auto parameter = context.parameterPool.push();
+				parameter->defaultValuePos = 1;
+				parameter->parameters =
+				    std::vector<DeclarationNode *>{classInfo->declarationThis};
 				classInfo->primaryConstructor =
 				    context.createConstructorPool.push(
-				        firstLine, *context.currentClassId, nameId,
-				        std::vector<DeclarationNode *>{
-				            classInfo->declarationThis},
+				        firstLine, *context.currentClassId, nameId, parameter,
 				        true, FunctionFlags::FUNC_PUBLIC);
 				classInfo->primaryConstructor->pushFunction(in_data);
 			}
+
 			context.gotoClass(lastClass);
 			--i;
 		}
+		if (context.isInGeneric)
+			context.isInGeneric = false;
 		return node;
 	} catch (const ParserError &err) {
+		context.isInGeneric = false;
 		context.gotoClass(lastClass);
 		throw err;
 	}
@@ -337,17 +359,23 @@ void loadConstructor(in_func, size_t &i) {
 		--i;
 		throw ParserError(context.tokens[i].line, "Expected ( but not found");
 	}
-	std::vector<DeclarationNode *> listDeclarationNode;
+	Parameter *parameter = nullptr;
 	if (expect(token, Lexer::TokenType::LPAREN)) {
 		if (firstLine != token->line) {
 			throw ParserError(firstLine, "Expected ( but not found");
 		}
-		listDeclarationNode = loadListDeclaration(in_data, i);
+		parameter = loadListDeclaration(in_data, i);
+		if (!parameter->parameterDefaultValues.empty() &&
+		    !classInfo->genericData) {
+			context.defaultValueParameter.push_back(parameter);
+		}
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
 			throw ParserError(context.tokens[i].line,
 			                  "Expected body but not found");
 		}
+	} else {
+		parameter = context.parameterPool.push();
 	}
 	// listDeclarationNode.insert(listDeclarationNode.begin(),
 	// context.getCurrentClassInfo(in_data)->declarationThis);
@@ -366,11 +394,12 @@ void loadConstructor(in_func, size_t &i) {
 		}
 	}
 	// Create constructor
-	listDeclarationNode.insert(listDeclarationNode.begin(),
-	                           classInfo->declarationThis);
+	parameter->parameters.insert(parameter->parameters.begin(),
+	                             classInfo->declarationThis);
+	parameter->defaultValuePos += 1;
 	auto constructor = context.createConstructorPool.push(
 	    firstLine, *context.currentClassId, context.lexerStringMap[clazz->name],
-	    std::move(listDeclarationNode), false, functionFlags);
+	    parameter, false, functionFlags);
 	classInfo->secondaryConstructor.push_back(constructor);
 	constructor->pushFunction(in_data);
 	context.gotoFunction(constructor->funcId);
@@ -390,10 +419,10 @@ void loadConstructor(in_func, size_t &i) {
 			throw ParserError(firstLine, "Native function name '" + name +
 			                                 "' could not be found");
 		}
-		for (size_t j = 0; j < constructor->parameters.size(); ++j) {
-			auto *param = constructor->parameters[j];
-			param->id = j;
-		}
+		// for (size_t j = 1; j < constructor->parameter->parameters.size();
+		// ++j) { 	auto *param = constructor->parameter->parameters[j];
+		// param->id = j;
+		// }
 		func->native = it->second;
 	} else {
 		// Add to scope
@@ -401,8 +430,8 @@ void loadConstructor(in_func, size_t &i) {
 		scope[lexerIdthis] = classInfo->declarationThis;
 
 		// context.getCurrentFunctionInfo(in_data)->declaration = 1;
-		for (size_t j = 0; j < constructor->parameters.size(); ++j) {
-			auto *param = constructor->parameters[j];
+		for (size_t j = 0; j < constructor->parameter->parameters.size(); ++j) {
+			auto *param = constructor->parameter->parameters[j];
 			scope[param->baseName] = param;
 			param->id = j;
 		}

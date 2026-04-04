@@ -317,9 +317,16 @@ void SetNode::optimize(in_func) {
 		}
 	}
 
-	if (value->isNullable() && !detach->isNullable()) {
+	if (detach->isNullable()) {
+		if (op != Lexer::TokenType::EQUAL) {
+			throwError("Cannot use operator '" +
+			           Lexer::Token(0, op).toString(context) +
+			           "' with nullable value");
+		}
+	} else if (value->isNullable()) {
 		throwError("Cannot detach '" + compile.classes[detach->classId]->name +
-		           "' with '" + compile.classes[value->classId]->name + "?'");
+		           "' with '" + compile.classes[value->classId]->name +
+		           "?' (Nullable value)");
 	}
 
 	if (detach->classId == value->classId) {
@@ -429,6 +436,10 @@ void SetNode::optimize(in_func) {
 	}
 
 void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	if (BinaryNode::putOptimizedBytecode(in_data, bytecodes, op, detach,
+	                                     value)) {
+		return;
+	}
 	switch (op) {
 		operator_plus_case(PLUS_EQUAL, PLUS_EQUAL);
 		operator_plus_case(MINUS_EQUAL, MINUS_EQUAL);

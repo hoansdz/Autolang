@@ -21,6 +21,7 @@ inline AObject *get_refcount(NativeFuncInData);
 inline AObject *string_constructor(NativeFuncInData);
 inline AObject *to_int(NativeFuncInData);
 inline AObject *to_float(NativeFuncInData);
+inline AObject *trim(NativeFuncInData);
 inline AObject *to_string(NativeFuncInData);
 inline std::string to_string(ANotifier &notifier, AObject *obj);
 inline AObject *get_string_size(NativeFuncInData);
@@ -29,7 +30,7 @@ inline AObject *str_get(NativeFuncInData);
 
 AObject *data_constructor(NativeFuncInData) {
 	AObject *obj = args[0];
-	for (size_t i = 1; i < size; ++i) {
+	for (size_t i = 1; i < argSize; ++i) {
 		AObject **last = &obj->member->data[i - 1];
 		*last = args[i];
 		(*last)->retain();
@@ -85,7 +86,7 @@ AObject *print(NativeFuncInData) {
 }
 
 AObject *println(NativeFuncInData) {
-	print(notifier, args, size);
+	print(notifier, args, argSize);
 	std::cout << '\n';
 	return nullptr;
 }
@@ -157,8 +158,18 @@ AObject *to_string(NativeFuncInData) {
 	return nullptr;
 }
 
+AObject *str_trim(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	size_t start = s.find_first_not_of(" \n\r\t");
+	if (start == std::string::npos) {
+		return notifier.createString("");
+	}
+	size_t end = s.find_last_not_of(" \n\r\t");
+	return notifier.createString(s.substr(start, end - start + 1));
+}
+
 AObject *string_constructor(NativeFuncInData) {
-	switch (size) {
+	switch (argSize) {
 		case 0: {
 			char *newStr = new char[1];
 			newStr[0] = '\0';
@@ -166,7 +177,7 @@ AObject *string_constructor(NativeFuncInData) {
 		}
 		// To string
 		case 1: {
-			return to_string(notifier, args, size);
+			return to_string(notifier, args, argSize);
 		}
 		//"hi",3 => "hihihi"
 		case 2: {
@@ -240,6 +251,11 @@ AObject *str_index_of(NativeFuncInData) {
 	return notifier.createInt(static_cast<int64_t>(pos));
 }
 
+AObject *str_is_empty(NativeFuncInData) {
+	AString *str = args[0]->str;
+	return notifier.createBool(str->size == 0);
+}
+
 AObject *str_replace(NativeFuncInData) {
 	std::string full(args[0]->str->data, args[0]->str->size);
 	std::string oldStr(args[1]->str->data, args[1]->str->size);
@@ -289,7 +305,7 @@ AObject *str_substr(NativeFuncInData) {
 	AString *str = args[0]->str;
 	int64_t len = str->size;
 
-	if (size < 2 || size > 3) {
+	if (argSize < 2 || argSize > 3) {
 		notifier.throwException("substr expects 1 or 2 arguments");
 		return nullptr;
 	}
@@ -305,7 +321,7 @@ AObject *str_substr(NativeFuncInData) {
 	}
 
 	// substr(from)
-	if (size == 2) {
+	if (argSize == 2) {
 		int64_t newLen = len - from;
 
 		char *newStr = new char[newLen + 1];

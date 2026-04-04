@@ -4,6 +4,7 @@
 #include "backend/libs/array.hpp"
 #include "backend/libs/map.hpp"
 #include "backend/libs/set.hpp"
+#include "shared/DefaultOperator.hpp"
 #include "frontend/ACompiler.hpp"
 #include "frontend/parser/Debugger.hpp"
 #include "shared/DefaultClass.hpp"
@@ -47,6 +48,9 @@ class String {
 	@native("string_size")
 	func size(): Int
 
+	@native("str_is_empty")
+	func isEmpty(): Bool
+
 	@native("str_to_int")
 	func toInt(): Int
 
@@ -62,16 +66,17 @@ class String {
 	@native("str_substr")
 	func substr(from: Int, length: Int): String
 
+	@native("str_trim")
+	func trim(): String
+
 	@native("str_contains")
 	func contains(sub: String): Bool
 
 	@native("str_index_of")
 	func indexOf(sub: String): Int
 
-	func split(delimiter: String) = split(delimiter, getClassId(Array<String>))
-
 	@native("str_split")
-	private func split(delimiter: String, classId: Int): Array<String>
+	func split(delimiter: String, classId: Int = getClassId(Array<String>)): Array<String>
 
 	@native("str_replace")
 	func replace(old: String, new: String): String
@@ -164,9 +169,8 @@ class Array<T>() {
 @no_constructor
 class Set<T> {
 	@native("set_constructor")
-	private static func create(classId: Int, keyId: Int): Set<T>
-	
-	static func __CLASS__() = create(getClassId(Set<T>), getClassId(T))
+	static func __CLASS__(classId: Int = getClassId(Set<T>), keyId: Int = getClassId(T)): Set<T>
+
 	@native("set_insert")
 	func insert(value: T)
 
@@ -189,9 +193,7 @@ class Set<T> {
     func forEach(fn: (T) -> Void)
 
     @native("set_to_array")
-    private func toArray(classId: Int): Array<T>
-
-    func toArray(): Array<T> = toArray(getClassId(Array<T>))
+    func toArray(classId: Int = getClassId(Array<T>)): Array<T>
 
 	@native("set_union")
     func union(other: Set<T>): Set<T>
@@ -210,18 +212,34 @@ class Set<T> {
 @no_constructor
 class Map<K, V> {
 	@native("map_constructor")
-	private static func create(classId: Int, keyId: Int): Map<K, V>
-	
-	static func __CLASS__() = create(getClassId(Map<K, V>), getClassId(K))
+	static func __CLASS__(classId: Int = getClassId(Map<K, V>), keyId: Int = getClassId(K)): Map<K, V>
 	
 	@native("map_get")
 	func get(key: K): V?
+
+	@native("map_get_or_default")
+	func getOrDefault(key: K, defaultValue: V): V
 	
 	@native("map_set")
 	func set(key: K, value: V)
 
+	@native("map_is_empty")
+    func isEmpty(): Bool
+
+    @native("map_contains_key")
+    func containsKey(key: K): Bool
+
 	@native("map_size")
 	func size(): Int
+
+	@native("map_for_each")
+    func forEach(fn: (K, V) -> Void)
+
+	@native("map_keys")
+    func keys(classId: Int = getClassId(Array<K>)): Array<K>
+
+	@native("map_values")
+    func values(classId: Int = getClassId(Array<V>)): Array<V>
 
 	@native("map_remove")
 	func remove(key: K)
@@ -259,6 +277,8 @@ func assert(condition: Bool, fileName: String, line: Int) {
 	         {"str_to_float", &DefaultFunction::to_float},
 	         {"str_contains", &DefaultFunction::str_contains},
 	         {"str_split", &DefaultFunction::str_split},
+	         {"str_trim", &DefaultFunction::str_trim},
+	         {"str_is_empty", &DefaultFunction::str_is_empty},
 	         {"str_replace", &DefaultFunction::str_replace},
 	         {"str_index_of", &DefaultFunction::str_index_of},
 	         {"to_string", &DefaultFunction::to_string},
@@ -300,8 +320,14 @@ func assert(condition: Bool, fileName: String, line: Int) {
 	         {"map_constructor", &map::constructor},
 	         {"map_clear", &map::clear},
 	         {"map_size", &map::size},
+	         {"map_is_empty", &map::is_empty},
+	         {"map_contains_key", &map::contains_key},
+	         {"map_for_each", &map::for_each},
+	         {"map_keys", &map::keys},
+	         {"map_values", &map::values},
 	         {"map_remove", &map::remove},
 	         {"map_get", &map::get},
+	         {"map_get_or_default", &map::get_or_default},
 	         {"map_set", &map::set},
 	         {"map_to_string", &map::to_string}}));
 }

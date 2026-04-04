@@ -4,6 +4,10 @@
 #include "set.hpp"
 #include "frontend/ACompiler.hpp"
 #include "shared/DefaultFunction.hpp"
+#include "backend/vm/ANotifier.hpp"
+#include "shared/DefaultFunction.hpp"
+#include "shared/DefaultClass.hpp"
+#include "shared/DefaultOperator.hpp"
 #include "shared/Type.hpp"
 
 namespace AutoLang {

@@ -2,6 +2,7 @@
 #define LIBS_SET_HPP
 
 #include "shared/Type.hpp"
+#include "frontend/parser/node/Node.hpp"
 
 namespace AutoLang {
 class ANotifier;

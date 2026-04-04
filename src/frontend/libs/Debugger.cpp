@@ -2,6 +2,7 @@
 #define LIBS_DEBUGGER_CPP
 
 #include "Debugger.hpp"
+#include "shared/DefaultFunction.hpp"
 #include "frontend/ACompiler.hpp"
 
 namespace AutoLang {

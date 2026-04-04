@@ -9,9 +9,11 @@ namespace AutoLang {
 void CreateFuncNode::pushFunction(in_func) {
 	AClass *clazz =
 	    contextCallClassId ? compile.classes[*contextCallClassId] : nullptr;
-	id = compile.registerFunction(
-	    clazz, context.lexerString[nameId], new ClassId[parameters.size()]{},
-	    parameters.size(), AutoLang::DefaultClass::voidClassId, functionFlags);
+	id = compile.registerFunction(clazz, context.lexerString[nameId],
+	                              new ClassId[parameter->parameters.size()]{},
+	                              parameter->parameters.size(),
+	                              AutoLang::DefaultClass::voidClassId,
+	                              functionFlags);
 	// Function can be overrided, it will be recreated in override phase
 	if (clazz) {
 		if (!(clazz->classFlags & ClassFlags::CLASS_HAS_PARENT)) {
@@ -26,18 +28,18 @@ void CreateFuncNode::pushFunction(in_func) {
 	auto funcInfo = context.functionInfo[id];
 	new (&func->bytecodes) std::vector<uint8_t>();
 	funcInfo->clazz = clazz;
-	funcInfo->nullableArgs = new bool[parameters.size()]{};
-	func->maxDeclaration = parameters.size();
-	funcInfo->declaration = parameters.size();
-	funcInfo->parameters = parameters;
+	func->maxDeclaration = parameter->parameters.size();
+	funcInfo->declaration = parameter->parameters.size();
+	funcInfo->parameter = parameter;
 }
 
 void CreateFuncNode::pushNativeFunction(in_func, ANativeFunction native) {
 	AClass *clazz =
 	    contextCallClassId ? compile.classes[*contextCallClassId] : nullptr;
 	id = compile.registerFunction(
-	    clazz, context.lexerString[nameId], new ClassId[parameters.size()]{},
-	    parameters.size(), AutoLang::DefaultClass::voidClassId,
+	    clazz, context.lexerString[nameId],
+	    new ClassId[parameter->parameters.size()]{},
+	    parameter->parameters.size(), AutoLang::DefaultClass::voidClassId,
 	    functionFlags | FunctionFlags::FUNC_IS_NATIVE);
 	// Function can be overrided, it will be recreated in override phase
 	if (clazz) {
@@ -53,20 +55,13 @@ void CreateFuncNode::pushNativeFunction(in_func, ANativeFunction native) {
 	auto funcInfo = context.functionInfo[id];
 	func->native = native;
 	funcInfo->clazz = clazz;
-	funcInfo->nullableArgs = new bool[parameters.size()]{};
-	func->maxDeclaration = parameters.size();
-	funcInfo->declaration = parameters.size();
-	funcInfo->parameters = parameters;
+	func->maxDeclaration = parameter->parameters.size();
+	funcInfo->declaration = parameter->parameters.size();
+	funcInfo->parameter = parameter;
 }
 
 ExprNode *CreateFuncNode::copy(in_func) {
 	auto funcInfo = context.functionInfo[id];
-	std::vector<DeclarationNode *> newParams;
-	newParams.reserve(parameters.size());
-	for (auto param : parameters) {
-		newParams.push_back(
-		    static_cast<DeclarationNode *>(param->copy(in_data)));
-	}
 	LexerStringId newNameId = nameId;
 	if (nameId == lexerId__CLASS__) {
 		if (!context.currentClassId) {
@@ -76,9 +71,9 @@ ExprNode *CreateFuncNode::copy(in_func) {
 		    context
 		        .lexerStringMap[compile.classes[*context.currentClassId]->name];
 	}
-	auto newCreateFuncNode =
-	    context.newFunctions.push(line, context.currentClassId, newNameId,
-	                              nullptr, newParams, functionFlags);
+	auto newCreateFuncNode = context.newFunctions.push(
+	    line, context.currentClassId, newNameId, nullptr,
+	    parameter->copy(in_data), functionFlags);
 	if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 		newCreateFuncNode->pushNativeFunction(in_data,
 		                                      compile.functions[id]->native);
@@ -95,10 +90,9 @@ void CreateFuncNode::optimize(in_func) {
 	if (classDeclaration) {
 		func->returnId = *classDeclaration->classId;
 	}
-	for (size_t i = 0; i < parameters.size(); ++i) {
-		auto &param = parameters[i];
+	for (size_t i = 0; i < parameter->parameters.size(); ++i) {
+		auto &param = parameter->parameters[i];
 		func->args[i] = param->classId;
-		funcInfo->nullableArgs[i] = param->nullable;
 	}
 
 	if (contextCallClassId) {

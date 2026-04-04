@@ -3,25 +3,10 @@
 
 #include "frontend/parser/node/NodePutBytecode.hpp"
 #include "frontend/parser/Debugger.hpp"
+#include "frontend/parser/ParserContext.hpp"
 #include "frontend/parser/node/CreateNode.hpp"
 
 namespace AutoLang {
-
-void UnaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	value->putBytecodes(in_data, bytecodes);
-	switch (op) {
-		case Lexer::TokenType::MINUS: {
-			bytecodes.emplace_back(Opcode::NEGATIVE);
-			break;
-		}
-		case Lexer::TokenType::NOT: {
-			bytecodes.emplace_back(Opcode::NOT);
-			break;
-		}
-		default:
-			break;
-	}
-}
 
 void SkipNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	bytecodes.emplace_back(Opcode::JUMP);
@@ -81,22 +66,42 @@ void WhileNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 
 void ReturnNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	if (value) {
-		if (value->kind == NodeType::VAR) {
-			auto node = static_cast<VarNode *>(value);
-			if (node->declaration->isGlobal)
-				goto return_global;
-			bytecodes.emplace_back(RETURN_LOCAL);
-			put_opcode_u32(bytecodes, node->declaration->id);
-			return;
+		switch (value->kind) {
+			case NodeType::VAR: {
+				auto node = static_cast<VarNode *>(value);
+				bytecodes.emplace_back(
+				    node->declaration->isGlobal ? RETURN_GLOBAL : RETURN_LOCAL);
+				put_opcode_u32(bytecodes, node->declaration->id);
+				return;
+			}
+			case NodeType::CONST: {
+				auto node = static_cast<ConstValueNode *>(value);
+				bytecodes.emplace_back(RETURN_CONST);
+				put_opcode_u32(bytecodes, node->id);
+				return;
+			}
+			case NodeType::GET_PROP: {
+				auto node = static_cast<GetPropNode *>(value);
+				if (node->isStatic) {
+					node->caller->putBytecodesIfMustBeCalled(in_data,
+					                                         bytecodes);
+					bytecodes.emplace_back(RETURN_GLOBAL);
+					put_opcode_u32(bytecodes, node->declaration->id);
+					return;
+				}
+				if (node->caller->kind != NodeType::VAR) {
+					break;
+				}
+				auto caller = static_cast<VarNode *>(node->caller);
+				bytecodes.emplace_back(caller->declaration->isGlobal
+				                           ? RETURN_GLOBAL_MEMBER
+				                           : RETURN_LOCAL_MEMBER);
+				put_opcode_u32(bytecodes, caller->declaration->id);
+				put_opcode_u32(bytecodes, node->declaration->id);
+				return;
+			}
 		}
-	return_global:;
-		size_t f1 = bytecodes.size();
 		value->putBytecodes(in_data, bytecodes);
-		size_t f2 = bytecodes.size();
-		if (f1 == f2) {
-			std::cerr << value->getNodeType();
-			std::cerr << " WTF\n";
-		}
 		bytecodes.emplace_back(Opcode::RETURN_VALUE);
 		return;
 	}

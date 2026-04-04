@@ -16,6 +16,7 @@
 
 #include "frontend/parser/Debugger.hpp"
 #include "shared/Utils.hpp"
+#include "frontend/parser/ParserContext.hpp"
 
 namespace AutoLang {
 
@@ -290,7 +291,8 @@ createNode:;
 
 std::vector<ClassDeclaration *> loadListClassDeclaration(in_func, size_t &i,
                                                          uint32_t line,
-                                                         bool allowReturnVoid) {
+                                                         bool allowReturnVoid,
+                                                         bool &isGeneric) {
 	Lexer::Token *token;
 	if (!nextTokenSameLine(&token, context.tokens, i, line)) {
 		--i;
@@ -303,6 +305,7 @@ std::vector<ClassDeclaration *> loadListClassDeclaration(in_func, size_t &i,
 		result->line = token->line;
 		result->baseClassLexerStringId = lexerIdVoid;
 		result->classId = DefaultClass::voidClassId;
+		result->isGeneric = false;
 		listClassDeclaration.push_back(result);
 		return listClassDeclaration;
 	} else {
@@ -311,6 +314,9 @@ std::vector<ClassDeclaration *> loadListClassDeclaration(in_func, size_t &i,
 	while (true) {
 		auto classDeclaration =
 		    loadClassDeclaration(in_data, i, line, allowReturnVoid);
+		if (!isGeneric && classDeclaration->isGeneric) {
+			isGeneric = true;
+		}
 		listClassDeclaration.push_back(classDeclaration);
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
@@ -351,6 +357,7 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 			        : context.preloadGenericData->findDeclaration(
 			              token->indexData);
 			if (genericDeclaration) {
+				result->isGeneric = true;
 				result->isGenericDeclaration = true;
 				result->classId = DefaultClass::nullClassId;
 				genericDeclaration->allClassDeclarations.push_back(result);
@@ -360,6 +367,7 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 				    currentClassInfo->findGenericDeclaration(token->indexData);
 				if (genericDeclaration) {
 					result->isGenericDeclaration = true;
+					result->isGeneric = true;
 					result->classId = DefaultClass::nullClassId;
 					genericDeclaration->allClassDeclarations.push_back(result);
 				}
@@ -393,7 +401,8 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 			}
 			if (expect(token, Lexer::TokenType::LT)) {
 				loadListGenericDeclarationType(
-				    in_data, i, line, allowReturnVoid, result->inputClassId);
+				    in_data, i, line, allowReturnVoid, result->inputClassId,
+				    result->isGeneric);
 				if (!nextToken(&token, context.tokens, i)) {
 					--i;
 					return result;
@@ -404,8 +413,9 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 			break;
 		}
 		case Lexer::LPAREN: {
+			bool isGeneric = false;
 			std::vector<ClassDeclaration *> listClassDeclaration =
-			    loadListClassDeclaration(in_data, i, line, false);
+			    loadListClassDeclaration(in_data, i, line, false, isGeneric);
 			expectFunction =
 			    listClassDeclaration.size() > 1 ||
 			    listClassDeclaration[0]->classId == DefaultClass::voidClassId;
@@ -420,6 +430,7 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 			} else {
 				result = listClassDeclaration[0];
 			}
+			result->isGeneric = isGeneric;
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
 				return result;
@@ -476,13 +487,17 @@ loadSpecialClass:;
 	return result;
 }
 
-void loadListGenericDeclarationType(
-    in_func, size_t &i, uint32_t line, bool allowReturnVoid,
-    std::vector<ClassDeclaration *> &inputVecs) {
+void loadListGenericDeclarationType(in_func, size_t &i, uint32_t line,
+                                    bool allowReturnVoid,
+                                    std::vector<ClassDeclaration *> &inputVecs,
+                                    bool &isGeneric) {
 	Lexer::Token *token;
 	while (true) {
 		auto classDeclaration =
 		    loadClassDeclaration(in_data, i, line, allowReturnVoid);
+		if (!isGeneric && classDeclaration->isGeneric) {
+			isGeneric = true;
+		}
 		inputVecs.push_back(classDeclaration);
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;

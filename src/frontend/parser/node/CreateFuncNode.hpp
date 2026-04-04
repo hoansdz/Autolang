@@ -2,6 +2,7 @@
 #define CREATE_FUNC_NODE_HPP
 
 #include "frontend/parser/ClassDeclaration.hpp"
+#include "frontend/parser/FunctionInfo.hpp"
 #include "frontend/parser/node/Node.hpp"
 #include <cmath>
 #include <iostream>
@@ -15,17 +16,15 @@ struct CreateFuncNode : ExprNode {
 	LexerStringId nameId;
 	ClassDeclaration *classDeclaration;
 	FunctionId id;
-	BlockNode body;
-	const std::vector<DeclarationNode *> parameters;
+	Parameter *parameter;
 	uint32_t functionFlags;
 	CreateFuncNode(uint32_t line, std::optional<ClassId> contextCallClassId,
 	               LexerStringId nameId, ClassDeclaration *classDeclaration,
-	               std::vector<DeclarationNode *> parameters,
-	               uint32_t functionFlags)
+	               Parameter *parameter, uint32_t functionFlags)
 	    : ExprNode(NodeType::CREATE_FUNC, line),
 	      contextCallClassId(contextCallClassId), nameId(nameId),
-	      classDeclaration(classDeclaration), parameters(std::move(parameters)),
-	      body(line), functionFlags(functionFlags) {}
+	      classDeclaration(classDeclaration), parameter(parameter),
+	      functionFlags(functionFlags) {}
 	void pushFunction(in_func);
 	void pushNativeFunction(in_func, ANativeFunction native);
 	ExprNode *copy(in_func) override;

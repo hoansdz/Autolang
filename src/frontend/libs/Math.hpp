@@ -1,6 +1,7 @@
 #ifndef LIB_MATH_HPP
 #define LIB_MATH_HPP
 
+#include "shared/Type.hpp"
 #include <cmath>
 
 namespace AutoLang {

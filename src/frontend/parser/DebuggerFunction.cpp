@@ -3,6 +3,7 @@
 
 #include "frontend/ACompiler.hpp"
 #include "frontend/parser/Debugger.hpp"
+#include "frontend/parser/ParserContext.hpp"
 #include "shared/FunctionFlags.hpp"
 
 namespace AutoLang {
@@ -126,6 +127,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				    token->line,
 				    "Generic functions in class doesn't supported now");
 			}
+			context.isInGeneric = false;
 			context.preloadGenericData = context.genericDataPool.push();
 			while (true) {
 				if (!nextToken(&token, context.tokens, i) ||
@@ -216,7 +218,18 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		                                 context.tokens[i].toString(context) +
 		                                 "' found");
 	}
-	auto listDeclarationNode = loadListDeclaration(in_data, i);
+	auto parameter = loadListDeclaration(in_data, i);
+	if (!parameter->parameterDefaultValues.empty() &&
+	    !context.preloadGenericData) {
+		if (context.currentClassId) {
+			auto classInfo = context.classInfo[*context.currentClassId];
+			if (!classInfo->genericData) {
+				context.defaultValueParameter.push_back(parameter);
+			}
+		} else {
+			context.defaultValueParameter.push_back(parameter);
+		}
+	}
 	ClassDeclaration *classDeclaration = nullptr;
 	// Return class name
 	if (!nextToken(&token, context.tokens, i)) {
@@ -262,13 +275,14 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			}
 			if (!(functionFlags & FunctionFlags::FUNC_IS_STATIC) &&
 			    context.currentClassId) {
-				listDeclarationNode.insert(
-				    listDeclarationNode.begin(),
+				parameter->parameters.insert(
+				    parameter->parameters.begin(),
 				    context.getCurrentClassInfo(in_data)->declarationThis);
+				parameter->defaultValuePos += 1;
 			}
 			CreateFuncNode *node = context.newFunctions.push(
 			    firstLine, context.currentClassId, nameId, classDeclaration,
-			    std::move(listDeclarationNode), functionFlags);
+			    std::move(parameter), functionFlags);
 			node->pushFunction(in_data);
 			auto func = compile.functions[node->id];
 			auto funcInfo = context.functionInfo[node->id];
@@ -280,8 +294,8 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			context.gotoFunction(node->id);
 			auto &scope = funcInfo->scopes.back();
 
-			for (size_t i = 0; i < node->parameters.size(); ++i) {
-				auto *param = node->parameters[i];
+			for (size_t i = 0; i < node->parameter->parameters.size(); ++i) {
+				auto *param = node->parameter->parameters[i];
 				param->id = i;
 				scope[param->baseName] = param;
 			}
@@ -289,7 +303,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			auto returnNode =
 			    context.returnPool.push(firstLine, context.currentFunctionId,
 			                            loadExpression(in_data, 0, i));
-			node->body.nodes.push_back(returnNode);
+			funcInfo->body.nodes.push_back(returnNode);
 			funcInfo->inferenceNode = returnNode;
 			if (context.currentClassId) {
 				auto classInfo = context.getCurrentClassInfo(in_data);
@@ -303,6 +317,8 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			}
 			context.gotoFunction(context.mainFunctionId);
 			context.preloadGenericData = nullptr;
+			if (context.isInGeneric)
+				context.isInGeneric = false;
 			return node;
 		}
 		default: {
@@ -319,14 +335,15 @@ createFunc:;
 	// Add this
 	if (!(functionFlags & FunctionFlags::FUNC_IS_STATIC) &&
 	    context.currentClassId) {
-		listDeclarationNode.insert(
-		    listDeclarationNode.begin(),
+		parameter->parameters.insert(
+		    parameter->parameters.begin(),
 		    context.getCurrentClassInfo(in_data)->declarationThis);
+		parameter->defaultValuePos += 1;
 	}
 
 	CreateFuncNode *node = context.newFunctions.push(
 	    firstLine, context.currentClassId, nameId, classDeclaration,
-	    std::move(listDeclarationNode), functionFlags);
+	    std::move(parameter), functionFlags);
 	if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 		auto &token = context.annotationMetadata[AnnotationFlags::AN_NATIVE];
 		const auto &name = context.lexerString[token.indexData];
@@ -338,11 +355,14 @@ createFunc:;
 		node->pushNativeFunction(in_data, it->second);
 		auto func = compile.functions[node->id];
 		context.gotoFunction(node->id);
-		for (size_t i = 0; i < node->parameters.size(); ++i) {
-			auto *param = node->parameters[i];
-			param->id = i;
-		}
+		// for (size_t i = 1; i < node->parameter->parameters.size(); ++i) {
+		// 	auto *param = node->parameter->parameters[i];
+		// 	param->id = i;
+		// }
 		context.gotoFunction(context.mainFunctionId);
+		context.preloadGenericData = nullptr;
+		if (context.isInGeneric)
+			context.isInGeneric = false;
 		return node;
 	} else {
 		node->pushFunction(in_data);
@@ -359,25 +379,29 @@ createFunc:;
 	context.gotoFunction(node->id);
 	auto &scope = funcInfo->scopes.back();
 
-	for (size_t i = 0; i < node->parameters.size(); ++i) {
-		auto *param = node->parameters[i];
+	for (size_t i = 0; i < node->parameter->parameters.size(); ++i) {
+		auto *param = node->parameter->parameters[i];
 		param->id = i;
 		scope[param->baseName] = param;
 	}
 	try {
-		loadBody<false>(in_data, node->body.nodes, i);
+		loadBody<false>(in_data, funcInfo->body.nodes, i);
 		context.gotoFunction(context.mainFunctionId);
 		context.preloadGenericData = nullptr;
+		if (context.isInGeneric)
+			context.isInGeneric = false;
 	} catch (const ParserError &err) {
 		context.gotoFunction(context.mainFunctionId);
 		context.preloadGenericData = nullptr;
+		if (context.isInGeneric)
+			context.isInGeneric = false;
 		throw err;
 	}
 
 	if (classDeclaration) {
 		bool hasReturn = false;
-		for (size_t i = node->body.nodes.size(); i-- > 0;) {
-			if (node->body.nodes[i]->kind == NodeType::RET) {
+		for (size_t i = funcInfo->body.nodes.size(); i-- > 0;) {
+			if (funcInfo->body.nodes[i]->kind == NodeType::RET) {
 				hasReturn = true;
 				break;
 			}

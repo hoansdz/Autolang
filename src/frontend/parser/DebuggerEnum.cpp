@@ -4,6 +4,7 @@
 #include "Debugger.hpp"
 #include "frontend/ACompiler.hpp"
 #include "shared/ClassFlags.hpp"
+#include "frontend/parser/ParserContext.hpp"
 
 namespace AutoLang {
 

@@ -3,6 +3,7 @@
 
 #include "Debugger.hpp"
 #include "frontend/ACompiler.hpp"
+#include "frontend/parser/ParserContext.hpp"
 #include <filesystem>
 
 namespace AutoLang {

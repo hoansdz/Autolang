@@ -294,124 +294,279 @@ void BinaryNode::optimize(in_func) {
 	           compile.classes[right->classId]->name);
 }
 
-bool BinaryNode::putOptimizedBytecode(in_func,
-                                      std::vector<uint8_t> &bytecodes) {
-	switch (op) {
-		case Lexer::TokenType::IS: {
-			left->putBytecodes(in_data, bytecodes);
-			bytecodes.emplace_back(Opcode::IS);
-			put_opcode_u32(bytecodes, right->classId);
-			return true;
-		}
-		default: {
-			auto it = context.operatorTable.find(op);
-			if (it == context.operatorTable.end())
-				break;
-			OperatorId operatorId = it->second;
-			switch (left->kind) {
+bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
+                                      Lexer::TokenType op, HasClassIdNode *left,
+                                      HasClassIdNode *right) {
+	if (op == Lexer::TokenType::IS) {
+		left->putBytecodes(in_data, bytecodes);
+		bytecodes.emplace_back(Opcode::IS);
+		put_opcode_u32(bytecodes, right->classId);
+		return true;
+	}
+	auto it = context.operatorTable.find(op);
+	if (it == context.operatorTable.end())
+		return false;
+	OperatorId operatorId = it->second;
+	switch (left->kind) {
+		case NodeType::VAR: {
+			auto leftNode = static_cast<VarNode *>(left);
+			switch (right->kind) {
 				case NodeType::VAR: {
-					auto leftNode = static_cast<VarNode *>(left);
-					switch (right->kind) {
-						case NodeType::VAR: {
-							auto rightNode = static_cast<VarNode *>(right);
-							if (leftNode->declaration->isGlobal) {
-								if (rightNode->declaration->isGlobal) {
-									bytecodes.emplace_back(
-									    Opcode::GLOBAL_CAL_GLOBAL);
-									bytecodes.emplace_back(operatorId);
-									put_opcode_u32(bytecodes,
-									               leftNode->declaration->id);
-									put_opcode_u32(bytecodes,
-									               rightNode->declaration->id);
-									return true;
-								}
-								bytecodes.emplace_back(
-								    Opcode::GLOBAL_CAL_LOCAL);
-								bytecodes.emplace_back(operatorId);
-								put_opcode_u32(bytecodes,
-								               leftNode->declaration->id);
-								put_opcode_u32(bytecodes,
-								               rightNode->declaration->id);
-								return true;
-							}
-							if (rightNode->declaration->isGlobal) {
-								bytecodes.emplace_back(
-								    Opcode::LOCAL_CAL_GLOBAL);
-								bytecodes.emplace_back(operatorId);
-								put_opcode_u32(bytecodes,
-								               leftNode->declaration->id);
-								put_opcode_u32(bytecodes,
-								               rightNode->declaration->id);
-								return true;
-							}
-							bytecodes.emplace_back(Opcode::LOCAL_CAL_LOCAL);
-							bytecodes.emplace_back(operatorId);
-							put_opcode_u32(bytecodes,
-							               leftNode->declaration->id);
-							put_opcode_u32(bytecodes,
-							               rightNode->declaration->id);
-							return true;
-						}
-						case NodeType::CONST: {
-							auto rightNode =
-							    static_cast<ConstValueNode *>(right);
-							if (right->classId ==
-							    AutoLang::DefaultClass::nullClassId) {
-								// throwError("Null must be cleared by
-								// optimizer");
-								return false;
-							}
-							if (right->classId ==
-							    AutoLang::DefaultClass::boolClassId) {
-								return false;
-							}
-							bytecodes.emplace_back(
-							    leftNode->declaration->isGlobal
-							        ? Opcode::GLOBAL_CAL_CONST
-							        : Opcode::LOCAL_CAL_CONST);
-							bytecodes.emplace_back(operatorId);
-							put_opcode_u32(bytecodes,
-							               leftNode->declaration->id);
-							put_opcode_u32(bytecodes, rightNode->id);
-							return true;
-						}
+					auto rightNode = static_cast<VarNode *>(right);
+					if (leftNode->declaration->isGlobal) {
+						bytecodes.emplace_back(rightNode->declaration->isGlobal
+						                           ? Opcode::GLOBAL_CAL_GLOBAL
+						                           : Opcode::GLOBAL_CAL_LOCAL);
+						bytecodes.emplace_back(operatorId);
+						put_opcode_u32(bytecodes, leftNode->declaration->id);
+						put_opcode_u32(bytecodes, rightNode->declaration->id);
+						return true;
 					}
-					break;
+					bytecodes.emplace_back(rightNode->declaration->isGlobal
+					                           ? Opcode::LOCAL_CAL_GLOBAL
+					                           : Opcode::LOCAL_CAL_LOCAL);
+					bytecodes.emplace_back(operatorId);
+					put_opcode_u32(bytecodes, leftNode->declaration->id);
+					put_opcode_u32(bytecodes, rightNode->declaration->id);
+					return true;
 				}
 				case NodeType::CONST: {
-					auto leftNode = static_cast<ConstValueNode *>(left);
-					if (leftNode->classId == DefaultClass::nullClassId) {
-						// throwError("Null must be cleared by optimizer");
+					auto rightNode = static_cast<ConstValueNode *>(right);
+					bytecodes.emplace_back(leftNode->declaration->isGlobal
+					                           ? Opcode::GLOBAL_CAL_CONST
+					                           : Opcode::LOCAL_CAL_CONST);
+					bytecodes.emplace_back(operatorId);
+					put_opcode_u32(bytecodes, leftNode->declaration->id);
+					put_opcode_u32(bytecodes, rightNode->id);
+					return true;
+				}
+				case NodeType::GET_PROP: {
+					auto rightNode = static_cast<GetPropNode *>(right);
+					if (rightNode->isStatic) {
+						rightNode->caller->putBytecodesIfMustBeCalled(
+						    in_data, bytecodes);
+						bytecodes.emplace_back(leftNode->declaration->isGlobal
+						                           ? Opcode::GLOBAL_CAL_GLOBAL
+						                           : Opcode::LOCAL_CAL_GLOBAL);
+						bytecodes.emplace_back(operatorId);
+						put_opcode_u32(bytecodes, leftNode->declaration->id);
+						put_opcode_u32(bytecodes, rightNode->declaration->id);
+						return true;
+					}
+					if (rightNode->caller->kind != NodeType::VAR) {
 						return false;
 					}
-					if (leftNode->classId == DefaultClass::boolClassId) {
-						return false;
+					auto caller = static_cast<VarNode *>(rightNode->caller);
+					if (leftNode->declaration->isGlobal) {
+						bytecodes.emplace_back(
+						    caller->declaration->isGlobal
+						        ? Opcode::GLOBAL_CAL_GLOBAL_MEMBER
+						        : Opcode::GLOBAL_CAL_LOCAL_MEMBER);
+						bytecodes.emplace_back(operatorId);
+						put_opcode_u32(bytecodes, leftNode->declaration->id);
+						put_opcode_u32(bytecodes, caller->declaration->id);
+						put_opcode_u32(bytecodes, rightNode->declaration->id);
+						return true;
 					}
-					switch (right->kind) {
-						case NodeType::VAR: {
-							auto rightNode = static_cast<VarNode *>(right);
-							bytecodes.emplace_back(
-							    rightNode->declaration->isGlobal
-							        ? Opcode::CONST_CAL_GLOBAL
-							        : Opcode::CONST_CAL_LOCAL);
-							bytecodes.emplace_back(operatorId);
-							put_opcode_u32(bytecodes, leftNode->id);
-							put_opcode_u32(bytecodes,
-							               rightNode->declaration->id);
-							return true;
-						}
-					}
-					break;
+					bytecodes.emplace_back(
+					    caller->declaration->isGlobal
+					        ? Opcode::LOCAL_CAL_GLOBAL_MEMBER
+					        : Opcode::LOCAL_CAL_LOCAL_MEMBER);
+					bytecodes.emplace_back(operatorId);
+					put_opcode_u32(bytecodes, leftNode->declaration->id);
+					put_opcode_u32(bytecodes, caller->declaration->id);
+					put_opcode_u32(bytecodes, rightNode->declaration->id);
+					return true;
 				}
 			}
 			break;
+		}
+		case NodeType::CONST: {
+			auto leftNode = static_cast<ConstValueNode *>(left);
+			switch (right->kind) {
+				case NodeType::VAR: {
+					auto rightNode = static_cast<VarNode *>(right);
+					bytecodes.emplace_back(rightNode->declaration->isGlobal
+					                           ? Opcode::CONST_CAL_GLOBAL
+					                           : Opcode::CONST_CAL_LOCAL);
+					bytecodes.emplace_back(operatorId);
+					put_opcode_u32(bytecodes, leftNode->id);
+					put_opcode_u32(bytecodes, rightNode->declaration->id);
+					return true;
+				}
+				case NodeType::GET_PROP: {
+					auto rightNode = static_cast<GetPropNode *>(right);
+					if (rightNode->isStatic) {
+						rightNode->caller->putBytecodesIfMustBeCalled(
+						    in_data, bytecodes);
+						bytecodes.emplace_back(CONST_CAL_GLOBAL);
+						bytecodes.emplace_back(operatorId);
+						put_opcode_u32(bytecodes, leftNode->id);
+						put_opcode_u32(bytecodes, rightNode->declaration->id);
+						return true;
+					}
+					if (rightNode->caller->kind != NodeType::VAR) {
+						return false;
+					}
+					auto caller = static_cast<VarNode *>(rightNode->caller);
+					bytecodes.emplace_back(
+					    caller->declaration->isGlobal
+					        ? Opcode::CONST_CAL_GLOBAL_MEMBER
+					        : Opcode::CONST_CAL_LOCAL_MEMBER);
+					bytecodes.emplace_back(operatorId);
+					put_opcode_u32(bytecodes, leftNode->id);
+					put_opcode_u32(bytecodes, caller->declaration->id);
+					put_opcode_u32(bytecodes, rightNode->declaration->id);
+					return true;
+				}
+			}
+			break;
+		}
+		case NodeType::GET_PROP: {
+			auto leftNode = static_cast<GetPropNode *>(left);
+			if (leftNode->isStatic) {
+				leftNode->caller->putBytecodesIfMustBeCalled(in_data,
+				                                             bytecodes);
+				switch (right->kind) {
+					case NodeType::VAR: {
+						auto rightNode = static_cast<VarNode *>(right);
+						bytecodes.emplace_back(rightNode->declaration->isGlobal
+						                           ? Opcode::GLOBAL_CAL_GLOBAL
+						                           : Opcode::GLOBAL_CAL_LOCAL);
+						bytecodes.emplace_back(operatorId);
+						put_opcode_u32(bytecodes, leftNode->declaration->id);
+						put_opcode_u32(bytecodes, rightNode->declaration->id);
+						return true;
+					}
+					case NodeType::CONST: {
+						auto rightNode = static_cast<ConstValueNode *>(right);
+						bytecodes.emplace_back(Opcode::GLOBAL_CAL_CONST);
+						bytecodes.emplace_back(operatorId);
+						put_opcode_u32(bytecodes, leftNode->declaration->id);
+						put_opcode_u32(bytecodes, rightNode->id);
+						return true;
+					}
+					case NodeType::GET_PROP: {
+						auto rightNode = static_cast<GetPropNode *>(right);
+						if (rightNode->isStatic) {
+							rightNode->caller->putBytecodesIfMustBeCalled(
+							    in_data, bytecodes);
+							bytecodes.emplace_back(Opcode::GLOBAL_CAL_GLOBAL);
+							bytecodes.emplace_back(operatorId);
+							put_opcode_u32(bytecodes,
+							               leftNode->declaration->id);
+							put_opcode_u32(bytecodes,
+							               rightNode->declaration->id);
+							return true;
+						}
+						if (rightNode->caller->kind != NodeType::VAR) {
+							return false;
+						}
+						auto caller = static_cast<VarNode *>(rightNode->caller);
+						bytecodes.emplace_back(
+						    caller->declaration->isGlobal
+						        ? Opcode::GLOBAL_CAL_GLOBAL_MEMBER
+						        : Opcode::GLOBAL_CAL_LOCAL_MEMBER);
+						bytecodes.emplace_back(operatorId);
+						put_opcode_u32(bytecodes, leftNode->declaration->id);
+						put_opcode_u32(bytecodes, caller->declaration->id);
+						put_opcode_u32(bytecodes, rightNode->declaration->id);
+						return true;
+					}
+				}
+				return false;
+			}
+			if (leftNode->caller->kind != NodeType::VAR) {
+				return false;
+			}
+			auto leftCaller = static_cast<VarNode *>(leftNode->caller);
+			switch (right->kind) {
+				case NodeType::VAR: {
+					auto rightNode = static_cast<VarNode *>(right);
+					if (leftCaller->declaration->isGlobal) {
+						bytecodes.emplace_back(
+						    rightNode->declaration->isGlobal
+						        ? Opcode::GLOBAL_MEMBER_CAL_GLOBAL
+						        : Opcode::GLOBAL_MEMBER_CAL_LOCAL);
+						bytecodes.emplace_back(operatorId);
+						put_opcode_u32(bytecodes, leftCaller->declaration->id);
+						put_opcode_u32(bytecodes, leftNode->declaration->id);
+						put_opcode_u32(bytecodes, rightNode->declaration->id);
+						return true;
+					}
+					bytecodes.emplace_back(
+					    rightNode->declaration->isGlobal
+					        ? Opcode::LOCAL_MEMBER_CAL_GLOBAL
+					        : Opcode::LOCAL_MEMBER_CAL_LOCAL);
+					bytecodes.emplace_back(operatorId);
+					put_opcode_u32(bytecodes, leftCaller->declaration->id);
+					put_opcode_u32(bytecodes, leftNode->declaration->id);
+					put_opcode_u32(bytecodes, rightNode->declaration->id);
+					return true;
+				}
+				case NodeType::CONST: {
+					auto rightNode = static_cast<ConstValueNode *>(right);
+					bytecodes.emplace_back(
+					    leftCaller->declaration->isGlobal
+					        ? Opcode::GLOBAL_MEMBER_CAL_CONST
+					        : Opcode::LOCAL_MEMBER_CAL_CONST);
+					bytecodes.emplace_back(operatorId);
+					put_opcode_u32(bytecodes, leftCaller->declaration->id);
+					put_opcode_u32(bytecodes, leftNode->declaration->id);
+					put_opcode_u32(bytecodes, rightNode->id);
+					return true;
+				}
+				case NodeType::GET_PROP: {
+					auto rightNode = static_cast<GetPropNode *>(right);
+					if (rightNode->isStatic) {
+						rightNode->caller->putBytecodesIfMustBeCalled(
+						    in_data, bytecodes);
+						bytecodes.emplace_back(
+						    leftCaller->declaration->isGlobal
+						        ? Opcode::GLOBAL_MEMBER_CAL_GLOBAL
+						        : Opcode::LOCAL_MEMBER_CAL_GLOBAL);
+						bytecodes.emplace_back(operatorId);
+						put_opcode_u32(bytecodes, leftCaller->declaration->id);
+						put_opcode_u32(bytecodes, leftNode->declaration->id);
+						put_opcode_u32(bytecodes, rightNode->declaration->id);
+						return true;
+					}
+					if (rightNode->caller->kind != NodeType::VAR) {
+						return false;
+					}
+					auto caller = static_cast<VarNode *>(rightNode->caller);
+					if (leftCaller->declaration->isGlobal) {
+						bytecodes.emplace_back(
+						    caller->declaration->isGlobal
+						        ? Opcode::GLOBAL_MEMBER_CAL_GLOBAL_MEMBER
+						        : Opcode::GLOBAL_MEMBER_CAL_LOCAL_MEMBER);
+						bytecodes.emplace_back(operatorId);
+						put_opcode_u32(bytecodes, leftCaller->declaration->id);
+						put_opcode_u32(bytecodes, leftNode->declaration->id);
+						put_opcode_u32(bytecodes, caller->declaration->id);
+						put_opcode_u32(bytecodes, rightNode->declaration->id);
+						return true;
+					}
+					bytecodes.emplace_back(
+					    caller->declaration->isGlobal
+					        ? Opcode::LOCAL_MEMBER_CAL_GLOBAL_MEMBER
+					        : Opcode::LOCAL_MEMBER_CAL_LOCAL_MEMBER);
+					bytecodes.emplace_back(operatorId);
+					put_opcode_u32(bytecodes, leftCaller->declaration->id);
+					put_opcode_u32(bytecodes, leftNode->declaration->id);
+					put_opcode_u32(bytecodes, caller->declaration->id);
+					put_opcode_u32(bytecodes, rightNode->declaration->id);
+					return true;
+				}
+			}
+			return false;
 		}
 	}
 	return false;
 }
 
 void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	if (putOptimizedBytecode(in_data, bytecodes)) {
+	if (putOptimizedBytecode(in_data, bytecodes, op, left, right)) {
 		return;
 	}
 	if ((left->classId == DefaultClass::nullClassId ||

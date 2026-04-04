@@ -108,6 +108,7 @@ struct ParserContext {
 	bool canBreakContinue = false;
 	// Be used when it is static keywords, example static val a = ...
 	bool justFindStatic = false;
+	bool isInGeneric = false;
 	// Be used when put bytecodes with break or continue
 	uint32_t continuePos = 0;
 	uint32_t breakPos = 0;
@@ -125,8 +126,10 @@ struct ParserContext {
 	std::vector<ClassInfo *> classInfo;
 	// All static variable will be here and put bytecodes to ".main" function
 	std::vector<ExprNode *> staticNode;
+	std::vector<Parameter *> defaultValueParameter;
 
 	NonReallocatePool<DeclarationNode> declarationNodePool;
+	ChunkArena<Parameter, 64> parameterPool;
 	ChunkArena<ReturnNode, 128> returnPool;
 	ChunkArena<SetNode, 128> setValuePool;
 	ChunkArena<CreateConstructorNode, 64> createConstructorPool;
@@ -254,12 +257,10 @@ struct ParserContext {
 	}
 	HasClassIdNode *findDeclaration(in_func, uint32_t line,
 	                                LexerStringId nameId, bool inGlobal);
-	DeclarationNode *
-	makeDeclarationNode(in_func, uint32_t line, LexerStringId baseName,
-	                    const std::string &name,
-	                    ClassDeclaration *classDeclaration, bool isVal,
-	                    bool isGlobal, bool nullable,
-	                    bool addToScope = true, bool loadId = true);
+	DeclarationNode *makeDeclarationNode(
+	    in_func, uint32_t line, LexerStringId baseName, const std::string &name,
+	    ClassDeclaration *classDeclaration, bool isVal, bool isGlobal,
+	    bool nullable, bool addToScope = true, bool loadId = true);
 	inline size_t getBoolConstValuePosition(bool b) { return b ? 1 : 2; }
 	inline LexerStringId createLexerStringIfNotExists(const std::string &str) {
 		auto it = lexerStringMap.find(str);

@@ -24,10 +24,7 @@ int main(int argc, char *argv[]) {
 	try {
 		try {
 			AutoLang::ACompiler compiler;
-			// compiler.loadMainSource("tests/testCorrectness.atl", {{"hi",
-			// [](NativeFuncInput) -> AutoLang::AObject* { 	std::cerr<<"Duoc roi
-			// ne!!!\n"; 	return nullptr;
-			// }}});
+			// compiler.loadMainSource("./tests/testCorrectness.atl");
 			// if (compiler.getState() == AutoLang::CompilerState::CT_ERROR) {
 			// 	return 0;
 			// }
@@ -35,7 +32,7 @@ int main(int argc, char *argv[]) {
 			// compiler.run();
 			// compiler.refresh();
 			compiler.loadMainSource(
-			    "./tests/testCorrectness.atl",
+			    "./tests/source.atl",
 			    {{"hi", [](NativeFuncInput) -> AutoLang::AObject * {
 				      std::cerr << "Duoc roi ne!!!\n";
 				      return nullptr;

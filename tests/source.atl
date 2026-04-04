@@ -1,92 +1,96 @@
-// Global state to track forEach results since we don't have lambdas/closures
-var globalSum = 0
+@import("std/time")
 
-// Named callback function to pass into forEach
-func accumulateSum(value: Int) {
-    globalSum += value
+val time = Time.now()
+
+@import("std/file")
+
+class FileAnalysis {
+    var totalSize = 0
+    var totalFile = 0
+    var totalFolder = 0
+    val fileExtension = <String, Int>{}
+    val cplusplus_lines = 0
+    val autolang_lines = 0
+    lateinit var currentPlusFunc: () -> Void
+    constructor (path: String) {
+        if (!File.exists(path)) {
+            throw Exception("${path} not exists")
+        }
+        analysis(path)
+    }
+
+    func addCPlusPlusCountLine() {
+        cplusplus_lines = cplusplus_lines + 1
+    }
+
+    func addAutolangCountLine() {
+        autolang_lines = autolang_lines + 1
+    }
+
+    func getCountLine(line: String) {
+        val newStr = line.trim()
+        if (newStr.isEmpty()) {
+            return
+        }
+        currentPlusFunc()
+    }
+
+    func analysis(path: String) {
+        if (File.isFile(path)) {
+            analysisFile(path)
+            return
+        }
+        analysisFolder(path)
+    }
+
+    func analysisFile(path: String) {
+        totalFile += 1
+        totalSize += File.getSize(path)
+        val extension = File.getExtension(path)
+        fileExtension[extension] = fileExtension.getOrDefault(extension, 0) + 1
+        when (extension) {
+            ".atl" -> {
+                currentPlusFunc = addAutolangCountLine
+                val file = File(path, FileMode.READ)
+                file.forEachLine(getCountLine)
+                file.close()
+            }
+            ".hpp" || ".cpp" -> {
+                currentPlusFunc = addCPlusPlusCountLine
+                val file = File(path, FileMode.READ)
+                file.forEachLine(getCountLine)
+                file.close()
+            }
+        }
+    }
+
+    func analysisFolder(path: String) {
+        val allFiles = File.getAllFiles(path)
+        allFiles.forEach(analysis)
+        totalFolder += 1
+    }
 }
 
-// Helper function to test nested sets
-func testNestedSetSyntax(data: Set<Set<Int>>) {
-    assert(data.size() == 3, __FILE__, __LINE__)
+func forEachMapExtension(extension: String, count: Int) {
+    println("Extension ${extension}: $count")
 }
 
-func testAllSetFeatures() {
-    println("--- Starting Exhaustive Set Features Test ---")
-
-    // 1. Test: __CLASS__() explicit constructor (and private create)
-    val explicitSet = Set<Int>()
-    explicitSet.insert(100)
-    assert(explicitSet.size() == 1, __FILE__, __LINE__)
-    assert(explicitSet.contains(100) == true, __FILE__, __LINE__)
-    println("Test 1: Explicit __CLASS__() Constructor - Passed")
-
-    // 2. Test: insert, size, isEmpty, and Sugar Syntax
-    val s1 = <Int>{1, 2, 3, 4, 5, 5, 4, 3, 2, 1} // Sugar syntax calls insert under the hood
-    assert(s1.size() == 5, __FILE__, __LINE__)
-    assert(s1.isEmpty() == false, __FILE__, __LINE__)
-    println("Test 2: Sugar Syntax, insert, size, isEmpty - Passed")
-
-    // 3. Test: contains
-    val s2 = <String>{"Apple", "Banana"}
-    s2.insert("Orange")
-    s2.insert("Apple") // Duplicate, should be ignored
-    assert(s2.contains("Orange") == true, __FILE__, __LINE__)
-    assert(s2.contains("Grapes") == false, __FILE__, __LINE__)
-    println("Test 3: contains - Passed")
-
-    // 4. Test: remove and clear
-    s2.remove("Banana")
-    assert(s2.size() == 2, __FILE__, __LINE__)
-    assert(s2.contains("Banana") == false, __FILE__, __LINE__)
-    
-    s2.clear()
-    assert(s2.size() == 0, __FILE__, __LINE__)
-    assert(s2.isEmpty() == true, __FILE__, __LINE__)
-    println("Test 4: remove and clear - Passed")
-
-    // // 5. Test: forEach (using a named function callback)
-    val s3 = <Int>{10, 20, 30}
-    globalSum = 0 // Reset global state
-    s3.forEach(accumulateSum) // Passing the function by name
-    assert(globalSum == 60, __FILE__, __LINE__)
-    println("Test 5: forEach (Native Callback) - Passed")
-
-    // // 6. Test: toArray (Public and Private)
-    val s4 = <String>{"X", "Y", "Z"}
-    val arr = s4.toArray() // Triggers the public toArray, which calls the private toArray
-    assert(arr is Array<String>, __FILE__, __LINE__)
-    assert(arr.size() == 3, __FILE__, __LINE__)
-    assert(arr.contains("X") && arr.contains("Y") && arr.contains("Z"), __FILE__, __LINE__)
-    println("Test 6: toArray - Passed")
-
-    // // 7. Test: union, intersect, difference
-    val setA = <Int>{1, 2, 3, 4}
-    val setB = <Int>{3, 4, 5, 6}
-
-    val unionSet = setA.union(setB)
-    assert(unionSet.size() == 6, __FILE__, __LINE__)
-
-    val intersectSet = setA.intersect(setB)
-    assert(intersectSet.size() == 2, __FILE__, __LINE__)
-    assert(intersectSet.contains(3) && intersectSet.contains(4), __FILE__, __LINE__)
-
-    val diffSet = setA.difference(setB)
-    assert(diffSet.size() == 2, __FILE__, __LINE__)
-    assert(diffSet.contains(1) && !diffSet.contains(3), __FILE__, __LINE__)
-    println("Test 7: union, intersect, difference - Passed")
-
-    // 8. Test: toString
-    val str = s3.toString()
-    assert(str is String, __FILE__, __LINE__)
-    println("Test 8: toString - Passed")
-
-    // 9. Test: Nested Sets
-    testNestedSetSyntax({{1, 2}, {3, 4}, {1, 2}})
-    println("Test 9: Nested Set Syntax - Passed")
-
-    println("--- ALL SET FEATURES EXHAUSTIVELY TESTED (${__FUNC__}) ---")
+func main() {
+    val a = FileAnalysis("D:\\code\\AutoLangC")
+    println("Total file: ${a.totalFile}")
+    println("Total folder: ${a.totalFolder}")
+    println("Total size: ${Float(a.totalSize) / 1024 / 1024} MB")
+    a.fileExtension.forEach(forEachMapExtension)
+    println("Total c++ line: ${a.cplusplus_lines}")
+    println("Tocal autolang line: ${a.autolang_lines}")
 }
 
-// Execute the test
-testAllSetFeatures()
+main()
+
+println("Time: ${Time.now() - time}")
+
+// func x(str: Int, value: Int = 1): Int {
+// 	return value
+// }
+
+// println(x(1))

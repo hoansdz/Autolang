@@ -2,6 +2,7 @@
 #define DEBUGGER_TRY_CATCH_CPP
 
 #include "frontend/parser/Debugger.hpp"
+#include "frontend/parser/ParserContext.hpp"
 
 namespace AutoLang {
 

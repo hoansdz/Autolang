@@ -58,7 +58,7 @@ class InheritanceBitset {
 	bool empty() {
 		if (size == 0)
 			return true;
-		for (int i = 0; i < size; ++i) {
+		for (uint32_t i = 0; i < size; ++i) {
 			if (bits[i])
 				return false;
 		}

@@ -2,6 +2,7 @@
 #define LEXER_HPP
 
 #include "ankerl/unordered_dense.h"
+#include "shared/Type.hpp"
 #include <exception>
 #include <fstream>
 #include <iostream>
@@ -164,15 +165,15 @@ static const HashMap<std::string, TokenType> CAST = {
     {"no_override", TokenType::NO_OVERRIDE},
     {"no_constructor", TokenType::NO_CONSTRUCTOR},
     {"no_extends", TokenType::NO_EXTENDS},
-	{"native_data", TokenType::NATIVE_DATA},
+    {"native_data", TokenType::NATIVE_DATA},
     {"import", TokenType::IMPORT},
     {"is", TokenType::IS},
     {"as", TokenType::UNSAFE_CAST},
     {"wait_input", TokenType::WAIT_INPUT},
-	{"lateinit", TokenType::LATEINIT},
-	{"enum", TokenType::ENUM},
-	{"const", TokenType::CONST},
-	{"when", TokenType::WHEN},
+    {"lateinit", TokenType::LATEINIT},
+    {"enum", TokenType::ENUM},
+    {"const", TokenType::CONST},
+    {"when", TokenType::WHEN},
 
     {"/*", TokenType::START_COMMENT},
     {"&", TokenType::AND},
@@ -186,7 +187,7 @@ static const HashMap<std::string, TokenType> CAST = {
     {"!", TokenType::EXMARK},
     {".", TokenType::DOT},
     {"..", TokenType::DOT_DOT},
-	{"..<", TokenType::DOT_DOT_LT},
+    {"..<", TokenType::DOT_DOT_LT},
     {"+", TokenType::PLUS},
     {"++", TokenType::PLUS_PLUS},
     {"-", TokenType::MINUS},
@@ -207,7 +208,7 @@ static const HashMap<std::string, TokenType> CAST = {
     {"!==", TokenType::NOTEQEQ},
     {">=", TokenType::GTE},
     {"<=", TokenType::LTE},
-	{"->", TokenType::MINUS_GT},
+    {"->", TokenType::MINUS_GT},
 };
 
 struct Token {
@@ -279,6 +280,7 @@ inline bool isEndOfLine(Context &context, uint32_t &i);
 void loadFile(ParserContext *mainContext, LibraryData *library);
 void load(ParserContext *mainContext, LibraryData *library,
           std::vector<Offset> *importOffset);
+template <bool addLParen = true>
 void loadQuote(Context &context, char quote, uint32_t &i);
 std::string loadIdentifier(Context &context, uint32_t &i);
 std::string loadNumber(Context &context, uint32_t &i);

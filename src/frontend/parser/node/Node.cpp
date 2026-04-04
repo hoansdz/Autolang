@@ -4,6 +4,7 @@
 #include "frontend/parser/Debugger.hpp"
 #include "frontend/parser/node/Node.cpp"
 #include "frontend/parser/node/CreateNode.hpp"
+#include "frontend/parser/ParserContext.hpp"
 
 namespace AutoLang {
 
@@ -90,10 +91,6 @@ ReturnNode::~ReturnNode() {
 	deleteNode(value);
 }
 
-UnaryNode::~UnaryNode() {
-	deleteNode(value);
-}
-
 BinaryNode::~BinaryNode() {
 	deleteNode(left);
 	deleteNode(right);
@@ -101,13 +98,6 @@ BinaryNode::~BinaryNode() {
 
 WhileNode::~WhileNode() {
 	deleteNode(condition);
-}
-
-AClass* findClass(in_func, std::string name) {
-	auto it = compile.classMap.find(name);
-	if (it == compile.classMap.end())
-		return nullptr;
-	return compile.classes[it->second];
 }
 
 }

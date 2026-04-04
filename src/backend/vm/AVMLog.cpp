@@ -81,6 +81,55 @@ void AClass::log(CompiledProgram &data) {
 		std::cerr << #bytecode << "\n";                                        \
 		break;
 
+#define PRINT_BYTECODE_1_uint32(bytecode)                                      \
+	case AutoLang::Opcode::bytecode:                                           \
+		std::cerr << #bytecode << "    " << get_u32(bytecodes, i) << "\n";     \
+		break;
+
+#define PRINT_DATA_CAL_DATA(opcode, data1, data2)                              \
+	case AutoLang::Opcode::opcode: {                                           \
+		uint8_t tablePos = bytecodes[i++];                                     \
+		uint32_t pos1 = get_u32(bytecodes, i);                                 \
+		uint32_t pos2 = get_u32(bytecodes, i);                                 \
+		std::cerr << #opcode << "   " << uint32_t(tablePos) << " " << pos1     \
+		          << " " << pos2 << "\n";                                      \
+		break;                                                                 \
+	}
+
+#define PRINT_DATA_MEMBER_CAL_DATA(opcode, data1, data2)                       \
+	case AutoLang::Opcode::opcode: {                                           \
+		uint8_t tablePos = bytecodes[i++];                                     \
+		uint32_t pos1 = get_u32(bytecodes, i);                                 \
+		uint32_t pos2 = get_u32(bytecodes, i);                                 \
+		uint32_t pos3 = get_u32(bytecodes, i);                                 \
+		std::cerr << #opcode << "   " << uint32_t(tablePos) << " " << pos1     \
+		          << " " << pos2 << " " << pos3 << "\n";                       \
+		break;                                                                 \
+	}
+
+#define PRINT_DATA_CAL_DATA_MEMBER(opcode, data1, data2)                       \
+	case AutoLang::Opcode::opcode: {                                           \
+		uint8_t tablePos = bytecodes[i++];                                     \
+		uint32_t pos1 = get_u32(bytecodes, i);                                 \
+		uint32_t pos2 = get_u32(bytecodes, i);                                 \
+		uint32_t pos3 = get_u32(bytecodes, i);                                 \
+		std::cerr << #opcode << "   " << uint32_t(tablePos) << " " << pos1     \
+		          << " " << pos2 << " " << pos3 << "\n";                       \
+		break;                                                                 \
+	}
+
+#define PRINT_DATA_MEMBER_CAL_DATA_MEMBER(opcode, data1, data2)                \
+	case AutoLang::Opcode::opcode: {                                           \
+		uint8_t tablePos = bytecodes[i++];                                     \
+		uint32_t pos1 = get_u32(bytecodes, i);                                 \
+		uint32_t pos2 = get_u32(bytecodes, i);                                 \
+		uint32_t pos3 = get_u32(bytecodes, i);                                 \
+		uint32_t pos4 = get_u32(bytecodes, i);                                 \
+		std::cerr << #opcode << "   " << uint32_t(tablePos) << " " << pos1     \
+		          << " " << pos2 << " " << pos3 << " " << pos4 << "\n";        \
+		break;                                                                 \
+	}
+
 void AVM::log(Function *currentFunction) {
 	std::cerr << currentFunction->toString(data) << "\n";
 	std::cerr << currentFunction->argSize << " arguments\n";
@@ -102,6 +151,18 @@ void AVM::log(Function *currentFunction) {
 				uint32_t funcId = get_u32(bytecodes, i);
 				std::cerr << "CALL_FUNCTION	 " << data.functions[funcId]->name
 				          << "\n";
+				break;
+			}
+			case AutoLang::Opcode::CALL_NATIVE_FUNCTION: {
+				uint32_t funcId = get_u32(bytecodes, i);
+				std::cerr << "CALL_NATIVE_FUNCTION	 "
+				          << data.functions[funcId]->name << "\n";
+				break;
+			}
+			case AutoLang::Opcode::CALL_VOID_NATIVE_FUNCTION: {
+				uint32_t funcId = get_u32(bytecodes, i);
+				std::cerr << "CALL_VOID_NATIVE_FUNCTION	 "
+				          << data.functions[funcId]->name << "\n";
 				break;
 			}
 			case AutoLang::Opcode::CALL_FUNCTION_OBJECT: {
@@ -198,9 +259,23 @@ void AVM::log(Function *currentFunction) {
 				// "\n";
 				break;
 			}
-			case AutoLang::Opcode::RETURN_LOCAL:
-				std::cerr << "RETURN_LOCAL	 " << get_u32(bytecodes, i) << "\n";
+				PRINT_BYTECODE_1_uint32(RETURN_LOCAL);
+				PRINT_BYTECODE_1_uint32(RETURN_CONST);
+				PRINT_BYTECODE_1_uint32(RETURN_GLOBAL);
+			case AutoLang::Opcode::RETURN_LOCAL_MEMBER: {
+				uint32_t pos = get_u32(bytecodes, i);
+				uint32_t memberId = get_u32(bytecodes, i);
+				std::cerr << "RETURN_LOCAL_MEMBER	 " << pos << "     "
+				          << memberId << "\n";
 				break;
+			}
+			case AutoLang::Opcode::RETURN_GLOBAL_MEMBER: {
+				uint32_t pos = get_u32(bytecodes, i);
+				uint32_t memberId = get_u32(bytecodes, i);
+				std::cerr << "RETURN_GLOBAL_MEMBER	 " << pos << "     "
+				          << memberId << "\n";
+				break;
+			}
 			case AutoLang::Opcode::CREATE_OBJECT: {
 				uint32_t classId = get_u32(bytecodes, i);
 				uint32_t memberCount = get_u32(bytecodes, i);
@@ -266,6 +341,62 @@ void AVM::log(Function *currentFunction) {
 				          << "\n";
 				break;
 			}
+				PRINT_DATA_CAL_DATA(GLOBAL_CAL_GLOBAL, globalVariables,
+				                    globalVariables)
+				PRINT_DATA_CAL_DATA(GLOBAL_CAL_LOCAL, globalVariables,
+				                    stackAllocator)
+				PRINT_DATA_CAL_DATA(GLOBAL_CAL_CONST, globalVariables,
+				                    data.constPool)
+				PRINT_DATA_CAL_DATA_MEMBER(GLOBAL_CAL_GLOBAL_MEMBER,
+				                           globalVariables, globalVariables)
+				PRINT_DATA_CAL_DATA_MEMBER(GLOBAL_CAL_LOCAL_MEMBER,
+				                           globalVariables, stackAllocator)
+
+				PRINT_DATA_CAL_DATA(LOCAL_CAL_GLOBAL, stackAllocator,
+				                    globalVariables)
+				PRINT_DATA_CAL_DATA(LOCAL_CAL_LOCAL, stackAllocator,
+				                    stackAllocator)
+				PRINT_DATA_CAL_DATA(LOCAL_CAL_CONST, stackAllocator,
+				                    data.constPool)
+				PRINT_DATA_CAL_DATA_MEMBER(LOCAL_CAL_GLOBAL_MEMBER,
+				                           stackAllocator, globalVariables)
+				PRINT_DATA_CAL_DATA_MEMBER(LOCAL_CAL_LOCAL_MEMBER,
+				                           stackAllocator, stackAllocator)
+
+				PRINT_DATA_CAL_DATA(CONST_CAL_GLOBAL, data.constPool,
+				                    globalVariables)
+				PRINT_DATA_CAL_DATA(CONST_CAL_LOCAL, data.constPool,
+				                    stackAllocator)
+				PRINT_DATA_CAL_DATA_MEMBER(CONST_CAL_GLOBAL_MEMBER,
+				                           data.constPool, globalVariables)
+				PRINT_DATA_CAL_DATA_MEMBER(CONST_CAL_LOCAL_MEMBER,
+				                           data.constPool, stackAllocator)
+
+				PRINT_DATA_MEMBER_CAL_DATA(GLOBAL_MEMBER_CAL_GLOBAL,
+				                           globalVariables, globalVariables)
+				PRINT_DATA_MEMBER_CAL_DATA(GLOBAL_MEMBER_CAL_LOCAL,
+				                           globalVariables, stackAllocator)
+				PRINT_DATA_MEMBER_CAL_DATA(GLOBAL_MEMBER_CAL_CONST,
+				                           globalVariables, data.constPool)
+				PRINT_DATA_MEMBER_CAL_DATA_MEMBER(
+				    GLOBAL_MEMBER_CAL_GLOBAL_MEMBER, globalVariables,
+				    globalVariables)
+				PRINT_DATA_MEMBER_CAL_DATA_MEMBER(
+				    GLOBAL_MEMBER_CAL_LOCAL_MEMBER, globalVariables,
+				    stackAllocator)
+
+				PRINT_DATA_MEMBER_CAL_DATA(LOCAL_MEMBER_CAL_GLOBAL,
+				                           stackAllocator, globalVariables)
+				PRINT_DATA_MEMBER_CAL_DATA(LOCAL_MEMBER_CAL_LOCAL,
+				                           stackAllocator, stackAllocator)
+				PRINT_DATA_MEMBER_CAL_DATA(LOCAL_MEMBER_CAL_CONST,
+				                           stackAllocator, data.constPool)
+				PRINT_DATA_MEMBER_CAL_DATA_MEMBER(
+				    LOCAL_MEMBER_CAL_GLOBAL_MEMBER, stackAllocator,
+				    globalVariables)
+				PRINT_DATA_MEMBER_CAL_DATA_MEMBER(LOCAL_MEMBER_CAL_LOCAL_MEMBER,
+				                                  stackAllocator,
+				                                  stackAllocator)
 			case AutoLang::Opcode::LOCAL_STORE_GLOBAL: {
 				uint32_t pos1 = get_u32(bytecodes, i);
 				uint32_t pos2 = get_u32(bytecodes, i);
@@ -453,70 +584,6 @@ void AVM::log(Function *currentFunction) {
 			case AutoLang::Opcode::OR_OR:
 				std::cerr << "OR	 " << "\n";
 				break;
-			case AutoLang::Opcode::GLOBAL_CAL_CONST: {
-				uint32_t tablePos = bytecodes[i++];
-				uint32_t pos1 = get_u32(bytecodes, i);
-				uint32_t pos2 = get_u32(bytecodes, i);
-				std::cerr << "GLOBAL_CAL_CONST	 " << tablePos << " " << pos1
-				          << " " << pos2 << "\n";
-				break;
-			}
-			case AutoLang::Opcode::CONST_CAL_GLOBAL: {
-				uint32_t tablePos = bytecodes[i++];
-				uint32_t pos1 = get_u32(bytecodes, i);
-				uint32_t pos2 = get_u32(bytecodes, i);
-				std::cerr << "CONST_CAL_GLOBAL	 " << tablePos << " " << pos1
-				          << " " << pos2 << "\n";
-				break;
-			}
-			case AutoLang::Opcode::GLOBAL_CAL_GLOBAL: {
-				uint32_t tablePos = bytecodes[i++];
-				uint32_t pos1 = get_u32(bytecodes, i);
-				uint32_t pos2 = get_u32(bytecodes, i);
-				std::cerr << "GLOBAL_CAL_GLOBAL	 " << tablePos << " " << pos1
-				          << " " << pos2 << "\n";
-				break;
-			}
-			case AutoLang::Opcode::GLOBAL_CAL_LOCAL: {
-				uint32_t tablePos = bytecodes[i++];
-				uint32_t pos1 = get_u32(bytecodes, i);
-				uint32_t pos2 = get_u32(bytecodes, i);
-				std::cerr << "GLOBAL_CAL_LOCAL	 " << tablePos << " " << pos1
-				          << " " << pos2 << "\n";
-				break;
-			}
-			case AutoLang::Opcode::LOCAL_CAL_GLOBAL: {
-				uint32_t tablePos = bytecodes[i++];
-				uint32_t pos1 = get_u32(bytecodes, i);
-				uint32_t pos2 = get_u32(bytecodes, i);
-				std::cerr << "LOCAL_CAL_GLOBAL	 " << tablePos << " " << pos1
-				          << " " << pos2 << "\n";
-				break;
-			}
-			case AutoLang::Opcode::LOCAL_CAL_LOCAL: {
-				uint32_t tablePos = bytecodes[i++];
-				uint32_t pos1 = get_u32(bytecodes, i);
-				uint32_t pos2 = get_u32(bytecodes, i);
-				std::cerr << "LOCAL_CAL_LOCAL	 " << tablePos << " " << pos1
-				          << " " << pos2 << "\n";
-				break;
-			}
-			case AutoLang::Opcode::LOCAL_CAL_CONST: {
-				uint32_t tablePos = bytecodes[i++];
-				uint32_t pos1 = get_u32(bytecodes, i);
-				uint32_t pos2 = get_u32(bytecodes, i);
-				std::cerr << "LOCAL_CAL_CONST	 " << tablePos << " " << pos1
-				          << " " << pos2 << "\n";
-				break;
-			}
-			case AutoLang::Opcode::CONST_CAL_LOCAL: {
-				uint32_t tablePos = bytecodes[i++];
-				uint32_t pos1 = get_u32(bytecodes, i);
-				uint32_t pos2 = get_u32(bytecodes, i);
-				std::cerr << "CONST_CAL_LOCAL	 " << tablePos << " " << pos1
-				          << " " << pos2 << " \n";
-				break;
-			}
 				BYTECODE_PRINT_SINGLE(PLUS)
 				BYTECODE_PRINT_SINGLE(I_CAL_I)
 				BYTECODE_PRINT_SINGLE(I_CAL_F)

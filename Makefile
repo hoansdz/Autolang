@@ -1,42 +1,40 @@
-# # ====================================================================
-# # KHAI BÁO BIẾN
-# # ====================================================================
+CXX = clang++
+LAUNCHER = sccache
+# Thêm -MMD -MP để tự động theo dõi các file header (.h)
+CXXFLAGS = -O2 -pipe -std=c++17 -I src -Wall -Wextra -MMD -MP -Wno-unused-parameter -Wno-unused-variable
 
-# CXX = D:\msys64\usr\bin\ccache.exe g++
-# CXXFLAGS = -Wall -std=c++17 -I src -I src/libs -I tests
-# BUILD_DIR = build
+# 1. Hàm đệ quy thuần Make (Tuyệt chiêu để không phụ thuộc vào lệnh OS)
+rwildcard = $(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
 
-# SRC = $(wildcard src/*.cpp src/*/*.cpp src/*/*/*.cpp tests/*.cpp)
-# OBJ = $(SRC:%.cpp=$(BUILD_DIR)/%.o)
-# DIRS = $(sort $(dir $(OBJ)))
+# 2. Tự động quét toàn bộ file .cpp trong src và các thư mục con
+# SRC = $(call rwildcard,src,*.cpp) tests/main.cpp
+SRC = tests/main.cpp
 
-# TARGET = $(BUILD_DIR)/autolang.exe
+# 3. Tạo danh sách file object và dependency
+OBJ = $(patsubst %.cpp,build/%.o,$(SRC))
+DEPS = $(OBJ:.o=.d)
 
-# .PHONY: all clean create_dirs
-# all: $(TARGET)
+# Thêm đuôi .exe cho chuẩn Windows CMD
+TARGET = build/autolang.exe
 
-# # ====================================================================
-# # QUY TẮC XÂY DỰNG
-# # ====================================================================
+.PHONY: all run clean
 
-# create_dirs:
-# 	@echo Creating directories...
-# 	@for %%d in ($(DIRS)) do if not exist "%%d" mkdir "%%d"
+all: $(TARGET)
 
-# $(TARGET): $(OBJ)
-# 	@echo Linking: $@
-# 	$(CXX) $(OBJ) -o $@ -mconsole
+$(TARGET): $(OBJ)
+	@if not exist "build" mkdir "build"
+	$(CXX) $(OBJ) -o $(TARGET)
 
-# $(BUILD_DIR)/%.o: %.cpp | create_dirs
-# 	@echo Compiling: $<
-# 	$(CXX) $(CXXFLAGS) -c $< -o $@
+run: all
+	$(TARGET)
 
-# clean:
-# 	@echo Cleaning...
-# 	@if exist $(TARGET) del /Q $(TARGET)
-# 	@for %%f in ($(OBJ)) do if exist "%%f" del /Q "%%f"
-# 	@for %%d in ($(DIRS)) do if exist "%%d" rmdir /S /Q "%%d"
+# 4. Rule biên dịch: Tạo thư mục con tương ứng trong build/ trước khi compile
+build/%.o: %.cpp
+	@if not exist "$(subst /,\,$(dir $@))" mkdir "$(subst /,\,$(dir $@))"
+	$(LAUNCHER) $(CXX) $(CXXFLAGS) -c $< -o $@
 
-# build/autolang: tests/main.cpp src/*.cpp
-main:
-	g++ tests/main.cpp -I src -o build/autolang
+# Include các file .d để Make biết khi nào header thay đổi thì cần build lại
+-include $(DEPS)
+
+clean:
+	@if exist build rmdir /s /q build

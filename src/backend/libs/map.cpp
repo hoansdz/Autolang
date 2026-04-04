@@ -3,6 +3,10 @@
 
 #include "map.hpp"
 #include "frontend/ACompiler.hpp"
+#include "backend/vm/ANotifier.hpp"
+#include "shared/DefaultFunction.hpp"
+#include "shared/DefaultClass.hpp"
+#include "shared/DefaultOperator.hpp"
 #include "shared/Type.hpp"
 
 namespace AutoLang {
@@ -81,6 +85,180 @@ inline AObject *constructor(ANotifier &notifier, ClassId classId,
 			    destroyMap<ObjectHashMap, true>);
 		}
 	}
+}
+
+inline AObject *is_empty(NativeFuncInData) {
+	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
+	bool empty = false;
+
+	switch (hashMapData->type) {
+		case DefaultClass::intClassId:
+			empty = static_cast<IntHashMap *>(hashMapData->data)->empty();
+			break;
+		case DefaultClass::floatClassId:
+			empty = static_cast<FloatHashMap *>(hashMapData->data)->empty();
+			break;
+		case DefaultClass::stringClassId:
+			empty = static_cast<StringHashMap *>(hashMapData->data)->empty();
+			break;
+		default:
+			empty = static_cast<ObjectHashMap *>(hashMapData->data)->empty();
+			break;
+	}
+	return notifier.createBool(empty);
+}
+
+inline AObject *contains_key(NativeFuncInData) {
+	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
+	AObject *key = args[1];
+	bool found = false;
+
+	switch (hashMapData->type) {
+		case DefaultClass::intClassId: {
+			if (key->type == DefaultClass::intClassId) {
+				auto map = static_cast<IntHashMap *>(hashMapData->data);
+				found = map->find(key->i) != map->end();
+			}
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			if (key->type == DefaultClass::floatClassId) {
+				auto map = static_cast<FloatHashMap *>(hashMapData->data);
+				found = map->find(key->f) != map->end();
+			}
+			break;
+		}
+		case DefaultClass::stringClassId: {
+			if (key->type == DefaultClass::stringClassId) {
+				auto map = static_cast<StringHashMap *>(hashMapData->data);
+				found = map->find(key) != map->end();
+			}
+			break;
+		}
+		default: {
+			auto map = static_cast<ObjectHashMap *>(hashMapData->data);
+			found = map->find(key) != map->end();
+			break;
+		}
+	}
+	return notifier.createBool(found);
+}
+
+inline AObject *for_each(NativeFuncInData) {
+	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
+	auto funcObject = args[1];
+
+	switch (hashMapData->type) {
+		case DefaultClass::intClassId: {
+			auto map = static_cast<IntHashMap *>(hashMapData->data);
+			for (auto &[k, v] : *map) {
+				auto keyObj = notifier.createInt(k);
+				auto value = notifier.callFunctionObject(funcObject, keyObj, v);
+				if (notifier.hasException())
+					return nullptr;
+			}
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			auto map = static_cast<FloatHashMap *>(hashMapData->data);
+			for (auto &[k, v] : *map) {
+				auto keyObj = notifier.createFloat(k);
+				auto value = notifier.callFunctionObject(funcObject, keyObj, v);
+				if (notifier.hasException())
+					return nullptr;
+			}
+			break;
+		}
+		case DefaultClass::stringClassId: {
+			auto map = static_cast<StringHashMap *>(hashMapData->data);
+			for (auto &[k, v] : *map) {
+				auto value = notifier.callFunctionObject(funcObject, k, v);
+				if (notifier.hasException())
+					return nullptr;
+			}
+			break;
+		}
+		default: {
+			auto map = static_cast<ObjectHashMap *>(hashMapData->data);
+			for (auto &[k, v] : *map) {
+				auto value = notifier.callFunctionObject(funcObject, k, v);
+				if (notifier.hasException())
+					return nullptr;
+			}
+			break;
+		}
+	}
+	return nullptr;
+}
+
+inline AObject *keys(NativeFuncInData) {
+	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
+	auto newArr = notifier.createArray(args[1]->i);
+
+	switch (hashMapData->type) {
+		case DefaultClass::intClassId: {
+			auto map = static_cast<IntHashMap *>(hashMapData->data);
+			for (auto &[k, v] : *map) {
+				notifier.arrayAdd(newArr, notifier.createInt(k));
+			}
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			auto map = static_cast<FloatHashMap *>(hashMapData->data);
+			for (auto &[k, v] : *map) {
+				notifier.arrayAdd(newArr, notifier.createFloat(k));
+			}
+			break;
+		}
+		case DefaultClass::stringClassId: {
+			auto map = static_cast<StringHashMap *>(hashMapData->data);
+			for (auto &[k, v] : *map) {
+				notifier.arrayAdd(newArr, k);
+			}
+			break;
+		}
+		default: {
+			auto map = static_cast<ObjectHashMap *>(hashMapData->data);
+			for (auto &[k, v] : *map) {
+				notifier.arrayAdd(newArr, k);
+			}
+			break;
+		}
+	}
+	return newArr;
+}
+
+inline AObject *values(NativeFuncInData) {
+	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
+	auto newArr = notifier.createArray(args[1]->i);
+
+	switch (hashMapData->type) {
+		case DefaultClass::intClassId: {
+			auto map = static_cast<IntHashMap *>(hashMapData->data);
+			for (auto &[k, v] : *map)
+				notifier.arrayAdd(newArr, v);
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			auto map = static_cast<FloatHashMap *>(hashMapData->data);
+			for (auto &[k, v] : *map)
+				notifier.arrayAdd(newArr, v);
+			break;
+		}
+		case DefaultClass::stringClassId: {
+			auto map = static_cast<StringHashMap *>(hashMapData->data);
+			for (auto &[k, v] : *map)
+				notifier.arrayAdd(newArr, v);
+			break;
+		}
+		default: {
+			auto map = static_cast<ObjectHashMap *>(hashMapData->data);
+			for (auto &[k, v] : *map)
+				notifier.arrayAdd(newArr, v);
+			break;
+		}
+	}
+	return newArr;
 }
 
 inline AObject *remove(NativeFuncInData) {
@@ -212,6 +390,80 @@ inline AObject *get(NativeFuncInData) {
 			auto it = map->find(args[1]);
 			if (it == map->end())
 				return DefaultClass::nullObject;
+
+			return it->second;
+		}
+	}
+}
+
+inline AObject *get_or_default(NativeFuncInData) {
+	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
+
+	switch (hashMapData->type) {
+
+		case DefaultClass::intClassId: {
+			if (args[1]->type != DefaultClass::intClassId) {
+				notifier.throwException("Map.get: key must be Int");
+				return nullptr;
+			}
+
+			auto map = static_cast<IntHashMap *>(hashMapData->data);
+			auto it = map->find(args[1]->i);
+			if (it == map->end()) {
+				auto defaultObject = args[2];
+				defaultObject->retain();
+				(*map)[args[1]->i] = defaultObject;
+				return defaultObject;
+			}
+
+			return it->second;
+		}
+
+		case DefaultClass::floatClassId: {
+			if (args[1]->type != DefaultClass::floatClassId) {
+				notifier.throwException("Map.get: key must be Float");
+				return nullptr;
+			}
+
+			auto map = static_cast<FloatHashMap *>(hashMapData->data);
+			auto it = map->find(args[1]->f);
+			if (it == map->end()) {
+				auto defaultObject = args[2];
+				defaultObject->retain();
+				(*map)[args[1]->f] = defaultObject;
+				return defaultObject;
+			}
+
+			return it->second;
+		}
+
+		case DefaultClass::stringClassId: {
+			if (args[1]->type != DefaultClass::stringClassId) {
+				notifier.throwException("Map.get: key must be String");
+				return nullptr;
+			}
+
+			auto map = static_cast<StringHashMap *>(hashMapData->data);
+			auto it = map->find(args[1]);
+			if (it == map->end()) {
+				auto defaultObject = args[2];
+				defaultObject->retain();
+				(*map)[args[1]] = defaultObject;
+				return defaultObject;
+			}
+
+			return it->second;
+		}
+
+		default: {
+			auto map = static_cast<ObjectHashMap *>(hashMapData->data);
+			auto it = map->find(args[1]);
+			if (it == map->end()) {
+				auto defaultObject = args[2];
+				defaultObject->retain();
+				(*map)[args[1]] = defaultObject;
+				return defaultObject;
+			}
 
 			return it->second;
 		}

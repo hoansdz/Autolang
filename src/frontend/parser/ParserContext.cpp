@@ -195,6 +195,12 @@ void ParserContext::init(CompiledProgram &compile) {
 	                 {Lexer::TokenType::SLASH, OP_DIV},
 	                 {Lexer::TokenType::PERCENT, OP_MOD},
 
+	                 {Lexer::TokenType::PLUS_EQUAL, OP_PLUS_EQ},
+	                 {Lexer::TokenType::MINUS_EQUAL, OP_MINUS_EQ},
+	                 {Lexer::TokenType::STAR_EQUAL, OP_MUL_EQ},
+	                 {Lexer::TokenType::SLASH_EQUAL, OP_DIV_EQ},
+	                 //  {Lexer::TokenType::PERCENT_EQUAL, OP_MOD_EQ},
+
 	                 {Lexer::TokenType::AND, OP_BIT_AND},
 	                 {Lexer::TokenType::OR, OP_BIT_OR},
 
@@ -223,7 +229,7 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	importMap.clear();
 
 	for (auto &funcInfo : functionInfo) {
-		funcInfo->block.refresh();
+		funcInfo->body.refresh();
 	}
 
 	for (auto *node : staticNode) {
@@ -242,19 +248,23 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	hasError = false;
 	canBreakContinue = false;
 	justFindStatic = false;
+	isInGeneric = false;
 
 	continuePos = 0;
 	breakPos = 0;
 	jumpIfNullNode = nullptr;
+	mustReturnValueNode = nullptr;
+	newPositionOfStaticDeclaration = nullptr;
+	preloadGenericData = nullptr;
 
+	defaultValueParameter.clear();
+	
+	parameterPool.destroy();
 	functionInfoAllocator.destroy();
 	classInfoAllocator.destroy();
 	functionInfo.clear();
 	globalFunction.clear();
 	genericFunctionMap.clear();
-	for (auto *funcInfo : functionInfo) {
-		delete[] funcInfo->nullableArgs;
-	}
 	defaultClassMap.clear();
 	classInfo.clear();
 
@@ -286,6 +296,8 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	unaryNodePool.destroy();
 	forPool.destroy();
 	classDeclarationAllocator.destroy();
+	genericCallers.clear();
+	checkValidateExtends.clear();
 
 	currentClassId = std::nullopt;
 

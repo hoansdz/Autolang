@@ -1,0 +1,96 @@
+@import("std/file")
+
+class TestFileFeaturesExhaustive {
+    var lineCount = 0
+
+    // Callback dùng cho forEachLine
+    func countLines(line: String) {
+        lineCount += 1
+    }
+
+    func testFileFeaturesExhaustive() {
+        val testPath = "test_autolang_fs.txt"
+
+        // --- 0. Setup (Dọn dẹp rác nếu file bị sót từ lần chạy trước) ---
+        if (File.exists(testPath)) {
+            File.delete(testPath)
+        }
+        assert(File.exists(testPath) == false, __FILE__, __LINE__)
+
+        // --- 1. Test WRITE, exists, isFile và isDirectory ---
+        val writer = File(testPath, FileMode.WRITE)
+        writer.write("Line 1\nLine 2\nLine 3")
+        writer.close()
+
+        assert(File.exists(testPath) == true, __FILE__, __LINE__)
+        assert(File.isFile(testPath) == true, __FILE__, __LINE__)
+        assert(File.isDirectory(testPath) == false, __FILE__, __LINE__)
+
+        // --- 2. Test READ (readText) ---
+        val reader = File(testPath, FileMode.READ)
+        val text1 = reader.readText()
+        assert(text1 == "Line 1\nLine 2\nLine 3", __FILE__, __LINE__)
+        reader.close()
+
+        // --- 3. Test APPEND ---
+        val appender = File(testPath, FileMode.APPEND)
+        appender.write("\nLine 4")
+        appender.close()
+
+        val reader2 = File(testPath, FileMode.READ)
+        val text2 = reader2.readText()
+        assert(text2 == "Line 1\nLine 2\nLine 3\nLine 4", __FILE__, __LINE__)
+        reader2.close()
+
+        // --- 4. Test Đọc từng dòng (forEachLine) Tối ưu RAM ---
+        lineCount = 0
+        val lineReader = File(testPath, FileMode.READ)
+        lineReader.forEachLine(countLines)
+        assert(lineCount == 4, __FILE__, __LINE__)
+        lineReader.close()
+
+        // --- 5. Test Vừa đọc vừa ghi (READ_WRITE) và Dịch con trỏ (seek) ---
+        val pather = File(testPath, FileMode.READ_WRITE)
+        pather.seek(0) // Đưa con trỏ về đầu file
+        pather.write("DONE") // Ghi đè 4 byte đầu tiên ("Line" -> "DONE")
+        pather.close()
+
+        val reader3 = File(testPath, FileMode.READ)
+        val text3 = reader3.readText()
+        // Kết quả phải là "DONE 1\n..." vì ta đã vá 4 byte tại chỗ
+        assert(text3 == "DONE 1\nLine 2\nLine 3\nLine 4", __FILE__, __LINE__)
+        reader3.close()
+
+        // --- 6. Test Các hàm tiện ích (Path & Metadata) ---
+        val absPath = File.getAbsolutePath(testPath)
+        assert(absPath != "", __FILE__, __LINE__) // Đảm bảo lấy được đường dẫn tuyệt đối
+        
+        // C++17 filesystem.parent_path() xử lý đường dẫn chuẩn
+        val parentPath = File.getParent("folder/test.txt")
+        assert(parentPath == "folder", __FILE__, __LINE__)
+
+        // --- 7. Test getAllFiles (Duyệt thư mục hiện tại ".") ---
+        val currentDir = "."
+        assert(File.isDirectory(currentDir) == true, __FILE__, __LINE__)
+        
+        val allFiles = File.getAllFiles(currentDir)
+        assert(allFiles is Array<String>, __FILE__, __LINE__)
+        assert(allFiles.size() > 0, __FILE__, __LINE__) // Ít nhất phải chứa file test hoặc src code
+
+        // --- 8. Test Enum FileMode ---
+        assert(FileMode.READ.getId() == 0, __FILE__, __LINE__)
+        assert(FileMode.APPEND_READ.getId() == 5, __FILE__, __LINE__)
+        assert(FileMode.READ_WRITE.toString() == "READ_WRITE", __FILE__, __LINE__)
+
+        // --- 9. Teardown (Xóa file test để trả lại môi trường sạch) ---
+        val deleted = File.delete(testPath)
+        assert(deleted == true, __FILE__, __LINE__)
+        assert(File.exists(testPath) == false, __FILE__, __LINE__)
+
+        // Nếu vượt qua hết
+        println("Passed ${__FUNC__}")
+    }
+}
+
+// Chạy bài test
+TestFileFeaturesExhaustive().testFileFeaturesExhaustive()

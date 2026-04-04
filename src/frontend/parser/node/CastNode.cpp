@@ -4,6 +4,7 @@
 #include "frontend/parser/Debugger.hpp"
 #include "frontend/parser/node/CreateNode.hpp"
 #include "frontend/parser/node/NodePutBytecode.hpp"
+#include "frontend/parser/ParserContext.hpp"
 
 namespace AutoLang {
 

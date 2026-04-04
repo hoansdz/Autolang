@@ -10,7 +10,7 @@ enum OperatorId : uint8_t {
     OP_MINUS_MINUS,      // --
 
     OP_PLUS,             // +
-    OP_CAL_EQ,           // += (Khớp với plus_eq)
+    OP_PLUS_EQ,           // += (Khớp với plus_eq)
     OP_MINUS,            // -
     OP_MINUS_EQ,         // -=
     OP_MUL,              // *

@@ -2,6 +2,7 @@
 #define FUNCTION_INFO_CPP
 
 #include "FunctionInfo.hpp"
+#include "frontend/parser/ParserContext.hpp"
 
 namespace AutoLang {
 
@@ -20,10 +21,7 @@ AccessNode *FunctionInfo::findDeclaration(in_func, uint32_t line,
 	return nullptr;
 }
 
-FunctionInfo::~FunctionInfo() {
-	if (nullableArgs)
-		delete[] nullableArgs;
-}
+FunctionInfo::~FunctionInfo() {}
 
 } // namespace AutoLang
 

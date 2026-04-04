@@ -194,8 +194,8 @@ void CallNode::optimize(in_func) {
 		}
 
 		{
-			auto it = compile.classMap.find(name);
-			if (it == compile.classMap.end()) {
+			auto it = context.defaultClassMap.find(nameId);
+			if (it == context.defaultClassMap.end()) {
 				funcName = name;
 				if (contextCallClassId) {
 					auto callerClassInfo =
@@ -321,6 +321,14 @@ void CallNode::optimize(in_func) {
 	classId = first.func->returnId;
 	auto func = compile.functions[funcId];
 	auto funcInfo = context.functionInfo[funcId];
+	{
+		int i = arguments.size() +
+		        !(func->functionFlags & FunctionFlags::FUNC_IS_STATIC);
+		for (; i < funcInfo->parameter->parameters.size(); ++i) {
+			arguments.push_back(funcInfo->parameter->parameterDefaultValues
+			                        [i - funcInfo->parameter->defaultValuePos]);
+		}
+	}
 
 	// if (mustInferenceGenericType) {
 	{
@@ -338,11 +346,12 @@ void CallNode::optimize(in_func) {
 					break;
 				}
 				case DefaultClass::functionClassId: {
-					auto funcInputClass = funcInfo->parameters[i - 1];
+					auto funcInputClass =
+					    funcInfo->parameter->parameters[i - 1];
 					if (argument->kind == NodeType::FUNCTION_ACCESS) {
 						argument->classDeclaration =
 						    funcInputClass->classDeclaration;
-						argument->classDeclaration->load<true>(in_data);
+						// argument->classDeclaration->load<true>(in_data);
 						argument->optimize(in_data);
 					}
 					matchFunction(in_data, funcInputClass->classDeclaration,
@@ -598,9 +607,15 @@ bool CallNode::match(in_func, MatchOverload &match,
 				continue;
 			skip = true;
 		}
-		if (match.func->argSize != arguments.size() + skip)
+		size_t argumentSize = arguments.size() + skip;
+		if (argumentSize < funcInfo->parameter->defaultValuePos ||
+		    argumentSize > funcInfo->parameter->parameters.size())
 			continue;
 		match.errorNonNullIfMatchCount = 0;
+		// std::cerr << match.func->name << " " << arguments.size() << " "
+		//           << argumentSize << " " << skip << " "
+		//           << funcInfo->parameter->parameters.size() << " "
+		//           << funcInfo->parameter->defaultValuePos << "\n";
 		for (int j = 0; j < arguments.size(); ++j) {
 			uint32_t inputClassId = arguments[j]->classId;
 			uint32_t funcArgClassId = match.func->args[j + skip];
@@ -644,7 +659,8 @@ bool CallNode::match(in_func, MatchOverload &match,
 
 						++match.score;
 						match.errorNonNullIfMatchCount +=
-						    !funcInfo->nullableArgs[j + skip];
+						    !funcInfo->parameter->parameters[j + skip]
+						         ->nullable;
 						continue;
 					}
 					case DefaultClass::intClassId: {
@@ -742,8 +758,14 @@ void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			bool returnVoid =
 			    func->returnId == DefaultClass::voidClassId ||
 			    (func->functionFlags & FunctionFlags::FUNC_WAIT_INPUT);
-			bytecodes.emplace_back(returnVoid ? Opcode::CALL_VOID_FUNCTION
-			                                  : Opcode::CALL_FUNCTION);
+			if (func->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
+				bytecodes.emplace_back(returnVoid
+				                           ? Opcode::CALL_VOID_NATIVE_FUNCTION
+				                           : Opcode::CALL_NATIVE_FUNCTION);
+			} else {
+				bytecodes.emplace_back(returnVoid ? Opcode::CALL_VOID_FUNCTION
+				                                  : Opcode::CALL_FUNCTION);
+			}
 		}
 		put_opcode_u32(bytecodes, funcId);
 	}

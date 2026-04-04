@@ -2,6 +2,7 @@
 #define CLASS_INFO_CPP
 
 #include "ClassInfo.hpp"
+#include "frontend/parser/ParserContext.hpp"
 
 namespace AutoLang {
 

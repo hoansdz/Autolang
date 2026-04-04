@@ -2,7 +2,11 @@
 #define LIBS_LIST_CPP
 
 #include "array.hpp"
+#include "backend/vm/ANotifier.hpp"
 #include "frontend/ACompiler.hpp"
+#include "shared/DefaultFunction.hpp"
+#include "shared/DefaultClass.hpp"
+#include "shared/DefaultOperator.hpp"
 #include <algorithm>
 #include <string>
 

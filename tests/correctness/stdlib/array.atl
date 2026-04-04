@@ -54,7 +54,8 @@ func testArrayFeaturesExhaustive() {
 
     // 5. Test: forEach
     globalArraySum = 0
-    a.forEach(arrayForEachTest) 
+    a.forEach(
+			arrayForEachTest) 
     assert(globalArraySum == 40, __FILE__, __LINE__)
 
     // 6. Test: sort
@@ -82,7 +83,7 @@ func testArrayFeaturesExhaustive() {
     assert(a.size() == 0, __FILE__, __LINE__)
 
     // Only prints if all assertions pass
-    println("Passes ${__FUNC__}")
+    println("Passed ${__FUNC__}")
 }
 
 // Execute the test

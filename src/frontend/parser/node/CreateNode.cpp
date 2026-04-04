@@ -4,6 +4,7 @@
 #include "frontend/parser/node/CreateNode.hpp"
 #include "shared/ClassFlags.hpp"
 #include "shared/DefaultFunction.hpp"
+#include "frontend/parser/ParserContext.hpp"
 #include "shared/Type.hpp"
 #include <functional>
 
@@ -46,8 +47,9 @@ void DeclarationNode::optimize(in_func) {
 		loaded = true;
 		auto &baseClassName =
 		    context.lexerString[classDeclaration->baseClassLexerStringId];
-		auto it = compile.classMap.find(baseClassName);
-		if (it == compile.classMap.end()) {
+		auto it = context.defaultClassMap.find(
+		    classDeclaration->baseClassLexerStringId);
+		if (it == context.defaultClassMap.end()) {
 			throwError(
 			    std::string("DeclarationNode: Cannot find class name : ") +
 			    baseClassName);
@@ -126,9 +128,9 @@ void CreateConstructorNode::pushFunction(in_func) {
 	auto *clazz = compile.classes[classId];
 	auto *classInfo = context.classInfo[classId];
 	funcId = compile.registerFunction<true>(
-	    clazz, context.lexerString[nameId], new ClassId[parameters.size()]{},
-	    parameters.size(), classId,
-	    functionFlags | FunctionFlags::FUNC_IS_CONSTRUCTOR);
+	    clazz, context.lexerString[nameId],
+	    new ClassId[parameter->parameters.size()]{}, parameter->parameters.size(),
+	    classId, functionFlags | FunctionFlags::FUNC_IS_CONSTRUCTOR);
 	// Function can be overrided, it will be recreated in override phase
 	if (!(clazz->classFlags & ClassFlags::CLASS_HAS_PARENT)) {
 		auto classInfo = context.classInfo[classId];
@@ -140,18 +142,17 @@ void CreateConstructorNode::pushFunction(in_func) {
 	new (&func->bytecodes) std::vector<uint8_t>();
 
 	funcInfo->clazz = clazz;
-	funcInfo->nullableArgs = new bool[parameters.size()]{};
-	func->maxDeclaration = parameters.size();
-	funcInfo->declaration = parameters.size();
-	funcInfo->parameters = parameters;
+	func->maxDeclaration = parameter->parameters.size();
+	funcInfo->declaration = parameter->parameters.size();
+	funcInfo->parameter = parameter;
 
 	if (isPrimary) {
 		auto classInfo = context.classInfo[clazz->id];
 		func->functionFlags |= FunctionFlags::FUNC_IS_DATA_CONSTRUCTOR;
 		// printDebug(clazz->name);
 		// printDebug(arguments.size());
-		for (size_t i = 1; i < parameters.size(); ++i) {
-			auto param = parameters[i];
+		for (size_t i = 1; i < parameter->parameters.size(); ++i) {
+			auto param = parameter->parameters[i];
 			classInfo->memberMap[param->baseName] = i - 1;
 			clazz->memberMap[param->name] = i - 1;
 			clazz->memberId.push_back(0);
@@ -161,16 +162,10 @@ void CreateConstructorNode::pushFunction(in_func) {
 }
 
 ExprNode *CreateConstructorNode::copy(in_func) {
-	std::vector<DeclarationNode *> newParams;
-	newParams.reserve(parameters.size());
-	for (auto *param : parameters) {
-		newParams.push_back(
-		    static_cast<DeclarationNode *>(param->copy(in_data)));
-	}
 	auto constructor = context.createConstructorPool.push(
 	    line, *context.currentClassId,
 	    context.lexerStringMap[compile.classes[*context.currentClassId]->name],
-	    std::move(newParams), true, functionFlags);
+	    parameter->copy(in_data), true, functionFlags);
 	constructor->pushFunction(in_data);
 	return constructor;
 }
@@ -182,10 +177,9 @@ void CreateConstructorNode::optimize(in_func) {
 	AClass *clazz = compile.classes[classId];
 	// Add argument class id
 	auto classInfo = context.classInfo[classId];
-	for (size_t i = 0; i < parameters.size(); ++i) {
-		auto &param = parameters[i];
+	for (size_t i = 0; i < parameter->parameters.size(); ++i) {
+		auto &param = parameter->parameters[i];
 		func->args[i] = param->classId;
-		funcInfo->nullableArgs[i] = param->nullable;
 		if (isPrimary && i != 0) {
 
 			// printDebug((uintptr_t)clazz);

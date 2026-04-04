@@ -2,6 +2,7 @@
 #define LIBS_VM_CPP
 
 #include "frontend/ACompiler.hpp"
+#include "shared/DefaultOperator.hpp"
 #include <chrono>
 #include <string>
 

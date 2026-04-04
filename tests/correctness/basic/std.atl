@@ -203,8 +203,27 @@ class Map<K, V> {
 	@native("map_set")
 	func set(key: K, value: V)
 
+	@native("map_is_empty")
+    func isEmpty(): Bool
+
+    @native("map_contains_key")
+    func containsKey(key: K): Bool
+
 	@native("map_size")
 	func size(): Int
+
+	@native("map_for_each")
+    func forEach(fn: (K, V) -> Void)
+
+	@native("map_keys")
+    private func keys(classId: Int): Array<K>
+
+    func keys(): Array<K> = keys(getClassId(Array<K>))
+
+	@native("map_values")
+    private func values(classId: Int): Array<V>
+
+    func values(): Array<V> = values(getClassId(Array<V>))
 
 	@native("map_remove")
 	func remove(key: K)

@@ -8,7 +8,7 @@ func testBreakContinue() {
 		continue
 		assert(false, __FILE__, __LINE__)
 	}
-	println("Passes ${__FUNC__}")
+	println("Passed ${__FUNC__}")
 }
 
 testBreakContinue()

@@ -22,7 +22,7 @@ class StackAllocator {
 	AObject **args;
 	AObject **currentPtr;
 	StackAllocator(size_t maxSize)
-	    : maxSize(maxSize), sizeNow(maxSize), top(0), peak(0),
+	    : sizeNow(maxSize), maxSize(maxSize), top(0), peak(0),
 	      args(new AObject *[maxSize] {}), currentPtr(args) {}
 	~StackAllocator() {
 		// for (size_t i = 0; i < sizeNow; ++i) {

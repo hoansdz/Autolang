@@ -3,6 +3,7 @@
 
 #include "./math.hpp"
 #include "frontend/ACompiler.hpp"
+#include "shared/DefaultOperator.hpp"
 #include "shared/Type.hpp"
 #include <random>
 #include <chrono>
@@ -100,12 +101,12 @@ AObject *random(NativeFuncInData) {
 
     auto &rng = getRng();
 
-    if (size == 0) {
+    if (argSize == 0) {
         std::uniform_real_distribution<double> dist(0.0, 1.0);
         return notifier.createFloat(dist(rng));
     }
 
-    if (size == 2) {
+    if (argSize == 2) {
         auto obj1 = args[0];
         auto obj2 = args[1];
 
@@ -171,7 +172,7 @@ AObject *abs(NativeFuncInData) {
 }
 
 AObject *pow(NativeFuncInData) {
-	if (size != 2)
+	if (argSize != 2)
 		return nullptr;
 	// base
 	auto obj1 = args[0];

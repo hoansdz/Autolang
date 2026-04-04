@@ -21,14 +21,18 @@ ClassDeclaration *ClassDeclaration::copy(in_func) {
 	}
 	auto newClassDeclaration = context.classDeclarationAllocator.push();
 	newClassDeclaration->baseClassLexerStringId = baseClassLexerStringId;
+	newClassDeclaration->isGeneric = isGeneric;
 	newClassDeclaration->mode = mode;
 	newClassDeclaration->line = line;
 	newClassDeclaration->nullable = nullable;
 	newClassDeclaration->isGenericDeclaration = isGenericDeclaration;
 	newClassDeclaration->mustInference = mustInference;
-	newClassDeclaration->inputClassId.reserve(inputClassId.size());
-	for (auto *inputClass : inputClassId) {
-		newClassDeclaration->inputClassId.push_back(inputClass->copy(in_data));
+	if (isGeneric || classId == DefaultClass::functionClassId) {
+		newClassDeclaration->inputClassId.reserve(inputClassId.size());
+		for (auto *inputClass : inputClassId) {
+			newClassDeclaration->inputClassId.push_back(
+			    inputClass->copy(in_data));
+		}
 	}
 	newClassDeclaration->classId = classId;
 	return newClassDeclaration;
@@ -211,16 +215,6 @@ void ClassDeclaration::load(in_func) {
 		           " type argument but " + std::to_string(inputClassId.size()) +
 		           " were given");
 	}
-}
-
-bool ClassDeclaration::isGenerics(in_func) {
-	if (isGenericDeclaration)
-		return true;
-	for (auto classDeclaration : inputClassId) {
-		if (classDeclaration->isGenerics(in_data))
-			return true;
-	}
-	return false;
 }
 
 template <bool addNullable> std::string ClassDeclaration::getName(in_func) {

@@ -2,6 +2,7 @@
 #define DEBUGGER_IMPORT_CPP
 
 #include "Debugger.hpp"
+#include "frontend/parser/ParserContext.hpp"
 #include "frontend/ACompiler.hpp"
 
 namespace AutoLang {

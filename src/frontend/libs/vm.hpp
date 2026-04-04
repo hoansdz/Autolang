@@ -1,6 +1,8 @@
 #ifndef LIBS_VM_HPP
 #define LIBS_VM_HPP
 
+#include "shared/Type.hpp"
+
 namespace AutoLang {
 class ACompiler;
 namespace Libs {

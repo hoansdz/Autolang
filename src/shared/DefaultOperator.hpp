@@ -3,6 +3,7 @@
 
 #include "backend/vm/ANotifier.hpp"
 #include "frontend/parser/Debugger.hpp"
+#include "shared/DefaultFunction.hpp"
 #include "shared/DefaultClass.hpp"
 #include <cmath>
 #include <iostream>
