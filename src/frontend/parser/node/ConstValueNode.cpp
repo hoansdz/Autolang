@@ -25,20 +25,7 @@ void ConstValueNode::optimize(in_func) {
 	}
 }
 
-ExprNode *ConstValueNode::copy(in_func) {
-	switch (classId) {
-		case DefaultClass::intClassId:
-			return context.constValuePool.push(line, i);
-		case DefaultClass::floatClassId:
-			return context.constValuePool.push(line, f);
-		case DefaultClass::boolClassId:
-			return context.constValuePool.push(line, bool(obj->b));
-		case DefaultClass::stringClassId:
-			return context.constValuePool.push(line, *str);
-		default:
-			return context.constValuePool.push(line, obj, id);
-	}
-}
+ExprNode *ConstValueNode::copy(in_func) { return this; }
 
 void ConstValueNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	if (classId == AutoLang::DefaultClass::nullClassId) {

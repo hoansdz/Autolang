@@ -1,96 +1,106 @@
-@import("std/time")
+// @import("std/time")
 
-val time = Time.now()
+// val time = Time.now()
 
-@import("std/file")
+// @import("std/file")
 
-class FileAnalysis {
-    var totalSize = 0
-    var totalFile = 0
-    var totalFolder = 0
-    val fileExtension = <String, Int>{}
-    val cplusplus_lines = 0
-    val autolang_lines = 0
-    lateinit var currentPlusFunc: () -> Void
-    constructor (path: String) {
-        if (!File.exists(path)) {
-            throw Exception("${path} not exists")
-        }
-        analysis(path)
-    }
+// class FileAnalysis {
+//     var totalSize = 0
+//     var totalFile = 0
+//     var totalFolder = 0
+//     val fileExtension = <String, Int>{}
+//     val cplusplus_lines = 0
+//     val autolang_lines = 0
+//     lateinit var currentPlusFunc: () -> Void
+//     constructor (path: String) {
+//         if (!File.exists(path)) {
+//             throw Exception("${path} not exists")
+//         }
+//         analysis(path)
+//     }
 
-    func addCPlusPlusCountLine() {
-        cplusplus_lines = cplusplus_lines + 1
-    }
+//     func addCPlusPlusCountLine() {
+//         cplusplus_lines = cplusplus_lines + 1
+//     }
 
-    func addAutolangCountLine() {
-        autolang_lines = autolang_lines + 1
-    }
+//     func addAutolangCountLine() {
+//         autolang_lines = autolang_lines + 1
+//     }
 
-    func getCountLine(line: String) {
-        val newStr = line.trim()
-        if (newStr.isEmpty()) {
-            return
-        }
-        currentPlusFunc()
-    }
+//     func getCountLine(line: String) {
+//         val newStr = line.trim()
+//         if (newStr.isEmpty()) {
+//             return
+//         }
+//         currentPlusFunc()
+//     }
 
-    func analysis(path: String) {
-        if (File.isFile(path)) {
-            analysisFile(path)
-            return
-        }
-        analysisFolder(path)
-    }
+//     func analysis(path: String) {
+//         if (File.isFile(path)) {
+//             analysisFile(path)
+//             return
+//         }
+//         analysisFolder(path)
+//     }
 
-    func analysisFile(path: String) {
-        totalFile += 1
-        totalSize += File.getSize(path)
-        val extension = File.getExtension(path)
-        fileExtension[extension] = fileExtension.getOrDefault(extension, 0) + 1
-        when (extension) {
-            ".atl" -> {
-                currentPlusFunc = addAutolangCountLine
-                val file = File(path, FileMode.READ)
-                file.forEachLine(getCountLine)
-                file.close()
-            }
-            ".hpp" || ".cpp" -> {
-                currentPlusFunc = addCPlusPlusCountLine
-                val file = File(path, FileMode.READ)
-                file.forEachLine(getCountLine)
-                file.close()
-            }
-        }
-    }
+//     func analysisFile(path: String) {
+//         totalFile += 1
+//         totalSize += File.getSize(path)
+//         val extension = File.getExtension(path)
+//         fileExtension[extension] = fileExtension.getOrDefault(extension, 0) + 1
+//         when (extension) {
+//             ".atl" -> {
+//                 currentPlusFunc = addAutolangCountLine
+//                 val file = File(path, FileMode.READ)
+//                 file.forEachLine(getCountLine)
+//                 file.close()
+//             }
+//             ".hpp" || ".cpp" -> {
+//                 currentPlusFunc = addCPlusPlusCountLine
+//                 val file = File(path, FileMode.READ)
+//                 file.forEachLine(getCountLine)
+//                 file.close()
+//             }
+//         }
+//     }
 
-    func analysisFolder(path: String) {
-        val allFiles = File.getAllFiles(path)
-        allFiles.forEach(analysis)
-        totalFolder += 1
-    }
-}
-
-func forEachMapExtension(extension: String, count: Int) {
-    println("Extension ${extension}: $count")
-}
-
-func main() {
-    val a = FileAnalysis("D:\\code\\AutoLangC")
-    println("Total file: ${a.totalFile}")
-    println("Total folder: ${a.totalFolder}")
-    println("Total size: ${Float(a.totalSize) / 1024 / 1024} MB")
-    a.fileExtension.forEach(forEachMapExtension)
-    println("Total c++ line: ${a.cplusplus_lines}")
-    println("Tocal autolang line: ${a.autolang_lines}")
-}
-
-main()
-
-println("Time: ${Time.now() - time}")
-
-// func x(str: Int, value: Int = 1): Int {
-// 	return value
+//     func analysisFolder(path: String) {
+//         val allFiles = File.getAllFiles(path)
+//         allFiles.forEach(analysis)
+//         totalFolder += 1
+//     }
 // }
 
-// println(x(1))
+// func forEachMapExtension(extension: String, count: Int) {
+//     println("Extension ${extension}: $count")
+// }
+
+// func main() {
+//     val a = FileAnalysis("D:\\code\\AutoLangC")
+//     println("Total file: ${a.totalFile}")
+//     println("Total folder: ${a.totalFolder}")
+//     println("Total size: ${Float(a.totalSize) / 1024 / 1024} MB")
+//     a.fileExtension.forEach(forEachMapExtension)
+//     println("Total c++ line: ${a.cplusplus_lines}")
+//     println("Tocal autolang line: ${a.autolang_lines}")
+// }
+
+// main()
+
+// println("Time: ${Time.now() - time}")
+
+// // func x(str: Int, value: Int = 1): Int {
+// // 	return value
+// // }
+
+// // println(x(1))
+
+val x = 'b'
+println(when (x) {
+	'a' -> {
+		"ok"
+	}
+	else -> {
+		"deo ok"
+	}
+})

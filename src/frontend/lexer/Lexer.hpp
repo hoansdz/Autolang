@@ -280,8 +280,8 @@ inline bool isEndOfLine(Context &context, uint32_t &i);
 void loadFile(ParserContext *mainContext, LibraryData *library);
 void load(ParserContext *mainContext, LibraryData *library,
           std::vector<Offset> *importOffset);
-template <bool addLParen = true>
-void loadQuote(Context &context, char quote, uint32_t &i);
+template <bool addLParen, bool isChar>
+void loadQuote(Context &context, uint32_t &i);
 std::string loadIdentifier(Context &context, uint32_t &i);
 std::string loadNumber(Context &context, uint32_t &i);
 TokenType loadOp(Context &context, uint32_t &i);

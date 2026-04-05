@@ -4,9 +4,9 @@
 #include "frontend/parser/Debugger.hpp"
 #include "frontend/ACompiler.hpp"
 #include "frontend/parser/ParserContext.hpp"
-#include "shared/Import.hpp"
 #include "shared/DefaultFunction.hpp"
 #include "shared/DefaultOperator.hpp"
+#include "shared/Import.hpp"
 #include <cctype>
 #include <chrono>
 #include <cstdlib>
@@ -1006,6 +1006,9 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 	while (true) {
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
+			if (addOptionalNode) {
+				return context.optionalAccessNodePool.push(firstLine, node);
+			}
 			return node;
 		}
 		switch (token->type) {
@@ -1022,7 +1025,7 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 			case Lexer::TokenType::DOT: {
 				bool accessNullable =
 				    token->type == Lexer::TokenType::QMARK_DOT;
-				if (accessNullable)
+				if (!addOptionalNode && accessNullable)
 					addOptionalNode = true;
 				if (!nextToken(&token, context.tokens, i) ||
 				    !expect(token, Lexer::TokenType::IDENTIFIER)) {
@@ -1411,8 +1414,7 @@ ConstValueNode *findConstValueNode(in_func, size_t &i, LexerStringId nameId) {
 		case lexerIdtrue:
 		case lexerIdfalse:
 		case lexerIdnull: {
-			return static_cast<ConstValueNode *>(
-			    context.constValue[nameId]->copy(in_data));
+			return context.constValue[nameId];
 		}
 		default:
 			break;

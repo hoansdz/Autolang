@@ -16,19 +16,28 @@
 #include "shared/CompiledProgram.hpp"
 
 namespace AutoLang {
-void toInt(in_func, ConstValueNode *value);
-void toFloat(in_func, ConstValueNode *value);
-void toBool(in_func, ConstValueNode *value);
-void toString(in_func, ConstValueNode *value);
+ConstValueNode *toInt(in_func, ConstValueNode *value);
+ConstValueNode *toFloat(in_func, ConstValueNode *value);
+ConstValueNode *toBool(in_func, ConstValueNode *value);
+ConstValueNode *toString(in_func, ConstValueNode *value);
 
-static void prepareOperands(in_func, ConstValueNode *left,
-                            ConstValueNode *right) {
+static void prepareOperands(in_func, ConstValueNode *&left,
+                            ConstValueNode *&right) {
 	if (left->classId == AutoLang::DefaultClass::boolClassId) {
-		toInt(in_data, left);
+		left = toInt(in_data, left);
 	}
 	if (right->classId == AutoLang::DefaultClass::boolClassId) {
-		toInt(in_data, right);
+		right = toInt(in_data, right);
 	}
+}
+
+inline void throwInvalidCompare(in_func, ConstValueNode *left,
+                                ConstValueNode *right, const char *op) {
+	throw ParserError(left->line,
+	                  std::string("Cannot apply operator '") + op +
+	                      "' between '" + compile.classes[left->classId]->name +
+	                      "' and '" + compile.classes[right->classId]->name +
+	                      "'");
 }
 
 ConstValueNode *plus(in_func, ConstValueNode *left, ConstValueNode *right) {
@@ -297,6 +306,7 @@ ConstValueNode *op_eqeq(in_func, ConstValueNode *left, ConstValueNode *right) {
 				return context.constValuePool.push(
 				    left->line, left->obj->b == right->obj->b);
 			}
+			throwInvalidCompare(in_data, left, right, "==");
 		}
 		case AutoLang::DefaultClass::stringClassId: {
 			if (right->classId == AutoLang::DefaultClass::stringClassId) {
@@ -353,6 +363,7 @@ ConstValueNode *op_not_eq(in_func, ConstValueNode *left,
 				return context.constValuePool.push(
 				    left->line, left->obj->b != right->obj->b);
 			}
+			throwInvalidCompare(in_data, left, right, "!=");
 		}
 		case AutoLang::DefaultClass::stringClassId: {
 			if (right->classId == AutoLang::DefaultClass::stringClassId) {
@@ -510,82 +521,78 @@ ConstValueNode *op_less_than_eq(in_func, ConstValueNode *left,
 	throw ParserError(left->line, "Invalid types for operator <=");
 }
 
-void toInt(in_func, ConstValueNode *value) {
+ConstValueNode *toInt(in_func, ConstValueNode *value) {
 	switch (value->classId) {
 		case AutoLang::DefaultClass::intClassId:
-			return;
+			return value;
+
 		case AutoLang::DefaultClass::floatClassId:
-			value->classId = AutoLang::DefaultClass::intClassId;
-			value->i = static_cast<int64_t>(value->f);
-			return;
+			return context.constValuePool.push(value->line,
+			                                   static_cast<int64_t>(value->f));
+
 		case AutoLang::DefaultClass::boolClassId:
-			value->classId = AutoLang::DefaultClass::intClassId;
-			value->i = static_cast<int64_t>(value->obj->b);
-			return;
+			return context.constValuePool.push(
+			    value->line, static_cast<int64_t>(value->obj->b));
+
 		default:
 			break;
 	}
 	throw ParserError(value->line, "Cannot convert to Int");
 }
 
-void toFloat(in_func, ConstValueNode *value) {
+ConstValueNode *toFloat(in_func, ConstValueNode *value) {
 	switch (value->classId) {
 		case AutoLang::DefaultClass::intClassId:
-			value->classId = AutoLang::DefaultClass::floatClassId;
-			value->f = static_cast<double>(value->i);
-			return;
+			return context.constValuePool.push(value->line,
+			                                   static_cast<double>(value->i));
+
 		case AutoLang::DefaultClass::floatClassId:
-			return;
+			return value;
+
 		case AutoLang::DefaultClass::boolClassId:
-			value->classId = AutoLang::DefaultClass::floatClassId;
-			value->f = static_cast<double>(value->obj->b);
-			return;
+			return context.constValuePool.push(
+			    value->line, static_cast<double>(value->obj->b));
+
 		default:
 			break;
 	}
 	throw ParserError(value->line, "Cannot convert to Float");
 }
 
-void toBool(in_func, ConstValueNode *value) {
+ConstValueNode *toBool(in_func, ConstValueNode *value) {
 	switch (value->classId) {
-		case AutoLang::DefaultClass::intClassId: {
-			value->classId = AutoLang::DefaultClass::boolClassId;
-			bool b = value->i != 0;
-			value->obj = ObjectManager::createBoolObject(b);
-			value->id = ConstValueNode::getBoolId(b);
-			return;
-		}
-		case AutoLang::DefaultClass::floatClassId: {
-			value->classId = AutoLang::DefaultClass::boolClassId;
-			bool b = value->f != 0;
-			value->obj = ObjectManager::createBoolObject(b);
-			value->id = ConstValueNode::getBoolId(b);
-			return;
-		}
+		case AutoLang::DefaultClass::intClassId:
+			return context.constValuePool.push(value->line, value->i != 0);
+
+		case AutoLang::DefaultClass::floatClassId:
+			return context.constValuePool.push(value->line, value->f != 0);
+
 		case AutoLang::DefaultClass::boolClassId:
-			return;
+			return value;
+
 		default:
 			break;
 	}
 	throw ParserError(value->line, "Cannot convert to Bool");
 }
 
-void toString(in_func, ConstValueNode *value) {
+ConstValueNode *toString(in_func, ConstValueNode *value) {
 	switch (value->classId) {
 		case AutoLang::DefaultClass::intClassId:
-			value->classId = AutoLang::DefaultClass::stringClassId;
-			value->str = new std::string(std::to_string(value->i));
-			return;
+			return context.constValuePool.push(value->line,
+			                                   std::to_string(value->i));
+
 		case AutoLang::DefaultClass::floatClassId:
-			value->classId = AutoLang::DefaultClass::stringClassId;
-			value->str = new std::string(std::to_string(value->f));
-			return;
+			return context.constValuePool.push(value->line,
+			                                   std::to_string(value->f));
+
 		case AutoLang::DefaultClass::boolClassId:
-			value->classId = AutoLang::DefaultClass::stringClassId;
-			value->str = new std::string(value->obj->b ? "true" : "false");
-			return;
+			return context.constValuePool.push(
+			    value->line, value->obj->b ? "true" : "false");
+
 		case AutoLang::DefaultClass::stringClassId:
-			return;
+			return value;
+
 		default:
 			break;
 	}

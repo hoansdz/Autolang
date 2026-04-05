@@ -1,10 +1,15 @@
 #ifndef AUTOLANG_HPP
 #define AUTOLANG_HPP
 
-#ifndef NO_INCLUDE_FILE
+#ifndef NO_INCLUDE_LIBS_FILE
 #include "frontend/libs/file.cpp"
 #endif
-#include "frontend/ACompiler.hpp"
+#ifndef NO_INCLUDE_LIBS_DATE
+#include "frontend/libs/date.cpp"
+#endif
+#ifndef NO_INCLUDE_LIBS_REGEX
+#include "frontend/libs/regex.cpp"
+#endif
 #include "backend/libs/array.cpp"
 #include "backend/libs/map.cpp"
 #include "backend/libs/set.cpp"
@@ -12,8 +17,9 @@
 #include "backend/vm/AVMLoader.cpp"
 #include "backend/vm/AVMLog.cpp"
 #include "frontend/ACompiler.cpp"
+#include "frontend/ACompiler.hpp"
 #include "frontend/lexer/Lexer.cpp"
-#include "frontend/libs/math.cpp"
+#include "frontend/libs/math.cpp" 
 #include "frontend/libs/stdlib.cpp"
 #include "frontend/libs/time.cpp"
 #include "frontend/libs/vm.cpp"
@@ -66,6 +72,5 @@
 #include "shared/DefaultFunction.cpp"
 #include "shared/ObjectManager.cpp"
 #include "shared/StackAllocator.cpp"
-
 
 #endif

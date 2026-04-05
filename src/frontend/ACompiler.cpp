@@ -8,10 +8,15 @@
 #include "frontend/libs/time.hpp"
 #include "frontend/libs/vm.hpp"
 
-#ifndef NO_INCLUDE_FILE
+#ifndef NO_INCLUDE_LIBS_FILE
 #include "frontend/libs/file.hpp"
 #endif
-
+#ifndef NO_INCLUDE_LIBS_DATE
+#include "frontend/libs/date.hpp"
+#endif
+#ifndef NO_INCLUDE_LIBS_REGEX
+#include "frontend/libs/regex.hpp"
+#endif
 #include <chrono>
 #include <filesystem>
 #include <iostream>
@@ -698,8 +703,16 @@ ACompiler::ACompiler() {
 	state = CompilerState::CT_READY;
 	AutoLang::Libs::Math::init(*this);
 	state = CompilerState::CT_READY;
-#ifndef NO_INCLUDE_FILE
+#ifndef NO_INCLUDE_LIBS_FILE
 	AutoLang::Libs::file::init(*this);
+	state = CompilerState::CT_READY;
+#endif
+#ifndef NO_INCLUDE_LIBS_DATE
+	AutoLang::Libs::date::init(*this);
+	state = CompilerState::CT_READY;
+#endif
+#ifndef NO_INCLUDE_LIBS_REGEX
+	AutoLang::Libs::regex::init(*this);
 	state = CompilerState::CT_READY;
 #endif
 }

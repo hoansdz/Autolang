@@ -255,7 +255,6 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			return;
 		}
 		if (accessNullable) {
-			assert(context.jumpIfNullNode != nullptr);
 			bytecodes.emplace_back(
 			    context.jumpIfNullNode->returnNullIfNull
 			        ? Opcode::LOAD_MEMBER_CAN_RET_NULL_OR_JUMP

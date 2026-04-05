@@ -50,26 +50,17 @@ ExprNode *UnaryNode::resolve(in_func) {
 				case Lexer::TokenType::MINUS: {
 					switch (value->classId) {
 						case AutoLang::DefaultClass::intClassId: {
-							value->i = -value->i;
-							auto result = value;
-							value = nullptr;
-							ExprNode::deleteNode(this);
-							return result;
+							return context.constValuePool.push(value->line,
+							                                   -value->i);
 						}
 						case AutoLang::DefaultClass::floatClassId: {
-							value->f = -value->f;
-							auto result = value;
-							value = nullptr;
-							ExprNode::deleteNode(this);
-							return result;
+							return context.constValuePool.push(value->line,
+							                                   -value->f);
 						}
 						case AutoLang::DefaultClass::boolClassId: {
-							value->classId = AutoLang::DefaultClass::intClassId;
-							value->i = static_cast<int64_t>(-value->obj->b);
-							auto result = value;
-							value = nullptr;
-							ExprNode::deleteNode(this);
-							return result;
+							return context.constValuePool.push(
+							    value->line,
+							    -static_cast<int64_t>(value->obj->b));
 						}
 						default:
 							break;
@@ -78,13 +69,8 @@ ExprNode *UnaryNode::resolve(in_func) {
 				}
 				case Lexer::TokenType::NOT: {
 					if (value->classId == AutoLang::DefaultClass::boolClassId) {
-						value->obj = ObjectManager::create(!value->obj->b);
-						value->id =
-						    context.getBoolConstValuePosition(value->obj->b);
-						auto result = value;
-						value = nullptr;
-						ExprNode::deleteNode(this);
-						return result;
+						return context.constValuePool.push(value->line,
+						                                   !value->obj->b);
 					}
 					// if (value->classId ==
 					// AutoLang::DefaultClass::nullClassId)

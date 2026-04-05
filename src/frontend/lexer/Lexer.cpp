@@ -85,11 +85,16 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 			++i;
 			return true;
 		}
-		case '\"':
+		case '\"': {
+			context.pos = i + 1;
+			++i;
+			loadQuote<true, false>(context, i);
+			return true;
+		}
 		case '\'': {
 			context.pos = i + 1;
 			++i;
-			loadQuote(context, chr, i);
+			loadQuote<true, true>(context, i);
 			return true;
 		}
 		case '(':
@@ -457,8 +462,9 @@ ended:;
 	return std::string(context.line + context.pos, i - context.pos);
 }
 
-template <bool addLParen>
-void loadQuote(Context &context, char quote, uint32_t &i) {
+template <bool addLParen, bool isChar>
+void loadQuote(Context &context, uint32_t &i) {
+	constexpr char quote = isChar ? '\'' : '\"';
 	bool isSpecialCase = false;
 	std::string newStr;
 	char chr;
@@ -477,6 +483,12 @@ first:;
 						throw LexerError(context.linePos,
 						                 std::string("Expected ") + quote +
 						                     " but not found");
+					if constexpr (isChar) {
+						throw LexerError(context.linePos,
+						                 "Invalid char literal: interpolation "
+						                 "is not allowed");
+						return;
+					}
 					chr = context.line[i];
 					if (chr != '{') {
 						if (!std::isalpha(chr) && chr != '_') {
@@ -505,7 +517,7 @@ first:;
 						}
 						context.tokens.emplace_back(context.linePos,
 						                            TokenType::PLUS);
-						loadQuote<false>(context, quote, i);
+						loadQuote<false, isChar>(context, i);
 						if constexpr (addLParen) {
 							context.tokens.emplace_back(context.linePos,
 							                            TokenType::RPAREN);
@@ -541,7 +553,7 @@ first:;
 					}
 					context.tokens.emplace_back(context.linePos,
 					                            TokenType::PLUS);
-					loadQuote<false>(context, quote, i);
+					loadQuote<false, isChar>(context, i);
 					if constexpr (addLParen) {
 						context.tokens.emplace_back(context.linePos,
 						                            TokenType::RPAREN);
@@ -551,6 +563,30 @@ first:;
 			}
 			if (chr == quote) {
 				++i;
+				if constexpr (isChar) {
+					switch (newStr.size()) {
+						case 0: {
+							context.tokens.emplace_back(
+							    context.linePos, TokenType::NUMBER,
+							    pushLexerString(context, "0"));
+							return;
+						}
+						case 1: {
+							uint8_t value = newStr[0];
+							context.tokens.emplace_back(
+							    context.linePos, TokenType::NUMBER,
+							    pushLexerString(context, std::to_string(value)));
+							return;
+						}
+						default: {
+							throw LexerError(
+							    context.linePos,
+							    "Invalid char literal: expected "
+							    "exactly 1 Unicode code point, got " +
+							        std::to_string(newStr.size()));
+						}
+					}
+				}
 				context.tokens.emplace_back(
 				    context.linePos, TokenType::STRING,
 				    pushLexerString(context, std::move(newStr)));

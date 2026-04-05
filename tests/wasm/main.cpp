@@ -3,8 +3,6 @@
 #include <iostream>
 #include <string>
 
-#define NO_INCLUDE_FILE
-
 extern "C" {
 EMSCRIPTEN_KEEPALIVE
 void runCompiler(const char *path, const char *data) {

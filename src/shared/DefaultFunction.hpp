@@ -27,6 +27,7 @@ inline std::string to_string(ANotifier &notifier, AObject *obj);
 inline AObject *get_string_size(NativeFuncInData);
 inline AObject *input_str(NativeFuncInData);
 inline AObject *str_get(NativeFuncInData);
+inline AObject *str_char_at(NativeFuncInData);
 
 AObject *data_constructor(NativeFuncInData) {
 	AObject *obj = args[0];
@@ -224,6 +225,28 @@ AObject *str_get(NativeFuncInData) {
 	}
 
 	return notifier.createString(AString::from(str->data[pos]));
+}
+
+AObject *str_char_at(NativeFuncInData) {
+	AString *str = args[0]->str;
+	int64_t pos = args[1]->i;
+
+	auto len = str->size;
+
+	if (len == 0) {
+		notifier.throwException("Empty string");
+		return nullptr;
+	}
+
+	if (pos < 0)
+		pos += len;
+
+	if (pos < 0 || pos >= len) {
+		notifier.throwException("Index out of range");
+		return nullptr;
+	}
+
+	return notifier.createInt(str->data[pos]);
 }
 
 AObject *str_contains(NativeFuncInData) {

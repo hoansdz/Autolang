@@ -60,6 +60,9 @@ class String {
 	@native("str_get")
 	func get(position: Int): String
 
+	@native("str_char_at")
+	func charAt(position: Int): Int
+
 	@native("str_substr")
 	func substr(from: Int): String
 
@@ -283,6 +286,7 @@ func assert(condition: Bool, fileName: String, line: Int) {
 	         {"str_index_of", &DefaultFunction::str_index_of},
 	         {"to_string", &DefaultFunction::to_string},
 	         {"str_get", &DefaultFunction::str_get},
+			 {"str_char_at", &DefaultFunction::str_char_at},
 	         {"str_substr", &DefaultFunction::str_substr},
 	         {"input", &DefaultFunction::input_str},
 	         {"arr_add", &array::add},
