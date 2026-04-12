@@ -28,7 +28,7 @@ void RangeNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	to->putBytecodes(in_data, bytecodes);
 }
 
-void RangeNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
+void RangeNode::rewrite(in_func, uint8_t *bytecodes) {
 	from->rewrite(in_data, bytecodes);
 	to->rewrite(in_data, bytecodes);
 }

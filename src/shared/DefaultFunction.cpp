@@ -9,7 +9,7 @@ namespace AutoLang {
 namespace DefaultFunction {
 
 void init(ACompiler& compiler) {
-	// compiler.registerFromSource("stdlib", false, R"###(
+	// compiler.registerBuiltInLibrary("stdlib", false, R"###(
 	// 	@native("print")
 	// 	func print(value: Any?)
 	// 	@native("println")

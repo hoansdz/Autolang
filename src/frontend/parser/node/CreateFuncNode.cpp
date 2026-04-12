@@ -26,14 +26,13 @@ void CreateFuncNode::pushFunction(in_func) {
 	context.functionInfo.push_back(context.functionInfoAllocator.push());
 	auto func = compile.functions[id];
 	auto funcInfo = context.functionInfo[id];
-	new (&func->bytecodes) std::vector<uint8_t>();
 	funcInfo->clazz = clazz;
 	func->maxDeclaration = parameter->parameters.size();
 	funcInfo->declaration = parameter->parameters.size();
 	funcInfo->parameter = parameter;
 }
 
-void CreateFuncNode::pushNativeFunction(in_func, ANativeFunction native) {
+void CreateFuncNode::pushNativeFunction(in_func, ANativeFunctionData *native) {
 	AClass *clazz =
 	    contextCallClassId ? compile.classes[*contextCallClassId] : nullptr;
 	id = compile.registerFunction(

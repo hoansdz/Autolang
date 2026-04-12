@@ -31,10 +31,10 @@ void OptionalAccessNode::putBytecodes(in_func,
 	value->putBytecodes(in_data, bytecodes);
 	context.jumpIfNullNode = lastJumpIfNullNode;
 
-	jumpIfNullPos = bytecodes.size();
+	jumpIfNullPos = bytecodes.size() - context.currentBytecodePos;
 }
 
-void OptionalAccessNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
+void OptionalAccessNode::rewrite(in_func, uint8_t *bytecodes) {
 	auto lastJumpIfNullNode = context.jumpIfNullNode;
 	context.jumpIfNullNode = this;
 	value->rewrite(in_data, bytecodes);

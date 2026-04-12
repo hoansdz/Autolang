@@ -209,7 +209,7 @@ AObject *str_get(NativeFuncInData) {
 	AString *str = args[0]->str;
 	int64_t pos = args[1]->i;
 
-	auto len = str->size;
+	int64_t len = str->size;
 
 	if (len == 0) {
 		notifier.throwException("Empty string");
@@ -231,7 +231,7 @@ AObject *str_char_at(NativeFuncInData) {
 	AString *str = args[0]->str;
 	int64_t pos = args[1]->i;
 
-	auto len = str->size;
+	int64_t len = str->size;
 
 	if (len == 0) {
 		notifier.throwException("Empty string");

@@ -31,6 +31,7 @@ struct CompiledProgram {
 	CompiledProgram();
 	ObjectManager manager;
 	FunctionId mainFunctionId;
+	std::vector<uint8_t> allBytecodes;
 	ChunkArena<Function, 64> functionAllocator;
 	std::vector<Function *> functions;
 	HashMap<std::string, std::vector<FunctionId>> funcMap;

@@ -1,10 +1,13 @@
 #ifndef AFUNCTION_HPP
 #define AFUNCTION_HPP
 
+#include "shared/ANativeFunctionData.hpp"
+#include "shared/Bytecodes.hpp"
 #include "shared/CompiledProgram.hpp"
 #include "shared/FunctionFlags.hpp"
 #include "shared/ObjectManager.hpp"
 #include "shared/StackAllocator.hpp"
+
 
 namespace AutoLang {
 
@@ -15,14 +18,15 @@ struct Function {
 	ClassId returnId;
 	uint32_t functionFlags;
 	union {
-		ANativeFunction native;
-		std::vector<uint8_t> bytecodes;
+		ANativeFunctionData *native;
+		Bytecodes bytecodes;
 	};
 	uint32_t maxDeclaration;
 	FunctionId id;
 	Function()
-	    : args(nullptr), functionFlags(FunctionFlags::FUNC_IS_NATIVE),
-	      returnId(0), maxDeclaration(0), id(0) {}
+	    : args(nullptr), returnId(0),
+	      functionFlags(FunctionFlags::FUNC_IS_NATIVE), maxDeclaration(0),
+	      id(0) {}
 	// Function(ClassId id, std::string name, AObject
 	// *(*native)(NativeFuncInput),
 	//          bool isStatic, ClassId *args, bool* nullableArgs, argsSize,
@@ -46,9 +50,9 @@ struct Function {
 	}
 
 	~Function() {
-		if (!(functionFlags & FunctionFlags::FUNC_IS_NATIVE)) {
-			bytecodes.~vector<uint8_t>();
-		}
+		// if (!(functionFlags & FunctionFlags::FUNC_IS_NATIVE)) {
+		// 	bytecodes.~vector<uint8_t>();
+		// }
 		if (args)
 			delete[] args;
 	}

@@ -117,7 +117,7 @@ void CreateMapNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	put_opcode_u32(bytecodes, values.size());
 }
 
-void CreateMapNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
+void CreateMapNode::rewrite(in_func, uint8_t *bytecodes) {
 	for (auto &[key, value] : values) {
 		key->rewrite(in_data, bytecodes);
 		value->rewrite(in_data, bytecodes);

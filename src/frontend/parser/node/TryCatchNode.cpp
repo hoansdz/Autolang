@@ -19,24 +19,27 @@ void TryCatchNode::optimize(in_func) {
 
 void TryCatchNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	bytecodes.emplace_back(Opcode::ADD_TRY_BLOCK);
-	Offset jumpToCatchPos = bytecodes.size();
+	Offset jumpToCatchPos = bytecodes.size() - context.currentBytecodePos;
 	put_opcode_u32(bytecodes, 0);
 	body.putBytecodes(in_data, bytecodes);
 	bytecodes.emplace_back(Opcode::REMOVE_TRY_AND_JUMP);
-	Offset jumpToNewCommand = bytecodes.size();
+	Offset jumpToNewCommand = bytecodes.size() - context.currentBytecodePos;
 	put_opcode_u32(bytecodes, 0);
-	BytecodePos startCatchPos = bytecodes.size();
+	BytecodePos startCatchPos = bytecodes.size() - context.currentBytecodePos;
 	bytecodes.emplace_back(Opcode::LOAD_EXCEPTION);
 	bytecodes.emplace_back(exceptionDeclaration->isGlobal
 	                           ? Opcode::STORE_GLOBAL
 	                           : Opcode::STORE_LOCAL);
 	put_opcode_u32(bytecodes, exceptionDeclaration->id);
 	catchBody.putBytecodes(in_data, bytecodes);
-	rewrite_opcode_u32(bytecodes, jumpToCatchPos, startCatchPos);
-	rewrite_opcode_u32(bytecodes, jumpToNewCommand, bytecodes.size());
+	rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
+	                   jumpToCatchPos, startCatchPos);
+	rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
+	                   jumpToNewCommand,
+	                   bytecodes.size() - context.currentBytecodePos);
 }
 
-void TryCatchNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
+void TryCatchNode::rewrite(in_func, uint8_t *bytecodes) {
 	body.rewrite(in_data, bytecodes);
 	catchBody.rewrite(in_data, bytecodes);
 }

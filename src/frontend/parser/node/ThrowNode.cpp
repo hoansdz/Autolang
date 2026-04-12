@@ -35,7 +35,7 @@ void ThrowNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	bytecodes.emplace_back(Opcode::THROW_EXCEPTION);
 }
 
-void ThrowNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {}
+void ThrowNode::rewrite(in_func, uint8_t *bytecodes) {}
 
 ExprNode *ThrowNode::copy(in_func) {
 	return context.throwPool.push(

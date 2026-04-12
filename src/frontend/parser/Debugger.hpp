@@ -21,8 +21,17 @@ struct ParserError : AutoLang::Lexer::LexerError {
 	    : AutoLang::Lexer::LexerError(line, msg) {}
 };
 
-void lexerData(in_func, ACompiler &compiler, LibraryData *library,
-               std::vector<Offset> *importOffset);
+inline void lexerData(in_func, ACompiler &compiler, LibraryData *library,
+                      std::vector<Offset> *importOffset) {
+	// auto startLexer = std::chrono::high_resolution_clock::now();
+	Lexer::load(&context, library, importOffset);
+	// auto lexerTime = std::chrono::high_resolution_clock::now();
+	// auto total = std::chrono::duration_cast<std::chrono::milliseconds>(
+	//                  lexerTime - startLexer)
+	//                  .count();
+	// std::cerr << "Lexer file " << library->path << " in  " << total << "
+	// ms\n";
+}
 LibraryData *loadImport(in_func, LibraryData *currentLibrary,
                         std::vector<Lexer::Token> &tokens, ACompiler &compiler,
                         size_t i);

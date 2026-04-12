@@ -715,7 +715,7 @@ void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			bytecodes.emplace_back(context.jumpIfNullNode->returnNullIfNull
 			                           ? Opcode::JUMP_AND_SET_IF_NULL
 			                           : Opcode::JUMP_AND_DELETE_IF_NULL);
-			jumpIfNullPos = bytecodes.size();
+			jumpIfNullPos = bytecodes.size() - context.currentBytecodePos;
 			put_opcode_u32(bytecodes, 0);
 		}
 	}
@@ -758,14 +758,16 @@ void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			bool returnVoid =
 			    func->returnId == DefaultClass::voidClassId ||
 			    (func->functionFlags & FunctionFlags::FUNC_WAIT_INPUT);
-			if (func->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
-				bytecodes.emplace_back(returnVoid
-				                           ? Opcode::CALL_VOID_NATIVE_FUNCTION
-				                           : Opcode::CALL_NATIVE_FUNCTION);
-			} else {
-				bytecodes.emplace_back(returnVoid ? Opcode::CALL_VOID_FUNCTION
-				                                  : Opcode::CALL_FUNCTION);
-			}
+			bytecodes.emplace_back(returnVoid ? Opcode::CALL_VOID_FUNCTION
+			                                  : Opcode::CALL_FUNCTION);
+			// if (func->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
+			// 	bytecodes.emplace_back(returnVoid
+			// 	                           ? Opcode::CALL_VOID_NATIVE_FUNCTION
+			// 	                           : Opcode::CALL_NATIVE_FUNCTION);
+			// } else {
+			// 	bytecodes.emplace_back(returnVoid ? Opcode::CALL_VOID_FUNCTION
+			// 	                                  : Opcode::CALL_FUNCTION);
+			// }
 		}
 		put_opcode_u32(bytecodes, funcId);
 	}
@@ -773,7 +775,7 @@ void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	// std::cout<<funcId<<'\n';
 }
 
-void CallNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
+void CallNode::rewrite(in_func, uint8_t *bytecodes) {
 	for (auto argument : arguments) {
 		argument->rewrite(in_data, bytecodes);
 	}

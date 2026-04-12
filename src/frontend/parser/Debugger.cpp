@@ -15,18 +15,6 @@
 
 namespace AutoLang {
 
-void lexerData(in_func, ACompiler &compiler, LibraryData *library,
-               std::vector<Offset> *importOffset) {
-	// auto startLexer = std::chrono::high_resolution_clock::now();
-	Lexer::load(&context, library, importOffset);
-	// auto lexerTime = std::chrono::high_resolution_clock::now();
-	// auto total = std::chrono::duration_cast<std::chrono::milliseconds>(
-	//                  lexerTime - startLexer)
-	//                  .count();
-	// std::cerr << "Lexer file " << library->path << " in  " << total << "
-	// ms\n";
-}
-
 void freeData(in_func) {
 	for (auto *funcInfo : context.functionInfo) {
 		funcInfo->body.refresh();
@@ -395,7 +383,7 @@ void loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i,
 			throw err;
 		} catch (const ParserError &err) {
 			context.hasError = true;
-			context.logMessage(err.line, err.message);
+			context.logError(err.line, err.message);
 			Lexer::Token *token;
 			uint32_t countScope = 1;
 			while (nextToken(&token, context.tokens, i)) {

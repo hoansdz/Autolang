@@ -368,7 +368,7 @@ void init(AutoLang::ACompiler &compiler) {
     nativeMap.emplace("log", &Math::log);
     nativeMap.emplace("exp", &Math::exp);
 
-    compiler.registerFromSource("std/math", R"###(
+    compiler.registerBuiltInLibrary("std/math", R"###(
 @no_constructor
 class Math {
 	// --- HẰNG SỐ ---

@@ -14,7 +14,7 @@ public:
 	inline static AString* from(const char* value) {
 		size_t size = strlen(value);
         char* str = new char[size + 1];
-		strcpy(str, value);
+		memcpy(str, value, size + 1);
         return new AString(str, size);
     }
 

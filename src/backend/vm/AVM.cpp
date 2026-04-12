@@ -13,7 +13,7 @@
 namespace AutoLang {
 
 void AVM::run() {
-	std::cerr << "----------------RUNTIME----------------" << '\n';
+	// std::cerr << "----------------RUNTIME----------------" << '\n';
 	// auto start = std::chrono::high_resolution_clock::now();
 	stackAllocator.top = 0;
 	auto mainCallFrame = callFrames.push();
@@ -110,7 +110,7 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 	notifier->callFrame = currentCallFrame;
 
 	if (currentCallFrame->func->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
-		auto obj = currentCallFrame->func->native(
+		auto obj = (*currentCallFrame->func->native)(
 		    *notifier, stackAllocator.currentPtr, argumentCount);
 		stackAllocator.clear(data.manager, currentCallFrame->fromStackAllocator,
 		                     stackAllocator.top +
@@ -157,6 +157,7 @@ bool AVM::callNativeFunction(CallFrame *&currentCallFrame,
 	stackAllocator.setTop(fromStackAllocator);
 	auto *func = data.functions[get_u32(bytecodes, i)];
 	stackAllocator.ensure(func->argSize);
+	currentCallFrame->func = func;
 	for (size_t size = func->argSize; size-- > 0;) {
 		auto object = stack.pop();
 		assert(object != nullptr);
@@ -164,7 +165,8 @@ bool AVM::callNativeFunction(CallFrame *&currentCallFrame,
 	}
 
 	auto obj =
-	    func->native(*notifier, stackAllocator.currentPtr, func->argSize);
+	    (*func->native)(*notifier, stackAllocator.currentPtr, func->argSize);
+	currentCallFrame->func = currentFunction;
 	stackAllocator.clear(data.manager, fromStackAllocator,
 	                     fromStackAllocator + func->argSize - 1);
 	if (currentCallFrame->exception) {
@@ -205,7 +207,7 @@ bool AVM::callFunctionObject(AObject *obj) {
 		for (uint32_t i = argumentCount; i-- > funcObj->size;) {
 			funcObj->args[i] = stack.pop();
 		}
-		auto obj = currentCallFrame->func->native(
+		auto obj = (*currentCallFrame->func->native)(
 		    *notifier, stackAllocator.currentPtr, argumentCount);
 		if (currentCallFrame->exception) {
 			currentCallFrame->exception->retain();
@@ -249,7 +251,7 @@ bool AVM::callFunction(CallFrame *currentCallFrame, uint32_t argumentCount) {
 	notifier->callFrame = currentCallFrame;
 
 	if (currentCallFrame->func->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
-		auto obj = currentCallFrame->func->native(
+		auto obj = (*currentCallFrame->func->native)(
 		    *notifier, stackAllocator.currentPtr, argumentCount);
 		if (currentCallFrame->exception) {
 			// stackAllocator.clear(
@@ -436,9 +438,10 @@ resumeCallFrame:;
 		}
 	}
 	auto *currentFunction = currentCallFrame->func;
-	auto *bytecodes = currentCallFrame->func->bytecodes.data();
+	auto *bytecodes =
+	    data.allBytecodes.data() + currentCallFrame->func->bytecodes.offset;
 	uint32_t &i = currentCallFrame->i;
-	const size_t size = currentCallFrame->func->bytecodes.size();
+	const size_t size = currentCallFrame->func->bytecodes.size;
 	notifier->callFrame = currentCallFrame;
 	// std::cerr << "Called function " << currentCallFrame->func->name << " "
 	//           << currentCallFrame->fromStackAllocator << " with "

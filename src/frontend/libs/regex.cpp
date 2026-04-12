@@ -96,7 +96,7 @@ void init(ACompiler &compiler) {
     nativeMap.emplace("regex_find_all", &regex::find_all);
     nativeMap.emplace("regex_replace", &regex::replace);
 
-    compiler.registerFromSource(
+    compiler.registerBuiltInLibrary(
         "std/regex", R"###(
 @no_constructor
 @no_extends

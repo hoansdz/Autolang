@@ -12,9 +12,9 @@ void printMemoryUsage() {
 
 	GetProcessMemoryInfo(GetCurrentProcess(), &info, sizeof(info));
 
-	std::cout << "RAM used: " << info.WorkingSetSize / 1024 << " KB\n";
+	std::cout << "RAM used: " << info.WorkingSetSize / 1024 / 1024 << " MB\n";
 
-	std::cout << "Peak RAM: " << info.PeakWorkingSetSize / 1024 << " KB\n";
+	std::cout << "Peak RAM: " << info.PeakWorkingSetSize / 1024 / 1024 << " MB\n";
 }
 
 #endif

@@ -10,11 +10,11 @@ namespace AutoLang {
 
 void SkipNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	bytecodes.emplace_back(Opcode::JUMP);
-	jumpBytePos = bytecodes.size();
+	jumpBytePos = bytecodes.size() - context.currentBytecodePos;
 	put_opcode_u32(bytecodes, 0);
 }
 
-void SkipNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
+void SkipNode::rewrite(in_func, uint8_t *bytecodes) {
 	switch (type) {
 		case Lexer::TokenType::CONTINUE:
 			rewrite_opcode_u32(bytecodes, jumpBytePos, context.continuePos);
@@ -27,7 +27,7 @@ void SkipNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
 	}
 }
 
-void CanBreakContinueNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
+void CanBreakContinueNode::rewrite(in_func, uint8_t *bytecodes) {
 	uint32_t lastContinuePos = context.continuePos;
 	uint32_t lastBreakPos = context.breakPos;
 	context.continuePos = continuePos;
@@ -38,7 +38,7 @@ void CanBreakContinueNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
 }
 
 void WhileNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	continuePos = bytecodes.size();
+	continuePos = bytecodes.size() - context.currentBytecodePos;
 
 	if (condition->kind == NodeType::CONST) {
 		// Is bool because optimize forbiddened others
@@ -49,19 +49,21 @@ void WhileNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		body.putBytecodes(in_data, bytecodes);
 		bytecodes.emplace_back(Opcode::JUMP);
 		put_opcode_u32(bytecodes, continuePos);
-		breakPos = bytecodes.size();
+		breakPos = bytecodes.size() - context.currentBytecodePos;
 		return;
 	}
 
 	condition->putBytecodes(in_data, bytecodes);
 	bytecodes.emplace_back(Opcode::JUMP_IF_FALSE);
-	size_t jumpIfFalseByte = bytecodes.size();
+	size_t jumpIfFalseByte = bytecodes.size() - context.currentBytecodePos;
 	put_opcode_u32(bytecodes, 0);
 	body.putBytecodes(in_data, bytecodes);
 	bytecodes.emplace_back(Opcode::JUMP);
 	put_opcode_u32(bytecodes, continuePos);
-	rewrite_opcode_u32(bytecodes, jumpIfFalseByte, bytecodes.size());
-	breakPos = bytecodes.size();
+	rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
+	                   jumpIfFalseByte,
+	                   bytecodes.size() - context.currentBytecodePos);
+	breakPos = bytecodes.size() - context.currentBytecodePos;
 }
 
 void ReturnNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {

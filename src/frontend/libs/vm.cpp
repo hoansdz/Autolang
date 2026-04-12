@@ -18,7 +18,7 @@ AObject *count_area_object(NativeFuncInData) {
 }
 
 void init(ACompiler &compiler) {
-	compiler.registerFromSource("std/vm", R"###(
+	compiler.registerBuiltInLibrary("std/vm", R"###(
 @no_constructor
 class VM {
 	@native("count_area_object")

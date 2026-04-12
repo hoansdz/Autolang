@@ -423,7 +423,7 @@ void loadConstructor(in_func, size_t &i) {
 		// ++j) { 	auto *param = constructor->parameter->parameters[j];
 		// param->id = j;
 		// }
-		func->native = it->second;
+		func->native = &it->second;
 	} else {
 		// Add to scope
 		auto &scope = funcInfo->scopes.back();

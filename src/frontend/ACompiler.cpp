@@ -2,11 +2,11 @@
 #define ACOMPILER_CPP
 
 #include "ACompiler.hpp"
-#include "shared/DefaultFunction.hpp"
 #include "frontend/libs/math.hpp"
 #include "frontend/libs/stdlib.hpp"
 #include "frontend/libs/time.hpp"
 #include "frontend/libs/vm.hpp"
+#include "shared/DefaultFunction.hpp"
 
 #ifndef NO_INCLUDE_LIBS_FILE
 #include "frontend/libs/file.hpp"
@@ -41,7 +41,7 @@ LibraryData *ACompiler::requestImport(LibraryData *currentLibrary,
 		return nullptr;
 	std::filesystem::path input = path;
 	std::filesystem::path currentPath;
-	if (currentLibrary && currentLibrary->isFile) {
+	if (currentLibrary && (currentLibrary->flags & LibraryFlags::IS_FILE)) {
 		currentPath = std::filesystem::path(currentLibrary->path).parent_path();
 	} else {
 		currentPath = std::filesystem::current_path();
@@ -51,14 +51,16 @@ LibraryData *ACompiler::requestImport(LibraryData *currentLibrary,
 		return nullptr;
 	}
 	std::string libPath = resolved.string();
+	// std::cerr << libPath << "\n";
 	{
 		auto it = generatedLibraryMap.find(libPath);
 		if (it != generatedLibraryMap.end()) {
 			return generatedLibraries[it->second];
 		}
 	}
-	// std::cout << "START    " << input << "\n" << currentPath << "\n" <<
-	// resolved << "\n";
+	// std::cout << "START    " << input << "\n"
+	//           << currentPath << "\n"
+	//           << resolved << "\n";
 	LibraryData *library = new LibraryData(
 	    libPath, 0,
 	    currentLibrary ? currentLibrary->nativeFuncMap : EMPTY_NATIVE_MAP);
@@ -113,7 +115,7 @@ void ACompiler::loadSource(LibraryData *library) {
 	state = CompilerState::CT_ANALYZED;
 }
 
-void ACompiler::registerFromSource(const char *path, bool autoImport,
+LibraryData* ACompiler::registerBuiltInLibrary(const char *path, bool autoImport,
                                    const ANativeMap &nativeFuncMap) {
 	uint32_t flags = LibraryFlags::IS_BUILT_IN;
 	if (autoImport) {
@@ -127,9 +129,10 @@ void ACompiler::registerFromSource(const char *path, bool autoImport,
 	if (autoImport) {
 		autoImportMap[path] = lib;
 	}
+	return lib;
 }
 
-void ACompiler::registerFromSource(const char *path, const char *data,
+LibraryData* ACompiler::registerBuiltInLibrary(const char *path, const char *data,
                                    bool autoImport,
                                    const ANativeMap &nativeFuncMap) {
 
@@ -145,6 +148,7 @@ void ACompiler::registerFromSource(const char *path, const char *data,
 	if (autoImport) {
 		autoImportMap[path] = lib;
 	}
+	return lib;
 }
 
 void ACompiler::loadBuiltInFunctions() {
@@ -169,6 +173,7 @@ void ACompiler::loadMainSource(const char *path,
 		throw std::runtime_error("File " + std::string(path) +
 		                         " doesn't exists");
 	}
+	parserContext.importMap[library->path] = library;
 	library->nativeFuncMap = nativeFuncMap;
 	loadMainSource(library);
 }
@@ -179,6 +184,7 @@ void ACompiler::loadMainSource(const char *path, const char *data,
 		loadBuiltInFunctions();
 	}
 	LibraryData *library = new LibraryData(path, 0, nativeFuncMap);
+	parserContext.importMap[path] = library;
 	library->rawData = data;
 	generatedLibraryMap[path] = generatedLibraries.size();
 	generatedLibraries.push_back(library);
@@ -207,6 +213,7 @@ void ACompiler::loadMainSource(LibraryData *library) {
 
 	std::vector<Offset> importOffset;
 	lexerData(in_data, *this, library, &importOffset);
+	library->rawData.clear();
 
 	if (mainSource->lexerContext.hasError) {
 		state = CompilerState::CT_ERROR;
@@ -248,6 +255,31 @@ void ACompiler::loadMainSource(LibraryData *library) {
 	context.loadingLibs.reserve(8);
 	context.loadingLibs.push_back(library);
 	loadedMainSource = true;
+}
+
+bool ACompiler::compile(const char *path, const ANativeMap &nativeFuncMap) {
+	loadMainSource(path, nativeFuncMap);
+	if (hasError()) {
+		return false;
+	}
+	generateBytecodes();
+	if (hasError()) {
+		return false;
+	}
+	return true;
+}
+
+bool ACompiler::compile(const char *path, const char *data,
+                        const ANativeMap &nativeFuncMap) {
+	loadMainSource(path, data, nativeFuncMap);
+	if (hasError()) {
+		return false;
+	}
+	generateBytecodes();
+	if (hasError()) {
+		return false;
+	}
+	return true;
 }
 
 void ACompiler::generateBytecodes() {
@@ -303,7 +335,7 @@ void ACompiler::generateBytecodes() {
 			std::cout << "Unexpected exception: " << err.what() << '\n';
 		} catch (const ParserError &err) {
 			context.hasError = true;
-			context.logMessage(err.line, err.message);
+			context.logError(err.line, err.message);
 			if (i >= context.tokens.size())
 				break;
 			uint32_t line = context.tokens[i].line;
@@ -483,42 +515,59 @@ void ACompiler::generateBytecodes() {
 				//  node->body.optimize(in_data);
 				auto func =
 				    compile.functions[classInfo->primaryConstructor->funcId];
+				context.currentBytecodePos = compile.allBytecodes.size();
+				func->bytecodes.offset = context.currentBytecodePos;
 
-				auto &bytecodes = func->bytecodes;
 				node->body.resolve(in_data);
-				node->body.putBytecodes(in_data, bytecodes);
-				node->body.rewrite(in_data, bytecodes);
+				node->body.putBytecodes(in_data, compile.allBytecodes);
+				node->body.rewrite(in_data, compile.allBytecodes.data() +
+				                                context.currentBytecodePos);
 
 				classInfo->primaryConstructor->body.resolve(in_data);
 				classInfo->primaryConstructor->body.optimize(in_data);
 				classInfo->primaryConstructor->body.putBytecodes(
-				    in_data, func->bytecodes);
-				classInfo->primaryConstructor->body.rewrite(in_data,
-				                                            func->bytecodes);
+				    in_data, compile.allBytecodes);
+				classInfo->primaryConstructor->body.rewrite(
+				    in_data,
+				    compile.allBytecodes.data() + context.currentBytecodePos);
+
+				func->bytecodes.size =
+				    compile.allBytecodes.size() - func->bytecodes.offset;
 			} else {
 				for (auto &constructor : classInfo->secondaryConstructor) {
 					auto func = compile.functions[constructor->funcId];
+					context.currentBytecodePos = compile.allBytecodes.size();
+					func->bytecodes.offset = context.currentBytecodePos;
 
 					// Put initial bytecodes, example val a = 5 => SetNode a
 					// and value 5
 					//  node->body.optimize(in_data);
 					node->body.resolve(in_data);
-					node->body.putBytecodes(in_data, func->bytecodes);
-					node->body.rewrite(in_data, func->bytecodes);
+					node->body.putBytecodes(in_data, compile.allBytecodes);
+					node->body.rewrite(in_data, compile.allBytecodes.data() +
+					                                context.currentBytecodePos);
 					// Put constructor bytecodes
 					constructor->body.resolve(in_data);
 					constructor->body.optimize(in_data);
-					constructor->body.putBytecodes(in_data, func->bytecodes);
-					constructor->body.rewrite(in_data, func->bytecodes);
+					constructor->body.putBytecodes(in_data,
+					                               compile.allBytecodes);
+					constructor->body.rewrite(in_data,
+					                          compile.allBytecodes.data() +
+					                              context.currentBytecodePos);
+
+					func->bytecodes.size =
+					    compile.allBytecodes.size() - func->bytecodes.offset;
 				}
 			}
 		}
 
+		std::vector<uint8_t> mainFunctionBytecodes;
+
 		printDebug("Start put bytecodes static nodes");
+		context.currentBytecodePos = 0;
 		for (auto &node : context.staticNode) {
-			node->putBytecodes(in_data,
-			                   context.getMainFunction(in_data)->bytecodes);
-			node->rewrite(in_data, context.getMainFunction(in_data)->bytecodes);
+			node->putBytecodes(in_data, mainFunctionBytecodes);
+			node->rewrite(in_data, mainFunctionBytecodes.data());
 		}
 
 		printDebug("Inference function type");
@@ -535,6 +584,7 @@ void ACompiler::generateBytecodes() {
 		}
 
 		printDebug("Start optimize bytecodes in main");
+		auto mainFunc = context.getMainFunction(in_data);
 		auto mainFuncInfo = context.getMainFunctionInfo(in_data);
 		for (auto *&node : mainFuncInfo->body.nodes) {
 			ParserContext::mode = node->mode;
@@ -568,14 +618,28 @@ void ACompiler::generateBytecodes() {
 				funcInfo->body.resolve(in_data);
 				funcInfo->body.optimize(in_data);
 			}
-			funcInfo->body.putBytecodes(in_data, func->bytecodes);
-			funcInfo->body.rewrite(in_data, func->bytecodes);
+			context.currentBytecodePos = compile.allBytecodes.size();
+			func->bytecodes.offset = context.currentBytecodePos;
+			funcInfo->body.putBytecodes(in_data, compile.allBytecodes);
+			funcInfo->body.rewrite(in_data, compile.allBytecodes.data() +
+			                                    context.currentBytecodePos);
+			func->bytecodes.size =
+			    compile.allBytecodes.size() - func->bytecodes.offset;
 		}
 		printDebug("Start put bytecodes in main");
-		mainFuncInfo->body.putBytecodes(
-		    in_data, context.getMainFunction(in_data)->bytecodes);
-		mainFuncInfo->body.rewrite(in_data,
-		                           context.getMainFunction(in_data)->bytecodes);
+		context.currentBytecodePos = compile.allBytecodes.size();
+		mainFunc->bytecodes.offset = context.currentBytecodePos;
+		compile.allBytecodes.insert(compile.allBytecodes.end(),
+		                            mainFunctionBytecodes.begin(),
+		                            mainFunctionBytecodes.end());
+		mainFuncInfo->body.putBytecodes(in_data, compile.allBytecodes);
+		mainFuncInfo->body.rewrite(in_data, compile.allBytecodes.data() +
+		                                        context.currentBytecodePos);
+		mainFunc->bytecodes.size =
+		    compile.allBytecodes.size() - mainFunc->bytecodes.offset;
+		if (mainFunc->bytecodes.size == 0) {
+			--mainFunc->bytecodes.offset;
+		}
 
 		printDebug("Real Declarations: " +
 		           std::to_string(context.declarationNodePool.index +
@@ -601,7 +665,7 @@ void ACompiler::generateBytecodes() {
 		// printDebug("TOTAL FUNC IN MAP: " + std::to_string(total));
 	} catch (const ParserError &err) {
 		context.hasError = true;
-		context.logMessage(err.line, err.message);
+		context.logError(err.line, err.message);
 	} catch (const std::exception &err) {
 		context.hasError = true;
 		std::cout << "Unexpected exception: " << err.what() << '\n';
@@ -651,6 +715,7 @@ void ACompiler::refresh() {
 	generatedLibraryMap.clear();
 	generatedLibraries.clear();
 	vm.restart();
+	vm.data.allBytecodes.clear();
 	vm.data.destroy();
 	// AutoLang::DefaultClass::init(vm.data);
 	// AutoLang::Libs::stdlib::init(*this);
@@ -661,8 +726,6 @@ void ACompiler::refresh() {
 	    static_cast<uint32_t>(FunctionFlags::FUNC_IS_STATIC));
 	parserContext.functionInfo.push_back(
 	    parserContext.functionInfoAllocator.push());
-	new (&vm.data.functions[vm.data.mainFunctionId]->bytecodes)
-	    std::vector<uint8_t>();
 	state = CompilerState::CT_ANALYZED;
 	if (vm.globalVariables) {
 		delete[] vm.globalVariables;
@@ -688,8 +751,6 @@ ACompiler::ACompiler() {
 	    static_cast<uint32_t>(FunctionFlags::FUNC_IS_STATIC));
 	parserContext.functionInfo.push_back(
 	    parserContext.functionInfoAllocator.push());
-	new (&vm.data.functions[vm.data.mainFunctionId]->bytecodes)
-	    std::vector<uint8_t>();
 	// AutoLang::DefaultClass::init(vm.data);
 	// AutoLang::DefaultFunction::init(vm.data);
 
@@ -702,18 +763,18 @@ ACompiler::ACompiler() {
 	//           << " ms" << '\n';
 	state = CompilerState::CT_READY;
 	AutoLang::Libs::Math::init(*this);
-	state = CompilerState::CT_READY;
+	// state = CompilerState::CT_READY;
 #ifndef NO_INCLUDE_LIBS_FILE
 	AutoLang::Libs::file::init(*this);
-	state = CompilerState::CT_READY;
+	// state = CompilerState::CT_READY;
 #endif
 #ifndef NO_INCLUDE_LIBS_DATE
 	AutoLang::Libs::date::init(*this);
-	state = CompilerState::CT_READY;
+	// state = CompilerState::CT_READY;
 #endif
 #ifndef NO_INCLUDE_LIBS_REGEX
 	AutoLang::Libs::regex::init(*this);
-	state = CompilerState::CT_READY;
+	// state = CompilerState::CT_READY;
 #endif
 }
 

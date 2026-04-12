@@ -150,7 +150,8 @@ bool ForNode::putOptimizedRangeBytecode(in_func,
 					bytecodes.emplace_back(operatorId);
 					put_opcode_u32(bytecodes, detach->declaration->id);
 					put_opcode_u32(bytecodes, rightNode->declaration->id);
-					jumpIfFalseByte = bytecodes.size();
+					jumpIfFalseByte =
+					    bytecodes.size() - context.currentBytecodePos;
 					put_opcode_u32(bytecodes, 0);
 					return true;
 				}
@@ -162,7 +163,7 @@ bool ForNode::putOptimizedRangeBytecode(in_func,
 				bytecodes.emplace_back(operatorId);
 				put_opcode_u32(bytecodes, detach->declaration->id);
 				put_opcode_u32(bytecodes, rightNode->declaration->id);
-				jumpIfFalseByte = bytecodes.size();
+				jumpIfFalseByte = bytecodes.size() - context.currentBytecodePos;
 				put_opcode_u32(bytecodes, 0);
 				return true;
 			}
@@ -175,7 +176,7 @@ bool ForNode::putOptimizedRangeBytecode(in_func,
 				bytecodes.emplace_back(operatorId);
 				put_opcode_u32(bytecodes, detach->declaration->id);
 				put_opcode_u32(bytecodes, rightNode->declaration->id);
-				jumpIfFalseByte = bytecodes.size();
+				jumpIfFalseByte = bytecodes.size() - context.currentBytecodePos;
 				put_opcode_u32(bytecodes, 0);
 				return true;
 			}
@@ -187,7 +188,7 @@ bool ForNode::putOptimizedRangeBytecode(in_func,
 			bytecodes.emplace_back(operatorId);
 			put_opcode_u32(bytecodes, detach->declaration->id);
 			put_opcode_u32(bytecodes, rightNode->declaration->id);
-			jumpIfFalseByte = bytecodes.size();
+			jumpIfFalseByte = bytecodes.size() - context.currentBytecodePos;
 			put_opcode_u32(bytecodes, 0);
 			return true;
 		}
@@ -210,7 +211,7 @@ bool ForNode::putOptimizedRangeBytecode(in_func,
 			bytecodes.emplace_back(operatorId);
 			put_opcode_u32(bytecodes, detach->declaration->id);
 			put_opcode_u32(bytecodes, rightNode->id);
-			jumpIfFalseByte = bytecodes.size();
+			jumpIfFalseByte = bytecodes.size() - context.currentBytecodePos;
 			put_opcode_u32(bytecodes, 0);
 			return true;
 		}
@@ -237,14 +238,17 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			bytecodes.emplace_back(rangeNode->lessThan ? Opcode::LESS_THAN
 			                                           : Opcode::LESS_THAN_EQ);
 			bytecodes.emplace_back(Opcode::JUMP_IF_FALSE);
-			setupJumpIfFalse = bytecodes.size();
+			setupJumpIfFalse = bytecodes.size() - context.currentBytecodePos;
 			put_opcode_u32(bytecodes, 0);
 			bytecodes.emplace_back(Opcode::JUMP);
-			BytecodePos firstSkipByte = bytecodes.size();
+			BytecodePos firstSkipByte =
+			    bytecodes.size() - context.currentBytecodePos;
 			put_opcode_u32(bytecodes, 0);
 			// detach++ => skip first
-			continuePos = bytecodes.size();
-			rewrite_opcode_u32(bytecodes, firstSkipByte, bytecodes.size());
+			continuePos = bytecodes.size() - context.currentBytecodePos;
+			rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
+			                   firstSkipByte,
+			                   bytecodes.size() - context.currentBytecodePos);
 			if (putOptimizedRangeBytecode(in_data, bytecodes, jumpIfFalseByte,
 			                              firstSkipByte)) {
 
@@ -257,10 +261,12 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				                           ? Opcode::LESS_THAN
 				                           : Opcode::LESS_THAN_EQ);
 				bytecodes.emplace_back(Opcode::JUMP_IF_FALSE);
-				jumpIfFalseByte = bytecodes.size();
+				jumpIfFalseByte = bytecodes.size() - context.currentBytecodePos;
 				put_opcode_u32(bytecodes, 0);
 			}
-			rewrite_opcode_u32(bytecodes, firstSkipByte, bytecodes.size());
+			rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
+			                   firstSkipByte,
+			                   bytecodes.size() - context.currentBytecodePos);
 			break;
 		}
 		default: {
@@ -280,7 +286,7 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					                           : Opcode::STORE_LOCAL);
 					put_opcode_u32(bytecodes, iteratorNode->declaration->id);
 
-					continuePos = bytecodes.size();
+					continuePos = bytecodes.size() - context.currentBytecodePos;
 
 					// Skip
 					static_cast<AccessNode *>(data)->isStore = false;
@@ -294,7 +300,8 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					                           : Opcode::STORE_LOCAL);
 					put_opcode_u32(bytecodes, detach->declaration->id);
 					put_opcode_u32(bytecodes, iteratorNode->declaration->id);
-					jumpIfFalseByte = bytecodes.size();
+					jumpIfFalseByte =
+					    bytecodes.size() - context.currentBytecodePos;
 					put_opcode_u32(bytecodes, 0);
 					break;
 				}
@@ -311,10 +318,14 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	bytecodes.emplace_back(Opcode::JUMP);
 	put_opcode_u32(bytecodes, continuePos);
 	if (setupJumpIfFalse) {
-		rewrite_opcode_u32(bytecodes, *setupJumpIfFalse, bytecodes.size());
+		rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
+		                   *setupJumpIfFalse,
+		                   bytecodes.size() - context.currentBytecodePos);
 	}
-	rewrite_opcode_u32(bytecodes, jumpIfFalseByte, bytecodes.size());
-	breakPos = bytecodes.size();
+	rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
+	                   jumpIfFalseByte,
+	                   bytecodes.size() - context.currentBytecodePos);
+	breakPos = bytecodes.size() - context.currentBytecodePos;
 }
 
 ForNode::~ForNode() {

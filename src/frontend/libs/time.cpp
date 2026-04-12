@@ -39,7 +39,7 @@ inline AObject *format(NativeFuncInData) {
 }
 
 void init(ACompiler &compiler) {
-	compiler.registerFromSource(
+	compiler.registerBuiltInLibrary(
 	    "std/time", R"###(
 @no_constructor
 class Time {

@@ -145,7 +145,7 @@ void loadAnnotations(in_func, size_t &i) {
 			if (path[0] == '.') {
 				std::filesystem::path input = path;
 				std::filesystem::path currentPath;
-				if (context.mode->isFile) {
+				if (context.mode->flags & LibraryFlags::IS_FILE) {
 					currentPath =
 					    std::filesystem::path(context.mode->path).parent_path();
 				} else {

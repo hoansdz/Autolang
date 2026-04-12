@@ -3,10 +3,12 @@
 
 #include "ankerl/unordered_dense.h"
 #include <iostream>
+#include <functional>
 #include <ankerl/unordered_dense.h>
 
 namespace AutoLang {
 struct AObject;
+struct ANativeFunctionData;
 class ANotifier;
 class ACompiler;
 }
@@ -37,6 +39,7 @@ template<
 >
 using HashSet = ankerl::unordered_dense::set<T, Hash, Equal>;
 using ANativeFunction = AutoLang::AObject*(*)(NativeFuncInput);
-using ANativeMap = HashMap<std::string, ANativeFunction>;
+using ANativeLambdaFunction = std::function<AutoLang::AObject*(NativeFuncInput)>;
+using ANativeMap = HashMap<std::string, AutoLang::ANativeFunctionData>;
 
 #endif

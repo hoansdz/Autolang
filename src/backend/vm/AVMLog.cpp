@@ -21,7 +21,7 @@ void AVM::log() {
 	for (auto &func : data.functions) {
 		std::cerr << func->toString(data) << std::endl;
 	}
-	/*uint32_t totalSize = bytecodes.size() +
+	/*uint32_t totalSize = bytecodes.size() - context.currentBytecodePos +
 	    sizeof(AVM) +
 	    data.functions.size() * sizeof(Function) +
 	    data.classes.size() * sizeof(ClassInfo) +
@@ -139,8 +139,8 @@ void AVM::log(Function *currentFunction) {
 		std::cerr << "Has native function" << "\n";
 		return;
 	}
-	auto *bytecodes = currentFunction->bytecodes.data();
-	auto size = currentFunction->bytecodes.size();
+	auto *bytecodes = &data.allBytecodes[currentFunction->bytecodes.offset];
+	auto size = currentFunction->bytecodes.size;
 	std::cerr << "Size: " << size << " bytes" << "\n";
 	uint32_t i = 0;
 	while (i < size) {

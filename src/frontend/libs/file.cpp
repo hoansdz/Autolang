@@ -308,7 +308,7 @@ inline AObject *get_last_modified(NativeFuncInData) {
 }
 
 void init(ACompiler &compiler) {
-    compiler.registerFromSource(
+    compiler.registerBuiltInLibrary(
         "std/file", R"###(
 enum FileMode {
     READ,          

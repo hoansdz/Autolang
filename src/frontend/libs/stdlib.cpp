@@ -14,7 +14,7 @@ namespace AutoLang {
 namespace Libs {
 namespace stdlib {
 void init(ACompiler &compiler) {
-	compiler.registerFromSource(
+	compiler.registerBuiltInLibrary(
 	    "stdlib", R"###(
 @no_extends
 @no_constructor

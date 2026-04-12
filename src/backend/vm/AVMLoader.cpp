@@ -11,6 +11,7 @@ namespace AutoLang {
 
 AVM::AVM(bool allowDebug) : allowDebug(allowDebug), notifier(new ANotifier(this)) {
 	data.manager.notifier = notifier;
+	data.allBytecodes.reserve(256);
 }
 
 void AVM::start() {

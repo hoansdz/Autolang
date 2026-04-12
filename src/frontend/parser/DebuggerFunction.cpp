@@ -352,7 +352,7 @@ createFunc:;
 			throw ParserError(firstLine, "Native function name '" + name +
 			                                 "' could not be found");
 		}
-		node->pushNativeFunction(in_data, it->second);
+		node->pushNativeFunction(in_data, &it->second);
 		auto func = compile.functions[node->id];
 		context.gotoFunction(node->id);
 		// for (size_t i = 1; i < node->parameter->parameters.size(); ++i) {

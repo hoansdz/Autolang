@@ -94,13 +94,3 @@
 // // }
 
 // // println(x(1))
-
-val x = 'b'
-println(when (x) {
-	'a' -> {
-		"ok"
-	}
-	else -> {
-		"deo ok"
-	}
-})

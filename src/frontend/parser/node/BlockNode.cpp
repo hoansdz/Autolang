@@ -15,7 +15,7 @@ ExprNode *BlockNode::resolve(in_func) {
 	return this;
 }
 
-void BlockNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
+void BlockNode::rewrite(in_func, uint8_t *bytecodes) {
 	for (auto *node : nodes)
 		node->rewrite(in_data, bytecodes);
 }
@@ -137,7 +137,7 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					if (i != nodes.size() - 1) {
 						bytecodes.emplace_back(Opcode::JUMP);
 						context.mustReturnValueNode->jumpPosition.push_back(
-						    bytecodes.size());
+						    bytecodes.size() - context.currentBytecodePos);
 						put_opcode_u32(bytecodes, 0);
 					}
 					break;
@@ -149,7 +149,7 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					if (i != nodes.size() - 1) {
 						bytecodes.emplace_back(Opcode::JUMP);
 						context.mustReturnValueNode->jumpPosition.push_back(
-						    bytecodes.size());
+						    bytecodes.size() - context.currentBytecodePos);
 						put_opcode_u32(bytecodes, 0);
 					}
 					break;
@@ -161,7 +161,7 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					if (i != nodes.size() - 1) {
 						bytecodes.emplace_back(Opcode::JUMP);
 						context.mustReturnValueNode->jumpPosition.push_back(
-						    bytecodes.size());
+						    bytecodes.size() - context.currentBytecodePos);
 						put_opcode_u32(bytecodes, 0);
 					}
 					break;
@@ -197,7 +197,7 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				// 		    currentNode->value->classId !=
 				// DefaultClass::voidClassId)
 				// 			bytecodes.emplace_back(Opcode::POP);
-				// 		currentNode->jumpIfNullPos = bytecodes.size();
+				// 		currentNode->jumpIfNullPos = bytecodes.size() - context.currentBytecodePos;
 				// 		break;
 				// 	}
 				// 	case NodeType::UNARY:

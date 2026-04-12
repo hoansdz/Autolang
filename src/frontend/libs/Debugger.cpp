@@ -9,7 +9,7 @@ namespace AutoLang {
 namespace Libs {
 namespace Debugger {
 void init(ACompiler &compiler) {
-	compiler.registerFromSource(
+	compiler.registerBuiltInLibrary(
 	    "std/debugger", R"###(
 		class Debugger {
 			

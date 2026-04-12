@@ -258,7 +258,7 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	preloadGenericData = nullptr;
 
 	defaultValueParameter.clear();
-	
+
 	parameterPool.destroy();
 	functionInfoAllocator.destroy();
 	classInfoAllocator.destroy();
@@ -309,11 +309,23 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	constStringMap.clear();
 }
 
-void ParserContext::logMessage(uint32_t line, const std::string &message) {
+void ParserContext::logError(uint32_t line, const std::string &message) {
+	if (onError) {
+		std::string mes =
+		    mode->path + ":" + std::to_string(line) + ": " + message;
+		(*onError)(mes);
+		return;
+	}
 	std::cerr << mode->path << ":" << line << ": " << message << std::endl;
 }
 
 void ParserContext::warning(uint32_t line, const std::string &message) {
+	if (onWarning) {
+		std::string mes =
+		    mode->path + ":" + std::to_string(line) + ": " + message;
+		(*onWarning)(mes);
+		return;
+	}
 	std::cerr << mode->path << ":" << line << ": Warning " << message
 	          << std::endl;
 }
@@ -391,6 +403,12 @@ DeclarationNode *ParserContext::makeDeclarationNode(
 }
 
 ParserContext::~ParserContext() {
+	if (onError) {
+		delete onError;
+	}
+	if (onWarning) {
+		delete onWarning;
+	}
 	// for (auto* node : staticNode) { //Deleted
 	// 	ExprNode::deleteNode(node);
 	// }

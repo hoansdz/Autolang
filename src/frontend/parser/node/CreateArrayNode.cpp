@@ -67,7 +67,7 @@ void CreateArrayNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	put_opcode_u32(bytecodes, values.size());
 }
 
-void CreateArrayNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
+void CreateArrayNode::rewrite(in_func, uint8_t *bytecodes) {
 	for (auto *value : values) {
 		value->rewrite(in_data, bytecodes);
 	}

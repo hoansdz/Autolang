@@ -62,7 +62,8 @@ void IfNode::optimize(in_func) {
 
 ExprNode *IfNode::copy(in_func) {
 	auto newNode = context.ifPool.push(line, mustReturnValue);
-	newNode->condition = static_cast<HasClassIdNode *>(condition->copy(in_data));
+	newNode->condition =
+	    static_cast<HasClassIdNode *>(condition->copy(in_data));
 	newNode->ifTrue.nodes.reserve(ifTrue.nodes.size());
 	for (auto node : ifTrue.nodes) {
 		newNode->ifTrue.nodes.push_back(node->copy(in_data));
@@ -76,7 +77,7 @@ ExprNode *IfNode::copy(in_func) {
 void IfNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	condition->putBytecodes(in_data, bytecodes);
 	bytecodes.emplace_back(Opcode::JUMP_IF_FALSE);
-	size_t jumpIfFalseByte = bytecodes.size();
+	size_t jumpIfFalseByte = bytecodes.size() - context.currentBytecodePos;
 	put_opcode_u32(bytecodes, 0);
 	auto lastMustReturnValueNode = context.mustReturnValueNode;
 	if (mustReturnValue) {
@@ -85,24 +86,31 @@ void IfNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	ifTrue.putBytecodes(in_data, bytecodes);
 	if (ifFalse) {
 		bytecodes.emplace_back(Opcode::JUMP);
-		size_t jumpIfTrueByte = bytecodes.size();
+		size_t jumpIfTrueByte = bytecodes.size() - context.currentBytecodePos;
 		put_opcode_u32(bytecodes, 0);
-		rewrite_opcode_u32(bytecodes, jumpIfFalseByte, bytecodes.size());
+		rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
+		                   jumpIfFalseByte,
+		                   bytecodes.size() - context.currentBytecodePos);
 		ifFalse->putBytecodes(in_data, bytecodes);
-		rewrite_opcode_u32(bytecodes, jumpIfTrueByte, bytecodes.size());
+		rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
+		                   jumpIfTrueByte,
+		                   bytecodes.size() - context.currentBytecodePos);
 	} else {
-		rewrite_opcode_u32(bytecodes, jumpIfFalseByte, bytecodes.size());
+		rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
+		                   jumpIfFalseByte,
+		                   bytecodes.size() - context.currentBytecodePos);
 	}
 	if (mustReturnValue) {
 		context.mustReturnValueNode = lastMustReturnValueNode;
 	}
-	BytecodePos endBlock = bytecodes.size();
+	BytecodePos endBlock = bytecodes.size() - context.currentBytecodePos;
 	for (auto pos : jumpPosition) {
-		rewrite_opcode_u32(bytecodes, pos, endBlock);
+		rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos, pos,
+		                   endBlock);
 	}
 }
 
-void IfNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
+void IfNode::rewrite(in_func, uint8_t *bytecodes) {
 	ifTrue.rewrite(in_data, bytecodes);
 	if (ifFalse)
 		ifFalse->rewrite(in_data, bytecodes);

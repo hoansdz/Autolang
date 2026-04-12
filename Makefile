@@ -1,7 +1,7 @@
 CXX = clang++
 LAUNCHER = sccache
 # Thêm -MMD -MP để tự động theo dõi các file header (.h)
-CXXFLAGS = -O2 -pipe -std=c++17 -I src -Wall -Wextra -MMD -MP -Wno-unused-parameter -Wno-unused-variable
+CXXFLAGS = -O2 -pipe -std=c++17 -I src -Wall -Wextra -MMD -MP -Wno-unused-parameter -Wno-unused-variable -Wno-sign-compare -Wno-reorder
 
 # 1. Hàm đệ quy thuần Make (Tuyệt chiêu để không phụ thuộc vào lệnh OS)
 rwildcard = $(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))

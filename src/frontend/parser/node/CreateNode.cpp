@@ -139,7 +139,6 @@ void CreateConstructorNode::pushFunction(in_func) {
 	context.functionInfo.push_back(context.functionInfoAllocator.push());
 	auto func = compile.functions[funcId];
 	auto funcInfo = context.functionInfo[funcId];
-	new (&func->bytecodes) std::vector<uint8_t>();
 
 	funcInfo->clazz = clazz;
 	func->maxDeclaration = parameter->parameters.size();

@@ -19,7 +19,7 @@ void loadFile(ParserContext *mainContext, LibraryData *library) {
 	if (!file.is_open()) {
 		throw LexerError(0, "File " + library->path + " doesn't exists");
 	}
-	library->isFile = true;
+	library->flags |= LibraryFlags::IS_FILE;
 	std::streamsize size = file.tellg();
 	file.seekg(0, std::ios::beg);
 	library->rawData.resize(size);
@@ -49,7 +49,7 @@ void load(ParserContext *mainContext, LibraryData *library,
 				loadNextTokenNoCloseBracket(context, i);
 			}
 		} catch (const LexerError &err) {
-			context.mainContext->logMessage(err.line, err.message);
+			context.mainContext->logError(err.line, err.message);
 			while (!isEndOfLine(context, i)) {
 				++i;
 			}
@@ -468,7 +468,6 @@ void loadQuote(Context &context, uint32_t &i) {
 	bool isSpecialCase = false;
 	std::string newStr;
 	char chr;
-first:;
 	for (; !isEndOfLine(context, i); ++i) {
 		chr = context.line[i];
 		if (!isSpecialCase) {
@@ -575,7 +574,8 @@ first:;
 							uint8_t value = newStr[0];
 							context.tokens.emplace_back(
 							    context.linePos, TokenType::NUMBER,
-							    pushLexerString(context, std::to_string(value)));
+							    pushLexerString(context,
+							                    std::to_string(value)));
 							return;
 						}
 						default: {

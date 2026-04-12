@@ -260,7 +260,7 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			        ? Opcode::LOAD_MEMBER_CAN_RET_NULL_OR_JUMP
 			        : Opcode::LOAD_MEMBER_IF_NNULL_OR_JUMP);
 			put_opcode_u32(bytecodes, id);
-			jumpIfNullPos = bytecodes.size();
+			jumpIfNullPos = bytecodes.size() - context.currentBytecodePos;
 			put_opcode_u32(bytecodes, 0);
 		} else {
 			bytecodes.emplace_back(Opcode::LOAD_MEMBER);
@@ -293,7 +293,7 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	put_opcode_u32(bytecodes, id);
 }
 
-void GetPropNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
+void GetPropNode::rewrite(in_func, uint8_t *bytecodes) {
 	if (context.jumpIfNullNode) {
 		caller->rewrite(in_data, bytecodes);
 		if (!isStatic && accessNullable && !isStore) {

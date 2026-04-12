@@ -188,7 +188,7 @@ inline AObject *is_leap_year(NativeFuncInData) {
 }
 
 void init(ACompiler &compiler) {
-	compiler.registerFromSource(
+	compiler.registerBuiltInLibrary(
 	    "std/date", R"###(
 @no_constructor
 @no_extends

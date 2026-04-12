@@ -8,6 +8,7 @@
 #include "frontend/parser/OperatorId.hpp"
 #include "frontend/parser/node/CreateFuncNode.hpp"
 #include "frontend/parser/node/CreateNode.hpp"
+#include "frontend/parser/FunctionEvent.hpp"
 #include "frontend/structure/NonReallocatePool.hpp"
 #include "shared/ChunkArena.hpp"
 #include "shared/ClassFlags.hpp"
@@ -63,6 +64,8 @@ constexpr LexerStringId lexerIdFunction = 22;
 using GenericCaller = ClassDeclaration;
 
 struct ParserContext {
+	FunctionEvent* onError = nullptr;
+	FunctionEvent* onWarning = nullptr;
 	// Optimize ram because reuse std::string instead of new std::string in
 	// lexer
 	std::vector<std::string> lexerString;
@@ -112,6 +115,7 @@ struct ParserContext {
 	// Be used when put bytecodes with break or continue
 	uint32_t continuePos = 0;
 	uint32_t breakPos = 0;
+	uint32_t currentBytecodePos = 0;
 	size_t currentTokenPos = 0;
 	JumpIfNullNode *jumpIfNullNode = nullptr;
 	IfNode *mustReturnValueNode = nullptr;
@@ -172,7 +176,7 @@ struct ParserContext {
 	// Constant value, example "null", "true", "false"
 	HashMap<LexerStringId, ConstValueNode *> constValue;
 	void init(CompiledProgram &compiler);
-	void logMessage(uint32_t line, const std::string &message);
+	void logError(uint32_t line, const std::string &message);
 	void warning(uint32_t line, const std::string &message);
 	void refresh(CompiledProgram &compile);
 	inline static std::tuple<ClassId, ClassId, uint8_t>

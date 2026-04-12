@@ -91,6 +91,7 @@ class ObjectManager {
 			}
 			case AutoLang::DefaultClass::nullClassId:
 			case AutoLang::DefaultClass::boolClassId: {
+				int *a = nullptr; *a = 5;
 				assert(false && "Critical Bug: free bool/null object");
 				return;
 			}

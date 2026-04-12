@@ -78,20 +78,23 @@ void NullCoalescingNode::putBytecodes(in_func,
 		left->putBytecodes(in_data, bytecodes);
 	}
 	bytecodes.emplace_back(Opcode::JUMP_AND_DELETE_IF_NULL);
-	uint32_t rCheckAndJumpPos = bytecodes.size();
+	uint32_t rCheckAndJumpPos = bytecodes.size() - context.currentBytecodePos;
 	put_opcode_u32(bytecodes, 0);
 	bytecodes.emplace_back(Opcode::JUMP);
-	uint32_t rJumpIfNonNullPos = bytecodes.size();
+	uint32_t rJumpIfNonNullPos = bytecodes.size() - context.currentBytecodePos;
 	put_opcode_u32(bytecodes, 0);
-	jumpIfNullPos = bytecodes.size();
+	jumpIfNullPos = bytecodes.size() - context.currentBytecodePos;
 	context.jumpIfNullNode = lastJumpIfNullNode;
 	right->putBytecodes(in_data, bytecodes);
 
-	rewrite_opcode_u32(bytecodes, rCheckAndJumpPos, jumpIfNullPos);
-	rewrite_opcode_u32(bytecodes, rJumpIfNonNullPos, bytecodes.size());
+	rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
+	                   rCheckAndJumpPos, jumpIfNullPos);
+	rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
+	                   rJumpIfNonNullPos,
+	                   bytecodes.size() - context.currentBytecodePos);
 }
 
-void NullCoalescingNode::rewrite(in_func, std::vector<uint8_t> &bytecodes) {
+void NullCoalescingNode::rewrite(in_func, uint8_t *bytecodes) {
 	if (!left) {
 		right->rewrite(in_data, bytecodes);
 		return;
