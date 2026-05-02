@@ -2,9 +2,8 @@ class TestMapFeaturesExhaustive {
 	var mapKeySum = 0
 	var mapValueSum = 0
 
-	func mapForEachTest(key: Int, value: Int) {
-		mapKeySum += key
-		mapValueSum += value
+	func a() {
+		mapKeySum = 999
 	}
 
 	func testMapFeaturesExhaustive() {
@@ -37,7 +36,10 @@ class TestMapFeaturesExhaustive {
 		val numMap = <Int, Int>{1: 100, 2: 200, 3: 300}
 		mapKeySum = 0
 		mapValueSum = 0
-		numMap.forEach(mapForEachTest)
+		numMap.forEach {|key, value|
+			mapKeySum += key
+			mapValueSum += value
+		}
 		// Tổng keys: 1 + 2 + 3 = 6
 		// Tổng values: 100 + 200 + 300 = 600
 		assert(mapKeySum == 6, __FILE__, __LINE__)
@@ -52,7 +54,7 @@ class TestMapFeaturesExhaustive {
 		val valuesArr = numMap.values()
 		assert(valuesArr is Array<Int>, __FILE__, __LINE__)
 		assert(valuesArr.size() == 3, __FILE__, __LINE__)
-		assert(valuesArr.contains(100) && valuesArr.contains(200) && valuesArr.contains(300), __FILE__, __LINE__)
+		assert(100 in valuesArr && 200 in valuesArr && 300 in valuesArr, __FILE__, __LINE__)
 
 		// 7. Test: toString
 		val str = numMap.toString()

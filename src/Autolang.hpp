@@ -19,7 +19,8 @@
 #include "frontend/ACompiler.cpp"
 #include "frontend/ACompiler.hpp"
 #include "frontend/lexer/Lexer.cpp"
-#include "frontend/libs/math.cpp" 
+#include "frontend/libs/bytes.cpp"
+#include "frontend/libs/math.cpp"
 #include "frontend/libs/stdlib.cpp"
 #include "frontend/libs/time.cpp"
 #include "frontend/libs/vm.cpp"
@@ -46,6 +47,7 @@
 #include "frontend/parser/node/CastNode.cpp"
 #include "frontend/parser/node/ConstValueNode.cpp"
 #include "frontend/parser/node/CreateArrayNode.cpp"
+#include "frontend/parser/node/CreateClosureNode.cpp"
 #include "frontend/parser/node/CreateFuncNode.cpp"
 #include "frontend/parser/node/CreateMapNode.cpp"
 #include "frontend/parser/node/CreateNode.cpp"
@@ -72,5 +74,6 @@
 #include "shared/DefaultFunction.cpp"
 #include "shared/ObjectManager.cpp"
 #include "shared/StackAllocator.cpp"
+
 
 #endif

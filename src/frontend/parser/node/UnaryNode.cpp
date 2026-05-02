@@ -25,22 +25,17 @@ ExprNode *UnaryNode::resolve(in_func) {
 				using namespace AutoLang;
 				case Lexer::TokenType::PLUS: {
 					switch (value->classId) {
-						case AutoLang::DefaultClass::intClassId:
-						case AutoLang::DefaultClass::floatClassId: {
-							// auto result = value;
-							// value = nullptr;
-							// ExprNode::deleteNode(this);
-							// return result;
+						case AutoLang::DefaultClass::intClassId: {
 							return this;
 						}
+						case AutoLang::DefaultClass::floatClassId: {
+							return context.constValuePool.push(
+							    value->line, static_cast<int64_t>(value->f));
+						}
 						case AutoLang::DefaultClass::boolClassId: {
-							// value->classId =
-							// AutoLang::DefaultClass::intClassId; value->i =
-							// static_cast<int64_t>(value->obj->b); auto result
-							// = value; value = nullptr;
-							// ExprNode::deleteNode(this);
-							// return result;
-							return this;
+							return context.constValuePool.push(
+							    value->line,
+							    static_cast<int64_t>(value->obj->b));
 						}
 						default:
 							break;
@@ -145,21 +140,54 @@ ExprNode *UnaryNode::resolve(in_func) {
 }
 
 void UnaryNode::optimize(in_func) {
-	if (value->kind == NodeType::CONST)
-		static_cast<ConstValueNode *>(value)->isLoadPrimary = true;
-	if (value->kind == NodeType::CLASS_ACCESS) {
-		throwError("Expected value if use operator '" +
-		           Lexer::Token(0, op).toString(context) + "'");
+	switch (value->kind) {
+		case NodeType::CONST: {
+			static_cast<ConstValueNode *>(value)->isLoadPrimary =
+			    op != Lexer::TokenType::PLUS;
+			break;
+		}
+		case NodeType::CLASS_ACCESS: {
+			throwError("Expected value if use operator '" +
+			           Lexer::Token(0, op).toString(context) + "'");
+		}
+		default: {
+			break;
+		}
 	}
 	value->optimize(in_data);
+	if (value->isNullable()) {
+		throwError("Operator " + Lexer::Token(0, op).toString(context) +
+		           " cannot be applied to operand of type '" +
+		           compile.classes[value->classId]->name + "?'");
+	}
 	switch (op) {
-		case Lexer::TokenType::PLUS:
+		case Lexer::TokenType::PLUS: {
+			switch (value->classId) {
+				case DefaultClass::intClassId:
+				case DefaultClass::boolClassId: {
+					classId = DefaultClass::intClassId;
+					return;
+				}
+				case DefaultClass::floatClassId: {
+					classId = DefaultClass::floatClassId;
+					return;
+				}
+				default:
+					throwError("Cannot cast class " +
+					           compile.classes[value->classId]->name +
+					           " to number");
+			}
+		}
 		case Lexer::TokenType::MINUS: {
 			switch (value->classId) {
 				case DefaultClass::intClassId:
-				case DefaultClass::floatClassId:
 				case DefaultClass::boolClassId: {
-					break;
+					classId = DefaultClass::intClassId;
+					return;
+				}
+				case DefaultClass::floatClassId: {
+					classId = DefaultClass::floatClassId;
+					return;
 				}
 				default:
 					throwError("Cannot cast class " +
@@ -168,15 +196,18 @@ void UnaryNode::optimize(in_func) {
 			}
 		}
 		case Lexer::TokenType::NOT: {
-			if (value->classId == DefaultClass::boolClassId)
-				break;
+			if (value->classId == DefaultClass::boolClassId) {
+				classId = DefaultClass::boolClassId;
+				return;
+			}
 			throwError("Cannot cast class " +
 			           compile.classes[value->classId]->name + " to Bool");
 		}
-		default:
-			break;
+		default: {
+			classId = value->classId;
+			return;
+		}
 	}
-	classId = value->classId;
 }
 
 ExprNode *UnaryNode::copy(in_func) {
@@ -184,10 +215,61 @@ ExprNode *UnaryNode::copy(in_func) {
 	    line, op, static_cast<HasClassIdNode *>(value->copy(in_data)));
 }
 
+template <Opcode normal, Opcode local, Opcode global, Opcode local_member,
+          Opcode global_member>
+void UnaryNode::putOptimizedBytecodes(in_func,
+                                      std::vector<uint8_t> &bytecodes) {
+	switch (value->kind) {
+		case NodeType::VAR: {
+			auto node = static_cast<VarNode *>(value);
+			if (node->declaration->isGlobal) {
+				bytecodes.emplace_back(global);
+				put_opcode_u32(bytecodes, node->declaration->id);
+			} else {
+				bytecodes.emplace_back(local);
+				put_opcode_u32(bytecodes, node->declaration->id);
+			}
+			return;
+		}
+		case NodeType::GET_PROP: {
+			auto node = static_cast<GetPropNode *>(value);
+			if (node->declaration->isGlobal) {
+				bytecodes.emplace_back(global);
+				put_opcode_u32(bytecodes, node->declaration->id);
+			} else {
+				if (node->caller->kind != NodeType::VAR) {
+					value->putBytecodes(in_data, bytecodes);
+					bytecodes.emplace_back(normal);
+					return;
+				}
+				auto caller = static_cast<VarNode *>(node->caller);
+				if (caller->declaration->isGlobal) {
+					bytecodes.emplace_back(global_member);
+					put_opcode_u32(bytecodes, caller->declaration->id);
+					put_opcode_u32(bytecodes, node->declaration->id);
+				} else {
+					bytecodes.emplace_back(local_member);
+					put_opcode_u32(bytecodes, caller->declaration->id);
+					put_opcode_u32(bytecodes, node->declaration->id);
+				}
+			}
+			return;
+		}
+		default: {
+			value->putBytecodes(in_data, bytecodes);
+			bytecodes.emplace_back(normal);
+			return;
+		}
+	}
+}
+
 void UnaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	value->putBytecodes(in_data, bytecodes);
 	switch (op) {
 		case Lexer::TokenType::PLUS: {
+			value->putBytecodes(in_data, bytecodes);
+			if (value->kind == NodeType::CONST) {
+				return;
+			}
 			switch (value->classId) {
 				case AutoLang::DefaultClass::intClassId: {
 					bytecodes.emplace_back(Opcode::TO_INT);
@@ -197,21 +279,33 @@ void UnaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					bytecodes.emplace_back(Opcode::TO_FLOAT);
 					return;
 				}
+				case AutoLang::DefaultClass::boolClassId: {
+					bytecodes.emplace_back(Opcode::TO_INT);
+					return;
+				}
 				default:
 					break;
 			}
 			break;
 		}
 		case Lexer::TokenType::MINUS: {
-			bytecodes.emplace_back(Opcode::NEGATIVE);
+			putOptimizedBytecodes<Opcode::NEGATIVE, Opcode::NEGATIVE_LOCAL,
+			                      Opcode::NEGATIVE_GLOBAL,
+			                      Opcode::NEGATIVE_LOCAL_MEMBER,
+			                      Opcode::NEGATIVE_GLOBAL_MEMBER>(in_data,
+			                                                      bytecodes);
 			break;
 		}
 		case Lexer::TokenType::NOT: {
-			bytecodes.emplace_back(Opcode::NOT);
+			putOptimizedBytecodes<Opcode::NOT, Opcode::NOT_LOCAL,
+			                      Opcode::NOT_GLOBAL, Opcode::NOT_LOCAL_MEMBER,
+			                      Opcode::NOT_GLOBAL_MEMBER>(in_data,
+			                                                 bytecodes);
 			break;
 		}
-		default:
+		default: {
 			break;
+		}
 	}
 }
 

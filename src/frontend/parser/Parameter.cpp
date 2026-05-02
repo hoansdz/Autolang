@@ -11,11 +11,11 @@ Parameter *Parameter::copy(in_func) {
 	Parameter *newParameter = context.parameterPool.push();
 	newParameter->parameters.reserve(parameters.size());
 	for (auto parameter : parameters) {
-		// if (!parameter->classDeclaration ||
-		//     !parameter->classDeclaration->isGenerics(in_data)) {
-		// 	newParameter->parameters.push_back(parameter);
-		// 	continue;
-		// }
+		if (!parameter->classDeclaration ||
+		    !parameter->classDeclaration->isGenerics(in_data)) {
+			newParameter->parameters.push_back(parameter);
+			continue;
+		}
 		newParameter->parameters.push_back(
 		    static_cast<DeclarationNode *>(parameter->copy(in_data)));
 	}

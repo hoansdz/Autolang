@@ -19,6 +19,14 @@ struct ANativeData {
 	DestructorParameters destructor;
 };
 
+struct ABytes {
+	int32_t capacity;
+	int32_t size;
+	uint8_t *data;
+	ABytes(int32_t capacity, int32_t size, uint8_t *data)
+	    : capacity(capacity), size(size), data(data) {}
+};
+
 struct AObject {
 	enum Flags : uint32_t {
 		OBJ_IS_FREE = 1u << 0,
@@ -37,6 +45,7 @@ struct AObject {
 		NormalArray<AObject *> *member;
 		AString *str;
 		ANativeData *data;
+		ABytes *bytes;
 	};
 	AObject() : type(0), refCount(0) {}
 	AObject(ClassId type) : type(type), refCount(0) {}

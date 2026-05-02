@@ -115,8 +115,9 @@ void ACompiler::loadSource(LibraryData *library) {
 	state = CompilerState::CT_ANALYZED;
 }
 
-LibraryData* ACompiler::registerBuiltInLibrary(const char *path, bool autoImport,
-                                   const ANativeMap &nativeFuncMap) {
+LibraryData *
+ACompiler::registerBuiltInLibrary(const char *path, bool autoImport,
+                                  const ANativeMap &nativeFuncMap) {
 	uint32_t flags = LibraryFlags::IS_BUILT_IN;
 	if (autoImport) {
 		flags |= LibraryFlags::AUTO_IMPORT;
@@ -132,9 +133,10 @@ LibraryData* ACompiler::registerBuiltInLibrary(const char *path, bool autoImport
 	return lib;
 }
 
-LibraryData* ACompiler::registerBuiltInLibrary(const char *path, const char *data,
-                                   bool autoImport,
-                                   const ANativeMap &nativeFuncMap) {
+LibraryData *
+ACompiler::registerBuiltInLibrary(const char *path, const char *data,
+                                  bool autoImport,
+                                  const ANativeMap &nativeFuncMap) {
 
 	uint32_t flags = LibraryFlags::IS_BUILT_IN;
 	if (autoImport) {
@@ -158,6 +160,7 @@ void ACompiler::loadBuiltInFunctions() {
 		lexerTextToToken(library);
 	}
 	parserContext.importMap.clear();
+	loadedBuiltIn = true;
 }
 
 void ACompiler::loadMainSource(const char *path,
@@ -187,7 +190,7 @@ void ACompiler::loadMainSource(const char *path, const char *data,
 	parserContext.importMap[path] = library;
 	library->rawData = data;
 	generatedLibraryMap[path] = generatedLibraries.size();
-	generatedLibraries.push_back(library);
+	// generatedLibraries.push_back(library);
 	loadMainSource(library);
 }
 
@@ -313,7 +316,8 @@ void ACompiler::generateBytecodes() {
 	// }
 	// std::cerr<<"\n";
 
-	auto startParserTime = std::chrono::high_resolution_clock::now();
+	// auto startParserTime = std::chrono::high_resolution_clock::now();
+
 	context.currentTokenPos = 0;
 	size_t &i = context.currentTokenPos;
 	while (i < context.tokens.size()) {
@@ -438,7 +442,8 @@ void ACompiler::generateBytecodes() {
 		for (int i = 0; i < sizeNewFunctions; ++i) {
 			auto *createFunctionNode = context.newFunctions[i];
 			auto funcInfo = context.functionInfo[createFunctionNode->id];
-			if (funcInfo->genericData) {
+			if (createFunctionNode->functionFlags &
+			    FunctionFlags::FUNC_SKIP_LOAD) {
 				continue;
 			}
 			if (createFunctionNode->contextCallClassId) {
@@ -601,7 +606,7 @@ void ACompiler::generateBytecodes() {
 			}
 			auto func = compile.functions[node->id];
 			auto funcInfo = context.functionInfo[node->id];
-			if (funcInfo->genericData) {
+			if (func->functionFlags & FunctionFlags::FUNC_SKIP_LOAD) {
 				continue;
 			}
 			if ((func->functionFlags & FunctionFlags::FUNC_OVERRIDE) &&
@@ -639,6 +644,15 @@ void ACompiler::generateBytecodes() {
 		    compile.allBytecodes.size() - mainFunc->bytecodes.offset;
 		if (mainFunc->bytecodes.size == 0) {
 			--mainFunc->bytecodes.offset;
+		}
+
+		for (auto closure : context.allClosureNode) {
+			auto func = compile.functions[closure->funcId];
+			func->bytecodes.offset = compile.allBytecodes.size();
+			func->bytecodes.size = closure->currentBytecodes.size();
+			compile.allBytecodes.insert(compile.allBytecodes.end(),
+			                            closure->currentBytecodes.begin(),
+			                            closure->currentBytecodes.end());
 		}
 
 		printDebug("Real Declarations: " +
@@ -712,6 +726,7 @@ void ACompiler::refresh() {
 	for (auto *lib : generatedLibraries) {
 		delete lib;
 	}
+	mainSource = nullptr;
 	generatedLibraryMap.clear();
 	generatedLibraries.clear();
 	vm.restart();

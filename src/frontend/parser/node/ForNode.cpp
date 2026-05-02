@@ -83,12 +83,16 @@ void ForNode::optimize(in_func) {
 			switch (baseClassId) {
 				case DefaultClass::setClassId:
 				case DefaultClass::arrayClassId: {
-					ClassId target = *classInfo->genericTypeId[0]->classId;
+					auto classType = classInfo->genericTypeId[0];
+					ClassId target = *classType->classId;
 					switch (detach->classId) {
 						case AutoLang::DefaultClass::nullClassId: {
 							detach->declaration->classId = target;
-							detach->declaration->nullable =
-							    classInfo->genericTypeId[0]->nullable;
+							if (target == DefaultClass::functionClassId) {
+								detach->declaration->classDeclaration =
+								    classType;
+							}
+							detach->declaration->nullable = classType->nullable;
 							break;
 						}
 						default: {
@@ -280,11 +284,11 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			switch (baseClassId) {
 				case DefaultClass::setClassId:
 				case DefaultClass::arrayClassId: {
-					bytecodes.emplace_back(Opcode::LOAD_NULL);
 					bytecodes.emplace_back(iteratorNode->declaration->isGlobal
-					                           ? Opcode::STORE_GLOBAL
-					                           : Opcode::STORE_LOCAL);
+					                           ? Opcode::GLOBAL_STORE_CONST
+					                           : Opcode::LOCAL_STORE_CONST);
 					put_opcode_u32(bytecodes, iteratorNode->declaration->id);
+					put_opcode_u32(bytecodes, 0);
 
 					continuePos = bytecodes.size() - context.currentBytecodePos;
 

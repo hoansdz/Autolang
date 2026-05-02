@@ -42,6 +42,13 @@ class ObjectManager {
 			}
 		}
 	}
+	inline AObject *getEmptyObject() { return areaAllocator.getObject(); }
+	inline AObject *getBytes(uint32_t size) {
+		auto obj = areaAllocator.getObject();
+		obj->type = DefaultClass::bytesClassId;
+		obj->bytes = new ABytes(size, size, new uint8_t[size]);
+		return obj;
+	}
 	inline AObject *get(int64_t i) {
 		if (intObjects.index == 0) {
 			AObject *obj = areaAllocator.getObject();
@@ -91,7 +98,8 @@ class ObjectManager {
 			}
 			case AutoLang::DefaultClass::nullClassId:
 			case AutoLang::DefaultClass::boolClassId: {
-				int *a = nullptr; *a = 5;
+				int *a = nullptr;
+				*a = 5;
 				assert(false && "Critical Bug: free bool/null object");
 				return;
 			}

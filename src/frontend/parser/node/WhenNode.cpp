@@ -40,7 +40,7 @@ void WhenNode::rewrite(in_func, uint8_t *bytecodes) {
 
 ExprNode *WhenNode::copy(in_func) {
 	if (ifNode == nullptr)
-		this;
+		return this;
 	auto newValue =
 	    value ? static_cast<HasClassIdNode *>(value->copy(in_data)) : nullptr;
 	return context.whenNodePool.push(

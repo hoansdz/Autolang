@@ -115,6 +115,7 @@ void CallNode::optimize(in_func) {
 				}
 				break;
 			}
+			case NodeType::CREATE_CLOSURE:
 			case NodeType::FUNCTION_ACCESS: {
 				break;
 			}
@@ -295,17 +296,27 @@ void CallNode::optimize(in_func) {
 				currentFuncLog += ", ";
 			currentFuncLog += compile.classes[argument->classId]->name;
 		}
+		std::string found;
+		bool isFirst1 = true;
 		for (int j = 0; j < count; ++j) {
 			auto &vecs = *funcVec[j];
-			if (vecs.empty())
+			if (vecs.empty()) {
+				found = "EMPTY";
 				printDebug("Empty");
+			}
 			for (auto v : vecs) {
-				printDebug("Founded " +
-				           compile.functions[v]->toString(compile));
+				if (isFirst1) {
+					isFirst1 = false;
+				} else {
+					found += "\n";
+				}
+				found += compile.functions[v]->toString(compile);
 			}
 		}
-		throwError(std::string("Cannot find function has arguments : ") +
-		           currentFuncLog + ")");
+		throwError(std::string("Cannot find function name: " +
+		                       context.lexerString[nameId] +
+		                       " has arguments : ") +
+		           currentFuncLog + ") \nFound: " + found);
 	}
 	if (ambitiousCall) {
 		for (int j = 0; j < count; ++j) {
@@ -318,9 +329,12 @@ void CallNode::optimize(in_func) {
 		throwError(std::string("Ambiguous Call : ") + funcName);
 	}
 	funcId = first.id;
-	classId = first.func->returnId;
 	auto func = compile.functions[funcId];
 	auto funcInfo = context.functionInfo[funcId];
+	classId = first.func->returnId;
+	if (func->returnId == DefaultClass::functionClassId) {
+		classDeclaration = funcInfo->returnClass;
+	}
 	{
 		int i = arguments.size() +
 		        !(func->functionFlags & FunctionFlags::FUNC_IS_STATIC);
@@ -348,14 +362,34 @@ void CallNode::optimize(in_func) {
 				case DefaultClass::functionClassId: {
 					auto funcInputClass =
 					    funcInfo->parameter->parameters[i - 1];
-					if (argument->kind == NodeType::FUNCTION_ACCESS) {
-						argument->classDeclaration =
-						    funcInputClass->classDeclaration;
-						// argument->classDeclaration->load<true>(in_data);
-						argument->optimize(in_data);
+					switch (argument->kind) {
+						case NodeType::FUNCTION_ACCESS: {
+							argument->classDeclaration =
+							    funcInputClass->classDeclaration;
+							argument->optimize(in_data);
+							break;
+						}
+						case NodeType::CREATE_CLOSURE: {
+							auto node =
+							    static_cast<CreateClosureNode *>(argument);
+							if (node->mustInfer) {
+								node->inferFrom(
+								    in_data, funcInputClass->classDeclaration);
+								argument->optimize(in_data);
+								break;
+							}
+							argument->optimize(in_data);
+							matchFunction(in_data,
+							              funcInputClass->classDeclaration,
+							              argument->classDeclaration);
+							break;
+						}
+						default: {
+							matchFunction(in_data,
+							              funcInputClass->classDeclaration,
+							              argument->classDeclaration);
+						}
 					}
-					matchFunction(in_data, funcInputClass->classDeclaration,
-					              argument->classDeclaration);
 					break;
 				}
 				case DefaultClass::nullClassId: {
@@ -410,7 +444,9 @@ void CallNode::optimize(in_func) {
 		funcInfo->inferenceNode->loaded = true;
 	}
 
-	nullable = func->functionFlags & FunctionFlags::FUNC_RETURN_NULLABLE;
+	if (nullable) {
+		nullable = func->functionFlags & FunctionFlags::FUNC_RETURN_NULLABLE;
+	}
 
 	if (first.errorNonNullIfMatchCount) {
 		throwError(std::string(
@@ -490,7 +526,7 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 	funcObject->optimize(in_data);
 
 	if (funcObject->classId != DefaultClass::functionClassId) {
-		throwError("Cannot call non class object");
+		throwError("Cannot call non-function object");
 	}
 
 	if (!funcObject->classDeclaration) {
@@ -500,12 +536,17 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 	auto &inputClass = funcObject->classDeclaration->inputClassId;
 
 	classId = *inputClass[0]->classId;
+	if (classId == DefaultClass::functionClassId) {
+		classDeclaration = inputClass[0];
+	}
 	nullable = funcObject->classDeclaration->nullable;
 
 	if (inputClass.size() - 1 != arguments.size()) {
-		throwError("Object " + context.lexerString[nameId] + " expects " +
-		           std::to_string(inputClass.size() - 1) + " argument but " +
-		           std::to_string(arguments.size()) + " were given");
+		throwError("Object " + context.lexerString[nameId] + ": " +
+		           funcObject->classDeclaration->getName(in_data) +
+		           " expects " + std::to_string(inputClass.size() - 1) +
+		           " argument but " + std::to_string(arguments.size()) +
+		           " were given");
 	}
 	if (justFindStatic) {
 		throwError("Just find static");
@@ -561,8 +602,29 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 				continue;
 			}
 			case DefaultClass::functionClassId: {
-				matchFunction(in_data, argument->classDeclaration,
-				              inputClass[j + 1]);
+				switch (argument->kind) {
+					case NodeType::FUNCTION_ACCESS: {
+						argument->classDeclaration = inputClass[j + 1];
+						argument->optimize(in_data);
+						break;
+					}
+					case NodeType::CREATE_CLOSURE: {
+						auto node = static_cast<CreateClosureNode *>(argument);
+						if (node->mustInfer) {
+							node->inferFrom(in_data, inputClass[j + 1]);
+							argument->optimize(in_data);
+							break;
+						}
+						argument->optimize(in_data);
+						matchFunction(in_data, inputClass[j + 1],
+						              argument->classDeclaration);
+						break;
+					}
+					default: {
+						matchFunction(in_data, inputClass[j + 1],
+						              argument->classDeclaration);
+					}
+				}
 				break;
 			}
 			case DefaultClass::intClassId: {

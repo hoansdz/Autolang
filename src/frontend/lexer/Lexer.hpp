@@ -213,10 +213,10 @@ static const HashMap<std::string, TokenType> CAST = {
 
 struct Token {
 	uint32_t line;
-	uint32_t indexData;
+	LexerStringId indexData;
 	TokenType type;
 	Token() {}
-	Token(uint32_t line, TokenType type, uint32_t indexData)
+	Token(uint32_t line, TokenType type, LexerStringId indexData)
 	    : line(line), indexData(indexData), type(type) {}
 	Token(uint32_t line, TokenType type)
 	    : line(line), indexData(0), type(type) {}
@@ -281,15 +281,15 @@ void loadFile(ParserContext *mainContext, LibraryData *library);
 void load(ParserContext *mainContext, LibraryData *library,
           std::vector<Offset> *importOffset);
 template <bool addLParen, bool isChar>
-void loadQuote(Context &context, uint32_t &i);
+inline void loadQuote(Context &context, uint32_t &i);
 std::string loadIdentifier(Context &context, uint32_t &i);
 std::string loadNumber(Context &context, uint32_t &i);
-TokenType loadOp(Context &context, uint32_t &i);
-bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i);
-void pushAndEnsureBracket(Context &context, uint32_t &i);
-void pushIdentifier(Context &context, uint32_t &i);
-uint32_t pushLexerString(Context &context, std::string &&str);
-char getCloseBracket(char chr);
+inline TokenType loadOp(Context &context, uint32_t &i);
+inline bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i);
+inline void pushAndEnsureBracket(Context &context, uint32_t &i);
+inline void pushIdentifier(Context &context, uint32_t &i);
+inline uint32_t pushLexerString(Context &context, std::string &&str);
+inline char getCloseBracket(char chr);
 
 } // namespace Lexer
 } // namespace AutoLang

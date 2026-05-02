@@ -46,7 +46,7 @@ AObject *difference(NativeFuncInData);
 AObject *for_each(NativeFuncInData);
 AObject *to_array(NativeFuncInData);
 AObject *contains(NativeFuncInData);
-AObject *insert(NativeFuncInData);
+AObject *add(NativeFuncInData);
 AObject *clear(NativeFuncInData);
 AObject *to_string(NativeFuncInData);
 } // namespace set

@@ -1,15 +1,16 @@
 #ifndef AVM_LOADER_CPP
 #define AVM_LOADER_CPP
 
-#include "AVM.hpp"
 #include "ANotifier.hpp"
+#include "AVM.hpp"
 #include <chrono>
 #include <iostream>
 #include <sstream>
 
 namespace AutoLang {
 
-AVM::AVM(bool allowDebug) : allowDebug(allowDebug), notifier(new ANotifier(this)) {
+AVM::AVM(bool allowDebug)
+    : allowDebug(allowDebug), notifier(new ANotifier(this)) {
 	data.manager.notifier = notifier;
 	data.allBytecodes.reserve(256);
 }
@@ -19,11 +20,11 @@ void AVM::start() {
 		throw std::runtime_error("VM returns error");
 	}
 	state = VMState::RUNNING;
-	
+
 	data.main = data.functions[data.mainFunctionId];
-	if (!globalVariables) {
-		initGlobalVariables();
-	}
+	// if (!globalVariables) {
+	initGlobalVariables();
+	// }
 	run();
 	// log();
 	// allowDebug = true;
@@ -54,7 +55,8 @@ void AVM::start() {
 						continue;
 					}
 					for (auto pos : vec) {
-						std::cout << data.functions[pos]->toString(data) << "\n";
+						std::cout << data.functions[pos]->toString(data)
+						          << "\n";
 					}
 					uint32_t at;
 					std::cout << "Has " << vec.size() << ", log at: ";
@@ -104,6 +106,6 @@ AVM::~AVM() {
 		delete[] globalVariables;
 }
 
-}
+} // namespace AutoLang
 
 #endif

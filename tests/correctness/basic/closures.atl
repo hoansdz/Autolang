@@ -1,0 +1,85 @@
+func makeAdder(x: Int): (Int) -> Int {
+    return {|y| x + y}
+}
+
+func abc(a: Int, b: Int, c: (Int, Int) -> Int): Int = c(a, b)
+
+class TestParentClosureClass {
+	func test() {
+		assert(false, __FILE__, __LINE__)
+	}
+
+	func getTestFunction() = test
+}
+
+class TestClosureClass extends TestParentClosureClass {
+    var n = 5
+    
+    val memClosure = {|x: Int| 
+        this.n + x 
+    }
+
+	constructor () {
+		super()
+	}
+
+	@override
+	func test() {
+		assert(true, __FILE__, __LINE__)
+	}
+
+    func createMethodClosure(base: Int): (Int) -> Int {
+        val factor1: Float = 1
+		static val factor2: Int = 1
+        return {|y|
+			Int(n * (factor1 + factor2)) + base + y
+		}
+    }
+}
+
+func testFunctionClosures() {
+    val factor = 10
+    val explicitAdd = {|x: Int| -> { x + factor }}
+    assert(explicitAdd(5) == 15, __FILE__, __LINE__)
+
+	assert(abc(1,2) {|a, b| a + b} == 3, __FILE__, __LINE__)
+
+    val a = 100
+    val outer: (Int) -> ((Int) -> Int) = {|b| {|c| a + b + c}}
+    val inner = outer(50)
+    assert(inner(10) == 160, __FILE__, __LINE__)
+
+    var x = 500
+    val snapshot = {|| x}
+    x = 999
+    assert(snapshot() == 500, __FILE__, __LINE__)
+
+    val addFive = makeAdder(5)
+    assert(addFive(2) == 7, __FILE__, __LINE__)
+
+    var total = 0
+    for (i in 0..10000) {
+        val adder = {|v: Int| v + i}
+        total += adder(1)
+    }
+    assert(total == 50015001, __FILE__, __LINE__)
+
+    println("Passed ${__FUNC__}")
+}
+
+func testClassClosures() {
+    val clazz = TestClosureClass()
+    clazz.n = 7
+	val testFunc = clazz.getTestFunction()
+	testFunc()
+    
+    assert(clazz.memClosure(3) == 10, __FILE__, __LINE__)
+    
+    val methodClosure = clazz.createMethodClosure(10)
+    assert(methodClosure(5) == 29, __FILE__, __LINE__)
+    
+    println("Passed ${__FUNC__}")
+}
+
+testFunctionClosures()
+testClassClosures()

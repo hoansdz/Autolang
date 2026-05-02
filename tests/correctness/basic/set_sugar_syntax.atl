@@ -1,22 +1,52 @@
-func testInputSugarSyntax(data: Set<Set<Int>>) {
-
+func globalIncrement(n: Int): Int {
+    return n + 1
 }
 
-func testSetSugarSyntax() {
-	val set = <Int>{
-		1, 2, 3, 4, 5, 6, 7, 8, 9, 
-		9, 8, 7, 6, 5, 4, 3, 2, 1
-	}
-	var sum = 0
-	for (num in set) {
-		sum += num
-	}
-	testInputSugarSyntax({{1, 2, 3}, {4, 5, 6}})
-	testInputSugarSyntax({{}, {}})
-	testInputSugarSyntax({})
-	assert(set is Set<Int>, __FILE__, __LINE__)
-	assert(sum == 45, __FILE__, __LINE__)
-	println("Passed ${__FUNC__}")
+func testSetExhaustive() {
+    val emptySet = <Int>{}
+    assert(emptySet.size() == 0, __FILE__, __LINE__)
+
+    val primitiveSet = <Int>{1, 2, 2, 3, 3, 3}
+    assert(primitiveSet.size() == 3, __FILE__, __LINE__)
+
+    val stringSet = <String>{"abc", "abc", "def"}
+    assert(stringSet.size() == 2, __FILE__, __LINE__)
+
+    val arr1 = <Int>[1, 2]
+    val arr2 = <Int>[1, 2]
+    val nestedSet = <Array<Int>>{ arr1, arr2, arr1 }
+    assert(nestedSet.size() == 2, __FILE__, __LINE__)
+
+    val f1: (Int) -> Int = globalIncrement
+    val f2: (Int) -> Int = globalIncrement
+
+    val base = 10
+    val cl1 = {|n: Int| n + base}
+    val cl2 = {|n: Int| n + base}
+    val closureSet = <(Int) -> Int>{cl1, cl2, cl1}
+    assert(closureSet.size() == 2, __FILE__, __LINE__)
+
+    val s1 = <Int>{1, 2}
+    val s2 = <Int>{1, 2}
+    val deepSet = <Set<Int>>{s1, s2}
+    assert(deepSet.size() == 2, __FILE__, __LINE__)
+
+    val mixedSet = <(Int) -> Int>{}
+    mixedSet.add(f1)
+    mixedSet.add(cl1)
+    
+    var total = 0
+    for (f in mixedSet) {
+        total += f(5)
+    }
+    assert(total == 21, __FILE__, __LINE__)
+
+    val s = <Int>{10, 20, 30}
+    s.add(10)
+    assert(s.size() == 3, __FILE__, __LINE__)
+    assert(20 in s, __FILE__, __LINE__)
+
+    println("Passed ${__FUNC__}")
 }
 
-testSetSugarSyntax()
+testSetExhaustive()

@@ -69,7 +69,8 @@ void ParserContext::init(CompiledProgram &compile) {
 	constValue[lexerIdtrue] = &constValues[1];
 	constValue[lexerIdfalse] = &constValues[2];
 
-	annotationMetadata.reserve(1);
+	annotationMetadata.reserve(4);
+	closureScopes.reserve(4);
 
 	{
 		using namespace AutoLang::DefaultClass;
@@ -227,6 +228,7 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	hasError = false;
 	tokens.clear();
 	importMap.clear();
+	closureCount = 0;
 
 	for (auto &funcInfo : functionInfo) {
 		funcInfo->body.refresh();
@@ -250,6 +252,7 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	justFindStatic = false;
 	isInGeneric = false;
 
+	closureCount = 0;
 	continuePos = 0;
 	breakPos = 0;
 	jumpIfNullNode = nullptr;
@@ -295,9 +298,19 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	constValuePool.destroy();
 	unaryNodePool.destroy();
 	forPool.destroy();
+	rangeNode.destroy();
+	createArrayPool.destroy();
+	createClosurePool.destroy();
+	createSetPool.destroy();
+	createMapPool.destroy();
+	whenNodePool.destroy();
+	functionAccessPool.destroy();
 	classDeclarationAllocator.destroy();
+	createClosurePool.destroy();
 	genericCallers.clear();
 	checkValidateExtends.clear();
+	allClosureNode.clear();
+	loadingLibs.clear();
 
 	currentClassId = std::nullopt;
 
@@ -334,11 +347,55 @@ HasClassIdNode *ParserContext::findDeclaration(in_func, uint32_t line,
                                                LexerStringId nameId,
                                                bool inGlobal) {
 	const auto &name = context.lexerString[nameId];
-	auto funcInfo = getCurrentFunctionInfo(in_data);
-	AccessNode *node =
-	    funcInfo->findDeclaration(in_data, line, nameId, justFindStatic);
-	if (node)
-		return node;
+	if (context.currentClosureNode) {
+		for (int i = context.closureScopes.size(); i-- > 0;) {
+			auto closure = context.closureScopes[i];
+			auto node = closure->scopes.findDeclaration(in_data, line, nameId,
+			                                            justFindStatic);
+			if (!node) {
+				continue;
+			}
+
+			for (int j = i + 1; j < context.closureScopes.size(); ++j) {
+				auto closure_ = context.closureScopes[j];
+				closure_->parameter->parameters.insert(
+				    closure_->parameter->parameters.begin(), node->declaration);
+				closure_->scopes[0][nameId] = node->declaration;
+				closure_->objects.insert(closure_->objects.begin(), node);
+			}
+			return node;
+		}
+	}
+	if (currentFunctionId != mainFunctionId) {
+		auto funcInfo = getCurrentFunctionInfo(in_data);
+		AccessNode *node =
+		    funcInfo->findDeclaration(in_data, line, nameId, justFindStatic);
+		if (node) {
+			if (context.currentClosureNode && !node->declaration->isGlobal) {
+				// if (node->declaration->isGlobal) {
+				// std::cerr << context.lexerString[nameId] << "\n";
+				// }
+				for (auto closure : context.closureScopes) {
+					closure->parameter->parameters.insert(
+					    closure->parameter->parameters.begin(),
+					    node->declaration);
+					closure->scopes[0][nameId] = node->declaration;
+					closure->objects.insert(closure->objects.begin(), node);
+				}
+				return node;
+			}
+			return node;
+		}
+	}
+	if (!inGlobal) {
+		return nullptr;
+	}
+	auto node =
+	    getMainFunctionInfo(in_data)->findDeclaration(in_data, line, nameId);
+	if (node == nullptr)
+		return nullptr;
+	if (justFindStatic)
+		goto isNotStatic;
 	// if (currentClassId) {
 	// 	auto func = getCurrentFunction(in_data);
 	// 	node = getCurrentClassInfo(in_data)->findDeclaration(
@@ -350,13 +407,7 @@ HasClassIdNode *ParserContext::findDeclaration(in_func, uint32_t line,
 	// 	if (node)
 	// 		return node;
 	// }
-	if (!inGlobal || currentFunctionId == mainFunctionId)
-		return node;
-	node = getMainFunctionInfo(in_data)->findDeclaration(in_data, line, nameId);
-	if (node == nullptr)
-		return node;
-	if (justFindStatic)
-		goto isNotStatic;
+
 	return node;
 isNotStatic:;
 	throw ParserError(line, name + " is not static");
@@ -366,6 +417,46 @@ DeclarationNode *ParserContext::makeDeclarationNode(
     in_func, uint32_t line, LexerStringId baseName, const std::string &name,
     ClassDeclaration *classDeclaration, bool isVal, bool isGlobal,
     bool nullable, bool addToScope, bool loadId) {
+	if (context.currentClosureNode) {
+		if (isGlobal) {
+			throw ParserError(
+			    line, "Error: Static declarations are not allowed inside "
+			          "closures\nNote: Move the declaration to an outer scope");
+		}
+		if (addToScope) {
+			auto &scope = context.currentClosureNode->scopes.back();
+			auto it = scope.find(baseName);
+			if (it != scope.end()) {
+				throw ParserError(line, "Redefinition of variable '" +
+				                            context.lexerString[baseName] +
+				                            "'. Previous definition here: " +
+				                            it->second->mode->path + ":" +
+				                            std::to_string(it->second->line) +
+				                            "");
+			}
+		}
+		DeclarationNode *node = declarationNodePool.push(
+		    line, context.currentClassId, baseName, name, classDeclaration,
+		    isVal, isGlobal, nullable);
+		context.currentClosureNode->newDeclaration.push_back(node);
+		node->classId = AutoLang::DefaultClass::nullClassId;
+		node->id = loadId ? context.currentClosureNode->declarationCount++ : 0;
+		if (context.currentClassId) {
+			auto classInfo = context.classInfo[*context.currentClassId];
+			classInfo->allDeclarationNode.push_back(node);
+		}
+		// funcInfo->declarationNodes.push_back(node);
+		if (loadId) {
+			size_t newSize = context.currentClosureNode->declarationCount;
+			if (newSize > context.currentClosureNode->maxDeclaration)
+				context.currentClosureNode->maxDeclaration = newSize;
+			if (addToScope) {
+				auto &scope = context.currentClosureNode->scopes.back();
+				scope[node->baseName] = node;
+			}
+		}
+		return node;
+	}
 	auto func =
 	    isGlobal ? getMainFunction(in_data) : getCurrentFunction(in_data);
 	auto funcInfo = isGlobal ? getMainFunctionInfo(in_data)
@@ -396,7 +487,8 @@ DeclarationNode *ParserContext::makeDeclarationNode(
 		if (newSize > func->maxDeclaration)
 			func->maxDeclaration = newSize;
 		if (addToScope) {
-			funcInfo->scopes.back()[node->baseName] = node;
+			auto &scope = funcInfo->scopes.back();
+			scope[node->baseName] = node;
 		}
 	}
 	return node;

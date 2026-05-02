@@ -207,7 +207,7 @@ bool AVM::callFunctionObject(AObject *obj) {
 		for (uint32_t i = argumentCount; i-- > funcObj->size;) {
 			funcObj->args[i] = stack.pop();
 		}
-		auto obj = (*currentCallFrame->func->native)(
+		auto object = (*currentCallFrame->func->native)(
 		    *notifier, stackAllocator.currentPtr, argumentCount);
 		if (currentCallFrame->exception) {
 			currentCallFrame->exception->retain();
@@ -215,8 +215,8 @@ bool AVM::callFunctionObject(AObject *obj) {
 			return false;
 		}
 		if (currentCallFrame->func->returnId != DefaultClass::voidClassId) {
-			obj->retain();
-			stack.push(obj);
+			object->retain();
+			stack.push(object);
 		}
 		callFrames.pop();
 		currentCallFrame = callFrames.top();
@@ -228,9 +228,9 @@ bool AVM::callFunctionObject(AObject *obj) {
 		stackAllocator[i] = stack.pop();
 	}
 	for (uint32_t i = 0; i < funcObj->size; ++i) {
-		auto obj = funcObj->args[i];
-		stackAllocator[i] = obj;
-		obj->retain();
+		auto object = funcObj->args[i];
+		stackAllocator[i] = object;
+		object->retain();
 	}
 	return callFunction(currentCallFrame, argumentCount);
 }
@@ -300,8 +300,6 @@ bool AVM::callFunction(CallFrame *currentCallFrame, uint32_t argumentCount) {
 		// return true;
 	}
 	currentCallFrame->i = 0;
-	// std::cerr << DefaultFunction::to_string(*notifier, stackAllocator[1])
-	//           << "\n";
 	resume();
 
 	return !(currentCallFrame->exception);
@@ -350,6 +348,59 @@ bool AVM::callFunction(CallFrame *currentCallFrame, uint32_t argumentCount) {
 		    data2[pos2]->member->data[get_u32(bytecodes, i)];                  \
 		if (!fastOperate<2>(operatorTable[tablePos]))                          \
 			goto resumeCallFrame;                                              \
+		break;                                                                 \
+	}
+
+#define NEGATIVE_DATA(opcode, data)                                            \
+	case AutoLang::Opcode::opcode: {                                           \
+		auto obj = data[get_u32(bytecodes, i)];                                \
+		switch (obj->type) {                                                   \
+			case DefaultClass::intClassId: {                                   \
+				auto newValue = notifier->createInt(-obj->i);                  \
+				newValue->retain();                                            \
+				stack.push(newValue);                                          \
+				break;                                                         \
+			}                                                                  \
+			case DefaultClass::floatClassId: {                                 \
+				auto newValue = notifier->createFloat(-obj->f);                \
+				newValue->retain();                                            \
+				stack.push(newValue);                                          \
+				break;                                                         \
+			}                                                                  \
+			case DefaultClass::boolClassId: {                                  \
+				auto newValue = notifier->createInt(-obj->b);                  \
+				newValue->retain();                                            \
+				stack.push(newValue);                                          \
+				break;                                                         \
+			}                                                                  \
+		}                                                                      \
+		break;                                                                 \
+	}
+
+#define NEGATIVE_DATA_MEMBER(opcode, data1)                                    \
+	case AutoLang::Opcode::opcode: {                                           \
+		auto parent = data1[get_u32(bytecodes, i)];                            \
+		auto obj = parent->member->data[get_u32(bytecodes, i)];                \
+		switch (obj->type) {                                                   \
+			case DefaultClass::intClassId: {                                   \
+				auto newValue = notifier->createInt(-obj->i);                  \
+				newValue->retain();                                            \
+				stack.push(newValue);                                          \
+				break;                                                         \
+			}                                                                  \
+			case DefaultClass::floatClassId: {                                 \
+				auto newValue = notifier->createFloat(-obj->f);                \
+				newValue->retain();                                            \
+				stack.push(newValue);                                          \
+				break;                                                         \
+			}                                                                  \
+			case DefaultClass::boolClassId: {                                  \
+				auto newValue = notifier->createBool(-obj->b);                 \
+				newValue->retain();                                            \
+				stack.push(newValue);                                          \
+				break;                                                         \
+			}                                                                  \
+		}                                                                      \
 		break;                                                                 \
 	}
 
@@ -445,10 +496,14 @@ resumeCallFrame:;
 	notifier->callFrame = currentCallFrame;
 	// std::cerr << "Called function " << currentCallFrame->func->name << " "
 	//           << currentCallFrame->fromStackAllocator << " with "
-	//           << currentCallFrame->func->argSize << " arguments \n";
+	//           << currentCallFrame->func->argSize << " arguments and "
+	//           << currentCallFrame->func->maxDeclaration
+	//           << " declaration and bytecode size: " << size
+	//           << " and from stack allocator: "
+	//           << currentCallFrame->fromStackAllocator << "\n";
 	try {
 		while (i < size) {
-			// std::cerr << i << '\n';
+			// std::cerr << i << "/" << size << "\n";
 			// std::cerr << "Stack size: " << stack.getSize() << "\n";
 			switch (bytecodes[i++]) {
 				case AutoLang::Opcode::CALL_FUNCTION_OBJECT: {
@@ -458,7 +513,6 @@ resumeCallFrame:;
 						// std::cerr << "A\n";
 						goto resumeCallFrame;
 					}
-					// std::cerr << "B\n";
 					data.manager.release(obj);
 					break;
 				}
@@ -526,6 +580,18 @@ resumeCallFrame:;
 					stack.push(obj);
 					break;
 				}
+				case AutoLang::Opcode::CREATE_FUNCTION_OBJECT_FROM_VTABLE: {
+					auto funcPos = get_u32(bytecodes, i);
+					AObject **args = new AObject *[1];
+					args[0] = stack.pop();
+					Function *func = data.functions[data.classes[args[0]->type]
+					                                    ->vtable[funcPos]];
+					auto funcObj = new FunctionObject(1, args, func);
+					auto obj = data.manager.get(funcObj);
+					obj->retain();
+					stack.push(obj);
+					break;
+				}
 				case AutoLang::Opcode::CALL_DATA_CONTRUCTOR: {
 					if (!callFunction<false, true, true>(
 					        currentCallFrame, currentFunction, bytecodes, i)) {
@@ -556,15 +622,20 @@ resumeCallFrame:;
 						}
 						*iterator = data.manager.createIntObject(0);
 						*container = list->member->data[0];
+						(*container)->retain();
 						i += 4;
 						break;
 					}
+					data.manager.release(*container);
 					uint32_t newIndex = ++(*iterator)->i;
 					if (list->member->size == newIndex) {
+						data.manager.release(*iterator);
+						*iterator = nullptr;
 						i = get_u32(bytecodes, i);
 						break;
 					}
 					*container = list->member->data[newIndex];
+					(*container)->retain();
 					i += 4;
 					break;
 				}
@@ -605,6 +676,7 @@ resumeCallFrame:;
 									            iterator *>(unorderedSetData);
 								    });
 								*container = notifier->createInt(**it);
+								(*container)->retain();
 								i += 4;
 								break;
 							}
@@ -612,11 +684,13 @@ resumeCallFrame:;
 							    AutoLang::Libs::set::IntHashSet::iterator *>(
 							    (*iterator)->data->data);
 							++it;
+							data.manager.release(*container);
 							if (it == set->end()) {
 								i = get_u32(bytecodes, i);
 								break;
 							}
 							*container = notifier->createInt(*it);
+							(*container)->retain();
 							i += 4;
 							break;
 						}
@@ -641,6 +715,7 @@ resumeCallFrame:;
 									            iterator *>(unorderedSetData);
 								    });
 								*container = notifier->createFloat(**it);
+								(*container)->retain();
 								i += 4;
 								break;
 							}
@@ -648,11 +723,13 @@ resumeCallFrame:;
 							    AutoLang::Libs::set::FloatHashSet::iterator *>(
 							    (*iterator)->data->data);
 							++it;
+							data.manager.release(*container);
 							if (it == set->end()) {
 								i = get_u32(bytecodes, i);
 								break;
 							}
 							*container = notifier->createFloat(*it);
+							(*container)->retain();
 							i += 4;
 							break;
 						}
@@ -677,6 +754,7 @@ resumeCallFrame:;
 									            iterator *>(unorderedSetData);
 								    });
 								*container = **it;
+								(*container)->retain();
 								i += 4;
 								break;
 							}
@@ -684,11 +762,13 @@ resumeCallFrame:;
 							    AutoLang::Libs::set::StringHashSet::iterator *>(
 							    (*iterator)->data->data);
 							++it;
+							data.manager.release(*container);
 							if (it == set->end()) {
 								i = get_u32(bytecodes, i);
 								break;
 							}
 							*container = *it;
+							(*container)->retain();
 							i += 4;
 							break;
 						}
@@ -713,6 +793,7 @@ resumeCallFrame:;
 									            iterator *>(unorderedSetData);
 								    });
 								*container = **it;
+								(*container)->retain();
 								i += 4;
 								break;
 							}
@@ -720,11 +801,13 @@ resumeCallFrame:;
 							    AutoLang::Libs::set::ObjectHashSet::iterator *>(
 							    (*iterator)->data->data);
 							++it;
+							data.manager.release(*container);
 							if (it == set->end()) {
 								i = get_u32(bytecodes, i);
 								break;
 							}
 							*container = *it;
+							(*container)->retain();
 							i += 4;
 							break;
 						}
@@ -812,8 +895,8 @@ resumeCallFrame:;
 					tempAllocateArea[0] = obj;
 					for (; count-- > 0;) {
 						tempAllocateArea[1] = stack.pop();
-						AutoLang::Libs::set::insert(*notifier, tempAllocateArea,
-						                            2);
+						AutoLang::Libs::set::add(*notifier, tempAllocateArea,
+						                         2);
 					}
 					stack.push(obj);
 					stack.top()->retain();
@@ -863,8 +946,10 @@ resumeCallFrame:;
 				case AutoLang::Opcode::STORE_LOCAL: {
 					auto obj = stack.pop();
 					uint32_t pos = get_u32(bytecodes, i);
-					// std::cerr<<pos<<" "<<obj<<"
-					// "<<data.classes[obj->type]->name<<"\n";
+					// std::cerr << pos << " "
+					//           << DefaultFunction::to_string(*notifier, obj)
+					//           << " " << data.classes[obj->type]->name <<
+					//           "\n";
 					stackAllocator.set(data.manager, pos, obj);
 					break;
 				}
@@ -1012,11 +1097,20 @@ resumeCallFrame:;
 					goto doneReturnFunction;
 				}
 				case AutoLang::Opcode::RETURN_VALUE: {
-					uint32_t pos = currentCallFrame->startStackCount + 1;
-					while (stack.getSize() > pos) {
+					auto value = stack.pop();
+					while (stack.getSize() >
+					       currentCallFrame->startStackCount) {
 						auto obj = stack.pop();
+						// std::cerr << "VALUE: "
+						//           << DefaultFunction::to_string(*notifier,
+						//           obj)
+						//           << "\n";
 						data.manager.release(obj);
 					}
+					stack.push(value);
+					// std::cerr << "VALUE: "
+					//           << DefaultFunction::to_string(*notifier, value)
+					//           << "\n";
 					goto doneReturnFunction;
 				}
 				case AutoLang::Opcode::RETURN_CONST: {
@@ -1442,9 +1536,36 @@ resumeCallFrame:;
 						goto resumeCallFrame;
 					break;
 				}
+					NEGATIVE_DATA(NEGATIVE_LOCAL, stackAllocator);
+					NEGATIVE_DATA(NEGATIVE_GLOBAL, globalVariables);
+					NEGATIVE_DATA_MEMBER(NEGATIVE_LOCAL_MEMBER, stackAllocator);
+					NEGATIVE_DATA_MEMBER(NEGATIVE_GLOBAL_MEMBER,
+					                     globalVariables);
 				case AutoLang::Opcode::NOT: {
 					if (!operate<AutoLang::DefaultFunction::op_not, 1>())
 						goto resumeCallFrame;
+					break;
+				}
+				case AutoLang::Opcode::NOT_LOCAL: {
+					auto obj = stackAllocator[get_u32(bytecodes, i)];
+					stack.push(notifier->createBool(!obj->b));
+					break;
+				}
+				case AutoLang::Opcode::NOT_GLOBAL: {
+					auto obj = globalVariables[get_u32(bytecodes, i)];
+					stack.push(notifier->createBool(!obj->b));
+					break;
+				}
+				case AutoLang::Opcode::NOT_LOCAL_MEMBER: {
+					auto obj = stackAllocator[get_u32(bytecodes, i)];
+					stack.push(notifier->createBool(
+					    !obj->member->data[get_u32(bytecodes, i)]->b));
+					break;
+				}
+				case AutoLang::Opcode::NOT_GLOBAL_MEMBER: {
+					auto obj = globalVariables[get_u32(bytecodes, i)];
+					stack.push(notifier->createBool(
+					    !obj->member->data[get_u32(bytecodes, i)]->b));
 					break;
 				}
 				case AutoLang::Opcode::AND_AND: {
@@ -1763,6 +1884,9 @@ AObject *AVM::getConstObject(uint32_t id) {
 }
 
 void AVM::initGlobalVariables() {
+	if (globalVariables) {
+		delete[] globalVariables;
+	}
 	globalVariables = new AObject *[data.main->maxDeclaration] {};
 }
 
@@ -1800,11 +1924,10 @@ template <size_t size> inline bool AVM::fastOperate(ANativeFunction native) {
 	auto obj = native(*notifier, tempAllocateArea, size);
 	if (notifier->callFrame->exception) {
 		return false;
-	} else {
-		if (obj != nullptr) {
-			stack.push(obj);
-			obj->retain();
-		}
+	}
+	if (obj != nullptr) {
+		stack.push(obj);
+		obj->retain();
 	}
 	return true;
 }

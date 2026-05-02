@@ -45,7 +45,7 @@ struct FunctionEvent {
 			}
 #ifdef __EMSCRIPTEN__
 			default: {
-				jsFunction(val(message));
+				jsFunction(val(std::string(message)));
 				break;
 			}
 #endif

@@ -43,7 +43,7 @@ void SetNode::optimize(in_func) {
 								           "Use <Type>[]");
 							}
 							throwError("Type mismatch: Expected Array<> but '" +
-							           compile.classes[detach->classId]->name +
+							           detach->getClassName(in_data) +
 							           "' found");
 						}
 						createArrayNode->classId = detach->classId;
@@ -74,10 +74,9 @@ void SetNode::optimize(in_func) {
 									    "parameters for collection sugar. "
 									    "Use <Type>{}");
 								}
-								throwError(
-								    "Type mismatch: Expected " +
-								    compile.classes[detach->classId]->name +
-								    " but Set<> found");
+								throwError("Type mismatch: Expected " +
+								           detach->getClassName(in_data) +
+								           " but Set<> found");
 							}
 						} else {
 							createSetNode->classId = detach->classId;
@@ -91,8 +90,22 @@ void SetNode::optimize(in_func) {
 			break;
 		}
 		case DefaultClass::functionClassId: {
-			auto n = static_cast<FunctionAccessNode *>(value);
-			n->classDeclaration = detach->classDeclaration;
+			if (detach->classId != DefaultClass::nullClassId) {
+				switch (value->kind) {
+					case NodeType::FUNCTION_ACCESS: {
+						auto n = static_cast<HasClassIdNode *>(value);
+						n->classDeclaration = detach->classDeclaration;
+						break;
+					}
+					case NodeType::CREATE_CLOSURE: {
+						auto n = static_cast<CreateClosureNode *>(value);
+						if (n->mustInfer) {
+							n->inferFrom(in_data, detach->classDeclaration);
+						}
+						break;
+					}
+				}
+			}
 			break;
 		}
 	}
@@ -116,8 +129,7 @@ void SetNode::optimize(in_func) {
 			                  ? nullptr
 			                  : valueNode->caller;
 			value = context.functionAccessPool.push(
-			    valueNode->line, caller, valueNode->nameId, 1,
-			    std::vector<HasClassIdNode *>{}, funcs);
+			    valueNode->line, caller, valueNode->nameId, 1, nullptr, funcs);
 			value->classDeclaration = detach->classDeclaration;
 			value->optimize(in_data);
 		}
@@ -225,8 +237,10 @@ void SetNode::optimize(in_func) {
 				        AutoLang::DefaultClass::nullClassId &&
 				    value->classId != AutoLang::DefaultClass::nullClassId) {
 					node->declaration->classId = value->classId;
-					node->declaration->classDeclaration =
-					    value->classDeclaration;
+					if (value->classId == DefaultClass::functionClassId) {
+						node->declaration->classDeclaration =
+						    value->classDeclaration;
+					}
 					// Marked non null won't run example val a! = 1
 					if (node->declaration->mustInferenceNullable) {
 						node->declaration->nullable = value->isNullable();
@@ -238,9 +252,19 @@ void SetNode::optimize(in_func) {
 						//           "nonnull")
 						//           << "\n";
 					}
-					// printDebug(std::string("SetNode: Declaration ") +
-					// node->declaration->name + " is " +
-					// compile.classes[value->classId]->name);
+					// if (value->classDeclaration) {
+					// 	std::cerr
+					// 	    << (std::string("SetNode: Declaration ") +
+					// 	        node->declaration->name + " is " +
+					// 	        value->classDeclaration->getName<true>(in_data))
+					// 	    << "\n";
+					// } else {
+					// 	std::cerr << (std::string("SetNode__: Declaration ") +
+					// 	              node->declaration->name + " is " +
+					// 	              compile.classes[value->classId]->name)
+					// 	          << "\n";
+					// 	//   value->getClassName(in_data))
+					// }
 				}
 				detach->classId = value->classId;
 				detach->classDeclaration = value->classDeclaration;
@@ -385,15 +409,19 @@ void SetNode::optimize(in_func) {
 		try {
 			switch (detach->classId) {
 				case AutoLang::DefaultClass::intClassId:
-					toInt(in_data, static_cast<ConstValueNode *>(value));
+					value =
+					    toInt(in_data, static_cast<ConstValueNode *>(value));
+					value->optimize(in_data);
 					return;
 				case AutoLang::DefaultClass::floatClassId:
-					toFloat(in_data, static_cast<ConstValueNode *>(value));
+					value =
+					    toFloat(in_data, static_cast<ConstValueNode *>(value));
+					value->optimize(in_data);
 					return;
 				default:
 					throwError("What happen");
 			}
-		} catch (const std::runtime_error &err) {
+		} catch (const ParserError &err) {
 			throwError("Cannot cast " + compile.classes[value->classId]->name +
 			           " to " + compile.classes[detach->classId]->name);
 		}

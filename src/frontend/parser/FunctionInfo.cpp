@@ -6,8 +6,8 @@
 
 namespace AutoLang {
 
-AccessNode *FunctionInfo::findDeclaration(in_func, uint32_t line,
-                                          LexerStringId nameId, bool isStatic) {
+AccessNode *Scopes::findDeclaration(in_func, uint32_t line,
+                                    LexerStringId nameId, bool isStatic) {
 	for (size_t i = scopes.size(); i-- > 0;) {
 		auto scope = scopes[i];
 		auto it = scope.find(nameId);

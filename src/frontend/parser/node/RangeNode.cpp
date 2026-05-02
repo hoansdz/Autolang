@@ -15,11 +15,21 @@ ExprNode *RangeNode::resolve(in_func) {
 void RangeNode::optimize(in_func) {
 	from->optimize(in_data);
 	if (from->kind == NodeType::CONST) {
-		static_cast<ConstValueNode*>(from)->isLoadPrimary = true;
+		static_cast<ConstValueNode *>(from)->isLoadPrimary = true;
+	}
+	if (from->isNullable()) {
+		throwError("Type mismatch: inferred type is " +
+		           compile.classes[from->classId]->name +
+		           "? but Int was expected");
 	}
 	to->optimize(in_data);
 	if (to->kind == NodeType::CONST) {
-		static_cast<ConstValueNode*>(to)->isLoadPrimary = true;
+		static_cast<ConstValueNode *>(to)->isLoadPrimary = true;
+	}
+	if (to->isNullable()) {
+		throwError("Type mismatch: inferred type is " +
+		           compile.classes[to->classId]->name +
+		           "? but Int was expected");
 	}
 }
 

@@ -2,9 +2,9 @@
 #define CAST_NODE_CPP
 
 #include "frontend/parser/Debugger.hpp"
+#include "frontend/parser/ParserContext.hpp"
 #include "frontend/parser/node/CreateNode.hpp"
 #include "frontend/parser/node/NodePutBytecode.hpp"
-#include "frontend/parser/ParserContext.hpp"
 
 namespace AutoLang {
 
@@ -33,22 +33,19 @@ ExprNode *CastNode::resolve(in_func) {
 				auto node = static_cast<ConstValueNode *>(value);
 				switch (classId) {
 					case AutoLang::DefaultClass::intClassId: {
-						toInt(in_data, node);
-						auto result = value;
+						auto result = toInt(in_data, node);
 						value = nullptr;
 						ExprNode::deleteNode(this);
 						return result;
 					}
 					case AutoLang::DefaultClass::floatClassId: {
-						toFloat(in_data, node);
-						auto result = value;
+						auto result = toFloat(in_data, node);
 						value = nullptr;
 						ExprNode::deleteNode(this);
 						return result;
 					}
 					case AutoLang::DefaultClass::boolClassId: {
-						toBool(in_data, node);
-						auto result = value;
+						auto result = toBool(in_data, node);
 						value = nullptr;
 						ExprNode::deleteNode(this);
 						return result;
@@ -118,9 +115,11 @@ void CastNode::optimize(in_func) {
 		}
 		case AutoLang::DefaultClass::boolClassId: {
 			switch (value->classId) {
-				case AutoLang::DefaultClass::intClassId: 
+				case AutoLang::DefaultClass::intClassId:
 				case AutoLang::DefaultClass::floatClassId: {
-					throwError("Type Error: Cannot cast Int/Float to Bool. Use explicit comparison like 'value != 0' instead.");
+					throwError(
+					    "Type Error: Cannot cast Int/Float to Bool. Use "
+					    "explicit comparison like 'value != 0' instead.");
 				}
 				case AutoLang::DefaultClass::boolClassId: {
 					return;

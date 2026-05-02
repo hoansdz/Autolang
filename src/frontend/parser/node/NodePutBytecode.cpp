@@ -66,7 +66,8 @@ void WhileNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	breakPos = bytecodes.size() - context.currentBytecodePos;
 }
 
-void ReturnNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+void ReturnNode::putOptimizedBytecodes(in_func, HasClassIdNode *value,
+                                       std::vector<uint8_t> &bytecodes) {
 	if (value) {
 		switch (value->kind) {
 			case NodeType::VAR: {
@@ -108,6 +109,10 @@ void ReturnNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		return;
 	}
 	bytecodes.emplace_back(Opcode::RETURN);
+}
+
+void ReturnNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	putOptimizedBytecodes(in_data, value, bytecodes);
 }
 
 void VarNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {

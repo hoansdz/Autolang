@@ -15,8 +15,8 @@
 #define DEBUGGER_DECLARATION_CPP
 
 #include "frontend/parser/Debugger.hpp"
-#include "shared/Utils.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "shared/Utils.hpp"
 
 namespace AutoLang {
 
@@ -374,6 +374,7 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 			}
 			result->line = token->line;
 			result->baseClassLexerStringId = token->indexData;
+			// std::cerr << context.lexerString[token->indexData] << "\n";
 			switch (token->indexData) {
 				case lexerIdFunction: {
 					throw ParserError(
@@ -417,8 +418,8 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 			std::vector<ClassDeclaration *> listClassDeclaration =
 			    loadListClassDeclaration(in_data, i, line, false, isGeneric);
 			expectFunction =
-			    listClassDeclaration.size() > 1 ||
-			    listClassDeclaration[0]->classId == DefaultClass::voidClassId;
+			    (listClassDeclaration.size() != 1) ||
+			    (listClassDeclaration[0]->classId == DefaultClass::voidClassId);
 			if (expectFunction) {
 				listClassDeclaration.insert(listClassDeclaration.begin(),
 				                            nullptr);
@@ -451,6 +452,9 @@ loadSpecialClass:;
 					result->inputClassId.pop_back();
 				}
 				result->inputClassId[0] = returnClass;
+				if (!result->isGeneric) {
+					result->isGeneric = returnClass->isGeneric;
+				}
 				return result;
 			}
 			auto classDeclaration = context.classDeclarationAllocator.push();
@@ -459,7 +463,8 @@ loadSpecialClass:;
 			classDeclaration->classId = DefaultClass::functionClassId;
 			classDeclaration->inputClassId.push_back(returnClass);
 			classDeclaration->inputClassId.push_back(result);
-
+			classDeclaration->isGeneric =
+			    result->isGeneric || returnClass->isGeneric;
 			return classDeclaration;
 		}
 		case Lexer::TokenType::QMARK: {

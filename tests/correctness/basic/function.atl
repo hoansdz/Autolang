@@ -1,11 +1,11 @@
 
 
-func plus(a: Int, b: Int) = a + b
+func plus(a: Int, b: Int, c: Int) = a + b + c
 
 func testFunction() {
-
-	val x = plus(2, 3)
-	assert(x == 5, __FILE__, __LINE__)
+	static val m = 4
+	val x = plus(2, 3, m)
+	assert(x == 9, __FILE__, __LINE__)
 
 	println("Passed ${__FUNC__}")
 }

@@ -1,25 +1,49 @@
-
-func testInputSugarSyntax(data: Array<Array<Int>>) {
-
+func globalCalculate(n: Int): Int {
+    return n * n + 5
 }
 
-func testArraySugarSyntax() {
-	val list = <Array<Int>>[
-		[1, 2, 3], 
-		[4, 5, 6]
-	]
-	var sum = 0
-	for (arr in list) {
-		for (num in arr) {
-			sum += num
-		}
-	}
-	testInputSugarSyntax([[1, 2, 3], [4, 5, 6]])
-	testInputSugarSyntax([[], []])
-	testInputSugarSyntax([])
-	assert(list is Array<Array<Int>>, __FILE__, __LINE__)
-	assert(sum == 21, __FILE__, __LINE__)
-	println("Passed ${__FUNC__}")
+func testCallableEquivalenceAndMixing() {
+    val matrix = <Array<Int>>[[1, 2], [3, 4]]
+    
+    val capturedOffset = 5
+    val closureCalculate = {|n: Int| n * n + capturedOffset}
+    val funcPtr: (Int) -> Int = globalCalculate
+    
+    val callables = <(Int) -> Int>[funcPtr, closureCalculate]
+    val ptrCall = callables[0]
+    val closureCall = callables[1]
+    
+    var totalPtr = 0
+    var totalClosure = 0
+    val resultsPtr = <Int>[]
+    val resultsClosure = <Int>[]
+
+    for (row in matrix) {
+        for (item in row) {
+            val res1 = ptrCall(item)
+            val res2 = closureCall(item)
+            
+            resultsPtr.add(res1)
+            resultsClosure.add(res2)
+            
+            totalPtr += res1
+            totalClosure += res2
+        }
+    }
+    
+    assert(resultsPtr[0] == 6, __FILE__, __LINE__)
+    assert(resultsClosure[0] == 6, __FILE__, __LINE__)
+    assert(resultsPtr[0] == resultsClosure[0], __FILE__, __LINE__)
+    
+    assert(resultsPtr[3] == 21, __FILE__, __LINE__)
+    assert(resultsClosure[3] == 21, __FILE__, __LINE__)
+    assert(resultsPtr[3] == resultsClosure[3], __FILE__, __LINE__)
+    
+    assert(totalPtr == 50, __FILE__, __LINE__)
+    assert(totalClosure == 50, __FILE__, __LINE__)
+    assert(totalPtr == totalClosure, __FILE__, __LINE__)
+
+    println("Passed ${__FUNC__}")
 }
 
-testArraySugarSyntax()
+testCallableEquivalenceAndMixing()

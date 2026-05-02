@@ -181,14 +181,16 @@ void BinaryNode::optimize(in_func) {
 		}
 		case Lexer::TokenType::IN: {
 			if (left->isNullable() || right->isNullable()) {
-				throwError("Cannot use operator '" +
-				           Lexer::Token(0, op).toString(context) +
-				           "' with nullable value");
+				throwError(
+				    "Cannot use operator '" +
+				    Lexer::Token(0, op).toString(context) +
+				    "' with nullable value: " + left->getClassName(in_data) +
+				    " + " + right->getClassName(in_data));
 			}
 			if (right->kind == NodeType::RANGE &&
 			    left->classId != DefaultClass::intClassId) {
 				throwError("Type mismatch: expected 'Int' but '" +
-				           compile.classes[left->classId]->name + "' found");
+				           left->getClassName(in_data) + "' found");
 			}
 
 			classId = DefaultClass::boolClassId;
@@ -214,9 +216,11 @@ void BinaryNode::optimize(in_func) {
 				    right, AutoLang::DefaultClass::intClassId);
 			}
 			if (left->isNullable() || right->isNullable()) {
-				throwError("Cannot use operator '" +
-				           Lexer::Token(0, op).toString(context) +
-				           "' with nullable value");
+				throwError(
+				    "Cannot use operator '" +
+				    Lexer::Token(0, op).toString(context) +
+				    "' with nullable value: " + left->getClassName(in_data) +
+				    " + " + right->getClassName(in_data));
 			}
 			break;
 		}
@@ -277,9 +281,11 @@ void BinaryNode::optimize(in_func) {
 				           Lexer::Token(0, op).toString(context) + "'");
 			}
 			if (left->isNullable() || right->isNullable())
-				throwError("Cannot use operator '" +
-				           Lexer::Token(0, op).toString(context) +
-				           "' with nullable value");
+				throwError(
+				    "Cannot use operator '" +
+				    Lexer::Token(0, op).toString(context) +
+				    "' with nullable value: " + left->getClassName(in_data) +
+				    " + " + right->getClassName(in_data));
 			break;
 		}
 	}

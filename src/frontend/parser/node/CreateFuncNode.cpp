@@ -30,6 +30,10 @@ void CreateFuncNode::pushFunction(in_func) {
 	func->maxDeclaration = parameter->parameters.size();
 	funcInfo->declaration = parameter->parameters.size();
 	funcInfo->parameter = parameter;
+	if (classDeclaration &&
+	    classDeclaration->classId == DefaultClass::functionClassId) {
+		funcInfo->returnClass = classDeclaration;
+	}
 }
 
 void CreateFuncNode::pushNativeFunction(in_func, ANativeFunctionData *native) {
@@ -57,6 +61,10 @@ void CreateFuncNode::pushNativeFunction(in_func, ANativeFunctionData *native) {
 	func->maxDeclaration = parameter->parameters.size();
 	funcInfo->declaration = parameter->parameters.size();
 	funcInfo->parameter = parameter;
+	if (classDeclaration &&
+	    classDeclaration->classId == DefaultClass::functionClassId) {
+		funcInfo->returnClass = classDeclaration;
+	}
 }
 
 ExprNode *CreateFuncNode::copy(in_func) {

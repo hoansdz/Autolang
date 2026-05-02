@@ -27,6 +27,7 @@ inline std::string to_string(ANotifier &notifier, AObject *obj);
 inline AObject *get_string_size(NativeFuncInData);
 inline AObject *input_str(NativeFuncInData);
 inline AObject *str_get(NativeFuncInData);
+inline AObject *str_set(NativeFuncInData);
 inline AObject *str_char_at(NativeFuncInData);
 
 AObject *data_constructor(NativeFuncInData) {
@@ -40,6 +41,9 @@ AObject *data_constructor(NativeFuncInData) {
 }
 
 std::string to_string(ANotifier &notifier, AObject *obj) {
+	if (!obj) {
+		return "c_nullptr";
+	}
 	uint32_t type = obj->type;
 	switch (type) {
 		case AutoLang::DefaultClass::intClassId:
@@ -226,6 +230,44 @@ AObject *str_get(NativeFuncInData) {
 
 	return notifier.createString(AString::from(str->data[pos]));
 }
+
+// AObject *str_set(NativeFuncInData) {
+// 	AString *str = args[0]->str;
+// 	int64_t pos = args[1]->i;
+// 	AObject *obj = args[2];
+
+// 	int64_t len = str->size;
+
+// 	if (len == 0) {
+// 		notifier.throwException("Empty string");
+// 		return nullptr;
+// 	}
+
+// 	if (pos < 0)
+// 		pos += len;
+
+// 	if (pos < 0 || pos >= len) {
+// 		notifier.throwException("Index out of range");
+// 		return nullptr;
+// 	}
+
+// 	switch (obj->type) {
+// 		case DefaultClass::intClassId: {
+// 			if (obj->i < 0 || obj->i > 255) {
+// 				notifier.throwException("Char must be [0, 255]");
+// 				return nullptr;
+// 			}
+// 			notifier.createString()
+// 			str->data[pos] = static_cast<char>(obj->i);
+// 			return nullptr;
+// 		}
+// 		default: {
+
+// 		}
+// 	}
+
+// 	return notifier.createString(AString::from(str->data[pos]));
+// }
 
 AObject *str_char_at(NativeFuncInData) {
 	AString *str = args[0]->str;

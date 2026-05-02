@@ -3,6 +3,7 @@
 
 #include "backend/libs/array.hpp"
 #include "backend/vm/AVM.hpp"
+#include <sstream>
 
 namespace AutoLang {
 
@@ -42,6 +43,9 @@ class ANotifier {
 		    vm->data.manager.get(classId, new ANativeData{data, destructor});
 		return obj;
 	}
+	[[nodiscard]] inline AObject *createBytes(uint32_t size) {
+		return vm->data.manager.getBytes(size);
+	}
 	template <typename T>
 	[[nodiscard]] inline AObject *createException(T message) {
 		auto obj = vm->data.manager.createEmptyObject();
@@ -78,22 +82,50 @@ class ANotifier {
 
 		arr->member->data[arr->member->size++] = obj;
 	}
-	inline bool hasException() {
-		return vm->callFrames.top()->exception;
-	}
+	inline bool hasException() { return vm->callFrames.top()->exception; }
 	template <typename T> inline void throwException(T message) {
 		callFrame->exception = createException(message);
 	}
 	template <typename... Args>
-	[[nodiscard]] inline AObject* callFunctionObject(AObject *funcObject, Args &&...args) {
+	[[nodiscard]] inline AObject *callFunctionObject(AObject *funcObject,
+	                                                 Args &&...args) {
 		((std::forward<Args>(args)->retain(),
 		  vm->stack.push(std::forward<Args>(args))),
 		 ...);
 		vm->callFunctionObject(funcObject);
-		if (funcObject->function->function->returnId == DefaultClass::voidClassId) {
+		if (funcObject->function->function->returnId ==
+		    DefaultClass::voidClassId) {
 			return nullptr;
 		}
 		return vm->stack.pop();
+	}
+	inline std::string toString(AObject *obj) {
+		if (!obj) {
+			return "c_nullptr";
+		}
+		uint32_t type = obj->type;
+		switch (type) {
+			case AutoLang::DefaultClass::intClassId:
+				return std::to_string(obj->i);
+			case AutoLang::DefaultClass::floatClassId:
+				return std::to_string(obj->f);
+			case AutoLang::DefaultClass::stringClassId:
+				return std::string(obj->str->data);
+			case AutoLang::DefaultClass::nullClassId:
+				return "null";
+			case DefaultClass::boolClassId:
+				return (obj == DefaultClass::trueObject ? "true" : "false");
+			default:
+				auto clazz = vm->data.classes[obj->type];
+				// auto it = clazz->funcMap.find("toString");
+				// if (it == clazz->funcMap.end()) {
+				std::stringstream ss;
+				ss << clazz->name << "@" << obj;
+				return ss.str();
+				// }
+				// return vm->callFunction<false, true, false>(currentCallFrame,
+				// currentFunction, bytecodes, i);
+		}
 	}
 	inline void input(AObject *obj) { vm->input(obj); }
 	inline void release(AObject *obj) { vm->data.manager.release(obj); }

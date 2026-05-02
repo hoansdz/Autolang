@@ -183,13 +183,15 @@ void GetPropNode::optimize(in_func) {
 			clazz->memberId[id] = declaration->classId;
 		classId = declaration->classId;
 		classDeclaration = declaration->classDeclaration;
-		// printDebug("Class " + clazz->name + " GetProp: " + name + " " +
-		//            " has id: " + std::to_string(id) + " " +
-		//            std::to_string(classId) + " " +
-		//            compile.classes[classId]->name);
-	}
-	if (nullable) {
-		nullable = declaration->nullable;
+		if (nullable) {
+			nullable = declaration->nullable;
+		}
+		// std::cerr << ("Class " + clazz->name + " GetProp: " + name + " " +
+		//               " has id: " + std::to_string(id) + " " +
+		//               std::to_string(classId) + " " +
+		//               compile.classes[classId]->name +
+		//               (declaration->nullable ? "?" : ""))
+		//           << "\n";
 	}
 }
 

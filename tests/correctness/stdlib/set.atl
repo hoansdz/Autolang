@@ -15,7 +15,7 @@ func testAllSetFeatures() {
 
     // 1. Test: __CLASS__() explicit constructor (and private create)
     val explicitSet = Set<Int>()
-    explicitSet.insert(100)
+    explicitSet.add(100)
     assert(explicitSet.size() == 1, __FILE__, __LINE__)
     assert(explicitSet.contains(100) == true, __FILE__, __LINE__)
 
@@ -26,8 +26,8 @@ func testAllSetFeatures() {
 
     // 3. Test: contains
     val s2 = <String>{"Apple", "Banana"}
-    s2.insert("Orange")
-    s2.insert("Apple") // Duplicate, should be ignored
+    s2.add("Orange")
+    s2.add("Apple") // Duplicate, should be ignored
     assert(s2.contains("Orange") == true, __FILE__, __LINE__)
     assert(s2.contains("Grapes") == false, __FILE__, __LINE__)
 

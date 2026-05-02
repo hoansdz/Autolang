@@ -4,11 +4,11 @@
 #include "backend/vm/AVM.hpp"
 #include "frontend/parser/ClassDeclaration.hpp"
 #include "frontend/parser/ClassInfo.hpp"
+#include "frontend/parser/FunctionEvent.hpp"
 #include "frontend/parser/FunctionInfo.hpp"
 #include "frontend/parser/OperatorId.hpp"
 #include "frontend/parser/node/CreateFuncNode.hpp"
 #include "frontend/parser/node/CreateNode.hpp"
-#include "frontend/parser/FunctionEvent.hpp"
 #include "frontend/structure/NonReallocatePool.hpp"
 #include "shared/ChunkArena.hpp"
 #include "shared/ClassFlags.hpp"
@@ -64,8 +64,8 @@ constexpr LexerStringId lexerIdFunction = 22;
 using GenericCaller = ClassDeclaration;
 
 struct ParserContext {
-	FunctionEvent* onError = nullptr;
-	FunctionEvent* onWarning = nullptr;
+	FunctionEvent *onError = nullptr;
+	FunctionEvent *onWarning = nullptr;
 	// Optimize ram because reuse std::string instead of new std::string in
 	// lexer
 	std::vector<std::string> lexerString;
@@ -85,8 +85,11 @@ struct ParserContext {
 	uint32_t modifierflags = 0;
 	// Anotations
 	uint32_t annotationFlags = 0;
+	uint32_t closureCount = 0;
 	HashMap<AnnotationFlags, Lexer::Token> annotationMetadata;
-	// Declaration new functions by user
+	// Declaration new functions by users
+	CreateClosureNode *currentClosureNode = nullptr;
+	std::vector<CreateClosureNode *> closureScopes;
 	NonReallocatePool<CreateFuncNode> newFunctions;
 	HashMap<std::string, CreateFuncNode *> genericFunctionMap;
 	std::vector<FunctionId> mustInferenceFunctionType;
@@ -111,6 +114,7 @@ struct ParserContext {
 	bool canBreakContinue = false;
 	// Be used when it is static keywords, example static val a = ...
 	bool justFindStatic = false;
+	bool justFindStaticMember = false;
 	bool isInGeneric = false;
 	// Be used when put bytecodes with break or continue
 	uint32_t continuePos = 0;
@@ -118,7 +122,7 @@ struct ParserContext {
 	uint32_t currentBytecodePos = 0;
 	size_t currentTokenPos = 0;
 	JumpIfNullNode *jumpIfNullNode = nullptr;
-	IfNode *mustReturnValueNode = nullptr;
+	HasClassIdNode *mustReturnValueNode = nullptr;
 
 	std::vector<GenericCaller *> genericCallers;
 
@@ -131,6 +135,7 @@ struct ParserContext {
 	// All static variable will be here and put bytecodes to ".main" function
 	std::vector<ExprNode *> staticNode;
 	std::vector<Parameter *> defaultValueParameter;
+	std::vector<CreateClosureNode *> allClosureNode;
 
 	NonReallocatePool<DeclarationNode> declarationNodePool;
 	ChunkArena<Parameter, 64> parameterPool;
@@ -151,17 +156,20 @@ struct ParserContext {
 	ChunkArena<NullCoalescingNode, 64> nullCoalescingPool;
 	ChunkArena<BlockNode, 64> blockNodePool;
 	ChunkArena<CallNode, 64> callNodePool;
-	ChunkArena<CallNode, 16> callFuncObjectNodePool;
-	ChunkArena<ClassAccessNode, 64> classAccessPool;
+	// ChunkArena<CallNode, 16> callFuncObjectNodePool;
+	ChunkArena<ClassAccessNode, 32> classAccessPool;
 	ChunkArena<ConstValueNode, 128> constValuePool;
-	ChunkArena<UnaryNode, 64> unaryNodePool;
+	ChunkArena<UnaryNode, 16> unaryNodePool;
 	ChunkArena<ForNode, 64> forPool;
 	ChunkArena<RangeNode, 32> rangeNode;
 	ChunkArena<CreateArrayNode, 32> createArrayPool;
 	ChunkArena<CreateSetNode, 32> createSetPool;
 	ChunkArena<CreateMapNode, 32> createMapPool;
 	ChunkArena<WhenNode, 32> whenNodePool;
-	ChunkArena<FunctionAccessNode, 16> functionAccessPool;
+	ChunkArena<FunctionAccessNode, 8> functionAccessPool;
+	ChunkArena<CreateClosureNode, 16> createClosurePool;
+
+	std::vector<uint8_t> closureBytecodes;
 
 	std::optional<ClassId> currentClassId = std::nullopt;
 	uint32_t mainFunctionId;

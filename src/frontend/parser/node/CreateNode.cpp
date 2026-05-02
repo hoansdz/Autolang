@@ -2,9 +2,9 @@
 #define CREATE_NODE_CPP
 
 #include "frontend/parser/node/CreateNode.hpp"
+#include "frontend/parser/ParserContext.hpp"
 #include "shared/ClassFlags.hpp"
 #include "shared/DefaultFunction.hpp"
-#include "frontend/parser/ParserContext.hpp"
 #include "shared/Type.hpp"
 #include <functional>
 
@@ -57,6 +57,7 @@ void DeclarationNode::optimize(in_func) {
 		auto classInfo = context.classInfo[it->second];
 		if (!classInfo->genericData) {
 			classId = it->second;
+			nullable = classDeclaration->nullable;
 			return;
 		}
 		if (classInfo->genericData->genericDeclarations.size() !=
@@ -74,11 +75,9 @@ void DeclarationNode::optimize(in_func) {
 			throwError("Unresolved class id");
 		}
 		classId = *classDeclaration->classId;
-		if (classId == DefaultClass::functionClassId) {
-			// std::cerr<<classDeclaration->getName(in_data)<<"\n";
-			// std::cerr<<nullable<<"\n";
-			nullable = classDeclaration->nullable;
-		}
+		// if (classId == DefaultClass::functionClassId) {
+		nullable = classDeclaration->nullable;
+		// }
 		return;
 	}
 	// printDebug("DeclarationNode: " + name + " is " +
@@ -90,6 +89,9 @@ ExprNode *DeclarationNode::copy(in_func) {
 		if (baseName == lexerIdthis) {
 			return context.classInfo[*context.currentClassId]->declarationThis;
 		}
+	}
+	if (classDeclaration && !classDeclaration->isGenerics(in_data)) {
+		return this;
 	}
 	auto newNode = context.declarationNodePool.push(
 	    line, context.currentClassId, baseName, name, classDeclaration, isVal,
@@ -129,8 +131,9 @@ void CreateConstructorNode::pushFunction(in_func) {
 	auto *classInfo = context.classInfo[classId];
 	funcId = compile.registerFunction<true>(
 	    clazz, context.lexerString[nameId],
-	    new ClassId[parameter->parameters.size()]{}, parameter->parameters.size(),
-	    classId, functionFlags | FunctionFlags::FUNC_IS_CONSTRUCTOR);
+	    new ClassId[parameter->parameters.size()]{},
+	    parameter->parameters.size(), classId,
+	    functionFlags | FunctionFlags::FUNC_IS_CONSTRUCTOR);
 	// Function can be overrided, it will be recreated in override phase
 	if (!(clazz->classFlags & ClassFlags::CLASS_HAS_PARENT)) {
 		auto classInfo = context.classInfo[classId];

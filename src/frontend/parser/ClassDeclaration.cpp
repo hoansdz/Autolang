@@ -13,6 +13,20 @@ void ClassDeclaration::throwError(std::string message) {
 	throw ParserError(line, message);
 }
 
+bool ClassDeclaration::isSame(ClassDeclaration *classDeclaration) {
+	if (classId != classDeclaration->classId ||
+	    inputClassId.size() != classDeclaration->inputClassId.size()) {
+		return false;
+	}
+	for (int i = 0; i < inputClassId.size(); ++i) {
+		if (inputClassId[i]->classId !=
+		    classDeclaration->inputClassId[i]->classId) {
+			return false;
+		}
+	}
+	return true;
+}
+
 ClassDeclaration *ClassDeclaration::copy(in_func) {
 	if (!classId) {
 		int *a = nullptr;

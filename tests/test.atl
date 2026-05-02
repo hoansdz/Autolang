@@ -63,7 +63,7 @@ class ListPerson {
             return
         }
         var currentNode? = beginNode
-        for (i in 0..<index - 1) {
+        for (i in 0..<(index - 1)) {
         	currentNode = currentNode?.next
         }
         currentNode!.next = currentNode?.next?.next

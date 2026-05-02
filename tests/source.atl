@@ -89,8 +89,32 @@
 
 // println("Time: ${Time.now() - time}")
 
-// // func x(str: Int, value: Int = 1): Int {
-// // 	return value
-// // }
+func hm(test: Float) {
+val myName = "hoan"
+val a = {|x: (String) -> String| -> {
+	val m = 9
+	m
+}}
 
-// // println(x(1))
+println("XIN CHAO PROM ${a({|m: String| m})} ")
+}
+
+hm(1)
+
+// class Player(val id: Int, val health: Float, val name: String) {
+//     static func Player(name: String): Player {
+//         // Complex logic happens here
+//         val generatedId = 20
+//         val defaultHealth = 100.0
+        
+//         // Return the primary constructor call to save all data at once
+//         return Player(generatedId, defaultHealth, name)
+//     }
+// }
+
+// // Both calls invoke the static pseudo-constructor
+// val p1 = Player.Player("Child guys")
+// val p2 = Player("AutoLang")
+
+// println("Player 1: ${p1.health}")
+// println("Player 2: ${p2.name}")

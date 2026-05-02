@@ -2,13 +2,13 @@
 #define LIBS_SET_CPP
 
 #include "set.hpp"
-#include "frontend/ACompiler.hpp"
-#include "shared/DefaultFunction.hpp"
 #include "backend/vm/ANotifier.hpp"
-#include "shared/DefaultFunction.hpp"
+#include "frontend/ACompiler.hpp"
 #include "shared/DefaultClass.hpp"
+#include "shared/DefaultFunction.hpp"
 #include "shared/DefaultOperator.hpp"
 #include "shared/Type.hpp"
+
 
 namespace AutoLang {
 namespace Libs {
@@ -60,7 +60,7 @@ AObject *constructor(ANotifier &notifier, ClassId classId, ClassId keyId) {
 	}
 }
 
-AObject *insert(NativeFuncInData) {
+AObject *add(NativeFuncInData) {
 	auto unorderedSetData = static_cast<AUnorderedSet *>(args[0]->data->data);
 	AObject *element = args[1];
 

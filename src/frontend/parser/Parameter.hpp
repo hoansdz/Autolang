@@ -1,9 +1,10 @@
 #ifndef PARAMETER_HPP
-#define PARAMETER_HPP
-
-#include "frontend/parser/node/Node.hpp"
+#define PARAMETER_HPP=
 
 namespace AutoLang {
+
+struct DeclarationNode;
+struct HasClassIdNode;
 
 struct Parameter {
 	std::vector<DeclarationNode *> parameters;

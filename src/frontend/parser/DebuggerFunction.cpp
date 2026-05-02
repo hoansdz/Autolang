@@ -127,6 +127,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				    token->line,
 				    "Generic functions in class doesn't supported now");
 			}
+			functionFlags |= FunctionFlags::FUNC_SKIP_LOAD;
 			context.isInGeneric = false;
 			context.preloadGenericData = context.genericDataPool.push();
 			while (true) {
@@ -341,9 +342,9 @@ createFunc:;
 		parameter->defaultValuePos += 1;
 	}
 
-	CreateFuncNode *node = context.newFunctions.push(
-	    firstLine, context.currentClassId, nameId, classDeclaration,
-	    std::move(parameter), functionFlags);
+	CreateFuncNode *node =
+	    context.newFunctions.push(firstLine, context.currentClassId, nameId,
+	                              classDeclaration, parameter, functionFlags);
 	if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 		auto &token = context.annotationMetadata[AnnotationFlags::AN_NATIVE];
 		const auto &name = context.lexerString[token.indexData];
@@ -353,13 +354,13 @@ createFunc:;
 			                                 "' could not be found");
 		}
 		node->pushNativeFunction(in_data, &it->second);
-		auto func = compile.functions[node->id];
-		context.gotoFunction(node->id);
+		// auto func = compile.functions[node->id];
+		// context.gotoFunction(node->id);
 		// for (size_t i = 1; i < node->parameter->parameters.size(); ++i) {
 		// 	auto *param = node->parameter->parameters[i];
 		// 	param->id = i;
 		// }
-		context.gotoFunction(context.mainFunctionId);
+		// context.gotoFunction(context.mainFunctionId);
 		context.preloadGenericData = nullptr;
 		if (context.isInGeneric)
 			context.isInGeneric = false;
@@ -385,7 +386,10 @@ createFunc:;
 		scope[param->baseName] = param;
 	}
 	try {
+		context.justFindStaticMember =
+		    (func->functionFlags & FunctionFlags::FUNC_IS_STATIC);
 		loadBody<false>(in_data, funcInfo->body.nodes, i);
+		context.justFindStaticMember = false;
 		context.gotoFunction(context.mainFunctionId);
 		context.preloadGenericData = nullptr;
 		if (context.isInGeneric)
@@ -413,6 +417,107 @@ createFunc:;
 	}
 
 	return node;
+}
+
+template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
+	Lexer::Token *token = &context.tokens[i];
+	uint32_t firstLine = token->line;
+	if (!nextToken(&token, context.tokens, i)) {
+		--i;
+		throw ParserError(firstLine, "Expected body but not found");
+	}
+	AutoLang::Parameter *parameter;
+	auto classDeclaration = context.classDeclarationAllocator.push();
+	classDeclaration->classId = DefaultClass::functionClassId;
+	classDeclaration->baseClassLexerStringId = lexerIdFunction;
+	classDeclaration->nullable = false;
+	bool loadedLBrace = true;
+	if constexpr (hasParams) {
+		if (token->type == Lexer::TokenType::OR) {
+			parameter = loadListDeclaration<AutoLang::Lexer::OR, false, false>(
+			    in_data, i, false);
+			classDeclaration->inputClassId.reserve(
+			    parameter->parameters.size() + 1);
+			classDeclaration->inputClassId.push_back(nullptr);
+			classDeclaration->line = firstLine;
+			// if (!isGeneric) {
+			// 	context.allClassDeclarations.push_back(classDeclaration);
+			// }
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(firstLine, "Expected body but not found");
+			}
+			if (!expect(token, Lexer::TokenType::MINUS_GT)) {
+				--i;
+				goto createClosure;
+			}
+			loadedLBrace = false;
+			if (!nextToken(&token, context.tokens, i) ||
+			    !expect(token, Lexer::TokenType::LBRACE)) {
+				--i;
+				throw ParserError(firstLine, "Expected body but not found");
+			}
+		} else {
+			throw ParserError(
+			    firstLine,
+			    "Error: Empty closure parameter list is not allowed\nNote: Use "
+			    "{|param|} instead of {} to declare parameters explicitly");
+			--i;
+			parameter = context.parameterPool.push();
+		}
+	} else {
+		parameter = context.parameterPool.push();
+		classDeclaration->inputClassId.push_back(nullptr);
+		classDeclaration->line = firstLine;
+		if (!nextToken(&token, context.tokens, i)) {
+			--i;
+			throw ParserError(firstLine, "Expected body but not found");
+		}
+		if (!expect(token, Lexer::TokenType::MINUS_GT)) {
+			--i;
+			goto createClosure;
+		}
+		loadedLBrace = false;
+		if (!nextToken(&token, context.tokens, i) ||
+		    !expect(token, Lexer::TokenType::LBRACE)) {
+			--i;
+			throw ParserError(firstLine, "Expected body but not found");
+		}
+	}
+createClosure:;
+	auto createClosureNode =
+	    context.createClosurePool.push(firstLine, parameter);
+	createClosureNode->classDeclaration = classDeclaration;
+
+	for (auto declaration : parameter->parameters) {
+		classDeclaration->inputClassId.push_back(declaration->classDeclaration);
+		auto &scope = createClosureNode->scopes.back();
+		scope[declaration->baseName] = declaration;
+		if (!classDeclaration->isGeneric) {
+			if (!declaration->classDeclaration) {
+				if (!createClosureNode->mustInfer) {
+					createClosureNode->mustInfer = true;
+				}
+				continue;
+			}
+			classDeclaration->isGeneric =
+			    declaration->classDeclaration->isGeneric;
+		}
+	}
+	context.allClosureNode.push_back(createClosureNode);
+
+	auto lastCurrentClosureNode = context.currentClosureNode;
+	context.currentClosureNode = createClosureNode;
+	context.closureScopes.push_back(createClosureNode);
+	if (loadedLBrace) {
+		loadBody<true>(in_data, createClosureNode->body.nodes, i);
+	} else {
+		loadBody<false>(in_data, createClosureNode->body.nodes, i);
+		nextToken(&token, context.tokens, i);
+	}
+	context.currentClosureNode = lastCurrentClosureNode;
+	context.closureScopes.pop_back();
+	return createClosureNode;
 }
 
 ReturnNode *loadReturn(in_func, size_t &i) {

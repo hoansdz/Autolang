@@ -19,6 +19,7 @@ enum FunctionFlags : uint32_t {
 	FUNC_IS_DATA_CONSTRUCTOR = 1u << 10,
 	FUNC_WAIT_INPUT = 1u << 11,
 	FUNC_HAS_BODY = 1u << 12,
+	FUNC_SKIP_LOAD = 1u << 13
 };
 
 }

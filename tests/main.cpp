@@ -22,10 +22,10 @@ void printMemoryUsage() {
 #endif
 
 int main(int argc, char *argv[]) {
-	// auto start = std::chrono::high_resolution_clock::now();
+	auto start = std::chrono::high_resolution_clock::now();
 	try {
 		try {
-			for (int i = 0; i < 1; ++i) {
+			for (int i = 0; i < 3; ++i) {
 				AutoLang::ACompiler compiler;
 				// ANativeMap nativeMap = {
 				// 	{"hi", (ANativeFunction)[](NativeFuncInput) ->
@@ -36,14 +36,18 @@ int main(int argc, char *argv[]) {
 				//     [](std::string_view message) -> void {
 
 				//     }));
+				// if (compiler.compile("./tests/test.atl")) {
+				// 	compiler.run();
+				// 	compiler.refresh();
+				// }
 				if (compiler.compile("./tests/testCorrectness.atl")) {
 					compiler.run();
 					compiler.refresh();
 				}
-				// if (compiler.compile("./tests/testCorrectness.atl")) {
-				// 	compiler.run();
-				// 	compiler.refresh();
-				// }
+				if (compiler.compile("./tests/testCorrectness.atl")) {
+					compiler.run();
+					compiler.refresh();
+				}
 				// if (compiler.compile("./tests/testCorrectness.atl")) {
 				// 	compiler.run();
 				// }
@@ -59,11 +63,11 @@ int main(int argc, char *argv[]) {
 	} catch (const std::exception &e) {
 		std::cerr << e.what() << '\n';
 	}
-	// auto end = std::chrono::high_resolution_clock::now();
-	// auto duration =
-	//     std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-	// std::cout << '\n' << "Total time : " << duration.count() << " ms" <<
-	// '\n';
+	auto end = std::chrono::high_resolution_clock::now();
+	auto duration =
+	    std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+	std::cout << '\n' << "Total time : " << duration.count() << " ms" <<
+	'\n';
 #ifdef _WIN32
 	printMemoryUsage();
 #endif

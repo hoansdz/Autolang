@@ -86,6 +86,14 @@ void AClass::log(CompiledProgram &data) {
 		std::cerr << #bytecode << "    " << get_u32(bytecodes, i) << "\n";     \
 		break;
 
+#define PRINT_BYTECODE_2_uint32(bytecode)                                      \
+	case AutoLang::Opcode::bytecode: {                                         \
+		uint32_t pos1 = get_u32(bytecodes, i);                                 \
+		uint32_t pos2 = get_u32(bytecodes, i);                                 \
+		std::cerr << #bytecode << "  " << pos1 << "  " << pos2 << "\n";        \
+		break;                                                                 \
+	}
+
 #define PRINT_DATA_CAL_DATA(opcode, data1, data2)                              \
 	case AutoLang::Opcode::opcode: {                                           \
 		uint8_t tablePos = bytecodes[i++];                                     \
@@ -202,6 +210,12 @@ void AVM::log(Function *currentFunction) {
 				          << size << "\n";
 				break;
 			}
+			case AutoLang::Opcode::CREATE_FUNCTION_OBJECT_FROM_VTABLE: {
+				auto funcPos = get_u32(bytecodes, i);
+				std::cerr << "CREATE_FUNCTION_OBJECT_FROM_VTABLE   " << funcPos
+				          << "\n";
+				break;
+			}
 			case AutoLang::Opcode::FOR_LIST: {
 				bool isGlobal = bytecodes[i++] == Opcode::STORE_GLOBAL;
 				uint32_t containerPos = get_u32(bytecodes, i);
@@ -262,6 +276,14 @@ void AVM::log(Function *currentFunction) {
 				PRINT_BYTECODE_1_uint32(RETURN_LOCAL);
 				PRINT_BYTECODE_1_uint32(RETURN_CONST);
 				PRINT_BYTECODE_1_uint32(RETURN_GLOBAL);
+				PRINT_BYTECODE_1_uint32(NEGATIVE_LOCAL);
+				PRINT_BYTECODE_1_uint32(NEGATIVE_GLOBAL);
+				PRINT_BYTECODE_2_uint32(NEGATIVE_LOCAL_MEMBER);
+				PRINT_BYTECODE_2_uint32(NEGATIVE_GLOBAL_MEMBER);
+				PRINT_BYTECODE_1_uint32(NOT_LOCAL);
+				PRINT_BYTECODE_1_uint32(NOT_GLOBAL);
+				PRINT_BYTECODE_2_uint32(NOT_LOCAL_MEMBER);
+				PRINT_BYTECODE_2_uint32(NOT_GLOBAL_MEMBER);
 			case AutoLang::Opcode::RETURN_LOCAL_MEMBER: {
 				uint32_t pos = get_u32(bytecodes, i);
 				uint32_t memberId = get_u32(bytecodes, i);
@@ -337,8 +359,8 @@ void AVM::log(Function *currentFunction) {
 			case AutoLang::Opcode::LOCAL_STORE_CONST: {
 				uint32_t pos1 = get_u32(bytecodes, i);
 				uint32_t pos2 = get_u32(bytecodes, i);
-				std::cerr << "LOCAL_STORE_CONST	 " << pos1 << " " << pos2
-				          << "\n";
+				std::cerr << "LOCAL_STORE_CONST	 " << pos1 << " "
+				          << notifier->toString(data.constPool[pos2]) << "\n";
 				break;
 			}
 				PRINT_DATA_CAL_DATA(GLOBAL_CAL_GLOBAL, globalVariables,
@@ -414,8 +436,8 @@ void AVM::log(Function *currentFunction) {
 			case AutoLang::Opcode::GLOBAL_STORE_CONST: {
 				uint32_t pos1 = get_u32(bytecodes, i);
 				uint32_t pos2 = get_u32(bytecodes, i);
-				std::cerr << "GLOBAL_STORE_CONST	 " << pos1 << " " << pos2
-				          << "\n";
+				std::cerr << "GLOBAL_STORE_CONST	 " << pos1 << " "
+				          << notifier->toString(data.constPool[pos2]) << "\n";
 				break;
 			}
 			case AutoLang::Opcode::GLOBAL_STORE_GLOBAL: {

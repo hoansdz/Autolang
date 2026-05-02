@@ -46,8 +46,12 @@ inline void ensureNoAnnotations(in_func, size_t &i);
 Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t &i);
 void ensureEndline(in_func, size_t &i);
 ExprNode *loadLine(in_func, size_t &i);
+template <bool hasParams = true>
+CreateClosureNode *loadClosure(in_func, size_t &i);
 template <bool trailingComma = false>
 std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i);
+template <Lexer::TokenType closeBracket = Lexer::TokenType::RPAREN,
+          bool mustHaveColon = true, bool allowDefaultValue = true>
 Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar = false);
 std::vector<ClassDeclaration *> loadListClassDeclaration(in_func, size_t &i,
                                                          uint32_t line,
@@ -59,7 +63,8 @@ void loadListGenericDeclarationType(in_func, size_t &i, uint32_t line,
                                     bool allowReturnVoid,
                                     std::vector<ClassDeclaration *> &inputVecs,
                                     bool &isGeneric);
-HasClassIdNode *loadSetOrMap(in_func, size_t &i, NodeType canBeNodeType);
+HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
+                                        NodeType canBeNodeType);
 HasClassIdNode *loadSet(in_func, size_t &i, HasClassIdNode *firstExpression);
 HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode *firstExpression);
 HasClassIdNode *parsePrimary(in_func, size_t &i);
@@ -90,6 +95,7 @@ HasClassIdNode *findIdentifierNode(in_func, size_t &i, LexerStringId nameId,
 HasClassIdNode *findVarNode(in_func, size_t &i, LexerStringId nameId,
                             bool nullable);
 ConstValueNode *findConstValueNode(in_func, size_t &i, LexerStringId nameId);
+bool addThisToClosure(in_func, size_t &i);
 char getOpenBracket(Lexer::TokenType type);
 bool isCloseBracket(char openBracket, Lexer::TokenType closeBracket);
 int getPrecedence(Lexer::TokenType type);

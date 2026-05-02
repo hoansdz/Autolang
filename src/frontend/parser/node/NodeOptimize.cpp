@@ -3,8 +3,8 @@
 
 #include "frontend/parser/node/NodeOptimize.hpp"
 #include "frontend/parser/Debugger.hpp"
-#include "frontend/parser/node/CreateNode.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "frontend/parser/node/CreateNode.hpp"
 
 namespace AutoLang {
 
@@ -22,9 +22,13 @@ ExprNode *UnknowNode::resolve(in_func) {
 		auto *classInfo = context.classInfo[*contextCallClassId];
 
 		{
-			auto correctNode =
-			    classInfo->findDeclaration(in_data, line, nameId);
+			auto correctNode = classInfo->findDeclaration(in_data, line, nameId,
+			                                              justFindStaticMember);
 			if (correctNode) {
+				// if (justFindStatic &&
+				//     contextCallFuncId != context.mainFunctionId) {
+				// 	if (correctNode->declaration->accessModifier ==)
+				// }
 				static_cast<AccessNode *>(correctNode)->nullable = nullable;
 				ExprNode::deleteNode(this);
 				return correctNode;
@@ -61,9 +65,8 @@ ExprNode *UnknowNode::resolve(in_func) {
 			}
 
 			if (count) {
-				return context.functionAccessPool.push(
-				    line, caller, nameId, count,
-				    std::vector<HasClassIdNode *>{}, funcs);
+				return context.functionAccessPool.push(line, caller, nameId,
+				                                       count, nullptr, funcs);
 			}
 		}
 	} else {
@@ -72,14 +75,12 @@ ExprNode *UnknowNode::resolve(in_func) {
 			auto it = context.globalFunction.find(nameId);
 			if (it != context.globalFunction.end()) {
 				funcs[0] = &it->second;
-				return context.functionAccessPool.push(
-				    line, nullptr, nameId, 1, std::vector<HasClassIdNode *>{},
-				    funcs);
+				return context.functionAccessPool.push(line, nullptr, nameId, 1,
+				                                       nullptr, funcs);
 			}
 		}
 	}
-	throwError("UnknowNode: Variable name: " + context.lexerString[nameId] +
-	           " is not be declarated");
+	throwError("Cannot find variable name: " + context.lexerString[nameId]);
 }
 
 ExprNode *UnknowNode::copy(in_func) {
@@ -107,7 +108,8 @@ ExprNode *UnknowNode::copy(in_func) {
 		}
 	}
 	return context.unknowNodePool.push(line, context.currentClassId,
-	                                   contextCallFuncId, nameId, nullable);
+	                                   contextCallFuncId, nameId, nullable,
+	                                   justFindStaticMember);
 }
 
 void UnknowNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
@@ -145,7 +147,7 @@ ExprNode *ReturnNode::resolve(in_func) {
 	if (value) {
 		auto func = compile.functions[funcId];
 		if (func->returnId == DefaultClass::voidClassId) {
-			throwError("Cannot return value, function return Void");
+			return this;
 		}
 		value = static_cast<HasClassIdNode *>(value->resolve(in_data));
 		if (func->returnId == DefaultClass::nullClassId) {
@@ -169,11 +171,16 @@ void ReturnNode::optimize(in_func) {
 		return;
 	}
 	auto func = compile.functions[funcId];
+	auto funcInfo = context.functionInfo[funcId];
 	// std::cerr<<"Loading "<<func->name<<"\n";
 	if (value) {
+		if (func->returnId == DefaultClass::voidClassId && throwErrIfVoid) {
+			throwError("Cannot return value, function return Void");
+		}
 		switch (value->kind) {
+			case NodeType::CREATE_MAP:
+			case NodeType::CREATE_SET:
 			case NodeType::CREATE_ARRAY: {
-				auto createArrayNode = static_cast<CreateArrayNode *>(value);
 				if (func->returnId == DefaultClass::nullClassId) {
 					value->optimize(in_data);
 					func->returnId = value->classId;
@@ -183,14 +190,23 @@ void ReturnNode::optimize(in_func) {
 				value->optimize(in_data);
 				break;
 			}
-			case NodeType::CREATE_SET: {
-				auto createSetNode = static_cast<CreateSetNode *>(value);
-				if (func->returnId == DefaultClass::nullClassId) {
+			case NodeType::FUNCTION_ACCESS: {
+				if (func->returnId != DefaultClass::nullClassId) {
+					value->classDeclaration = funcInfo->returnClass;
 					value->optimize(in_data);
-					func->returnId = value->classId;
-					return;
+					break;
 				}
-				value->classId = func->returnId;
+				value->optimize(in_data);
+				break;
+			}
+			case NodeType::CREATE_CLOSURE: {
+				auto n = static_cast<CreateClosureNode *>(value);
+				if (n->mustInfer &&
+				    func->returnId != DefaultClass::nullClassId) {
+					n->inferFrom(in_data, funcInfo->returnClass);
+					value->optimize(in_data);
+					break;
+				}
 				value->optimize(in_data);
 				break;
 			}
@@ -207,6 +223,9 @@ void ReturnNode::optimize(in_func) {
 			case DefaultClass::nullClassId: {
 				// std::cerr << "Loaded " << func->name << "\n";
 				func->returnId = value->classId;
+				if (func->returnId == DefaultClass::functionClassId) {
+					funcInfo->returnClass = value->classDeclaration;
+				}
 				if (value->isNullable()) {
 					func->functionFlags |= FunctionFlags::FUNC_RETURN_NULLABLE;
 				}
@@ -219,7 +238,6 @@ void ReturnNode::optimize(in_func) {
 				           "nonnull value");
 			}
 			if (value->isNullable()) {
-				std::cerr << value->getNodeType() << "\n";
 				throwError("Cannot return nullable variable because functions "
 				           "returns nonnull value");
 			}

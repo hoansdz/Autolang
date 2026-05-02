@@ -93,7 +93,8 @@ ExprNode *loadLine(in_func, size_t &i) {
 	context.annotationFlags = 0;
 initial:;
 	bool isInFunction = !context.currentClassId ||
-	                    context.currentFunctionId != context.mainFunctionId;
+	                    context.currentFunctionId != context.mainFunctionId ||
+	                    context.currentClosureNode;
 	switch (token->type) {
 		case Lexer::TokenType::PLUS:
 		case Lexer::TokenType::EXMARK:
@@ -187,7 +188,13 @@ initial:;
 		case Lexer::TokenType::FUNC: {
 			if (context.currentFunctionId != context.mainFunctionId) {
 				throw ParserError(token->line,
-				                  "Cannot declare function in function");
+				                  "Error: Function declarations are not "
+				                  "allowed inside another function");
+			}
+			if (context.currentClosureNode) {
+				throw ParserError(token->line,
+				                  "Error: Function declarations are not "
+				                  "allowed inside closure");
 			}
 			auto node = loadFunc(in_data, i);
 			if (!node)
@@ -200,9 +207,20 @@ initial:;
 			return nullptr;
 		}
 		case Lexer::TokenType::CONSTRUCTOR: {
-			if (isInFunction) {
+			if (context.currentFunctionId != context.mainFunctionId) {
 				throw ParserError(token->line,
-				                  "Cannot declare constructor in function");
+				                  "Error: Constructor declarations are not "
+				                  "allowed inside another function");
+			}
+			if (!context.currentClassId) {
+				throw ParserError(token->line,
+				                  "Error: Constructor declarations are not "
+				                  "allowed outside class");
+			}
+			if (context.currentClosureNode) {
+				throw ParserError(token->line,
+				                  "Error: Constructor declarations are not "
+				                  "allowed inside closure");
 			}
 			loadConstructor(in_data, i);
 			return nullptr;
@@ -215,8 +233,15 @@ initial:;
 			return nullptr;
 		}
 		case Lexer::TokenType::CLASS: {
-			if (context.currentClassId) {
-				throw ParserError(token->line, "Cannot declare class in class");
+			if (context.currentFunctionId != context.mainFunctionId) {
+				throw ParserError(token->line,
+				                  "Error: Class declarations are not "
+				                  "allowed inside function");
+			}
+			if (context.currentClosureNode) {
+				throw ParserError(token->line,
+				                  "Error: Class declarations are not "
+				                  "allowed inside closure");
 			}
 			auto node = loadClass(in_data, i);
 			return nullptr;
@@ -224,13 +249,15 @@ initial:;
 		case Lexer::TokenType::RETURN: {
 			if (!isInFunction)
 				throw ParserError(token->line,
-				                  "Cannot call return outside function");
+				                  "Error: Cannot return outside of a function");
 			return loadReturn(in_data, i);
 		}
 		case Lexer::TokenType::AT_SIGN: {
-			if (context.currentFunctionId != context.mainFunctionId)
+			if (context.currentFunctionId != context.mainFunctionId) {
 				throw ParserError(token->line,
-				                  "Annotation can only be used for functions");
+				                  "Error: Annotation declaration are not "
+				                  "allowed inside function");
+			}
 			loadAnnotations(in_data, i);
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
@@ -241,21 +268,23 @@ initial:;
 		case Lexer::TokenType::PUBLIC: {
 			if (isInFunction)
 				throw ParserError(
-				    token->line, "'public' can only be used for class members");
+				    token->line,
+				    "Error: 'public' can only be used for class members");
 			if (context.modifierflags & ModifierFlags::MF_PUBLIC)
 				throw ParserError(token->line, "Duplicate modifier 'public'");
 			if (context.modifierflags & ModifierFlags::MF_PRIVATE)
-				throw ParserError(
-				    token->line,
-				    "Invalid modifier combination: 'public' and 'private'");
+				throw ParserError(token->line,
+				                  "Error: Invalid modifier combination: "
+				                  "'public' and 'private'");
 			if (context.modifierflags & ModifierFlags::MF_PROTECTED)
-				throw ParserError(
-				    token->line,
-				    "Invalid modifier combination: 'public' and 'protected'");
+				throw ParserError(token->line,
+				                  "Error: Invalid modifier combination: "
+				                  "'public' and 'protected'");
 			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 				--i;
-				throw ParserError(context.tokens[i].line,
-				                  "'public' must be followed by a declaration");
+				throw ParserError(
+				    context.tokens[i].line,
+				    "Error: 'public' must be followed by a declaration");
 			}
 			context.modifierflags |= ModifierFlags::MF_PUBLIC;
 			goto initial;
@@ -264,22 +293,23 @@ initial:;
 			if (isInFunction)
 				throw ParserError(
 				    token->line,
-				    "'private' can only be used for class members");
+				    "Error: 'private' can only be used for class members");
 			if (context.modifierflags & ModifierFlags::MF_PRIVATE)
-				throw ParserError(token->line, "Duplicate modifier 'private'");
+				throw ParserError(token->line,
+				                  "Error: Duplicate modifier 'private'");
 			if (context.modifierflags & ModifierFlags::MF_PUBLIC)
-				throw ParserError(
-				    token->line,
-				    "Invalid modifier combination: 'private' and 'public'");
+				throw ParserError(token->line,
+				                  "Error: Invalid modifier combination: "
+				                  "'private' and 'public'");
 			if (context.modifierflags & ModifierFlags::MF_PROTECTED)
-				throw ParserError(
-				    token->line,
-				    "Invalid modifier combination: 'private' and 'protected'");
+				throw ParserError(token->line,
+				                  "Error: Invalid modifier combination: "
+				                  "'private' and 'protected'");
 			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "'private' must be followed by a declaration");
+				    "Error: 'private' must be followed by a declaration");
 			}
 			context.modifierflags |= ModifierFlags::MF_PRIVATE;
 			goto initial;
@@ -288,53 +318,56 @@ initial:;
 			if (isInFunction)
 				throw ParserError(
 				    token->line,
-				    "'protected' can only be used for class members");
+				    "Error: 'protected' can only be used for class members");
 			if (context.modifierflags & ModifierFlags::MF_PROTECTED)
 				throw ParserError(token->line,
 				                  "Duplicate modifier 'protected'");
 			if (context.modifierflags & ModifierFlags::MF_PUBLIC)
-				throw ParserError(
-				    token->line,
-				    "Invalid modifier combination: 'protected' and 'public'");
+				throw ParserError(token->line,
+				                  "Error: Invalid modifier combination: "
+				                  "'protected' and 'public'");
 			if (context.modifierflags & ModifierFlags::MF_PRIVATE)
-				throw ParserError(
-				    token->line,
-				    "Invalid modifier combination: 'protected' and 'private'");
+				throw ParserError(token->line,
+				                  "Error: Invalid modifier combination: "
+				                  "'protected' and 'private'");
 			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "'protected' must be followed by a declaration");
+				    "Error: 'protected' must be followed by a declaration");
 			}
 			context.modifierflags |= ModifierFlags::MF_PROTECTED;
 			goto initial;
 		}
 		case Lexer::TokenType::STATIC: {
 			if (context.modifierflags & ModifierFlags::MF_STATIC)
-				throw ParserError(token->line, "Duplicate modifier 'static'");
+				throw ParserError(token->line,
+				                  "Error: Duplicate modifier 'static'");
 			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 				--i;
-				throw ParserError(context.tokens[i].line,
-				                  "'static' must be followed by a declaration");
+				throw ParserError(
+				    context.tokens[i].line,
+				    "Error: 'static' must be followed by a declaration");
 			}
 			context.modifierflags |= ModifierFlags::MF_STATIC;
 			goto initial;
 		}
 		case Lexer::TokenType::LATEINIT: {
 			if (context.modifierflags & ModifierFlags::MF_LATEINIT)
-				throw ParserError(token->line, "Duplicate modifier 'lateinit'");
+				throw ParserError(token->line,
+				                  "Error: Duplicate modifier 'lateinit'");
 			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "'lateinit' must be followed by a declaration");
+				    "Error: 'lateinit' must be followed by a declaration");
 			}
 			context.modifierflags |= ModifierFlags::MF_LATEINIT;
 			goto initial;
 		}
 		default:
-			throw ParserError(token->line, "C1 Unexpected token " +
-			                                   token->toString(context));
+			throw ParserError(token->line,
+			                  "Unexpected token " + token->toString(context));
 	}
 	++i;
 	return nullptr;
@@ -342,9 +375,9 @@ err_call_func:;
 	printDebug(context.currentClassId
 	               ? compile.classes[*context.currentClassId]->name
 	               : "None");
-	throw ParserError(token->line, "Cannot call command outside function ");
+	throw ParserError(token->line, "Command are not allowed outside function ");
 err_call_class:;
-	throw ParserError(token->line, "Cannot call command outside class ");
+	throw ParserError(token->line, "Command are not allowed outside class ");
 }
 
 template <bool loadedLBrace>
@@ -568,7 +601,8 @@ expectedCloseBracket:
 	throw ParserError(token->line, "Bug: CLexer not ensure close bracket");
 }
 
-HasClassIdNode *loadSetOrMap(in_func, size_t &i, NodeType canBeNodeType) {
+HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
+                                        NodeType canBeNodeType) {
 	Lexer::Token *token;
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
@@ -598,6 +632,34 @@ HasClassIdNode *loadSetOrMap(in_func, size_t &i, NodeType canBeNodeType) {
 				}
 			}
 			break;
+		}
+		case Lexer::TokenType::OR_OR: {
+			switch (canBeNodeType) {
+				case NodeType::CREATE_SET: {
+					throw ParserError(token->line,
+					                  "Expected Set<> but closure found");
+				}
+				case NodeType::CREATE_MAP: {
+					throw ParserError(token->line,
+					                  "Expected Map<> but closure found");
+				}
+			}
+			--i;
+			return loadClosure<false>(in_data, i);
+		}
+		case Lexer::TokenType::OR: {
+			switch (canBeNodeType) {
+				case NodeType::CREATE_SET: {
+					throw ParserError(token->line,
+					                  "Expected Set<> but closure found");
+				}
+				case NodeType::CREATE_MAP: {
+					throw ParserError(token->line,
+					                  "Expected Map<> but closure found");
+				}
+			}
+			--i;
+			return loadClosure(in_data, i);
 		}
 		default: {
 			auto firstExpression = loadExpression(in_data, 0, i);
@@ -737,6 +799,8 @@ HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode *firstExpression) {
 	                  "Bug: Lexer not ensure close bracket");
 }
 
+template <Lexer::TokenType closeBracket, bool mustHaveColon,
+          bool allowDefaultValue>
 Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 	Lexer::Token *token = &context.tokens[i];
 	if (!nextToken(&token, context.tokens, i)) {
@@ -746,7 +810,7 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 	}
 	auto parameter = context.parameterPool.push();
 	switch (token->type) {
-		case Lexer::TokenType::RPAREN: {
+		case closeBracket: {
 			parameter->defaultValuePos = 0;
 			return parameter;
 		}
@@ -785,26 +849,40 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 		}
 		LexerStringId baseName = token->indexData;
 		const std::string &name = context.lexerString[token->indexData];
-		if (!nextToken(&token, context.tokens, i) ||
-		    !expect(token, Lexer::TokenType::COLON)) {
+		if (!nextToken(&token, context.tokens, i)) {
 			--i;
 			throw ParserError(context.tokens[i].line,
 			                  "Expected ':' but not found");
 		}
-		auto classDeclaration =
-		    loadClassDeclaration(in_data, i, token->line, false);
-		if (!classDeclaration->isGenerics(in_data)) {
-			context.allClassDeclarations.push_back(classDeclaration);
+		AutoLang::ClassDeclaration *classDeclaration = nullptr;
+		if (!expect(token, Lexer::TokenType::COLON)) {
+			if constexpr (mustHaveColon) {
+				throw ParserError(token->line, "Expected ':' but not found");
+			}
+		} else {
+			classDeclaration =
+			    loadClassDeclaration(in_data, i, token->line, false);
+			if (!classDeclaration->isGenerics(in_data)) {
+				context.allClassDeclarations.push_back(classDeclaration);
+			}
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				break;
+			}
 		}
-		if (!nextToken(&token, context.tokens, i)) {
-			--i;
-			break;
-		}
+		// if (classDeclaration) {
+		// 	std::cerr << name << ": " <<
+		// classDeclaration->getName<true>(in_data) << "\n";
+		// }
 		auto node = context.makeDeclarationNode(
 		    in_data, token->line, baseName, name, classDeclaration, isVal,
-		    false, classDeclaration->nullable, false, false);
+		    false, classDeclaration ? classDeclaration->nullable : true, false,
+		    false);
 		parameter->parameters.push_back(node);
 		if (expect(token, Lexer::TokenType::EQUAL)) {
+			if constexpr (!allowDefaultValue) {
+				throw ParserError(token->line, "Unexpected default value");
+			}
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
 				throw ParserError(context.tokens[i].line,
@@ -827,7 +905,7 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 		}
 		switch (token->type) {
 			using namespace Lexer;
-			case Lexer::TokenType::RPAREN: {
+			case closeBracket: {
 				if (!addedDefaultValue) {
 					parameter->defaultValuePos = parameter->parameters.size();
 				}
@@ -907,6 +985,9 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 					    context.classDeclarationAllocator.push();
 					classDeclaration->baseClassLexerStringId = lexerIdArray;
 					classDeclaration->inputClassId = std::move(inputVecs);
+					// if (classDeclaration->inputClassId.size() == 0) {
+					// std::cerr << classDeclaration->getName(in_data) << "\n";
+					// }
 					classDeclaration->line = firstLine;
 					classDeclaration->isGeneric = isGeneric;
 					if (!isGeneric) {
@@ -930,7 +1011,8 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 							context.allClassDeclarations.push_back(
 							    classDeclaration);
 						}
-						node = loadSetOrMap(in_data, i, NodeType::CREATE_SET);
+						node = inferenceNodeFromLBrace(in_data, i,
+						                               NodeType::CREATE_SET);
 						static_cast<CreateSetNode *>(node)->classDeclaration =
 						    classDeclaration;
 					} else {
@@ -942,7 +1024,8 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 						classDeclaration->isGeneric = isGeneric;
 						context.allClassDeclarations.push_back(
 						    classDeclaration);
-						node = loadSetOrMap(in_data, i, NodeType::CREATE_MAP);
+						node = inferenceNodeFromLBrace(in_data, i,
+						                               NodeType::CREATE_MAP);
 						static_cast<CreateMapNode *>(node)->classDeclaration =
 						    classDeclaration;
 					}
@@ -961,7 +1044,7 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 			break;
 		}
 		case Lexer::TokenType::LBRACE: {
-			node = loadSetOrMap(in_data, i, NodeType::UNKNOW);
+			node = inferenceNodeFromLBrace(in_data, i, NodeType::UNKNOW);
 			break;
 		}
 		case Lexer::TokenType::LPAREN: {
@@ -1009,6 +1092,14 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 				    !nextTokenIfMarkNonNull(in_data, i), false);
 				break;
 			}
+			// case Lexer::TokenType::LPAREN: {
+			// 	auto list = loadListArgument(in_data, i);
+			// 	node = context.callNodePool.push(
+			// 	    firstLine, context.currentClassId, node, lexerId,
+			// 	    std::move(arguments), context.justFindStatic,
+			// 	    !nextTokenIfMarkNonNull(in_data, i), false);
+			// 	break;
+			// }
 			case Lexer::TokenType::QMARK_DOT:
 			case Lexer::TokenType::DOT: {
 				bool accessNullable =
@@ -1042,7 +1133,8 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 						break;
 					}
 					case NodeType::CONST: {
-						throw ParserError(firstLine, "Cannot call const value");
+						throw ParserError(firstLine,
+						                  "Cannot call a constant value");
 					}
 					default: {
 						assert(temp->kind == NodeType::CALL);
@@ -1072,7 +1164,7 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 					throw ParserError(
 					    firstLine,
 					    "Invalid assignment target, you must use non "
-					    "null varaibles to assignment");
+					    "null variables to assignment");
 				}
 				auto value = loadExpression(in_data, 0, i);
 				switch (node->kind) {
@@ -1132,9 +1224,14 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		if (!allowAddThis) {
+			// std::cerr << "B " << context.lexerString[identifier->indexData]
+			// << "\n";
+			// Never happen because closure end with '}'
+			// addThisToClosure(in_data, i);
 			return context.unknowNodePool.push(
 			    context.tokens[i].line, context.currentClassId,
-			    context.currentFunctionId, identifier->indexData, true);
+			    context.currentFunctionId, identifier->indexData, true,
+			    context.justFindStaticMember);
 		}
 		return findIdentifierNode(in_data, i, identifier->indexData, true);
 	}
@@ -1179,7 +1276,8 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 
 				auto node = context.unknowNodePool.push(
 				    context.tokens[i].line, context.currentClassId,
-				    context.currentFunctionId, newNameId, true);
+				    context.currentFunctionId, newNameId, true,
+				    context.justFindStaticMember);
 				if (isGeneric) {
 					// std::cerr << "Created unknownode: "
 					//           << classDeclaration->getName(in_data) << "\n";
@@ -1230,6 +1328,14 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 		case Lexer::TokenType::LPAREN: {
 			uint32_t firstLine = token->line;
 			auto arguments = loadListArgument(in_data, i);
+			if (!nextToken(&token, context.tokens, i) ||
+			    !expect(token, Lexer::TokenType::LBRACE)) {
+				--i;
+				token = &context.tokens[i];
+			} else {
+				auto closureNode = loadClosure(in_data, i);
+				arguments.push_back(closureNode);
+			}
 			switch (identifier->indexData) {
 				case lexerIdInt: {
 					if (arguments.size() != 1) {
@@ -1288,6 +1394,7 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 				}
 			}
 
+			addThisToClosure(in_data, i);
 			auto callNode = context.callNodePool.push(
 			    firstLine, context.currentClassId, nullptr,
 			    identifier->indexData, std::move(arguments),
@@ -1325,13 +1432,20 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			    findIdentifierNode(in_data, i, identifier->indexData, true);
 			uint32_t firstLine = token->line;
 			auto arguments = loadListArgument(in_data, i);
+			bool nullable = !nextTokenIfMarkNonNull(in_data, i);
 			return context.callNodePool.push(
 			    firstLine, context.currentClassId, varNode, lexerIdLRBRACKET,
-			    std::move(arguments), context.justFindStatic,
-			    !nextTokenIfMarkNonNull(in_data, i), false);
+			    std::move(arguments), context.justFindStatic, nullable, false);
 		}
 		case Lexer::TokenType::LBRACE: {
-			break;
+			addThisToClosure(in_data, i);
+			uint32_t firstLine = token->line;
+			auto closureNode = loadClosure(in_data, i);
+			return context.callNodePool.push(
+			    firstLine, context.currentClassId, nullptr,
+			    identifier->indexData,
+			    std::vector<HasClassIdNode *>{closureNode},
+			    context.justFindStatic, false, false);
 		}
 		case Lexer::TokenType::EXMARK: {
 			++i;
@@ -1344,26 +1458,62 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 	--i;
 	token = &context.tokens[i];
 	if (!allowAddThis) {
-		return context.unknowNodePool.push(token->line, context.currentClassId,
-		                                   context.currentFunctionId,
-		                                   identifier->indexData, nullable);
+		addThisToClosure(in_data, i);
+		return context.unknowNodePool.push(
+		    token->line, context.currentClassId, context.currentFunctionId,
+		    identifier->indexData, nullable, context.justFindStaticMember);
 	}
 	return findIdentifierNode(in_data, i, identifier->indexData, nullable);
 }
 
+bool addThisToClosure(in_func, size_t &i) {
+	if (context.currentClosureNode && context.currentClassId &&
+	    !context.currentClosureNode->declarationThis) {
+		auto declarationThis =
+		    context.classInfo[*context.currentClassId]->declarationThis;
+		for (int i = context.closureScopes.size(); i-- > 0;) {
+			auto closure = context.closureScopes[i];
+			if (closure->declarationThis) {
+				break;
+			}
+			closure->declarationThis = declarationThis;
+			closure->scopes[0][lexerIdthis] = declarationThis;
+		}
+		return true;
+	}
+	return false;
+}
+
 HasClassIdNode *findIdentifierNode(in_func, size_t &i, LexerStringId nameId,
                                    bool nullable) {
+	if (nameId == lexerIdthis) {
+		if (!context.currentClassId) {
+			return context.unknowNodePool.push(
+			    context.tokens[i].line, std::nullopt, context.currentFunctionId,
+			    nameId, nullable, context.justFindStaticMember);
+		}
+		addThisToClosure(in_data, i);
+		auto declarationThis =
+		    context.classInfo[*context.currentClassId]->declarationThis;
+		return context.varPool.push(declarationThis->line, declarationThis,
+		                            false, false);
+	}
 	auto varNode = findVarNode(in_data, i, nameId, nullable);
-	return varNode ? varNode
-	               : context.unknowNodePool.push(
-	                     context.tokens[i].line, context.currentClassId,
-	                     context.currentFunctionId, nameId, nullable);
+	if (varNode) {
+		return varNode;
+	}
+	// std::cerr << "C " << context.lexerString[nameId] << "\n";
+	addThisToClosure(in_data, i);
+	return context.unknowNodePool.push(context.tokens[i].line,
+	                                   context.currentClassId,
+	                                   context.currentFunctionId, nameId,
+	                                   nullable, context.justFindStaticMember);
 }
 
 HasClassIdNode *findVarNode(in_func, size_t &i, LexerStringId nameId,
                             bool nullable) {
 	auto constValueNode = findConstValueNode(in_data, i, nameId);
-	if (constValueNode != nullptr)
+	if (constValueNode)
 		return constValueNode;
 	auto node =
 	    context.findDeclaration(in_data, context.tokens[i].line, nameId, true);

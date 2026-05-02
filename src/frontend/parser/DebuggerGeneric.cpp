@@ -3,8 +3,8 @@
 
 #include "frontend/ACompiler.hpp"
 #include "frontend/parser/Debugger.hpp"
-#include "shared/ClassFlags.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "shared/ClassFlags.hpp"
 #include <memory>
 
 namespace AutoLang {
@@ -85,11 +85,16 @@ ClassId loadClassGenerics(in_func, std::string &name,
 		newClassDeclaration->classId = inputClassId;
 		newClassDeclaration->nullable = inputClass->nullable;
 		newClassDeclaration->line = genericDeclaration->line;
+		newClassDeclaration->inputClassId = inputClass->inputClassId;
+		// if (inputClassId == DefaultClass::functionClassId) {
+		// 	std::cerr << inputClass->inputClassId.size() << "\n";
+		// }
 		genericTypeId.push_back(newClassDeclaration);
 
 		for (auto *classDeclaration :
 		     genericDeclaration->allClassDeclarations) {
 			classDeclaration->classId = inputClassId;
+			classDeclaration->inputClassId = inputClass->inputClassId;
 			if (classDeclaration->mustInference) {
 				classDeclaration->nullable = inputClass->nullable;
 				classDeclaration->mustInference = false;
@@ -137,6 +142,10 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			member->classId = *member->classDeclaration->classId;
 			newClass->memberId[member->id] = *member->classDeclaration->classId;
 			member->nullable = member->classDeclaration->nullable;
+			if (!member->classDeclaration->isGenerics(in_data)) {
+				newClassInfo->member.push_back(member);
+				continue;
+			}
 			// std::cerr
 			//     << "Member declaration: "
 			//     << compile.classes[*member->classDeclaration->classId]->name
@@ -321,6 +330,10 @@ ClassId loadClassGenerics(in_func, std::string &name,
 				createFuncNode->classDeclaration->classId = std::nullopt;
 			}
 			newFunc->returnId = *createFuncNode->classDeclaration->classId;
+			if (newFunc->returnId == DefaultClass::functionClassId) {
+				newFuncInfo->returnClass =
+				    createFuncNode->classDeclaration->copy(in_data);
+			}
 		}
 		context.gotoFunction(newCreateFuncNode->id);
 		// ParserContext::mode = createFuncNode->mode; //Loaded in new class
@@ -424,11 +437,14 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 			    inputClass->baseClassLexerStringId;
 		}
 	}
+
+	auto functionFlags =
+	    createFuncNode->functionFlags & ~(FunctionFlags::FUNC_SKIP_LOAD);
 	auto lastCurrentFunctionId = context.currentFunctionId;
 	auto newCreateFuncNode = context.newFunctions.push(
 	    createFuncNode->line, createFuncNode->contextCallClassId,
 	    context.createLexerStringIfNotExists(name), nullptr,
-	    funcInfo->parameter->copy(in_data), createFuncNode->functionFlags);
+	    funcInfo->parameter->copy(in_data), functionFlags);
 
 	if (createFuncNode->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 		newCreateFuncNode->pushNativeFunction(
@@ -440,7 +456,7 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 	auto newFuncInfo = context.functionInfo[newCreateFuncNode->id];
 	newFunc->maxDeclaration = func->maxDeclaration;
 	newFuncInfo->declaration = funcInfo->declaration;
-	newFunc->returnId = compile.functions[createFuncNode->id]->returnId;
+	newFunc->returnId = compile.functions[funcId]->returnId;
 	context.gotoFunction(newCreateFuncNode->id);
 	// std::cerr << "THIS " << newFunc->name << "\n";
 	if (createFuncNode->classDeclaration) {
@@ -452,6 +468,10 @@ FunctionId loadFunctionGenerics(in_func, std::string &name,
 			createFuncNode->classDeclaration->classId = std::nullopt;
 		}
 		newFunc->returnId = *createFuncNode->classDeclaration->classId;
+		if (newFunc->returnId == DefaultClass::functionClassId) {
+			newFuncInfo->returnClass =
+			    createFuncNode->classDeclaration->copy(in_data);
+		}
 	}
 
 	for (auto &[classDeclaration, node] :

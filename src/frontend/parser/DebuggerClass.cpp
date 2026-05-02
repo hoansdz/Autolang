@@ -3,8 +3,8 @@
 
 #include "frontend/ACompiler.hpp"
 #include "frontend/parser/Debugger.hpp"
-#include "shared/ClassFlags.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "shared/ClassFlags.hpp"
 #include <memory>
 
 namespace AutoLang {
@@ -221,16 +221,21 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 				throw ParserError(context.tokens[i].line,
 				                  "@native_data is already applied");
 			}
-			auto parameter = loadListDeclaration(in_data, i, true);
-			if (!parameter->parameterDefaultValues.empty() &&
+			auto parameters = loadListDeclaration(in_data, i, true);
+			if (!parameters->parameterDefaultValues.empty() &&
 			    !classInfo->genericData) {
-				context.defaultValueParameter.push_back(parameter);
+				context.defaultValueParameter.push_back(parameters);
 			}
-			parameter->parameters.insert(parameter->parameters.begin(),
-			                             classInfo->declarationThis);
-			parameter->defaultValuePos += 1;
+
+			for (int i = 0; i < parameters->parameters.size(); ++i) {
+				parameters->parameters[i]->id = i;
+			}
+
+			parameters->parameters.insert(parameters->parameters.begin(),
+			                              classInfo->declarationThis);
+			parameters->defaultValuePos += 1;
 			classInfo->primaryConstructor = context.createConstructorPool.push(
-			    firstLine, *context.currentClassId, nameId, parameter, true,
+			    firstLine, *context.currentClassId, nameId, parameters, true,
 			    FunctionFlags::FUNC_PUBLIC);
 			classInfo->primaryConstructor->pushFunction(in_data);
 			if (!nextToken(&token, context.tokens, i)) {

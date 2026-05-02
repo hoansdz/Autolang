@@ -4,6 +4,7 @@
 #include "backend/libs/array.hpp"
 #include "backend/libs/map.hpp"
 #include "backend/libs/set.hpp"
+#include "frontend/libs/bytes.hpp"
 #include "shared/DefaultOperator.hpp"
 #include "frontend/ACompiler.hpp"
 #include "frontend/parser/Debugger.hpp"
@@ -60,6 +61,12 @@ class String {
 	@native("str_get")
 	func get(position: Int): String
 
+	// @native("str_set")
+	// func set(position: Int, chr: Int)
+
+	// @native("str_set")
+	// func set(position: Int, str: String)
+
 	@native("str_char_at")
 	func charAt(position: Int): Int
 
@@ -83,6 +90,40 @@ class String {
 
 	@native("str_replace")
 	func replace(old: String, new: String): String
+}
+
+@no_constructor
+@no_extends
+class Bytes {
+    @native("bytes_constructor")
+    static func Bytes(initialSize: Int = 0): Bytes
+
+	// @native("bytes_resize")
+	// func resize(size: Int)
+
+    @native("bytes_append")
+    func append(value: Int)
+
+    @native("bytes_size")
+    func size(): Int
+
+    @native("bytes_is_empty")
+    func isEmpty(): Bool
+
+    @native("bytes_get")
+    func get(index: Int): Int
+
+    @native("bytes_set")
+    func set(index: Int, value: Int)
+
+    @native("bytes_clear")
+    func clear()
+
+    @native("bytes_slice")
+    func slice(from: Int, to: Int): Bytes
+
+    @native("bytes_to_string")
+    func toString(): String
 }
 
 @no_extends
@@ -174,8 +215,8 @@ class Set<T> {
 	@native("set_constructor")
 	static func __CLASS__(classId: Int = getClassId(Set<T>), keyId: Int = getClassId(T)): Set<T>
 
-	@native("set_insert")
-	func insert(value: T)
+	@native("set_add")
+	func add(value: T)
 
 	@native("set_remove")
 	func remove(value: T)
@@ -286,8 +327,19 @@ func assert(condition: Bool, fileName: String, line: Int) {
 	         {"str_index_of", &DefaultFunction::str_index_of},
 	         {"to_string", &DefaultFunction::to_string},
 	         {"str_get", &DefaultFunction::str_get},
+			//  {"str_set", &DefaultFunction::str_set},
 			 {"str_char_at", &DefaultFunction::str_char_at},
 	         {"str_substr", &DefaultFunction::str_substr},
+			 {"bytes_constructor", &bytes::constructor},
+			//  {"bytes_resize", &bytes::resize},
+             {"bytes_append", &bytes::append},
+             {"bytes_size", &bytes::size},
+             {"bytes_is_empty", &bytes::is_empty},
+             {"bytes_get", &bytes::get},
+             {"bytes_set", &bytes::set},
+             {"bytes_clear", &bytes::clear},
+             {"bytes_slice", &bytes::slice},
+             {"bytes_to_string", &bytes::to_string},
 	         {"input", &DefaultFunction::input_str},
 	         {"arr_add", &array::add},
 	         {"arr_remove", &array::remove},
@@ -307,9 +359,8 @@ func assert(condition: Bool, fileName: String, line: Int) {
 	         {"arr_contains", &array::contains},
 	         {"arr_to_string", &array::to_string},
 	         {"set_constructor", &set::constructor},
-	         {"set_insert", &set::insert},
+	         {"set_add", &set::add},
 	         {"set_remove", &set::remove},
-	         {"set_size", &set::size},
 	         {"set_size", &set::size},
 	         {"set_contains", &set::contains},
 	         {"set_clear", &set::clear},

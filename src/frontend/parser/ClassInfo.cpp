@@ -23,7 +23,8 @@ AccessNode *ClassInfo::findDeclaration(in_func, uint32_t line,
 	if (it != classInfo->memberMap.end()) {
 		auto node = member[it->second];
 		if (isStatic)
-			ParserError(line, context.lexerString[nameId] + " is not static");
+			throw ParserError(line, context.lexerString[nameId] +
+			                            " is non static member");
 		return context.getPropPool.push(
 		    line, node, declarationThis->classId,
 		    context.varPool.push(line, declarationThis, false, false), nameId,

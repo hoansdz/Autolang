@@ -1,20 +1,12 @@
 // Global state to track forEach results
 var globalArraySum = 0
 
-// Named callback function for forEach
-func arrayForEachTest(value: Int) {
-    globalArraySum += value
-}
-
 // Named callback function for sort
 func arraySortValue(a: Int, b: Int): Int = when {
     a > b -> 1
     a == b -> 0
     else -> -1
 }
-
-// Named callback function for filter
-func arrayFilterArr(value: Int): Bool = value > 5
 
 func testArrayFeaturesExhaustive() {
     // 1. Test: Explicit Constructor Array<Int>(), reserve, isEmpty, size
@@ -42,7 +34,7 @@ func testArrayFeaturesExhaustive() {
     assert(a.indexOf(1) == 2, __FILE__, __LINE__)
     assert(a.indexOf(33) == -1, __FILE__, __LINE__) 
     assert(a.contains(12) == true, __FILE__, __LINE__)
-    assert(a.contains(99) == false, __FILE__, __LINE__)
+    assert((99 in a) == false, __FILE__, __LINE__)
 
     // 4. Test: remove, pop
     a.remove(2)
@@ -54,8 +46,9 @@ func testArrayFeaturesExhaustive() {
 
     // 5. Test: forEach
     globalArraySum = 0
-    a.forEach(
-			arrayForEachTest) 
+    a.forEach {|value|
+		globalArraySum += value
+	}
     assert(globalArraySum == 40, __FILE__, __LINE__)
 
     // 6. Test: sort
@@ -64,7 +57,7 @@ func testArrayFeaturesExhaustive() {
     assert(a.get(5) == 12, __FILE__, __LINE__)
 
     // 7. Test: filter
-    val filteredArr = a.filter(arrayFilterArr)
+    val filteredArr = a.filter {|value| value > 5}
     assert(filteredArr.size() == 3, __FILE__, __LINE__)
     assert(filteredArr.get(0) == 6, __FILE__, __LINE__)
 
