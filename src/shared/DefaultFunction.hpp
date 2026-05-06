@@ -1,6 +1,9 @@
 #ifndef DEFAULT_FUNCTION_HPP
 #define DEFAULT_FUNCTION_HPP
 
+#include "backend/libs/array.hpp"
+#include "backend/libs/map.hpp"
+#include "backend/libs/set.hpp"
 #include "backend/vm/ANotifier.hpp"
 #include "frontend/libs/math.hpp"
 #include "frontend/parser/Debugger.hpp"
@@ -57,42 +60,30 @@ std::string to_string(ANotifier &notifier, AObject *obj) {
 		case DefaultClass::boolClassId:
 			return (obj == DefaultClass::trueObject ? "true" : "false");
 		default:
+			if (obj->flags & AObject::Flags::OBJ_IS_ARRAY) {
+				return Libs::array::to_string(notifier, obj);
+			}
+			if (obj->flags & AObject::Flags::OBJ_IS_SET) {
+				return Libs::set::to_string(notifier, obj);
+			}
+			if (obj->flags & AObject::Flags::OBJ_IS_MAP) {
+				return Libs::map::to_string(notifier, obj);
+			}
 			std::stringstream ss;
 			ss << notifier.vm->data.classes[obj->type]->name << "@" << obj;
 			return ss.str();
 	}
 }
 
-AObject *print(NativeFuncInData) {
+inline AObject *print(NativeFuncInData) {
 	AObject *obj = args[0];
-	uint32_t type = obj->type;
-	switch (type) {
-		case AutoLang::DefaultClass::intClassId:
-			std::cout << obj->i;
-			break;
-		case AutoLang::DefaultClass::floatClassId:
-			std::cout << obj->f;
-			break;
-		case AutoLang::DefaultClass::stringClassId:
-			std::cout << obj->str->data;
-			break;
-		case AutoLang::DefaultClass::nullClassId:
-			std::cout << "null";
-			break;
-		case DefaultClass::boolClassId:
-			std::cout << (obj == DefaultClass::trueObject ? "true" : "false");
-			break;
-		default:
-			std::cout << notifier.vm->data.classes[obj->type]->name + "@"
-			          << obj;
-			break;
-	}
+	std::cerr << to_string(notifier, obj);
 	return nullptr;
 }
 
 AObject *println(NativeFuncInData) {
-	print(notifier, args, argSize);
-	std::cout << '\n';
+	AObject *obj = args[0];
+	std::cerr << to_string(notifier, obj) << "\n";
 	return nullptr;
 }
 

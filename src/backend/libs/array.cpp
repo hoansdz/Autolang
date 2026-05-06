@@ -4,8 +4,8 @@
 #include "array.hpp"
 #include "backend/vm/ANotifier.hpp"
 #include "frontend/ACompiler.hpp"
-#include "shared/DefaultFunction.hpp"
 #include "shared/DefaultClass.hpp"
+#include "shared/DefaultFunction.hpp"
 #include "shared/DefaultOperator.hpp"
 #include <algorithm>
 #include <string>
@@ -329,10 +329,9 @@ AObject *clear(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *to_string(NativeFuncInData) {
-	auto obj = args[0];
+inline std::string to_string(ANotifier &notifier, AObject *obj) {
 	if (obj->member->size == 0) {
-		return notifier.createString("[]");
+		return "[]";
 	}
 	std::string str =
 	    "[" + DefaultFunction::to_string(notifier, obj->member->data[0]);
@@ -341,7 +340,11 @@ AObject *to_string(NativeFuncInData) {
 		    ", " + DefaultFunction::to_string(notifier, obj->member->data[i]);
 	}
 	str += ']';
-	return notifier.createString(str);
+	return str;
+}
+
+AObject *to_string(NativeFuncInData) {
+	return notifier.createString(to_string(notifier, args[0]));
 }
 
 } // namespace array

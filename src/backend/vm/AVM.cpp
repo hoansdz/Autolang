@@ -50,7 +50,7 @@ void AVM::run() {
 	// auto end = std::chrono::high_resolution_clock::now();
 	// auto duration =
 	//     std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-	// std::cout << '\n' << "Total runtime : " << duration.count() << " ms\n";
+	// std::cerr << '\n' << "Total runtime : " << duration.count() << " ms\n";
 }
 
 void AVM::input(AObject *inputData) {
@@ -505,6 +505,15 @@ resumeCallFrame:;
 		while (i < size) {
 			// std::cerr << i << "/" << size << "\n";
 			// std::cerr << "Stack size: " << stack.getSize() << "\n";
+
+#ifdef AUTOLANG_LIMIT_OPCODE
+			if (--currentLimitOpcodeCount == 0) {
+				notifier->throwException(
+				    "VMException: instruction limit exceeded (" +
+				    std::to_string(limitOpcodeCount) + ")");
+				goto resumeCallFrame;
+			}
+#endif
 			switch (bytecodes[i++]) {
 				case AutoLang::Opcode::CALL_FUNCTION_OBJECT: {
 					auto obj = stack.pop();
@@ -882,6 +891,7 @@ resumeCallFrame:;
 					for (; count-- > 0;) {
 						obj->member->data[count] = stack.pop();
 					}
+					obj->flags |= AObject::Flags::OBJ_IS_ARRAY;
 					stack.push(obj);
 					stack.top()->retain();
 					break;
@@ -892,6 +902,7 @@ resumeCallFrame:;
 					uint32_t count = get_u32(bytecodes, i);
 					auto obj = AutoLang::Libs::set::constructor(*notifier,
 					                                            classId, keyId);
+					obj->flags |= AObject::Flags::OBJ_IS_SET;
 					tempAllocateArea[0] = obj;
 					for (; count-- > 0;) {
 						tempAllocateArea[1] = stack.pop();
@@ -908,6 +919,7 @@ resumeCallFrame:;
 					uint32_t count = get_u32(bytecodes, i);
 					auto obj = AutoLang::Libs::map::constructor(*notifier,
 					                                            classId, keyId);
+					obj->flags |= AObject::Flags::OBJ_IS_MAP;
 					tempAllocateArea[0] = obj;
 					for (; count-- > 0;) {
 						tempAllocateArea[2] = stack.pop();
@@ -1656,59 +1668,54 @@ resumeCallFrame:;
 					break;
 				case AutoLang::Opcode::INT_FROM_INT: {
 					AObject *obj = stack.pop();
-					if (!(obj->flags & AObject::Flags::OBJ_IS_CONST)) {
-						--obj->refCount;
-					}
-					stack.push(data.manager.createIntObject(
-					    static_cast<int64_t>(obj->i)));
-					stack.top()->retain();
-					data.manager.tryRelease(obj);
+					auto newObj = data.manager.createIntObject(
+					    static_cast<int64_t>(obj->i));
+					newObj->retain();
+					stack.push(newObj);
+					data.manager.release(obj);
 					break;
 				}
 				case AutoLang::Opcode::FLOAT_TO_INT: {
 					AObject *obj = stack.pop();
-					stack.push(data.manager.createIntObject(
-					    static_cast<int64_t>(obj->f)));
-					stack.top()->retain();
-					if (!(obj->flags & AObject::Flags::OBJ_IS_CONST)) {
-						data.manager.release(obj);
-					}
+					auto newObj = data.manager.createIntObject(
+					    static_cast<int64_t>(obj->f));
+					newObj->retain();
+					stack.push(newObj);
+					data.manager.release(obj);
 					break;
 				}
 				case AutoLang::Opcode::FLOAT_FROM_FLOAT: {
 					AObject *obj = stack.pop();
-					stack.push(data.manager.createFloatObject(
-					    static_cast<int64_t>(obj->f)));
-					stack.top()->retain();
-					if (!(obj->flags & AObject::Flags::OBJ_IS_CONST)) {
-						data.manager.release(obj);
-					}
+					auto newObj = data.manager.createFloatObject(
+					    static_cast<double>(obj->f));
+					newObj->retain();
+					stack.push(newObj);
+					data.manager.release(obj);
 					break;
 				}
 				case AutoLang::Opcode::INT_TO_FLOAT: {
 					AObject *obj = stack.pop();
-					stack.push(data.manager.createFloatObject(
-					    static_cast<double>(obj->i)));
-					stack.top()->retain();
-					if (!(obj->flags & AObject::Flags::OBJ_IS_CONST)) {
-						data.manager.release(obj);
-					}
+					auto newObj = data.manager.createFloatObject(
+					    static_cast<double>(obj->i));
+					newObj->retain();
+					stack.push(newObj);
+					data.manager.release(obj);
 					break;
 				}
 				case AutoLang::Opcode::BOOL_TO_INT: {
 					AObject *obj = stack.pop();
-					// --obj->refCount;
-					stack.push(data.manager.createIntObject(
-					    static_cast<int64_t>(obj->b)));
-					stack.top()->retain();
+					auto newObj = data.manager.createIntObject(
+					    static_cast<double>(obj->b));
+					newObj->retain();
+					stack.push(newObj);
 					break;
 				}
 				case AutoLang::Opcode::BOOL_TO_FLOAT: {
 					AObject *obj = stack.pop();
-					// --obj->refCount;
-					stack.push(data.manager.createFloatObject(
-					    static_cast<double>(obj->b)));
-					stack.top()->retain();
+					auto newObj = data.manager.createFloatObject(
+					    static_cast<double>(obj->b));
+					newObj->retain();
+					stack.push(newObj);
 					break;
 				}
 				case AutoLang::Opcode::I_CAL_I: {

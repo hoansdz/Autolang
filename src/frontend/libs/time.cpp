@@ -50,7 +50,7 @@ class Time {
     static func format(timestamp: Int): String
 }
     )###",
-	    false,
+	    LibraryConfig(),
 	    ANativeMap({
 	        {"now", &now},
 	        {"time_format", &format}, // Đã map thêm hàm format

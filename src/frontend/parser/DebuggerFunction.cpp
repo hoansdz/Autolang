@@ -288,7 +288,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			auto func = compile.functions[node->id];
 			auto funcInfo = context.functionInfo[node->id];
 			if (context.preloadGenericData) {
-				context.genericFunctionMap[func->name] = node;
+				context.genericFunctionMap[nameId].push_back(node);
 				funcInfo->genericData = context.preloadGenericData;
 			}
 			func->returnId = DefaultClass::nullClassId;
@@ -313,7 +313,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				} else {
 					returnNode->loaded = true;
 				}
-			} else {
+			} else if (!context.preloadGenericData) {
 				context.mustInferenceFunctionType.push_back(node->id);
 			}
 			context.gotoFunction(context.mainFunctionId);
@@ -354,6 +354,16 @@ createFunc:;
 			                                 "' could not be found");
 		}
 		node->pushNativeFunction(in_data, &it->second);
+		auto func = compile.functions[node->id];
+		auto funcInfo = context.functionInfo[node->id];
+		if (!classDeclaration) {
+			func->returnId = DefaultClass::voidClassId;
+		}
+		if (context.preloadGenericData) {
+			context.genericFunctionMap[nameId].push_back(node);
+			funcInfo->genericData = context.preloadGenericData;
+			context.preloadGenericData = nullptr;
+		}
 		// auto func = compile.functions[node->id];
 		// context.gotoFunction(node->id);
 		// for (size_t i = 1; i < node->parameter->parameters.size(); ++i) {
@@ -361,7 +371,6 @@ createFunc:;
 		// 	param->id = i;
 		// }
 		// context.gotoFunction(context.mainFunctionId);
-		context.preloadGenericData = nullptr;
 		if (context.isInGeneric)
 			context.isInGeneric = false;
 		return node;
@@ -371,8 +380,11 @@ createFunc:;
 	// compile.funcMap[compile.functions[node->id].name]->push_back(node->id);
 	auto func = compile.functions[node->id];
 	auto funcInfo = context.functionInfo[node->id];
+	if (!classDeclaration) {
+		func->returnId = DefaultClass::voidClassId;
+	}
 	if (context.preloadGenericData) {
-		context.genericFunctionMap[func->name] = node;
+		context.genericFunctionMap[nameId].push_back(node);
 		funcInfo->genericData = context.preloadGenericData;
 	}
 	// std::cerr<<"Created "<<name+"()"<<" ->
@@ -388,32 +400,32 @@ createFunc:;
 	try {
 		context.justFindStaticMember =
 		    (func->functionFlags & FunctionFlags::FUNC_IS_STATIC);
-		loadBody<false>(in_data, funcInfo->body.nodes, i);
+		bool finished = loadBody<false>(in_data, funcInfo->body.nodes, i);
 		context.justFindStaticMember = false;
 		context.gotoFunction(context.mainFunctionId);
 		context.preloadGenericData = nullptr;
 		if (context.isInGeneric)
 			context.isInGeneric = false;
+		if (finished && classDeclaration &&
+		    classDeclaration->baseClassLexerStringId != lexerIdVoid) {
+			bool hasReturn = false;
+			for (size_t i = funcInfo->body.nodes.size(); i-- > 0;) {
+				if (funcInfo->body.nodes[i]->kind == NodeType::RET) {
+					hasReturn = true;
+					break;
+				}
+			}
+			if (!hasReturn) {
+				throw ParserError(firstLine, "Function " + func->name +
+				                                 " didn't declare return");
+			}
+		}
 	} catch (const ParserError &err) {
 		context.gotoFunction(context.mainFunctionId);
 		context.preloadGenericData = nullptr;
 		if (context.isInGeneric)
 			context.isInGeneric = false;
 		throw err;
-	}
-
-	if (classDeclaration) {
-		bool hasReturn = false;
-		for (size_t i = funcInfo->body.nodes.size(); i-- > 0;) {
-			if (funcInfo->body.nodes[i]->kind == NodeType::RET) {
-				hasReturn = true;
-				break;
-			}
-		}
-		if (!hasReturn) {
-			throw ParserError(firstLine, "Function " + func->name +
-			                                 " didn't declare return");
-		}
 	}
 
 	return node;
@@ -460,7 +472,8 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 		} else {
 			throw ParserError(
 			    firstLine,
-			    "Error: Empty closure parameter list is not allowed\nNote: Use "
+			    "Error: Empty closure parameter list is not allowed\nNote: "
+			    "Use "
 			    "{|param|} instead of {} to declare parameters explicitly");
 			--i;
 			parameter = context.parameterPool.push();
@@ -504,7 +517,18 @@ createClosure:;
 			    declaration->classDeclaration->isGeneric;
 		}
 	}
-	context.allClosureNode.push_back(createClosureNode);
+
+	if (context.currentClassId) {
+		auto classInfo = context.classInfo[*context.currentClassId];
+		if (!classInfo->genericData) {
+			context.allClosureNode.push_back(createClosureNode);
+		}
+	} else {
+		auto funcInfo = context.getCurrentFunctionInfo(in_data);
+		if (!funcInfo->genericData) {
+			context.allClosureNode.push_back(createClosureNode);
+		}
+	}
 
 	auto lastCurrentClosureNode = context.currentClosureNode;
 	context.currentClosureNode = createClosureNode;

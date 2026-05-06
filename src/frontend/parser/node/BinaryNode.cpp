@@ -209,7 +209,7 @@ void BinaryNode::optimize(in_func) {
 				left = context.castPool.push(
 				    left, AutoLang::DefaultClass::intClassId);
 			}
-			// std::cout<<compile.classes[left->classId]->name<<'\n';
+			// std::cerr<<compile.classes[left->classId]->name<<'\n';
 
 			if (right->classId == AutoLang::DefaultClass::boolClassId) {
 				right = context.castPool.push(
@@ -720,7 +720,7 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			bytecodes.emplace_back(AutoLang::Opcode::LESS_THAN_EQ);
 			return;
 		default:
-			// std::cout<<this<<'\n';
+			// std::cerr<<this<<'\n';
 			throwError(std::string("Cannot find operator '") +
 			           Lexer::Token(0, op).toString(context) + "'");
 	}

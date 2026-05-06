@@ -16,8 +16,11 @@ Parameter *Parameter::copy(in_func) {
 			newParameter->parameters.push_back(parameter);
 			continue;
 		}
-		newParameter->parameters.push_back(
-		    static_cast<DeclarationNode *>(parameter->copy(in_data)));
+		auto newDeclaration =
+		    static_cast<DeclarationNode *>(parameter->copy(in_data));
+		newParameter->parameters.push_back(newDeclaration);
+		// std::cerr << context.lexerString[newDeclaration->baseName] << " "
+		//           << newDeclaration->classDeclaration->getName(in_data) << "\n";
 	}
 	if (!parameterDefaultValues.empty()) {
 		newParameter->parameterDefaultValues.reserve(

@@ -1,5 +1,7 @@
 #ifndef PARAMETER_HPP
-#define PARAMETER_HPP=
+#define PARAMETER_HPP
+
+#include "frontend/parser/node/OptimizeNode.hpp"
 
 namespace AutoLang {
 

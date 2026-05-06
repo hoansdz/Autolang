@@ -49,13 +49,14 @@ void IfNode::optimize(in_func) {
 		           "' as a condition, expected 'Bool'");
 
 	auto lastMustReturnValueNode = context.mustReturnValueNode;
-	if (mustReturnValue) {
+	bool loadReturnBlock = mustReturnValue || lastMustReturnValueNode;
+	if (loadReturnBlock) {
 		context.mustReturnValueNode = this;
 	}
 	ifTrue.optimize(in_data);
 	if (ifFalse)
 		ifFalse->optimize(in_data);
-	if (mustReturnValue) {
+	if (loadReturnBlock) {
 		context.mustReturnValueNode = lastMustReturnValueNode;
 	}
 }

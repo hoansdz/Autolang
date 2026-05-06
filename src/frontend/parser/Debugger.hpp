@@ -39,8 +39,8 @@ void estimate(in_func, Lexer::Context &lexerContext);
 void freeData(in_func);
 ClassId loadClassGenerics(in_func, std::string &name,
                           ClassDeclaration *classDeclaration);
-FunctionId loadFunctionGenerics(in_func, std::string &name,
-                                ClassDeclaration *classDeclaration);
+void loadFunctionGenerics(in_func, std::string &name,
+                          ClassDeclaration *classDeclaration);
 inline void ensureNoKeyword(in_func, size_t &i);
 inline void ensureNoAnnotations(in_func, size_t &i);
 Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t &i);
@@ -76,7 +76,7 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis = true);
 bool nextTokenIfMarkNonNull(in_func, size_t &i);
 void loadAnnotations(in_func, size_t &i);
 template <bool loadedLBrace>
-void loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i,
+bool loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i,
               bool createScope = true);
 IfNode *loadIf(in_func, size_t &i, bool mustReturnValue);
 WhenNode *loadWhen(in_func, size_t &i, bool mustReturnValue);

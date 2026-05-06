@@ -2,8 +2,9 @@
 #define LIBS_DEBUGGER_CPP
 
 #include "Debugger.hpp"
-#include "shared/DefaultFunction.hpp"
 #include "frontend/ACompiler.hpp"
+#include "shared/DefaultFunction.hpp"
+
 
 namespace AutoLang {
 namespace Libs {
@@ -15,7 +16,7 @@ void init(ACompiler &compiler) {
 			
 		}
 	)###",
-	    false,
+	    LibraryConfig(),
 	    ANativeMap(
 	        {{"string_constructor", &DefaultFunction::string_constructor},
 	         {"print", &DefaultFunction::print},

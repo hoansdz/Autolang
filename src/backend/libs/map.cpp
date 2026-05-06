@@ -2,10 +2,10 @@
 #define LIBS_MAP_CPP
 
 #include "map.hpp"
-#include "frontend/ACompiler.hpp"
 #include "backend/vm/ANotifier.hpp"
-#include "shared/DefaultFunction.hpp"
+#include "frontend/ACompiler.hpp"
 #include "shared/DefaultClass.hpp"
+#include "shared/DefaultFunction.hpp"
 #include "shared/DefaultOperator.hpp"
 #include "shared/Type.hpp"
 
@@ -13,28 +13,6 @@ namespace AutoLang {
 class ACompiler;
 namespace Libs {
 namespace map {
-
-struct ObjStringHashable {
-	inline size_t operator()(const AObject *s) const {
-		size_t h = 0;
-		for (size_t i = 0; i < s->str->size; ++i) {
-			h = h * 31 + (unsigned char)s->str->data[i];
-		}
-		return h;
-	}
-};
-
-struct ObjStringEqualable {
-	inline bool operator()(const AObject *a, const AObject *b) const {
-		return a->str->size == b->str->size &&
-		       memcmp(a->str->data, b->str->data, a->str->size) == 0;
-	}
-};
-
-struct AHashMap {
-	ClassId type;
-	void *data;
-};
 
 template <typename MapType, bool ReleaseKey>
 static void destroyMap(ANotifier &notifier, void *hashMapData) {
@@ -47,18 +25,6 @@ static void destroyMap(ANotifier &notifier, void *hashMapData) {
 	}
 	delete map;
 	delete hashMapData_;
-}
-
-using IntHashMap = HashMap<int64_t, AObject *>;
-using FloatHashMap = HashMap<double, AObject *>;
-using StringHashMap =
-    HashMap<AObject *, AObject *, ObjStringHashable, ObjStringEqualable>;
-using ObjectHashMap = HashMap<AObject *, AObject *>;
-
-inline AObject *constructor(NativeFuncInData) {
-	ClassId classId = args[0]->i;
-	ClassId keyId = args[1]->i;
-	return constructor(notifier, classId, keyId);
 }
 
 inline AObject *constructor(ANotifier &notifier, ClassId classId,
@@ -85,6 +51,14 @@ inline AObject *constructor(ANotifier &notifier, ClassId classId,
 			    destroyMap<ObjectHashMap, true>);
 		}
 	}
+}
+
+inline AObject *constructor(NativeFuncInData) {
+	ClassId classId = args[0]->i;
+	ClassId keyId = args[1]->i;
+	auto obj = constructor(notifier, classId, keyId);
+	obj->flags |= AObject::Flags::OBJ_IS_MAP;
+	return obj;
 }
 
 inline AObject *is_empty(NativeFuncInData) {
@@ -596,14 +570,14 @@ inline AObject *clear(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *to_string(NativeFuncInData) {
-	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
+std::string to_string(ANotifier &notifier, AObject *obj) {
+	auto hashMapData = static_cast<AHashMap *>(obj->data->data);
 	std::string str = "{";
 	switch (hashMapData->type) {
 		case DefaultClass::intClassId: {
 			auto map = static_cast<IntHashMap *>(hashMapData->data);
 			if (map->empty()) {
-				return notifier.createString("{}");
+				return "{}";
 			}
 			bool isFirst = true;
 			for (auto &[key, value] : *map) {
@@ -621,7 +595,7 @@ AObject *to_string(NativeFuncInData) {
 		case DefaultClass::floatClassId: {
 			auto map = static_cast<FloatHashMap *>(hashMapData->data);
 			if (map->empty()) {
-				return notifier.createString("{}");
+				return "{}";
 			}
 			bool isFirst = true;
 			for (auto &[key, value] : *map) {
@@ -639,7 +613,7 @@ AObject *to_string(NativeFuncInData) {
 		case DefaultClass::stringClassId: {
 			auto map = static_cast<StringHashMap *>(hashMapData->data);
 			if (map->empty()) {
-				return notifier.createString("{}");
+				return "{}";
 			}
 			bool isFirst = true;
 			for (auto &[key, value] : *map) {
@@ -657,7 +631,7 @@ AObject *to_string(NativeFuncInData) {
 		default: {
 			auto map = static_cast<ObjectHashMap *>(hashMapData->data);
 			if (map->empty()) {
-				return notifier.createString("{}");
+				return "{}";
 			}
 			bool isFirst = true;
 			for (auto &[key, value] : *map) {
@@ -674,7 +648,11 @@ AObject *to_string(NativeFuncInData) {
 		}
 	}
 	str += '}';
-	return notifier.createString(str);
+	return str;
+}
+
+AObject *to_string(NativeFuncInData) {
+	return notifier.createString(to_string(notifier, args[0]));
 }
 
 } // namespace map

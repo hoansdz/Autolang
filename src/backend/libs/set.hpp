@@ -1,8 +1,8 @@
 #ifndef LIBS_SET_HPP
 #define LIBS_SET_HPP
 
+#include "shared/AObject.hpp"
 #include "shared/Type.hpp"
-#include "frontend/parser/node/Node.hpp"
 
 namespace AutoLang {
 class ANotifier;
@@ -49,6 +49,7 @@ AObject *contains(NativeFuncInData);
 AObject *add(NativeFuncInData);
 AObject *clear(NativeFuncInData);
 AObject *to_string(NativeFuncInData);
+std::string to_string(ANotifier &notifier, AObject *obj);
 } // namespace set
 } // namespace Libs
 } // namespace AutoLang

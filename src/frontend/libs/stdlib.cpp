@@ -4,12 +4,13 @@
 #include "backend/libs/array.hpp"
 #include "backend/libs/map.hpp"
 #include "backend/libs/set.hpp"
-#include "frontend/libs/bytes.hpp"
-#include "shared/DefaultOperator.hpp"
 #include "frontend/ACompiler.hpp"
+#include "frontend/libs/bytes.hpp"
 #include "frontend/parser/Debugger.hpp"
 #include "shared/DefaultClass.hpp"
 #include "shared/DefaultFunction.hpp"
+#include "shared/DefaultOperator.hpp"
+
 
 namespace AutoLang {
 namespace Libs {
@@ -155,8 +156,12 @@ class Exception(val message: String) {
 	
 }
 
+@no_constructor
 @no_extends
-class Array<T>() {
+class Array<T> {
+
+	static func __CLASS__(): Array<T> = <T>[]
+
 	@native("arr_add")
 	func add(value: T)
 
@@ -212,8 +217,7 @@ class Array<T>() {
 @no_extends
 @no_constructor
 class Set<T> {
-	@native("set_constructor")
-	static func __CLASS__(classId: Int = getClassId(Set<T>), keyId: Int = getClassId(T)): Set<T>
+	static func __CLASS__(): Set<T> = <T>{}
 
 	@native("set_add")
 	func add(value: T)
@@ -255,8 +259,7 @@ class Set<T> {
 @no_extends
 @no_constructor
 class Map<K, V> {
-	@native("map_constructor")
-	static func __CLASS__(classId: Int = getClassId(Map<K, V>), keyId: Int = getClassId(K)): Map<K, V>
+	static func __CLASS__(): Map<K, V> = <K, V>{}
 	
 	@native("map_get")
 	func get(key: K): V?
@@ -311,7 +314,7 @@ func assert(condition: Bool, fileName: String, line: Int) {
 // @native("input")
 // func input(): String
 	)###",
-	    true,
+	    LibraryConfig(true),
 	    ANativeMap(
 	        {{"string_constructor", &DefaultFunction::string_constructor},
 	         {"print", &DefaultFunction::print},
@@ -327,19 +330,19 @@ func assert(condition: Bool, fileName: String, line: Int) {
 	         {"str_index_of", &DefaultFunction::str_index_of},
 	         {"to_string", &DefaultFunction::to_string},
 	         {"str_get", &DefaultFunction::str_get},
-			//  {"str_set", &DefaultFunction::str_set},
-			 {"str_char_at", &DefaultFunction::str_char_at},
+	         //  {"str_set", &DefaultFunction::str_set},
+	         {"str_char_at", &DefaultFunction::str_char_at},
 	         {"str_substr", &DefaultFunction::str_substr},
-			 {"bytes_constructor", &bytes::constructor},
-			//  {"bytes_resize", &bytes::resize},
-             {"bytes_append", &bytes::append},
-             {"bytes_size", &bytes::size},
-             {"bytes_is_empty", &bytes::is_empty},
-             {"bytes_get", &bytes::get},
-             {"bytes_set", &bytes::set},
-             {"bytes_clear", &bytes::clear},
-             {"bytes_slice", &bytes::slice},
-             {"bytes_to_string", &bytes::to_string},
+	         {"bytes_constructor", &bytes::constructor},
+	         //  {"bytes_resize", &bytes::resize},
+	         {"bytes_append", &bytes::append},
+	         {"bytes_size", &bytes::size},
+	         {"bytes_is_empty", &bytes::is_empty},
+	         {"bytes_get", &bytes::get},
+	         {"bytes_set", &bytes::set},
+	         {"bytes_clear", &bytes::clear},
+	         {"bytes_slice", &bytes::slice},
+	         {"bytes_to_string", &bytes::to_string},
 	         {"input", &DefaultFunction::input_str},
 	         {"arr_add", &array::add},
 	         {"arr_remove", &array::remove},
@@ -358,7 +361,6 @@ func assert(condition: Bool, fileName: String, line: Int) {
 	         {"arr_clear", &array::clear},
 	         {"arr_contains", &array::contains},
 	         {"arr_to_string", &array::to_string},
-	         {"set_constructor", &set::constructor},
 	         {"set_add", &set::add},
 	         {"set_remove", &set::remove},
 	         {"set_size", &set::size},
@@ -372,7 +374,6 @@ func assert(condition: Bool, fileName: String, line: Int) {
 	         {"set_difference", &set::difference},
 	         {"set_to_string", &set::to_string},
 	         {"string_size", &DefaultFunction::get_string_size},
-	         {"map_constructor", &map::constructor},
 	         {"map_clear", &map::clear},
 	         {"map_size", &map::size},
 	         {"map_is_empty", &map::is_empty},

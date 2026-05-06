@@ -53,6 +53,9 @@ void CreateArrayNode::optimize(in_func) {
 				throwError("Value in array must non null");
 			}
 		}
+		if (valueMustBeClassId == DefaultClass::anyClassId) {
+			continue;
+		}
 		throwError("Cannot cast " + compile.classes[value->classId]->name +
 		           " to " + compile.classes[valueMustBeClassId]->name);
 	}
@@ -82,13 +85,16 @@ ExprNode *CreateArrayNode::copy(in_func) {
 	}
 	if (classDeclaration) {
 		if (!classDeclaration->classId) {
-			classDeclaration->load<true>(in_data);
+			classDeclaration->load<false>(in_data);
 			if (!classDeclaration->classId) {
 				throwError("Bug: DeclarationNode copy: Unresolved class " +
 				           classDeclaration->getName(in_data));
 			}
+			newNode->classId = *classDeclaration->classId;
+			classDeclaration->classId = std::nullopt;
+		} else {
+			newNode->classId = *classDeclaration->classId;
 		}
-		newNode->classId = *classDeclaration->classId;
 	}
 	return newNode;
 }

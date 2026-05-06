@@ -46,35 +46,35 @@ void AVM::start() {
 					}
 					auto &vec = data.funcMap[name];
 					if (vec.size() == 0) {
-						std::cout << "Cannot find " << name << "\n";
+						std::cerr << "Cannot find " << name << "\n";
 						continue;
 					}
 					if (vec.size() == 1) {
 						log(data.functions[vec[0]]);
-						std::cout << '\n';
+						std::cerr << '\n';
 						continue;
 					}
 					for (auto pos : vec) {
-						std::cout << data.functions[pos]->toString(data)
+						std::cerr << data.functions[pos]->toString(data)
 						          << "\n";
 					}
 					uint32_t at;
-					std::cout << "Has " << vec.size() << ", log at: ";
+					std::cerr << "Has " << vec.size() << ", log at: ";
 					std::cin >> at;
 					if (at <= vec.size()) {
 						log(data.functions[vec[at]]);
-						std::cout << '\n';
+						std::cerr << '\n';
 						continue;
 					}
 				} else {
-					std::cout << "Please log function" << '\n';
+					std::cerr << "Please log function" << '\n';
 					continue;
 				}
 			} else if (word == "e") {
 				return;
 			}
 		} else {
-			std::cout << "wtf" << '\n';
+			std::cerr << "wtf" << '\n';
 		}
 	}
 }
@@ -95,7 +95,7 @@ void AVM::restart() {
 	// auto end = std::chrono::high_resolution_clock::now();
 	// auto duration =
 	//     std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-	// std::cout << '\n'
+	// std::cerr << '\n'
 	//           << "Restart time : " << duration.count() << " ms" << '\n';
 }
 

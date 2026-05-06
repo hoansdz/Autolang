@@ -10,7 +10,6 @@ class TestLogicClass {
 func testLogic() {
 
 	val a = true && false
-	println(!a)
 	assert((!a) == true, __FILE__, __LINE__)
 
 	val b = true || false

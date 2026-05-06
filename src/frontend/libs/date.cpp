@@ -244,7 +244,7 @@ class Date {
     func isLeapYear(): Bool
 }
     )###",
-	    false,
+	    LibraryConfig(),
 	    ANativeMap({
 	        {"date_constructor_now", &date::constructor_now},
 	        {"date_constructor_ts", &date::constructor_ts},

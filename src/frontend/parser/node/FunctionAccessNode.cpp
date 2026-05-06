@@ -8,11 +8,14 @@
 namespace AutoLang {
 
 void FunctionAccessNode::optimize(in_func) {
+	if (funcId) {
+		return;
+	}
 	if (!classDeclaration) {
 		if (count == 1 && funcs[0]->size() == 1) {
 			funcId = (*funcs[0])[0];
-			auto func = compile.functions[funcId];
-			auto funcInfo = context.functionInfo[funcId];
+			auto func = compile.functions[*funcId];
+			auto funcInfo = context.functionInfo[*funcId];
 			classDeclaration = context.classDeclarationAllocator.push();
 			classDeclaration->baseClassLexerStringId = nameId;
 			classDeclaration->isGeneric = true;
@@ -132,13 +135,13 @@ void FunctionAccessNode::optimize(in_func) {
 	}
 
 matched:;
-	auto func = compile.functions[funcId];
+	auto func = compile.functions[*funcId];
 
 	if (!(func->functionFlags & FunctionFlags::FUNC_IS_STATIC)) {
 		if (!caller) {
 			throwError(
 			    "Expected static function but found non static function: " +
-			    compile.functions[funcId]->name);
+			    compile.functions[*funcId]->name);
 		}
 		object = caller;
 		return;
@@ -147,11 +150,11 @@ matched:;
 
 void FunctionAccessNode::putBytecodes(in_func,
                                       std::vector<uint8_t> &bytecodes) {
-	auto func = compile.functions[funcId];
+	auto func = compile.functions[*funcId];
 	if (caller) {
 		caller->putBytecodesIfMustBeCalled(in_data, bytecodes);
 	}
-	auto funcInfo = context.functionInfo[funcId];
+	auto funcInfo = context.functionInfo[*funcId];
 	if (object) {
 		object->putBytecodes(in_data, bytecodes);
 	}
@@ -160,7 +163,7 @@ void FunctionAccessNode::putBytecodes(in_func,
 		put_opcode_u32(bytecodes, funcInfo->virtualPosition);
 	} else {
 		bytecodes.push_back(Opcode::CREATE_FUNCTION_OBJECT);
-		put_opcode_u32(bytecodes, funcId);
+		put_opcode_u32(bytecodes, *funcId);
 		put_opcode_u32(bytecodes, object ? 1 : 0);
 	}
 }

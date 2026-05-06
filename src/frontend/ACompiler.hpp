@@ -17,31 +17,55 @@ enum LibraryFlags : uint32_t {
 	AUTO_IMPORT = 1u << 1,
 	IS_MAIN_LIB = 1u << 2,
 	IS_FILE = 1u << 3,
-	IS_JS_BRIDGE = 1u << 4
+	IS_JS_BRIDGE = 1u << 4,
+	ALLOW_LATEINIT_KEYWORD = 1u << 5,
+	ALLOW_NON_NULL_ASSERTION = 1u << 6
 };
 
 static const ANativeMap EMPTY_NATIVE_MAP;
+
+struct LibraryConfig {
+	bool autoImport;
+	bool allowLateinitKeyword;
+	bool allowNonNullAssertion;
+	LibraryConfig(bool autoImport = false, bool allowLateinitKeyword = true,
+	              bool allowNonNullAssertion = true)
+	    : autoImport(autoImport), allowLateinitKeyword(allowLateinitKeyword),
+	      allowNonNullAssertion(allowNonNullAssertion) {}
+};
 
 struct LibraryData {
 	std::string path;
 	Lexer::Context lexerContext;
 	HashMap<std::string, LibraryData *> dependencies;
-	uint32_t flags;
 	ANativeMap nativeFuncMap;
 	std::string rawData;
+	uint32_t flags;
 	LibraryData(std::string path, uint32_t flags,
 	            ANativeMap nativeFuncMap = EMPTY_NATIVE_MAP)
-	    : path(std::move(path)), flags(flags),
-	      nativeFuncMap(std::move(nativeFuncMap)) {}
-#ifdef __EMSCRIPTEN__
+	    : path(std::move(path)), nativeFuncMap(std::move(nativeFuncMap)),
+	      flags(flags) {}
 	~LibraryData() {
-		if (flags & IS_JS_BRIDGE) {
-			for (auto &[k, v] : nativeFuncMap) {
-				delete v.jsFunction;
+		for (auto &[k, v] : nativeFuncMap) {
+			switch (v.type) {
+				case ANativeFunctionType::FUNC: {
+					break;
+				}
+				case ANativeFunctionType::LAMBDA: {
+					delete v.nativeLambda;
+					break;
+				}
+				default: {
+#ifdef __EMSCRIPTEN__
+					if (flags & IS_JS_BRIDGE) {
+						delete v.jsFunction;
+					}
+#endif
+					break;
+				}
 			}
 		}
 	}
-#endif
 };
 
 class ACompiler {
@@ -61,10 +85,12 @@ class ACompiler {
 	void loadSource(LibraryData *library);
 	void lexerTextToToken(LibraryData *library);
 	void loadMainSource(LibraryData *library);
-	void loadMainSource(const char *path, const ANativeMap &nativeFuncMap =
-	                                          AutoLang::EMPTY_NATIVE_MAP);
+	void loadMainSource(
+	    const char *path, LibraryConfig config = LibraryConfig(),
+	    const ANativeMap &nativeFuncMap = AutoLang::EMPTY_NATIVE_MAP);
 	void loadMainSource(
 	    const char *path, const char *data,
+	    LibraryConfig config = LibraryConfig(),
 	    const ANativeMap &nativeFuncMap = AutoLang::EMPTY_NATIVE_MAP);
 	LibraryData *requestImport(LibraryData *currentLibrary, const char *path);
 
@@ -74,19 +100,26 @@ class ACompiler {
 	inline AutoLang::CompilerState getState() { return state; }
 	void refresh();
 	LibraryData *
-	registerBuiltInLibrary(const char *path, bool autoImport = false,
+	registerBuiltInLibrary(const char *path,
+	                       LibraryConfig config = LibraryConfig(),
 	                       const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP);
 	LibraryData *
 	registerBuiltInLibrary(const char *path, const char *data,
-	                       bool autoImport = false,
+	                       LibraryConfig config = LibraryConfig(),
 	                       const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP);
 	void loadBuiltInFunctions();
 	void generateBytecodes();
 	void run();
-	bool compile(const char *path,
+	bool compile(const char *path, LibraryConfig config = LibraryConfig(),
 	             const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP);
 	bool compile(const char *path, const char *data,
+	             LibraryConfig config = LibraryConfig(),
 	             const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP);
+
+#ifdef AUTOLANG_LIMIT_OPCODE
+	void setLimitOpcodeCount(uint32_t limitOpcodeCount);
+#endif
+
 	inline void setOnError(FunctionEvent *onError) {
 		if (parserContext.onError) {
 			delete parserContext.onError;

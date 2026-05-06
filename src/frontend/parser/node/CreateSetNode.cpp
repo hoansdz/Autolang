@@ -62,6 +62,9 @@ void CreateSetNode::optimize(in_func) {
 				throwError("Value in Set must non null");
 			}
 		}
+		if (valueMustBeClassId == DefaultClass::anyClassId) {
+			continue;
+		}
 		throwError("Cannot cast " + compile.classes[value->classId]->name +
 		           " to " + compile.classes[valueMustBeClassId]->name);
 	}
@@ -75,7 +78,11 @@ void CreateSetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	auto keyId = *classInfo->genericTypeId[0]->classId;
 	bytecodes.emplace_back(Opcode::CREATE_SET_OBJECT);
 	put_opcode_u32(bytecodes, classId);
-	put_opcode_u32(bytecodes, keyId);
+	if (classInfo->genericTypeId[0]->nullable) {
+		put_opcode_u32(bytecodes, DefaultClass::anyClassId);
+	} else {
+		put_opcode_u32(bytecodes, keyId);
+	}
 	put_opcode_u32(bytecodes, values.size());
 }
 
@@ -94,13 +101,16 @@ ExprNode *CreateSetNode::copy(in_func) {
 	}
 	if (classDeclaration) {
 		if (!classDeclaration->classId) {
-			classDeclaration->load<true>(in_data);
+			classDeclaration->load<false>(in_data);
 			if (!classDeclaration->classId) {
 				throwError("Bug: DeclarationNode copy: Unresolved class " +
 				           classDeclaration->getName(in_data));
 			}
+			newNode->classId = *classDeclaration->classId;
+			classDeclaration->classId = std::nullopt;
+		} else {
+			newNode->classId = *classDeclaration->classId;
 		}
-		newNode->classId = *classDeclaration->classId;
 	}
 	return newNode;
 }

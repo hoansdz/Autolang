@@ -29,9 +29,13 @@ bool ClassDeclaration::isSame(ClassDeclaration *classDeclaration) {
 
 ClassDeclaration *ClassDeclaration::copy(in_func) {
 	if (!classId) {
+		std::cerr << getName(in_data) << "\n";
 		int *a = nullptr;
 		*a = 5;
 		throwError("Cannot copy class declaration because class not exists");
+	}
+	if (!isGeneric) {
+		return this;
 	}
 	auto newClassDeclaration = context.classDeclarationAllocator.push();
 	newClassDeclaration->baseClassLexerStringId = baseClassLexerStringId;
@@ -58,7 +62,21 @@ void ClassDeclaration::load(in_func) {
 		if (classId == DefaultClass::functionClassId) {
 			for (size_t i = 0; i < inputClassId.size(); ++i) {
 				auto *classDeclaration = inputClassId[i];
-				classDeclaration->load<true>(in_data);
+				if (classDeclaration->classId) {
+					if (classDeclaration->classId ==
+					    DefaultClass::functionClassId) {
+						classDeclaration->load<changeGenericsClassId>(in_data);
+						continue;
+					}
+				} else {
+					if (classDeclaration->isGeneric) {
+						classDeclaration->load<false>(in_data);
+						classDeclaration->classId = std::nullopt;
+					} else {
+						classDeclaration->load<true>(in_data);
+					}
+					continue;
+				}
 			}
 		}
 		return;
@@ -84,12 +102,13 @@ void ClassDeclaration::load(in_func) {
 				}
 				if (inputClassId.size() !=
 				    funcInfo->genericData->genericDeclarations.size()) {
-					throwError(
-					    "'" + context.lexerString[baseClassLexerStringId] +
-					    "' expects " +
-					    std::to_string(funcInfo->genericTypeId.size()) +
-					    " type argument but " +
-					    std::to_string(inputClassId.size()) + " were given");
+					throwError("Function '" +
+					           context.lexerString[baseClassLexerStringId] +
+					           "' expects " +
+					           std::to_string(funcInfo->genericTypeId.size()) +
+					           " type argument but " +
+					           std::to_string(inputClassId.size()) +
+					           " were given");
 				}
 				return;
 			}
@@ -133,38 +152,48 @@ void ClassDeclaration::load(in_func) {
 		    compile.funcMap.find(context.lexerString[baseClassLexerStringId]);
 		// std::cerr << context.lexerString[baseClassLexerStringId] << "\n";
 		if (it != compile.funcMap.end()) {
-			// Generics no overload
-			auto funcId = it->second[0];
-			auto func = compile.functions[funcId];
-			auto funcInfo = context.functionInfo[funcId];
-			if (!funcInfo->genericData) {
-				throwError("'" + context.lexerString[baseClassLexerStringId] +
-				           "' isn't generic function");
-			}
-			if (inputClassId.size() !=
-			    funcInfo->genericData->genericDeclarations.size()) {
-				// int* x = nullptr; *x = 5;
-				throwError("'" + context.lexerString[baseClassLexerStringId] +
-				           "' expects " +
-				           std::to_string(funcInfo->genericTypeId.size()) +
-				           " type argument but " +
-				           std::to_string(inputClassId.size()) + " were given");
-			}
-			for (size_t i = 0; i < inputClassId.size(); ++i) {
-				auto *classDeclaration = inputClassId[i];
-				if (!classDeclaration->classId) {
-					classDeclaration->load<changeGenericsClassId>(in_data);
+			for (FunctionId funcId : it->second) {
+				auto func = compile.functions[funcId];
+				auto funcInfo = context.functionInfo[funcId];
+				if (!funcInfo->genericData) {
+					throwError("'" +
+					           context.lexerString[baseClassLexerStringId] +
+					           "' isn't generic function");
+				}
+				if (inputClassId.size() !=
+				    funcInfo->genericData->genericDeclarations.size()) {
+					continue;
+				}
+				for (size_t i = 0; i < inputClassId.size(); ++i) {
+					auto *classDeclaration = inputClassId[i];
 					if (!classDeclaration->classId) {
-						throwError("Unresolved class " +
-						           classDeclaration->getName(in_data));
+						classDeclaration->load<changeGenericsClassId>(in_data);
+						if (!classDeclaration->classId) {
+							throwError("Unresolved class " +
+							           classDeclaration->getName(in_data));
+						}
+					} else if (classDeclaration->classId ==
+					           DefaultClass::functionClassId) {
+						classDeclaration->load<changeGenericsClassId>(in_data);
 					}
 				}
+				std::string name = getName(in_data);
+				// if (!isGenerics(in_data)) {
+					loadFunctionGenerics(in_data, name, this);
+				// }
+				return;
 			}
-			std::string name = getName(in_data);
-			if (!isGenerics(in_data)) {
-				loadFunctionGenerics(in_data, name, this);
+			auto funcInfo = context.functionInfo[it->second[0]];
+			if (inputClassId.size() !=
+			    funcInfo->genericData->genericDeclarations.size()) {
+				throwError(
+				    "Function '" + context.lexerString[baseClassLexerStringId] +
+				    "' expects " +
+				    std::to_string(
+				        funcInfo->genericData->genericDeclarations.size()) +
+				    " type argument but " +
+				    std::to_string(inputClassId.size()) + " were given");
 			}
-			return;
 		}
 	}
 
@@ -178,14 +207,25 @@ void ClassDeclaration::load(in_func) {
 
 	std::string name;
 	if constexpr (!changeGenericsClassId) {
-		bool change = true;
+		bool mustInfer = true;
 		std::unique_ptr<bool[]> marked(new bool[inputClassId.size()]());
 		for (size_t i = 0; i < inputClassId.size(); ++i) {
 			auto *classDeclaration = inputClassId[i];
 			if (!classDeclaration->classId) {
-				classDeclaration->load<changeGenericsClassId>(in_data);
-				marked[i] = true;
-				change = false;
+				if (classDeclaration->isGeneric) {
+					classDeclaration->load<changeGenericsClassId>(in_data);
+					marked[i] = true;
+					mustInfer = false;
+				} else {
+					classDeclaration->load<true>(in_data);
+				}
+			} else if (classDeclaration->classId ==
+			           DefaultClass::functionClassId) {
+				if (classDeclaration->isGeneric) {
+					classDeclaration->load<changeGenericsClassId>(in_data);
+				} else {
+					classDeclaration->load<true>(in_data);
+				}
 			}
 		}
 		name = getName(in_data);
@@ -194,20 +234,23 @@ void ClassDeclaration::load(in_func) {
 				inputClassId[i]->classId = std::nullopt;
 			}
 		}
-		if (!change)
+		if (!mustInfer)
 			return;
 	} else {
-		bool change = true;
+		bool mustInfer = true;
 		for (size_t i = 0; i < inputClassId.size(); ++i) {
 			auto *classDeclaration = inputClassId[i];
 			if (!classDeclaration->classId) {
-				classDeclaration->load<changeGenericsClassId>(in_data);
+				classDeclaration->load<true>(in_data);
 				if (!classDeclaration->classId) {
-					change = false;
+					mustInfer = false;
 				}
+			} else if (classDeclaration->classId ==
+			           DefaultClass::functionClassId) {
+				classDeclaration->load<true>(in_data);
 			}
 		}
-		if (!change)
+		if (!mustInfer)
 			return;
 		name = getName(in_data);
 	}

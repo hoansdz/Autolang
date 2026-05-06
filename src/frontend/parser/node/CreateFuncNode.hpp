@@ -25,7 +25,8 @@ struct CreateFuncNode : ExprNode {
 	      contextCallClassId(contextCallClassId), nameId(nameId),
 	      classDeclaration(classDeclaration), parameter(parameter),
 	      functionFlags(functionFlags) {}
-	void pushFunction(in_func);
+	template <bool addToGlobalScope = true> void pushFunction(in_func);
+	template <bool addToGlobalScope = true>
 	void pushNativeFunction(in_func, ANativeFunctionData *native);
 	ExprNode *copy(in_func) override;
 	void optimize(in_func) override;

@@ -1,0 +1,32 @@
+func testInfer<T>(value: Array<T>): Array<T> {
+	return []
+}
+func testInfer<T>(value: Set<T>): Set<T> {
+	return {}
+}
+func testInfer<T, K>(value: Map<T, K>): Map<T, K> {
+	return {}
+}
+
+func testInferValue<T>() {
+	testInfer<String>([])
+	testInfer<Float>({})
+	testInfer<String, Float>({})
+	testInfer<T -> T>([])
+
+	val testInferObject1: Array<Float> -> Float = {|value| 1}
+	val testInferObject2: (Set<String>) -> Float = {|value: Set<String>| 2}
+	val testInferObject3 = {|value: Map<Float, Int>| 3}
+	val testInferObject4: ((T) -> String) -> Float = {|value: (T) -> String| 4}
+
+	assert(testInferObject1([]) == 1, __FILE__, __LINE__)
+	assert(testInferObject2({}) == 2, __FILE__, __LINE__)
+	assert(testInferObject3({}) == 3, __FILE__, __LINE__)
+	assert(testInferObject4({|value|
+		"Done"
+	}) == 4, __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+testInferValue<Float>()

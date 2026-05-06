@@ -125,7 +125,7 @@ struct BlockNode : ExprNode {
 	                                   std::optional<ClassId> &currentClassId,
 	                                   ClassId newClassId);
 	template <bool optimize = true>
-	inline void loadClassNode(in_func, ExprNode *node,
+	inline void loadClassNode(in_func, ExprNode *&node,
 	                          std::optional<ClassId> &currentClassId,
 	                          bool &nullable, bool &isStatic,
 	                          ClassDeclaration *&newClassDeclaration);
@@ -571,7 +571,7 @@ struct FunctionAccessNode : HasClassIdNode {
 	HasClassIdNode *object;
 	std::vector<FunctionId> *funcs[2];
 	std::vector<BytecodePos> jumpPosition;
-	FunctionId funcId;
+	std::optional<FunctionId> funcId;
 	FunctionAccessNode(uint32_t line, HasClassIdNode *caller,
 	                   LexerStringId nameId, uint32_t count,
 	                   HasClassIdNode *object, std::vector<FunctionId> **funcs)
@@ -596,7 +596,7 @@ struct CreateClosureNode : HasClassIdNode {
 	std::vector<uint8_t> currentBytecodes;
 	Parameter *parameter;
 	BlockNode body;
-	FunctionId funcId;
+	std::optional<FunctionId> funcId;
 	uint32_t declarationCount;
 	uint32_t maxDeclaration;
 	uint32_t parameterCountFirstTime;
@@ -734,13 +734,12 @@ struct RangeNode : HasClassIdNode {
 };
 
 struct CreateArrayNode : HasClassIdNode {
-	ClassDeclaration *classDeclaration;
 	std::vector<HasClassIdNode *> values;
 	CreateArrayNode(uint32_t line, ClassDeclaration *classDeclaration,
 	                std::vector<HasClassIdNode *> values)
 	    : HasClassIdNode(NodeType::CREATE_ARRAY, DefaultClass::nullClassId,
-	                     line),
-	      classDeclaration(classDeclaration), values(std::move(values)) {}
+	                     line, classDeclaration),
+	      values(std::move(values)) {}
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
@@ -750,12 +749,12 @@ struct CreateArrayNode : HasClassIdNode {
 };
 
 struct CreateSetNode : HasClassIdNode {
-	ClassDeclaration *classDeclaration;
 	std::vector<HasClassIdNode *> values;
 	CreateSetNode(uint32_t line, ClassDeclaration *classDeclaration,
 	              std::vector<HasClassIdNode *> values)
-	    : HasClassIdNode(NodeType::CREATE_SET, DefaultClass::nullClassId, line),
-	      classDeclaration(classDeclaration), values(std::move(values)) {}
+	    : HasClassIdNode(NodeType::CREATE_SET, DefaultClass::nullClassId, line,
+	                     classDeclaration),
+	      values(std::move(values)) {}
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
@@ -765,13 +764,13 @@ struct CreateSetNode : HasClassIdNode {
 };
 
 struct CreateMapNode : HasClassIdNode {
-	ClassDeclaration *classDeclaration;
 	std::vector<std::pair<HasClassIdNode *, HasClassIdNode *>> values;
 	CreateMapNode(
 	    uint32_t line, ClassDeclaration *classDeclaration,
 	    std::vector<std::pair<HasClassIdNode *, HasClassIdNode *>> values)
-	    : HasClassIdNode(NodeType::CREATE_MAP, DefaultClass::nullClassId, line),
-	      classDeclaration(classDeclaration), values(std::move(values)) {}
+	    : HasClassIdNode(NodeType::CREATE_MAP, DefaultClass::nullClassId, line,
+	                     classDeclaration),
+	      values(std::move(values)) {}
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;

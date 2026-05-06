@@ -99,34 +99,7 @@ class ANotifier {
 		}
 		return vm->stack.pop();
 	}
-	inline std::string toString(AObject *obj) {
-		if (!obj) {
-			return "c_nullptr";
-		}
-		uint32_t type = obj->type;
-		switch (type) {
-			case AutoLang::DefaultClass::intClassId:
-				return std::to_string(obj->i);
-			case AutoLang::DefaultClass::floatClassId:
-				return std::to_string(obj->f);
-			case AutoLang::DefaultClass::stringClassId:
-				return std::string(obj->str->data);
-			case AutoLang::DefaultClass::nullClassId:
-				return "null";
-			case DefaultClass::boolClassId:
-				return (obj == DefaultClass::trueObject ? "true" : "false");
-			default:
-				auto clazz = vm->data.classes[obj->type];
-				// auto it = clazz->funcMap.find("toString");
-				// if (it == clazz->funcMap.end()) {
-				std::stringstream ss;
-				ss << clazz->name << "@" << obj;
-				return ss.str();
-				// }
-				// return vm->callFunction<false, true, false>(currentCallFrame,
-				// currentFunction, bytecodes, i);
-		}
-	}
+	std::string toString(AObject *obj);
 	inline void input(AObject *obj) { vm->input(obj); }
 	inline void release(AObject *obj) { vm->data.manager.release(obj); }
 	ANotifier(AVM *vm) : vm(vm) {}

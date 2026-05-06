@@ -91,7 +91,7 @@ struct ParserContext {
 	CreateClosureNode *currentClosureNode = nullptr;
 	std::vector<CreateClosureNode *> closureScopes;
 	NonReallocatePool<CreateFuncNode> newFunctions;
-	HashMap<std::string, CreateFuncNode *> genericFunctionMap;
+	HashMap<LexerStringId, std::vector<CreateFuncNode *>> genericFunctionMap;
 	std::vector<FunctionId> mustInferenceFunctionType;
 	HashMap<LexerStringId, std::vector<FunctionId>> globalFunction;
 	// Find, example func load<T>(a: T)

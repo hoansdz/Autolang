@@ -57,7 +57,7 @@ void BlockNode::loadReturnValueClassId(in_func, uint32_t line,
 }
 
 template <bool optimize>
-void BlockNode::loadClassNode(in_func, ExprNode *node,
+void BlockNode::loadClassNode(in_func, ExprNode *&node,
                               std::optional<ClassId> &currentClassId,
                               bool &nullable, bool &isStatic,
                               ClassDeclaration *&newClassDeclaration) {
@@ -70,12 +70,81 @@ void BlockNode::loadClassNode(in_func, ExprNode *node,
 			if (n->classId == DefaultClass::voidClassId)
 				break;
 			loadReturnValueClassId(in_data, line, currentClassId, n->classId);
+			switch (n->classId) {
+				case DefaultClass::intClassId: {
+					if (currentClassId == DefaultClass::floatClassId) {
+						node = static_cast<HasClassIdNode *>(
+						    context.castPool
+						        .push(n, DefaultClass::floatClassId)
+						        ->resolve(in_data));
+						node->optimize(in_data);
+					}
+					break;
+				}
+				case DefaultClass::functionClassId: {
+					newClassDeclaration = n->classDeclaration;
+					break;
+				}
+			}
 			if (!nullable) {
 				nullable = n->isNullable();
 			}
 			if (isStatic) {
 				isStatic = n->isStaticValue();
 			}
+			break;
+		}
+		case NodeType::CREATE_SET: {
+			auto n = static_cast<HasClassIdNode *>(node);
+			if (!currentClassId) {
+				n->optimize(in_data);
+				currentClassId = n->classId;
+				break;
+			}
+			if (n->classDeclaration) {
+				n->optimize(in_data);
+				loadReturnValueClassId(in_data, line, currentClassId,
+				                       n->classId);
+				break;
+			}
+			if (n->classId == DefaultClass::nullClassId) {
+				if (context.classInfo[*currentClassId]->baseClassId ==
+				    DefaultClass::mapClassId) {
+					node = context.createMapPool.push(
+					    node->line, nullptr,
+					    std::vector<
+					        std::pair<HasClassIdNode *, HasClassIdNode *>>{});
+					n = static_cast<HasClassIdNode *>(node);
+				}
+				n->classId = *currentClassId;
+				n->optimize(in_data);
+				break;
+			}
+			n->optimize(in_data);
+			loadReturnValueClassId(in_data, line, currentClassId, n->classId);
+			break;
+		}
+		case NodeType::CREATE_MAP:
+		case NodeType::CREATE_ARRAY: {
+			auto n = static_cast<HasClassIdNode *>(node);
+			if (!currentClassId) {
+				n->optimize(in_data);
+				currentClassId = n->classId;
+				break;
+			}
+			if (n->classDeclaration) {
+				n->optimize(in_data);
+				loadReturnValueClassId(in_data, line, currentClassId,
+				                       n->classId);
+				break;
+			}
+			if (n->classId == DefaultClass::nullClassId) {
+				n->classId = *currentClassId;
+				n->optimize(in_data);
+				return;
+			}
+			n->optimize(in_data);
+			loadReturnValueClassId(in_data, line, currentClassId, n->classId);
 			break;
 		}
 		case NodeType::CREATE_CLOSURE: {
@@ -87,9 +156,9 @@ void BlockNode::loadClassNode(in_func, ExprNode *node,
 				           n->classDeclaration->getName(in_data) + "'");
 			}
 			if (newClassDeclaration) {
-				if (n->mustInfer) {
-					n->inferFrom(in_data, newClassDeclaration);
-				}
+				// if (n->mustInfer) {
+				n->inferFrom(in_data, newClassDeclaration);
+				// }
 				if constexpr (optimize) {
 					node->optimize(in_data);
 				}
@@ -123,8 +192,21 @@ void BlockNode::loadClassNode(in_func, ExprNode *node,
 			}
 			auto n = static_cast<HasClassIdNode *>(node);
 			loadReturnValueClassId(in_data, line, currentClassId, n->classId);
-			if (n->classId == DefaultClass::functionClassId) {
-				newClassDeclaration = n->classDeclaration;
+			switch (n->classId) {
+				case DefaultClass::intClassId: {
+					if (currentClassId == DefaultClass::floatClassId) {
+						node = static_cast<HasClassIdNode *>(
+						    context.castPool
+						        .push(n, DefaultClass::floatClassId)
+						        ->resolve(in_data));
+						node->optimize(in_data);
+					}
+					break;
+				}
+				case DefaultClass::functionClassId: {
+					newClassDeclaration = n->classDeclaration;
+					break;
+				}
 			}
 			if (!nullable) {
 				nullable = n->isNullable();
@@ -136,42 +218,54 @@ void BlockNode::loadClassNode(in_func, ExprNode *node,
 		}
 		case NodeType::IF: {
 			auto *n = static_cast<IfNode *>(node);
-			n->mustReturnValue = true;
+			// n->mustReturnValue = true;
 			if constexpr (optimize) {
 				node->optimize(in_data);
 			}
-			if (n->classId != DefaultClass::voidClassId) {
-				loadReturnValueClassId(in_data, line, currentClassId,
-				                       n->classId);
-				if (!nullable) {
-					nullable = n->isNullable();
-				}
-				if (isStatic) {
-					isStatic = n->isStaticValue();
-				}
+			if (n->classId == DefaultClass::nullClassId) {
+				break;
+			}
+			loadReturnValueClassId(in_data, line, currentClassId, n->classId);
+			if (!nullable) {
+				nullable = n->isNullable();
+			}
+			if (isStatic) {
+				isStatic = n->isStaticValue();
 			}
 			break;
 		}
-		// case NodeType::RET: {
-		// 	if constexpr (optimize) {
-		// 		node->optimize(in_data);
-		// 	}
-		// 	if (context.mustReturnValueNode->kind != NodeType::CREATE_CLOSURE) {
-		// 		break;
-		// 	}
-		// 	auto n = static_cast<ReturnNode *>(node);
-		// 	if (!n->value) {
-		// 		if (currentClassId) {
-		// 			throwError("Cannot cast '" +
-		// 			           compile.classes[*currentClassId]->name +
-		// 			           "' to Void'");
-		// 		}
-		// 		break;
-		// 	}
-		// 	std::cerr<<"OK\n";
-		// 	loadClassNode<false>(in_data, n->value, currentClassId, nullable,
-		// isStatic, 	              newClassDeclaration); 	break;
-		// }
+		case NodeType::RET: {
+
+			if (context.mustReturnValueNode->kind != NodeType::CREATE_CLOSURE) {
+				if constexpr (optimize) {
+					node->optimize(in_data);
+				}
+				break;
+			}
+
+			auto n = static_cast<ReturnNode *>(node);
+
+			if (!n->value) {
+				if constexpr (optimize) {
+					node->optimize(in_data);
+				}
+				if (currentClassId) {
+					if (currentClassId != DefaultClass::voidClassId) {
+						throwError("Cannot cast '" +
+						           compile.classes[*currentClassId]->name +
+						           "' to Void'");
+					}
+				} else {
+					currentClassId = DefaultClass::voidClassId;
+				}
+			} else {
+				auto value = static_cast<ExprNode *>(n->value);
+				loadClassNode<true>(in_data, value, currentClassId, nullable,
+				                    isStatic, newClassDeclaration);
+				node = value;
+			}
+			break;
+		}
 		default: {
 			if constexpr (optimize) {
 				node->optimize(in_data);
@@ -186,18 +280,33 @@ void BlockNode::loadClassAndOptimize(in_func) {
 	bool nullable = false;
 	bool isStatic = context.mustReturnValueNode->isStaticValue();
 	ClassDeclaration *newClassDeclaration = nullptr;
-	if (context.mustReturnValueNode->kind == NodeType::CREATE_CLOSURE) {
-		auto *n = static_cast<CreateClosureNode *>(context.mustReturnValueNode);
-		auto returnClass = n->classDeclaration->inputClassId[0];
-		if (returnClass) {
-			currentClassId = *returnClass->classId;
-			if (returnClass->classId == DefaultClass::functionClassId) {
-				newClassDeclaration = returnClass;
+	switch (context.mustReturnValueNode->kind) {
+		case NodeType::CREATE_CLOSURE: {
+			auto *n =
+			    static_cast<CreateClosureNode *>(context.mustReturnValueNode);
+			auto returnClass = n->classDeclaration->inputClassId[0];
+			if (returnClass) {
+				currentClassId = *returnClass->classId;
+				if (returnClass->classId == DefaultClass::functionClassId) {
+					newClassDeclaration = returnClass;
+				}
 			}
+			break;
+		}
+		case NodeType::IF: {
+			auto *n = static_cast<IfNode *>(context.mustReturnValueNode);
+			if (n->classId == DefaultClass::nullClassId) {
+				break;
+			}
+			if (n->classDeclaration) {
+				newClassDeclaration = n->classDeclaration;
+			}
+			currentClassId = n->classId;
+			break;
 		}
 	}
 	for (size_t i = 0; i < nodes.size(); ++i) {
-		auto *node = nodes[i];
+		auto *&node = nodes[i];
 		loadClassNode(in_data, node, currentClassId, nullable, isStatic,
 		              newClassDeclaration);
 	}
@@ -205,11 +314,14 @@ void BlockNode::loadClassAndOptimize(in_func) {
 	context.mustReturnValueNode->setIsStatic(isStatic);
 	switch (context.mustReturnValueNode->kind) {
 		case NodeType::IF: {
+			auto *n = static_cast<IfNode *>(context.mustReturnValueNode);
 			if (!currentClassId) {
+				if (!n->mustReturnValue) {
+					return;
+				}
 				throwError("Expression branch must return a value");
 			}
 			if (newClassDeclaration) {
-				auto *n = static_cast<IfNode *>(context.mustReturnValueNode);
 				n->classDeclaration = newClassDeclaration;
 			}
 			if (context.mustReturnValueNode->classId ==

@@ -353,6 +353,12 @@ initial:;
 			goto initial;
 		}
 		case Lexer::TokenType::LATEINIT: {
+			if (!(context.mode->flags & LibraryFlags::ALLOW_LATEINIT_KEYWORD)) {
+				throw ParserError(
+				    token->line,
+				    "Error: 'lateinit' keyword is disabled. "
+				    "\nNote: Enable 'allowLateinitKeyword' to use it.");
+			}
 			if (context.modifierflags & ModifierFlags::MF_LATEINIT)
 				throw ParserError(token->line,
 				                  "Error: Duplicate modifier 'lateinit'");
@@ -381,7 +387,7 @@ err_call_class:;
 }
 
 template <bool loadedLBrace>
-void loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i,
+bool loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i,
               bool createScope) {
 	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
@@ -392,14 +398,14 @@ void loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i,
 			nodes.push_back(loadLine(in_data, i));
 			if (createScope)
 				context.getCurrentFunctionInfo(in_data)->popBackScope();
-			return;
+			return true;
 		}
 	}
 	while (nextToken(&token, context.tokens, i)) {
 		if (token->type == Lexer::TokenType::RBRACE) {
 			if (createScope)
 				context.getCurrentFunctionInfo(in_data)->popBackScope();
-			return;
+			return true;
 		}
 		try {
 			auto node = loadLine(in_data, i);
@@ -412,8 +418,6 @@ void loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i,
 				ensureNoKeyword(in_data, i);
 			}
 			nodes.push_back(node);
-		} catch (const std::runtime_error &err) {
-			throw err;
 		} catch (const ParserError &err) {
 			context.hasError = true;
 			context.logError(err.line, err.message);
@@ -432,7 +436,7 @@ void loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i,
 								context.getCurrentFunctionInfo(in_data)
 								    ->popBackScope();
 							}
-							return;
+							return false;
 						}
 						break;
 					}
@@ -507,7 +511,7 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 		// 	}
 		// }
 		// left.reset(binaryNode.release());
-		// std::cout<<"op "<<binaryNode<<":"<<Lexer::Token(0,
+		// std::cerr<<"op "<<binaryNode<<":"<<Lexer::Token(0,
 		// binaryNode->op,
 		// "").toString()<<'\n';
 	}
@@ -590,8 +594,10 @@ std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 			}
 			default: {
 				--i;
+				int *a = nullptr;
+				*a = 5;
 				throw ParserError(token->line,
-				                  "Unknow token " + token->toString(context));
+				                  "AUnknow token " + token->toString(context));
 			}
 		}
 	}
@@ -986,7 +992,11 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 					classDeclaration->baseClassLexerStringId = lexerIdArray;
 					classDeclaration->inputClassId = std::move(inputVecs);
 					// if (classDeclaration->inputClassId.size() == 0) {
-					// std::cerr << classDeclaration->getName(in_data) << "\n";
+					// std::cerr
+					//     <<
+					//     context.lexerString[classDeclaration->inputClassId[0]
+					//                                ->baseClassLexerStringId]
+					//     << " " << classDeclaration->inputClassId[0] << "\n";
 					// }
 					classDeclaration->line = firstLine;
 					classDeclaration->isGeneric = isGeneric;
@@ -1022,8 +1032,10 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 						classDeclaration->inputClassId = std::move(inputVecs);
 						classDeclaration->line = firstLine;
 						classDeclaration->isGeneric = isGeneric;
-						context.allClassDeclarations.push_back(
-						    classDeclaration);
+						if (!isGeneric) {
+							context.allClassDeclarations.push_back(
+							    classDeclaration);
+						}
 						node = inferenceNodeFromLBrace(in_data, i,
 						                               NodeType::CREATE_MAP);
 						static_cast<CreateMapNode *>(node)->classDeclaration =
@@ -1212,6 +1224,12 @@ bool nextTokenIfMarkNonNull(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
 	if (nextTokenSameLine(&token, context.tokens, i, token->line) &&
 	    expect(token, Lexer::TokenType::EXMARK)) {
+		if (!(context.mode->flags & LibraryFlags::ALLOW_NON_NULL_ASSERTION)) {
+			throw ParserError(
+			    token->line,
+			    "Error: Non-null assertion operator '!' is disabled. \nNote: "
+			    "Enable 'allowNonNullAssertion' to use it.");
+		}
 		return true;
 	}
 	--i;
@@ -1243,14 +1261,24 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 				--i;
 				break;
 			}
-			if (!nextToken(&token, context.tokens, i) ||
-			    (token->type != Lexer::TokenType::LT &&
-			     token->type != Lexer::TokenType::GT &&
-			     token->type != Lexer::TokenType::COMMA &&
-			     token->type != Lexer::TokenType::QMARK &&
-			     token->type != Lexer::TokenType::AT_SIGN)) {
+			if (!nextToken(&token, context.tokens, i)) {
 				i -= 2;
 				break;
+			}
+			switch (token->type) {
+				case Lexer::TokenType::LT:
+				case Lexer::TokenType::GT:
+				case Lexer::TokenType::COMMA:
+				case Lexer::TokenType::QMARK:
+				case Lexer::TokenType::LPAREN:
+				case Lexer::TokenType::MINUS_GT:
+				case Lexer::TokenType::AT_SIGN: {
+					break;
+				}
+				default: {
+					i -= 2;
+					goto doneLT;
+				}
 			}
 			auto firstLine = token->line;
 			i -= 4;
@@ -1264,13 +1292,17 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 				bool isGeneric = classDeclaration->isGenerics(in_data);
 				if (!isGeneric) {
 					context.allClassDeclarations.push_back(classDeclaration);
+					// std::cerr << "Created unknownode: "
+					//           << classDeclaration->getName(in_data) << " "
+					//           << classDeclaration->isGenerics(in_data) <<
+					//           "\n";
+					// std::cerr << ParserContext::mode->path << ":" <<
+					// token->line
+					//           << "\n";
 				}
 				--i;
 				auto name = classDeclaration->getName(in_data);
-				// std::cerr << "Created unknownode: " << name << " "
-				//           << classDeclaration->isGenerics(in_data) << "\n";
-				// std::cerr << ParserContext::mode->path << ":" << token->line
-				//           << "\n";
+
 				LexerStringId newNameId =
 				    context.createLexerStringIfNotExists(name);
 
@@ -1448,6 +1480,13 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			    context.justFindStatic, false, false);
 		}
 		case Lexer::TokenType::EXMARK: {
+			if (!(context.mode->flags &
+			      LibraryFlags::ALLOW_NON_NULL_ASSERTION)) {
+				throw ParserError(token->line,
+				                  "Error: Non-null assertion operator '!' is "
+				                  "disabled. \nNote: "
+				                  "Enable 'allowNonNullAssertion' to use it.");
+			}
 			++i;
 			nullable = false;
 			break;
@@ -1455,6 +1494,7 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 		default:
 			break;
 	}
+doneLT:;
 	--i;
 	token = &context.tokens[i];
 	if (!allowAddThis) {

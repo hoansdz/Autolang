@@ -1,4 +1,4 @@
-func globalCalculate(n: Int): Int {
+func globalCalculate(n: Int): Float {
     return n * n + 5
 }
 
@@ -7,7 +7,7 @@ func testCallableEquivalenceAndMixing() {
     
     val capturedOffset = 5
     val closureCalculate = {|n: Int| n * n + capturedOffset}
-    val funcPtr: (Int) -> Int = globalCalculate
+    val funcPtr: (Int) -> Float = globalCalculate
     
     val callables = <(Int) -> Int>[funcPtr, closureCalculate]
     val ptrCall = callables[0]

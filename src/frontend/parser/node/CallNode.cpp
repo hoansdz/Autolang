@@ -108,7 +108,7 @@ void CallNode::optimize(in_func) {
 			case NodeType::CREATE_ARRAY:
 			case NodeType::CREATE_MAP:
 			case NodeType::CREATE_SET: {
-				if (argument->classId != DefaultClass::nullClassId) {
+				if (argument->classDeclaration) {
 					argument->optimize(in_data);
 				} else {
 					mustInferenceGenericType = true;
@@ -347,14 +347,16 @@ void CallNode::optimize(in_func) {
 	// if (mustInferenceGenericType) {
 	{
 		int i = func->functionFlags & FunctionFlags::FUNC_IS_STATIC ? 0 : 1;
-		for (auto argument : arguments) {
+		for (auto &argument : arguments) {
 			auto funcExpectClassId = func->args[i++];
 			auto funcExpectClassInfo = context.classInfo[funcExpectClassId];
 			switch (argument->classId) {
 				case DefaultClass::intClassId: {
 					if (funcExpectClassId == DefaultClass::floatClassId) {
-						argument = context.castPool.push(
-						    argument, DefaultClass::floatClassId);
+						argument = static_cast<HasClassIdNode *>(
+						    context.castPool
+						        .push(argument, DefaultClass::floatClassId)
+						        ->resolve(in_data));
 						argument->optimize(in_data);
 					}
 					break;
@@ -372,16 +374,16 @@ void CallNode::optimize(in_func) {
 						case NodeType::CREATE_CLOSURE: {
 							auto node =
 							    static_cast<CreateClosureNode *>(argument);
-							if (node->mustInfer) {
-								node->inferFrom(
-								    in_data, funcInputClass->classDeclaration);
-								argument->optimize(in_data);
-								break;
-							}
+							// if (node->mustInfer) {
+							node->inferFrom(in_data,
+							                funcInputClass->classDeclaration);
 							argument->optimize(in_data);
-							matchFunction(in_data,
-							              funcInputClass->classDeclaration,
-							              argument->classDeclaration);
+							// 	break;
+							// }
+							// argument->optimize(in_data);
+							// matchFunction(in_data,
+							//               funcInputClass->classDeclaration,
+							//               argument->classDeclaration);
 							break;
 						}
 						default: {
@@ -417,7 +419,16 @@ void CallNode::optimize(in_func) {
 						case NodeType::CREATE_SET: {
 							if (funcExpectClassInfo->baseClassId !=
 							    DefaultClass::setClassId) {
-								goto notFound;
+								if (funcExpectClassInfo->baseClassId ==
+								    DefaultClass::mapClassId) {
+									argument = context.createMapPool.push(
+									    argument->line, nullptr,
+									    std::vector<
+									        std::pair<HasClassIdNode *,
+									                  HasClassIdNode *>>{});
+								} else {
+									goto notFound;
+								}
 							}
 							argument->classId = funcExpectClassId;
 							argument->optimize(in_data);
@@ -553,20 +564,48 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 	}
 	int j = 0;
 	for (; j < arguments.size(); ++j) {
-		auto argument = arguments[j];
+		auto &argument = arguments[j];
 		uint32_t inputClassId = argument->classId;
 		uint32_t funcArgClassId = *inputClass[j + 1]->classId;
 		// printDebug(compile.classes[inputClassId]->name + " and " +
 		// compile.classes[funcArgClassId]->name);
-		if (funcArgClassId == inputClassId)
+		if (funcArgClassId == inputClassId) {
+			if (funcArgClassId == DefaultClass::functionClassId) {
+				switch (argument->kind) {
+					case NodeType::FUNCTION_ACCESS: {
+						argument->classDeclaration = inputClass[j + 1];
+						argument->optimize(in_data);
+						break;
+					}
+					case NodeType::CREATE_CLOSURE: {
+						auto node = static_cast<CreateClosureNode *>(argument);
+						// if (node->mustInfer) {
+						node->inferFrom(in_data, inputClass[j + 1]);
+						argument->optimize(in_data);
+						// 	break;
+						// }
+						// argument->optimize(in_data);
+						// matchFunction(in_data, inputClass[j + 1],
+						//               argument->classDeclaration);
+						break;
+					}
+					default: {
+						matchFunction(in_data, inputClass[j + 1],
+						              argument->classDeclaration);
+						break;
+					}
+				}
+				break;
+			}
 			continue;
+		}
 		if (funcArgClassId == DefaultClass::anyClassId) {
 			continue;
 		}
 		switch (inputClassId) {
 			case DefaultClass::nullClassId: {
 				if (mustInferenceGenericType) {
-					auto argument = arguments[j];
+					auto &argument = arguments[j];
 					auto funcExpectClassInfo =
 					    context.classInfo[funcArgClassId];
 					switch (argument->kind) {
@@ -591,7 +630,14 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 						case NodeType::CREATE_SET: {
 							if (funcExpectClassInfo->baseClassId !=
 							    DefaultClass::setClassId) {
-								goto err;
+								if (funcExpectClassInfo->baseClassId !=
+								    DefaultClass::mapClassId) {
+									goto err;
+								}
+								argument = context.createMapPool.push(
+								    argument->line, nullptr,
+								    std::vector<std::pair<HasClassIdNode *,
+								                          HasClassIdNode *>>{});
 							}
 							argument->classId = funcArgClassId;
 							argument->optimize(in_data);
@@ -601,37 +647,14 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 				}
 				continue;
 			}
-			case DefaultClass::functionClassId: {
-				switch (argument->kind) {
-					case NodeType::FUNCTION_ACCESS: {
-						argument->classDeclaration = inputClass[j + 1];
-						argument->optimize(in_data);
-						break;
-					}
-					case NodeType::CREATE_CLOSURE: {
-						auto node = static_cast<CreateClosureNode *>(argument);
-						if (node->mustInfer) {
-							node->inferFrom(in_data, inputClass[j + 1]);
-							argument->optimize(in_data);
-							break;
-						}
-						argument->optimize(in_data);
-						matchFunction(in_data, inputClass[j + 1],
-						              argument->classDeclaration);
-						break;
-					}
-					default: {
-						matchFunction(in_data, inputClass[j + 1],
-						              argument->classDeclaration);
-					}
-				}
-				break;
-			}
+			// Never functionClassId
 			case DefaultClass::intClassId: {
 				if (funcArgClassId == AutoLang::DefaultClass::floatClassId) {
-					arguments[j] = context.castPool.push(
-					    arguments[j], DefaultClass::floatClassId);
-					arguments[j]->optimize(in_data);
+					argument = static_cast<HasClassIdNode *>(
+					    context.castPool
+					        .push(argument, DefaultClass::floatClassId)
+					        ->resolve(in_data));
+					argument->optimize(in_data);
 					continue;
 				}
 				break;
@@ -649,10 +672,26 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 	return;
 
 err:;
+	auto argument = arguments[j];
+	switch (argument->kind) {
+		case NodeType::CREATE_ARRAY: {
+			argument->classId = DefaultClass::arrayClassId;
+			break;
+		}
+		case NodeType::CREATE_SET: {
+			argument->classId = DefaultClass::setClassId;
+			break;
+		}
+		case NodeType::CREATE_MAP: {
+			argument->classId = DefaultClass::mapClassId;
+			break;
+		}
+	}
+	auto argumentClassId = argument->classId;
 	throwError("Object " + context.lexerString[nameId] + ": At argument " +
 	           std::to_string(j) + " expected " +
 	           compile.classes[*inputClass[j + 1]->classId]->name + " but " +
-	           compile.classes[arguments[j]->classId]->name + " found");
+	           compile.classes[argumentClassId]->name + " found");
 }
 
 bool CallNode::match(in_func, MatchOverload &match,
@@ -712,6 +751,10 @@ bool CallNode::match(in_func, MatchOverload &match,
 								case NodeType::CREATE_SET: {
 									if (funcExpectClassInfo->baseClassId !=
 									    DefaultClass::setClassId) {
+										if (funcExpectClassInfo->baseClassId ==
+										    DefaultClass::mapClassId) {
+											break;
+										}
 										goto finished;
 									}
 									break;
@@ -756,7 +799,7 @@ bool CallNode::match(in_func, MatchOverload &match,
 
 void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	if (funcObject) {
-		for (auto &argument : arguments) {
+		for (auto argument : arguments) {
 			argument->putBytecodes(in_data, bytecodes);
 		}
 		funcObject->putBytecodes(in_data, bytecodes);
@@ -834,7 +877,7 @@ void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		put_opcode_u32(bytecodes, funcId);
 	}
 	// put_opcode_u32(bytecodes, func->args.size);
-	// std::cout<<funcId<<'\n';
+	// std::cerr<<funcId<<'\n';
 }
 
 void CallNode::rewrite(in_func, uint8_t *bytecodes) {
@@ -867,7 +910,8 @@ ExprNode *CallNode::copy(in_func) {
 	newNode->classId = classId;
 	newNode->classDeclaration = classDeclaration;
 	if (funcObject) {
-		newNode->funcObject = funcObject;
+		newNode->funcObject =
+		    static_cast<HasClassIdNode *>(funcObject->copy(in_data));
 	}
 	return newNode;
 }

@@ -1,5 +1,8 @@
+#define AUTOLANG_LIMIT_OPCODE
+
 #include "shared/ANativeFunctionData.hpp"
 #include <Autolang.hpp>
+#include <cstdio>
 #include <emscripten/bind.h>
 #include <emscripten/emscripten.h>
 #include <iostream>
@@ -10,8 +13,10 @@ using namespace emscripten;
 class CompilerWrapper {
   public:
 	AutoLang::ACompiler compiler;
+	AutoLang::LibraryConfig mainSourceConfig;
+	std::stringstream buffer;
 
-	CompilerWrapper() {}
+	CompilerWrapper() { setvbuf(stderr, NULL, _IONBF, 0); }
 
 	void setOnError(val func) {
 		if (!func.as<bool>()) {
@@ -30,10 +35,13 @@ class CompilerWrapper {
 	}
 
 	void registerBuiltInLibrary(std::string name, std::string data,
-	                            bool autoImport, val mapFunction) {
+	                            bool autoImport, bool allowLateinitKeyword,
+	                            bool allowNonNullAssertion, val mapFunction) {
 		if (!mapFunction.as<bool>()) {
-			compiler.registerBuiltInLibrary(name.c_str(), data.c_str(),
-			                                autoImport);
+			compiler.registerBuiltInLibrary(
+			    name.c_str(), data.c_str(),
+			    AutoLang::LibraryConfig(autoImport, allowLateinitKeyword,
+			                            allowNonNullAssertion));
 			return;
 		}
 		val keys = val::global("Object").call<val>("keys", mapFunction);
@@ -52,27 +60,53 @@ class CompilerWrapper {
 				nativeMap[key] = new val(value);
 			}
 		}
-		auto lib = compiler.registerBuiltInLibrary(name.c_str(), data.c_str(),
-		                                           autoImport, nativeMap);
+		auto lib = compiler.registerBuiltInLibrary(
+		    name.c_str(), data.c_str(),
+		    AutoLang::LibraryConfig(autoImport, allowLateinitKeyword,
+		                            allowNonNullAssertion),
+		    nativeMap);
 		lib->flags |= AutoLang::LibraryFlags::IS_JS_BRIDGE;
 	}
 
+	void setLimitOpcodeCount(uint32_t count) {
+		compiler.setLimitOpcodeCount(count);
+	}
+
+	void setMainSourceConfig(bool allowLateinitKeyword,
+	                         bool allowNonNullAssertion) {
+		mainSourceConfig.allowLateinitKeyword = allowLateinitKeyword;
+		mainSourceConfig.allowNonNullAssertion = allowNonNullAssertion;
+	}
+
 	bool compileAndRun(std::string path, std::string data) {
+		std::streambuf *old = std::cerr.rdbuf(buffer.rdbuf());
 		try {
-			if (compiler.compile(path.c_str(), data.c_str())) {
+			if (compiler.compile(path.c_str(), data.c_str(),
+			                     mainSourceConfig)) {
 				compiler.run();
 				compiler.refresh();
+				std::cerr.rdbuf(old);
 				return true;
 			}
 		} catch (const std::exception &e) {
-			std::cout << e.what() << "\n";
+			std::cerr << e.what() << "\n";
 		}
 		compiler.refresh();
+		std::cerr.rdbuf(old);
 		return false;
 	}
 
 	bool compile(std::string path, std::string data) {
-		return compiler.compile(path.c_str(), data.c_str());
+		std::streambuf *old = std::cerr.rdbuf(buffer.rdbuf());
+		try {
+			bool result =
+			    compiler.compile(path.c_str(), data.c_str(), mainSourceConfig);
+			std::cerr.rdbuf(old);
+			return result;
+		} catch (const std::exception &e) {
+			std::cerr.rdbuf(old);
+			return false;
+		}
 	}
 
 	void refresh() { compiler.refresh(); }
@@ -87,6 +121,16 @@ class CompilerWrapper {
 		return true;
 	}
 
+	std::string getOutput() {
+		// std::string s = buffer.str();
+		// if (!s.empty() && s.back() != '\n') {
+		// 	s += '\n';
+		// }
+		return buffer.str();
+	}
+
+	void clearOutput() { buffer.clear(); }
+
 	bool hasError() { return compiler.hasError(); }
 };
 
@@ -97,8 +141,12 @@ EMSCRIPTEN_BINDINGS(autolang_module) {
 	    .function("run", &CompilerWrapper::run)
 	    .function("compile", &CompilerWrapper::compile)
 	    .function("refresh", &CompilerWrapper::refresh)
-		.function("setOnError", &CompilerWrapper::setOnError)
-		.function("setOnWarning", &CompilerWrapper::setOnWarning)
+	    .function("setOnError", &CompilerWrapper::setOnError)
+	    .function("setOnWarning", &CompilerWrapper::setOnWarning)
+	    .function("setMainSourceConfig", &CompilerWrapper::setMainSourceConfig)
+	    .function("setLimitOpcodeCount", &CompilerWrapper::setLimitOpcodeCount)
+	    .function("getOutput", &CompilerWrapper::getOutput)
+	    .function("clearOutput", &CompilerWrapper::clearOutput)
 	    .function("registerBuiltInLibrary",
 	              &CompilerWrapper::registerBuiltInLibrary)
 	    .function("hasError", &CompilerWrapper::hasError);

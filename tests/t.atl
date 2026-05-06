@@ -1,3 +1,4 @@
+
 @no_extends
 @no_constructor
 class Int {
@@ -30,6 +31,9 @@ class String {
 	@native("string_size")
 	func size(): Int
 
+	@native("str_is_empty")
+	func isEmpty(): Bool
+
 	@native("str_to_int")
 	func toInt(): Int
 
@@ -39,11 +43,23 @@ class String {
 	@native("str_get")
 	func get(position: Int): String
 
+	// @native("str_set")
+	// func set(position: Int, chr: Int)
+
+	// @native("str_set")
+	// func set(position: Int, str: String)
+
+	@native("str_char_at")
+	func charAt(position: Int): Int
+
 	@native("str_substr")
 	func substr(from: Int): String
 
 	@native("str_substr")
 	func substr(from: Int, length: Int): String
+
+	@native("str_trim")
+	func trim(): String
 
 	@native("str_contains")
 	func contains(sub: String): Bool
@@ -51,13 +67,45 @@ class String {
 	@native("str_index_of")
 	func indexOf(sub: String): Int
 
-	func split(delimiter: String) = split(delimiter, getClassId(Array<String>))
-
 	@native("str_split")
-	private func split(delimiter: String, classId: Int): Array<String>
+	func split(delimiter: String, classId: Int = getClassId(Array<String>)): Array<String>
 
 	@native("str_replace")
 	func replace(old: String, new: String): String
+}
+
+@no_constructor
+@no_extends
+class Bytes {
+    @native("bytes_constructor")
+    static func Bytes(initialSize: Int = 0): Bytes
+
+	// @native("bytes_resize")
+	// func resize(size: Int)
+
+    @native("bytes_append")
+    func append(value: Int)
+
+    @native("bytes_size")
+    func size(): Int
+
+    @native("bytes_is_empty")
+    func isEmpty(): Bool
+
+    @native("bytes_get")
+    func get(index: Int): Int
+
+    @native("bytes_set")
+    func set(index: Int, value: Int)
+
+    @native("bytes_clear")
+    func clear()
+
+    @native("bytes_slice")
+    func slice(from: Int, to: Int): Bytes
+
+    @native("bytes_to_string")
+    func toString(): String
 }
 
 @no_extends
@@ -89,8 +137,12 @@ class Exception(val message: String) {
 	
 }
 
+@no_constructor
 @no_extends
-class Array<T>() {
+class Array<T> {
+
+	static func __CLASS__(): Array<T> = <T>[]
+
 	@native("arr_add")
 	func add(value: T)
 
@@ -146,12 +198,10 @@ class Array<T>() {
 @no_extends
 @no_constructor
 class Set<T> {
-	@native("set_constructor")
-	private static func create(classId: Int, keyId: Int): Set<T>
-	
-	static func __CLASS__() = create(getClassId(Set<T>), getClassId(T))
-	@native("set_insert")
-	func insert(value: T)
+	static func __CLASS__(): Set<T> = <T>{}
+
+	@native("set_add")
+	func add(value: T)
 
 	@native("set_remove")
 	func remove(value: T)
@@ -172,9 +222,7 @@ class Set<T> {
     func forEach(fn: (T) -> Void)
 
     @native("set_to_array")
-    private func toArray(classId: Int): Array<T>
-
-    func toArray(): Array<T> = toArray(getClassId(Array<T>))
+    func toArray(classId: Int = getClassId(Array<T>)): Array<T>
 
 	@native("set_union")
     func union(other: Set<T>): Set<T>
@@ -192,13 +240,13 @@ class Set<T> {
 @no_extends
 @no_constructor
 class Map<K, V> {
-	@native("map_constructor")
-	private static func create(classId: Int, keyId: Int): Map<K, V>
-	
-	static func __CLASS__() = create(getClassId(Map<K, V>), getClassId(K))
+	static func __CLASS__(): Map<K, V> = <K, V>{}
 	
 	@native("map_get")
 	func get(key: K): V?
+
+	@native("map_get_or_default")
+	func getOrDefault(key: K, defaultValue: V): V
 	
 	@native("map_set")
 	func set(key: K, value: V)
@@ -216,14 +264,10 @@ class Map<K, V> {
     func forEach(fn: (K, V) -> Void)
 
 	@native("map_keys")
-    private func keys(classId: Int): Array<K>
-
-    func keys(): Array<K> = keys(getClassId(Array<K>))
+    func keys(classId: Int = getClassId(Array<K>)): Array<K>
 
 	@native("map_values")
-    private func values(classId: Int): Array<V>
-
-    func values(): Array<V> = values(getClassId(Array<V>))
+    func values(classId: Int = getClassId(Array<V>)): Array<V>
 
 	@native("map_remove")
 	func remove(key: K)
@@ -247,3 +291,6 @@ func assert(condition: Bool, fileName: String, line: Int) {
 	}
 	throw Exception("${fileName}:${line}: Wrong")
 }
+// @wait_input
+// @native("input")
+// func input(): String

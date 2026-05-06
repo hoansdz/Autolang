@@ -9,7 +9,6 @@
 #include "shared/DefaultOperator.hpp"
 #include "shared/Type.hpp"
 
-
 namespace AutoLang {
 namespace Libs {
 namespace set {
@@ -29,13 +28,7 @@ static void destroySet(ANotifier &notifier, void *unorderedSetData) {
 	delete unorderedSetData_;
 }
 
-AObject *constructor(NativeFuncInData) {
-	ClassId classId = args[0]->i;
-	ClassId keyId = args[1]->i;
-	return constructor(notifier, classId, keyId);
-}
-
-AObject *constructor(ANotifier &notifier, ClassId classId, ClassId keyId) {
+inline AObject *constructor(ANotifier &notifier, ClassId classId, ClassId keyId) {
 	switch (keyId) {
 		case DefaultClass::intClassId: {
 			return notifier.createNativeData(
@@ -58,6 +51,14 @@ AObject *constructor(ANotifier &notifier, ClassId classId, ClassId keyId) {
 			    destroySet<ObjectHashSet, true>);
 		}
 	}
+}
+
+AObject *constructor(NativeFuncInData) {
+	ClassId classId = args[0]->i;
+	ClassId keyId = args[1]->i;
+	auto obj = constructor(notifier, classId, keyId);
+	obj->flags |= AObject::Flags::OBJ_IS_SET;
+	return obj;
 }
 
 AObject *add(NativeFuncInData) {
@@ -497,14 +498,14 @@ AObject *clear(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *to_string(NativeFuncInData) {
-	auto unorderedSetData = static_cast<AUnorderedSet *>(args[0]->data->data);
+inline std::string to_string(ANotifier &notifier, AObject *obj) {
+	auto unorderedSetData = static_cast<AUnorderedSet *>(obj->data->data);
 	std::string str = "{";
 	switch (unorderedSetData->type) {
 		case DefaultClass::intClassId: {
 			auto set = static_cast<IntHashSet *>(unorderedSetData->data);
 			if (set->empty()) {
-				return notifier.createString("{}");
+				return "{}";
 			}
 			bool isFirst = true;
 			for (int64_t value : *set) {
@@ -520,7 +521,7 @@ AObject *to_string(NativeFuncInData) {
 		case DefaultClass::floatClassId: {
 			auto set = static_cast<FloatHashSet *>(unorderedSetData->data);
 			if (set->empty()) {
-				return notifier.createString("{}");
+				return "{}";
 			}
 			bool isFirst = true;
 			for (double value : *set) {
@@ -536,7 +537,7 @@ AObject *to_string(NativeFuncInData) {
 		case DefaultClass::stringClassId: {
 			auto set = static_cast<StringHashSet *>(unorderedSetData->data);
 			if (set->empty()) {
-				return notifier.createString("{}");
+				return "{}";
 			}
 			bool isFirst = true;
 			for (AObject *value : *set) {
@@ -552,7 +553,7 @@ AObject *to_string(NativeFuncInData) {
 		default: {
 			auto set = static_cast<ObjectHashSet *>(unorderedSetData->data);
 			if (set->empty()) {
-				return notifier.createString("{}");
+				return "{}";
 			}
 			bool isFirst = true;
 			for (AObject *value : *set) {
@@ -567,7 +568,11 @@ AObject *to_string(NativeFuncInData) {
 		}
 	}
 	str += '}';
-	return notifier.createString(str);
+	return str;
+}
+
+AObject *to_string(NativeFuncInData) {
+	return notifier.createString(to_string(notifier, args[0]));
 }
 
 } // namespace set

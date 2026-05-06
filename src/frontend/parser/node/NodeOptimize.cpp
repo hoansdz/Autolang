@@ -159,7 +159,7 @@ ExprNode *ReturnNode::resolve(in_func) {
 		if (value->classId == DefaultClass::nullClassId) {
 			return this;
 		}
-		value = context.castPool.push(value, func->returnId);
+		// value = context.castPool.push(value, func->returnId);
 		// auto castNode = context.castPool.push(value, func->returnId);
 		// value = static_cast<HasClassIdNode *>(castNode->resolve(in_data));
 	}
@@ -178,15 +178,47 @@ void ReturnNode::optimize(in_func) {
 			throwError("Cannot return value, function return Void");
 		}
 		switch (value->kind) {
+			case NodeType::CREATE_SET: {
+				if (func->returnId == DefaultClass::nullClassId) {
+					value->optimize(in_data);
+					func->returnId = value->classId;
+					return;
+				}
+				if (value->classDeclaration) {
+					value->optimize(in_data);
+					break;
+				}
+				if (value->classId == DefaultClass::nullClassId) {
+					if (context.classInfo[func->returnId]->baseClassId ==
+					    DefaultClass::mapClassId) {
+						value = context.createMapPool.push(
+						    value->line, nullptr,
+						    std::vector<std::pair<HasClassIdNode *,
+						                          HasClassIdNode *>>{});
+					}
+					value->classId = func->returnId;
+					value->optimize(in_data);
+					return;
+				}
+				value->optimize(in_data);
+				break;
+			}
 			case NodeType::CREATE_MAP:
-			case NodeType::CREATE_SET:
 			case NodeType::CREATE_ARRAY: {
 				if (func->returnId == DefaultClass::nullClassId) {
 					value->optimize(in_data);
 					func->returnId = value->classId;
 					return;
 				}
-				value->classId = func->returnId;
+				if (value->classDeclaration) {
+					value->optimize(in_data);
+					break;
+				}
+				if (value->classId == DefaultClass::nullClassId) {
+					value->classId = func->returnId;
+					value->optimize(in_data);
+					return;
+				}
 				value->optimize(in_data);
 				break;
 			}
@@ -194,7 +226,7 @@ void ReturnNode::optimize(in_func) {
 				if (func->returnId != DefaultClass::nullClassId) {
 					value->classDeclaration = funcInfo->returnClass;
 					value->optimize(in_data);
-					break;
+					return;
 				}
 				value->optimize(in_data);
 				break;
@@ -205,7 +237,7 @@ void ReturnNode::optimize(in_func) {
 				    func->returnId != DefaultClass::nullClassId) {
 					n->inferFrom(in_data, funcInfo->returnClass);
 					value->optimize(in_data);
-					break;
+					return;
 				}
 				value->optimize(in_data);
 				break;
@@ -241,9 +273,21 @@ void ReturnNode::optimize(in_func) {
 				throwError("Cannot return nullable variable because functions "
 				           "returns nonnull value");
 			}
+		}
+		if (value->classId == func->returnId) {
 			return;
 		}
-		return;
+		if (compile.classes[func->returnId]->inheritance.get(value->classId)) {
+			return;
+		}
+		if (value->classId == DefaultClass::intClassId &&
+		    func->returnId == DefaultClass::floatClassId) {
+			value = static_cast<HasClassIdNode *>(
+			    context.castPool.push(value, func->returnId)->resolve(in_data));
+			return;
+		}
+		throwError("Cannot cast " + compile.classes[value->classId]->name +
+		           " to " + compile.classes[func->returnId]->name);
 	}
 	if (func->returnId != AutoLang::DefaultClass::voidClassId) {
 		throwError("Must return value");

@@ -19,10 +19,10 @@ void CreateClosureNode::optimize(in_func) {
 	CreateFuncNode *node = context.newFunctions.push(
 	    line, context.currentClassId, nameId, nullptr, parameter,
 	    FUNC_IS_STATIC | FUNC_SKIP_LOAD | FUNC_PRIVATE);
-	node->pushFunction(in_data);
+	node->pushFunction<false>(in_data);
 	funcId = node->id;
-	auto func = compile.functions[funcId];
-	auto funcInfo = context.functionInfo[funcId];
+	auto func = compile.functions[*funcId];
+	auto funcInfo = context.functionInfo[*funcId];
 	funcInfo->body.nodes = std::move(body.nodes);
 	if (mustInfer) {
 		for (int i = 1; i < classDeclaration->inputClassId.size(); ++i) {
@@ -85,9 +85,13 @@ void CreateClosureNode::optimize(in_func) {
 }
 
 void CreateClosureNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	auto func = compile.functions[funcId];
+	if (!funcId) {
+		std::cerr << "Not found " << this << "\n";
+		return;
+	}
+	auto func = compile.functions[*funcId];
 	func->argSize = parameter->parameters.size();
-	auto funcInfo = context.functionInfo[funcId];
+	auto funcInfo = context.functionInfo[*funcId];
 	for (auto obj : objects) {
 		switch (obj->kind) {
 			case NodeType::VAR: {
@@ -102,7 +106,7 @@ void CreateClosureNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		obj->putBytecodes(in_data, bytecodes);
 	}
 	bytecodes.push_back(Opcode::CREATE_FUNCTION_OBJECT);
-	put_opcode_u32(bytecodes, funcId);
+	put_opcode_u32(bytecodes, *funcId);
 	put_opcode_u32(bytecodes, objects.size());
 	uint32_t delta = objects.size();
 	// std::cerr << "COUNT: " << func->argSize << " " << delta << "\n";
@@ -136,7 +140,7 @@ void CreateClosureNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 }
 
 void CreateClosureNode::rewrite(in_func, uint8_t *bytecodes) {
-	auto funcInfo = context.functionInfo[funcId];
+	auto funcInfo = context.functionInfo[*funcId];
 	for (auto obj : objects) {
 		obj->rewrite(in_data, bytecodes);
 	}
@@ -173,8 +177,8 @@ void CreateClosureNode::inferFrom(in_func, ClassDeclaration *from) {
 				        ->parameters[parameter->parameters.size() + i -
 				                     classDeclaration->inputClassId.size()];
 				throwError("Parameter '" + currentParameter->name +
-				           "' expected type '" + fromClass->getName(in_data) +
-				           "' but '" + toClass->getName(in_data) + "' found");
+				           "' expected type '" + toClass->getName(in_data) +
+				           "' but '" + fromClass->getName(in_data) + "' found");
 			}
 			continue;
 		}
@@ -225,6 +229,7 @@ ExprNode *CreateClosureNode::copy(in_func) {
 		newNode->body.nodes.push_back(
 		    static_cast<HasClassIdNode *>(node->copy(in_data)));
 	}
+	context.allClosureNode.push_back(newNode);
 	return newNode;
 }
 

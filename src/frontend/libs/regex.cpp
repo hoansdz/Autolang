@@ -122,7 +122,7 @@ class Regex {
     func replace(text: String, replacement: String): String
 }
     )###",
-        false, std::move(nativeMap));
+        LibraryConfig(), std::move(nativeMap));
 }
 
 } // namespace regex

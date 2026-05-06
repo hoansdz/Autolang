@@ -6,7 +6,7 @@
 
 namespace AutoLang {
 
-void CreateFuncNode::pushFunction(in_func) {
+template <bool addToGlobalScope> void CreateFuncNode::pushFunction(in_func) {
 	AClass *clazz =
 	    contextCallClassId ? compile.classes[*contextCallClassId] : nullptr;
 	id = compile.registerFunction(clazz, context.lexerString[nameId],
@@ -21,7 +21,9 @@ void CreateFuncNode::pushFunction(in_func) {
 			classInfo->allFunction[nameId].push_back(id);
 		}
 	} else {
-		context.globalFunction[nameId].push_back(id);
+		if constexpr (addToGlobalScope) {
+			context.globalFunction[nameId].push_back(id);
+		}
 	}
 	context.functionInfo.push_back(context.functionInfoAllocator.push());
 	auto func = compile.functions[id];
@@ -36,6 +38,7 @@ void CreateFuncNode::pushFunction(in_func) {
 	}
 }
 
+template <bool addToGlobalScope>
 void CreateFuncNode::pushNativeFunction(in_func, ANativeFunctionData *native) {
 	AClass *clazz =
 	    contextCallClassId ? compile.classes[*contextCallClassId] : nullptr;
@@ -51,7 +54,9 @@ void CreateFuncNode::pushNativeFunction(in_func, ANativeFunctionData *native) {
 			classInfo->allFunction[nameId].push_back(id);
 		}
 	} else {
-		context.globalFunction[nameId].push_back(id);
+		if constexpr (addToGlobalScope) {
+			context.globalFunction[nameId].push_back(id);
+		}
 	}
 	context.functionInfo.push_back(context.functionInfoAllocator.push());
 	auto func = compile.functions[id];

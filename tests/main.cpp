@@ -1,3 +1,4 @@
+#define AUTOLANG_LIMIT_OPCODE
 #include <Autolang.hpp>
 #include <functional>
 #include <iostream>
@@ -25,8 +26,9 @@ int main(int argc, char *argv[]) {
 	auto start = std::chrono::high_resolution_clock::now();
 	try {
 		try {
-			for (int i = 0; i < 3; ++i) {
+			for (int i = 0; i < 1; ++i) {
 				AutoLang::ACompiler compiler;
+				compiler.setLimitOpcodeCount(1000);
 				// ANativeMap nativeMap = {
 				// 	{"hi", (ANativeFunction)[](NativeFuncInput) ->
 				// AutoLang::AObject * { 		std::cerr << "Hello world!!!\n";
@@ -40,35 +42,43 @@ int main(int argc, char *argv[]) {
 				// 	compiler.run();
 				// 	compiler.refresh();
 				// }
-				if (compiler.compile("./tests/testCorrectness.atl")) {
-					compiler.run();
-					compiler.refresh();
-				}
-				if (compiler.compile("./tests/testCorrectness.atl")) {
-					compiler.run();
-					compiler.refresh();
-				}
-				// if (compiler.compile("./tests/testCorrectness.atl")) {
-				// 	compiler.run();
-				// }
+				if (compiler.compile(
+				        "./tests/testCorrectness.atl",
+				        AutoLang::LibraryConfig(false, true, true),
+				        ANativeMap({{"HI", (ANativeFunction)[](NativeFuncInput) -> AutoLang::AObject * {
+					                    return nullptr;
 			}
-		} catch (const std::logic_error &err) {
-			std::cerr << err.what();
 		}
-		// if (compiler.vm->state != VMState::ERROR) {
-		// 	compiler.vm->start();
-		// } else {
-		// compiler.vm->log();
-		// }
-	} catch (const std::exception &e) {
-		std::cerr << e.what() << '\n';
+	}))) {
+		compiler.run();
+		compiler.refresh();
 	}
-	auto end = std::chrono::high_resolution_clock::now();
-	auto duration =
-	    std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-	std::cout << '\n' << "Total time : " << duration.count() << " ms" <<
-	'\n';
+	// if (compiler.compile("./tests/testCorrectness.atl")) {
+	// 	compiler.run();
+	// 	compiler.refresh();
+	// }
+	// if (compiler.compile("./tests/testCorrectness.atl")) {
+	// 	compiler.run();
+	// }
+}
+}
+catch (const std::logic_error &err) {
+	std::cerr << err.what();
+}
+// if (compiler.vm->state != VMState::ERROR) {
+// 	compiler.vm->start();
+// } else {
+// compiler.vm->log();
+// }
+}
+catch (const std::exception &e) {
+	std::cerr << e.what() << '\n';
+}
+auto end = std::chrono::high_resolution_clock::now();
+auto duration =
+    std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+std::cout << '\n' << "Total time : " << duration.count() << " ms" << '\n';
 #ifdef _WIN32
-	printMemoryUsage();
+printMemoryUsage();
 #endif
 }

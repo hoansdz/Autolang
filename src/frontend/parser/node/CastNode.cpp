@@ -33,6 +33,9 @@ ExprNode *CastNode::resolve(in_func) {
 				auto node = static_cast<ConstValueNode *>(value);
 				switch (classId) {
 					case AutoLang::DefaultClass::intClassId: {
+						if (node->classId == DefaultClass::floatClassId) {
+							goto errCast;
+						}
 						auto result = toInt(in_data, node);
 						value = nullptr;
 						ExprNode::deleteNode(this);
@@ -68,10 +71,12 @@ ExprNode *CastNode::resolve(in_func) {
 				break;
 		}
 	} catch (const std::runtime_error &err) {
-		throwError("Cannot cast " + compile.classes[value->classId]->name +
-		           " to " + compile.classes[classId]->name);
+		goto errCast;
 	}
 	return this;
+errCast:;
+	throwError("Cannot cast " + compile.classes[value->classId]->name + " to " +
+	           compile.classes[classId]->name);
 }
 
 void CastNode::optimize(in_func) {
@@ -86,14 +91,14 @@ void CastNode::optimize(in_func) {
 		case AutoLang::DefaultClass::intClassId: {
 			switch (value->classId) {
 				case AutoLang::DefaultClass::intClassId:
-				case AutoLang::DefaultClass::floatClassId:
+				case AutoLang::DefaultClass::floatClassId: {
+					return;
+				}
 				case AutoLang::DefaultClass::boolClassId: {
 					return;
 				}
 				default: {
-					throwError("Cannot cast " +
-					           compile.classes[value->classId]->name + " to " +
-					           compile.classes[classId]->name);
+					goto errCast;
 				}
 			}
 			break;
@@ -141,6 +146,9 @@ void CastNode::optimize(in_func) {
 			throwError("Cannot cast " + compile.classes[value->classId]->name +
 			           " to " + compile.classes[classId]->name);
 	}
+errCast:;
+	throwError("Cannot cast " + compile.classes[value->classId]->name + " to " +
+	           compile.classes[classId]->name);
 }
 
 void CastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
@@ -149,7 +157,7 @@ void CastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		case AutoLang::DefaultClass::intClassId: {
 			switch (value->classId) {
 				case AutoLang::DefaultClass::intClassId: {
-					bytecodes.emplace_back(Opcode::INT_FROM_INT);
+					// bytecodes.emplace_back(Opcode::INT_FROM_INT);
 					return;
 				}
 				case AutoLang::DefaultClass::floatClassId: {
@@ -172,7 +180,7 @@ void CastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					return;
 				}
 				case AutoLang::DefaultClass::floatClassId: {
-					bytecodes.emplace_back(Opcode::FLOAT_FROM_FLOAT);
+					// bytecodes.emplace_back(Opcode::FLOAT_FROM_FLOAT);
 					return;
 				}
 				case AutoLang::DefaultClass::boolClassId: {

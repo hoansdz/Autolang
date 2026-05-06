@@ -47,6 +47,8 @@ void SetNode::optimize(in_func) {
 							           "' found");
 						}
 						createArrayNode->classId = detach->classId;
+					} else {
+						value->optimize(in_data);
 					}
 					break;
 				}
@@ -81,6 +83,30 @@ void SetNode::optimize(in_func) {
 						} else {
 							createSetNode->classId = detach->classId;
 						}
+					} else {
+						value->optimize(in_data);
+					}
+					break;
+				}
+				case NodeType::CREATE_MAP: {
+					auto createMapNode = static_cast<CreateMapNode *>(value);
+					if (!createMapNode->classDeclaration) {
+						auto classInfo = context.classInfo[detach->classId];
+						if (classInfo->baseClassId !=
+						    DefaultClass::mapClassId) {
+							if (detach->classId == DefaultClass::nullClassId) {
+								throwError("Cannot infer type for initializer "
+								           ". Autolang requires explicit type "
+								           "parameters for collection sugar. "
+								           "Use <KeyClass, ValueClass>{}");
+							}
+							throwError("Type mismatch: Expected Map<> but '" +
+							           detach->getClassName(in_data) +
+							           "' found");
+						}
+						createMapNode->classId = detach->classId;
+					} else {
+						value->optimize(in_data);
 					}
 					break;
 				}
@@ -99,9 +125,7 @@ void SetNode::optimize(in_func) {
 					}
 					case NodeType::CREATE_CLOSURE: {
 						auto n = static_cast<CreateClosureNode *>(value);
-						if (n->mustInfer) {
-							n->inferFrom(in_data, detach->classDeclaration);
-						}
+						n->inferFrom(in_data, detach->classDeclaration);
 						break;
 					}
 				}
@@ -401,6 +425,10 @@ void SetNode::optimize(in_func) {
 	     detach->classId == AutoLang::DefaultClass::floatClassId) &&
 	    (value->classId == AutoLang::DefaultClass::intClassId ||
 	     value->classId == AutoLang::DefaultClass::floatClassId)) {
+		if (detach->classId == AutoLang::DefaultClass::intClassId &&
+		    value->classId == AutoLang::DefaultClass::floatClassId) {
+			throwError("Cannot cast 'Float' to 'Int'");
+		}
 		if (value->kind != NodeType::CONST) {
 			value = context.castPool.push(value, detach->classId);
 			return;

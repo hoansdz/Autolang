@@ -87,6 +87,12 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 			throw ParserError(firstLine, "Expected class name but not found");
 		}
 	} else if (expect(token, Lexer::TokenType::EXMARK)) {
+		if (!(context.mode->flags & LibraryFlags::ALLOW_NON_NULL_ASSERTION)) {
+			throw ParserError(
+			    token->line,
+			    "Error: Non-null assertion operator '!' is disabled. \nNote: "
+			    "Enable 'allowNonNullAssertion' to use it.");
+		}
 		sugarSyntax = true;
 		nullable = false;
 		// Class name
@@ -252,7 +258,7 @@ createNode:;
 		uint32_t nodeId = clazz->memberId.size();
 		// printDebug(compile.classes[context.currentClassInfo->declarationThis->classId]->name);
 		// printDebug((uintptr_t)context.currentClass);
-		// std::cout << nodeId << " is node id of " << name <<'\n';
+		// std::cerr << nodeId << " is node id of " << name <<'\n';
 		if (classInfo->genericData) {
 			funcInfo->reflectDeclarationMap[node] = nullptr;
 		}

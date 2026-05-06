@@ -1,6 +1,7 @@
 #ifndef AVM_HPP
 #define AVM_HPP
 
+#include "backend/vm/Opcode.hpp"
 #include "shared/AClass.hpp"
 #include "shared/CompiledProgram.hpp"
 #include "shared/FixedPool.hpp"
@@ -8,7 +9,6 @@
 #include "shared/Function.hpp"
 #include "shared/ObjectManager.hpp"
 #include "shared/StackAllocator.hpp"
-#include "backend/vm/Opcode.hpp"
 #include <chrono>
 #include <string>
 
@@ -55,6 +55,10 @@ class AVM {
 	FixedPoolLoaded<CallFrame, MAX_CALL_FRAME> callFrames;
 	StackAllocator stackAllocator = StackAllocator(MAX_STACK_ALLOCATOR);
 	AObject **tempAllocateArea = new AObject *[3]{};
+#ifdef AUTOLANG_LIMIT_OPCODE
+	uint32_t limitOpcodeCount = UINT32_MAX;
+	uint32_t currentLimitOpcodeCount = 0;
+#endif
 	inline AObject *getConstObject(uint32_t id);
 
 	inline void initGlobalVariables();
@@ -88,8 +92,8 @@ class AVM {
 	                         uint32_t &i);
 	template <bool hasValue>
 	inline bool callNativeFunction(CallFrame *&currentCallFrame,
-	                        Function *currentFunction, uint8_t *bytecodes,
-	                        uint32_t &i);
+	                               Function *currentFunction,
+	                               uint8_t *bytecodes, uint32_t &i);
 	inline bool callFunctionObject(AObject *obj);
 	inline bool callFunction(Function *currentFunction);
 	inline bool callFunction(CallFrame *currentCallFrame,

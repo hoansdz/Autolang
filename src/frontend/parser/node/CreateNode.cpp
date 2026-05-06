@@ -109,17 +109,31 @@ ExprNode *DeclarationNode::copy(in_func) {
 	}
 
 	if (classDeclaration) {
-		classDeclaration->load<true>(in_data);
 		if (!classDeclaration->classId) {
-			throwError("Bug: DeclarationNode copy: Unresolved class " +
-			           classDeclaration->getName(in_data));
-		}
-		newNode->classId = *classDeclaration->classId;
-		if (newNode->classId == DefaultClass::functionClassId) {
-			newNode->classDeclaration = classDeclaration->copy(in_data);
+			classDeclaration->load<false>(in_data);
+			if (!classDeclaration->classId) {
+				throwError("Bug: DeclarationNode copy: Unresolved class " +
+				           classDeclaration->getName(in_data));
+			}
+			newNode->classId = *classDeclaration->classId;
+			if (classDeclaration->isGeneric &&
+			    !classDeclaration->isGenericDeclaration) {
+				classDeclaration->classId = std::nullopt;
+			}
+		} else if (classDeclaration->classId == DefaultClass::functionClassId) {
+			classDeclaration->load<false>(in_data);
+			newNode->classId = *classDeclaration->classId;
+			if (classDeclaration->isGeneric) {
+				newNode->classDeclaration = classDeclaration->copy(in_data);
+			} else {
+				newNode->classDeclaration = classDeclaration;
+			}
+		} else {
+			newNode->classId = *classDeclaration->classId;
 		}
 		// newNode->mustInferenceNullable = classDeclaration->mustInference;
 		newNode->nullable = classDeclaration->nullable;
+
 	} else {
 		newNode->classId = classId;
 	}

@@ -17,6 +17,7 @@
 @import("./correctness/basic/functional.atl")
 @import("./correctness/basic/position.atl")
 @import("./correctness/basic/closures.atl")
+@import("./correctness/basic/test_infer.atl")
 
 @import("./correctness/stdlib/array.atl")
 @import("./correctness/stdlib/set.atl")
@@ -30,6 +31,4 @@ val _________ = 5
 
 @import("../tests/testCorrectness.atl")
 
-
-// @import("./correctness/basic/function.atl")
-@import("./correctness/basic/closures.atl")
+@import("./correctness/basic/test_infer.atl")

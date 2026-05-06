@@ -24,6 +24,7 @@ AObject *set(NativeFuncInData);
 AObject *clear(NativeFuncInData);
 AObject *contains(NativeFuncInData);
 AObject *to_string(NativeFuncInData);
+std::string to_string(ANotifier &notifier, AObject *obj);
 } // namespace array
 } // namespace Libs
 } // namespace AutoLang

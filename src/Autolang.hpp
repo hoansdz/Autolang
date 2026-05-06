@@ -13,6 +13,7 @@
 #include "backend/libs/array.cpp"
 #include "backend/libs/map.cpp"
 #include "backend/libs/set.cpp"
+#include "backend/vm/ANotifier.cpp"
 #include "backend/vm/AVM.cpp"
 #include "backend/vm/AVMLoader.cpp"
 #include "backend/vm/AVMLog.cpp"
@@ -74,6 +75,5 @@
 #include "shared/DefaultFunction.cpp"
 #include "shared/ObjectManager.cpp"
 #include "shared/StackAllocator.cpp"
-
 
 #endif

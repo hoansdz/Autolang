@@ -32,7 +32,10 @@ struct AObject {
 		OBJ_IS_FREE = 1u << 0,
 		OBJ_IS_CONST = 1u << 1,
 		OBJ_IS_NATIVE_DATA = 1u << 2,
-		OBJ_IS_NO_DATA = 1u << 3
+		OBJ_IS_NO_DATA = 1u << 3,
+		OBJ_IS_ARRAY = 1u << 4,
+		OBJ_IS_SET = 1u << 5,
+		OBJ_IS_MAP = 1u << 6
 	};
 	ClassId type;
 	uint32_t refCount;
