@@ -99,7 +99,7 @@ void CreateMapNode::optimize(in_func) {
 				if (classInfo->genericTypeId[1]->nullable) {
 					continue;
 				}
-				throwError("Value in array must non null");
+				throwError("Value in map must non null");
 			}
 		}
 		if (valueMustBeClassId == DefaultClass::anyClassId) {

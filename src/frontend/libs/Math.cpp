@@ -20,7 +20,6 @@ static std::mt19937_64 &getRng() {
 	return rng;
 }
 
-// Hàm tính luỹ thừa số nguyên
 int64_t integer_pow(int64_t base, int64_t exp) {
 	if (exp < 0)
 		throw std::runtime_error("Exponent must be non-negative");
@@ -34,8 +33,6 @@ int64_t integer_pow(int64_t base, int64_t exp) {
 	return result;
 }
 
-// --- PHẦN THÂN CÁC HÀM CŨ CỦA BẠN ---
-
 AObject *random(NativeFuncInData) {
 	auto &rng = getRng();
 
@@ -48,7 +45,6 @@ AObject *random(NativeFuncInData) {
 		auto obj1 = args[0];
 		auto obj2 = args[1];
 
-		// Int range
 		if (obj1->type == AutoLang::DefaultClass::intClassId &&
 		    obj2->type == AutoLang::DefaultClass::intClassId) {
 
@@ -64,7 +60,6 @@ AObject *random(NativeFuncInData) {
 			return notifier.createInt(dist(rng));
 		}
 
-		// Float range
 		if ((obj1->type == AutoLang::DefaultClass::floatClassId ||
 		     obj1->type == AutoLang::DefaultClass::intClassId) &&
 		    (obj2->type == AutoLang::DefaultClass::floatClassId ||
@@ -208,8 +203,6 @@ AObject *tan(NativeFuncInData) {
 		}
 	}
 }
-
-// --- PHẦN THÂN CÁC HÀM BỔ SUNG & CẬP NHẬT ---
 
 AObject *pow(NativeFuncInData) {
 	if (argSize != 2)

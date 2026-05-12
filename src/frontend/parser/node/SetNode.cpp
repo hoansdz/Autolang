@@ -47,8 +47,6 @@ void SetNode::optimize(in_func) {
 							           "' found");
 						}
 						createArrayNode->classId = detach->classId;
-					} else {
-						value->optimize(in_data);
 					}
 					break;
 				}
@@ -83,8 +81,6 @@ void SetNode::optimize(in_func) {
 						} else {
 							createSetNode->classId = detach->classId;
 						}
-					} else {
-						value->optimize(in_data);
 					}
 					break;
 				}
@@ -105,8 +101,24 @@ void SetNode::optimize(in_func) {
 							           "' found");
 						}
 						createMapNode->classId = detach->classId;
-					} else {
-						value->optimize(in_data);
+					}
+					break;
+				}
+				case NodeType::IF: {
+					auto ifNode = static_cast<IfNode *>(value);
+					ifNode->classId = detach->classId;
+					ifNode->nullable = detach->isNullable();
+					if (ifNode->classId == DefaultClass::functionClassId) {
+						ifNode->classDeclaration = detach->classDeclaration;
+					}
+					break;
+				}
+				case NodeType::WHEN: {
+					auto whenNode = static_cast<WhenNode *>(value);
+					whenNode->classId = detach->classId;
+					whenNode->nullable = detach->isNullable();
+					if (whenNode->classId == DefaultClass::functionClassId) {
+						whenNode->classDeclaration = detach->classDeclaration;
 					}
 					break;
 				}
@@ -177,12 +189,9 @@ void SetNode::optimize(in_func) {
 
 	classId = value->classId;
 
-	bool detachNullable;
-
 	switch (detach->kind) {
 		case NodeType::GET_PROP: {
 			auto detachNode = static_cast<GetPropNode *>(detach);
-			detachNullable = detachNode->nullable;
 			detachNode->isStore = true;
 			if (detach->classId != AutoLang::DefaultClass::nullClassId) {
 				break;
@@ -204,7 +213,6 @@ void SetNode::optimize(in_func) {
 						detachNode->declaration->nullable = value->isNullable();
 						detachNode->nullable =
 						    detachNode->declaration->nullable;
-						detachNullable = detachNode->nullable;
 					}
 					// printDebug(std::string("SetNode: Declaration ") +
 					// node->declaration->name + " is " +
@@ -250,7 +258,6 @@ void SetNode::optimize(in_func) {
 		case NodeType::VAR: {
 			auto node = static_cast<VarNode *>(detach);
 			node->isStore = true;
-			detachNullable = node->nullable;
 			if (detach->classId != AutoLang::DefaultClass::nullClassId &&
 			    detach->classId != node->declaration->classId) {
 				detach->classId = node->declaration->classId;
@@ -269,11 +276,10 @@ void SetNode::optimize(in_func) {
 					if (node->declaration->mustInferenceNullable) {
 						node->declaration->nullable = value->isNullable();
 						node->nullable = node->declaration->nullable;
-						detachNullable = node->nullable;
 						// std::cerr << "Set " << node->declaration->name << "
 						// is "
 						//           << (detachNullable ? "nullable" :
-						//           "nonnull")
+						//           "non null")
 						//           << "\n";
 					}
 					// if (value->classDeclaration) {
@@ -295,7 +301,7 @@ void SetNode::optimize(in_func) {
 			}
 			// Nullable
 			if (value->classId == AutoLang::DefaultClass::nullClassId) {
-				if (!detachNullable) {
+				if (!detach->isNullable()) {
 					throwError(
 					    node->declaration->name +
 					    " cannot detach null value, you must declare " +
@@ -334,7 +340,7 @@ void SetNode::optimize(in_func) {
 			}
 			case NodeType::VAR:
 			case NodeType::GET_PROP: {
-				if (!detachNullable &&
+				if (!detach->isNullable() &&
 				    static_cast<AccessNode *>(value)->nullable) {
 					std::string detachName;
 					detachName =
@@ -342,12 +348,12 @@ void SetNode::optimize(in_func) {
 					throwError(
 					    "Cannot detach nullable variable " +
 					    static_cast<AccessNode *>(value)->declaration->name +
-					    " to nonnull variable " + detachName);
+					    " to non null variable " + detachName);
 				}
 				break;
 			}
 			case NodeType::CALL: {
-				if (!detachNullable &&
+				if (!detach->isNullable() &&
 				    static_cast<CallNode *>(value)->nullable) {
 					std::string detachName;
 					detachName =
@@ -356,7 +362,7 @@ void SetNode::optimize(in_func) {
 					    "Cannot detach nullable value " +
 					    context.lexerString[static_cast<CallNode *>(value)
 					                            ->nameId] +
-					    " to nonnull variable " + detachName);
+					    " to non null variable " + detachName);
 				}
 				break;
 			}

@@ -242,6 +242,47 @@ void ReturnNode::optimize(in_func) {
 				value->optimize(in_data);
 				break;
 			}
+			case NodeType::IF: {
+				auto n = static_cast<IfNode *>(value);
+				if (func->returnId == DefaultClass::nullClassId) {
+					value->optimize(in_data);
+					func->returnId = value->classId;
+					if (n->nullable) {
+						func->functionFlags |=
+						    FunctionFlags::FUNC_RETURN_NULLABLE;
+					}
+					return;
+				}
+				value->classId = func->returnId;
+				n->nullable =
+				    func->functionFlags & FunctionFlags::FUNC_RETURN_NULLABLE;
+
+				if (func->returnId == DefaultClass::functionClassId) {
+					n->classDeclaration = funcInfo->returnClass;
+				}
+				value->optimize(in_data);
+				break;
+			}
+			case NodeType::WHEN: {
+				auto n = static_cast<WhenNode *>(value);
+				if (func->returnId == DefaultClass::nullClassId) {
+					value->optimize(in_data);
+					func->returnId = value->classId;
+					if (n->nullable) {
+						func->functionFlags |=
+						    FunctionFlags::FUNC_RETURN_NULLABLE;
+					}
+					return;
+				}
+				value->classId = func->returnId;
+				n->nullable =
+				    func->functionFlags & FunctionFlags::FUNC_RETURN_NULLABLE;
+				if (func->returnId == DefaultClass::functionClassId) {
+					n->classDeclaration = funcInfo->returnClass;
+				}
+				value->optimize(in_data);
+				break;
+			}
 			default: {
 				value->optimize(in_data);
 				break;
@@ -254,25 +295,38 @@ void ReturnNode::optimize(in_func) {
 			}
 			case DefaultClass::nullClassId: {
 				// std::cerr << "Loaded " << func->name << "\n";
-				func->returnId = value->classId;
-				if (func->returnId == DefaultClass::functionClassId) {
-					funcInfo->returnClass = value->classDeclaration;
+				switch (value->classId) {
+					case DefaultClass::nullClassId: {
+						throwError("Cannot infer return type for function '" +
+						           func->name +
+						           "' "
+						           "because its body is a null literal.");
+					}
+					case DefaultClass::functionClassId: {
+						funcInfo->returnClass = value->classDeclaration;
+						break;
+					}
 				}
+				func->returnId = value->classId;
 				if (value->isNullable()) {
 					func->functionFlags |= FunctionFlags::FUNC_RETURN_NULLABLE;
 				}
 				break;
 			}
 		}
+		if (value->classId == AutoLang::DefaultClass::nullClassId) {
+		}
 		if (!(func->functionFlags & FunctionFlags::FUNC_RETURN_NULLABLE)) {
 			if (value->classId == AutoLang::DefaultClass::nullClassId) {
 				throwError("Cannot return null because functions returns "
-				           "nonnull value");
+				           "non null value");
 			}
 			if (value->isNullable()) {
 				throwError("Cannot return nullable variable because functions "
-				           "returns nonnull value");
+				           "returns non null value");
 			}
+		} else if (value->classId == AutoLang::DefaultClass::nullClassId) {
+			return;
 		}
 		if (value->classId == func->returnId) {
 			return;

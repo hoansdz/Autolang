@@ -2,6 +2,7 @@
 #define CALL_NODE_CPP
 
 #include "Node.hpp"
+#include "frontend/ACompiler.hpp"
 #include "frontend/parser/ParserContext.hpp"
 #include "shared/ClassFlags.hpp"
 
@@ -93,15 +94,18 @@ void CallNode::optimize(in_func) {
 	const auto &name = context.lexerString[nameId];
 	bool mustInferenceGenericType = false;
 
-	for (auto &argument : arguments) {
+	for (int i = 0; i < arguments.size(); ++i) {
+		auto argument = arguments[i];
 		switch (argument->kind) {
 			case NodeType::CLASS_ACCESS: {
-				throwError("Cannot input class at function " + name);
+				throwError("Cannot input class at parameter " +
+				           std::to_string(i + 1));
 			}
 			case NodeType::CALL: {
 				argument->optimize(in_data);
 				if (argument->classId == AutoLang::DefaultClass::voidClassId) {
-					throwError("Cannot input Void value");
+					throwError("Cannot input Void value at parameter " +
+					           std::to_string(i + 1));
 				}
 				break;
 			}
@@ -348,8 +352,24 @@ void CallNode::optimize(in_func) {
 	{
 		int i = func->functionFlags & FunctionFlags::FUNC_IS_STATIC ? 0 : 1;
 		for (auto &argument : arguments) {
+			auto funcExpectClass = funcInfo->parameter->parameters[i];
 			auto funcExpectClassId = func->args[i++];
 			auto funcExpectClassInfo = context.classInfo[funcExpectClassId];
+			if (argument->isNullable() && !funcExpectClass->nullable) {
+				if (mode->flags & LibraryFlags::ALLOW_NON_NULL_ASSERTION) {
+					throwError(
+					    "Error: Nullability mismatch at parameter " +
+					    std::to_string(i) +
+					    ": "
+					    "expected non-null, but argument could be null"
+					    "\nHint: Use '!' to assert or '??' to fallback.");
+				}
+				throwError("Error: Nullability mismatch at parameter " +
+				           std::to_string(i) +
+				           ": "
+				           "expected non-null, but argument could be null"
+				           "\nHint: Use '??' to provide a fallback value.");
+			}
 			switch (argument->classId) {
 				case DefaultClass::intClassId: {
 					if (funcExpectClassId == DefaultClass::floatClassId) {
@@ -362,12 +382,10 @@ void CallNode::optimize(in_func) {
 					break;
 				}
 				case DefaultClass::functionClassId: {
-					auto funcInputClass =
-					    funcInfo->parameter->parameters[i - 1];
 					switch (argument->kind) {
 						case NodeType::FUNCTION_ACCESS: {
 							argument->classDeclaration =
-							    funcInputClass->classDeclaration;
+							    funcExpectClass->classDeclaration;
 							argument->optimize(in_data);
 							break;
 						}
@@ -376,7 +394,7 @@ void CallNode::optimize(in_func) {
 							    static_cast<CreateClosureNode *>(argument);
 							// if (node->mustInfer) {
 							node->inferFrom(in_data,
-							                funcInputClass->classDeclaration);
+							                funcExpectClass->classDeclaration);
 							argument->optimize(in_data);
 							// 	break;
 							// }
@@ -388,7 +406,7 @@ void CallNode::optimize(in_func) {
 						}
 						default: {
 							matchFunction(in_data,
-							              funcInputClass->classDeclaration,
+							              funcExpectClass->classDeclaration,
 							              argument->classDeclaration);
 						}
 					}
@@ -431,6 +449,15 @@ void CallNode::optimize(in_func) {
 								}
 							}
 							argument->classId = funcExpectClassId;
+							argument->optimize(in_data);
+							first.errorNonNullIfMatchCount--;
+							break;
+						}
+						case NodeType::WHEN:
+						case NodeType::IF: {
+							auto n = static_cast<NullableNode *>(argument);
+							argument->classId = funcExpectClassId;
+							n->nullable = funcExpectClass->nullable;
 							argument->optimize(in_data);
 							first.errorNonNullIfMatchCount--;
 							break;
@@ -544,6 +571,10 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 		throwError("Bug: Class not ensure is Function");
 	}
 
+	if (funcObject->isNullable()) {
+		throwError("Cannot call nullable function object");
+	}
+
 	auto &inputClass = funcObject->classDeclaration->inputClassId;
 
 	classId = *inputClass[0]->classId;
@@ -566,11 +597,24 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 	for (; j < arguments.size(); ++j) {
 		auto &argument = arguments[j];
 		uint32_t inputClassId = argument->classId;
-		uint32_t funcArgClassId = *inputClass[j + 1]->classId;
-		// printDebug(compile.classes[inputClassId]->name + " and " +
-		// compile.classes[funcArgClassId]->name);
-		if (funcArgClassId == inputClassId) {
-			if (funcArgClassId == DefaultClass::functionClassId) {
+		auto funcExpectClass = inputClass[j + 1];
+		uint32_t funcExpectClassId = *funcExpectClass->classId;
+		if (argument->isNullable() && !funcExpectClass->nullable) {
+			if (mode->flags & LibraryFlags::ALLOW_NON_NULL_ASSERTION) {
+				throwError("Error: Nullability mismatch at parameter " +
+				           std::to_string(j + 1) +
+				           ": "
+				           "expected non-null, but argument could be null"
+				           "\nHint: Use '!' to assert or '??' to fallback.");
+			}
+			throwError("Error: Nullability mismatch at parameter " +
+			           std::to_string(j + 1) +
+			           ": "
+			           "expected non-null, but argument could be null"
+			           "\nHint: Use '??' to provide a fallback value.");
+		}
+		if (funcExpectClassId == inputClassId) {
+			if (funcExpectClassId == DefaultClass::functionClassId) {
 				switch (argument->kind) {
 					case NodeType::FUNCTION_ACCESS: {
 						argument->classDeclaration = inputClass[j + 1];
@@ -580,7 +624,7 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 					case NodeType::CREATE_CLOSURE: {
 						auto node = static_cast<CreateClosureNode *>(argument);
 						// if (node->mustInfer) {
-						node->inferFrom(in_data, inputClass[j + 1]);
+						node->inferFrom(in_data, funcExpectClass);
 						argument->optimize(in_data);
 						// 	break;
 						// }
@@ -590,7 +634,7 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 						break;
 					}
 					default: {
-						matchFunction(in_data, inputClass[j + 1],
+						matchFunction(in_data, funcExpectClass,
 						              argument->classDeclaration);
 						break;
 					}
@@ -599,7 +643,7 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 			}
 			continue;
 		}
-		if (funcArgClassId == DefaultClass::anyClassId) {
+		if (funcExpectClassId == DefaultClass::anyClassId) {
 			continue;
 		}
 		switch (inputClassId) {
@@ -607,14 +651,14 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 				if (mustInferenceGenericType) {
 					auto &argument = arguments[j];
 					auto funcExpectClassInfo =
-					    context.classInfo[funcArgClassId];
+					    context.classInfo[funcExpectClassId];
 					switch (argument->kind) {
 						case NodeType::CREATE_ARRAY: {
 							if (funcExpectClassInfo->baseClassId !=
 							    DefaultClass::arrayClassId) {
 								goto err;
 							}
-							argument->classId = funcArgClassId;
+							argument->classId = funcExpectClassId;
 							argument->optimize(in_data);
 							break;
 						}
@@ -623,7 +667,7 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 							    DefaultClass::mapClassId) {
 								goto err;
 							}
-							argument->classId = funcArgClassId;
+							argument->classId = funcExpectClassId;
 							argument->optimize(in_data);
 							break;
 						}
@@ -639,7 +683,15 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 								    std::vector<std::pair<HasClassIdNode *,
 								                          HasClassIdNode *>>{});
 							}
-							argument->classId = funcArgClassId;
+							argument->classId = funcExpectClassId;
+							argument->optimize(in_data);
+							break;
+						}
+						case NodeType::WHEN:
+						case NodeType::IF: {
+							auto n = static_cast<NullableNode *>(argument);
+							argument->classId = funcExpectClassId;
+							n->nullable = funcExpectClass->nullable;
 							argument->optimize(in_data);
 							break;
 						}
@@ -649,7 +701,7 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 			}
 			// Never functionClassId
 			case DefaultClass::intClassId: {
-				if (funcArgClassId == AutoLang::DefaultClass::floatClassId) {
+				if (funcExpectClassId == AutoLang::DefaultClass::floatClassId) {
 					argument = static_cast<HasClassIdNode *>(
 					    context.castPool
 					        .push(argument, DefaultClass::floatClassId)
@@ -661,7 +713,7 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 			}
 			default: {
 				if (compile.classes[inputClassId]->inheritance.get(
-				        funcArgClassId)) {
+				        funcExpectClassId)) {
 					continue;
 				}
 				break;
@@ -719,11 +771,11 @@ bool CallNode::match(in_func, MatchOverload &match,
 		//           << funcInfo->parameter->defaultValuePos << "\n";
 		for (int j = 0; j < arguments.size(); ++j) {
 			uint32_t inputClassId = arguments[j]->classId;
-			uint32_t funcArgClassId = match.func->args[j + skip];
+			uint32_t funcExpectClassId = match.func->args[j + skip];
 			// printDebug(compile.classes[inputClassId]->name + " and " +
-			// compile.classes[funcArgClassId]->name);
-			if (funcArgClassId != inputClassId) {
-				if (funcArgClassId == DefaultClass::anyClassId) {
+			// compile.classes[funcExpectClassId]->name);
+			if (funcExpectClassId != inputClassId) {
+				if (funcExpectClassId == DefaultClass::anyClassId) {
 					++match.score;
 					continue;
 				}
@@ -732,7 +784,7 @@ bool CallNode::match(in_func, MatchOverload &match,
 						if (mustInferenceGenericType) {
 							auto argument = arguments[j];
 							auto funcExpectClassInfo =
-							    context.classInfo[funcArgClassId];
+							    context.classInfo[funcExpectClassId];
 							switch (argument->kind) {
 								case NodeType::CREATE_ARRAY: {
 									if (funcExpectClassInfo->baseClassId !=
@@ -769,7 +821,7 @@ bool CallNode::match(in_func, MatchOverload &match,
 						continue;
 					}
 					case DefaultClass::intClassId: {
-						if (funcArgClassId ==
+						if (funcExpectClassId ==
 						    AutoLang::DefaultClass::floatClassId) {
 							++match.score;
 							continue;
@@ -778,7 +830,7 @@ bool CallNode::match(in_func, MatchOverload &match,
 					}
 					default: {
 						if (compile.classes[inputClassId]->inheritance.get(
-						        funcArgClassId)) {
+						        funcExpectClassId)) {
 							++match.score;
 							continue;
 						}

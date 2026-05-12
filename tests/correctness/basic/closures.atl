@@ -57,6 +57,14 @@ func testFunctionClosures() {
     val addFive = makeAdder(5)
     assert(addFive(2) == 7, __FILE__, __LINE__)
 
+	val nested: () -> ((Float) -> String) -> ((Float) -> String) = {||
+		return {|value|
+			return {|value|
+				"Hello"
+			}
+		}
+	}
+
     var total = 0
     for (i in 0..10000) {
         val adder = {|v: Int| v + i}

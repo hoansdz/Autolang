@@ -29,7 +29,7 @@ HasClassIdNode *loadWhenExpression(in_func, size_t &i, HasClassIdNode *value) {
 		}
 		default: {
 			auto condition = loadExpression(in_data, 0, i);
-			if (condition->kind == NodeType::BINARY) {
+			if (!value || condition->kind == NodeType::BINARY) {
 				return condition;
 			}
 			return context.binaryNodePool.push(
@@ -114,6 +114,11 @@ WhenNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 		}
 		switch (token->type) {
 			case Lexer::TokenType::RBRACE: {
+				if (!loadedElse && mustReturnValue) {
+					throw ParserError(firstLine,
+					                  "When expression requires an else branch "
+					                  "to produce a value");
+				}
 				return context.whenNodePool.push(firstLine, value, mainIfNode);
 			}
 			case Lexer::TokenType::ELSE: {
@@ -133,10 +138,11 @@ WhenNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 				}
 				loadedElse = true;
 				if (currentIfNode == nullptr) {
-					IfNode *ifNode =
-					    context.ifPool.push(token->line, mustReturnValue);
+					IfNode *ifNode = context.ifPool.push(token->line, false);
 					currentIfNode = ifNode;
 					mainIfNode = ifNode;
+					ifNode->condition =
+					    context.constValuePool.push(token->line, true);
 					loadBody<false>(in_data, ifNode->ifTrue.nodes, i, true);
 					break;
 				}

@@ -56,7 +56,12 @@ void IfNode::optimize(in_func) {
 	ifTrue.optimize(in_data);
 	if (ifFalse)
 		ifFalse->optimize(in_data);
+	// std::cerr << getClassName(in_data) << "\n";
 	if (loadReturnBlock) {
+		if (classId == DefaultClass::nullClassId && nullable) {
+			throwError("Cannot infer return type for 'if' expression because "
+			           "its body is a null literal");
+		}
 		context.mustReturnValueNode = lastMustReturnValueNode;
 	}
 }

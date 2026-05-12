@@ -9,7 +9,6 @@
 #include <filesystem>
 #include <sys/stat.h>
 
-
 #ifdef _WIN32
 #define STAT_STRUCT struct _stat64
 #define STAT_FUNC _stat64
@@ -87,14 +86,13 @@ inline AObject *read_text(NativeFuncInData) {
 		return nullptr;
 	}
 
-	// Tối ưu: Tính toán size chính xác bằng hàm 64-bit
 	FSEEK(handle->fp, 0, SEEK_END);
 	int64_t size = FTELL(handle->fp);
 	FSEEK(handle->fp, 0, SEEK_SET);
 
 	std::string buffer;
 	if (size > 0) {
-		// Tối ưu: Chỉ resize 1 lần, fread block trực tiếp vào memory
+
 		buffer.resize(size);
 		fread(buffer.data(), 1, size, handle->fp);
 	}
@@ -113,18 +111,16 @@ inline AObject *for_each_line(NativeFuncInData) {
 
 	FSEEK(handle->fp, 0, SEEK_SET);
 
-	// Tối ưu: Dùng buffer tĩnh và tránh tạo String rác liên tục
 	char buf[4096];
 	std::string line;
 
 	while (fgets(buf, sizeof(buf), handle->fp)) {
 		size_t len = strlen(buf);
 
-		// Cắt bỏ ký tự xuống dòng
 		if (len > 0 && buf[len - 1] == '\n') {
 			line.append(buf, len - 1);
 			if (!line.empty() && line.back() == '\r') {
-				line.pop_back(); // Hỗ trợ định dạng CRLF của Windows
+				line.pop_back();
 			}
 
 			auto lineObj = notifier.createString(line);
@@ -134,12 +130,11 @@ inline AObject *for_each_line(NativeFuncInData) {
 
 			line.clear();
 		} else {
-			// Trường hợp dòng dài hơn 4096 byte
+
 			line.append(buf, len);
 		}
 	}
 
-	// Xử lý dòng cuối không có ký tự kết thúc \n
 	if (!line.empty()) {
 		auto lineObj = notifier.createString(line);
 		notifier.callFunctionObject(funcObject, lineObj);
@@ -155,8 +150,6 @@ inline AObject *write(NativeFuncInData) {
 		return nullptr;
 	}
 
-	// Tối ưu cực hạn: Viết trực tiếp, KHÔNG flush liên tục để tận dụng OS
-	// Buffer
 	const std::string &data = args[1]->str->data;
 	if (!data.empty()) {
 		fwrite(data.data(), 1, data.size(), handle->fp);
@@ -178,7 +171,7 @@ inline AObject *close(NativeFuncInData) {
 	auto handle = static_cast<AFileHandle *>(args[0]->data->data);
 	if (handle->fp) {
 		fclose(handle->fp);
-		handle->fp = nullptr; // Đảm bảo an toàn tránh use-after-close
+		handle->fp = nullptr;
 	}
 	return nullptr;
 }
@@ -416,7 +409,7 @@ class File {
     @native("file_get_extension")
     static func getExtension(path: String): String
     
-    //Since 1970
+    
     @native("file_get_last_modified")
     static func getLastModified(path: String): Int
 }

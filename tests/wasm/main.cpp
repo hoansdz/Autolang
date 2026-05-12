@@ -129,9 +129,38 @@ class CompilerWrapper {
 		return buffer.str();
 	}
 
-	void clearOutput() { buffer.clear(); }
+	void clearOutput() {
+		buffer.str("");
+		buffer.clear();
+	}
 
-	bool hasError() { return compiler.hasError(); }
+	bool hasCompilerError() { return compiler.hasError(); }
+
+	bool hasException() {
+		if (compiler.vm.callFrames.getSize() == 0) {
+			return false;
+		}
+		return compiler.vm.callFrames.top()->exception;
+	}
+
+	val getException() {
+		if (compiler.vm.callFrames.getSize() == 0 ||
+		    !compiler.vm.callFrames.top()->exception) {
+			return val::null();
+		}
+		val obj = val::object();
+		obj.set("message", std::string(compiler.vm.callFrames.top()
+		                                   ->exception->member->data[0]
+		                                   ->str->data));
+		return obj;
+	}
+
+	void throwException(std::string message) {
+		if (compiler.vm.callFrames.getSize() == 0) {
+			return;
+		}
+		compiler.vm.notifier->throwException(message);
+	}
 };
 
 EMSCRIPTEN_BINDINGS(autolang_module) {
@@ -149,5 +178,8 @@ EMSCRIPTEN_BINDINGS(autolang_module) {
 	    .function("clearOutput", &CompilerWrapper::clearOutput)
 	    .function("registerBuiltInLibrary",
 	              &CompilerWrapper::registerBuiltInLibrary)
-	    .function("hasError", &CompilerWrapper::hasError);
+	    .function("hasCompilerError", &CompilerWrapper::hasCompilerError)
+	    .function("throwException", &CompilerWrapper::throwException)
+	    .function("getException", &CompilerWrapper::getException)
+	    .function("hasException", &CompilerWrapper::hasException);
 }

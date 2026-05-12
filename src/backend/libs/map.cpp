@@ -503,7 +503,7 @@ inline AObject *set(NativeFuncInData) {
 				notifier.release(it->second);
 				it->second = value;
 			} else {
-				key->retain(); // vì ReleaseKey = true
+				key->retain();
 				(*map)[key] = value;
 			}
 			break;
@@ -517,7 +517,7 @@ inline AObject *set(NativeFuncInData) {
 				notifier.release(it->second);
 				it->second = value;
 			} else {
-				key->retain(); // vì ReleaseKey = true
+				key->retain();
 				(*map)[key] = value;
 			}
 		}

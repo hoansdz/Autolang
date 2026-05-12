@@ -1,8 +1,9 @@
 #ifndef LIBS_MAP_HPP
 #define LIBS_MAP_HPP
 
-#include "shared/Type.hpp"
 #include "shared/AObject.hpp"
+#include "shared/Type.hpp"
+
 
 namespace AutoLang {
 class ACompiler;
@@ -36,7 +37,8 @@ using IntHashMap = HashMap<int64_t, AObject *>;
 using FloatHashMap = HashMap<double, AObject *>;
 using StringHashMap =
     HashMap<AObject *, AObject *, ObjStringHashable, ObjStringEqualable>;
-using ObjectHashMap = HashMap<AObject *, AObject *>;
+using ObjectHashMap =
+    HashMap<AObject *, AObject *, AObjectHashable, AObjectEqualable>;
 
 AObject *constructor(ANotifier &notifier, ClassId classId, ClassId keyId);
 AObject *constructor(NativeFuncInData);

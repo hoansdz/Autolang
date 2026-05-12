@@ -34,7 +34,7 @@ struct ObjStringEqualable {
 using IntHashSet = HashSet<int64_t>;
 using FloatHashSet = HashSet<double>;
 using StringHashSet = HashSet<AObject *, ObjStringHashable, ObjStringEqualable>;
-using ObjectHashSet = HashSet<AObject *>;
+using ObjectHashSet = HashSet<AObject *, AObjectHashable, AObjectEqualable>;
 AObject *constructor(ANotifier &notifier, ClassId classId, ClassId keyId);
 AObject *constructor(NativeFuncInData);
 AObject *remove(NativeFuncInData);

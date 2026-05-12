@@ -179,7 +179,7 @@ void ClassDeclaration::load(in_func) {
 				}
 				std::string name = getName(in_data);
 				// if (!isGenerics(in_data)) {
-					loadFunctionGenerics(in_data, name, this);
+				loadFunctionGenerics(in_data, name, this);
 				// }
 				return;
 			}
@@ -280,15 +280,24 @@ template <bool addNullable> std::string ClassDeclaration::getName(in_func) {
 			std::string result = "(";
 			bool isFirst = true;
 			for (int i = 1; i < inputClassId.size(); ++i) {
+				auto inputClass = inputClassId[i];
 				if (isFirst) {
 					isFirst = false;
 				} else {
 					result += ", ";
 				}
-				result += inputClassId[i]->getName(in_data);
+				if (!inputClass) {
+					result += "Null";
+					continue;
+				}
+				result += inputClass->getName(in_data);
 			}
 			result += ")->";
-			result += inputClassId[0]->getName(in_data);
+			if (inputClassId[0]) {
+				result += inputClassId[0]->getName(in_data);
+			} else {
+				result += "Null";
+			}
 			if (nullable)
 				result += "?";
 			return result;

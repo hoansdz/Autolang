@@ -1,0 +1,81 @@
+@import ("std/json")
+
+func testJsonFeaturesExhaustive() {
+    val rawText = "{\"name\": \"AutoLang\", \"version\": 1.0, \"isFast\": true, \"data\": null}"
+    val obj = Json.parse(rawText)
+    
+    assert(obj.isObject() == true, __FILE__, __LINE__)
+    assert(obj.getSize() == 4, __FILE__, __LINE__)
+    assert(obj.has("name") == true, __FILE__, __LINE__)
+    assert(obj.has("fake_key") == false, __FILE__, __LINE__)
+
+    val nameField = obj.get("name")
+    assert(nameField.isString() == true, __FILE__, __LINE__)
+    assert(nameField.asString() == "AutoLang", __FILE__, __LINE__)
+
+    val versionField = obj.get("version")
+    assert(versionField.isNumber() == true, __FILE__, __LINE__)
+    assert(versionField.asFloat() == 1.0, __FILE__, __LINE__)
+
+    val fastField = obj.get("isFast")
+    assert(fastField.isBool() == true, __FILE__, __LINE__)
+    assert(fastField.asBool() == true, __FILE__, __LINE__)
+
+    val dataField = obj.get("data")
+    assert(dataField.isNull() == true, __FILE__, __LINE__)
+
+    val newObj = Json.emptyObject()
+    newObj.set("compiler", Json.fromString("C++"))
+    newObj.set("threads", Json.fromInt(8))
+    newObj.set("pi", Json.fromFloat(3.14))
+    
+    assert(newObj.getSize() == 3, __FILE__, __LINE__)
+    assert(newObj["threads"].asInt() == 8, __FILE__, __LINE__)
+    assert(newObj["pi"].asFloat() == 3.14, __FILE__, __LINE__)
+
+    val arr = Json.emptyArray()
+    arr.add(Json.fromInt(10))
+    arr.add(Json.fromInt(20))
+    arr.add(Json.fromInt(30))
+    
+    assert(arr.isArray() == true, __FILE__, __LINE__)
+    assert(arr.getSize() == 3, __FILE__, __LINE__)
+    assert(arr.getAt(0).asInt() == 10, __FILE__, __LINE__)
+    assert(arr.getAt(2).asInt() == 30, __FILE__, __LINE__)
+
+    val root = Json.emptyObject()
+    root["list"] = arr
+    root["meta"] = newObj
+    
+    assert(root.get("list").isArray() == true, __FILE__, __LINE__)
+    assert(root.get("list").getAt(1).asInt() == 20, __FILE__, __LINE__)
+    assert(root.get("meta").get("compiler").asString() == "C++", __FILE__, __LINE__)
+
+    val jsonInts = Json.parse("[100, 200, 300]")
+    val autoIntArray = jsonInts.toIntArray()
+    assert(autoIntArray.size() == 3, __FILE__, __LINE__)
+    assert(autoIntArray.get(1) == 200, __FILE__, __LINE__)
+
+    val jsonFloats = Json.parse("[1.5, 2.5, 3.5]")
+    val autoFloatArray = jsonFloats.toFloatArray()
+    assert(autoFloatArray.size() == 3, __FILE__, __LINE__)
+    assert(autoFloatArray.get(2) == 3.5, __FILE__, __LINE__)
+
+    val jsonStrings = Json.parse("[\"apple\", \"banana\"]")
+    val autoStringArray = jsonStrings.toStringArray()
+    assert(autoStringArray.size() == 2, __FILE__, __LINE__)
+    assert(autoStringArray[0] == "apple", __FILE__, __LINE__)
+
+    val dumpTest = Json.emptyObject()
+    dumpTest.set("key", Json.fromString("value"))
+    
+    val minifiedStr = dumpTest.stringify(-1)
+    assert(minifiedStr == "{\"key\":\"value\"}", __FILE__, __LINE__)
+    
+    val prettyStr = dumpTest.stringify(4)
+    assert(prettyStr.indexOf("\n") != -1, __FILE__, __LINE__)
+    
+    println("Passed ${__FUNC__}")
+}
+
+testJsonFeaturesExhaustive()

@@ -17,6 +17,9 @@
 #ifndef NO_INCLUDE_LIBS_REGEX
 #include "frontend/libs/regex.hpp"
 #endif
+#ifndef NO_INCLUDE_LIBS_JSON
+#include "frontend/libs/json.hpp"
+#endif
 #include <chrono>
 #include <filesystem>
 #include <iostream>
@@ -106,16 +109,21 @@ void ACompiler::loadSource(LibraryData *library) {
 		state = CompilerState::CT_ERROR;
 		return;
 	}
-	for (auto &pos : importOffset) {
-		auto lib = loadImport(in_data, library, library->lexerContext.tokens,
-		                      *this, (size_t)pos);
-		for (auto &[key, l] : lib->dependencies) {
-			library->dependencies[key] = l;
+	try {
+		for (auto &pos : importOffset) {
+			auto lib =
+			    loadImport(in_data, library, library->lexerContext.tokens,
+			               *this, (size_t)pos);
+			for (auto &[key, l] : lib->dependencies) {
+				library->dependencies[key] = l;
+			}
+			library->dependencies[lib->path] = lib;
 		}
-		library->dependencies[lib->path] = lib;
+		state = CompilerState::CT_ANALYZED;
+	} catch (const ParserError &err) {
+		context.logError(err.line, err.message);
+		state = CompilerState::CT_ERROR;
 	}
-
-	state = CompilerState::CT_ANALYZED;
 }
 
 LibraryData *
@@ -260,13 +268,19 @@ void ACompiler::loadMainSource(LibraryData *library) {
 
 	library->lexerContext.tokens.pop_back();
 
-	for (auto &pos : importOffset) {
-		auto lib = loadImport(in_data, library, library->lexerContext.tokens,
-		                      *this, (size_t)pos);
-		for (auto &[key, l] : lib->dependencies) {
-			library->dependencies[key] = l;
+	try {
+		for (auto &pos : importOffset) {
+			auto lib =
+			    loadImport(in_data, library, library->lexerContext.tokens,
+			               *this, (size_t)pos);
+			for (auto &[key, l] : lib->dependencies) {
+				library->dependencies[key] = l;
+			}
+			library->dependencies[lib->path] = lib;
 		}
-		library->dependencies[lib->path] = lib;
+	} catch (const ParserError &err) {
+		context.logError(err.line, err.message);
+		state = CompilerState::CT_ERROR;
 	}
 
 	auto &newEstimate = mainSource->lexerContext.estimate;
@@ -835,6 +849,10 @@ ACompiler::ACompiler() {
 #endif
 #ifndef NO_INCLUDE_LIBS_REGEX
 	AutoLang::Libs::regex::init(*this);
+	// state = CompilerState::CT_READY;
+#endif
+#ifndef NO_INCLUDE_LIBS_JSON
+	AutoLang::Libs::json::init(*this);
 	// state = CompilerState::CT_READY;
 #endif
 }

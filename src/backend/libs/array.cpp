@@ -62,7 +62,6 @@ AObject *remove(NativeFuncInData) {
 	obj->member->data[obj->member->size - 1] = nullptr;
 	obj->member->size--;
 
-	// optional: shrink capacity if too sparse (e.g., 1/4)
 	if (obj->member->maxSize > 1 &&
 	    obj->member->size <= obj->member->maxSize / 4) {
 		size_t newMax = obj->member->maxSize / 2;
@@ -287,7 +286,6 @@ AObject *get(NativeFuncInData) {
 		return nullptr;
 	}
 
-	// Trả chính AObject* đã lưu
 	return obj->member->data[index];
 }
 

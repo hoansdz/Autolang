@@ -124,10 +124,9 @@ struct BlockNode : ExprNode {
 	static void loadReturnValueClassId(in_func, uint32_t line,
 	                                   std::optional<ClassId> &currentClassId,
 	                                   ClassId newClassId);
-	template <bool optimize = true>
 	inline void loadClassNode(in_func, ExprNode *&node,
 	                          std::optional<ClassId> &currentClassId,
-	                          bool &nullable, bool &isStatic,
+	                          bool &nullable, bool &isStatic, bool &hasValue,
 	                          ClassDeclaration *&newClassDeclaration);
 	inline void loadClassAndOptimize(in_func);
 	void optimize(in_func) override;
@@ -779,11 +778,11 @@ struct CreateMapNode : HasClassIdNode {
 	~CreateMapNode();
 };
 
-struct WhenNode : HasClassIdNode {
+struct WhenNode : NullableNode {
 	HasClassIdNode *value;
 	IfNode *ifNode;
 	WhenNode(uint32_t line, HasClassIdNode *value, IfNode *ifNode)
-	    : HasClassIdNode(NodeType::WHEN, DefaultClass::nullClassId, line),
+	    : NullableNode(NodeType::WHEN, DefaultClass::nullClassId, true, line),
 	      value(value), ifNode(ifNode) {}
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;
@@ -796,7 +795,7 @@ struct WhenNode : HasClassIdNode {
 	void rewrite(in_func, uint8_t *bytecodes) override;
 	ExprNode *copy(in_func) override;
 	bool isNullable() override {
-		return !ifNode ? false : ifNode->isNullable();
+		return nullable;
 	}
 	bool isStaticValue() override {
 		return !ifNode ? true : ifNode->isStaticValue();

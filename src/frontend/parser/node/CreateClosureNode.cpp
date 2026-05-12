@@ -24,6 +24,7 @@ void CreateClosureNode::optimize(in_func) {
 	auto func = compile.functions[*funcId];
 	auto funcInfo = context.functionInfo[*funcId];
 	funcInfo->body.nodes = std::move(body.nodes);
+	funcInfo->body.line = line;
 	if (mustInfer) {
 		for (int i = 1; i < classDeclaration->inputClassId.size(); ++i) {
 			if (classDeclaration->inputClassId[i])
@@ -80,6 +81,9 @@ void CreateClosureNode::optimize(in_func) {
 	funcInfo->body.optimize(in_data);
 	context.mustReturnValueNode = lastMustReturnValueNode;
 	func->returnId = *classDeclaration->inputClassId[0]->classId;
+	if (func->returnId != DefaultClass::voidClassId) {
+		
+	}
 	// std::cerr<<funcId<<"\n";
 	// std::cerr << classDeclaration->getName(in_data) << "\n";
 }
@@ -154,9 +158,10 @@ void CreateClosureNode::inferFrom(in_func, ClassDeclaration *from) {
 	// if (canCast(classDeclaration))
 	if (classDeclaration->inputClassId.size() != from->inputClassId.size()) {
 		throwError("Closure expects " +
-		           std::to_string(classDeclaration->inputClassId.size()) +
+		           std::to_string(classDeclaration->inputClassId.size() - 1) +
 		           " type argument but " +
-		           std::to_string(from->inputClassId.size()) + " were given");
+		           std::to_string(from->inputClassId.size() - 1) +
+		           " were given");
 	}
 	for (int i = 0; i < classDeclaration->inputClassId.size(); ++i) {
 		auto fromClass = classDeclaration->inputClassId[i];

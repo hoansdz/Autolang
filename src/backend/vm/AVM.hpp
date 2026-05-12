@@ -44,10 +44,8 @@ struct CallFrame {
 class ANotifier;
 
 class AVM {
-  private:
-	ANotifier *notifier;
-
   public:
+	ANotifier *notifier;
 	inline uint32_t get_u32(uint8_t *code, uint32_t &ip);
 	void log(Function *currentFunction);
 

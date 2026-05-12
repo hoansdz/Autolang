@@ -38,7 +38,8 @@ IfNode *loadIf(in_func, size_t &i, bool mustReturnValue) {
 		--i;
 		if (mustReturnValue) {
 			throw ParserError(context.tokens[i].line,
-			                  "If expression must have an else branch");
+			                  "'if' expression must return a value, so it must "
+			                  "have an 'else' branch");
 		}
 		return node;
 	}

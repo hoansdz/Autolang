@@ -73,18 +73,10 @@ func main() {
     println("Total size: ${Float(a.totalSize) / 1024 / 1024} MB")
     a.fileExtension.forEach(forEachMapExtension)
     println("Total c++ line: ${a.cplusplus_lines}")
-    println("Tocal autolang line: ${a.autolang_lines}")
+    println("Total autolang line: ${a.autolang_lines}")
 }
 
 main()
 
 println("Runtime: ${Time.now() - time} ms")
 
-// val a: (Int) -> Map<Int, Int> = {|value: Int|
-// 	if (value == 1) {
-// 		println("Hello")
-// 	}
-// 	return {}
-// }
-
-// println(a(1))

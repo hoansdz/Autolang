@@ -16,11 +16,25 @@ ExprNode *WhenNode::resolve(in_func) {
 }
 
 void WhenNode::optimize(in_func) {
-	if (value)
+	if (value) {
 		value->optimize(in_data);
+	}
 	if (ifNode) {
+		if (classId != DefaultClass::nullClassId) {
+			ifNode->classId = classId;
+			if (classId == DefaultClass::functionClassId) {
+				ifNode->classDeclaration = classDeclaration;
+			}
+			ifNode->nullable = nullable;
+			ifNode->optimize(in_data);
+			return;
+		}
 		ifNode->optimize(in_data);
 		classId = ifNode->classId;
+		nullable = ifNode->nullable;
+		if (classId == DefaultClass::functionClassId) {
+			classDeclaration = ifNode->classDeclaration;
+		}
 	}
 }
 

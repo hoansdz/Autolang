@@ -77,7 +77,6 @@ class StackAllocator {
 		int count = to - from + 1;
 		int j = 0;
 
-		// Trải vòng lặp 4 lần để giảm số lần kiểm tra điều kiện lặp j < count
 		for (; j <= count - 4; j += 4) {
 			if (base[j]) {
 				manager.release(base[j]);
@@ -97,7 +96,6 @@ class StackAllocator {
 			}
 		}
 
-		// Xử lý nốt các phần tử dư
 		for (; j < count; ++j) {
 			if (base[j]) {
 				manager.release(base[j]);

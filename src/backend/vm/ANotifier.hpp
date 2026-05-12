@@ -60,6 +60,7 @@ class ANotifier {
 		auto obj = vm->data.manager.createEmptyObject();
 		obj->type = classId;
 		obj->member = new NormalArray<AutoLang::AObject *>(0);
+		obj->flags |= AObject::Flags::OBJ_IS_ARRAY;
 		return obj;
 	}
 	inline void arrayAdd(AObject *arr, AObject *obj) {

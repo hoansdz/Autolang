@@ -151,7 +151,7 @@ inline val aobjectToJs(AObject *obj) {
 			if (obj->flags & AObject::Flags::OBJ_IS_MAP) {
 				return aobjectMapToJS(obj);
 			}
-			return val(reinterpret_cast<uintptr_t>(obj));
+			return val(static_cast<double>(reinterpret_cast<uintptr_t>(obj)));
 		}
 	}
 }
@@ -251,6 +251,10 @@ inline AObject *callJSFunction(val *jsFunction, NativeFuncInData) {
 		val result =
 		    jsFunction->call<val>("apply", val::undefined(), jsArgsArray);
 
+		if (notifier.hasException()) {
+			return nullptr;
+		}
+
 		return returnJsObjectToAObject(notifier, result);
 	}
 
@@ -259,6 +263,11 @@ inline AObject *callJSFunction(val *jsFunction, NativeFuncInData) {
 	}
 	val result =
 	    jsFunction->call<val>("apply", aobjectToJs(args[0]), jsArgsArray);
+
+	if (notifier.hasException()) {
+		return nullptr;
+	}
+
 	return returnJsObjectToAObject(notifier, result);
 }
 

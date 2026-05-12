@@ -561,8 +561,8 @@ std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 			case Lexer::TokenType::RBRACKET:
 			case Lexer::TokenType::RBRACE: {
 				if (!isCloseBracket(openBracket, token->type)) {
-					for (auto *node : nodes)
-						ExprNode::deleteNode(node);
+					// for (auto *node : nodes)
+					// 	ExprNode::deleteNode(node);
 					throw ParserError(token->line,
 					                  "Bug: BLexer not ensure close bracket");
 				}
@@ -581,7 +581,7 @@ std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 									ExprNode::deleteNode(node);
 								throw ParserError(
 								    token->line,
-								    "Bug: BLexer not ensure close bracket");
+								    "Bug: ELexer not ensure close bracket");
 							}
 							return nodes;
 						}
@@ -987,6 +987,13 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 			}
 			switch (token->type) {
 				case Lexer::TokenType::LBRACKET: {
+					if (inputVecs.size() != 1) {
+						throw ParserError(
+						    token->line,
+						    "'Array' expects 1 type argument but " +
+						        std::to_string(inputVecs.size()) +
+						        " were given");
+					}
 					auto classDeclaration =
 					    context.classDeclarationAllocator.push();
 					classDeclaration->baseClassLexerStringId = lexerIdArray;
@@ -1026,6 +1033,13 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 						static_cast<CreateSetNode *>(node)->classDeclaration =
 						    classDeclaration;
 					} else {
+						if (inputVecs.size() != 2) {
+							throw ParserError(
+							    token->line,
+							    "'Map' expects 2 type argument but " +
+							        std::to_string(inputVecs.size()) +
+							        " were given");
+						}
 						auto classDeclaration =
 						    context.classDeclarationAllocator.push();
 						classDeclaration->baseClassLexerStringId = lexerIdMap;
@@ -1087,7 +1101,8 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 	}
 	bool addOptionalNode = false;
 	while (true) {
-		if (!nextToken(&token, context.tokens, i)) {
+		uint32_t endLine = context.tokens[i].line;
+		if (!nextTokenSameLine(&token, context.tokens, i, endLine)) {
 			--i;
 			if (addOptionalNode) {
 				return context.optionalAccessNodePool.push(firstLine, node);
@@ -1104,14 +1119,16 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 				    !nextTokenIfMarkNonNull(in_data, i), false);
 				break;
 			}
-			// case Lexer::TokenType::LPAREN: {
-			// 	auto list = loadListArgument(in_data, i);
-			// 	node = context.callNodePool.push(
-			// 	    firstLine, context.currentClassId, node, lexerId,
-			// 	    std::move(arguments), context.justFindStatic,
-			// 	    !nextTokenIfMarkNonNull(in_data, i), false);
-			// 	break;
-			// }
+			case Lexer::TokenType::LPAREN: {
+				auto arguments = loadListArgument(in_data, i);
+				auto callNode = context.callNodePool.push(
+				    firstLine, context.currentClassId, nullptr, 0,
+				    std::move(arguments), context.justFindStatic,
+				    !nextTokenIfMarkNonNull(in_data, i), false);
+				callNode->funcObject = node;
+				node = callNode;
+				break;
+			}
 			case Lexer::TokenType::QMARK_DOT:
 			case Lexer::TokenType::DOT: {
 				bool accessNullable =

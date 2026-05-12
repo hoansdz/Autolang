@@ -59,6 +59,7 @@ void CreateSetNode::optimize(in_func) {
 				if (genericType->nullable) {
 					continue;
 				}
+				// std::cerr << compile.classes[classId]->name << "\n";
 				throwError("Value in Set must non null");
 			}
 		}

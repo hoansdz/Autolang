@@ -44,6 +44,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	context.newDefaultClassesMap[newClassId] = newCreateClassNode;
 
 	std::vector<ClassDeclaration *> genericTypeId;
+	genericTypeId.reserve(classInfo->genericData->genericDeclarations.size());
 
 	for (size_t i = 0; i < classInfo->genericData->genericDeclarations.size();
 	     ++i) {
@@ -52,6 +53,37 @@ ClassId loadClassGenerics(in_func, std::string &name,
 		auto &inputClass = classDeclaration->inputClassId[i];
 
 		ClassId inputClassId = *inputClass->classId;
+
+		// Change callnode name
+		if (!genericDeclaration->allCallNodes.empty()) {
+			const std::string &name = compile.classes[inputClassId]->name;
+			auto nameId = context.createLexerStringIfNotExists(name);
+			for (auto *callNode : genericDeclaration->allCallNodes) {
+				callNode->nameId = nameId;
+			}
+		}
+		// Change generics type
+		genericDeclaration->classId = inputClassId;
+		genericDeclaration->nullable = inputClass->nullable;
+		ClassDeclaration *newClassDeclaration;
+		if (inputClass->isGeneric) {
+			newClassDeclaration = context.classDeclarationAllocator.push();
+			newClassDeclaration->classId = inputClassId;
+			newClassDeclaration->nullable = inputClass->nullable;
+			newClassDeclaration->line = genericDeclaration->line;
+			if (inputClassId == DefaultClass::functionClassId) {
+				newClassDeclaration->inputClassId.reserve(
+				    inputClass->inputClassId.size());
+				for (auto classDeclaration : inputClass->inputClassId) {
+					newClassDeclaration->inputClassId.push_back(
+					    classDeclaration->copy(in_data));
+				}
+			}
+		} else {
+			newClassDeclaration = inputClass;
+		}
+
+		genericTypeId.push_back(newClassDeclaration);
 
 		if (genericDeclaration->condition) {
 			auto &condition = *genericDeclaration->condition;
@@ -64,37 +96,14 @@ ClassId loadClassGenerics(in_func, std::string &name,
 					    "Unresolved " +
 					    condition.classDeclaration->getName(in_data));
 				}
+			} else if (condition.classDeclaration->classId ==
+			           DefaultClass::functionClassId) {
+				condition.classDeclaration->load<true>(in_data);
 			}
 			context.checkValidateExtends[genericDeclaration].push_back(
-			    inputClass);
+			    newClassDeclaration);
 			// }
 		}
-
-		// Change callnode name
-		if (!genericDeclaration->allCallNodes.empty()) {
-			const std::string &name = compile.classes[inputClassId]->name;
-			for (auto *callNode : genericDeclaration->allCallNodes) {
-				callNode->nameId = context.createLexerStringIfNotExists(name);
-			}
-		}
-		// Change generics type
-		genericDeclaration->classId = inputClassId;
-		genericDeclaration->nullable = inputClass->nullable;
-		auto newClassDeclaration = context.classDeclarationAllocator.push();
-		newClassDeclaration->classId = inputClassId;
-		newClassDeclaration->nullable = inputClass->nullable;
-		newClassDeclaration->line = genericDeclaration->line;
-		newClassDeclaration->inputClassId.reserve(
-		    inputClass->inputClassId.size());
-		for (auto classDeclaration : inputClass->inputClassId) {
-			newClassDeclaration->inputClassId.push_back(
-			    classDeclaration->copy(in_data));
-		}
-		// if (inputClassId == DefaultClass::functionClassId) {
-		// std::cerr << inputClass->mode->path << ":" << inputClass->line <<
-		// "\n";
-		// }
-		genericTypeId.push_back(newClassDeclaration);
 
 		for (auto *classDeclaration :
 		     genericDeclaration->allClassDeclarations) {
@@ -102,7 +111,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			classDeclaration->inputClassId = newClassDeclaration->inputClassId;
 			if (classDeclaration->mustInference) {
 				classDeclaration->nullable = inputClass->nullable;
-				classDeclaration->mustInference = false;
+				// classDeclaration->mustInference = false;
 			}
 			classDeclaration->baseClassLexerStringId =
 			    inputClass->baseClassLexerStringId;
@@ -405,6 +414,8 @@ void loadFunctionGenerics(in_func, std::string &name,
 		ParserContext::mode = createFuncNode->mode;
 
 		std::vector<ClassDeclaration *> genericTypeId;
+		genericTypeId.reserve(
+		    funcInfo->genericData->genericDeclarations.size());
 
 		for (size_t i = 0;
 		     i < funcInfo->genericData->genericDeclarations.size(); ++i) {
@@ -413,6 +424,37 @@ void loadFunctionGenerics(in_func, std::string &name,
 			auto &inputClass = classDeclaration->inputClassId[i];
 
 			ClassId inputClassId = *inputClass->classId;
+
+			// Change callnode name
+			if (!genericDeclaration->allCallNodes.empty()) {
+				const std::string &name = compile.classes[inputClassId]->name;
+				auto nameId = context.createLexerStringIfNotExists(name);
+				for (auto *callNode : genericDeclaration->allCallNodes) {
+					callNode->nameId = nameId;
+				}
+			}
+			// Change generics type
+			genericDeclaration->classId = inputClassId;
+			genericDeclaration->nullable = inputClass->nullable;
+			ClassDeclaration *newClassDeclaration;
+			if (inputClass->isGeneric) {
+				newClassDeclaration = context.classDeclarationAllocator.push();
+				newClassDeclaration->classId = inputClassId;
+				newClassDeclaration->nullable = inputClass->nullable;
+				newClassDeclaration->line = genericDeclaration->line;
+				if (inputClassId == DefaultClass::functionClassId) {
+					newClassDeclaration->inputClassId.reserve(
+					    inputClass->inputClassId.size());
+					for (auto classDeclaration : inputClass->inputClassId) {
+						newClassDeclaration->inputClassId.push_back(
+						    classDeclaration->copy(in_data));
+					}
+				}
+			} else {
+				newClassDeclaration = inputClass;
+			}
+
+			genericTypeId.push_back(newClassDeclaration);
 
 			if (genericDeclaration->condition) {
 				auto &condition = *genericDeclaration->condition;
@@ -425,43 +467,21 @@ void loadFunctionGenerics(in_func, std::string &name,
 						    "Unresolved " +
 						    condition.classDeclaration->getName(in_data));
 					}
+				} else if (condition.classDeclaration->classId ==
+				           DefaultClass::functionClassId) {
+					condition.classDeclaration->load<true>(in_data);
 				}
 				context.checkValidateExtends[genericDeclaration].push_back(
-				    inputClass);
+				    newClassDeclaration);
 				// }
 			}
-
-			// Change callnode name
-			if (!genericDeclaration->allCallNodes.empty()) {
-				const std::string &name = compile.classes[inputClassId]->name;
-				for (auto *callNode : genericDeclaration->allCallNodes) {
-					callNode->nameId =
-					    context.createLexerStringIfNotExists(name);
-				}
-			}
-			// Change generics type
-			genericDeclaration->classId = inputClassId;
-			genericDeclaration->nullable = inputClass->nullable;
-			auto newClassDeclaration = context.classDeclarationAllocator.push();
-			newClassDeclaration->classId = inputClassId;
-			newClassDeclaration->nullable = inputClass->nullable;
-			newClassDeclaration->line = genericDeclaration->line;
-			newClassDeclaration->inputClassId.reserve(
-			    inputClass->inputClassId.size());
-			for (auto classDeclaration : inputClass->inputClassId) {
-				newClassDeclaration->inputClassId.push_back(
-				    classDeclaration->copy(in_data));
-			}
-			genericTypeId.push_back(newClassDeclaration);
-			// std::cerr << "PUSH " << newClassDeclaration->getName(in_data)
-			//           << "\n";
 
 			for (auto *classDeclaration :
 			     genericDeclaration->allClassDeclarations) {
 				classDeclaration->classId = inputClassId;
 				if (classDeclaration->mustInference) {
 					classDeclaration->nullable = inputClass->nullable;
-					classDeclaration->mustInference = false;
+					// classDeclaration->mustInference = false;
 				}
 				classDeclaration->inputClassId =
 				    newClassDeclaration->inputClassId;

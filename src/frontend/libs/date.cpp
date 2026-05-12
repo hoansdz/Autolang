@@ -15,7 +15,6 @@ class ACompiler;
 namespace Libs {
 namespace date {
 
-// Các hằng số thời gian (milliseconds)
 constexpr int64_t MS_PER_SECOND = 1000LL;
 constexpr int64_t MS_PER_MINUTE = 60LL * MS_PER_SECOND;
 constexpr int64_t MS_PER_HOUR = 60LL * MS_PER_MINUTE;
@@ -32,7 +31,6 @@ static void destroyDate(ANotifier &notifier, void *dateData) {
 	}
 }
 
-// Hàm hỗ trợ: Chuyển đổi an toàn, trả về false nếu timestamp không hợp lệ
 inline bool getTm(int64_t timestamp_ms, std::tm &out_tm) {
 	std::time_t t = timestamp_ms / 1000;
 #ifdef _WIN32
@@ -132,8 +130,6 @@ inline AObject *current_time_millis(NativeFuncInData) {
 	return notifier.createInt(getCurrentTimeMs());
 }
 
-// --- CÁC HÀM TÍNH TOÁN THỜI GIAN ---
-
 inline AObject *add_days(NativeFuncInData) {
 	auto handle = static_cast<ADateHandle *>(args[0]->data->data);
 	if (!handle) {
@@ -142,7 +138,7 @@ inline AObject *add_days(NativeFuncInData) {
 	}
 	int64_t days = args[1]->i;
 	handle->timestamp_ms += days * MS_PER_DAY;
-	return args[0]; // Trả về chính object Date để chaining
+	return args[0];
 }
 
 inline AObject *add_hours(NativeFuncInData) {
@@ -181,8 +177,7 @@ inline AObject *add_seconds(NativeFuncInData) {
 inline AObject *is_leap_year(NativeFuncInData) {
 	GET_VALID_TM_OR_RETURN_NULL(args[0]->data->data, tm);
 	int year = tm.tm_year + 1900;
-	// Năm nhuận: chia hết cho 4 nhưng không chia hết cho 100, HOẶC chia hết cho
-	// 400
+
 	bool isLeap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
 	return notifier.createBool(isLeap);
 }
@@ -221,7 +216,7 @@ class Date {
     @native("date_get_time")
     func getTime(): Int
 
-    // Format string C++ ("%Y-%m-%d %H:%M:%S")
+    
     @native("date_format")
     func format(pattern: String): String
 

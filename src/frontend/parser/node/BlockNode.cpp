@@ -31,6 +31,7 @@ void BlockNode::loadReturnValueClassId(in_func, uint32_t line,
                                        std::optional<ClassId> &currentClassId,
                                        ClassId newClassId) {
 	if (!currentClassId) {
+		// std::cerr << compile.classes[newClassId]->name << "\n";
 		currentClassId = newClassId;
 		return;
 	}
@@ -56,19 +57,20 @@ void BlockNode::loadReturnValueClassId(in_func, uint32_t line,
 	                      "' to '" + compile.classes[newClassId]->name + "'");
 }
 
-template <bool optimize>
 void BlockNode::loadClassNode(in_func, ExprNode *&node,
                               std::optional<ClassId> &currentClassId,
-                              bool &nullable, bool &isStatic,
+                              bool &nullable, bool &isStatic, bool &hasValue,
                               ClassDeclaration *&newClassDeclaration) {
 	switch (node->kind) {
 		case NodeType::CALL: {
-			if constexpr (optimize) {
-				node->optimize(in_data);
-			}
+			node->optimize(in_data);
+
 			auto *n = static_cast<CallNode *>(node);
 			if (n->classId == DefaultClass::voidClassId)
 				break;
+			if (!hasValue) {
+				hasValue = true;
+			}
 			loadReturnValueClassId(in_data, line, currentClassId, n->classId);
 			switch (n->classId) {
 				case DefaultClass::intClassId: {
@@ -96,6 +98,9 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 		}
 		case NodeType::CREATE_SET: {
 			auto n = static_cast<HasClassIdNode *>(node);
+			if (!hasValue) {
+				hasValue = true;
+			}
 			if (!currentClassId) {
 				n->optimize(in_data);
 				currentClassId = n->classId;
@@ -127,6 +132,9 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 		case NodeType::CREATE_MAP:
 		case NodeType::CREATE_ARRAY: {
 			auto n = static_cast<HasClassIdNode *>(node);
+			if (!hasValue) {
+				hasValue = true;
+			}
 			if (!currentClassId) {
 				n->optimize(in_data);
 				currentClassId = n->classId;
@@ -149,29 +157,27 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 		}
 		case NodeType::CREATE_CLOSURE: {
 			auto n = static_cast<CreateClosureNode *>(node);
+			if (!hasValue) {
+				hasValue = true;
+			}
 			if (currentClassId &&
 			    currentClassId != DefaultClass::functionClassId) {
-				throwError("Cannot cast '" +
-				           compile.classes[*currentClassId]->name + "' to '" +
-				           n->classDeclaration->getName(in_data) + "'");
+				n->throwError("Cannot cast 'Function' to '" +
+				              compile.classes[*currentClassId]->name + "'");
 			}
 			if (newClassDeclaration) {
 				// if (n->mustInfer) {
 				n->inferFrom(in_data, newClassDeclaration);
 				// }
-				if constexpr (optimize) {
-					node->optimize(in_data);
-				}
+				node->optimize(in_data);
 				if (!newClassDeclaration->isSame(n->classDeclaration)) {
-					throwError("Cannot cast '" +
-					           newClassDeclaration->getName(in_data) +
-					           "' to '" +
-					           n->classDeclaration->getName(in_data) + "'");
+					n->throwError("Cannot cast '" +
+					              newClassDeclaration->getName(in_data) +
+					              "' to '" +
+					              n->classDeclaration->getName(in_data) + "'");
 				}
 			} else {
-				if constexpr (optimize) {
-					node->optimize(in_data);
-				}
+				node->optimize(in_data);
 				newClassDeclaration = n->classDeclaration;
 				currentClassId = DefaultClass::functionClassId;
 			}
@@ -183,14 +189,28 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 			}
 			break;
 		}
+		case NodeType::CAST:
+		case NodeType::RUNTIME_CAST:
+		case NodeType::NULL_COALESCING:
+		case NodeType::OPTIONAL_ACCESS:
+		case NodeType::UNARY:
 		case NodeType::CONST:
 		case NodeType::BINARY:
 		case NodeType::GET_PROP:
 		case NodeType::VAR: {
-			if constexpr (optimize) {
-				node->optimize(in_data);
+			if (!hasValue) {
+				hasValue = true;
 			}
+			node->optimize(in_data);
 			auto n = static_cast<HasClassIdNode *>(node);
+			if (n->isNullable()) {
+				if (!nullable) {
+					nullable = true;
+				}
+				if (n->kind == NodeType::CONST) {
+					break;
+				}
+			}
 			loadReturnValueClassId(in_data, line, currentClassId, n->classId);
 			switch (n->classId) {
 				case DefaultClass::intClassId: {
@@ -208,23 +228,26 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 					break;
 				}
 			}
-			if (!nullable) {
-				nullable = n->isNullable();
-			}
 			if (isStatic) {
 				isStatic = n->isStaticValue();
 			}
 			break;
 		}
+		case NodeType::WHEN:
 		case NodeType::IF: {
-			auto *n = static_cast<IfNode *>(node);
+			auto *n = static_cast<NullableNode *>(node);
 			// n->mustReturnValue = true;
-			if constexpr (optimize) {
-				node->optimize(in_data);
-			}
+			node->optimize(in_data);
+
 			if (n->classId == DefaultClass::nullClassId) {
 				break;
 			}
+
+			if (!hasValue && (node->kind != NodeType::IF ||
+			                  static_cast<IfNode *>(node)->mustReturnValue)) {
+				hasValue = true;
+			}
+
 			loadReturnValueClassId(in_data, line, currentClassId, n->classId);
 			if (!nullable) {
 				nullable = n->isNullable();
@@ -236,19 +259,20 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 		}
 		case NodeType::RET: {
 
+			if (!hasValue) {
+				hasValue = true;
+			}
+
 			if (context.mustReturnValueNode->kind != NodeType::CREATE_CLOSURE) {
-				if constexpr (optimize) {
-					node->optimize(in_data);
-				}
+				node->optimize(in_data);
 				break;
 			}
 
 			auto n = static_cast<ReturnNode *>(node);
 
 			if (!n->value) {
-				if constexpr (optimize) {
-					node->optimize(in_data);
-				}
+				node->optimize(in_data);
+
 				if (currentClassId) {
 					if (currentClassId != DefaultClass::voidClassId) {
 						throwError("Cannot cast '" +
@@ -260,16 +284,14 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 				}
 			} else {
 				auto value = static_cast<ExprNode *>(n->value);
-				loadClassNode<true>(in_data, value, currentClassId, nullable,
-				                    isStatic, newClassDeclaration);
+				loadClassNode(in_data, value, currentClassId, nullable,
+				              isStatic, hasValue, newClassDeclaration);
 				node = value;
 			}
 			break;
 		}
 		default: {
-			if constexpr (optimize) {
-				node->optimize(in_data);
-			}
+			node->optimize(in_data);
 			break;
 		}
 	}
@@ -278,6 +300,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 void BlockNode::loadClassAndOptimize(in_func) {
 	std::optional<ClassId> currentClassId;
 	bool nullable = false;
+	bool hasValue = false;
 	bool isStatic = context.mustReturnValueNode->isStaticValue();
 	ClassDeclaration *newClassDeclaration = nullptr;
 	switch (context.mustReturnValueNode->kind) {
@@ -308,36 +331,45 @@ void BlockNode::loadClassAndOptimize(in_func) {
 	for (size_t i = 0; i < nodes.size(); ++i) {
 		auto *&node = nodes[i];
 		loadClassNode(in_data, node, currentClassId, nullable, isStatic,
-		              newClassDeclaration);
+		              hasValue, newClassDeclaration);
 	}
 	context.mustReturnValueNode->setNullable(nullable);
 	context.mustReturnValueNode->setIsStatic(isStatic);
 	switch (context.mustReturnValueNode->kind) {
 		case NodeType::IF: {
 			auto *n = static_cast<IfNode *>(context.mustReturnValueNode);
+			if (nullable) {
+				n->nullable = true;
+			}
 			if (!currentClassId) {
-				if (!n->mustReturnValue) {
+				if (!n->mustReturnValue || nullable) {
 					return;
 				}
-				throwError("Expression branch must return a value");
+				throwError("Expression branch must return a valueB");
+			}
+			if (!hasValue && n->mustReturnValue) {
+				throwError("Expression branch must return a valueA");
 			}
 			if (newClassDeclaration) {
 				n->classDeclaration = newClassDeclaration;
 			}
-			if (context.mustReturnValueNode->classId ==
-			    DefaultClass::nullClassId) {
-				context.mustReturnValueNode->classId = *currentClassId;
+			if (n->classId == DefaultClass::nullClassId) {
+				n->classId = *currentClassId;
 				return;
 			}
-			loadReturnValueClassId(in_data, line, currentClassId,
-			                       context.mustReturnValueNode->classId);
-			context.mustReturnValueNode->classId = *currentClassId;
+			loadReturnValueClassId(in_data, line, currentClassId, n->classId);
+			n->classId = *currentClassId;
 			return;
 		}
 		case NodeType::CREATE_CLOSURE: {
 			auto *n =
 			    static_cast<HasClassIdNode *>(context.mustReturnValueNode);
-			if (!currentClassId) {
+			if (!currentClassId ||
+			    currentClassId == DefaultClass::voidClassId) {
+				if (nullable) {
+					throwError("Cannot infer return type for closure because "
+					           "its body is a null literal");
+				}
 				auto classDeclaration =
 				    context.classDeclarationAllocator.push();
 				classDeclaration->baseClassLexerStringId = lexerIdVoid;
@@ -346,8 +378,22 @@ void BlockNode::loadClassAndOptimize(in_func) {
 				n->classDeclaration->inputClassId[0] = classDeclaration;
 				return;
 			}
+
+			if (!hasValue) {
+				throwError("Expression branch must return a value");
+			}
+
 			// Because it return function
 			if (newClassDeclaration) {
+				if (nullable) {
+					newClassDeclaration->nullable = true;
+				}
+				auto returnClass = n->classDeclaration->inputClassId[0];
+				if (nullable && !returnClass->nullable) {
+					throwError("Cannot cast " +
+					           newClassDeclaration->getName<true>(in_data) +
+					           " to " + returnClass->getName(in_data));
+				}
 				n->classDeclaration->inputClassId[0] = newClassDeclaration;
 				return;
 			}
@@ -358,6 +404,15 @@ void BlockNode::loadClassAndOptimize(in_func) {
 			        compile.classes[*currentClassId]->name);
 			classDeclaration->classId = *currentClassId;
 			classDeclaration->line = n->classDeclaration->line;
+			if (nullable) {
+				classDeclaration->nullable = true;
+			}
+			auto returnClass = n->classDeclaration->inputClassId[0];
+			if (nullable && !returnClass->nullable) {
+				throwError("Cannot cast " +
+				           classDeclaration->getName<true>(in_data) + " to " +
+				           returnClass->getName(in_data));
+			}
 			n->classDeclaration->inputClassId[0] = classDeclaration;
 			return;
 		}

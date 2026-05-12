@@ -127,6 +127,66 @@ struct AObject {
 	}
 };
 
+struct AObjectHashable {
+	inline size_t operator()(const AObject *obj) const {
+		switch (obj->type) {
+			case AutoLang::DefaultClass::intClassId: {
+				return obj->i;
+			}
+			case AutoLang::DefaultClass::floatClassId: {
+				uint32_t bits;
+				std::memcpy(&bits, &obj->f, sizeof(bits));
+
+				size_t h = bits;
+
+				h ^= h >> 16;
+				h *= 0x7feb352d;
+				h ^= h >> 15;
+				h *= 0x846ca68b;
+				h ^= h >> 16;
+
+				return h;
+			}
+			case AutoLang::DefaultClass::stringClassId: {
+				size_t h = 1469598103934665603ULL;
+				for (size_t i = 0; i < obj->str->size; ++i) {
+					h ^= (unsigned char)obj->str->data[i];
+					h *= 1099511628211ULL;
+				}
+				return h;
+			}
+			case AutoLang::DefaultClass::functionClassId: {
+				return size_t(obj->function);
+			}
+			default: {
+				return size_t(obj);
+			}
+		}
+	}
+};
+
+struct AObjectEqualable {
+	inline bool operator()(const AObject *a, const AObject *b) const {
+		if (a->type != b->type) {
+			return false;
+		}
+		switch (a->type) {
+			case AutoLang::DefaultClass::intClassId: {
+				return a->i == b->i;
+			}
+			case AutoLang::DefaultClass::floatClassId: {
+				return a->f == b->f;
+			}
+			case AutoLang::DefaultClass::stringClassId: {
+				return a->str == b->str;
+			}
+			default: {
+				return true;
+			}
+		}
+	}
+};
+
 } // namespace AutoLang
 
 #endif

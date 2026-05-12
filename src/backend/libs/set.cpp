@@ -28,7 +28,8 @@ static void destroySet(ANotifier &notifier, void *unorderedSetData) {
 	delete unorderedSetData_;
 }
 
-inline AObject *constructor(ANotifier &notifier, ClassId classId, ClassId keyId) {
+inline AObject *constructor(ANotifier &notifier, ClassId classId,
+                            ClassId keyId) {
 	switch (keyId) {
 		case DefaultClass::intClassId: {
 			return notifier.createNativeData(
@@ -252,9 +253,7 @@ AObject *for_each(NativeFuncInData) {
 			auto set = static_cast<IntHashSet *>(unorderedSetData->data);
 			for (int64_t value : *set) {
 				auto obj = notifier.createInt(value);
-				auto v = notifier.callFunctionObject(
-				    funcObject,
-				    obj); // Void => return nullptr => value is nullptr
+				auto v = notifier.callFunctionObject(funcObject, obj);
 				if (notifier.hasException())
 					return nullptr;
 			}

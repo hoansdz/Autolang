@@ -299,9 +299,9 @@ class Map<K, V> {
 }
 	
 @native("print")
-func print(value: Any?)
+func print(value: Any? = "")
 @native("println")
-func println(value: Any?)
+func println(value: Any? = "")
 @native("get_refcount")
 func getRefCount(value: Any?): Int
 func assert(condition: Bool, fileName: String, line: Int) {
