@@ -16,7 +16,14 @@ class CompilerWrapper {
 	AutoLang::LibraryConfig mainSourceConfig;
 	std::stringstream buffer;
 
-	CompilerWrapper() { setvbuf(stderr, NULL, _IONBF, 0); }
+	CompilerWrapper(bool addStdFile, bool addStdRegex, bool addStdJson,
+	                bool addStdMath)
+	    : compiler(AutoLang::ACompilerConfig{.addStdFile = addStdFile,
+	                                         .addStdRegex = addStdRegex,
+	                                         .addStdJson = addStdJson,
+	                                         .addStdMath = addStdMath}) {
+		setvbuf(stderr, NULL, _IONBF, 0);
+	}
 
 	void setOnError(val func) {
 		if (!func.as<bool>()) {

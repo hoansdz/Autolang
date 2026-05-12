@@ -808,14 +808,14 @@ void ACompiler::refresh() {
 	}
 }
 
-ACompiler::ACompiler() {
+ACompiler::ACompiler(ACompilerConfig config) {
 	// auto startCompiler = std::chrono::high_resolution_clock::now();
 
 	AutoLang::Libs::stdlib::init(*this);
 	AutoLang::DefaultClass::init(*this);
 	AutoLang::DefaultFunction::init(*this);
 	AutoLang::Libs::time::init(*this);
-	AutoLang::Libs::vm::init(*this);
+	// AutoLang::Libs::vm::init(*this);
 
 	vm.data.constPool.push_back(DefaultClass::nullObject);
 	vm.data.constPool.push_back(DefaultClass::trueObject);
@@ -837,23 +837,27 @@ ACompiler::ACompiler() {
 	//                  startCompiler) .count()
 	//           << " ms" << '\n';
 	state = CompilerState::CT_READY;
-	AutoLang::Libs::Math::init(*this);
+	if (config.addStdMath) {
+		AutoLang::Libs::Math::init(*this);
+	}
 	// state = CompilerState::CT_READY;
 #ifndef NO_INCLUDE_LIBS_FILE
-	AutoLang::Libs::file::init(*this);
-	// state = CompilerState::CT_READY;
+	if (config.addStdFile) {
+		AutoLang::Libs::file::init(*this);
+	}
 #endif
 #ifndef NO_INCLUDE_LIBS_DATE
 	AutoLang::Libs::date::init(*this);
-	// state = CompilerState::CT_READY;
 #endif
 #ifndef NO_INCLUDE_LIBS_REGEX
-	AutoLang::Libs::regex::init(*this);
-	// state = CompilerState::CT_READY;
+	if (config.addStdRegex) {
+		AutoLang::Libs::regex::init(*this);
+	}
 #endif
 #ifndef NO_INCLUDE_LIBS_JSON
-	AutoLang::Libs::json::init(*this);
-	// state = CompilerState::CT_READY;
+	if (config.addStdJson) {
+		AutoLang::Libs::json::init(*this);
+	}
 #endif
 }
 

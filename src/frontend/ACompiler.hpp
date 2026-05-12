@@ -68,6 +68,19 @@ struct LibraryData {
 	}
 };
 
+struct ACompilerConfig {
+#ifndef NO_INCLUDE_LIBS_FILE
+	bool addStdFile = true;
+#endif
+#ifndef NO_INCLUDE_LIBS_REGEX
+	bool addStdRegex = true;
+#endif
+#ifndef NO_INCLUDE_LIBS_JSON
+	bool addStdJson = true;
+#endif
+	bool addStdMath = true;
+};
+
 class ACompiler {
   public:
 	LibraryData *mainSource;
@@ -95,7 +108,7 @@ class ACompiler {
 	LibraryData *requestImport(LibraryData *currentLibrary, const char *path);
 
 	AVM vm = AVM(false);
-	ACompiler();
+	ACompiler(ACompilerConfig config = ACompilerConfig());
 	~ACompiler();
 	inline AutoLang::CompilerState getState() { return state; }
 	void refresh();
