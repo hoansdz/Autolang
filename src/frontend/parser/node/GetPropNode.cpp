@@ -17,15 +17,15 @@ ExprNode *GetPropNode::resolve(in_func) {
 				return itLoadConst->second;
 			}
 		}
-		// auto it = classInfo->staticMember.find(nameId);
-		// if (it == classInfo->staticMember.end()) {
-		// 	throwError("Cannot find static member name: '" +
-		// 	           context.lexerString[nameId] + "'");
-		// }
-		// auto declarationNode = it->second;
-		// ExprNode::deleteNode(caller);
-		// return context.varPool.push(line, declarationNode, isStore,
-		// nullable);
+		auto it = classInfo->staticMember.find(nameId);
+		if (it != classInfo->staticMember.end()) {
+			// throwError("Cannot find static member name: '" +
+			//            context.lexerString[nameId] + "'");
+			auto declarationNode = it->second;
+			ExprNode::deleteNode(caller);
+			return context.varPool.push(line, declarationNode, isStore,
+			                            nullable);
+		}
 	}
 	return this;
 }
@@ -80,6 +80,9 @@ bool GetPropNode::optimizeSkipIfNotFoundMember(in_func) {
 		isVal = declaration->isVal;
 		id = declaration->id;
 		classId = declaration->classId;
+		if (classId == DefaultClass::functionClassId) {
+			classDeclaration = declaration->classDeclaration;
+		}
 	} else if (isStatic) {
 		throwError("Cannot access non static member " + name);
 	}
@@ -99,7 +102,11 @@ bool GetPropNode::optimizeSkipIfNotFoundMember(in_func) {
 		// "+std::to_string((uintptr_t)declarationNode));
 		if (clazz->memberId[id] != declaration->classId)
 			clazz->memberId[id] = declaration->classId;
-		classId = declaration->classId; // clazz->memberId[id];
+		classId = declaration->classId;
+		if (classId == DefaultClass::functionClassId) {
+			classDeclaration = declaration->classDeclaration;
+		}
+		// clazz->memberId[id];
 		// printDebug("Class " + clazz->name + " GetProp: " + name + " " +
 		//            " has id: " + std::to_string(id) + " " +
 		//            std::to_string(classId) + " " +
@@ -161,7 +168,9 @@ void GetPropNode::optimize(in_func) {
 		isVal = declaration->isVal;
 		id = declaration->id;
 		classId = declaration->classId;
-		classDeclaration = declaration->classDeclaration;
+		if (classId == DefaultClass::functionClassId) {
+			classDeclaration = declaration->classDeclaration;
+		}
 	} else if (isStatic) {
 		throwError("Cannot access non static member " + name);
 	}
@@ -182,9 +191,8 @@ void GetPropNode::optimize(in_func) {
 		if (clazz->memberId[id] != declaration->classId)
 			clazz->memberId[id] = declaration->classId;
 		classId = declaration->classId;
-		classDeclaration = declaration->classDeclaration;
-		if (nullable) {
-			nullable = declaration->nullable;
+		if (classId == DefaultClass::functionClassId) {
+			classDeclaration = declaration->classDeclaration;
 		}
 		// std::cerr << ("Class " + clazz->name + " GetProp: " + name + " " +
 		//               " has id: " + std::to_string(id) + " " +
@@ -192,6 +200,9 @@ void GetPropNode::optimize(in_func) {
 		//               compile.classes[classId]->name +
 		//               (declaration->nullable ? "?" : ""))
 		//           << "\n";
+	}
+	if (nullable) {
+		nullable = declaration->nullable;
 	}
 }
 

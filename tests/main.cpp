@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
 				// 	compiler.refresh();
 				// }
 				if (compiler.compile(
-				        "./tests/source.atl",
+				        "./tests/testCorrectness.atl",
 				        AutoLang::LibraryConfig(false, true, true),
 				        ANativeMap({{"HI", (ANativeFunction)[](NativeFuncInput) -> AutoLang::AObject * {
 					                    return nullptr;

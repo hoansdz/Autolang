@@ -172,7 +172,7 @@ class CompilerWrapper {
 
 EMSCRIPTEN_BINDINGS(autolang_module) {
 	class_<CompilerWrapper>("ACompiler")
-	    .constructor<>()
+	    .constructor<bool, bool, bool, bool>()
 	    .function("compileAndRun", &CompilerWrapper::compileAndRun)
 	    .function("run", &CompilerWrapper::run)
 	    .function("compile", &CompilerWrapper::compile)

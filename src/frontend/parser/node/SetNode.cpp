@@ -203,8 +203,10 @@ void SetNode::optimize(in_func) {
 						throwError("Ambigous inference member class id");
 					}
 					detachNode->declaration->classId = value->classId;
-					detachNode->declaration->classDeclaration =
-					    value->classDeclaration;
+					if (value->classId == DefaultClass::functionClassId) {
+						detachNode->declaration->classDeclaration =
+						    value->classDeclaration;
+					}
 					compile.classes[detachNode->caller->classId]
 					    ->memberId[detachNode->declaration->id] =
 					    detachNode->declaration->classId;
@@ -219,7 +221,9 @@ void SetNode::optimize(in_func) {
 					// compile.classes[value->classId]->name);
 				}
 				detach->classId = value->classId;
-				detach->classDeclaration = value->classDeclaration;
+				if (value->classId == DefaultClass::functionClassId) {
+					detach->classDeclaration = value->classDeclaration;
+				}
 			}
 			// if (detachNode->declaration->accessModifier ==
 			// Lexer::TokenType::PRIVATE) { 	if (detachNode->classId !=
@@ -252,7 +256,10 @@ void SetNode::optimize(in_func) {
 			auto clazz = compile.classes[detachNode->caller->classId];
 			// clazz->memberId[detach->declaration->id] = value->classId;
 			detachNode->declaration->classId = value->classId;
-			detachNode->declaration->classDeclaration = value->classDeclaration;
+			if (value->classId == DefaultClass::functionClassId) {
+				detachNode->declaration->classDeclaration =
+				    value->classDeclaration;
+			}
 			break;
 		}
 		case NodeType::VAR: {
@@ -297,7 +304,9 @@ void SetNode::optimize(in_func) {
 					// }
 				}
 				detach->classId = value->classId;
-				detach->classDeclaration = value->classDeclaration;
+				if (value->classId == DefaultClass::functionClassId) {
+					detach->classDeclaration = value->classDeclaration;
+				}
 			}
 			// Nullable
 			if (value->classId == AutoLang::DefaultClass::nullClassId) {
