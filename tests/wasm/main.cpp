@@ -145,21 +145,26 @@ class CompilerWrapper {
 
 	bool hasException() {
 		if (compiler.vm.callFrames.getSize() == 0) {
+			if (compiler.vm.callFrames.objects[0].exception) {
+				return true;
+			}
 			return false;
 		}
-		return compiler.vm.callFrames.top()->exception;
+		return false;
 	}
 
 	val getException() {
-		if (compiler.vm.callFrames.getSize() == 0 ||
-		    !compiler.vm.callFrames.top()->exception) {
+		if (compiler.vm.callFrames.getSize() == 0) {
+			if (compiler.vm.callFrames.objects[0].exception) {
+				val obj = val::object();
+				auto exception = compiler.vm.callFrames.objects[0].exception;
+				obj.set("message",
+				        std::string(exception->member->data[0]->str->data));
+				return obj;
+			}
 			return val::null();
 		}
-		val obj = val::object();
-		obj.set("message", std::string(compiler.vm.callFrames.top()
-		                                   ->exception->member->data[0]
-		                                   ->str->data));
-		return obj;
+		return val::null();
 	}
 
 	void throwException(std::string message) {
