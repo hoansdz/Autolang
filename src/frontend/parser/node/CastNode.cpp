@@ -33,9 +33,6 @@ ExprNode *CastNode::resolve(in_func) {
 				auto node = static_cast<ConstValueNode *>(value);
 				switch (classId) {
 					case AutoLang::DefaultClass::intClassId: {
-						if (node->classId == DefaultClass::floatClassId) {
-							goto errCast;
-						}
 						auto result = toInt(in_data, node);
 						value = nullptr;
 						ExprNode::deleteNode(this);

@@ -775,6 +775,9 @@ void ACompiler::run() {
 void ACompiler::setLimitOpcodeCount(uint32_t limitOpcodeCount) {
 	vm.limitOpcodeCount = limitOpcodeCount;
 }
+uint32_t ACompiler::getLimitOpcodeCount() {
+	return vm.limitOpcodeCount;
+}
 #endif
 
 void ACompiler::refresh() {
@@ -793,9 +796,6 @@ void ACompiler::refresh() {
 // AutoLang::Libs::stdlib::init(*this);
 // AutoLang::DefaultClass::init(*this);
 // AutoLang::DefaultFunction::init(*this);
-#ifdef AUTOLANG_LIMIT_OPCODE
-	vm.currentLimitOpcodeCount = vm.limitOpcodeCount;
-#endif
 	vm.data.mainFunctionId = vm.data.registerFunction(
 	    nullptr, ".main", nullptr, 0,
 	    static_cast<uint32_t>(FunctionFlags::FUNC_IS_STATIC));

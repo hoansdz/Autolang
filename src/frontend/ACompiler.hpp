@@ -131,6 +131,7 @@ class ACompiler {
 
 #ifdef AUTOLANG_LIMIT_OPCODE
 	void setLimitOpcodeCount(uint32_t limitOpcodeCount);
+	uint32_t getLimitOpcodeCount();
 #endif
 
 	inline void setOnError(FunctionEvent *onError) {

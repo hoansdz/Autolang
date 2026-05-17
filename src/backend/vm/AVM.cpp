@@ -23,6 +23,9 @@ void AVM::run() {
 	mainCallFrame->startStackCount = 0;
 	mainCallFrame->i = 0;
 	mainCallFrame->catchPosition.clear();
+#ifdef AUTOLANG_LIMIT_OPCODE
+	currentLimitOpcodeCount = limitOpcodeCount;
+#endif
 	resume();
 	switch (state) {
 		case VMState::ERROR: {

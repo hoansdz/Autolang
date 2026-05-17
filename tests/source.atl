@@ -79,11 +79,15 @@
 // main()
 
 // println("Runtime: ${Time.now() - time} ms")
-@import("std/math")
+val numbers = <Int>[1, 2, 3, 4, 5]
+// Passing a closure directly as an argument to forEach
+// numbers.forEach {|value| 
+//     println("Processing: " + value)
+//     while (true) {
+//         print(1)
+//     }
+// }
 
-class A {
-	static val a = 1.5
-}
-
-val m = A()
-println(m.a + 1)
+while (true) {
+        // print(1)
+    }

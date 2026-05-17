@@ -79,6 +79,10 @@ class CompilerWrapper {
 		compiler.setLimitOpcodeCount(count);
 	}
 
+	uint32_t getLimitOpcodeCount() {
+		return compiler.getLimitOpcodeCount();
+	}
+
 	void setMainSourceConfig(bool allowLateinitKeyword,
 	                         bool allowNonNullAssertion) {
 		mainSourceConfig.allowLateinitKeyword = allowLateinitKeyword;
@@ -136,6 +140,11 @@ class CompilerWrapper {
 		return buffer.str();
 	}
 
+	void setOutput(std::string output) {
+		buffer.str(output);
+		buffer.clear();
+	}
+
 	void clearOutput() {
 		buffer.str("");
 		buffer.clear();
@@ -186,7 +195,9 @@ EMSCRIPTEN_BINDINGS(autolang_module) {
 	    .function("setOnWarning", &CompilerWrapper::setOnWarning)
 	    .function("setMainSourceConfig", &CompilerWrapper::setMainSourceConfig)
 	    .function("setLimitOpcodeCount", &CompilerWrapper::setLimitOpcodeCount)
+		.function("getLimitOpcodeCount", &CompilerWrapper::getLimitOpcodeCount)
 	    .function("getOutput", &CompilerWrapper::getOutput)
+		.function("setOutput", &CompilerWrapper::setOutput)
 	    .function("clearOutput", &CompilerWrapper::clearOutput)
 	    .function("registerBuiltInLibrary",
 	              &CompilerWrapper::registerBuiltInLibrary)
