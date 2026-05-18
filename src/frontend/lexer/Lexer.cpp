@@ -61,7 +61,7 @@ void load(ParserContext *mainContext, LibraryData *library,
 
 bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 	char chr = context.line[i];
-	if (std::isblank(chr)) {
+	if (std::isblank(chr) || (unsigned char)chr < 32 || (unsigned char)chr >= 127) {
 		++i;
 		return true;
 	}
@@ -188,8 +188,10 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 		context.tokens.emplace_back(context.linePos, op);
 		return true;
 	}
-	throw LexerError(context.linePos,
-	                 std::string("Unknow character: '") + chr + "'");
+	throw LexerError(
+	    context.linePos,
+	    std::string("Unknown character: '") + chr +
+	        "' - ASCII value: " + std::to_string(static_cast<int>(chr)));
 }
 
 void pushAndEnsureBracket(Context &context, uint32_t &i) {
@@ -217,7 +219,7 @@ start:;
 		return;
 	}
 	if (!nextLine(context, context.library->rawData.data(), i)) {
-		throw LexerError(firstLine, std::string("Expected '") +
+		throw LexerError(firstLine, std::string("Expected A '") +
 		                                getCloseBracket(chr) +
 		                                "' but not found");
 	}

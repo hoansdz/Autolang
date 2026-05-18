@@ -78,30 +78,60 @@
 
 // main()
 
-@import("std/json")
+// @import("std/json")
 
-class Product (
-    val name: String,
-    val price: Int,
-    val inStock: Bool
-)
+// // Represents a vegetable/fruit product in the store
+// class Product (
+//     val name: String,
+//     val price: Int,
+//     val weight: Float,
+//     val inStock: Bool
+// )
 
-class Database {
-    static private func _get_products(): String {
-        return "{\"data\":[{\"name\":\"Product 1\",\"price\":100,\"inStock\":true},{\"name\":\"Product 2\",\"price\":200,\"inStock\":false},{\"name\":\"Product 3\",\"price\":300,\"inStock\":true},{\"name\":\"Product 4\",\"price\":400,\"inStock\":true},{\"name\":\"Product 5\",\"price\":500,\"inStock\":false},{\"name\":\"Product 6\",\"price\":600,\"inStock\":true},{\"name\":\"Product 7\",\"price\":700,\"inStock\":false},{\"name\":\"Product 8\",\"price\":800,\"inStock\":true},{\"name\":\"Product 9\",\"price\":900,\"inStock\":true},{\"name\":\"Product 10\",\"price\":1000,\"inStock\":false}]}"
-    }
+// class Database {
+//     // Returns a raw JSON string containing mock data for 10 vegetable products
+//     static private func _get_products(): String {
+//         return "{\"data\":[{\"name\":\"Dalat Carrot\",\"price\":25,\"weight\":0.5,\"inStock\":true},{\"name\":\"Highland Potato\",\"price\":30,\"weight\":1.0,\"inStock\":false},{\"name\":\"Broccoli\",\"price\":45,\"weight\":0.4,\"inStock\":true},{\"name\":\"Cherry Tomato\",\"price\":35,\"weight\":0.3,\"inStock\":true},{\"name\":\"Onion\",\"price\":18,\"weight\":1.0,\"inStock\":false},{\"name\":\"Pumpkin\",\"price\":22,\"weight\":1.5,\"inStock\":true},{\"name\":\"Purple Cabbage\",\"price\":40,\"weight\":0.8,\"inStock\":true},{\"name\":\"Old Ginger\",\"price\":60,\"weight\":0.2,\"inStock\":false},{\"name\":\"Seedless Lime\",\"price\":15,\"weight\":0.5,\"inStock\":true},{\"name\":\"Lyson Garlic\",\"price\":120,\"weight\":0.2,\"inStock\":true}]}"
+//     }
 
-    public static func get_products(): Array<Product> {
-        val jsonStr = _get_products()
-        val json = Json.parse(jsonStr)
-        val products = json["data"].toJsonArray()
-        val result = <Product>[]
+//     // Parses JSON and returns an Array of Product instances
+//     public static func get_products(): Array<Product> {
+//         val jsonStr = _get_products()
+//         val json = Json.parse(jsonStr)
+//         val products = json["data"].toJsonArray()
+//         val result = <Product>[]
         
-        for (product in products) {
-            result.add(jsonToClass<Product>(product))
-        }
-        return result
-    }
-}
+//         for (product in products) {
+//             // Option A: Using Frontend Generic Sugar (Compiler lowers this to Class ID implicitly)
+//             result.add(jsonToClass<Product>(product))
+            
+//             // Option B: Can be replaced with the low-level explicit Type ID mapping (O(1) performance)
+//             // val productId = getClassId(Product)
+//             // result.add(Json.toClass(product.stringify(), productId))
+//         }
+//         return result
+//     }
+// }
 
-println(Database.get_products())
+// var products = Database.get_products()
+// var budget = 1000
+
+// // dp[i] sẽ lưu trọng lượng lớn nhất đạt được với ngân sách đó
+// var dp = Array<Float>()
+// for (i in 0..budget) {
+//     dp.add(0.0)
+// }
+
+// // Thuật toán Knk cho phép nhập trổi loại (Unbounded Knapsack)
+// for (p in products) {
+//     if (p.inStock) {
+//         for (b in p.price..budget) {
+//             val weightWithProduct = dp[b - p.price] + p.weight
+//             if (weightWithProduct > dp[b]) {
+//                 dp[b] = weightWithProduct
+//             }
+//         }
+//     }
+// }
+
+// println("Trọng lượt trổi đạt: ${dp[budget]}")

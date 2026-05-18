@@ -14,23 +14,25 @@ WhileNode *loadWhile(in_func, size_t &i) {
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 	    !expect(token, Lexer::TokenType::LPAREN)) {
 		--i;
-		throw ParserError(firstLine, "Expected ( after while but not found");
+		throw ParserError(firstLine,
+		                  "Expected '(' after 'while' in while statement");
 	}
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 		--i;
 		throw ParserError(firstLine,
-		                  "Expected expression after while but not found");
+		                  "Expected condition expression in while statement");
 	}
 	node->condition = loadExpression(in_data, 0, i);
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::RPAREN)) {
 		--i;
-		throw ParserError(context.tokens[i].line, "Expected ) but not found");
+		throw ParserError(context.tokens[i].line,
+		                  "Expected closing ')' after while condition");
 	}
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		throw ParserError(context.tokens[i].line,
-		                  "Expected command after while but not found");
+		                  "Expected body after while statement");
 	}
 	loadBody<false>(in_data, node->body.nodes, i);
 	return node;
@@ -43,16 +45,19 @@ ExprNode *loadFor(in_func, size_t &i) {
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 	    !expect(token, Lexer::TokenType::LPAREN)) {
 		--i;
-		throw ParserError(firstLine, "Expected ( but not found");
+		throw ParserError(firstLine,
+		                  "Expected '(' after 'for' in for statement");
 	}
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 		--i;
-		throw ParserError(firstLine, "Expected name but not found");
+		throw ParserError(firstLine,
+		                  "Expected loop variable name in for statement");
 	}
 	if (!expect(token, Lexer::TokenType::IDENTIFIER)) {
 		--i;
-		throw ParserError(context.tokens[i].line,
-		                  "Expected name but not found");
+		throw ParserError(
+		    context.tokens[i].line,
+		    "Expected identifier as loop variable in for statement");
 	}
 	auto baseName = token->indexData;
 	const std::string &name = context.lexerString[token->indexData];
@@ -69,12 +74,13 @@ ExprNode *loadFor(in_func, size_t &i) {
 	    !expect(token, Lexer::TokenType::IN)) {
 		--i;
 		throw ParserError(context.tokens[i].line,
-		                  "Expected 'in' but not found");
+		                  "Expected 'in' after loop variable in for statement");
 	}
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
-		throw ParserError(context.tokens[i].line,
-		                  "Expected expression after 'in' but not found");
+		throw ParserError(
+		    context.tokens[i].line,
+		    "Expected iterable expression after 'in' in for statement");
 	}
 	HasClassIdNode *data = loadExpression(in_data, 0, i);
 	VarNode *iteratorNode = nullptr;
@@ -92,12 +98,13 @@ ExprNode *loadFor(in_func, size_t &i) {
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::RPAREN)) {
 		--i;
-		throw ParserError(context.tokens[i].line, "Expected ')' but not found");
+		throw ParserError(context.tokens[i].line,
+		                  "Expected closing ')' after for condition");
 	}
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		throw ParserError(context.tokens[i].line,
-		                  "Expected function body but not found");
+		                  "Expected body after for statement");
 	}
 	auto node =
 	    context.forPool.push(firstLine, declaration, data, iteratorNode);
