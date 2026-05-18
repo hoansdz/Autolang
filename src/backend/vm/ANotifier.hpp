@@ -46,11 +46,13 @@ class ANotifier {
 	[[nodiscard]] inline AObject *createBytes(uint32_t size) {
 		return vm->data.manager.getBytes(size);
 	}
+	inline AObject *createMemberObject(uint32_t type, size_t memberCount) {
+		auto obj = vm->data.manager.get(type, memberCount);
+		return obj;
+	}
 	template <typename T>
 	[[nodiscard]] inline AObject *createException(T message) {
-		auto obj = vm->data.manager.createEmptyObject();
-		obj->type = DefaultClass::exceptionClassId;
-		obj->member = new NormalArray<AutoLang::AObject *>(1);
+		auto obj = vm->data.manager.get(DefaultClass::exceptionClassId, 1);
 		auto str = createString(message);
 		str->retain();
 		obj->member->data[0] = str;
@@ -83,6 +85,7 @@ class ANotifier {
 
 		arr->member->data[arr->member->size++] = obj;
 	}
+	inline size_t getArraySize(AObject *arr) { return arr->member->size; }
 	inline bool hasException() { return vm->callFrames.top()->exception; }
 	template <typename T> inline void throwException(T message) {
 		callFrame->exception = createException(message);
@@ -94,8 +97,25 @@ class ANotifier {
 		  vm->stack.push(std::forward<Args>(args))),
 		 ...);
 		vm->callFunctionObject(funcObject);
+		if (hasException()) {
+			return nullptr;
+		}
 		if (funcObject->function->function->returnId ==
 		    DefaultClass::voidClassId) {
+			return nullptr;
+		}
+		return vm->stack.pop();
+	}
+	template <typename... Args>
+	[[nodiscard]] inline AObject *callFunction(Function *func, Args &&...args) {
+		((std::forward<Args>(args)->retain(),
+		  vm->stack.push(std::forward<Args>(args))),
+		 ...);
+		vm->callFunction(func);
+		if (hasException()) {
+			return nullptr;
+		}
+		if (func->returnId == DefaultClass::voidClassId) {
 			return nullptr;
 		}
 		return vm->stack.pop();

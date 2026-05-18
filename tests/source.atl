@@ -78,16 +78,30 @@
 
 // main()
 
-// println("Runtime: ${Time.now() - time} ms")
-val numbers = <Int>[1, 2, 3, 4, 5]
-// Passing a closure directly as an argument to forEach
-// numbers.forEach {|value| 
-//     println("Processing: " + value)
-//     while (true) {
-//         print(1)
-//     }
-// }
+@import("std/json")
 
-while (true) {
-        // print(1)
+class Product (
+    val name: String,
+    val price: Int,
+    val inStock: Bool
+)
+
+class Database {
+    static private func _get_products(): String {
+        return "{\"data\":[{\"name\":\"Product 1\",\"price\":100,\"inStock\":true},{\"name\":\"Product 2\",\"price\":200,\"inStock\":false},{\"name\":\"Product 3\",\"price\":300,\"inStock\":true},{\"name\":\"Product 4\",\"price\":400,\"inStock\":true},{\"name\":\"Product 5\",\"price\":500,\"inStock\":false},{\"name\":\"Product 6\",\"price\":600,\"inStock\":true},{\"name\":\"Product 7\",\"price\":700,\"inStock\":false},{\"name\":\"Product 8\",\"price\":800,\"inStock\":true},{\"name\":\"Product 9\",\"price\":900,\"inStock\":true},{\"name\":\"Product 10\",\"price\":1000,\"inStock\":false}]}"
     }
+
+    public static func get_products(): Array<Product> {
+        val jsonStr = _get_products()
+        val json = Json.parse(jsonStr)
+        val products = json["data"].toJsonArray()
+        val result = <Product>[]
+        
+        for (product in products) {
+            result.add(jsonToClass<Product>(product))
+        }
+        return result
+    }
+}
+
+println(Database.get_products())

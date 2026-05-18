@@ -167,6 +167,7 @@ class ObjectManager {
 		AObject *obj = areaAllocator.getObject();
 		obj->type = type;
 		obj->member = new NormalArray<AObject *>(memberCount);
+		obj->flags = AObject::Flags::OBJ_HAS_MEMBER_DATA;
 		return obj;
 	}
 	inline AObject *createEmptyObject() { return areaAllocator.getObject(); }

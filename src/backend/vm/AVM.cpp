@@ -227,6 +227,7 @@ bool AVM::callFunctionObject(AObject *obj) {
 		stackAllocator.freeTo(currentCallFrame->fromStackAllocator);
 		return true;
 	}
+	stackAllocator.ensure(argumentCount);
 	for (uint32_t i = argumentCount; i-- > funcObj->size;) {
 		stackAllocator[i] = stack.pop();
 	}
@@ -243,10 +244,18 @@ inline bool AVM::callFunction(Function *currentFunction) {
 	currentCallFrame->fromStackAllocator =
 	    stackAllocator.top + currentFunction->maxDeclaration;
 	currentCallFrame->exception = nullptr;
+	currentCallFrame->func = currentFunction;
 	currentCallFrame->startStackCount = stack.getSize();
 	currentCallFrame->catchPosition.clear();
 	stackAllocator.setTop(currentCallFrame->fromStackAllocator);
 	uint32_t argumentCount = currentFunction->argSize;
+
+	stackAllocator.ensure(argumentCount);
+
+	for (uint32_t i = argumentCount; i-- > 0;) {
+		stackAllocator[i] = stack.pop();
+	}
+
 	return callFunction(currentCallFrame, argumentCount);
 }
 

@@ -69,8 +69,44 @@ std::string to_string(ANotifier &notifier, AObject *obj) {
 			if (obj->flags & AObject::Flags::OBJ_IS_MAP) {
 				return Libs::map::to_string(notifier, obj);
 			}
+			auto clazz = notifier.vm->data.classes[obj->type];
+			auto allFuncToString = clazz->funcMap["toString"];
+			for (FunctionId id : allFuncToString) {
+				auto func = notifier.vm->data.functions[id];
+				if (func->argSize != 1 ||
+				    (func->functionFlags & FunctionFlags::FUNC_IS_STATIC)) {
+					continue;
+				}
+				if (func->returnId != DefaultClass::stringClassId) {
+					break;
+				}
+				auto data = notifier.callFunction(func, obj);
+				if (notifier.hasException()) {
+					return "";
+				}
+				std::string result = data->str->data;
+				notifier.release(data);
+				return std::move(result);
+			}
+
+			if (obj->flags & AObject::Flags::OBJ_HAS_MEMBER_DATA) {
+				std::string result = clazz->name + "(";
+				bool isFirst = true;
+				for (auto &[memberName, id] : clazz->memberMap) {
+					if (isFirst) {
+						isFirst = false;
+					} else {
+						result += ", ";
+					}
+					std::string str =
+					    to_string(notifier, obj->member->data[id]);
+					result += memberName + " : " + std::move(str);
+				}
+				result += ")";
+				return result;
+			}
 			std::stringstream ss;
-			ss << notifier.vm->data.classes[obj->type]->name << "@" << obj;
+			ss << clazz->name << "@" << obj;
 			return ss.str();
 	}
 }

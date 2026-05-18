@@ -118,6 +118,39 @@ ClassId loadClassGenerics(in_func, std::string &name,
 		}
 	}
 
+	for (auto &[classDeclaration, node] :
+	     classInfo->genericData->mustRenameNodes) {
+		if (!classDeclaration->classId) {
+			classDeclaration->load<false, true>(in_data);
+			if (!classDeclaration->classId) {
+				classDeclaration->throwError(
+				    "BUnsolved " + classDeclaration->getName(in_data));
+			}
+		}
+		auto name = classDeclaration->getName(in_data);
+		switch (node->kind) {
+			case NodeType::UNKNOW: {
+				auto unknowNode = static_cast<UnknowNode *>(node);
+				auto it = context.lexerStringMap.find(name);
+				if (it == context.lexerStringMap.end()) {
+					classDeclaration->throwError("GUnsolved " + name);
+				}
+				unknowNode->nameId = it->second;
+				break;
+			}
+			case NodeType::CALL: {
+				auto callNode = static_cast<CallNode *>(node);
+				auto it = context.lexerStringMap.find(name);
+				if (it == context.lexerStringMap.end()) {
+					classDeclaration->throwError("HUnsolved " + name);
+				}
+				callNode->nameId = it->second;
+				break;
+			}
+		}
+		classDeclaration->classId = std::nullopt;
+	}
+
 	auto newClass = compile.classes[newClassId];
 	newClass->memberMap = clazz->memberMap;
 	newClass->memberId = clazz->memberId;
@@ -177,39 +210,6 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	newClassInfo->staticFunc = classInfo->staticFunc;
 
 	// newClass->funcMap = clazz->funcMap;
-
-	for (auto &[classDeclaration, node] :
-	     classInfo->genericData->mustRenameNodes) {
-		if (!classDeclaration->classId) {
-			classDeclaration->load<false, true>(in_data);
-			if (!classDeclaration->classId) {
-				classDeclaration->throwError(
-				    "BUnsolved " + classDeclaration->getName(in_data));
-			}
-		}
-		auto name = classDeclaration->getName(in_data);
-		switch (node->kind) {
-			case NodeType::UNKNOW: {
-				auto unknowNode = static_cast<UnknowNode *>(node);
-				auto it = context.lexerStringMap.find(name);
-				if (it == context.lexerStringMap.end()) {
-					classDeclaration->throwError("GUnsolved " + name);
-				}
-				unknowNode->nameId = it->second;
-				break;
-			}
-			case NodeType::CALL: {
-				auto callNode = static_cast<CallNode *>(node);
-				auto it = context.lexerStringMap.find(name);
-				if (it == context.lexerStringMap.end()) {
-					classDeclaration->throwError("HUnsolved " + name);
-				}
-				callNode->nameId = it->second;
-				break;
-			}
-		}
-		classDeclaration->classId = std::nullopt;
-	}
 
 	ParserContext::mode = baseCreateClassNode->mode;
 
@@ -490,6 +490,40 @@ void loadFunctionGenerics(in_func, std::string &name,
 			}
 		}
 
+		for (auto &[classDeclaration, node] :
+		     funcInfo->genericData->mustRenameNodes) {
+			if (!classDeclaration->classId) {
+				classDeclaration->load<false, true>(in_data);
+				// if (!classDeclaration->classId) {
+				// 	classDeclaration->throwError(
+				// 	    "CUnsolved " + classDeclaration->getName(in_data));
+				// }
+			}
+			auto name = classDeclaration->getName(in_data);
+			// std::cerr << name << "\n";
+			switch (node->kind) {
+				case NodeType::UNKNOW: {
+					auto unknowNode = static_cast<UnknowNode *>(node);
+					auto it = context.lexerStringMap.find(name);
+					if (it == context.lexerStringMap.end()) {
+						classDeclaration->throwError("AUnsolved " + name);
+					}
+					unknowNode->nameId = it->second;
+					break;
+				}
+				case NodeType::CALL: {
+					auto callNode = static_cast<CallNode *>(node);
+					auto it = context.lexerStringMap.find(name);
+					if (it == context.lexerStringMap.end()) {
+						classDeclaration->throwError("BUnsolved " + name);
+					}
+					callNode->nameId = it->second;
+					break;
+				}
+			}
+			classDeclaration->classId = std::nullopt;
+		}
+
 		auto functionFlags =
 		    createFuncNode->functionFlags & ~(FunctionFlags::FUNC_SKIP_LOAD);
 		auto lastCurrentFunctionId = context.currentFunctionId;
@@ -526,39 +560,6 @@ void loadFunctionGenerics(in_func, std::string &name,
 				newFuncInfo->returnClass =
 				    createFuncNode->classDeclaration->copy(in_data);
 			}
-		}
-
-		for (auto &[classDeclaration, node] :
-		     funcInfo->genericData->mustRenameNodes) {
-			if (!classDeclaration->classId) {
-				classDeclaration->load<false, true>(in_data);
-				// if (!classDeclaration->classId) {
-				// 	classDeclaration->throwError(
-				// 	    "CUnsolved " + classDeclaration->getName(in_data));
-				// }
-			}
-			auto name = classDeclaration->getName(in_data);
-			switch (node->kind) {
-				case NodeType::UNKNOW: {
-					auto unknowNode = static_cast<UnknowNode *>(node);
-					auto it = context.lexerStringMap.find(name);
-					if (it == context.lexerStringMap.end()) {
-						classDeclaration->throwError("AUnsolved " + name);
-					}
-					unknowNode->nameId = it->second;
-					break;
-				}
-				case NodeType::CALL: {
-					auto callNode = static_cast<CallNode *>(node);
-					auto it = context.lexerStringMap.find(name);
-					if (it == context.lexerStringMap.end()) {
-						classDeclaration->throwError("BUnsolved " + name);
-					}
-					callNode->nameId = it->second;
-					break;
-				}
-			}
-			classDeclaration->classId = std::nullopt;
 		}
 
 		newFuncInfo->reflectDeclarationMap.reserve(
@@ -629,41 +630,41 @@ void loadFunctionGenerics(in_func, std::string &name,
 		    lastNewPositionOfStaticDeclaration;
 		context.gotoFunction(lastCurrentFunctionId);
 
-		for (auto &[classDeclaration, node] :
-		     funcInfo->genericData->mustRenameNodes) {
-			if (!classDeclaration) {
-				classDeclaration->load<false>(in_data);
-				if (!classDeclaration->classId) {
-					classDeclaration->throwError(
-					    "DUnsolved " + classDeclaration->getName(in_data));
-				}
-			}
-			switch (node->kind) {
-				case NodeType::UNKNOW: {
-					auto unknowNode = static_cast<UnknowNode *>(node);
-					auto it = context.lexerStringMap.find(
-					    classDeclaration->getName(in_data));
-					if (it == context.lexerStringMap.end()) {
-						classDeclaration->throwError(
-						    "EUnsolved " + classDeclaration->getName(in_data));
-					}
-					unknowNode->nameId = it->second;
-					break;
-				}
-				case NodeType::CALL: {
-					auto callNode = static_cast<CallNode *>(node);
-					auto it = context.lexerStringMap.find(
-					    classDeclaration->getName(in_data));
-					if (it == context.lexerStringMap.end()) {
-						classDeclaration->throwError(
-						    "FUnsolved " + classDeclaration->getName(in_data));
-					}
-					callNode->nameId = it->second;
-					break;
-				}
-			}
-			classDeclaration->classId = std::nullopt;
-		}
+		// for (auto &[classDeclaration, node] :
+		//      funcInfo->genericData->mustRenameNodes) {
+		// 	if (!classDeclaration) {
+		// 		classDeclaration->load<false>(in_data);
+		// 		if (!classDeclaration->classId) {
+		// 			classDeclaration->throwError(
+		// 			    "DUnsolved " + classDeclaration->getName(in_data));
+		// 		}
+		// 	}
+		// 	switch (node->kind) {
+		// 		case NodeType::UNKNOW: {
+		// 			auto unknowNode = static_cast<UnknowNode *>(node);
+		// 			auto it = context.lexerStringMap.find(
+		// 			    classDeclaration->getName(in_data));
+		// 			if (it == context.lexerStringMap.end()) {
+		// 				classDeclaration->throwError(
+		// 				    "EUnsolved " + classDeclaration->getName(in_data));
+		// 			}
+		// 			unknowNode->nameId = it->second;
+		// 			break;
+		// 		}
+		// 		case NodeType::CALL: {
+		// 			auto callNode = static_cast<CallNode *>(node);
+		// 			auto it = context.lexerStringMap.find(
+		// 			    classDeclaration->getName(in_data));
+		// 			if (it == context.lexerStringMap.end()) {
+		// 				classDeclaration->throwError(
+		// 				    "FUnsolved " + classDeclaration->getName(in_data));
+		// 			}
+		// 			callNode->nameId = it->second;
+		// 			break;
+		// 		}
+		// 	}
+		// 	classDeclaration->classId = std::nullopt;
+		// }
 	}
 }
 

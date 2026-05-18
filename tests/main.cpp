@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
 		try {
 			for (int i = 0; i < 1; ++i) {
 				AutoLang::ACompiler compiler;
-				compiler.setLimitOpcodeCount(100);
+				compiler.setLimitOpcodeCount(1000);
 				// ANativeMap nativeMap = {
 				// 	{"hi", (ANativeFunction)[](NativeFuncInput) ->
 				// AutoLang::AObject * { 		std::cerr << "Hello world!!!\n";

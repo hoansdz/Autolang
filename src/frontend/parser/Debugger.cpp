@@ -857,13 +857,16 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 		const std::string &name = context.lexerString[token->indexData];
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
-			throw ParserError(context.tokens[i].line,
-			                  "Expected ':' but not found");
+			throw ParserError(
+			    context.tokens[i].line,
+			    "Expected ':' after parameter name but not found");
 		}
 		AutoLang::ClassDeclaration *classDeclaration = nullptr;
 		if (!expect(token, Lexer::TokenType::COLON)) {
 			if constexpr (mustHaveColon) {
-				throw ParserError(token->line, "Expected ':' but not found");
+				throw ParserError(
+				    token->line,
+				    "Expected ':' after parameter name but not found");
 			}
 		} else {
 			classDeclaration =
@@ -1561,10 +1564,23 @@ HasClassIdNode *findIdentifierNode(in_func, size_t &i, LexerStringId nameId,
 	}
 	// std::cerr << "C " << context.lexerString[nameId] << "\n";
 	addThisToClosure(in_data, i);
-	return context.unknowNodePool.push(context.tokens[i].line,
-	                                   context.currentClassId,
-	                                   context.currentFunctionId, nameId,
-	                                   nullable, context.justFindStaticMember);
+	auto unknowNode = context.unknowNodePool.push(
+	    context.tokens[i].line, context.currentClassId,
+	    context.currentFunctionId, nameId, nullable,
+	    context.justFindStaticMember);
+	if (context.preloadGenericData) {
+		auto declaration = context.preloadGenericData->findDeclaration(nameId);
+		if (declaration) {
+			auto classDeclaration = context.classDeclarationAllocator.push();
+			classDeclaration->line = context.tokens[i].line;
+			classDeclaration->baseClassLexerStringId = nameId;
+			classDeclaration->isGeneric = true;
+			declaration->allClassDeclarations.push_back(classDeclaration);
+			context.preloadGenericData->mustRenameNodes[classDeclaration] =
+			    unknowNode;
+		}
+	}
+	return unknowNode;
 }
 
 HasClassIdNode *findVarNode(in_func, size_t &i, LexerStringId nameId,

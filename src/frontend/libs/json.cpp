@@ -242,7 +242,8 @@ inline AObject *to_int_array(NativeFuncInData) {
 		for (auto &element : handle->j) {
 			if (!element.is_number_integer()) {
 				notifier.throwException(
-				    "Element in JSON array is not an integer");
+				    "Element " + std::to_string(notifier.getArraySize(newArr)) +
+				    " in JSON array is not an integer");
 				return nullptr;
 			}
 			notifier.arrayAdd(newArr,
@@ -268,12 +269,40 @@ inline AObject *to_float_array(NativeFuncInData) {
 	try {
 		for (auto &element : handle->j) {
 			if (!element.is_number()) {
-				notifier.throwException(
-				    "Element in JSON array is not a number");
+				notifier.throwException("Element " +
+				                        std::to_string(newArr->member->size) +
+				                        " in JSON array is not a number");
 				return nullptr;
 			}
 			notifier.arrayAdd(newArr,
 			                  notifier.createFloat(element.get<double>()));
+		}
+	} catch (const std::exception &e) {
+		notifier.throwException(std::string("JSON Error: ") + e.what());
+		return nullptr;
+	}
+	return newArr;
+}
+
+inline AObject *to_bool_array(NativeFuncInData) {
+	auto handle = static_cast<AJsonHandle *>(args[0]->data->data);
+	ClassId arrayClassId = args[1]->i;
+
+	if (!handle->j.is_array()) {
+		notifier.throwException("JSON is not an array");
+		return nullptr;
+	}
+
+	auto newArr = notifier.createArray(arrayClassId);
+	try {
+		for (auto &element : handle->j) {
+			if (!element.is_boolean()) {
+				notifier.throwException(
+				    "Element " + std::to_string(notifier.getArraySize(newArr)) +
+				    " in JSON array is not a boolean");
+				return nullptr;
+			}
+			notifier.arrayAdd(newArr, notifier.createBool(element.get<bool>()));
 		}
 	} catch (const std::exception &e) {
 		notifier.throwException(std::string("JSON Error: ") + e.what());
@@ -293,10 +322,12 @@ inline AObject *to_string_array(NativeFuncInData) {
 
 	auto newArr = notifier.createArray(arrayClassId);
 	try {
+		int i = 0;
 		for (auto &element : handle->j) {
 			if (!element.is_string()) {
 				notifier.throwException(
-				    "Element in JSON array is not a string");
+				    "Element " + std::to_string(notifier.getArraySize(newArr)) +
+				    " in JSON array is not a string");
 				return nullptr;
 			}
 			notifier.arrayAdd(
@@ -307,6 +338,108 @@ inline AObject *to_string_array(NativeFuncInData) {
 		return nullptr;
 	}
 	return newArr;
+}
+
+inline AObject *to_json_array(NativeFuncInData) {
+	auto handle = static_cast<AJsonHandle *>(args[0]->data->data);
+	ClassId arrayClassId = args[1]->i;
+
+	if (!handle->j.is_array()) {
+		notifier.throwException("JSON is not an array");
+		return nullptr;
+	}
+
+	auto newArr = notifier.createArray(arrayClassId);
+	try {
+		for (auto &element : handle->j) {
+			notifier.arrayAdd(
+			    newArr, notifier.createNativeData(args[0]->type,
+			                                      new AJsonHandle{element},
+			                                      destroyJson));
+		}
+	} catch (const std::exception &e) {
+		notifier.throwException(std::string("JSON Error: ") + e.what());
+		return nullptr;
+	}
+	return newArr;
+}
+
+inline AObject *json_to_class(NativeFuncInData) {
+	auto handle = static_cast<AJsonHandle *>(args[0]->data->data);
+	ClassId classId = args[1]->i;
+	auto clazz = notifier.vm->data.classes[classId];
+
+	if (!handle->j.is_object()) {
+		notifier.throwException("JSON is not an object");
+		return nullptr;
+	}
+
+	auto newObj = notifier.createMemberObject(classId, clazz->memberId.size());
+
+	for (const auto &[memberName, memberPos] : clazz->memberMap) {
+		int memberClassId = clazz->memberId[memberPos];
+
+		if (!handle->j.contains(memberName)) {
+			notifier.throwException("JSON missing field: " + memberName);
+			return nullptr;
+		}
+
+		const auto &field = handle->j.at(memberName);
+
+		try {
+			switch (memberClassId) {
+				case AutoLang::DefaultClass::intClassId:
+					if (!field.is_number_integer()) {
+						notifier.throwException("Field '" + memberName +
+						                        "' is not an Int");
+						return nullptr;
+					}
+					newObj->member->data[memberPos] =
+					    notifier.createInt(field.get<int64_t>());
+					break;
+
+				case AutoLang::DefaultClass::floatClassId:
+					if (!field.is_number()) {
+						notifier.throwException("Field '" + memberName +
+						                        "' is not a Float");
+						return nullptr;
+					}
+					newObj->member->data[memberPos] =
+					    notifier.createFloat(field.get<double>());
+					break;
+
+				case AutoLang::DefaultClass::stringClassId:
+					if (!field.is_string()) {
+						notifier.throwException("Field '" + memberName +
+						                        "' is not a String");
+						return nullptr;
+					}
+					newObj->member->data[memberPos] =
+					    notifier.createString(field.get<std::string>());
+					break;
+
+				case AutoLang::DefaultClass::boolClassId:
+					if (!field.is_boolean()) {
+						notifier.throwException("Field '" + memberName +
+						                        "' is not a Bool");
+						return nullptr;
+					}
+					newObj->member->data[memberPos] =
+					    notifier.createBool(field.get<bool>());
+					break;
+
+				default:
+					notifier.throwException("Unsupported field type for: " +
+					                        memberName);
+					return nullptr;
+			}
+		} catch (const std::exception &e) {
+			notifier.throwException(std::string("JSON Error: ") + e.what());
+			return nullptr;
+		}
+	}
+
+	return newObj;
 }
 
 void init(ACompiler &compiler) {
@@ -382,11 +515,25 @@ class Json {
     private func _toFloatArray(id: Int): Array<Float>
     func toFloatArray(): Array<Float> = _toFloatArray(getClassId(Array<Float>))
 
+	@native("json_to_bool_array")
+	private func _toBoolArray(id: Int): Array<Bool>
+	func toBoolArray(): Array<Bool> = _toBoolArray(getClassId(Array<Bool>))
+
     @native("json_to_string_array")
     private func _toStringArray(id: Int): Array<String>
     func toStringArray(): Array<String> = _toStringArray(getClassId(Array<String>))
 
+	@native("json_to_json_array")
+	private func _toJsonArray(id: Int): Array<Json>
+	func toJsonArray(): Array<Json> = _toJsonArray(getClassId(Array<Json>))
+
 }
+
+@native("json_to_class")
+func _jsonToClass<T>(json: Json, classId: Int = getClassId(T)): T
+
+func jsonToClass<T>(json: Json): T = _jsonToClass<T>(json)
+
         )###",
 	    LibraryConfig(),
 	    ANativeMap({
@@ -416,7 +563,10 @@ class Json {
 	        {"json_as_bool", &json::as_bool},
 	        {"json_to_int_array", &json::to_int_array},
 	        {"json_to_float_array", &json::to_float_array},
+	        {"json_to_bool_array", &json::to_bool_array},
 	        {"json_to_string_array", &json::to_string_array},
+	        {"json_to_json_array", &json::to_json_array},
+	        {"json_to_class", &json::json_to_class},
 	    }));
 }
 
