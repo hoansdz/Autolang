@@ -536,6 +536,11 @@ inline AObject *to_array_class(NativeFuncInData) {
 	return newArr;
 }
 
+inline AObject *to_string(NativeFuncInData) {
+    auto handle = static_cast<AJsonHandle *>(args[0]->data->data);
+    return notifier.createString(handle->j.dump(-1));
+}
+
 void init(ACompiler &compiler) {
 	compiler.registerBuiltInLibrary(
 	    "std/json", R"###(
@@ -621,6 +626,9 @@ class Json {
 	private func _toJsonArray(id: Int): Array<Json>
 	func toJsonArray(): Array<Json> = _toJsonArray(getClassId(Array<Json>))
 
+	@native("json_to_string") 
+    func toString(): String
+
 }
 
 @native("json_to_class")
@@ -667,6 +675,7 @@ func jsonToArrayClass<T>(json: Json): Array<T> = _jsonToArrayClass<T>(json)
 	        {"json_to_json_array", &json::to_json_array},
 	        {"json_to_class", &json::json_to_class},
 			{"json_to_array_class", &json::to_array_class},
+			{"json_to_string", &json::to_string},
 	    }));
 }
 

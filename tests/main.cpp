@@ -125,14 +125,15 @@ int main(int argc, char *argv[]) {
 						}
 					}
 				)###");
+				// if (compiler.compile(
+				//         "./tests/source.atl", source_code,
+				//         AutoLang::LibraryConfig(false, true, true))) {
+				// 	compiler.run();
+				// 	compiler.refresh();
+				// }
 				if (compiler.compile(
-				        "./tests/source.atl", source_code,
-				        AutoLang::LibraryConfig(false, true, true))) {
-					compiler.run();
-					compiler.refresh();
-				}
-				if (compiler.compile(
-				        "./tests/source.atl", source_code,
+				        "./tests/testCorrectness.atl", 
+						// source_code,
 				        AutoLang::LibraryConfig(false, true, true))) {
 					compiler.run();
 					compiler.refresh();
