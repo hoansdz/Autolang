@@ -10,7 +10,7 @@ HasClassIdNode *loadWhenExpression(in_func, size_t &i, HasClassIdNode *value) {
 	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
 	switch (token->type) {
-		case Lexer::TokenType::IN:
+		case Lexer::TokenType::IN_:
 		case Lexer::TokenType::IS: {
 			if (!value) {
 				throw ParserError(

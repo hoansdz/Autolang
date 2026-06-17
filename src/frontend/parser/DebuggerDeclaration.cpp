@@ -157,7 +157,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 		bool lastJustFindStatic = context.justFindStatic;
 		context.justFindStatic = isStatic;
 		value = loadExpression(in_data, 0, i);
-		if (!classDeclaration && value->kind == NodeType::CONST &&
+		if (!classDeclaration && value->kind == NodeType::CONST_VAL &&
 		    value->classId == DefaultClass::nullClassId) {
 			throw ParserError(token->line,
 			                  "Variable '" + name +
@@ -204,7 +204,7 @@ createNode:;
 		declarationName = name;
 	}
 
-	// if (value->kind == NodeType::CONST && value->isNullable()) {
+	// if (value->kind == NodeType::CONST_VAL && value->isNullable()) {
 	// 	if (!nullable) {
 	// 		throw ParserError(
 	// 		    token->line,

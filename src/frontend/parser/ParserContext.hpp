@@ -60,6 +60,7 @@ constexpr LexerStringId lexerIdset = 19;
 constexpr LexerStringId lexerIdcontains = 20;
 constexpr LexerStringId lexerIdthis = 21;
 constexpr LexerStringId lexerIdFunction = 22;
+constexpr LexerStringId lexerIdtoString = 23;
 
 using GenericCaller = ClassDeclaration;
 

@@ -37,10 +37,12 @@ val start = Time.now()
 // val b = "Hello"
 // println(b.substr(1))
 
-var a = 0
-for (val i in 0..10_000_000) {
-	a = a + i
-}
-println(a)
+// @import("std/http")
+
+// println(Http.getAll(["https://www.facebook.com", "google.com"], 5000))
+
+val x = <Int>[1, 2, 3]
+println("x: ${x}")	
 
 println("Total runtime: ${Time.now() - start} ms")
+println()

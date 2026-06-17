@@ -29,7 +29,7 @@ ExprNode *CastNode::resolve(in_func) {
 	}
 	try {
 		switch (value->kind) {
-			case NodeType::CONST: {
+			case NodeType::CONST_VAL: {
 				auto node = static_cast<ConstValueNode *>(value);
 				switch (classId) {
 					case AutoLang::DefaultClass::intClassId: {

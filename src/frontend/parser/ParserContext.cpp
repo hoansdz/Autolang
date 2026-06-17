@@ -40,6 +40,7 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerString.emplace_back("contains");
 	lexerString.emplace_back("this");
 	lexerString.emplace_back("Function");
+	lexerString.emplace_back("toString");
 
 	lexerStringMap["super"] = lexerIdsuper;
 	lexerStringMap["Int"] = lexerIdInt;
@@ -64,6 +65,7 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerStringMap["set"] = lexerIdset;
 	lexerStringMap["contains"] = lexerIdcontains;
 	lexerStringMap["this"] = lexerIdthis;
+	lexerStringMap["toString"] = lexerIdtoString;
 
 	constValue[lexerIdnull] = &constValues[0];
 	constValue[lexerIdtrue] = &constValues[1];

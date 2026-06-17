@@ -29,8 +29,8 @@ AObject *random(NativeFuncInData);
 AObject *sqrt(NativeFuncInData);
 AObject *exp(NativeFuncInData);
 AObject *log(NativeFuncInData);
-AObject *min(NativeFuncInData);
-AObject *max(NativeFuncInData);
+AObject *m_min(NativeFuncInData);
+AObject *m_max(NativeFuncInData);
 
 inline bool isIntegerFloat(double x) { return std::floor(x) == x; }
 

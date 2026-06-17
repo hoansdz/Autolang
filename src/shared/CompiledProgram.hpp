@@ -1,7 +1,7 @@
 #ifndef COMPILED_PROGRAM_HPP
 #define COMPILED_PROGRAM_HPP
 
-#include "ankerl/unordered_dense.h"
+#include "third_party/ankerl/unordered_dense.h"
 #include "shared/AClass.hpp"
 #include "shared/AObject.hpp"
 #include "shared/AString.hpp"

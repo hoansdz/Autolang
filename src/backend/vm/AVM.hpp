@@ -17,7 +17,7 @@ namespace AutoLang {
 template <typename K, typename V>
 size_t estimateUnorderedMapSize(const HashMap<K, V> &map);
 
-enum class VMState { READY, RUNNING, HALTED, WAITING, ERROR };
+enum class VMState { READY, RUNNING, HALTED, WAITING, ERR };
 
 #ifndef MAX_STACK_OBJECT
 #define MAX_STACK_OBJECT 256

@@ -86,7 +86,7 @@ std::string to_string(ANotifier &notifier, AObject *obj) {
 				}
 				std::string result = data->str->data;
 				notifier.release(data);
-				return std::move(result);
+				return result;
 			}
 
 			if (obj->flags & AObject::Flags::OBJ_HAS_MEMBER_DATA) {

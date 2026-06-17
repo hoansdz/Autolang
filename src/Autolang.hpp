@@ -13,6 +13,9 @@
 #ifndef NO_INCLUDE_LIBS_JSON
 #include "frontend/libs/json.cpp"
 #endif
+#ifndef NO_INCLUDE_LIBS_HTTP
+#include "frontend/libs/http.cpp"
+#endif
 #include "backend/libs/array.cpp"
 #include "backend/libs/map.cpp"
 #include "backend/libs/set.cpp"

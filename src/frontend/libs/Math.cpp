@@ -309,7 +309,7 @@ AObject *log(NativeFuncInData) {
 	return notifier.createFloat(std::log(val));
 }
 
-AObject *min(NativeFuncInData) {
+AObject *m_min(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 
@@ -325,7 +325,7 @@ AObject *min(NativeFuncInData) {
 	return notifier.createFloat(std::min(v1, v2));
 }
 
-AObject *max(NativeFuncInData) {
+AObject *m_max(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 
@@ -358,8 +358,8 @@ void init(AutoLang::ACompiler &compiler) {
 	nativeMap.emplace("random", &Math::random);
 
 	nativeMap.emplace("sqrt", &Math::sqrt);
-	nativeMap.emplace("min", &Math::min);
-	nativeMap.emplace("max", &Math::max);
+	nativeMap.emplace("min", &Math::m_min);
+	nativeMap.emplace("max", &Math::m_max);
 	nativeMap.emplace("log", &Math::log);
 	nativeMap.emplace("exp", &Math::exp);
 

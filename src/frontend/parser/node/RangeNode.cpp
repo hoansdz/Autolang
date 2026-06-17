@@ -14,7 +14,7 @@ ExprNode *RangeNode::resolve(in_func) {
 
 void RangeNode::optimize(in_func) {
 	from->optimize(in_data);
-	if (from->kind == NodeType::CONST) {
+	if (from->kind == NodeType::CONST_VAL) {
 		static_cast<ConstValueNode *>(from)->isLoadPrimary = true;
 	}
 	if (from->isNullable()) {
@@ -23,7 +23,7 @@ void RangeNode::optimize(in_func) {
 		           "? but Int was expected");
 	}
 	to->optimize(in_data);
-	if (to->kind == NodeType::CONST) {
+	if (to->kind == NodeType::CONST_VAL) {
 		static_cast<ConstValueNode *>(to)->isLoadPrimary = true;
 	}
 	if (to->isNullable()) {

@@ -668,7 +668,7 @@ std::string Token::toString(ParserContext &context) {
 			return "while";
 		case TokenType::CONTINUE:
 			return "continue";
-		case TokenType::IN:
+		case TokenType::IN_:
 			return "in";
 		case TokenType::QMARK:
 			return "?";

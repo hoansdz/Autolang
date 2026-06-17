@@ -10,7 +10,7 @@ ExprNode *NullCoalescingNode::resolve(in_func) {
 	left = static_cast<HasClassIdNode *>(left->resolve(in_data));
 	right = static_cast<HasClassIdNode *>(right->resolve(in_data));
 	switch (left->kind) {
-		case NodeType::CONST: {
+		case NodeType::CONST_VAL: {
 			if (left->classId == DefaultClass::nullClassId) {
 				warning(in_data, "Left expression will never be used");
 				auto result = right;

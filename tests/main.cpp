@@ -1,4 +1,5 @@
 #define AUTOLANG_LIMIT_OPCODE
+#define NO_INCLUDE_LIBS_HTTP
 #include <Autolang.hpp>
 #include <functional>
 #include <iostream>
@@ -132,7 +133,7 @@ int main(int argc, char *argv[]) {
 				// 	compiler.refresh();
 				// }
 				if (compiler.compile(
-				        "./tests/testCorrectness.atl", 
+				        "./tests/a.atl", 
 						// source_code,
 				        AutoLang::LibraryConfig(false, true, true))) {
 					compiler.run();

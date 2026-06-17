@@ -340,7 +340,7 @@ void SetNode::optimize(in_func) {
 				value = static_cast<OptionalAccessNode *>(value)->value;
 				goto changedValue;
 			}
-			case NodeType::CONST: {
+			case NodeType::CONST_VAL: {
 				if (op != Lexer::TokenType::EQUAL) {
 					// Optimize call primary instead of copies
 					static_cast<ConstValueNode *>(value)->isLoadPrimary = true;
@@ -444,7 +444,7 @@ void SetNode::optimize(in_func) {
 		    value->classId == AutoLang::DefaultClass::floatClassId) {
 			throwError("Cannot cast 'Float' to 'Int'");
 		}
-		if (value->kind != NodeType::CONST) {
+		if (value->kind != NodeType::CONST_VAL) {
 			value = context.castPool.push(value, detach->classId);
 			return;
 		}
@@ -544,7 +544,7 @@ void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					put_opcode_u32(bytecodes, valueNode->declaration->id);
 					return;
 				}
-				case NodeType::CONST: {
+				case NodeType::CONST_VAL: {
 					auto valueNode = static_cast<ConstValueNode *>(value);
 					bytecodes.emplace_back(detachNode->declaration->isGlobal
 					                           ? Opcode::GLOBAL_STORE_CONST

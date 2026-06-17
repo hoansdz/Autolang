@@ -1,7 +1,7 @@
 #ifndef LEXER_HPP
 #define LEXER_HPP
 
-#include "ankerl/unordered_dense.h"
+#include "third_party/ankerl/unordered_dense.h"
 #include "shared/Type.hpp"
 #include <exception>
 #include <fstream>
@@ -100,7 +100,7 @@ enum TokenType : uint8_t {
 	NOT,
 	AND,
 	OR,
-	IN,
+	IN_,
 	PUBLIC,
 	PRIVATE,
 	PROTECTED,
@@ -144,7 +144,7 @@ static const HashMap<std::string, TokenType> CAST = {
     {"else", TokenType::ELSE},
     {"and", TokenType::AND_AND},
     {"for", TokenType::FOR},
-    {"in", TokenType::IN},
+    {"in", TokenType::IN_},
     {"or", TokenType::OR_OR},
     {"func", TokenType::FUNC},
     {"return", TokenType::RETURN},

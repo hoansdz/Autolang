@@ -20,6 +20,9 @@
 #ifndef NO_INCLUDE_LIBS_JSON
 #include "frontend/libs/json.hpp"
 #endif
+#ifndef NO_INCLUDE_LIBS_HTTP
+#include "frontend/libs/http.hpp"
+#endif
 #include <chrono>
 #include <filesystem>
 #include <iostream>
@@ -727,6 +730,13 @@ void ACompiler::generateBytecodes() {
 		// for (auto& [k, v] : compile.funcMap)
 		// 	++total;
 
+		for (auto *lib : generatedLibraries) {
+			delete lib;
+		}
+		mainSource = nullptr;
+		generatedLibraryMap.clear();
+		generatedLibraries.clear();
+
 		// printDebug("TOTAL FUNC IN MAP: " + std::to_string(total));
 	} catch (const ParserError &err) {
 		context.hasError = true;
@@ -782,11 +792,13 @@ uint32_t ACompiler::getLimitOpcodeCount() {
 
 void ACompiler::refresh() {
 	parserContext.refresh(vm.data);
-	mainSource->lexerContext.refresh();
+	if (mainSource) {
+		mainSource->lexerContext.refresh();
+		mainSource = nullptr;
+	}
 	for (auto *lib : generatedLibraries) {
 		delete lib;
 	}
-	mainSource = nullptr;
 	generatedLibraryMap.clear();
 	generatedLibraries.clear();
 	vm.restart();
@@ -857,6 +869,11 @@ ACompiler::ACompiler(ACompilerConfig config) {
 #ifndef NO_INCLUDE_LIBS_JSON
 	if (config.addStdJson) {
 		AutoLang::Libs::json::init(*this);
+	}
+#endif
+#ifndef NO_INCLUDE_LIBS_HTTP
+	if (config.addHttpJson) {
+		AutoLang::Libs::http::init(*this);
 	}
 #endif
 }

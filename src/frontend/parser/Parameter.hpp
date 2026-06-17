@@ -2,6 +2,8 @@
 #define PARAMETER_HPP
 
 #include "frontend/parser/node/OptimizeNode.hpp"
+#include <vector>
+#include <cstdint>
 
 namespace AutoLang {
 

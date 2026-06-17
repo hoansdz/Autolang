@@ -8,7 +8,7 @@ namespace AutoLang {
 
 ExprNode *IfNode::resolve(in_func) {
 	condition = static_cast<HasClassIdNode *>(condition->resolve(in_data));
-	// if (condition->kind == NodeType::CONST) {
+	// if (condition->kind == NodeType::CONST_VAL) {
 	// 	if (static_cast<ConstValueNode *>(condition)->classId !=
 	// 	    AutoLang::DefaultClass::boolClassId) {
 	// 		throwError("Cannot use expression of type '" +

@@ -19,7 +19,7 @@ ExprNode *UnaryNode::resolve(in_func) {
 	// }
 	value = static_cast<HasClassIdNode *>(value->resolve(in_data));
 	switch (value->kind) {
-		case NodeType::CONST: {
+		case NodeType::CONST_VAL: {
 			auto value = static_cast<ConstValueNode *>(this->value);
 			switch (op) {
 				using namespace AutoLang;
@@ -141,7 +141,7 @@ ExprNode *UnaryNode::resolve(in_func) {
 
 void UnaryNode::optimize(in_func) {
 	switch (value->kind) {
-		case NodeType::CONST: {
+		case NodeType::CONST_VAL: {
 			static_cast<ConstValueNode *>(value)->isLoadPrimary =
 			    op != Lexer::TokenType::PLUS;
 			break;
@@ -267,7 +267,7 @@ void UnaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	switch (op) {
 		case Lexer::TokenType::PLUS: {
 			value->putBytecodes(in_data, bytecodes);
-			if (value->kind == NodeType::CONST) {
+			if (value->kind == NodeType::CONST_VAL) {
 				return;
 			}
 			switch (value->classId) {

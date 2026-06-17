@@ -16,7 +16,7 @@ AVM::AVM(bool allowDebug)
 }
 
 void AVM::start() {
-	if (state == VMState::ERROR) {
+	if (state == VMState::ERR) {
 		throw std::runtime_error("VM returns error");
 	}
 	state = VMState::RUNNING;

@@ -71,7 +71,7 @@ ExprNode *loadFor(in_func, size_t &i) {
 	declaration =
 	    context.varPool.push(firstLine, declarationNode, false, false);
 	if (!nextToken(&token, context.tokens, i) ||
-	    !expect(token, Lexer::TokenType::IN)) {
+	    !expect(token, Lexer::TokenType::IN_)) {
 		--i;
 		throw ParserError(context.tokens[i].line,
 		                  "Expected 'in' after loop variable in for statement");

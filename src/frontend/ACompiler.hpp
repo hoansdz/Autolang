@@ -78,6 +78,9 @@ struct ACompilerConfig {
 #ifndef NO_INCLUDE_LIBS_JSON
 	bool addStdJson = true;
 #endif
+#ifndef NO_INCLUDE_LIBS_HTTP
+	bool addHttpJson = true;
+#endif
 	bool addStdMath = true;
 };
 

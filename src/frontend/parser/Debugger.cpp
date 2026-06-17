@@ -1164,7 +1164,7 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 						ExprNode::deleteNode(temp);
 						break;
 					}
-					case NodeType::CONST: {
+					case NodeType::CONST_VAL: {
 						throw ParserError(firstLine,
 						                  "Cannot call a constant value");
 					}
@@ -1751,7 +1751,7 @@ int getPrecedence(Lexer::TokenType type) {
 		case Lexer::TokenType::GT: {
 			return 7;
 		}
-		case Lexer::TokenType::IN: {
+		case Lexer::TokenType::IN_: {
 			return 5;
 		}
 		case Lexer::TokenType::OR_OR:

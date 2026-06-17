@@ -362,13 +362,13 @@ void CallNode::optimize(in_func) {
 					    std::to_string(i) +
 					    ": "
 					    "expected non-null, but argument could be null"
-					    "\nHint: Use '!' to assert or '??' to fallback.");
+					    "\nHint: Use '!' to assert or '?\?' to fallback.");
 				}
 				throwError("Error: Nullability mismatch at parameter " +
 				           std::to_string(i) +
 				           ": "
 				           "expected non-null, but argument could be null"
-				           "\nHint: Use '??' to provide a fallback value.");
+				           "\nHint: Use '?\?' to provide a fallback value.");
 			}
 			switch (argument->classId) {
 				case DefaultClass::intClassId: {
@@ -605,13 +605,13 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 				           std::to_string(j + 1) +
 				           ": "
 				           "expected non-null, but argument could be null"
-				           "\nHint: Use '!' to assert or '??' to fallback.");
+				           "\nHint: Use '!' to assert or '?\?' to fallback.");
 			}
 			throwError("Error: Nullability mismatch at parameter " +
 			           std::to_string(j + 1) +
 			           ": "
 			           "expected non-null, but argument could be null"
-			           "\nHint: Use '??' to provide a fallback value.");
+			           "\nHint: Use '?\?' to provide a fallback value.");
 		}
 		if (funcExpectClassId == inputClassId) {
 			if (funcExpectClassId == DefaultClass::functionClassId) {

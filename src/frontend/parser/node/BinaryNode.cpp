@@ -88,7 +88,7 @@ ExprNode *BinaryNode::resolve(in_func) {
 	left = static_cast<HasClassIdNode *>(left->resolve(in_data));
 	right = static_cast<HasClassIdNode *>(right->resolve(in_data));
 	switch (op) {
-		case Lexer::TokenType::IN: {
+		case Lexer::TokenType::IN_: {
 			switch (right->kind) {
 				case NodeType::RANGE: {
 					if (left->kind == NodeType::CLASS_ACCESS) {
@@ -131,7 +131,7 @@ ExprNode *BinaryNode::resolve(in_func) {
 	}
 	ConstValueNode *l;
 	switch (left->kind) {
-		case NodeType::CONST:
+		case NodeType::CONST_VAL:
 			l = static_cast<ConstValueNode *>(left);
 			break;
 		default:
@@ -139,7 +139,7 @@ ExprNode *BinaryNode::resolve(in_func) {
 	}
 	ConstValueNode *r;
 	switch (right->kind) {
-		case NodeType::CONST:
+		case NodeType::CONST_VAL:
 			r = static_cast<ConstValueNode *>(right);
 			break;
 		default:
@@ -164,9 +164,9 @@ ExprNode *BinaryNode::resolve(in_func) {
 void BinaryNode::optimize(in_func) {
 	left->optimize(in_data);
 	right->optimize(in_data);
-	if (left->kind == NodeType::CONST)
+	if (left->kind == NodeType::CONST_VAL)
 		static_cast<ConstValueNode *>(left)->isLoadPrimary = true;
-	if (right->kind == NodeType::CONST)
+	if (right->kind == NodeType::CONST_VAL)
 		static_cast<ConstValueNode *>(right)->isLoadPrimary = true;
 	switch (op) {
 		case Lexer::TokenType::IS: {
@@ -179,7 +179,7 @@ void BinaryNode::optimize(in_func) {
 			classId = DefaultClass::boolClassId;
 			return;
 		}
-		case Lexer::TokenType::IN: {
+		case Lexer::TokenType::IN_: {
 			if (left->isNullable() || right->isNullable()) {
 				throwError(
 				    "Cannot use operator '" +
@@ -196,7 +196,121 @@ void BinaryNode::optimize(in_func) {
 			classId = DefaultClass::boolClassId;
 			return;
 		}
-		case Lexer::TokenType::PLUS:
+		case Lexer::TokenType::PLUS: {
+			if (left->kind == NodeType::CLASS_ACCESS ||
+			    right->kind == NodeType::CLASS_ACCESS) {
+				throwError("Expected value if use operator '" +
+				           Lexer::Token(0, op).toString(context) + "'");
+			}
+
+			switch (left->classId) {
+				case AutoLang::DefaultClass::boolClassId: {
+					left = context.castPool.push(
+					    left, AutoLang::DefaultClass::intClassId);
+					break;
+				}
+				case AutoLang::DefaultClass::stringClassId: {
+					switch (right->classId) {
+						case DefaultClass::intClassId:
+						case DefaultClass::floatClassId:
+						case DefaultClass::boolClassId:
+						case DefaultClass::stringClassId: {
+							break;
+						}
+						default: {
+							auto classInfo = context.classInfo[right->classId];
+							auto it =
+							    classInfo->allFunction.find(lexerIdtoString);
+							if (it == classInfo->allFunction.end()) {
+								break;
+							}
+							auto &vec = it->second;
+							for (auto funcId : vec) {
+								auto func = compile.functions[funcId];
+								if (func->argSize !=
+								        (!(func->functionFlags &
+								           FunctionFlags::FUNC_IS_STATIC)) ||
+								    func->returnId !=
+								        DefaultClass::stringClassId ||
+								    !(func->functionFlags &
+								      FunctionFlags::FUNC_PUBLIC))
+									continue;
+								auto callNode = context.callNodePool.push(
+								    right->line, std::nullopt, right,
+								    lexerIdtoString,
+								    std::vector<HasClassIdNode *>{}, false,
+								    right->isNullable(), false);
+								right = callNode;
+								callNode->funcId = funcId;
+								callNode->classId = DefaultClass::stringClassId;
+								break;
+							}
+							break;
+						}
+					}
+					break;
+				}
+			}
+			// std::cerr<<compile.classes[left->classId]->name<<'\n';
+
+			switch (right->classId) {
+				case AutoLang::DefaultClass::boolClassId: {
+					right = context.castPool.push(
+					    right, AutoLang::DefaultClass::intClassId);
+					break;
+				}
+				case AutoLang::DefaultClass::stringClassId: {
+					switch (left->classId) {
+						case DefaultClass::intClassId:
+						case DefaultClass::floatClassId:
+						case DefaultClass::boolClassId:
+						case DefaultClass::stringClassId: {
+							break;
+						}
+						default: {
+							auto classInfo = context.classInfo[left->classId];
+							auto it =
+							    classInfo->allFunction.find(lexerIdtoString);
+							if (it == classInfo->allFunction.end()) {
+								break;
+							}
+							auto &vec = it->second;
+							for (auto funcId : vec) {
+								auto func = compile.functions[funcId];
+								if (func->argSize !=
+								        (!(func->functionFlags &
+								           FunctionFlags::FUNC_IS_STATIC)) ||
+								    func->returnId !=
+								        DefaultClass::stringClassId ||
+								    !(func->functionFlags &
+								      FunctionFlags::FUNC_PUBLIC))
+									continue;
+								auto callNode = context.callNodePool.push(
+								    left->line, std::nullopt, left,
+								    lexerIdtoString,
+								    std::vector<HasClassIdNode *>{}, false,
+								    left->isNullable(), false);
+								left = callNode;
+								callNode->funcId = funcId;
+								callNode->classId = DefaultClass::stringClassId;
+								break;
+							}
+							break;
+						}
+					}
+					break;
+				}
+			}
+
+			if (left->isNullable() || right->isNullable()) {
+				throwError(
+				    "Cannot use operator '" +
+				    Lexer::Token(0, op).toString(context) +
+				    "' with nullable value: " + left->getClassName(in_data) +
+				    " + " + right->getClassName(in_data));
+			}
+			break;
+		}
 		case Lexer::TokenType::MINUS:
 		case Lexer::TokenType::STAR:
 		case Lexer::TokenType::SLASH: {
@@ -208,6 +322,7 @@ void BinaryNode::optimize(in_func) {
 			if (left->classId == AutoLang::DefaultClass::boolClassId) {
 				left = context.castPool.push(
 				    left, AutoLang::DefaultClass::intClassId);
+				break;
 			}
 			// std::cerr<<compile.classes[left->classId]->name<<'\n';
 
@@ -334,7 +449,7 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 					put_opcode_u32(bytecodes, rightNode->declaration->id);
 					return true;
 				}
-				case NodeType::CONST: {
+				case NodeType::CONST_VAL: {
 					auto rightNode = static_cast<ConstValueNode *>(right);
 					bytecodes.emplace_back(leftNode->declaration->isGlobal
 					                           ? Opcode::GLOBAL_CAL_CONST
@@ -385,7 +500,7 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 			}
 			break;
 		}
-		case NodeType::CONST: {
+		case NodeType::CONST_VAL: {
 			auto leftNode = static_cast<ConstValueNode *>(left);
 			switch (right->kind) {
 				case NodeType::VAR: {
@@ -442,7 +557,7 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 						put_opcode_u32(bytecodes, rightNode->declaration->id);
 						return true;
 					}
-					case NodeType::CONST: {
+					case NodeType::CONST_VAL: {
 						auto rightNode = static_cast<ConstValueNode *>(right);
 						bytecodes.emplace_back(Opcode::GLOBAL_CAL_CONST);
 						bytecodes.emplace_back(operatorId);
@@ -508,7 +623,7 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 					put_opcode_u32(bytecodes, rightNode->declaration->id);
 					return true;
 				}
-				case NodeType::CONST: {
+				case NodeType::CONST_VAL: {
 					auto rightNode = static_cast<ConstValueNode *>(right);
 					bytecodes.emplace_back(
 					    leftCaller->declaration->isGlobal
@@ -599,7 +714,7 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	left->putBytecodes(in_data, bytecodes);
 	right->putBytecodes(in_data, bytecodes);
 	switch (op) {
-		case Lexer::TokenType::IN: {
+		case Lexer::TokenType::IN_: {
 			switch (right->kind) {
 				case NodeType::RANGE: {
 					bytecodes.emplace_back(Opcode::IN_RANGE);

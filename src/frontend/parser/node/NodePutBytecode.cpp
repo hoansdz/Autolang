@@ -40,7 +40,7 @@ void CanBreakContinueNode::rewrite(in_func, uint8_t *bytecodes) {
 void WhileNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	continuePos = bytecodes.size() - context.currentBytecodePos;
 
-	if (condition->kind == NodeType::CONST) {
+	if (condition->kind == NodeType::CONST_VAL) {
 		// Is bool because optimize forbiddened others
 		if (!static_cast<ConstValueNode *>(condition)->obj->b) {
 			warning(in_data, "While command won't never be called here");
@@ -77,7 +77,7 @@ void ReturnNode::putOptimizedBytecodes(in_func, HasClassIdNode *value,
 				put_opcode_u32(bytecodes, node->declaration->id);
 				return;
 			}
-			case NodeType::CONST: {
+			case NodeType::CONST_VAL: {
 				auto node = static_cast<ConstValueNode *>(value);
 				bytecodes.emplace_back(RETURN_CONST);
 				put_opcode_u32(bytecodes, node->id);

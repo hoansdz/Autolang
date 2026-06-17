@@ -194,7 +194,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 		case NodeType::NULL_COALESCING:
 		case NodeType::OPTIONAL_ACCESS:
 		case NodeType::UNARY:
-		case NodeType::CONST:
+		case NodeType::CONST_VAL:
 		case NodeType::BINARY:
 		case NodeType::GET_PROP:
 		case NodeType::VAR: {
@@ -207,7 +207,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 				if (!nullable) {
 					nullable = true;
 				}
-				if (n->kind == NodeType::CONST) {
+				if (n->kind == NodeType::CONST_VAL) {
 					break;
 				}
 			}
@@ -467,7 +467,7 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					}
 					case NodeType::CREATE_CLOSURE:
 					case NodeType::FUNCTION_ACCESS:
-					case NodeType::CONST:
+					case NodeType::CONST_VAL:
 					case NodeType::BINARY:
 					case NodeType::GET_PROP:
 					case NodeType::VAR: {
@@ -514,7 +514,7 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					}
 					case NodeType::CREATE_CLOSURE:
 					case NodeType::FUNCTION_ACCESS:
-					case NodeType::CONST:
+					case NodeType::CONST_VAL:
 					case NodeType::BINARY:
 					case NodeType::GET_PROP:
 					case NodeType::VAR: {
@@ -579,7 +579,7 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				// 		break;
 				// 	}
 				// 	case NodeType::CLASS_ACCESS:
-				// 	case NodeType::CONST:
+				// 	case NodeType::CONST_VAL:
 				// 	case NodeType::VAR: {
 				// 		break;
 				// 	}

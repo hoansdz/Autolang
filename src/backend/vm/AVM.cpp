@@ -28,7 +28,7 @@ void AVM::run() {
 #endif
 	resume();
 	switch (state) {
-		case VMState::ERROR: {
+		case VMState::ERR: {
 			assert(mainCallFrame->exception);
 			std::vector<Function *> funcs;
 			std::cerr << "Exception: "
@@ -470,7 +470,7 @@ resumeCallFrame:;
 			}
 			if (callFrames.getSize() == topCallFrame) {
 				callFrames.pop();
-				state = VMState::ERROR;
+				state = VMState::ERR;
 				if (callFrames.getSize() != 0) {
 					auto oldCallFrame = callFrames.top();
 					oldCallFrame->exception = currentCallFrame->exception;

@@ -42,7 +42,7 @@ void ForNode::optimize(in_func) {
 			auto rangeNode = static_cast<RangeNode *>(data);
 			rangeNode->optimize(in_data);
 			rangeNode->from->optimize(in_data);
-			if (rangeNode->from->kind == NodeType::CONST) {
+			if (rangeNode->from->kind == NodeType::CONST_VAL) {
 				static_cast<ConstValueNode *>(rangeNode->from)->isLoadPrimary =
 				    false;
 			}
@@ -63,7 +63,7 @@ void ForNode::optimize(in_func) {
 					throwError("To value must be Int");
 				}
 			}
-			if (rangeNode->to->kind == NodeType::CONST) {
+			if (rangeNode->to->kind == NodeType::CONST_VAL) {
 				static_cast<ConstValueNode *>(rangeNode->to)->isLoadPrimary =
 				    true;
 			}
@@ -196,7 +196,7 @@ bool ForNode::putOptimizedRangeBytecode(in_func,
 			put_opcode_u32(bytecodes, 0);
 			return true;
 		}
-		case NodeType::CONST: {
+		case NodeType::CONST_VAL: {
 			auto rightNode = static_cast<ConstValueNode *>(right);
 			if (right->classId == AutoLang::DefaultClass::nullClassId) {
 				// throwError("Null must be cleared by optimizer");

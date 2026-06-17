@@ -39,7 +39,7 @@ enum NodeType : uint8_t {
 	UNKNOW,
 	VAR,
 	BINARY,
-	CONST,
+	CONST_VAL,
 	GET_PROP,
 	DECLARATION,
 	CALL,
@@ -268,26 +268,26 @@ struct ConstValueNode : HasClassIdNode {
 	bool isLoadPrimary = false;
 	uint32_t id = UINT32_MAX;
 	ConstValueNode()
-	    : HasClassIdNode(NodeType::CONST, AutoLang::DefaultClass::intClassId,
+	    : HasClassIdNode(NodeType::CONST_VAL, AutoLang::DefaultClass::intClassId,
 	                     line) {}
 	ConstValueNode(uint32_t line, int64_t i)
-	    : HasClassIdNode(NodeType::CONST, AutoLang::DefaultClass::intClassId,
+	    : HasClassIdNode(NodeType::CONST_VAL, AutoLang::DefaultClass::intClassId,
 	                     line),
 	      i(i) {}
 	ConstValueNode(uint32_t line, double f)
-	    : HasClassIdNode(NodeType::CONST, AutoLang::DefaultClass::floatClassId,
+	    : HasClassIdNode(NodeType::CONST_VAL, AutoLang::DefaultClass::floatClassId,
 	                     line),
 	      f(f) {}
 	ConstValueNode(uint32_t line, std::string str)
-	    : HasClassIdNode(NodeType::CONST, AutoLang::DefaultClass::stringClassId,
+	    : HasClassIdNode(NodeType::CONST_VAL, AutoLang::DefaultClass::stringClassId,
 	                     line),
 	      str(new std::string(std::move(str))) {}
 	ConstValueNode(uint32_t line, bool b)
-	    : HasClassIdNode(NodeType::CONST, AutoLang::DefaultClass::boolClassId,
+	    : HasClassIdNode(NodeType::CONST_VAL, AutoLang::DefaultClass::boolClassId,
 	                     line),
 	      obj(ObjectManager::createBoolObject(b)), id(b ? 1 : 2) {}
 	ConstValueNode(uint32_t line, AObject *obj, uint32_t id)
-	    : HasClassIdNode(NodeType::CONST, obj->type, line), obj(obj), id(id) {}
+	    : HasClassIdNode(NodeType::CONST_VAL, obj->type, line), obj(obj), id(id) {}
 	static inline uint32_t getBoolId(bool b) { return b ? 1 : 2; }
 	bool isNullable() override {
 		return classId == AutoLang::DefaultClass::nullClassId;
@@ -485,7 +485,7 @@ struct WhileNode : CanBreakContinueNode {
 	void optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	void rewrite(in_func, uint8_t *bytecodes) override {
-		if (condition->kind == NodeType::CONST) {
+		if (condition->kind == NodeType::CONST_VAL) {
 			// Is bool because optimize forbiddened others
 			if (!static_cast<ConstValueNode *>(condition)->obj->b) {
 				return;

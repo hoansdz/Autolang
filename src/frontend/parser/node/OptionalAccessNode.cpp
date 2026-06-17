@@ -10,7 +10,7 @@ ExprNode *OptionalAccessNode::resolve(in_func) {
 	value = static_cast<HasClassIdNode *>(value->resolve(in_data));
 	// switch (value->kind) {
 	// 	case NodeType::VAR:
-	// 	case NodeType::CONST:
+	// 	case NodeType::CONST_VAL:
 	// 		return this;
 	// 	default:
 	// 		break;
