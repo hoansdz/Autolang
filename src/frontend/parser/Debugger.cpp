@@ -493,6 +493,8 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 				left = context.nullCoalescingPool.push(firstLine, left, right);
 				continue;
 			}
+			default:
+				break;
 		}
 		// auto binaryNode = context.binaryNodePool.push(op, left, right);
 		left = context.binaryNodePool.push(firstLine, context.currentClassId,
@@ -649,6 +651,8 @@ HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
 					throw ParserError(token->line,
 					                  "Expected Map<> but closure found");
 				}
+				default:
+					break;
 			}
 			--i;
 			return loadClosure<false>(in_data, i);

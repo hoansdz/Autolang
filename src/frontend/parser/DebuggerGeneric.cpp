@@ -147,6 +147,8 @@ ClassId loadClassGenerics(in_func, std::string &name,
 				callNode->nameId = it->second;
 				break;
 			}
+			default:
+				break;
 		}
 		classDeclaration->classId = std::nullopt;
 	}
@@ -520,6 +522,8 @@ void loadFunctionGenerics(in_func, std::string &name,
 					callNode->nameId = it->second;
 					break;
 				}
+				default:
+					break;
 			}
 			classDeclaration->classId = std::nullopt;
 		}

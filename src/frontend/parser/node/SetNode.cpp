@@ -140,6 +140,8 @@ void SetNode::optimize(in_func) {
 						n->inferFrom(in_data, detach->classDeclaration);
 						break;
 					}
+					default:
+						break;
 				}
 			}
 			break;
@@ -341,7 +343,8 @@ void SetNode::optimize(in_func) {
 				goto changedValue;
 			}
 			case NodeType::CONST_VAL: {
-				if (op != Lexer::TokenType::EQUAL) {
+				if (op != Lexer::TokenType::EQUAL ||
+				    static_cast<AccessNode *>(detach)->isVal) {	
 					// Optimize call primary instead of copies
 					static_cast<ConstValueNode *>(value)->isLoadPrimary = true;
 				}
@@ -349,15 +352,17 @@ void SetNode::optimize(in_func) {
 			}
 			case NodeType::VAR:
 			case NodeType::GET_PROP: {
-				if (!detach->isNullable() &&
-				    static_cast<AccessNode *>(value)->nullable) {
+				auto node = static_cast<AccessNode *>(value);
+				auto detachNode = static_cast<AccessNode *>(detach);
+				if (!detach->isNullable() && node->nullable) {
 					std::string detachName;
-					detachName =
-					    static_cast<AccessNode *>(detach)->declaration->name;
-					throwError(
-					    "Cannot detach nullable variable " +
-					    static_cast<AccessNode *>(value)->declaration->name +
-					    " to non null variable " + detachName);
+					detachName = detachNode->declaration->name;
+					throwError("Cannot detach nullable variable " +
+					           node->declaration->name +
+					           " to non null variable " + detachName);
+				}
+				if (!(detachNode->isVal && node->isVal)) {
+					node->cloneable = true;
 				}
 				break;
 			}
@@ -529,34 +534,60 @@ void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				case NodeType::VAR: {
 					auto valueNode = static_cast<VarNode *>(value);
 					if (detachNode->declaration->isGlobal) {
-						bytecodes.emplace_back(
-						    valueNode->declaration->isGlobal
-						        ? Opcode::GLOBAL_STORE_GLOBAL
-						        : Opcode::GLOBAL_STORE_LOCAL);
+						if (valueNode->cloneable) {
+							bytecodes.emplace_back(
+							    valueNode->declaration->isGlobal
+							        ? Opcode::GLOBAL_STORE_GLOBAL_CLONE
+							        : Opcode::GLOBAL_STORE_LOCAL_CLONE);
+						} else {
+							bytecodes.emplace_back(
+							    valueNode->declaration->isGlobal
+							        ? Opcode::GLOBAL_STORE_GLOBAL
+							        : Opcode::GLOBAL_STORE_LOCAL);
+						}
 						put_opcode_u32(bytecodes, detachNode->declaration->id);
 						put_opcode_u32(bytecodes, valueNode->declaration->id);
 						return;
 					}
-					bytecodes.emplace_back(valueNode->declaration->isGlobal
-					                           ? Opcode::LOCAL_STORE_GLOBAL
-					                           : Opcode::LOCAL_STORE_LOCAL);
+					if (valueNode->cloneable) {
+						bytecodes.emplace_back(
+						    valueNode->declaration->isGlobal
+						        ? Opcode::LOCAL_STORE_GLOBAL_CLONE
+						        : Opcode::LOCAL_STORE_LOCAL_CLONE);
+					} else {
+						bytecodes.emplace_back(valueNode->declaration->isGlobal
+						                           ? Opcode::LOCAL_STORE_GLOBAL
+						                           : Opcode::LOCAL_STORE_LOCAL);
+					}
+
 					put_opcode_u32(bytecodes, detachNode->declaration->id);
 					put_opcode_u32(bytecodes, valueNode->declaration->id);
 					return;
 				}
 				case NodeType::CONST_VAL: {
 					auto valueNode = static_cast<ConstValueNode *>(value);
-					bytecodes.emplace_back(detachNode->declaration->isGlobal
-					                           ? Opcode::GLOBAL_STORE_CONST
-					                           : Opcode::LOCAL_STORE_CONST);
+					if (valueNode->isLoadPrimary) {
+						bytecodes.emplace_back(detachNode->declaration->isGlobal
+						                           ? Opcode::GLOBAL_STORE_CONST
+						                           : Opcode::LOCAL_STORE_CONST);
+					} else {
+						bytecodes.emplace_back(
+						    detachNode->declaration->isGlobal
+						        ? Opcode::GLOBAL_STORE_CONST_CLONE
+						        : Opcode::LOCAL_STORE_CONST_CLONE);
+					}
 					put_opcode_u32(bytecodes, detachNode->declaration->id);
 					put_opcode_u32(bytecodes, valueNode->id);
 					return;
 				}
+				default:
+					break;
 			}
 
 			break;
 		}
+		default:
+			break;
 	}
 	value->putBytecodes(in_data, bytecodes);
 	detach->putBytecodes(in_data, bytecodes);

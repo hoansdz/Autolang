@@ -283,6 +283,11 @@ void ReturnNode::optimize(in_func) {
 				value->optimize(in_data);
 				break;
 			}
+			case NodeType::VAR:
+			case NodeType::GET_PROP: {
+				auto node = static_cast<AccessNode *>(value);
+				node->cloneable = true;
+			}
 			default: {
 				value->optimize(in_data);
 				break;
@@ -353,35 +358,6 @@ ExprNode *ReturnNode::copy(in_func) {
 	    line, context.currentFunctionId,
 	    value ? static_cast<HasClassIdNode *>(value->copy(in_data)) : nullptr);
 }
-
-void VarNode::optimize(in_func) {
-	// std::cerr << "loaded " << declaration->name << " "
-	//           << compile.classes[declaration->classId]->name << "\n";
-	classId = declaration->classId;
-	isVal = declaration->isVal;
-	classDeclaration = declaration->classDeclaration;
-	if (nullable) {
-		nullable = declaration->nullable; // #
-	}
-}
-
-ExprNode *VarNode::copy(in_func) {
-	DeclarationNode *newDeclaration;
-	auto funcInfo = context.getCurrentFunctionInfo(in_data);
-	auto it = funcInfo->reflectDeclarationMap.find(declaration);
-	if (it != funcInfo->reflectDeclarationMap.end()) {
-		newDeclaration = it->second;
-	} else {
-		newDeclaration =
-		    static_cast<DeclarationNode *>(declaration->copy(in_data));
-	}
-	auto newNode =
-	    context.varPool.push(line, newDeclaration, isStore, nullable);
-	newNode->classId = classId;
-	return newNode;
-}
-
-bool VarNode::isStaticValue() { return declaration && declaration->isGlobal; }
 
 } // namespace AutoLang
 

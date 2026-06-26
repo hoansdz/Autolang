@@ -239,6 +239,22 @@ inline AObject *returnJsObjectToAObject(ANotifier &notifier, val value) {
 	}
 }
 
+EM_ASYNC_JS(int, call_and_await_js,
+            (EM_VAL func_handle, EM_VAL thisArg, EM_VAL args_handle), {
+	            let js_func = Emscripten.val.toValue(func_handle);
+	            let js_args = Emscripten.val.toValue(args_handle);
+
+	            try {
+		            let result =
+		                await Promise.resolve(js_func.apply(null, js_args));
+
+		            return result;
+	            } catch (error) {
+		            console.error("Error call JS Function : ", error);
+		            return -1;
+	            }
+            });
+
 inline AObject *callJSFunction(val *jsFunction, NativeFuncInData) {
 	val jsArgsArray = val::array();
 
@@ -248,8 +264,9 @@ inline AObject *callJSFunction(val *jsFunction, NativeFuncInData) {
 			jsArgsArray.set(i, aobjectToJs(args[i]));
 		}
 
-		val result =
-		    jsFunction->call<val>("apply", val::undefined(), jsArgsArray);
+		val result = call_and_await_js(jsFunction.as_handle(),
+		                               val::undefined().as_handle(),
+		                               jsArgsArray.as_handle());
 
 		if (notifier.hasException()) {
 			return nullptr;
@@ -261,8 +278,9 @@ inline AObject *callJSFunction(val *jsFunction, NativeFuncInData) {
 	for (size_t i = 1; i < argSize; ++i) {
 		jsArgsArray.set(i - 1, aobjectToJs(args[i]));
 	}
-	val result =
-	    jsFunction->call<val>("apply", aobjectToJs(args[0]), jsArgsArray);
+	val result = call_and_await_js(jsFunction.as_handle(),
+	                               aobjectToJs(args[0]).as_handle(),
+	                               jsArgsArray.as_handle());
 
 	if (notifier.hasException()) {
 		return nullptr;

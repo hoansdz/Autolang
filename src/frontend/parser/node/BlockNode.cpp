@@ -416,6 +416,8 @@ void BlockNode::loadClassAndOptimize(in_func) {
 			n->classDeclaration->inputClassId[0] = classDeclaration;
 			return;
 		}
+		default:
+			break;
 	}
 }
 
@@ -441,6 +443,8 @@ void BlockNode::addJumpPosition(in_func, BytecodePos pos) {
 			    ->jumpPosition.push_back(pos);
 			break;
 		}
+		default:
+			throwError("Cannot add jump position");
 	}
 }
 

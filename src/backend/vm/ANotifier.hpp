@@ -89,6 +89,7 @@ class ANotifier {
 	inline bool hasException() { return vm->callFrames.top()->exception; }
 	template <typename T> inline void throwException(T message) {
 		callFrame->exception = createException(message);
+		callFrame->exception->retain();
 	}
 	template <typename... Args>
 	[[nodiscard]] inline AObject *callFunctionObject(AObject *funcObject,

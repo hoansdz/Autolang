@@ -39,6 +39,8 @@ void CreateSetNode::optimize(in_func) {
 				    valueMustBeClassId;
 				break;
 			}
+			default:
+				break;
 		}
 		value->optimize(in_data);
 		if (value->classId == valueMustBeClassId ||

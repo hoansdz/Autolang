@@ -70,6 +70,7 @@ enum NodeType : uint8_t {
 	CREATE_CLOSURE,
 	CREATE_ENUM_VALUE,
 	WHEN,
+	GET_POINTER
 };
 
 struct DeclarationNode;
@@ -250,6 +251,7 @@ struct AccessNode : NullableNode {
 	DeclarationNode *declaration;
 	bool isStore;
 	bool isVal;
+	bool cloneable = false;
 	AccessNode(NodeType kind, uint32_t line, DeclarationNode *declaration,
 	           bool nullable, ClassId classId = 0, bool isVal = false,
 	           bool isStore = false)
@@ -268,26 +270,27 @@ struct ConstValueNode : HasClassIdNode {
 	bool isLoadPrimary = false;
 	uint32_t id = UINT32_MAX;
 	ConstValueNode()
-	    : HasClassIdNode(NodeType::CONST_VAL, AutoLang::DefaultClass::intClassId,
-	                     line) {}
+	    : HasClassIdNode(NodeType::CONST_VAL,
+	                     AutoLang::DefaultClass::intClassId, line) {}
 	ConstValueNode(uint32_t line, int64_t i)
-	    : HasClassIdNode(NodeType::CONST_VAL, AutoLang::DefaultClass::intClassId,
-	                     line),
+	    : HasClassIdNode(NodeType::CONST_VAL,
+	                     AutoLang::DefaultClass::intClassId, line),
 	      i(i) {}
 	ConstValueNode(uint32_t line, double f)
-	    : HasClassIdNode(NodeType::CONST_VAL, AutoLang::DefaultClass::floatClassId,
-	                     line),
+	    : HasClassIdNode(NodeType::CONST_VAL,
+	                     AutoLang::DefaultClass::floatClassId, line),
 	      f(f) {}
 	ConstValueNode(uint32_t line, std::string str)
-	    : HasClassIdNode(NodeType::CONST_VAL, AutoLang::DefaultClass::stringClassId,
-	                     line),
+	    : HasClassIdNode(NodeType::CONST_VAL,
+	                     AutoLang::DefaultClass::stringClassId, line),
 	      str(new std::string(std::move(str))) {}
 	ConstValueNode(uint32_t line, bool b)
-	    : HasClassIdNode(NodeType::CONST_VAL, AutoLang::DefaultClass::boolClassId,
-	                     line),
+	    : HasClassIdNode(NodeType::CONST_VAL,
+	                     AutoLang::DefaultClass::boolClassId, line),
 	      obj(ObjectManager::createBoolObject(b)), id(b ? 1 : 2) {}
 	ConstValueNode(uint32_t line, AObject *obj, uint32_t id)
-	    : HasClassIdNode(NodeType::CONST_VAL, obj->type, line), obj(obj), id(id) {}
+	    : HasClassIdNode(NodeType::CONST_VAL, obj->type, line), obj(obj),
+	      id(id) {}
 	static inline uint32_t getBoolId(bool b) { return b ? 1 : 2; }
 	bool isNullable() override {
 		return classId == AutoLang::DefaultClass::nullClassId;
@@ -297,6 +300,22 @@ struct ConstValueNode : HasClassIdNode {
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	ExprNode *copy(in_func) override;
 	~ConstValueNode();
+};
+
+struct GetPointerNode : NullableNode {
+	HasClassIdNode *value;
+	GetPointerNode(uint32_t line, HasClassIdNode *value)
+	    : NullableNode(NodeType::GET_POINTER, DefaultClass::nullClassId, true,
+	                   line),
+	      value(value) {}
+	ExprNode *resolve(in_func) override;
+	void optimize(in_func) override;
+	void putBytecodesIfMustBeCalled(in_func,
+	                                std::vector<uint8_t> &bytecodes) override {}
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
+	void rewrite(in_func, uint8_t *bytecodes) override;
+	ExprNode *copy(in_func) override;
+	bool isStaticValue() override { return value->isStaticValue(); }
 };
 
 struct ReturnNode : ExprNode {
@@ -503,7 +522,6 @@ struct SetNode : HasClassIdNode {
 	Lexer::TokenType op;
 	HasClassIdNode *detach;
 	HasClassIdNode *value;
-	bool isGetPointer = false;
 	bool justDetachStatic = false;
 	SetNode(uint32_t line, HasClassIdNode *detach, HasClassIdNode *value,
 	        bool justDetachStatic,
@@ -794,9 +812,7 @@ struct WhenNode : NullableNode {
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	void rewrite(in_func, uint8_t *bytecodes) override;
 	ExprNode *copy(in_func) override;
-	bool isNullable() override {
-		return nullable;
-	}
+	bool isNullable() override { return nullable; }
 	bool isStaticValue() override {
 		return !ifNode ? true : ifNode->isStaticValue();
 	}

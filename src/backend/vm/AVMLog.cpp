@@ -157,6 +157,7 @@ void AVM::log(Function *currentFunction) {
 		switch (b) {
 			case AutoLang::Opcode::CALL_FUNCTION: {
 				uint32_t funcId = get_u32(bytecodes, i);
+				std::cerr << funcId << " " << data.functions.size() << "\n";
 				std::cerr << "CALL_FUNCTION	 " << data.functions[funcId]->name
 				          << "\n";
 				break;
@@ -267,8 +268,9 @@ void AVM::log(Function *currentFunction) {
 				break;
 			case AutoLang::Opcode::LOAD_CONST_PRIMARY: {
 				auto obj = data.constPool[get_u32(bytecodes, i)];
-				std::cerr << "CONST_PRIMARY	 "
-				          << DefaultFunction::to_string(*notifier, obj) << "\n";
+				std::cerr << "CONST_PRIMARY	 \""
+				          << DefaultFunction::to_string(*notifier, obj)
+				          << "\"\n";
 				// std::cerr << "CONST_PRIMARY	 " << get_u32(bytecodes, i) <<
 				// "\n";
 				break;
@@ -349,20 +351,6 @@ void AVM::log(Function *currentFunction) {
 			case AutoLang::Opcode::STORE_LOCAL:
 				std::cerr << "STORE_LOCAL	 " << get_u32(bytecodes, i) << "\n";
 				break;
-			case AutoLang::Opcode::LOCAL_STORE_LOCAL: {
-				uint32_t pos1 = get_u32(bytecodes, i);
-				uint32_t pos2 = get_u32(bytecodes, i);
-				std::cerr << "LOCAL_STORE_LOCAL	 " << pos1 << " " << pos2
-				          << "\n";
-				break;
-			}
-			case AutoLang::Opcode::LOCAL_STORE_CONST: {
-				uint32_t pos1 = get_u32(bytecodes, i);
-				uint32_t pos2 = get_u32(bytecodes, i);
-				std::cerr << "LOCAL_STORE_CONST	 " << pos1 << " "
-				          << notifier->toString(data.constPool[pos2]) << "\n";
-				break;
-			}
 				PRINT_DATA_CAL_DATA(GLOBAL_CAL_GLOBAL, globalVariables,
 				                    globalVariables)
 				PRINT_DATA_CAL_DATA(GLOBAL_CAL_LOCAL, globalVariables,
@@ -419,34 +407,18 @@ void AVM::log(Function *currentFunction) {
 				PRINT_DATA_MEMBER_CAL_DATA_MEMBER(LOCAL_MEMBER_CAL_LOCAL_MEMBER,
 				                                  stackAllocator,
 				                                  stackAllocator)
-			case AutoLang::Opcode::LOCAL_STORE_GLOBAL: {
-				uint32_t pos1 = get_u32(bytecodes, i);
-				uint32_t pos2 = get_u32(bytecodes, i);
-				std::cerr << "LOCAL_STORE_GLOBAL	 " << pos1 << " " << pos2
-				          << "\n";
-				break;
-			}
-			case AutoLang::Opcode::GLOBAL_STORE_LOCAL: {
-				uint32_t pos1 = get_u32(bytecodes, i);
-				uint32_t pos2 = get_u32(bytecodes, i);
-				std::cerr << "GLOBAL_STORE_LOCAL	 " << pos1 << " " << pos2
-				          << "\n";
-				break;
-			}
-			case AutoLang::Opcode::GLOBAL_STORE_CONST: {
-				uint32_t pos1 = get_u32(bytecodes, i);
-				uint32_t pos2 = get_u32(bytecodes, i);
-				std::cerr << "GLOBAL_STORE_CONST	 " << pos1 << " "
-				          << notifier->toString(data.constPool[pos2]) << "\n";
-				break;
-			}
-			case AutoLang::Opcode::GLOBAL_STORE_GLOBAL: {
-				uint32_t pos1 = get_u32(bytecodes, i);
-				uint32_t pos2 = get_u32(bytecodes, i);
-				std::cerr << "GLOBAL_STORE_GLOBAL	 " << pos1 << " " << pos2
-				          << "\n";
-				break;
-			}
+				PRINT_BYTECODE_2_uint32(GLOBAL_STORE_LOCAL);
+				PRINT_BYTECODE_2_uint32(GLOBAL_STORE_GLOBAL);
+				PRINT_BYTECODE_2_uint32(GLOBAL_STORE_CONST);
+				PRINT_BYTECODE_2_uint32(GLOBAL_STORE_LOCAL_CLONE);
+				PRINT_BYTECODE_2_uint32(GLOBAL_STORE_GLOBAL_CLONE);
+				PRINT_BYTECODE_2_uint32(GLOBAL_STORE_CONST_CLONE);
+				PRINT_BYTECODE_2_uint32(LOCAL_STORE_LOCAL);
+				PRINT_BYTECODE_2_uint32(LOCAL_STORE_GLOBAL);
+				PRINT_BYTECODE_2_uint32(LOCAL_STORE_CONST);
+				PRINT_BYTECODE_2_uint32(LOCAL_STORE_LOCAL_CLONE);
+				PRINT_BYTECODE_2_uint32(LOCAL_STORE_GLOBAL_CLONE);
+				PRINT_BYTECODE_2_uint32(LOCAL_STORE_CONST_CLONE);
 			case AutoLang::Opcode::LOCAL_LOAD_MEMBER: {
 				uint32_t pos = get_u32(bytecodes, i);
 				uint32_t memberId = get_u32(bytecodes, i);
@@ -505,6 +477,7 @@ void AVM::log(Function *currentFunction) {
 				BYTECODE_PRINT_SINGLE(LOAD_EXCEPTION)
 				BYTECODE_PRINT_SINGLE(WAIT_INPUT)
 				BYTECODE_PRINT_SINGLE(THROW_EXCEPTION)
+				BYTECODE_PRINT_SINGLE(CLONE)
 			case AutoLang::Opcode::LOCAL_CAL_CONST_JUMP: {
 				uint32_t operatorTablePos = bytecodes[i++];
 				uint32_t pos1 = get_u32(bytecodes, i);

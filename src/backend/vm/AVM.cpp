@@ -15,7 +15,7 @@ namespace AutoLang {
 void AVM::run() {
 	// std::cerr << "----------------RUNTIME----------------" << '\n';
 	// auto start = std::chrono::high_resolution_clock::now();
-	stackAllocator.top = 0;
+	stackAllocator.setTop(0);
 	auto mainCallFrame = callFrames.push();
 	mainCallFrame->func = data.main;
 	mainCallFrame->fromStackAllocator = 0;
@@ -40,8 +40,19 @@ void AVM::run() {
 					break;
 				funcs.push_back(currentCallFrame->func);
 			}
-			for (size_t i = funcs.size(); i-- > 0;) {
-				std::cerr << "At function " << funcs[i]->name << "\n";
+			if (funcs.size() > 16) {
+				for (size_t i = funcs.size(); i-- > funcs.size() - 8;) {
+					std::cerr << "At function " << funcs[i]->name << "\n";
+				}
+				std::cerr << "... (" << funcs.size() - 16
+				          << " frames omitted) \n";
+				for (size_t i = 8; i-- > 0;) {
+					std::cerr << "At function " << funcs[i]->name << "\n";
+				}
+			} else {
+				for (size_t i = funcs.size(); i-- > 0;) {
+					std::cerr << "At function " << funcs[i]->name << "\n";
+				}
 			}
 			break;
 		}
@@ -74,9 +85,16 @@ void AVM::input(AObject *inputData) {
 template <bool loadVirtual, bool hasValue, bool isConstructor>
 bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
                        uint8_t *bytecodes, uint32_t &i) {
+	if (callFrames.getSize() == callFrames.getMaxSize()) {
+		notifier->throwException("Runtime Error: Stack Overflow.\nDetails: "
+		                         "Maximum call frame limit of " +
+		                         std::to_string(callFrames.getMaxSize()) +
+		                         " exceeded.");
+		return false;
+	}
 	currentCallFrame = callFrames.push();
 	currentCallFrame->fromStackAllocator =
-	    stackAllocator.top + currentFunction->maxDeclaration;
+	    stackAllocator.getTop() + currentFunction->maxDeclaration;
 	currentCallFrame->exception = nullptr;
 	currentCallFrame->startStackCount = stack.getSize();
 	currentCallFrame->catchPosition.clear();
@@ -97,9 +115,9 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 		currentCallFrame->func =
 		    data.functions[data.classes[stackAllocator[0]->type]
 		                       ->vtable[funcPos]];
-		stackAllocator.ensure(currentCallFrame->func->argSize);
 	} else {
-		currentCallFrame->func = data.functions[get_u32(bytecodes, i)];
+		uint32_t funcPos = get_u32(bytecodes, i);
+		currentCallFrame->func = data.functions[funcPos];
 		// Ensure
 		argumentCount = currentCallFrame->func->argSize;
 		stackAllocator.ensure(argumentCount);
@@ -110,23 +128,29 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 		}
 	}
 
+	stackAllocator.ensure(currentCallFrame->func->maxDeclaration);
+
 	notifier->callFrame = currentCallFrame;
 
 	if (currentCallFrame->func->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 		auto obj = (*currentCallFrame->func->native)(
 		    *notifier, stackAllocator.currentPtr, argumentCount);
+		// std::cerr << currentCallFrame->fromStackAllocator << " & "
+		//           << stackAllocator.getTop() +
+		//                  currentCallFrame->func->maxDeclaration - 1
+		//           << "\n";
 		stackAllocator.clear(data.manager, currentCallFrame->fromStackAllocator,
-		                     stackAllocator.top +
+		                     stackAllocator.getTop() +
 		                         currentCallFrame->func->maxDeclaration - 1);
 		if (currentCallFrame->exception) {
 			// stackAllocator.clear(
 			//     data.manager, currentCallFrame->fromStackAllocator,
-			//     stackAllocator.top + currentCallFrame->func->maxDeclaration -
+			//     stackAllocator.getTop() +
+			//     currentCallFrame->func->maxDeclaration -
 			//         1);
 			// stackAllocator.freeTo(callFrames.objects[callFrames.getSize() -
 			// 2]
 			//                           .fromStackAllocator);
-			currentCallFrame->exception->retain();
 			return false;
 		}
 		if constexpr (hasValue) {
@@ -134,7 +158,7 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 			stack.push(obj);
 		}
 		// std::cerr << currentCallFrame->fromStackAllocator << " "
-		//           << stackAllocator.top +
+		//           << stackAllocator.getTop() +
 		//                  currentCallFrame->func->maxDeclaration - 1
 		//           << "\n";
 		callFrames.pop();
@@ -156,7 +180,7 @@ bool AVM::callNativeFunction(CallFrame *&currentCallFrame,
                              Function *currentFunction, uint8_t *bytecodes,
                              uint32_t &i) {
 	uint32_t fromStackAllocator =
-	    stackAllocator.top + currentFunction->maxDeclaration;
+	    stackAllocator.getTop() + currentFunction->maxDeclaration;
 	stackAllocator.setTop(fromStackAllocator);
 	auto *func = data.functions[get_u32(bytecodes, i)];
 	stackAllocator.ensure(func->argSize);
@@ -173,13 +197,19 @@ bool AVM::callNativeFunction(CallFrame *&currentCallFrame,
 	stackAllocator.clear(data.manager, fromStackAllocator,
 	                     fromStackAllocator + func->argSize - 1);
 	if (currentCallFrame->exception) {
+		if (callFrames.getSize() == callFrames.getMaxSize()) {
+			notifier->throwException("Runtime Error: Stack Overflow.\nDetails: "
+			                         "Maximum call frame limit of " +
+			                         std::to_string(callFrames.getMaxSize()) +
+			                         " exceeded.");
+			return false;
+		}
 		auto callFrame = callFrames.push();
 		callFrame->fromStackAllocator = fromStackAllocator;
 		callFrame->func = func;
 		callFrame->startStackCount = stack.getSize();
 		callFrame->exception = currentCallFrame->exception;
 		callFrame->catchPosition.clear();
-		currentCallFrame->exception->retain();
 		currentCallFrame->exception = nullptr;
 		return false;
 	}
@@ -196,8 +226,15 @@ bool AVM::callFunctionObject(AObject *obj) {
 	auto funcObj = obj->function;
 	uint32_t argumentCount = funcObj->function->argSize;
 	uint32_t fromStackAllocator =
-	    stackAllocator.top +
+	    stackAllocator.getTop() +
 	    ((callFrames.index != 0) ? callFrames.top()->func->maxDeclaration : 0);
+	if (callFrames.getSize() == callFrames.getMaxSize()) {
+		notifier->throwException("Runtime Error: Stack Overflow.\nDetails: "
+		                         "Maximum call frame limit of " +
+		                         std::to_string(callFrames.getMaxSize()) +
+		                         " exceeded.");
+		return false;
+	}
 	auto currentCallFrame = callFrames.push();
 	currentCallFrame->fromStackAllocator = fromStackAllocator;
 	currentCallFrame->exception = nullptr;
@@ -213,7 +250,6 @@ bool AVM::callFunctionObject(AObject *obj) {
 		auto object = (*currentCallFrame->func->native)(
 		    *notifier, stackAllocator.currentPtr, argumentCount);
 		if (currentCallFrame->exception) {
-			currentCallFrame->exception->retain();
 			// Clear here
 			return false;
 		}
@@ -240,9 +276,16 @@ bool AVM::callFunctionObject(AObject *obj) {
 }
 
 inline bool AVM::callFunction(Function *currentFunction) {
+	if (callFrames.getSize() == callFrames.getMaxSize()) {
+		notifier->throwException("Runtime Error: Stack Overflow.\nDetails: "
+		                         "Maximum call frame limit of " +
+		                         std::to_string(callFrames.getMaxSize()) +
+		                         " exceeded.");
+		return false;
+	}
 	auto currentCallFrame = callFrames.push();
 	currentCallFrame->fromStackAllocator =
-	    stackAllocator.top + currentFunction->maxDeclaration;
+	    stackAllocator.getTop() + currentFunction->maxDeclaration;
 	currentCallFrame->exception = nullptr;
 	currentCallFrame->func = currentFunction;
 	currentCallFrame->startStackCount = stack.getSize();
@@ -268,12 +311,12 @@ bool AVM::callFunction(CallFrame *currentCallFrame, uint32_t argumentCount) {
 		if (currentCallFrame->exception) {
 			// stackAllocator.clear(
 			//     data.manager, currentCallFrame->fromStackAllocator,
-			//     stackAllocator.top + currentCallFrame->func->maxDeclaration -
+			//     stackAllocator.getTop() +
+			//     currentCallFrame->func->maxDeclaration -
 			//         1);
 			// stackAllocator.freeTo(callFrames.objects[callFrames.getSize() -
 			// 2]
 			//                           .fromStackAllocator);
-			currentCallFrame->exception->retain();
 			return false;
 		}
 		if (currentCallFrame->func->returnId != DefaultClass::voidClassId) {
@@ -281,12 +324,12 @@ bool AVM::callFunction(CallFrame *currentCallFrame, uint32_t argumentCount) {
 			stack.push(obj);
 		}
 		// std::cerr << currentCallFrame->fromStackAllocator << " "
-		//           << stackAllocator.top +
+		//           << stackAllocator.getTop() +
 		//                  currentCallFrame->func->maxDeclaration - 1
 		//           << "\n";
 
 		stackAllocator.clear(data.manager, currentCallFrame->fromStackAllocator,
-		                     stackAllocator.top +
+		                     stackAllocator.getTop() +
 		                         currentCallFrame->func->maxDeclaration - 1);
 		callFrames.pop();
 		currentCallFrame = callFrames.top();
@@ -303,7 +346,8 @@ bool AVM::callFunction(CallFrame *currentCallFrame, uint32_t argumentCount) {
 		// stackAllocator[0] = nullptr;
 		// stackAllocator.clear(
 		//     data.manager, currentCallFrame->fromStackAllocator + 1,
-		//     stackAllocator.top + currentCallFrame->func->maxDeclaration -
+		//     stackAllocator.getTop() + currentCallFrame->func->maxDeclaration
+		//     -
 		//         1);
 		// callFrames.pop();
 		// currentCallFrame = callFrames.top();
@@ -360,6 +404,47 @@ bool AVM::callFunction(CallFrame *currentCallFrame, uint32_t argumentCount) {
 		    data2[pos2]->member->data[get_u32(bytecodes, i)];                  \
 		if (!fastOperate<2>(operatorTable[tablePos]))                          \
 			goto resumeCallFrame;                                              \
+		break;                                                                 \
+	}
+
+#define DATA_STORE_DATA(opcode, data1, data2)                                  \
+	case AutoLang::Opcode::opcode: {                                           \
+		AObject *&obj1 = data1[get_u32(bytecodes, i)];                         \
+		AObject *obj2 = data2[get_u32(bytecodes, i)];                          \
+		obj2->retain();                                                        \
+		if (obj1 != nullptr) {                                                 \
+			data.manager.release(obj1);                                        \
+		}                                                                      \
+		obj1 = obj2;                                                           \
+		break;                                                                 \
+	}
+
+#define DATA_STORE_DATA_CLONE(opcode, data1, data2)                            \
+	case AutoLang::Opcode::opcode: {                                           \
+		AObject *&obj1 = data1[get_u32(bytecodes, i)];                         \
+		AObject *obj2 = data2[get_u32(bytecodes, i)];                          \
+		if (obj1 != nullptr) {                                                 \
+			data.manager.release(obj1);                                        \
+		}                                                                      \
+		switch (obj2->type) {                                                  \
+			case DefaultClass::intClassId: {                                   \
+				auto newValue = notifier->createInt(obj2->i);                  \
+				newValue->retain();                                            \
+				obj1 = newValue;                                               \
+				break;                                                         \
+			}                                                                  \
+			case DefaultClass::floatClassId: {                                 \
+				auto newValue = notifier->createFloat(obj2->f);                \
+				newValue->retain();                                            \
+				obj1 = newValue;                                               \
+				break;                                                         \
+			}                                                                  \
+			default: {                                                         \
+				obj2->retain();                                                \
+				obj1 = obj2;                                                   \
+				break;                                                         \
+			}                                                                  \
+		}                                                                      \
 		break;                                                                 \
 	}
 
@@ -459,7 +544,7 @@ resumeCallFrame:;
 	if (currentCallFrame->exception) {
 		if (currentCallFrame->catchPosition.empty()) {
 			// std::cerr << currentCallFrame->fromStackAllocator << " & "
-			//           << stackAllocator.top << "\n";
+			//           << stackAllocator.getTop() << "\n";
 			stackAllocator.clear(
 			    data.manager, currentCallFrame->fromStackAllocator,
 			    currentCallFrame->fromStackAllocator +
@@ -977,64 +1062,30 @@ resumeCallFrame:;
 					stackAllocator.set(data.manager, pos, obj);
 					break;
 				}
-				case AutoLang::Opcode::GLOBAL_STORE_LOCAL: {
-					AObject *&obj1 = globalVariables[get_u32(bytecodes, i)];
-					AObject *obj2 = stackAllocator[get_u32(bytecodes, i)];
-					obj2->retain();
-					if (obj1 != nullptr) {
-						data.manager.release(obj1);
-					}
-					obj1 = obj2;
-					break;
-				}
-				case AutoLang::Opcode::GLOBAL_STORE_GLOBAL: {
-					AObject *&obj1 = globalVariables[get_u32(bytecodes, i)];
-					AObject *obj2 = globalVariables[get_u32(bytecodes, i)];
-					obj2->retain();
-					if (obj1 != nullptr) {
-						data.manager.release(obj1);
-					}
-					obj1 = obj2;
-					break;
-				}
-				case AutoLang::Opcode::GLOBAL_STORE_CONST: {
-					AObject *&obj1 = globalVariables[get_u32(bytecodes, i)];
-					AObject *obj2 = getConstObject(get_u32(bytecodes, i));
-					if (obj1 != nullptr) {
-						data.manager.release(obj1);
-					}
-					obj1 = obj2;
-					break;
-				}
-				case AutoLang::Opcode::LOCAL_STORE_LOCAL: {
-					AObject *&obj1 = stackAllocator[get_u32(bytecodes, i)];
-					AObject *obj2 = stackAllocator[get_u32(bytecodes, i)];
-					obj2->retain();
-					if (obj1 != nullptr) {
-						data.manager.release(obj1);
-					}
-					obj1 = obj2;
-					break;
-				}
-				case AutoLang::Opcode::LOCAL_STORE_GLOBAL: {
-					AObject *&obj1 = stackAllocator[get_u32(bytecodes, i)];
-					AObject *obj2 = globalVariables[get_u32(bytecodes, i)];
-					obj2->retain();
-					if (obj1 != nullptr) {
-						data.manager.release(obj1);
-					}
-					obj1 = obj2;
-					break;
-				}
-				case AutoLang::Opcode::LOCAL_STORE_CONST: {
-					AObject *&obj1 = stackAllocator[get_u32(bytecodes, i)];
-					AObject *obj2 = getConstObject(get_u32(bytecodes, i));
-					if (obj1 != nullptr) {
-						data.manager.release(obj1);
-					}
-					obj1 = obj2;
-					break;
-				}
+					DATA_STORE_DATA(LOCAL_STORE_LOCAL, stackAllocator,
+					                stackAllocator)
+					DATA_STORE_DATA(LOCAL_STORE_GLOBAL, stackAllocator,
+					                globalVariables)
+					DATA_STORE_DATA(LOCAL_STORE_CONST, stackAllocator,
+					                data.constPool)
+					DATA_STORE_DATA_CLONE(LOCAL_STORE_LOCAL_CLONE,
+					                      stackAllocator, stackAllocator)
+					DATA_STORE_DATA_CLONE(LOCAL_STORE_GLOBAL_CLONE,
+					                      stackAllocator, globalVariables)
+					DATA_STORE_DATA_CLONE(LOCAL_STORE_CONST_CLONE,
+					                      stackAllocator, data.constPool)
+					DATA_STORE_DATA(GLOBAL_STORE_LOCAL, globalVariables,
+					                stackAllocator)
+					DATA_STORE_DATA(GLOBAL_STORE_GLOBAL, globalVariables,
+					                globalVariables)
+					DATA_STORE_DATA(GLOBAL_STORE_CONST, globalVariables,
+					                data.constPool)
+					DATA_STORE_DATA_CLONE(GLOBAL_STORE_LOCAL_CLONE,
+					                      globalVariables, stackAllocator)
+					DATA_STORE_DATA_CLONE(GLOBAL_STORE_GLOBAL_CLONE,
+					                      globalVariables, globalVariables)
+					DATA_STORE_DATA_CLONE(GLOBAL_STORE_CONST_CLONE,
+					                      globalVariables, data.constPool)
 				case AutoLang::Opcode::LOCAL_LOAD_MEMBER: {
 					uint32_t pos = get_u32(bytecodes, i);
 					AObject *obj = stackAllocator[pos];
@@ -1304,6 +1355,35 @@ resumeCallFrame:;
 				case AutoLang::Opcode::REMOVE_TRY: {
 					assert(!currentCallFrame->catchPosition.empty());
 					currentCallFrame->catchPosition.pop_back();
+					break;
+				}
+				case AutoLang::Opcode::CLONE: {
+					auto value = stack.top();
+					switch (value->type) {
+						case DefaultClass::intClassId: {
+							auto newValue = notifier->createInt(value->i);
+							newValue->retain();
+							stack.pop();
+							notifier->release(value);
+							stack.push(newValue);
+							break;
+						}
+						case DefaultClass::floatClassId: {
+							auto newValue = notifier->createFloat(value->f);
+							newValue->retain();
+							stack.pop();
+							notifier->release(value);
+							stack.push(newValue);
+							break;
+						}
+						case DefaultClass::nullClassId: {
+							break;
+						}
+						default: {
+							notifier->throwException("Cannot clone");
+							goto resumeCallFrame;
+						}
+					}
 					break;
 				}
 				case AutoLang::Opcode::TO_INT: {
@@ -1862,7 +1942,7 @@ resumeCallFrame:;
 		}
 	doneReturnFunction:;
 		stackAllocator.clear(data.manager, currentCallFrame->fromStackAllocator,
-		                     stackAllocator.top +
+		                     stackAllocator.getTop() +
 		                         currentCallFrame->func->maxDeclaration - 1);
 		if (callFrames.getSize() == topCallFrame) {
 			callFrames.pop();

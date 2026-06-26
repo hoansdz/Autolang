@@ -84,10 +84,7 @@ void AVM::restart() {
 	state = VMState::READY;
 	stack.index = 0;
 	callFrames.index = 0;
-	stackAllocator.setTop(0);
-	for (size_t i = 0; i < stackAllocator.maxSize; ++i) {
-		stackAllocator.args[i] = nullptr;
-	}
+	stackAllocator.restart();
 	for (size_t i = 0; i < data.main->maxDeclaration; ++i) {
 		globalVariables[i] = nullptr;
 	}

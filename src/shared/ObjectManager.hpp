@@ -91,9 +91,13 @@ class ObjectManager {
 		return obj;
 	}
 	inline void freeObjectData(AObject *obj) { // As free but it push again
+		if (obj->flags == AObject::Flags::OBJ_IS_FREE) {
+			return;
+		}
 		switch (obj->type) {
 			case AutoLang::DefaultClass::intClassId:
 			case AutoLang::DefaultClass::floatClassId: {
+				obj->flags = AObject::Flags::OBJ_IS_FREE;
 				return;
 			}
 			case AutoLang::DefaultClass::nullClassId:
@@ -101,10 +105,12 @@ class ObjectManager {
 				int *a = nullptr;
 				*a = 5;
 				assert(false && "Critical Bug: free bool/null object");
+				obj->flags = AObject::Flags::OBJ_IS_FREE;
 				return;
 			}
 			case AutoLang::DefaultClass::stringClassId: {
 				delete obj->str;
+				obj->flags = AObject::Flags::OBJ_IS_FREE;
 				return;
 			}
 			case AutoLang::DefaultClass::functionClassId: {
@@ -112,6 +118,7 @@ class ObjectManager {
 					release(obj->function->args[i]);
 				}
 				delete obj->function;
+				obj->flags = AObject::Flags::OBJ_IS_FREE;
 				return;
 			}
 			default:
@@ -122,6 +129,7 @@ class ObjectManager {
 				obj->data->destructor(*notifier, obj->data->data);
 			}
 			delete obj->data;
+			obj->flags = AObject::Flags::OBJ_IS_FREE;
 			return;
 		}
 		for (uint32_t i = 0; i < obj->member->size; ++i) {
@@ -131,6 +139,7 @@ class ObjectManager {
 			release(mem);
 		}
 		delete obj->member;
+		obj->flags = AObject::Flags::OBJ_IS_FREE;
 	}
 
   public:

@@ -74,9 +74,15 @@ struct AObject {
 	};
 	template <bool checkRefCount = false>
 	inline void free(ANotifier &notifier) {
+		if (flags == AObject::Flags::OBJ_IS_FREE) {
+			return;
+		}
 		switch (type) {
 			case AutoLang::DefaultClass::intClassId:
-			case AutoLang::DefaultClass::floatClassId:
+			case AutoLang::DefaultClass::floatClassId: {
+				flags = AObject::Flags::OBJ_IS_FREE;
+				return;
+			}
 			case AutoLang::DefaultClass::boolClassId:
 			case AutoLang::DefaultClass::nullClassId: {
 				return;
@@ -89,6 +95,7 @@ struct AObject {
 				// 		return;
 				// }
 				delete str;
+				flags = AObject::Flags::OBJ_IS_FREE;
 				return;
 			}
 			case AutoLang::DefaultClass::functionClassId: {
@@ -96,6 +103,7 @@ struct AObject {
 					--function->args[i]->refCount;
 				}
 				delete function;
+				flags = AObject::Flags::OBJ_IS_FREE;
 				return;
 			}
 			default:
@@ -107,6 +115,7 @@ struct AObject {
 		// 	return;
 		// }
 		if (flags & Flags::OBJ_IS_NO_DATA) {
+			flags = AObject::Flags::OBJ_IS_FREE;
 			return;
 		}
 		if (flags & Flags::OBJ_IS_NATIVE_DATA) {
@@ -114,6 +123,7 @@ struct AObject {
 				data->destructor(notifier, data->data);
 			}
 			delete data;
+			flags = AObject::Flags::OBJ_IS_FREE;
 			return;
 		}
 		for (size_t i = 0; i < member->size; ++i) { // Support delete data
@@ -125,6 +135,7 @@ struct AObject {
 			// obj->free();
 		}
 		delete member;
+		flags = AObject::Flags::OBJ_IS_FREE;
 	}
 };
 

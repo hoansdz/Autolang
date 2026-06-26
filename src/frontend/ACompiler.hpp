@@ -92,6 +92,8 @@ class ACompiler {
 	bool loadedMainSource = false;
 	bool loadedBuiltIn = false;
 
+	const char* exceptionMessage = nullptr;
+
 	std::vector<LibraryData *> generatedLibraries;
 	std::vector<LibraryData *> builtInLibraries;
 	HashMap<std::string, LibraryData *> autoImportMap;

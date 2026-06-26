@@ -219,6 +219,9 @@ bool ForNode::putOptimizedRangeBytecode(in_func,
 			put_opcode_u32(bytecodes, 0);
 			return true;
 		}
+		default: {
+			break;
+		}
 	}
 	return false;
 }
@@ -288,7 +291,7 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					                           ? Opcode::GLOBAL_STORE_CONST
 					                           : Opcode::LOCAL_STORE_CONST);
 					put_opcode_u32(bytecodes, iteratorNode->declaration->id);
-					put_opcode_u32(bytecodes, 0);
+					put_opcode_u32(bytecodes, 0); // null value
 
 					continuePos = bytecodes.size() - context.currentBytecodePos;
 

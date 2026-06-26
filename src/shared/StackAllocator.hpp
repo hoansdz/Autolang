@@ -4,7 +4,6 @@
 #include "ObjectManager.hpp"
 #include "shared/AObject.hpp"
 #include <cstring>
-#include <string>
 #include <vector>
 
 namespace AutoLang {
@@ -13,115 +12,128 @@ class AVM;
 
 class StackAllocator {
   private:
-	size_t sizeNow;
+    static constexpr size_t CHUNK_SHIFT = 8;
+    static constexpr size_t CHUNK_SIZE = 1 << CHUNK_SHIFT; // 256
+    static constexpr size_t CHUNK_MASK = CHUNK_SIZE - 1;   // 255 (0xFF)
+
+    std::vector<AObject **> chunks; // Manages the list of fixed-size memory blocks
+    size_t topIndex;                // The absolute global index representing the top of the stack
+
+    // Helper: Allocates new chunks if the required chunk index exceeds current capacity
+    inline void ensureChunks(size_t chunkCount) {
+        while (chunks.size() < chunkCount) {
+            chunks.push_back(new AObject *[CHUNK_SIZE] {});
+        }
+    }
 
   public:
-	size_t maxSize;
-	size_t top;
-	int peak;
-	AObject **args;
-	AObject **currentPtr;
-	StackAllocator(size_t maxSize)
-	    : sizeNow(maxSize), maxSize(maxSize), top(0), peak(0),
-	      args(new AObject *[maxSize] {}), currentPtr(args) {}
-	~StackAllocator() {
-		// for (size_t i = 0; i < sizeNow; ++i) {
-		// 	AObject* obj = args[i];
-		// 	if (obj == nullptr) continue;
-		// 	if (obj->refCount > 0) --obj->refCount;
-		// 	if (obj->refCount != 0) continue;
-		// 	obj->free();
-		// 	delete obj;
-		// }
-		delete[] args;
-	}
+    size_t maxSize; 
+    int peak;       
+    AObject **currentPtr; // Retained for backwards compatibility
 
-	inline void setTop(size_t top) {
-		this->top = top;
-		currentPtr = args + top;
-	}
+    StackAllocator(size_t maxSize = 0)
+        : maxSize(maxSize), topIndex(0), peak(0) {
+        chunks.push_back(new AObject *[CHUNK_SIZE] {});
+        currentPtr = chunks[0];
+    }
 
-	inline size_t getTop() { return top; }
+    ~StackAllocator() {
+        for (auto chunk : chunks) {
+            delete[] chunk;
+        }
+    }
 
-	inline void ensure(size_t size) {
-		if (top + size <= sizeNow)
-			return;
-		sizeNow *= 2;
-		AObject **newArgs = new AObject *[sizeNow] {};
-		memcpy(newArgs, args, sizeof(AObject *) * top);
-		delete[] args;
-		args = newArgs;
-	}
+    // Helper: Gets the absolute memory pointer for a given global index.
+    inline AObject **getAbsolute(size_t index) {
+        size_t chunkIdx = index >> CHUNK_SHIFT;
+        // FIX: Tự động đảm bảo chunk tồn tại trước khi truy cập, chặn đứng Vector Out-of-bounds
+        ensureChunks(chunkIdx + 1); 
+        return &chunks[chunkIdx][index & CHUNK_MASK];
+    }
 
-	inline void freeTo(size_t top) {
-		if (this->top > maxSize && top <= sizeNow / 2) {
-			sizeNow /= 2;
-			AObject **newArgs = new AObject *[sizeNow];
-			memcpy(newArgs, args, sizeof(AObject *) * top);
-			delete[] args;
-			args = newArgs;
-		}
-		this->top = top;
-		currentPtr = args + top;
-	}
+    inline void setTop(size_t top) {
+        this->topIndex = top;
+        size_t chunkIdx = topIndex >> CHUNK_SHIFT;
+        size_t slotIdx = topIndex & CHUNK_MASK;
 
-	inline void clear(ObjectManager &manager, int from, int to) {
-		AObject **base = &args[from];
-		for (int i = from; i <= to; ++i) {
-			if (base[i]) {
-				manager.release(base[i]);
-				base[i] = nullptr;
-			}
-		}
-		return;
-		int count = to - from + 1;
-		int j = 0;
+        ensureChunks(chunkIdx + 1);
+        currentPtr = chunks[chunkIdx] + slotIdx;
+    }
 
-		for (; j <= count - 4; j += 4) {
-			if (base[j]) {
-				manager.release(base[j]);
-				base[j] = nullptr;
-			}
-			if (base[j + 1]) {
-				manager.release(base[j + 1]);
-				base[j + 1] = nullptr;
-			}
-			if (base[j + 2]) {
-				manager.release(base[j + 2]);
-				base[j + 2] = nullptr;
-			}
-			if (base[j + 3]) {
-				manager.release(base[j + 3]);
-				base[j + 3] = nullptr;
-			}
-		}
+    inline size_t getTop() const { return topIndex; }
 
-		for (; j < count; ++j) {
-			if (base[j]) {
-				manager.release(base[j]);
-				base[j] = nullptr;
-			}
-		}
-	}
+    inline void ensure(size_t size) {
+        // FIX: Xóa bỏ logic "padding nhảy chunk" để giữ index luôn liền mạch y hệt mảng phẳng ban đầu.
+        size_t requiredTop = topIndex + size;
+        size_t chunkIdx = requiredTop >> CHUNK_SHIFT;
+        ensureChunks(chunkIdx + 1);
 
-	template <size_t size> inline void clearTemp(ObjectManager &manager) {
-		if constexpr (size > 0) {
-			AObject **obj = &args[std::integral_constant<size_t, size - 1>{}];
-			manager.release(*obj);
-			*obj = nullptr;
-			clearTemp<size - 1>(manager);
-		}
-	}
+        if (static_cast<int>(requiredTop) > peak) {
+            peak = static_cast<int>(requiredTop);
+        }
+    }
 
-	inline void set(ObjectManager &manager, size_t index, AObject *object) {
-		AObject *&last = currentPtr[index];
-		if (last != nullptr) {
-			manager.release(last);
-		}
-		last = object;
-	}
+    inline void clear(ObjectManager &manager, size_t from, size_t to) {
+        for (size_t i = from; i <= to; ++i) {
+            size_t chunkIdx = i >> CHUNK_SHIFT;
+            
+            // FIX: Bỏ qua an toàn nếu VM cố gắng clear vùng nhớ (to) vượt quá các chunk đã cấp phát
+            if (chunkIdx >= chunks.size()) {
+                break;
+            }
 
-	inline AObject *&operator[](size_t index) { return currentPtr[index]; }
+            AObject **slot = &chunks[chunkIdx][i & CHUNK_MASK];
+            if (*slot) {
+                manager.release(*slot);
+                *slot = nullptr;
+            }
+        }
+    }
+
+    inline void freeTo(size_t newTop) { 
+        setTop(newTop); 
+    }
+
+    inline void restart() {
+        if (!chunks.empty()) {
+            std::memset(chunks[0], 0, CHUNK_SIZE * sizeof(AObject *));
+        }
+
+        for (size_t i = 1; i < chunks.size(); ++i) {
+            delete[] chunks[i];
+        }
+
+        chunks.resize(1);
+        setTop(0);
+        peak = 0;
+    }
+
+    template <size_t size> inline void clearTemp(ObjectManager &manager) {
+        if constexpr (size > 0) {
+            constexpr size_t idx = size - 1;
+            AObject **obj = getAbsolute(idx);
+
+            if (*obj) {
+                manager.release(*obj);
+                *obj = nullptr;
+            }
+            clearTemp<size - 1>(manager);
+        }
+    }
+
+    inline void set(ObjectManager &manager, size_t index, AObject *object) {
+        // FIX: Tính toán địa chỉ tuyệt đối động thay vì dựa vào currentPtr để không bao giờ bị tràn 256
+        AObject *&last = *getAbsolute(topIndex + index);
+        if (last != nullptr) {
+            manager.release(last);
+        }
+        last = object;
+    }
+
+    inline AObject *&operator[](size_t index) { 
+        // FIX: Tương tự hàm set(), vượt qua ranh giới chunk một cách an toàn
+        return *getAbsolute(topIndex + index); 
+    }
 };
 
 } // namespace AutoLang

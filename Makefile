@@ -10,7 +10,7 @@ CXXFLAGS = -O2 -pipe -std=c++17 -DNOMINMAX -DCURL_STATICLIB -I src \
            -I src/third_party/curl/include \
            -I src/third_party \
            -Wall -Wextra -MMD -MP \
-           -Wno-unused-parameter -Wno-unused-variable \
+           -Wno-unused-parameter -Wno-unused-variable -Wno-switch \
            -Wno-sign-compare -Wno-reorder
 
 # 2. Linker Libraries: Nạp trực tiếp file tĩnh của CPR, Curl và các thư viện mạng Windows

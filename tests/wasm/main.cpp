@@ -79,9 +79,7 @@ class CompilerWrapper {
 		compiler.setLimitOpcodeCount(count);
 	}
 
-	uint32_t getLimitOpcodeCount() {
-		return compiler.getLimitOpcodeCount();
-	}
+	uint32_t getLimitOpcodeCount() { return compiler.getLimitOpcodeCount(); }
 
 	void setMainSourceConfig(bool allowLateinitKeyword,
 	                         bool allowNonNullAssertion) {
@@ -166,9 +164,8 @@ class CompilerWrapper {
 		if (compiler.vm.callFrames.getSize() == 0) {
 			if (compiler.vm.callFrames.objects[0].exception) {
 				val obj = val::object();
-				auto exception = compiler.vm.callFrames.objects[0].exception;
-				obj.set("message",
-				        std::string(exception->member->data[0]->str->data));
+				auto exception = compiler.exceptionMessage;
+				obj.set("message", std::string(exception));
 				return obj;
 			}
 			return val::null();
@@ -195,9 +192,9 @@ EMSCRIPTEN_BINDINGS(autolang_module) {
 	    .function("setOnWarning", &CompilerWrapper::setOnWarning)
 	    .function("setMainSourceConfig", &CompilerWrapper::setMainSourceConfig)
 	    .function("setLimitOpcodeCount", &CompilerWrapper::setLimitOpcodeCount)
-		.function("getLimitOpcodeCount", &CompilerWrapper::getLimitOpcodeCount)
+	    .function("getLimitOpcodeCount", &CompilerWrapper::getLimitOpcodeCount)
 	    .function("getOutput", &CompilerWrapper::getOutput)
-		.function("setOutput", &CompilerWrapper::setOutput)
+	    .function("setOutput", &CompilerWrapper::setOutput)
 	    .function("clearOutput", &CompilerWrapper::clearOutput)
 	    .function("registerBuiltInLibrary",
 	              &CompilerWrapper::registerBuiltInLibrary)

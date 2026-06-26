@@ -103,6 +103,8 @@ void ReturnNode::putOptimizedBytecodes(in_func, HasClassIdNode *value,
 				put_opcode_u32(bytecodes, node->declaration->id);
 				return;
 			}
+			default:
+				break;
 		}
 		value->putBytecodes(in_data, bytecodes);
 		bytecodes.emplace_back(Opcode::RETURN_VALUE);
@@ -113,17 +115,6 @@ void ReturnNode::putOptimizedBytecodes(in_func, HasClassIdNode *value,
 
 void ReturnNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	putOptimizedBytecodes(in_data, value, bytecodes);
-}
-
-void VarNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	if (declaration->isGlobal) {
-		bytecodes.emplace_back(isStore ? Opcode::STORE_GLOBAL
-		                               : Opcode::LOAD_GLOBAL);
-	} else {
-		bytecodes.emplace_back(isStore ? Opcode::STORE_LOCAL
-		                               : Opcode::LOAD_LOCAL);
-	}
-	put_opcode_u32(bytecodes, declaration->id);
 }
 
 } // namespace AutoLang

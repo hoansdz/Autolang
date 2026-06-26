@@ -1,6 +1,6 @@
-@import("std/time")
+// @import("std/time")
 
-val start = Time.now()
+// val start = Time.now()
 
 // class Iterator<T> {
 // 	func next(): Iterator<T>? {
@@ -41,8 +41,76 @@ val start = Time.now()
 
 // println(Http.getAll(["https://www.facebook.com", "google.com"], 5000))
 
-val x = <Int>[1, 2, 3]
-println("x: ${x}")	
+// func quickSort(arr: Array<Int>, left: Int, right: Int) {
+//   if (left >= right) {
+//     return
+//   }
+//   val pivot = (left + right) / 2
+//   val partition = arr[pivot]
+//   var i = +left
+//   var j = +right
+//   while (i < j) {
+//     while (arr[i] < partition) {
+//       i += 1
+//     }
+//     while (arr[j] > partition) {
+//       j -= 1
+//     }
+//     if (i <= j) {
+//       val temp = arr[i]
+//       arr[i] = arr[j]
+//       arr[j] = temp
+//       i += 1
+//       j -= 1
+//     }
+//   }
+//   if (i < right) {
+//     quickSort(arr, i, right)
+//   }
+//   if (j > left) {
+//     quickSort(arr, left, j)
+//   }
+// }
 
-println("Total runtime: ${Time.now() - start} ms")
-println()
+func quickSort(arr: Array<Int>, left: Int, right: Int) {
+	if (left >= right) return
+	val pivot = (left + right) / 2
+	val partition = arr[pivot]
+
+	var i = 0
+	var j = 0
+	while (i < j) {
+		while (arr[i] < partition) {
+			i += 1
+		}
+		while (arr[j] > partition) {
+			j -= 1
+		}
+		if (i <= j) {
+			val temp = arr[i]
+			arr[i] = arr[j]
+			arr[j] = temp
+			i += 1
+			j -= 1
+		}
+	}
+	if (i < right) {
+		quickSort(arr, i, right)
+	}
+	if (j > left) {
+		quickSort(arr, left, j)
+	}
+}
+
+
+val arr_ = <Int>[1, 2, 5, 1, 5, 7, 9]
+quickSort(arr_, 0, arr_.size() - 1)
+println(arr_)
+
+// val a = 0
+// var b = a
+// val c = a
+// var d = c
+// b += 1
+// println("$a $b")
+// println("${a === c} ${a === d} ${a === 0}")

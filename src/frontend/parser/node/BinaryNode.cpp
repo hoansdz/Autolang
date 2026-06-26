@@ -472,7 +472,8 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 						put_opcode_u32(bytecodes, rightNode->declaration->id);
 						return true;
 					}
-					if (rightNode->caller->kind != NodeType::VAR) {
+					if (rightNode->caller->kind != NodeType::VAR ||
+					    rightNode->accessNullable) {
 						return false;
 					}
 					auto caller = static_cast<VarNode *>(rightNode->caller);
@@ -497,6 +498,8 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 					put_opcode_u32(bytecodes, rightNode->declaration->id);
 					return true;
 				}
+				default:
+					break;
 			}
 			break;
 		}
@@ -524,7 +527,8 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 						put_opcode_u32(bytecodes, rightNode->declaration->id);
 						return true;
 					}
-					if (rightNode->caller->kind != NodeType::VAR) {
+					if (rightNode->caller->kind != NodeType::VAR ||
+					    rightNode->accessNullable) {
 						return false;
 					}
 					auto caller = static_cast<VarNode *>(rightNode->caller);
@@ -538,6 +542,8 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 					put_opcode_u32(bytecodes, rightNode->declaration->id);
 					return true;
 				}
+				default:
+					break;
 			}
 			break;
 		}
@@ -578,7 +584,8 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 							               rightNode->declaration->id);
 							return true;
 						}
-						if (rightNode->caller->kind != NodeType::VAR) {
+						if (rightNode->caller->kind != NodeType::VAR ||
+						    rightNode->accessNullable) {
 							return false;
 						}
 						auto caller = static_cast<VarNode *>(rightNode->caller);
@@ -592,10 +599,13 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 						put_opcode_u32(bytecodes, rightNode->declaration->id);
 						return true;
 					}
+					default:
+						break;
 				}
 				return false;
 			}
-			if (leftNode->caller->kind != NodeType::VAR) {
+			if (leftNode->caller->kind != NodeType::VAR ||
+			    leftNode->accessNullable) {
 				return false;
 			}
 			auto leftCaller = static_cast<VarNode *>(leftNode->caller);
@@ -677,9 +687,13 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 					put_opcode_u32(bytecodes, rightNode->declaration->id);
 					return true;
 				}
+				default:
+					break;
 			}
 			return false;
 		}
+		default:
+			break;
 	}
 	return false;
 }

@@ -1,7 +1,9 @@
 #ifndef ANATIVE_FUNCTION_DATA_HPP
 #define ANATIVE_FUNCTION_DATA_HPP
 
+// #include "backend/vm/ANotifier.hpp"
 #include "shared/Type.hpp"
+
 #ifdef __EMSCRIPTEN__
 #include "shared/JSFunction.hpp"
 #include <emscripten/bind.h>
@@ -27,8 +29,7 @@ struct ANativeFunctionData {
 		val *jsFunction;
 #endif
 	};
-	ANativeFunctionData()
-	    : type(ANativeFunctionType::FUNC), native(nullptr) {}
+	ANativeFunctionData() : type(ANativeFunctionType::FUNC), native(nullptr) {}
 	ANativeFunctionData(ANativeFunction native)
 	    : type(ANativeFunctionType::FUNC), native(native) {}
 	ANativeFunctionData(ANativeLambdaFunction nativeLambda)
@@ -47,10 +48,14 @@ struct ANativeFunctionData {
 				return (*nativeLambda)(notifier, args, argSize);
 			}
 #ifdef __EMSCRIPTEN__
-			default: {
+			case JS_FUNCTION: {
 				return callJSFunction(jsFunction, notifier, args, argSize);
 			}
 #endif
+			default: {
+				// notifier.throwException("What happen when call operator()");
+				return nullptr;
+			}
 		}
 	}
 };

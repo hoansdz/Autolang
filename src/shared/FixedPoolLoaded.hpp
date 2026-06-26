@@ -15,9 +15,6 @@ public:
 	FixedPoolLoaded(const FixedPoolLoaded&) = delete;
 	FixedPoolLoaded& operator=(const FixedPoolLoaded&) = delete;
 	inline T* push() {
-		if (index == size) {
-			assert(index == size && "HAS ERROR IN ESTIMATE");
-		}
 		return &objects[index++];
 	}
 	inline T* operator[](uint32_t idx) {

@@ -40,6 +40,8 @@ void CreateMapNode::optimize(in_func) {
 				static_cast<CreateSetNode *>(key)->classId = valueMustBeClassId;
 				break;
 			}
+			default:
+				break;
 		}
 		key->optimize(in_data);
 		if (key->classId == keyMustBeClassId ||
@@ -79,6 +81,8 @@ void CreateMapNode::optimize(in_func) {
 				    valueMustBeClassId;
 				break;
 			}
+			default:
+				break;
 		}
 		value->optimize(in_data);
 		if (value->classId == valueMustBeClassId ||

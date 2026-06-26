@@ -159,6 +159,8 @@ void CallNode::optimize(in_func) {
 			case NodeType::CLASS_ACCESS:
 				justFindStatic = true;
 				break;
+			default:
+				break;
 		}
 
 		auto callerClassInfo = context.classInfo[caller->classId];
@@ -462,9 +464,13 @@ void CallNode::optimize(in_func) {
 							first.errorNonNullIfMatchCount--;
 							break;
 						}
+						default:
+							break;
 					}
 					break;
 				}
+				default:
+					break;
 			}
 		}
 	}
@@ -695,6 +701,8 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 							argument->optimize(in_data);
 							break;
 						}
+						default:
+							break;
 					}
 				}
 				continue;
@@ -738,6 +746,8 @@ err:;
 			argument->classId = DefaultClass::mapClassId;
 			break;
 		}
+		default:
+			break;
 	}
 	auto argumentClassId = argument->classId;
 	throwError("Object " + context.lexerString[nameId] + ": At argument " +
@@ -811,6 +821,8 @@ bool CallNode::match(in_func, MatchOverload &match,
 									}
 									break;
 								}
+								default:
+									break;
 							}
 						}
 

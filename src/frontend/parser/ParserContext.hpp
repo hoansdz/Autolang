@@ -140,20 +140,20 @@ struct ParserContext {
 
 	NonReallocatePool<DeclarationNode> declarationNodePool;
 	ChunkArena<Parameter, 64> parameterPool;
-	ChunkArena<ReturnNode, 128> returnPool;
+	ChunkArena<ReturnNode, 64> returnPool;
 	ChunkArena<SetNode, 128> setValuePool;
-	ChunkArena<CreateConstructorNode, 64> createConstructorPool;
+	ChunkArena<CreateConstructorNode, 32> createConstructorPool;
 	ChunkArena<BinaryNode, 128> binaryNodePool;
 	ChunkArena<IfNode, 128> ifPool;
 	ChunkArena<WhileNode, 64> whilePool;
-	ChunkArena<TryCatchNode, 64> tryCatchPool;
-	ChunkArena<ThrowNode, 64> throwPool;
-	ChunkArena<CastNode, 64> castPool;
-	ChunkArena<RuntimeCastNode, 64> runtimeCastPool;
+	ChunkArena<TryCatchNode, 32> tryCatchPool;
+	ChunkArena<ThrowNode, 32> throwPool;
+	ChunkArena<CastNode, 32> castPool;
+	ChunkArena<RuntimeCastNode, 32> runtimeCastPool;
 	ChunkArena<VarNode, 128> varPool;
 	ChunkArena<GetPropNode, 128> getPropPool;
 	ChunkArena<UnknowNode, 128> unknowNodePool;
-	ChunkArena<OptionalAccessNode, 64> optionalAccessNodePool;
+	ChunkArena<OptionalAccessNode, 32> optionalAccessNodePool;
 	ChunkArena<NullCoalescingNode, 64> nullCoalescingPool;
 	ChunkArena<BlockNode, 64> blockNodePool;
 	ChunkArena<CallNode, 64> callNodePool;
@@ -164,11 +164,12 @@ struct ParserContext {
 	ChunkArena<ForNode, 64> forPool;
 	ChunkArena<RangeNode, 32> rangeNode;
 	ChunkArena<CreateArrayNode, 32> createArrayPool;
-	ChunkArena<CreateSetNode, 32> createSetPool;
-	ChunkArena<CreateMapNode, 32> createMapPool;
+	ChunkArena<CreateSetNode, 16> createSetPool;
+	ChunkArena<CreateMapNode, 16> createMapPool;
 	ChunkArena<WhenNode, 32> whenNodePool;
 	ChunkArena<FunctionAccessNode, 8> functionAccessPool;
-	ChunkArena<CreateClosureNode, 16> createClosurePool;
+	ChunkArena<CreateClosureNode, 32> createClosurePool;
+	ChunkArena<GetPointerNode, 8> getPointerPool;
 
 	std::vector<uint8_t> closureBytecodes;
 

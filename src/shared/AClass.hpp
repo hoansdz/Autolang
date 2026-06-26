@@ -18,6 +18,7 @@ struct AClass
 	ClassId id;
 	uint32_t classFlags;
 	std::optional<ClassId> parentId;
+	ClassId* genericType = nullptr;
 	std::vector<ClassId> memberId;
 	std::vector<FunctionId> vtable; // Override function
 	HashMap<std::string, MemberOffset> memberMap;

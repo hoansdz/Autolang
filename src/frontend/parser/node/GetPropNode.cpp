@@ -115,6 +115,18 @@ bool GetPropNode::optimizeSkipIfNotFoundMember(in_func) {
 	if (nullable) {
 		nullable = declaration->nullable;
 	}
+	if (!cloneable) {
+		switch (classId) {
+			case DefaultClass::intClassId:
+			case DefaultClass::floatClassId: {
+				cloneable = true;
+				break;
+			}
+			default: {
+				break;
+			}
+		}
+	}
 	return false;
 }
 
@@ -204,6 +216,18 @@ void GetPropNode::optimize(in_func) {
 	if (nullable) {
 		nullable = declaration->nullable;
 	}
+	if (!cloneable) {
+		switch (classId) {
+			case DefaultClass::intClassId:
+			case DefaultClass::floatClassId: {
+				cloneable = true;
+				break;
+			}
+			default: {
+				break;
+			}
+		}
+	}
 }
 
 ExprNode *GetPropNode::copy(in_func) {
@@ -242,6 +266,18 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					                           : Opcode::LOCAL_LOAD_MEMBER);
 					put_opcode_u32(bytecodes, varNode->declaration->id);
 					put_opcode_u32(bytecodes, id);
+					if (cloneable) {
+						switch (classId) {
+							case DefaultClass::intClassId:
+							case DefaultClass::floatClassId: {
+								bytecodes.emplace_back(Opcode::CLONE);
+								break;
+							}
+							default: {
+								break;
+							}
+						}
+					}
 					return;
 				}
 				if (accessNullable) {
@@ -256,6 +292,8 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				put_opcode_u32(bytecodes, id);
 				return;
 			}
+			default:
+				break;
 		}
 		caller->putBytecodes(in_data, bytecodes);
 		if (isStore) {
@@ -281,17 +319,7 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		}
 		return;
 	}
-	switch (caller->kind) {
-		case NodeType::CLASS_ACCESS:
-		case NodeType::VAR: {
-			break;
-		}
-		default: {
-			caller->putBytecodes(in_data, bytecodes);
-			bytecodes.emplace_back(Opcode::POP);
-			break;
-		}
-	}
+	caller->putBytecodesIfMustBeCalled(in_data, bytecodes);
 	if (accessNullable) {
 		if (isStore) {
 			throwError("Bug: Setnode not ensure store data is non nullable");
@@ -301,9 +329,25 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		                     context.lexerString[nameId]);
 		accessNullable = false;
 	}
-	bytecodes.emplace_back(isStore ? Opcode::STORE_GLOBAL
-	                               : Opcode::LOAD_GLOBAL);
-	put_opcode_u32(bytecodes, id);
+	if (isStore) {
+		bytecodes.emplace_back(Opcode::STORE_GLOBAL);
+		put_opcode_u32(bytecodes, id);
+	} else {
+		bytecodes.emplace_back(Opcode::LOAD_GLOBAL);
+		put_opcode_u32(bytecodes, id);
+		if (cloneable) {
+			switch (classId) {
+				case DefaultClass::intClassId:
+				case DefaultClass::floatClassId: {
+					bytecodes.emplace_back(Opcode::CLONE);
+					break;
+				}
+				default: {
+					break;
+				}
+			}
+		}
+	}
 }
 
 void GetPropNode::rewrite(in_func, uint8_t *bytecodes) {

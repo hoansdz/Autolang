@@ -639,6 +639,10 @@ void ACompiler::generateBytecodes() {
 				funcInfo->inferenceNode->resolve(in_data);
 				funcInfo->inferenceNode->optimize(in_data);
 				funcInfo->inferenceNode->loaded = true;
+				if (funcInfo->inferenceNode->value->classId ==
+				    DefaultClass::voidClassId) {
+					funcInfo->body.nodes[0] = funcInfo->inferenceNode->value;
+				}
 			}
 		}
 
@@ -685,6 +689,7 @@ void ACompiler::generateBytecodes() {
 			func->bytecodes.size =
 			    compile.allBytecodes.size() - func->bytecodes.offset;
 		}
+
 		printDebug("Start put bytecodes in main");
 		context.currentBytecodePos = compile.allBytecodes.size();
 		mainFunc->bytecodes.offset = context.currentBytecodePos;
@@ -779,15 +784,26 @@ void ACompiler::run() {
 			    "Call generateBytecodes() before running.");
 	}
 	vm.start();
+	if (exceptionMessage) {
+		delete[] exceptionMessage;
+	}
+	if (vm.callFrames[0]->exception) {
+		auto e = vm.callFrames[0]->exception->member->data[0]->str;
+		char *str = new char[e->size + 1];
+		memcpy(str, e->data, e->size);
+		str[e->size] = '\0';
+		exceptionMessage = str;
+	} else {
+		exceptionMessage = nullptr;
+	}
+	vm.restart();
 }
 
 #ifdef AUTOLANG_LIMIT_OPCODE
 void ACompiler::setLimitOpcodeCount(uint32_t limitOpcodeCount) {
 	vm.limitOpcodeCount = limitOpcodeCount;
 }
-uint32_t ACompiler::getLimitOpcodeCount() {
-	return vm.limitOpcodeCount;
-}
+uint32_t ACompiler::getLimitOpcodeCount() { return vm.limitOpcodeCount; }
 #endif
 
 void ACompiler::refresh() {
@@ -801,13 +817,12 @@ void ACompiler::refresh() {
 	}
 	generatedLibraryMap.clear();
 	generatedLibraries.clear();
-	vm.restart();
 	vm.data.allBytecodes.clear();
 	vm.data.destroy();
-// AutoLang::DefaultClass::init(vm.data);
-// AutoLang::Libs::stdlib::init(*this);
-// AutoLang::DefaultClass::init(*this);
-// AutoLang::DefaultFunction::init(*this);
+	// AutoLang::DefaultClass::init(vm.data);
+	// AutoLang::Libs::stdlib::init(*this);
+	// AutoLang::DefaultClass::init(*this);
+	// AutoLang::DefaultFunction::init(*this);
 	vm.data.mainFunctionId = vm.data.registerFunction(
 	    nullptr, ".main", nullptr, 0,
 	    static_cast<uint32_t>(FunctionFlags::FUNC_IS_STATIC));
@@ -892,6 +907,9 @@ ACompiler::~ACompiler() {
 	}
 	for (auto library : builtInLibraries) {
 		delete library;
+	}
+	if (exceptionMessage) {
+		delete[] exceptionMessage;
 	}
 }
 

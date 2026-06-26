@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
 	auto start = std::chrono::high_resolution_clock::now();
 	try {
 		try {
-			for (int i = 0; i < 1; ++i) {
+			for (int i = 0; i < 2; ++i) {
 				AutoLang::ACompiler compiler;
 				compiler.setLimitOpcodeCount(1000000);
 				// ANativeMap nativeMap = {
@@ -139,10 +139,10 @@ int main(int argc, char *argv[]) {
 					compiler.run();
 					compiler.refresh();
 				}
-				// if (compiler.compile("./tests/testCorrectness.atl")) {
-				// 	compiler.run();
-				// 	compiler.refresh();
-				// }
+				if (compiler.compile("./tests/testCorrectness.atl")) {
+					compiler.run();
+					compiler.refresh();
+				}
 				// if (compiler.compile("./tests/testCorrectness.atl")) {
 				// 	compiler.run();
 				// }

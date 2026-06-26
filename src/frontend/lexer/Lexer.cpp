@@ -61,7 +61,8 @@ void load(ParserContext *mainContext, LibraryData *library,
 
 bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 	char chr = context.line[i];
-	if (std::isblank(chr) || (unsigned char)chr < 32 || (unsigned char)chr >= 127) {
+	if (std::isblank(chr) || (unsigned char)chr < 32 ||
+	    (unsigned char)chr >= 127) {
 		++i;
 		return true;
 	}
@@ -184,6 +185,8 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 			end:;
 				return true;
 			}
+			default:
+				break;
 		}
 		context.tokens.emplace_back(context.linePos, op);
 		return true;

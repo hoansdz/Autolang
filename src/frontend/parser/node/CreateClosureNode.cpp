@@ -82,7 +82,6 @@ void CreateClosureNode::optimize(in_func) {
 	context.mustReturnValueNode = lastMustReturnValueNode;
 	func->returnId = *classDeclaration->inputClassId[0]->classId;
 	if (func->returnId != DefaultClass::voidClassId) {
-		
 	}
 	// std::cerr<<funcId<<"\n";
 	// std::cerr << classDeclaration->getName(in_data) << "\n";
@@ -106,6 +105,8 @@ void CreateClosureNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				static_cast<GetPropNode *>(obj)->isStore = false;
 				break;
 			}
+			default:
+				break;
 		}
 		obj->putBytecodes(in_data, bytecodes);
 	}

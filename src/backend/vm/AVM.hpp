@@ -10,7 +10,9 @@
 #include "shared/ObjectManager.hpp"
 #include "shared/StackAllocator.hpp"
 #include <chrono>
+#include <regex>
 #include <string>
+
 
 namespace AutoLang {
 
@@ -56,6 +58,11 @@ class AVM {
 #ifdef AUTOLANG_LIMIT_OPCODE
 	uint32_t limitOpcodeCount = UINT32_MAX;
 	uint32_t currentLimitOpcodeCount = 0;
+#endif
+#ifndef NO_INCLUDE_LIBS_HTTP
+	uint32_t maxDownloadSize = UINT32_MAX;
+	std::regex *allowedDomainsRegex = nullptr;
+	bool allowAllDomains = false;
 #endif
 	inline AObject *getConstObject(uint32_t id);
 

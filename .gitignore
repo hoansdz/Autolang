@@ -3,3 +3,4 @@ build/
 .VSCodeCounter
 .clang-format
 .CMakeLists.txt
+.cache/clangd/index/
