@@ -142,7 +142,7 @@ void loadEnum(in_func, size_t &i) {
 	if (expect(token, Lexer::TokenType::EXTENDS)) {
 		throw ParserError(firstLine, "Enum doesn't support extends");
 	}
-	// std::cerr<<"Clazz: "<<clazz->name<<" "<<declarationThis->id<<"\n";
+	// std::cerr<<"Clazz: "<<clazz->getName(compile)<<" "<<declarationThis->id<<"\n";
 	// Has PrimaryConstructor
 	//  bool hasPrimaryConstructor = false;
 	if (expect(token, Lexer::TokenType::LPAREN)) {

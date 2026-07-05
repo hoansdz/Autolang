@@ -189,6 +189,9 @@ class Array<T> {
 	@native("arr_for_each")
 	func forEach(fn: (T) -> Void)
 
+	@native("arr_for_each_with_index")
+	func forEach(fn: (T, Int) -> Void)
+
 	@native("arr_filter")
 	func filter(fn: (T) -> Bool): Array<T>
 
@@ -353,6 +356,7 @@ func assert(condition: Bool, fileName: String, line: Int) {
 	         {"arr_pop", &array::pop},
 	         {"arr_filter", &array::filter},
 	         {"arr_for_each", &array::for_each},
+	         {"arr_for_each_with_index", &array::for_each_with_index},
 	         {"arr_index_of", &array::index_of},
 	         {"arr_is_empty", &array::is_empty},
 	         {"arr_slice", &array::slice},

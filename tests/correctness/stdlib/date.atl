@@ -1,0 +1,50 @@
+@import("std/date")
+
+func testDateFeatures() {
+    // 1. Current timestamp
+    val ms = Date.currentTimeMillis()
+    assert(ms > 0, __FILE__, __LINE__)
+
+    // 2. Constructors
+    val dNow = Date.now()
+    assert(dNow != null, __FILE__, __LINE__)
+
+    // Create from a specific timestamp: 1704067200000 ms is 2024-01-01 00:00:00 UTC
+    // Wait, let's test with a local timestamp or a known epoch timestamp.
+    // e.g. 0 timestamp => 1970-01-01 local time
+    val dEpoch = Date.fromTimestamp(0)
+    assert(dEpoch.getTime() == 0, __FILE__, __LINE__)
+
+    // 3. Date arithmetic
+    val dTemp = Date.fromTimestamp(0)
+    dTemp.addDays(1)
+    assert(dTemp.getTime() == 24 * 60 * 60 * 1000, __FILE__, __LINE__)
+
+    dTemp.addHours(1)
+    assert(dTemp.getTime() == (24 * 60 * 60 * 1000) + (60 * 60 * 1000), __FILE__, __LINE__)
+
+    dTemp.addMinutes(1)
+    assert(dTemp.getTime() == (24 * 60 * 60 * 1000) + (60 * 60 * 1000) + (60 * 1000), __FILE__, __LINE__)
+
+    dTemp.addSeconds(1)
+    assert(dTemp.getTime() == (24 * 60 * 60 * 1000) + (60 * 60 * 1000) + (60 * 1000) + 1000, __FILE__, __LINE__)
+
+    // 4. Leap year check
+    // 2000 is leap year
+    val dLeap = Date.fromTimestamp(946684800000) // 2000-01-01 UTC approx
+    // Leap year check is timezone-independent for year 2000
+    assert(dLeap.isLeapYear() == true, __FILE__, __LINE__)
+
+    // 2001 is not leap year
+    val dNotLeap = Date.fromTimestamp(978307200000) // 2001-01-01 UTC approx
+    assert(dNotLeap.isLeapYear() == false, __FILE__, __LINE__)
+
+    // 5. Formatting (Pattern like "%Y-%m-%d")
+    val dFormat = Date.fromTimestamp(1704067200000) // 2024-01-01 approx (can be 2023 or 2024 depending on timezone, so let's format it and assert format is not empty)
+    val str = dFormat.format("%Y")
+    assert(str == "2024" || str == "2023", __FILE__, __LINE__)
+
+    println("Passed ${__FUNC__}")
+}
+
+testDateFeatures()

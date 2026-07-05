@@ -49,7 +49,10 @@ func testArrayFeaturesExhaustive() {
     a.forEach {|value|
 		globalArraySum += value
 	}
-    assert(globalArraySum == 40, __FILE__, __LINE__)
+	a.forEach {|value, index|
+		globalArraySum += value
+	}
+    assert(globalArraySum == 80, __FILE__, __LINE__)
 
     // 6. Test: sort
     a.sort(arraySortValue)

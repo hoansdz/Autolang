@@ -92,7 +92,7 @@ void ReturnNode::putOptimizedBytecodes(in_func, HasClassIdNode *value,
 					put_opcode_u32(bytecodes, node->declaration->id);
 					return;
 				}
-				if (node->caller->kind != NodeType::VAR) {
+				if (node->caller->kind != NodeType::VAR || node->classId == DefaultClass::functionClassId) {
 					break;
 				}
 				auto caller = static_cast<VarNode *>(node->caller);

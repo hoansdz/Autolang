@@ -1,19 +1,46 @@
 func testPrecedence() {
-
+	// Multiplication before addition
 	val a = 1 + 2 * 3
 	assert(a == 7, __FILE__, __LINE__)
 
+	// Parentheses override precedence
 	val b = (1 + 2) * 3
 	assert(b == 9, __FILE__, __LINE__)
 
+	// Left-associativity of subtraction
 	val c = 10 - 3 - 2
 	assert(c == 5, __FILE__, __LINE__)
 
+	// Left-associativity of division
 	val d = 100 / 10 / 2
 	assert(d == 5, __FILE__, __LINE__)
 
+	// Complex expression
 	val e = 1+2*3-4/5+6*7-8/9+10*11-12/13+14
 	assert(e == 173, __FILE__, __LINE__)
+
+	// Unary minus precedence
+	assert(-2 + 3 == 1, __FILE__, __LINE__)
+	assert(-(2 + 3) == -5, __FILE__, __LINE__)
+	assert(-2 * 3 == -6, __FILE__, __LINE__)
+	assert(-2 * -3 == 6, __FILE__, __LINE__)
+
+	// Modulo precedence (same level as * and /)
+	assert(10 + 7 % 3 == 11, __FILE__, __LINE__)  // 10 + (7%3) = 10 + 1 = 11
+	assert(10 * 7 % 3 == 1, __FILE__, __LINE__)   // (10*7) % 3 = 70%3 = 1
+
+	// Comparison vs arithmetic: arithmetic binds tighter
+	assert(1 + 2 == 3, __FILE__, __LINE__)
+	assert(1 + 2 > 2, __FILE__, __LINE__)
+	assert(2 * 3 >= 5 + 1, __FILE__, __LINE__)
+
+	// Logical operators: && binds tighter than ||
+	assert(false || true && true, __FILE__, __LINE__)   // false || (true && true) = true
+	assert(!(true && false || false), __FILE__, __LINE__) // !((true&&false)||false) = !(false) = true
+
+	// NOT binds tightest among logical
+	assert(!false && true, __FILE__, __LINE__)    // (!false) && true = true
+	assert(!false || false, __FILE__, __LINE__)   // (!false) || false = true
 
 	println("Passed ${__FUNC__}")
 }

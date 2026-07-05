@@ -2,7 +2,9 @@
 #define BINARY_NODE_CPP
 
 #include "Node.hpp"
+#include "frontend/lexer/Lexer.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "frontend/parser/node/Node.hpp"
 #include "shared/ClassFlags.hpp"
 #include <iostream>
 
@@ -79,8 +81,9 @@ ExprNode *BinaryNode::leftOpRight(in_func, ConstValueNode *l,
 			throw ParserError(
 			    line, "Cannot use operator '" +
 			              Lexer::Token(0, op).toString(context) + "' between " +
-			              compile.classes[l->classId]->name + " and " +
-			              compile.classes[r->classId]->name);
+			              compile.classes[l->classId]->getName(compile) +
+			              " and " +
+			              compile.classes[r->classId]->getName(compile));
 	}
 }
 
@@ -155,8 +158,9 @@ ExprNode *BinaryNode::resolve(in_func) {
 		return value;
 	} catch (const std::runtime_error &err) {
 		// throwError("Cannot use " + Lexer::Token(0, op).toString(context) +
-		//            " operator with " + compile.classes[l->classId]->name +
-		//            " and " + compile.classes[r->classId]->name);
+		//            " operator with " +
+		//            compile.classes[l->classId]->getName(compile) + " and " +
+		//            compile.classes[r->classId]->getName(compile));
 		throw ParserError(line, err.what());
 	}
 }
@@ -164,10 +168,28 @@ ExprNode *BinaryNode::resolve(in_func) {
 void BinaryNode::optimize(in_func) {
 	left->optimize(in_data);
 	right->optimize(in_data);
-	if (left->kind == NodeType::CONST_VAL)
-		static_cast<ConstValueNode *>(left)->isLoadPrimary = true;
-	if (right->kind == NodeType::CONST_VAL)
-		static_cast<ConstValueNode *>(right)->isLoadPrimary = true;
+	switch (left->kind) {
+		case NodeType::CONST_VAL:
+			static_cast<ConstValueNode *>(left)->isLoadPrimary = true;
+			break;
+		case NodeType::VAR:
+		case NodeType::GET_PROP:
+			static_cast<AccessNode *>(left)->cloneable = false;
+			break;
+		default:
+			break;
+	}
+	switch (right->kind) {
+		case NodeType::CONST_VAL:
+			static_cast<ConstValueNode *>(right)->isLoadPrimary = true;
+			break;
+		case NodeType::VAR:
+		case NodeType::GET_PROP:
+			static_cast<AccessNode *>(right)->cloneable = false;
+			break;
+		default:
+			break;
+	}
 	switch (op) {
 		case Lexer::TokenType::IS: {
 			if (left->kind == CLASS_ACCESS) {
@@ -251,7 +273,7 @@ void BinaryNode::optimize(in_func) {
 					break;
 				}
 			}
-			// std::cerr<<compile.classes[left->classId]->name<<'\n';
+			// std::cerr<<compile.classes[left->classId]->getName(compile)<<'\n';
 
 			switch (right->classId) {
 				case AutoLang::DefaultClass::boolClassId: {
@@ -324,7 +346,7 @@ void BinaryNode::optimize(in_func) {
 				    left, AutoLang::DefaultClass::intClassId);
 				break;
 			}
-			// std::cerr<<compile.classes[left->classId]->name<<'\n';
+			// std::cerr<<compile.classes[left->classId]->getName(compile)<<'\n';
 
 			if (right->classId == AutoLang::DefaultClass::boolClassId) {
 				right = context.castPool.push(
@@ -409,8 +431,8 @@ void BinaryNode::optimize(in_func) {
 		return;
 	throwError(std::string("Cannot use '") +
 	           Lexer::Token(0, op).toString(context) + "' between " +
-	           compile.classes[left->classId]->name + " and " +
-	           compile.classes[right->classId]->name);
+	           compile.classes[left->classId]->getName(compile) + " and " +
+	           compile.classes[right->classId]->getName(compile));
 }
 
 bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
@@ -699,7 +721,8 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 }
 
 void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	if (putOptimizedBytecode(in_data, bytecodes, op, left, right)) {
+	optimized = putOptimizedBytecode(in_data, bytecodes, op, left, right);
+	if (optimized) {
 		return;
 	}
 	if ((left->classId == DefaultClass::nullClassId ||
@@ -719,11 +742,39 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			default: {
 				throwError("Cannot use operator '" +
 				           Lexer::Token(0, op).toString(context) + "' with '" +
-				           compile.classes[left->classId]->name + "' and '" +
-				           compile.classes[right->classId]->name + "'");
+				           compile.classes[left->classId]->getName(compile) +
+				           "' and '" +
+				           compile.classes[right->classId]->getName(compile) +
+				           "'");
 			}
 		}
 		return;
+	}
+	switch (op) {
+		case Lexer::TokenType::AND_AND: {
+			left->putBytecodes(in_data, bytecodes);
+			bytecodes.emplace_back(Opcode::JUMP_IF_FALSE_NO_POP);
+			BytecodePos jumpOffset = bytecodes.size() - context.currentBytecodePos;
+			put_opcode_u32(bytecodes, 0);
+			right->putBytecodes(in_data, bytecodes);
+			rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
+			                   jumpOffset,
+			                   bytecodes.size() - context.currentBytecodePos);
+			return;
+		}
+		case Lexer::TokenType::OR_OR: {
+			left->putBytecodes(in_data, bytecodes);
+			bytecodes.emplace_back(Opcode::JUMP_IF_TRUE_NO_POP);
+			BytecodePos jumpOffset = bytecodes.size() - context.currentBytecodePos;
+			put_opcode_u32(bytecodes, 0);
+			right->putBytecodes(in_data, bytecodes);
+			rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
+			                   jumpOffset,
+			                   bytecodes.size() - context.currentBytecodePos);
+			return;
+		}
+		default:
+			break;
 	}
 	left->putBytecodes(in_data, bytecodes);
 	right->putBytecodes(in_data, bytecodes);
@@ -736,8 +787,10 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					    static_cast<RangeNode *>(right)->lessThan);
 					return;
 				}
+				default: {
+					throwError("In condition keywords doesn't support now");
+				}
 			}
-			throwError("In condition keywords doesn't support now");
 		}
 		case Lexer::TokenType::PLUS: {
 			switch (left->classId) {
@@ -817,12 +870,6 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			return;
 		case Lexer::TokenType::OR:
 			bytecodes.emplace_back(AutoLang::Opcode::BITWISE_OR);
-			return;
-		case Lexer::TokenType::AND_AND:
-			bytecodes.emplace_back(AutoLang::Opcode::AND_AND);
-			return;
-		case Lexer::TokenType::OR_OR:
-			bytecodes.emplace_back(AutoLang::Opcode::OR_OR);
 			return;
 		case Lexer::TokenType::NOTEQEQ:
 			bytecodes.emplace_back(AutoLang::Opcode::NOTEQ_POINTER);

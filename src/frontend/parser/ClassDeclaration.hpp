@@ -6,7 +6,6 @@
 #include <optional>
 #include <vector>
 
-
 namespace AutoLang {
 
 struct ParserContext;
@@ -18,19 +17,32 @@ struct ClassDeclaration {
 	uint32_t line;
 	LexerStringId baseClassLexerStringId;
 	bool nullable = false;
-	//class A<T> => T is generic declaration
+	// class A<T> => T is generic declaration
 	bool isGenericDeclaration = false;
 	bool mustInference = true;
-	//class A<T> => A<T> has generic declaration
+	// class A<T> => A<T> has generic declaration
 	bool isGeneric = false;
 	std::vector<ClassDeclaration *> inputClassId;
 	std::optional<uint32_t> classId;
 	inline bool isGenerics(in_func) { return isGeneric; }
 	template <bool changeGenericsClassId, bool canBeFunction = false>
 	void load(in_func);
+	int64_t loadHash() {
+		int64_t hash = 14695981039346ull ^ *classId;
+		for (auto classDeclaration : inputClassId) {
+			if (classDeclaration->inputClassId.empty()) {
+				hash ^= *classDeclaration->classId;
+			} else {
+				hash ^= classDeclaration->loadHash();
+			}
+			hash *= 1099511628211ull;
+		}
+		return hash;
+	}
 	template <bool addNullable = false> std::string getName(in_func);
 	ClassDeclaration *copy(in_func);
-	bool isSame(ClassDeclaration* classDeclaration);
+	bool isSame(ClassDeclaration *classDeclaration);
+	bool isMatch(ClassDeclaration *classDeclaration);
 	ClassDeclaration();
 	[[noreturn]] inline void throwError(std::string message);
 };

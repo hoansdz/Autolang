@@ -25,6 +25,7 @@ void CompiledProgram::destroy() {
 	constPool.push_back(DefaultClass::nullObject);
 	constPool.push_back(DefaultClass::trueObject);
 	constPool.push_back(DefaultClass::falseObject);
+	stringArena.reset();
 }
 
 void CompiledProgram::refresh() { manager.refresh(); }
@@ -37,7 +38,7 @@ FunctionId CompiledProgram::registerFunction(AClass *clazz, std::string name,
 	uint32_t id = functions.size();
 	if (clazz != nullptr) {
 		clazz->funcMap[name].push_back(id);
-		name = clazz->name + '.' + name;
+		name = clazz->getName(*this) + '.' + name;
 		// if constexpr (!isConstructor) {
 		// 	if (native && !isStatic) //Auto insert "this" if native function in
 		// class
@@ -53,16 +54,22 @@ FunctionId CompiledProgram::registerFunction(AClass *clazz, std::string name,
 	// printDebug(name);
 	// printDebug("BEGIN SIZE FUNC: "+std::to_string(functions.size()) + " " +
 	// std::to_string(funcMap.size()));
+	auto &funcs = funcMap[name];
+	funcs.push_back(id);
 	auto *func = functionAllocator.push();
 	func->id = id;
-	func->name = std::move(name);
+	if (funcs.size() == 1) {
+		func->nameStringOffset = stringArena.push_back(name);
+	} else {
+		func->nameStringOffset = functions[funcs[0]]->nameStringOffset;
+	}
 	func->args = args;
 	func->argSize = argSize;
 	func->returnId = returnId;
 	func->functionFlags = functionFlags;
 	functions.push_back(func);
-	funcMap[func->name].push_back(id);
-	// std::cerr << "Created " << func->name << " " << id << "\n";
+
+	// std::cerr << "Created " << func->getName(compile) << " " << id << "\n";
 	// printDebug("END SIZE FUNC: "+std::to_string(functions.size()) + " " +
 	// std::to_string(funcMap.size()));
 	return id;
@@ -75,11 +82,11 @@ ClassId CompiledProgram::registerClass(std::string name, uint32_t classFlags) {
 	ClassId id = classes.size();
 	AClass *clazz = classAllocator.push();
 	// std::cerr << "Created class name: " << name << " " << id << "\n";
-	clazz->name = std::move(name);
+	clazz->nameStringOffset = stringArena.push_back(name);
 	clazz->id = id;
 	clazz->classFlags = classFlags;
 	classes.push_back(clazz);
-	classMap[clazz->name] = id;
+	classMap[name] = id;
 	return id;
 }
 

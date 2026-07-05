@@ -13,6 +13,7 @@ AObject *insert(NativeFuncInData);
 AObject *pop(NativeFuncInData);
 AObject *index_of(NativeFuncInData);
 AObject *for_each(NativeFuncInData);
+AObject *for_each_with_index(NativeFuncInData);
 AObject *slice(NativeFuncInData);
 AObject *filter(NativeFuncInData);
 AObject *sort(NativeFuncInData);

@@ -26,7 +26,7 @@ struct ClassInfo {
 	CreateConstructorNode *primaryConstructor = nullptr;
 	std::vector<CreateConstructorNode *> secondaryConstructor;
 	std::vector<CreateFuncNode *> createFunctionNodes;
-	DeclarationNode *declarationThis;
+	DeclarationNode *declarationThis = nullptr;
 	ClassId parent;
 
 	AccessNode *findDeclaration(in_func, uint32_t line, LexerStringId nameId,

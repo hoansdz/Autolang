@@ -1,0 +1,21 @@
+@import("std/file")
+
+func testFilePermission() {
+    // Test: File path length > 512 -> should get blocked with SecurityError
+    try {
+        var longPath = "a"
+        for (i in 0..8) {
+            longPath = longPath + longPath
+        }
+        longPath = longPath + "b.txt"
+        val f = File(longPath, FileMode.READ)
+        assert(false, __FILE__, __LINE__)
+    } catch (e) {
+        val errStr = e.message
+        assert(errStr.indexOf("SecurityError") != -1, __FILE__, __LINE__)
+    }
+
+    println("Passed ${__FUNC__}")
+}
+
+testFilePermission()

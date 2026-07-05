@@ -7,13 +7,25 @@
 namespace AutoLang {
 
 void VarNode::optimize(in_func) {
-	// std::cerr << "loaded " << declaration->name << " "
-	//           << compile.classes[declaration->classId]->name << "\n";
+	// std::cerr << "loaded " << declaration->getName(compile) << " "
+	//           << compile.classes[declaration->classId]->getName(compile) << "\n";
 	classId = declaration->classId;
 	isVal = declaration->isVal;
 	classDeclaration = declaration->classDeclaration;
 	if (nullable) {
 		nullable = declaration->nullable; // #
+	}
+	if (cloneable) {
+		switch (classId) {
+			case DefaultClass::intClassId:
+			case DefaultClass::floatClassId: {
+				break;
+			}
+			default: {
+				cloneable = false;
+				break;
+			}
+		}
 	}
 }
 
@@ -30,6 +42,7 @@ ExprNode *VarNode::copy(in_func) {
 	auto newNode =
 	    context.varPool.push(line, newDeclaration, isStore, nullable);
 	newNode->classId = classId;
+	newNode->cloneable = cloneable;
 	return newNode;
 }
 
@@ -45,16 +58,7 @@ void VarNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		                                             : Opcode::LOAD_LOCAL);
 		put_opcode_u32(bytecodes, declaration->id);
 		if (cloneable) {
-			switch (classId) {
-				case DefaultClass::intClassId:
-				case DefaultClass::floatClassId: {
-					bytecodes.emplace_back(Opcode::CLONE);
-					break;
-				}
-				default: {
-					break;
-				}
-			}
+			bytecodes.emplace_back(Opcode::CLONE);
 		}
 	}
 }

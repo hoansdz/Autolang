@@ -1,0 +1,25 @@
+@import("std/regex")
+
+func testRegexFeatures() {
+    // 1. Compile and match
+    val re = Regex.compile("[0-9]+")
+    assert(re.isMatch("123") == true, __FILE__, __LINE__)
+    assert(re.isMatch("abc") == false, __FILE__, __LINE__)
+
+    // 2. Find all
+    // Matches digits
+    val reDigits = Regex.compile("[0-9]+")
+    val matches = reDigits.findAll("abc 123 def 456 ghi")
+    assert(matches.size() == 2, __FILE__, __LINE__)
+    assert(matches[0] == "123", __FILE__, __LINE__)
+    assert(matches[1] == "456", __FILE__, __LINE__)
+
+    // 3. Replace
+    val reReplace = Regex.compile("fox")
+    val res = reReplace.replace("quick brown fox", "cat")
+    assert(res == "quick brown cat", __FILE__, __LINE__)
+
+    println("Passed ${__FUNC__}")
+}
+
+testRegexFeatures()

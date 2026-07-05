@@ -8,7 +8,29 @@ class TestLogicClass {
 }
 
 func testLogic() {
+	// Basic boolean values
+	assert(true == true, __FILE__, __LINE__)
+	assert(false == false, __FILE__, __LINE__)
+	assert(true != false, __FILE__, __LINE__)
 
+	// AND (&&)
+	assert((true && true) == true, __FILE__, __LINE__)
+	assert((true && false) == false, __FILE__, __LINE__)
+	assert((false && true) == false, __FILE__, __LINE__)
+	assert((false && false) == false, __FILE__, __LINE__)
+
+	// OR (||)
+	assert((true || true) == true, __FILE__, __LINE__)
+	assert((true || false) == true, __FILE__, __LINE__)
+	assert((false || true) == true, __FILE__, __LINE__)
+	assert((false || false) == false, __FILE__, __LINE__)
+
+	// NOT (!)
+	assert(!true == false, __FILE__, __LINE__)
+	assert(!false == true, __FILE__, __LINE__)
+	assert(!!true == true, __FILE__, __LINE__)
+
+	// Combined expressions
 	val a = true && false
 	assert((!a) == true, __FILE__, __LINE__)
 
@@ -18,6 +40,31 @@ func testLogic() {
 	val c = !false
 	assert(c == true, __FILE__, __LINE__)
 
+	// Short-circuit: && stops at first false (right side not evaluated)
+	var evaluated = false
+	val sideEffect = {||
+		evaluated = true
+		false
+	}
+	val r1 = false && sideEffect()
+	assert(!evaluated, __FILE__, __LINE__)
+
+	// Short-circuit: || stops at first true (right side not evaluated)
+	evaluated = false
+	val sideEffect2 = {||
+		evaluated = true
+		true
+	}
+	val r2 = true || sideEffect2()
+	assert(!evaluated, __FILE__, __LINE__)
+
+	// De Morgan's laws
+	val p = true
+	val q = false
+	assert(!(p && q) == (!p || !q), __FILE__, __LINE__)
+	assert(!(p || q) == (!p && !q), __FILE__, __LINE__)
+
+	// Class method with negation
 	val testLogicObj = TestLogicClass()
 	testLogicObj.test()
 

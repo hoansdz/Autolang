@@ -92,7 +92,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 					auto classInfo = context.getCurrentClassInfo(in_data);
 					if (!classInfo->genericData) {
 						nameId =
-						    context.createLexerStringIfNotExists(clazz->name);
+						    context.createLexerStringIfNotExists(clazz->getName(compile));
 						break;
 					}
 					nameId = lexerId__CLASS__;
@@ -388,7 +388,7 @@ createFunc:;
 		funcInfo->genericData = context.preloadGenericData;
 	}
 	// std::cerr<<"Created "<<name+"()"<<" ->
-	// "<<compile.classes[func->returnId]->name<<"\n";
+	// "<<compile.classes[func->returnId]->getName(compile)<<"\n";
 	context.gotoFunction(node->id);
 	auto &scope = funcInfo->scopes.back();
 
@@ -416,7 +416,7 @@ createFunc:;
 				}
 			}
 			if (!hasReturn) {
-				throw ParserError(firstLine, "Function " + func->name +
+				throw ParserError(firstLine, "Function " + func->getName(compile) +
 				                                 " didn't declare return");
 			}
 		}

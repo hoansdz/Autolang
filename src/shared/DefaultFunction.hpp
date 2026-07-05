@@ -26,7 +26,8 @@ inline AObject *to_int(NativeFuncInData);
 inline AObject *to_float(NativeFuncInData);
 inline AObject *trim(NativeFuncInData);
 inline AObject *to_string(NativeFuncInData);
-inline std::string to_string(ANotifier &notifier, AObject *obj);
+inline std::string to_string(ANotifier &notifier, AObject *obj,
+                             std::string space = std::string());
 inline AObject *get_string_size(NativeFuncInData);
 inline AObject *input_str(NativeFuncInData);
 inline AObject *str_get(NativeFuncInData);
@@ -43,7 +44,7 @@ AObject *data_constructor(NativeFuncInData) {
 	return nullptr;
 }
 
-std::string to_string(ANotifier &notifier, AObject *obj) {
+std::string to_string(ANotifier &notifier, AObject *obj, std::string space) {
 	if (!obj) {
 		return "c_nullptr";
 	}
@@ -89,24 +90,27 @@ std::string to_string(ANotifier &notifier, AObject *obj) {
 				return result;
 			}
 
+			std::string newSpace = space + "  ";
+
 			if (obj->flags & AObject::Flags::OBJ_HAS_MEMBER_DATA) {
-				std::string result = clazz->name + "(";
+				std::string result =
+				    clazz->getName(notifier.vm->data) + " (\n" + newSpace;
 				bool isFirst = true;
 				for (auto &[memberName, id] : clazz->memberMap) {
 					if (isFirst) {
 						isFirst = false;
 					} else {
-						result += ", ";
+						result += ",\n" + newSpace;
 					}
 					std::string str =
-					    to_string(notifier, obj->member->data[id]);
+					    to_string(notifier, obj->member->data[id], newSpace);
 					result += memberName + " : " + std::move(str);
 				}
-				result += ")";
+				result += "\n" + space + ")";
 				return result;
 			}
 			std::stringstream ss;
-			ss << clazz->name << "@" << obj;
+			ss << clazz->getName(notifier.vm->data) << "@" << obj;
 			return ss.str();
 	}
 }
@@ -143,9 +147,10 @@ AObject *to_int(NativeFuncInData) {
 		default:
 			break;
 	}
-	notifier.throwException("Cannot cast " +
-	                        notifier.vm->data.classes[obj->type]->name +
-	                        " to Int");
+	notifier.throwException(
+	    "Cannot cast " +
+	    notifier.vm->data.classes[obj->type]->getName(notifier.vm->data) +
+	    " to Int");
 	return nullptr;
 }
 
@@ -166,9 +171,10 @@ AObject *to_float(NativeFuncInData) {
 		default:
 			break;
 	}
-	notifier.throwException("Cannot cast " +
-	                        notifier.vm->data.classes[obj->type]->name +
-	                        " to Float");
+	notifier.throwException(
+	    "Cannot cast " +
+	    notifier.vm->data.classes[obj->type]->getName(notifier.vm->data) +
+	    " to Float");
 	return nullptr;
 }
 
@@ -184,9 +190,10 @@ AObject *to_string(NativeFuncInData) {
 		default:
 			break;
 	}
-	notifier.throwException("Cannot cast " +
-	                        notifier.vm->data.classes[obj->type]->name +
-	                        " to String");
+	notifier.throwException(
+	    "Cannot cast " +
+	    notifier.vm->data.classes[obj->type]->getName(notifier.vm->data) +
+	    " to String");
 	return nullptr;
 }
 

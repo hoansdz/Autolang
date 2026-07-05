@@ -113,6 +113,12 @@ class ObjectManager {
 				obj->flags = AObject::Flags::OBJ_IS_FREE;
 				return;
 			}
+			case AutoLang::DefaultClass::bytesClassId: {
+				delete[] obj->bytes->data;
+				delete obj->bytes;
+				obj->flags = AObject::Flags::OBJ_IS_FREE;
+				return;
+			}
 			case AutoLang::DefaultClass::functionClassId: {
 				for (int i = obj->function->size; i-- > 0;) {
 					release(obj->function->args[i]);

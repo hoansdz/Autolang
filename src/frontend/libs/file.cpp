@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <regex>
 #include <sys/stat.h>
 
 #ifdef _WIN32
@@ -39,10 +40,60 @@ static void destroyFile(ANotifier &notifier, void *fileData) {
 	delete handle;
 }
 
+static bool checkFilePathSecurity(const std::string &path, ANotifier &notifier) {
+	if (path.length() > 512) {
+		return false;
+	}
+	if (!notifier.vm->allowedFilePathsRegex) {
+		return true;
+	}
+	std::error_code ec;
+	std::string absPath = std::filesystem::absolute(std::filesystem::path(path), ec).string();
+	if (ec) {
+		return false;
+	}
+	std::string normalizedPath = absPath;
+	for (char &c : normalizedPath) {
+		if (c == '\\') {
+			c = '/';
+		}
+	}
+	return std::regex_match(normalizedPath, *(notifier.vm->allowedFilePathsRegex));
+}
+
+static std::string resolveFilePath(const std::string &rawPath, ANotifier &notifier) {
+	if (notifier.vm->fileBasePath.empty()) {
+		return rawPath;
+	}
+	std::filesystem::path p(rawPath);
+	if (p.is_relative()) {
+		return (std::filesystem::path(notifier.vm->fileBasePath) / p).string();
+	}
+	return rawPath;
+}
+
 inline AObject *constructor(NativeFuncInData) {
 	ClassId classId = args[0]->i;
-	const std::string &path = args[1]->str->data;
+	const std::string &rawPath = args[1]->str->data;
+	std::string path = resolveFilePath(rawPath, notifier);
 	int64_t modeInt = args[2]->i;
+
+	if (!checkFilePathSecurity(path, notifier)) {
+		notifier.throwException("SecurityError: File path is not allowed.");
+		return nullptr;
+	}
+
+	bool requiresRead = (modeInt == 0 || modeInt == 3 || modeInt == 4 || modeInt == 5);
+	bool requiresWrite = (modeInt == 1 || modeInt == 2 || modeInt == 3 || modeInt == 4 || modeInt == 5);
+
+	if (requiresRead && !notifier.vm->allowFileRead) {
+		notifier.throwException("SecurityError: File read operation is not allowed.");
+		return nullptr;
+	}
+	if (requiresWrite && !notifier.vm->allowFileWrite) {
+		notifier.throwException("SecurityError: File write operation is not allowed.");
+		return nullptr;
+	}
 
 	const char *cMode;
 	switch (modeInt) {
@@ -80,6 +131,10 @@ inline AObject *constructor(NativeFuncInData) {
 }
 
 inline AObject *read_text(NativeFuncInData) {
+	if (!notifier.vm->allowFileRead) {
+		notifier.throwException("SecurityError: File read operation is not allowed.");
+		return nullptr;
+	}
 	auto handle = static_cast<AFileHandle *>(args[0]->data->data);
 	if (!handle->fp) {
 		notifier.throwException("File is closed");
@@ -101,6 +156,10 @@ inline AObject *read_text(NativeFuncInData) {
 }
 
 inline AObject *for_each_line(NativeFuncInData) {
+	if (!notifier.vm->allowFileRead) {
+		notifier.throwException("SecurityError: File read operation is not allowed.");
+		return nullptr;
+	}
 	auto handle = static_cast<AFileHandle *>(args[0]->data->data);
 	auto funcObject = args[1];
 
@@ -124,7 +183,7 @@ inline AObject *for_each_line(NativeFuncInData) {
 			}
 
 			auto lineObj = notifier.createString(line);
-			notifier.callFunctionObject(funcObject, lineObj);
+			auto value = notifier.callFunctionObject(funcObject, lineObj);
 			if (notifier.hasException())
 				return nullptr;
 
@@ -137,13 +196,17 @@ inline AObject *for_each_line(NativeFuncInData) {
 
 	if (!line.empty()) {
 		auto lineObj = notifier.createString(line);
-		notifier.callFunctionObject(funcObject, lineObj);
+		auto value = notifier.callFunctionObject(funcObject, lineObj);
 	}
 
 	return nullptr;
 }
 
 inline AObject *write(NativeFuncInData) {
+	if (!notifier.vm->allowFileWrite) {
+		notifier.throwException("SecurityError: File write operation is not allowed.");
+		return nullptr;
+	}
 	auto handle = static_cast<AFileHandle *>(args[0]->data->data);
 	if (!handle->fp) {
 		notifier.throwException("File is closed");
@@ -177,20 +240,39 @@ inline AObject *close(NativeFuncInData) {
 }
 
 inline AObject *exists(NativeFuncInData) {
-	const std::string &path = args[0]->str->data;
+	if (!notifier.vm->allowFileRead) {
+		notifier.throwException("SecurityError: File read operation is not allowed.");
+		return nullptr;
+	}
+	const std::string &rawPath = args[0]->str->data;
+	std::string path = resolveFilePath(rawPath, notifier);
+	if (!checkFilePathSecurity(path, notifier)) {
+		notifier.throwException("SecurityError: File path is not allowed.");
+		return nullptr;
+	}
 	STAT_STRUCT stat_buf;
 	bool result = (STAT_FUNC(path.c_str(), &stat_buf) == 0);
 	return notifier.createBool(result);
 }
 
 inline AObject *delete_file(NativeFuncInData) {
-	const std::string &path = args[0]->str->data;
+	if (!notifier.vm->allowFileWrite || !notifier.vm->allowFileDelete) {
+		notifier.throwException("SecurityError: File delete operation is not allowed.");
+		return nullptr;
+	}
+	const std::string &rawPath = args[0]->str->data;
+	std::string path = resolveFilePath(rawPath, notifier);
+	if (!checkFilePathSecurity(path, notifier)) {
+		notifier.throwException("SecurityError: File path is not allowed.");
+		return nullptr;
+	}
 	bool success = (std::remove(path.c_str()) == 0);
 	return notifier.createBool(success);
 }
 
 inline AObject *get_parent(NativeFuncInData) {
-	const std::string &path = args[0]->str->data;
+	const std::string &rawPath = args[0]->str->data;
+	std::string path = resolveFilePath(rawPath, notifier);
 	size_t sep_pos = path.find_last_of("/\\");
 
 	if (sep_pos == std::string::npos) {
@@ -203,7 +285,16 @@ inline AObject *get_parent(NativeFuncInData) {
 }
 
 inline AObject *get_absolute_path(NativeFuncInData) {
-	const std::string &path = args[0]->str->data;
+	if (!notifier.vm->allowFileRead) {
+		notifier.throwException("SecurityError: File read operation is not allowed.");
+		return nullptr;
+	}
+	const std::string &rawPath = args[0]->str->data;
+	std::string path = resolveFilePath(rawPath, notifier);
+	if (!checkFilePathSecurity(path, notifier)) {
+		notifier.throwException("SecurityError: File path is not allowed.");
+		return nullptr;
+	}
 	std::error_code ec;
 	std::string absPath =
 	    std::filesystem::absolute(std::filesystem::path(path), ec).string();
@@ -215,7 +306,16 @@ inline AObject *get_absolute_path(NativeFuncInData) {
 }
 
 inline AObject *is_directory(NativeFuncInData) {
-	const std::string &path = args[0]->str->data;
+	if (!notifier.vm->allowFileRead) {
+		notifier.throwException("SecurityError: File read operation is not allowed.");
+		return nullptr;
+	}
+	const std::string &rawPath = args[0]->str->data;
+	std::string path = resolveFilePath(rawPath, notifier);
+	if (!checkFilePathSecurity(path, notifier)) {
+		notifier.throwException("SecurityError: File path is not allowed.");
+		return nullptr;
+	}
 	STAT_STRUCT stat_buf;
 	int rc = STAT_FUNC(path.c_str(), &stat_buf);
 #ifdef _WIN32
@@ -227,7 +327,16 @@ inline AObject *is_directory(NativeFuncInData) {
 }
 
 inline AObject *is_file(NativeFuncInData) {
-	const std::string &path = args[0]->str->data;
+	if (!notifier.vm->allowFileRead) {
+		notifier.throwException("SecurityError: File read operation is not allowed.");
+		return nullptr;
+	}
+	const std::string &rawPath = args[0]->str->data;
+	std::string path = resolveFilePath(rawPath, notifier);
+	if (!checkFilePathSecurity(path, notifier)) {
+		notifier.throwException("SecurityError: File path is not allowed.");
+		return nullptr;
+	}
 	STAT_STRUCT stat_buf;
 	int rc = STAT_FUNC(path.c_str(), &stat_buf);
 #ifdef _WIN32
@@ -239,7 +348,16 @@ inline AObject *is_file(NativeFuncInData) {
 }
 
 inline AObject *get_all_files(NativeFuncInData) {
-	const std::string &path = args[0]->str->data;
+	if (!notifier.vm->allowFileRead) {
+		notifier.throwException("SecurityError: File read operation is not allowed.");
+		return nullptr;
+	}
+	const std::string &rawPath = args[0]->str->data;
+	std::string path = resolveFilePath(rawPath, notifier);
+	if (!checkFilePathSecurity(path, notifier)) {
+		notifier.throwException("SecurityError: File path is not allowed.");
+		return nullptr;
+	}
 	ClassId arrayClassId = args[1]->i;
 
 	auto newArr = notifier.createArray(arrayClassId);
@@ -271,7 +389,8 @@ inline AObject *get_all_files(NativeFuncInData) {
 }
 
 inline AObject *get_name(NativeFuncInData) {
-	const std::string &path = args[0]->str->data;
+	const std::string &rawPath = args[0]->str->data;
+	std::string path = resolveFilePath(rawPath, notifier);
 	size_t sep_pos = path.find_last_of("/\\");
 	if (sep_pos == std::string::npos) {
 		return notifier.createString(path);
@@ -283,7 +402,16 @@ inline AObject *get_name(NativeFuncInData) {
 }
 
 inline AObject *get_size(NativeFuncInData) {
-	const std::string &path = args[0]->str->data;
+	if (!notifier.vm->allowFileRead) {
+		notifier.throwException("SecurityError: File read operation is not allowed.");
+		return nullptr;
+	}
+	const std::string &rawPath = args[0]->str->data;
+	std::string path = resolveFilePath(rawPath, notifier);
+	if (!checkFilePathSecurity(path, notifier)) {
+		notifier.throwException("SecurityError: File path is not allowed.");
+		return nullptr;
+	}
 	STAT_STRUCT stat_buf;
 
 	if (STAT_FUNC(path.c_str(), &stat_buf) == 0) {
@@ -296,7 +424,8 @@ inline AObject *get_size(NativeFuncInData) {
 }
 
 inline AObject *get_extension(NativeFuncInData) {
-	const std::string &path = args[0]->str->data;
+	const std::string &rawPath = args[0]->str->data;
+	std::string path = resolveFilePath(rawPath, notifier);
 	size_t dot_pos = path.find_last_of('.');
 	size_t sep_pos = path.find_last_of("/\\");
 
@@ -312,7 +441,16 @@ inline AObject *get_extension(NativeFuncInData) {
 }
 
 inline AObject *get_last_modified(NativeFuncInData) {
-	const std::string &path = args[0]->str->data;
+	if (!notifier.vm->allowFileRead) {
+		notifier.throwException("SecurityError: File read operation is not allowed.");
+		return nullptr;
+	}
+	const std::string &rawPath = args[0]->str->data;
+	std::string path = resolveFilePath(rawPath, notifier);
+	if (!checkFilePathSecurity(path, notifier)) {
+		notifier.throwException("SecurityError: File path is not allowed.");
+		return nullptr;
+	}
 	STAT_STRUCT stat_buf;
 
 	if (STAT_FUNC(path.c_str(), &stat_buf) == 0) {

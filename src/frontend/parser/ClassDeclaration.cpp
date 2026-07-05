@@ -27,6 +27,31 @@ bool ClassDeclaration::isSame(ClassDeclaration *classDeclaration) {
 	return true;
 }
 
+bool ClassDeclaration::isMatch(ClassDeclaration *classDeclaration) {
+	if (inputClassId.size() != classDeclaration->inputClassId.size()) {
+		return false;
+	}
+	return true;
+	// if (classId != classDeclaration->classId ||
+	//     inputClassId.size() != classDeclaration->inputClassId.size()) {
+	// 	return false;
+	// }
+	// for (int i = 0; i < inputClassId.size(); ++i) {
+	// 	if (!inputClassId[i] || !classDeclaration->inputClassId[i]) {
+	// 		continue;
+	// 	}
+	// 	if (inputClassId[i]->classId !=
+	// 	    classDeclaration->inputClassId[i]->classId) {
+	// 		return false;
+	// 	}
+	// 	if (inputClassId[i]->classId == DefaultClass::functionClassId &&
+	// 	    !inputClassId[i]->isMatch(classDeclaration->inputClassId[i])) {
+	// 		return false;
+	// 	}
+	// }
+	// return true;
+}
+
 ClassDeclaration *ClassDeclaration::copy(in_func) {
 	if (!classId) {
 		std::cerr << getName(in_data) << "\n";
@@ -303,12 +328,12 @@ template <bool addNullable> std::string ClassDeclaration::getName(in_func) {
 			return result;
 		}
 		if constexpr (!addNullable) {
-			return compile.classes[*classId]->name;
+			return compile.classes[*classId]->getName(compile);
 		}
 		if (nullable) {
-			return compile.classes[*classId]->name + "?";
+			return compile.classes[*classId]->getName(compile) + "?";
 		}
-		return compile.classes[*classId]->name;
+		return compile.classes[*classId]->getName(compile);
 	}
 	if (inputClassId.empty()) {
 		if constexpr (!addNullable) {

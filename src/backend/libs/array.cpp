@@ -142,6 +142,28 @@ AObject *for_each(NativeFuncInData) {
 	return nullptr;
 }
 
+AObject *for_each_with_index(NativeFuncInData) {
+	auto arr = args[0];
+	auto funcObject = args[1];
+
+	auto indexObj = notifier.createInt(0);
+	indexObj->retain();
+
+	for (int i = 0; i < arr->member->size; ++i) {
+		auto value = notifier.callFunctionObject(
+		    funcObject, arr->member->data[i], indexObj);
+		if (notifier.hasException()) {
+			notifier.release(indexObj);
+			return nullptr;
+		}
+		indexObj->i++;
+	}
+
+	notifier.release(indexObj);
+
+	return nullptr;
+}
+
 AObject *filter(NativeFuncInData) {
 	auto arr = args[0];
 	auto funcObject = args[1];
@@ -286,7 +308,15 @@ AObject *get(NativeFuncInData) {
 		return nullptr;
 	}
 
-	return obj->member->data[index];
+	AObject *value = obj->member->data[index];
+	switch (value->type) {
+		case AutoLang::DefaultClass::intClassId:
+			return notifier.createInt(value->i);
+		case AutoLang::DefaultClass::floatClassId:
+			return notifier.createFloat(value->f);
+		default:
+			return value;
+	}
 }
 
 AObject *set(NativeFuncInData) {

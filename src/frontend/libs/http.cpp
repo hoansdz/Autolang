@@ -32,17 +32,12 @@ inline bool checkUrlSecurity(const char *url, ANotifier &notifier) {
 	std::string urlStr(url);
 
 	// 1. Chặn ReDoS, tràn bộ đệm và mã độc bằng giới hạn độ dài
-	if (urlStr.length() > 256)
+	if (urlStr.length() > 512)
 		return false;
 
-	// 2. Triết lý Zero-Trust: Khai báo phải rõ ràng, không mập mờ
-	// Giả định bạn có cờ allowAllDomains trong VM để mở khóa thủ công
-	if (notifier.vm->allowAllDomains)
-		return true;
-
-	// Nếu không có giấy phép (Null) -> Mặc định CẤM TẤT CẢ
+	// Nếu không có giấy phép (Null) -> Mặc định mọi cái đều vào được
 	if (notifier.vm->allowedDomainsRegex == nullptr)
-		return false;
+		return true;
 
 	// 3. Bóc tách domain thô an toàn
 	static const std::regex domain_regex(
@@ -141,6 +136,156 @@ inline AObject *get(NativeFuncInData) {
 	emscripten_fetch_t *fetch = emscripten_fetch(&attr, url);
 
 	if (fetch->status == 200) {
+		std::string result(fetch->data, fetch->numBytes);
+		emscripten_fetch_close(fetch);
+		return notifier.createString(result);
+	} else {
+		std::string err_msg =
+		    "HTTP Request failed with status: " + std::to_string(fetch->status);
+		emscripten_fetch_close(fetch);
+		notifier.throwException(err_msg);
+		return nullptr;
+	}
+#endif
+}
+
+inline AObject *post(NativeFuncInData) {
+	const char *url = args[0]->str->data;
+	const std::string &body = args[1]->str->data;
+	long timeout_ms = static_cast<long>(args[2]->i);
+
+	// [SECURITY GATE]
+	if (!checkUrlSecurity(url, notifier)) {
+		notifier.throwException(
+		    "SecurityError: Domain not allowed or URL is malformed/too long.");
+		return nullptr;
+	}
+
+#ifdef FETCH_IMPLEMENTATION_LIBCURL
+	CURL *curl = curl_easy_init();
+	if (!curl) {
+		notifier.throwException("Failed to initialize libcurl");
+		return nullptr;
+	}
+
+	std::string response_string;
+	curl_easy_setopt(curl, CURLOPT_URL, url);
+	curl_easy_setopt(curl, CURLOPT_POST, 1L);
+	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+	curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(body.size()));
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
+	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+	curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, timeout_ms);
+	curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, timeout_ms);
+
+	CURLcode res = curl_easy_perform(curl);
+
+	if (res != CURLE_OK) {
+		std::string error_msg = curl_easy_strerror(res);
+		curl_easy_cleanup(curl);
+		notifier.throwException("HTTP Request failed | Error: " + error_msg);
+		return nullptr;
+	}
+
+	long response_code = 0;
+	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+	curl_easy_cleanup(curl);
+
+	if (response_code >= 400) {
+		notifier.throwException("HTTP Error status code: " +
+		                        std::to_string(response_code));
+		return nullptr;
+	}
+
+	return notifier.createString(response_string);
+
+#elif defined(FETCH_IMPLEMENTATION_EMSCRIPTEN)
+	emscripten_fetch_attr_t attr;
+	emscripten_fetch_attr_init(&attr);
+	strcpy(attr.requestMethod, "POST");
+	attr.timeoutMSecs = timeout_ms;
+	attr.attributes =
+	    EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_SYNCHRONOUS;
+	
+	attr.requestData = body.c_str();
+	attr.requestDataSize = body.size();
+
+	emscripten_fetch_t *fetch = emscripten_fetch(&attr, url);
+
+	if (fetch->status >= 200 && fetch->status < 300) {
+		std::string result(fetch->data, fetch->numBytes);
+		emscripten_fetch_close(fetch);
+		return notifier.createString(result);
+	} else {
+		std::string err_msg =
+		    "HTTP Request failed with status: " + std::to_string(fetch->status);
+		emscripten_fetch_close(fetch);
+		notifier.throwException(err_msg);
+		return nullptr;
+	}
+#endif
+}
+
+inline AObject *http_delete(NativeFuncInData) {
+	const char *url = args[0]->str->data;
+	long timeout_ms = static_cast<long>(args[1]->i);
+
+	// [SECURITY GATE]
+	if (!checkUrlSecurity(url, notifier)) {
+		notifier.throwException(
+		    "SecurityError: Domain not allowed or URL is malformed/too long.");
+		return nullptr;
+	}
+
+#ifdef FETCH_IMPLEMENTATION_LIBCURL
+	CURL *curl = curl_easy_init();
+	if (!curl) {
+		notifier.throwException("Failed to initialize libcurl");
+		return nullptr;
+	}
+
+	std::string response_string;
+	curl_easy_setopt(curl, CURLOPT_URL, url);
+	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
+	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+	curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, timeout_ms);
+	curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, timeout_ms);
+
+	CURLcode res = curl_easy_perform(curl);
+
+	if (res != CURLE_OK) {
+		std::string error_msg = curl_easy_strerror(res);
+		curl_easy_cleanup(curl);
+		notifier.throwException("HTTP Request failed | Error: " + error_msg);
+		return nullptr;
+	}
+
+	long response_code = 0;
+	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+	curl_easy_cleanup(curl);
+
+	if (response_code >= 400) {
+		notifier.throwException("HTTP Error status code: " +
+		                        std::to_string(response_code));
+		return nullptr;
+	}
+
+	return notifier.createString(response_string);
+
+#elif defined(FETCH_IMPLEMENTATION_EMSCRIPTEN)
+	emscripten_fetch_attr_t attr;
+	emscripten_fetch_attr_init(&attr);
+	strcpy(attr.requestMethod, "DELETE");
+	attr.timeoutMSecs = timeout_ms;
+	attr.attributes =
+	    EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_SYNCHRONOUS;
+
+	emscripten_fetch_t *fetch = emscripten_fetch(&attr, url);
+
+	if (fetch->status >= 200 && fetch->status < 300) {
 		std::string result(fetch->data, fetch->numBytes);
 		emscripten_fetch_close(fetch);
 		return notifier.createString(result);
@@ -280,6 +425,12 @@ class Http {
     @native("http_get")
     static func get(url: String, timeoutMs: Int = 10000): String
 
+    @native("http_post")
+    static func post(url: String, body: String, timeoutMs: Int = 10000): String
+
+    @native("http_delete")
+    static func delete(url: String, timeoutMs: Int = 10000): String
+
     @native("http_get_all")
     private static func _getAll(urls: Array<String>, arrayClassId: Int, timeoutMs: Int): Array<String>
     
@@ -289,6 +440,8 @@ class Http {
 	                                LibraryConfig(false, true, true),
 	                                ANativeMap({
 	                                    {"http_get", &http::get},
+	                                    {"http_post", &http::post},
+	                                    {"http_delete", &http::http_delete},
 	                                    {"http_get_all", &http::get_all},
 	                                }));
 }

@@ -6,6 +6,7 @@
 #include "backend/vm/ANotifier.hpp"
 #include "shared/AObject.hpp"
 #include "shared/Type.hpp"
+#include <emscripten.h>
 #include <emscripten/bind.h>
 
 using namespace emscripten;
@@ -239,21 +240,28 @@ inline AObject *returnJsObjectToAObject(ANotifier &notifier, val value) {
 	}
 }
 
-EM_ASYNC_JS(int, call_and_await_js,
-            (EM_VAL func_handle, EM_VAL thisArg, EM_VAL args_handle), {
-	            let js_func = Emscripten.val.toValue(func_handle);
-	            let js_args = Emscripten.val.toValue(args_handle);
+EM_ASYNC_JS(emscripten::EM_VAL, call_and_await_js,
+            (EM_VAL func_handle, EM_VAL this_handle, EM_VAL args_handle), {
+	            // Emval.toValue(handle)  — convert C++ EM_VAL handle → JS value
+	            // Emval.toHandle(jsVal)  — convert JS value → EM_VAL handle (to return to C++)
+	            // These are the stable official APIs for EM_ASYNC_JS blocks.
+	            // Emscripten.valFromId / Emscripten.toValue are deprecated and
+	            // removed in newer Emscripten versions.
+	            let js_func = Emval.toValue(func_handle);
+	            let js_this = Emval.toValue(this_handle);
+	            let js_args = Emval.toValue(args_handle);
 
 	            try {
 		            let result =
-		                await Promise.resolve(js_func.apply(null, js_args));
+		                await Promise.resolve(js_func.apply(js_this, js_args));
 
-		            return result;
+		            return Emval.toHandle(result);
 	            } catch (error) {
 		            console.error("Error call JS Function : ", error);
-		            return -1;
+		            return Emval.toHandle(null);
 	            }
             });
+
 
 inline AObject *callJSFunction(val *jsFunction, NativeFuncInData) {
 	val jsArgsArray = val::array();
@@ -264,9 +272,11 @@ inline AObject *callJSFunction(val *jsFunction, NativeFuncInData) {
 			jsArgsArray.set(i, aobjectToJs(args[i]));
 		}
 
-		val result = call_and_await_js(jsFunction.as_handle(),
-		                               val::undefined().as_handle(),
-		                               jsArgsArray.as_handle());
+		emscripten::EM_VAL raw_handle = call_and_await_js(
+		    jsFunction->as_handle(), val::undefined().as_handle(),
+		    jsArgsArray.as_handle());
+
+		emscripten::val result = emscripten::val::take_ownership(raw_handle);
 
 		if (notifier.hasException()) {
 			return nullptr;
@@ -278,9 +288,11 @@ inline AObject *callJSFunction(val *jsFunction, NativeFuncInData) {
 	for (size_t i = 1; i < argSize; ++i) {
 		jsArgsArray.set(i - 1, aobjectToJs(args[i]));
 	}
-	val result = call_and_await_js(jsFunction.as_handle(),
-	                               aobjectToJs(args[0]).as_handle(),
-	                               jsArgsArray.as_handle());
+	emscripten::EM_VAL raw_handle = call_and_await_js(
+	    jsFunction->as_handle(), aobjectToJs(args[0]).as_handle(),
+	    jsArgsArray.as_handle());
+
+	emscripten::val result = emscripten::val::take_ownership(raw_handle);
 
 	if (notifier.hasException()) {
 		return nullptr;

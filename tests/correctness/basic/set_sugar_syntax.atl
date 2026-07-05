@@ -34,10 +34,10 @@ func testSetExhaustive() {
     val mixedSet = <(Int) -> Int>{}
     mixedSet.add(f1)
     mixedSet.add(cl1)
-    
     var total = 0
     for (f in mixedSet) {
-        total += f(5)
+        val res = f(5)
+        total += res
     }
     assert(total == 21, __FILE__, __LINE__)
 

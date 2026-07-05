@@ -11,7 +11,7 @@ template <size_t size> class AreaAllocator {
 		AObject obj;
 		AreaChunkSlot *nextFree;
 		AreaChunkSlot() : obj(), nextFree(nullptr) {
-			obj.flags &= AObject::Flags::OBJ_IS_FREE;
+			obj.flags = AObject::Flags::OBJ_IS_FREE;
 		}
 	};
 

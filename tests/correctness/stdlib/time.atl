@@ -1,0 +1,16 @@
+@import("std/time")
+
+func testTimeFeatures() {
+    val t = Time.now()
+    assert(t > 0, __FILE__, __LINE__)
+
+    val formatted = Time.format(t)
+    // formatted should be of length 19: "YYYY-MM-DD HH:MM:SS"
+    assert(formatted.size() == 19, __FILE__, __LINE__)
+    assert(formatted.contains("-"), __FILE__, __LINE__)
+    assert(formatted.contains(":"), __FILE__, __LINE__)
+
+    println("Passed ${__FUNC__}")
+}
+
+testTimeFeatures()

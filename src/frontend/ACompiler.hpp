@@ -12,6 +12,18 @@ namespace AutoLang {
 
 enum class CompilerState { CT_READY, CT_ERROR, CT_ANALYZED, CT_BYTECODE_READY };
 
+enum class AllowRuleType {
+	PLAIN_PREFIX = 0, // Plain string prefix match (special chars escaped automatically)
+	REGEX        = 1  // Full ECMAScript regex pattern
+};
+
+struct AllowRule {
+	AllowRuleType type;
+	std::string   value;
+	AllowRule(AllowRuleType type, std::string value)
+	    : type(type), value(std::move(value)) {}
+};
+
 enum LibraryFlags : uint32_t {
 	IS_BUILT_IN = 1u << 0,
 	AUTO_IMPORT = 1u << 1,
@@ -137,6 +149,18 @@ class ACompiler {
 #ifdef AUTOLANG_LIMIT_OPCODE
 	void setLimitOpcodeCount(uint32_t limitOpcodeCount);
 	uint32_t getLimitOpcodeCount();
+#endif
+
+#ifndef NO_INCLUDE_LIBS_HTTP
+	void setAllowedDomainsRules(const std::vector<AllowRule> &rules);
+#endif
+
+#ifndef NO_INCLUDE_LIBS_FILE
+	void setAllowFileRead(bool allow);
+	void setAllowFileWrite(bool allow);
+	void setAllowFileDelete(bool allow);
+	void setAllowedFilePathsRules(const std::vector<AllowRule> &rules);
+	void setFileBasePath(const std::string &path);
 #endif
 
 	inline void setOnError(FunctionEvent *onError) {

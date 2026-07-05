@@ -35,8 +35,8 @@ inline void throwInvalidCompare(in_func, ConstValueNode *left,
                                 ConstValueNode *right, const char *op) {
 	throw ParserError(left->line,
 	                  std::string("Cannot apply operator '") + op +
-	                      "' between '" + compile.classes[left->classId]->name +
-	                      "' and '" + compile.classes[right->classId]->name +
+	                      "' between '" + compile.classes[left->classId]->getName(compile) +
+	                      "' and '" + compile.classes[right->classId]->getName(compile) +
 	                      "'");
 }
 
@@ -326,9 +326,9 @@ ConstValueNode *op_eqeq(in_func, ConstValueNode *left, ConstValueNode *right) {
 	}
 
 	throw ParserError(left->line, "Invalid types for operator == between " +
-	                                  compile.classes[left->classId]->name +
+	                                  compile.classes[left->classId]->getName(compile) +
 	                                  " and " +
-	                                  compile.classes[right->classId]->name);
+	                                  compile.classes[right->classId]->getName(compile));
 }
 
 ConstValueNode *op_not_eq(in_func, ConstValueNode *left,

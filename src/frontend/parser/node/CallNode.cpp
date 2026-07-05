@@ -182,8 +182,8 @@ void CallNode::optimize(in_func) {
 					matchFunction(in_data, mustInferenceGenericType);
 					return;
 				}
-				funcName = name;
 			}
+			funcName = name;
 		}
 
 		// {
@@ -218,7 +218,8 @@ void CallNode::optimize(in_func) {
 				// Return Id in putbytecode
 				auto classInfo = context.classInfo[it->second];
 				if (!classInfo->genericData) {
-					funcName = compile.classes[it->second]->name + '.' + name;
+					funcName = compile.classes[it->second]->getName(compile) +
+					           '.' + name;
 					caller = context.classAccessPool.push(line, it->second);
 				} else {
 					funcName = name;
@@ -251,9 +252,9 @@ void CallNode::optimize(in_func) {
 
 	// Find
 	// if (allowPrefix) {
-	// 	auto it = compile.funcMap.find(clazz->name + '.' + funcName);
-	// 	if (it != compile.funcMap.end()) {
-	// 		funcVec[count++] = &it->second;
+	// 	auto it = compile.funcMap.find(clazz->getName(compile) + '.' +
+	// funcName); 	if (it != compile.funcMap.end()) { 		funcVec[count++] =
+	// &it->second;
 	// 	}
 	// }
 
@@ -300,7 +301,8 @@ void CallNode::optimize(in_func) {
 				isFirst = false;
 			else
 				currentFuncLog += ", ";
-			currentFuncLog += compile.classes[argument->classId]->name;
+			currentFuncLog +=
+			    compile.classes[argument->classId]->getName(compile);
 		}
 		std::string found;
 		bool isFirst1 = true;
@@ -316,7 +318,7 @@ void CallNode::optimize(in_func) {
 				} else {
 					found += "\n";
 				}
-				found += compile.functions[v]->toString(compile);
+				found += context.functionInfo[v]->toString(in_data);
 			}
 		}
 		throwError(std::string("Cannot find function name: " +
@@ -325,14 +327,16 @@ void CallNode::optimize(in_func) {
 		           currentFuncLog + ") \nFound: " + found);
 	}
 	if (ambitiousCall) {
+		std::string message = "Ambiguous Call : " + funcName;
 		for (int j = 0; j < count; ++j) {
 			auto &vecs = *funcVec[j];
 			for (auto v : vecs) {
-				printDebug("Founded " +
-				           compile.functions[v]->toString(compile));
+				message +=
+				    "\n  Founded " + context.functionInfo[v]->toString(in_data);
 			}
 		}
-		throwError(std::string("Ambiguous Call : ") + funcName);
+
+		throwError(message);
 	}
 	funcId = first.id;
 	auto func = compile.functions[funcId];
@@ -536,7 +540,7 @@ void CallNode::optimize(in_func) {
 	if (caller && caller->kind == NodeType::CLASS_ACCESS &&
 	    !(func->functionFlags & FunctionFlags::FUNC_IS_STATIC) &&
 	    !(func->functionFlags & FunctionFlags::FUNC_IS_CONSTRUCTOR))
-		throwError(func->name + " is not static function");
+		throwError(func->getName(compile) + " is not static function");
 }
 
 void CallNode::matchFunction(in_func, ClassDeclaration *detach,
@@ -752,8 +756,9 @@ err:;
 	auto argumentClassId = argument->classId;
 	throwError("Object " + context.lexerString[nameId] + ": At argument " +
 	           std::to_string(j) + " expected " +
-	           compile.classes[*inputClass[j + 1]->classId]->name + " but " +
-	           compile.classes[argumentClassId]->name + " found");
+	           compile.classes[*inputClass[j + 1]->classId]->getName(compile) +
+	           " but " + compile.classes[argumentClassId]->getName(compile) +
+	           " found");
 }
 
 bool CallNode::match(in_func, MatchOverload &match,
@@ -775,83 +780,99 @@ bool CallNode::match(in_func, MatchOverload &match,
 		    argumentSize > funcInfo->parameter->parameters.size())
 			continue;
 		match.errorNonNullIfMatchCount = 0;
-		// std::cerr << match.func->name << " " << arguments.size() << " "
+		// std::cerr << match.func->getName(compile) << " " << arguments.size()
+		// << " "
 		//           << argumentSize << " " << skip << " "
 		//           << funcInfo->parameter->parameters.size() << " "
 		//           << funcInfo->parameter->defaultValuePos << "\n";
 		for (int j = 0; j < arguments.size(); ++j) {
 			uint32_t inputClassId = arguments[j]->classId;
 			uint32_t funcExpectClassId = match.func->args[j + skip];
-			// printDebug(compile.classes[inputClassId]->name + " and " +
-			// compile.classes[funcExpectClassId]->name);
-			if (funcExpectClassId != inputClassId) {
-				if (funcExpectClassId == DefaultClass::anyClassId) {
+			// printDebug(compile.classes[inputClassId]->getName(compile) + "
+			// and " + compile.classes[funcExpectClassId]->getName(compile));
+
+			if (funcExpectClassId == inputClassId) {
+				if (funcExpectClassId == DefaultClass::functionClassId &&
+				    arguments[j]->kind != NodeType::FUNCTION_ACCESS) {
+					// Function access expected context to know what function
+					// auto funcInfo = context.functionInfo[match.id];
+					// std::cerr << j << " "
+					//           << funcInfo->parameter->parameters[j + skip]
+					//                  ->classDeclaration
+					//           << " " << arguments[j]->getNodeType() << "\n";
+					if (!funcInfo->parameter->parameters[j + skip]
+					         ->classDeclaration->isMatch(
+					             arguments[j]->classDeclaration)) {
+						goto finished;
+					}
+				}
+				match.score += 2;
+				continue;
+			}
+			if (funcExpectClassId == DefaultClass::anyClassId) {
+				++match.score;
+				continue;
+			}
+			switch (inputClassId) {
+				case DefaultClass::nullClassId: {
+					if (mustInferenceGenericType) {
+						auto argument = arguments[j];
+						auto funcExpectClassInfo =
+						    context.classInfo[funcExpectClassId];
+						switch (argument->kind) {
+							case NodeType::CREATE_ARRAY: {
+								if (funcExpectClassInfo->baseClassId !=
+								    DefaultClass::arrayClassId) {
+									goto finished;
+								}
+								break;
+							}
+							case NodeType::CREATE_MAP: {
+								if (funcExpectClassInfo->baseClassId !=
+								    DefaultClass::mapClassId) {
+									goto finished;
+								}
+								break;
+							}
+							case NodeType::CREATE_SET: {
+								if (funcExpectClassInfo->baseClassId !=
+								    DefaultClass::setClassId) {
+									if (funcExpectClassInfo->baseClassId ==
+									    DefaultClass::mapClassId) {
+										break;
+									}
+									goto finished;
+								}
+								break;
+							}
+							default:
+								break;
+						}
+					}
+
 					++match.score;
+					match.errorNonNullIfMatchCount +=
+					    !funcInfo->parameter->parameters[j + skip]->nullable;
 					continue;
 				}
-				switch (inputClassId) {
-					case DefaultClass::nullClassId: {
-						if (mustInferenceGenericType) {
-							auto argument = arguments[j];
-							auto funcExpectClassInfo =
-							    context.classInfo[funcExpectClassId];
-							switch (argument->kind) {
-								case NodeType::CREATE_ARRAY: {
-									if (funcExpectClassInfo->baseClassId !=
-									    DefaultClass::arrayClassId) {
-										goto finished;
-									}
-									break;
-								}
-								case NodeType::CREATE_MAP: {
-									if (funcExpectClassInfo->baseClassId !=
-									    DefaultClass::mapClassId) {
-										goto finished;
-									}
-									break;
-								}
-								case NodeType::CREATE_SET: {
-									if (funcExpectClassInfo->baseClassId !=
-									    DefaultClass::setClassId) {
-										if (funcExpectClassInfo->baseClassId ==
-										    DefaultClass::mapClassId) {
-											break;
-										}
-										goto finished;
-									}
-									break;
-								}
-								default:
-									break;
-							}
-						}
-
+				case DefaultClass::intClassId: {
+					if (funcExpectClassId ==
+					    AutoLang::DefaultClass::floatClassId) {
 						++match.score;
-						match.errorNonNullIfMatchCount +=
-						    !funcInfo->parameter->parameters[j + skip]
-						         ->nullable;
 						continue;
 					}
-					case DefaultClass::intClassId: {
-						if (funcExpectClassId ==
-						    AutoLang::DefaultClass::floatClassId) {
-							++match.score;
-							continue;
-						}
-						break;
-					}
-					default: {
-						if (compile.classes[inputClassId]->inheritance.get(
-						        funcExpectClassId)) {
-							++match.score;
-							continue;
-						}
-						break;
-					}
+					break;
 				}
-				goto finished;
+				default: {
+					if (compile.classes[inputClassId]->inheritance.get(
+					        funcExpectClassId)) {
+						++match.score;
+						continue;
+					}
+					break;
+				}
 			}
-			match.score += 2;
+			goto finished;
 		}
 		// Matched
 		++i;
@@ -917,7 +938,7 @@ void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		                                  : Opcode::CALL_VTABLE_FUNCTION);
 		put_opcode_u32(bytecodes, funcInfo->virtualPosition);
 		put_opcode_u32(bytecodes, func->argSize);
-		// std::cerr<<"At "<<func->name<<"\n";
+		// std::cerr<<"At "<<func->getName(compile)<<"\n";
 		// std::cerr<<"Put "<<funcInfo->virtualPosition<<" &
 		// "<<func->argSize<<"\n";
 	} else {

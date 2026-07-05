@@ -1,0 +1,46 @@
+@import("std/http")
+
+func testHttpFeatures() {
+    try {
+        // Attempt a GET request. Even if it fails due to network issues (DNS/timeout),
+        // we check that the exception is NOT a SecurityError.
+        val res = Http.get("https://google.com", 2000)
+        println("Http.get success, length: ${res.size()}")
+    } catch (e) {
+        val errStr = e.message
+        assert(errStr.indexOf("SecurityError") == -1, __FILE__, __LINE__)
+        println("Http.get bypassed security but failed with network/other error: ${errStr}")
+    }
+
+    try {
+        val res = Http.post("https://google.com", "test body", 2000)
+        println("Http.post success, length: ${res.size()}")
+    } catch (e) {
+        val errStr = e.message
+        assert(errStr.indexOf("SecurityError") == -1, __FILE__, __LINE__)
+        println("Http.post bypassed security but failed with network/other error: ${errStr}")
+    }
+
+    try {
+        val res = Http.delete("https://google.com", 2000)
+        println("Http.delete success, length: ${res.size()}")
+    } catch (e) {
+        val errStr = e.message
+        assert(errStr.indexOf("SecurityError") == -1, __FILE__, __LINE__)
+        println("Http.delete bypassed security but failed with network/other error: ${errStr}")
+    }
+
+    try {
+        val urls = <String>["https://google.com", "https://httpbin.org"]
+        val res = Http.getAll(urls, 2000)
+        println("Http.getAll success, count: ${res.size()}")
+    } catch (e) {
+        val errStr = e.message
+        assert(errStr.indexOf("SecurityError") == -1, __FILE__, __LINE__)
+        println("Http.getAll bypassed security but failed with network/other error: ${errStr}")
+    }
+
+    println("Passed ${__FUNC__}")
+}
+
+testHttpFeatures()

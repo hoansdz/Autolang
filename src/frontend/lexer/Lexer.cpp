@@ -154,11 +154,11 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 	if (isOperator(chr)) {
 		auto op = loadOp(context, i);
 		switch (op) {
-			ESTIMATE_CASE_ADD(EQUAL, setNode)
-			ESTIMATE_CASE_ADD(PLUS_EQUAL, setNode)
-			ESTIMATE_CASE_ADD(MINUS_EQUAL, setNode)
-			ESTIMATE_CASE_ADD(STAR_EQUAL, setNode)
-			ESTIMATE_CASE_ADD(SLASH_EQUAL, setNode)
+			// ESTIMATE_CASE_ADD(EQUAL, setNode)
+			// ESTIMATE_CASE_ADD(PLUS_EQUAL, setNode)
+			// ESTIMATE_CASE_ADD(MINUS_EQUAL, setNode)
+			// ESTIMATE_CASE_ADD(STAR_EQUAL, setNode)
+			// ESTIMATE_CASE_ADD(SLASH_EQUAL, setNode)
 			case TokenType::COMMENT_SINGLE_LINE: {
 				while (!isEndOfLine(context, i)) {
 					++i;
@@ -272,15 +272,15 @@ void pushIdentifier(Context &context, uint32_t &i) {
 	}
 	switch (it->second) {
 		ESTIMATE_CASE_ADD(CLASS, classes)
-		ESTIMATE_CASE_ADD(FUNC, functions)
-		ESTIMATE_CASE_ADD(CONSTRUCTOR, constructorNode)
+		// ESTIMATE_CASE_ADD(FUNC, functions)
+		// ESTIMATE_CASE_ADD(CONSTRUCTOR, constructorNode)
 		ESTIMATE_CASE_ADD(VAL, declaration)
 		ESTIMATE_CASE_ADD(VAR, declaration)
-		ESTIMATE_CASE_ADD(IF, ifNode)
-		ESTIMATE_CASE_ADD(WHILE, whileNode)
-		ESTIMATE_CASE_ADD(RETURN, returnNode)
-		ESTIMATE_CASE_ADD(TRY, tryCatchNode)
-		ESTIMATE_CASE_ADD(THROW, throwNode)
+		// ESTIMATE_CASE_ADD(IF, ifNode)
+		// ESTIMATE_CASE_ADD(WHILE, whileNode)
+		// ESTIMATE_CASE_ADD(RETURN, returnNode)
+		// ESTIMATE_CASE_ADD(TRY, tryCatchNode)
+		// ESTIMATE_CASE_ADD(THROW, throwNode)
 		case TokenType::UNSAFE_CAST: {
 			if (!isEndOfLine(context, i)) {
 				if (context.line[i] != '?') {

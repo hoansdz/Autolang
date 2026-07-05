@@ -1,19 +1,64 @@
 func testBasicOperator() {
-
+	// Arithmetic
 	val a = 1 + 2
-	assert(a == 3,  __FILE__,  __LINE__)
+	assert(a == 3, __FILE__, __LINE__)
 
 	val b = 5 - (2 + 3)
-	assert(b == 0,  __FILE__,  __LINE__)
+	assert(b == 0, __FILE__, __LINE__)
 
 	val c = 5 * (5 - 2 * 2)
-	assert(c == 5,  __FILE__,  __LINE__)
+	assert(c == 5, __FILE__, __LINE__)
 
 	val d = 5 / (5 - 2 * 2)
-	assert(d == 5,  __FILE__,  __LINE__)
+	assert(d == 5, __FILE__, __LINE__)
 
 	val e = 10 / 2 * 3
-	assert(e == 15,  __FILE__,  __LINE__)
+	assert(e == 15, __FILE__, __LINE__)
+
+	// Modulo
+	assert(10 % 3 == 1, __FILE__, __LINE__)
+	assert(7 % 7 == 0, __FILE__, __LINE__)
+	assert(1 % 5 == 1, __FILE__, __LINE__)
+
+	// Unary minus
+	val neg = -5
+	assert(neg == -5, __FILE__, __LINE__)
+	assert(-neg == 5, __FILE__, __LINE__)
+
+	// Compound assignment
+	var x = 10
+	x += 5
+	assert(x == 15, __FILE__, __LINE__)
+	x -= 3
+	assert(x == 12, __FILE__, __LINE__)
+	x *= 2
+	assert(x == 24, __FILE__, __LINE__)
+	x /= 4
+	assert(x == 6, __FILE__, __LINE__)
+
+	// Float arithmetic
+	val f1 = 1.5 + 0.5
+	assert(f1 == 2.0, __FILE__, __LINE__)
+	val f2 = 3.0 * 0.5
+	assert(f2 == 1.5, __FILE__, __LINE__)
+	val f3 = 7.0 / 2.0
+	assert(f3 == 3.5, __FILE__, __LINE__)
+
+	// Int/Float mixing
+	val mixed = 3 + 1.5
+	assert(mixed == 4.5, __FILE__, __LINE__)
+
+	// String concatenation
+	val s = "Hello" + " " + "World"
+	assert(s == "Hello World", __FILE__, __LINE__)
+
+	// Comparison operators
+	assert(3 > 2, __FILE__, __LINE__)
+	assert(2 < 3, __FILE__, __LINE__)
+	assert(3 >= 3, __FILE__, __LINE__)
+	assert(3 <= 3, __FILE__, __LINE__)
+	assert(3 == 3, __FILE__, __LINE__)
+	assert(3 != 4, __FILE__, __LINE__)
 
 	println("Passed ${__FUNC__}")
 }

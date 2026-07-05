@@ -72,8 +72,8 @@ ExprNode *CastNode::resolve(in_func) {
 	}
 	return this;
 errCast:;
-	throwError("Cannot cast " + compile.classes[value->classId]->name + " to " +
-	           compile.classes[classId]->name);
+	throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) + " to " +
+	           compile.classes[classId]->getName(compile));
 }
 
 void CastNode::optimize(in_func) {
@@ -109,8 +109,8 @@ void CastNode::optimize(in_func) {
 				}
 				default: {
 					throwError("Cannot cast " +
-					           compile.classes[value->classId]->name + " to " +
-					           compile.classes[classId]->name);
+					           compile.classes[value->classId]->getName(compile) + " to " +
+					           compile.classes[classId]->getName(compile));
 				}
 			}
 			break;
@@ -128,8 +128,8 @@ void CastNode::optimize(in_func) {
 				}
 				default: {
 					throwError("Cannot cast " +
-					           compile.classes[value->classId]->name + " to " +
-					           compile.classes[classId]->name);
+					           compile.classes[value->classId]->getName(compile) + " to " +
+					           compile.classes[classId]->getName(compile));
 				}
 			}
 			break;
@@ -140,12 +140,12 @@ void CastNode::optimize(in_func) {
 			    compile.classes[value->classId]->inheritance.get(classId)) {
 				return;
 			}
-			throwError("Cannot cast " + compile.classes[value->classId]->name +
-			           " to " + compile.classes[classId]->name);
+			throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) +
+			           " to " + compile.classes[classId]->getName(compile));
 	}
 errCast:;
-	throwError("Cannot cast " + compile.classes[value->classId]->name + " to " +
-	           compile.classes[classId]->name);
+	throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) + " to " +
+	           compile.classes[classId]->getName(compile));
 }
 
 void CastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
@@ -218,8 +218,8 @@ void RuntimeCastNode::optimize(in_func) {
 	    compile.classes[classId]->inheritance.get(value->classId)) {
 		return;
 	}
-	throwError("Cannot cast " + compile.classes[value->classId]->name + " to " +
-	           compile.classes[classId]->name +
+	throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) + " to " +
+	           compile.classes[classId]->getName(compile) +
 	           ": no inheritance relationship");
 }
 

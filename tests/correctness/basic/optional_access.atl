@@ -3,7 +3,7 @@ class OptionalAccess(var child: OptionalAccess?) {
 	val x = 0
 	val m = 0
     func hello(value: Int) {
-        println("Hello world nha ${value}")
+        this.x += value
     }
 	func get(): Int? {
 		return null
@@ -11,17 +11,37 @@ class OptionalAccess(var child: OptionalAccess?) {
 }
 
 func testOptionalAccess() {
+    // Null safe call on null -> no-op
     var a: OptionalAccess?
     a?.hello(1)
-	println(a?.get() ?? 100)
-    a = OptionalAccess(a?.child)
+    assert(a?.x == null, __FILE__, __LINE__)
+
+    // Elvis operator on null
+    assert((a?.get() ?? 100) == 100, __FILE__, __LINE__)
+
+    // Assign and call
+    a = OptionalAccess(null)
     a?.hello(2)
+    assert(a?.x == 2, __FILE__, __LINE__)
+
+    // Chained null safe call on null child
     a?.child?.hello(3)
+    assert(a?.child?.x == null, __FILE__, __LINE__)
+
+    // Assign child and call
     a!.child = OptionalAccess(null)
     a?.child?.hello(4)
-    println(a?.a)
-    val m:OptionalAccess? = null
-    println(m)
+    assert(a?.child?.x == 4, __FILE__, __LINE__)
+
+    // Static member via optional access
+    assert(a?.a == 7, __FILE__, __LINE__)
+
+    // Null optional stays null
+    val m: OptionalAccess? = null
+    assert(m == null, __FILE__, __LINE__)
+    assert(m?.x == null, __FILE__, __LINE__)
+
+    println("Passed ${__FUNC__}")
 }
 
 testOptionalAccess()

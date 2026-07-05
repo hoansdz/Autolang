@@ -28,7 +28,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 		}
 	}
 	if (!classInfo->genericData) {
-		classDeclaration->throwError(clazz->name + " is not generics");
+		classDeclaration->throwError(clazz->getName(compile) + " is not generics");
 	}
 	auto baseCreateClassNode = context.findCreateClassNode(clazz->id);
 	LexerStringId newNameId = context.createLexerStringIfNotExists(name);
@@ -56,7 +56,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 
 		// Change callnode name
 		if (!genericDeclaration->allCallNodes.empty()) {
-			const std::string &name = compile.classes[inputClassId]->name;
+			const std::string &name = compile.classes[inputClassId]->getName(compile);
 			auto nameId = context.createLexerStringIfNotExists(name);
 			for (auto *callNode : genericDeclaration->allCallNodes) {
 				callNode->nameId = nameId;
@@ -159,6 +159,11 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	auto newClassInfo = context.classInfo[newClassId];
 	newClassInfo->baseClassId = classId;
 	newClassInfo->memberMap = classInfo->memberMap;
+	newClass->genericType.offset = compile.allGenericType.size();
+	newClass->genericType.size = genericTypeId.size();
+	for (auto genericType : genericTypeId) {
+		compile.allGenericType.push_back(*genericType->classId);
+	}
 	newClassInfo->genericTypeId = std::move(genericTypeId);
 	newClassInfo->declarationThis = context.declarationNodePool.push(
 	    classInfo->declarationThis->line, newClassId, lexerIdthis, "this",
@@ -168,7 +173,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	auto lastCurrentClassId = context.currentClassId;
 	context.currentClassId = newClassId;
 
-	// std::cerr << "Created " << newClass->name << "\n ";
+	// std::cerr << "Created " << newClass->getName(compile) << "\n ";
 
 	if (newCreateClassNode->superDeclaration &&
 	    !newCreateClassNode->superDeclaration->classId) {
@@ -197,7 +202,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			}
 			// std::cerr
 			//     << "Member declaration: "
-			//     << compile.classes[*member->classDeclaration->classId]->name
+			//     << compile.classes[*member->classDeclaration->classId]->getName(compile)
 			//     << "\n";
 		} else {
 			// std::cerr << "No" << "\n";
@@ -242,7 +247,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	     classInfo->genericData->staticDeclaration) {
 		auto node = context.makeDeclarationNode(
 		    in_data, declarationNode->line, declarationNode->baseName,
-		    newClass->name + "." +
+		    newClass->getName(compile) + "." +
 		        context.lexerString[declarationNode->baseName],
 		    declarationNode->classDeclaration, declarationNode->isVal, true,
 		    declarationNode->nullable, false, true);
@@ -261,7 +266,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			} else {
 				node->classId = *node->classDeclaration->classId;
 			}
-			// std::cerr << "loaded " << (compile.classes[node->classId]->name)
+			// std::cerr << "loaded " << (compile.classes[node->classId]->getName(compile))
 			//           << " "
 			//           << declarationNode->classDeclaration->getName(in_data)
 			//           << "\n";
@@ -273,7 +278,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			auto setNode = context.setValuePool.push(declarationNode->line,
 			                                         varNode, value, true);
 			context.staticNode.push_back(setNode);
-			// std::cerr << "Added " << node->name << "\n";
+			// std::cerr << "Added " << node->getName(compile) << "\n";
 		}
 		// declarationNode->classDeclaration = nullptr;
 	}
@@ -376,7 +381,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	context.gotoFunction(lastCurrentFunctionId);
 	context.currentClassId = lastCurrentClassId;
 
-	// std::cerr << "Created " << newClass->name << "\n";
+	// std::cerr << "Created " << newClass->getName(compile) << "\n";
 	return newClassId;
 }
 
@@ -403,7 +408,7 @@ void loadFunctionGenerics(in_func, std::string &name,
 		auto func = compile.functions[funcId];
 		auto funcInfo = context.functionInfo[funcId];
 		if (!funcInfo->genericData) {
-			classDeclaration->throwError(func->name + " is not generics");
+			classDeclaration->throwError(func->getName(compile) + " is not generics");
 		}
 		if (classDeclaration->inputClassId.size() !=
 		    funcInfo->genericData->genericDeclarations.size()) {
@@ -429,7 +434,7 @@ void loadFunctionGenerics(in_func, std::string &name,
 
 			// Change callnode name
 			if (!genericDeclaration->allCallNodes.empty()) {
-				const std::string &name = compile.classes[inputClassId]->name;
+				const std::string &name = compile.classes[inputClassId]->getName(compile);
 				auto nameId = context.createLexerStringIfNotExists(name);
 				for (auto *callNode : genericDeclaration->allCallNodes) {
 					callNode->nameId = nameId;
@@ -548,7 +553,7 @@ void loadFunctionGenerics(in_func, std::string &name,
 		newFuncInfo->declaration = funcInfo->declaration;
 		newFunc->returnId = compile.functions[funcId]->returnId;
 		context.gotoFunction(newCreateFuncNode->id);
-		// std::cerr << "FUNC " << newFunc->name << "\n";
+		// std::cerr << "FUNC " << newFunc->getName(compile) << "\n";
 		if (createFuncNode->classDeclaration) {
 			if (!createFuncNode->classDeclaration->classId) {
 				createFuncNode->classDeclaration->load<false>(in_data);
@@ -581,7 +586,7 @@ void loadFunctionGenerics(in_func, std::string &name,
 		     funcInfo->genericData->staticDeclaration) {
 			auto node = context.makeDeclarationNode(
 			    in_data, declarationNode->line, declarationNode->baseName,
-			    newFunc->name + context.lexerString[declarationNode->baseName],
+			    newFunc->getName(compile) + context.lexerString[declarationNode->baseName],
 			    declarationNode->classDeclaration, declarationNode->isVal, true,
 			    declarationNode->nullable, false, true);
 			funcInfo->genericData

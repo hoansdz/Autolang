@@ -1,0 +1,57 @@
+@import("std/math")
+
+func testMathFeatures() {
+    // 1. Constants
+    assert(Math.PI > 3.14 && Math.PI < 3.15, __FILE__, __LINE__)
+    assert(Math.E > 2.71 && Math.E < 2.72, __FILE__, __LINE__)
+
+    // 2. Trigonometry & Exponential functions (Double arguments)
+    // Sin/Cos/Tan
+    // Math.sin(0) = 0, cos(0) = 1
+    assert(Math.sin(0) == 0.0, __FILE__, __LINE__)
+    assert(Math.cos(0) == 1.0, __FILE__, __LINE__)
+    assert(Math.tan(0) == 0.0, __FILE__, __LINE__)
+
+    // Rounding & Truncation functions
+    assert(Math.round(2.4) == 2, __FILE__, __LINE__)
+    assert(Math.round(2.6) == 3, __FILE__, __LINE__)
+    assert(Math.floor(2.9) == 2, __FILE__, __LINE__)
+    assert(Math.ceil(2.1) == 3, __FILE__, __LINE__)
+    assert(Math.trunc(2.9) == 2, __FILE__, __LINE__)
+    assert(Math.trunc(-2.9) == -2, __FILE__, __LINE__)
+
+    // Abs
+    assert(Math.abs(-5) == 5, __FILE__, __LINE__)
+    assert(Math.abs(5) == 5, __FILE__, __LINE__)
+    assert(Math.abs(-5.5) == 5.5, __FILE__, __LINE__)
+
+    // Sqrt, Pow, Log, Exp
+    assert(Math.sqrt(9) == 3.0, __FILE__, __LINE__)
+    assert(Math.sqrt(16.0) == 4.0, __FILE__, __LINE__)
+    assert(Math.pow(2, 3) == 8, __FILE__, __LINE__)
+    assert(Math.pow(2.0, 3.0) == 8.0, __FILE__, __LINE__)
+    assert(Math.exp(0.0) == 1.0, __FILE__, __LINE__)
+    // Math.log(Math.E) = 1
+    assert(Math.log(Math.E) == 1.0, __FILE__, __LINE__)
+
+    // 3. Min / Max / Fmod
+    assert(Math.min(10, 20) == 10, __FILE__, __LINE__)
+    assert(Math.min(5.5, 4.5) == 4.5, __FILE__, __LINE__)
+    assert(Math.max(10, 20) == 20, __FILE__, __LINE__)
+    assert(Math.max(5.5, 4.5) == 5.5, __FILE__, __LINE__)
+    assert(Math.fmod(5.5, 2.0) == 1.5, __FILE__, __LINE__)
+
+    // 4. Random (Verify within ranges)
+    val r1 = Math.random()
+    assert(r1 >= 0.0 && r1 <= 1.0, __FILE__, __LINE__)
+
+    val r2 = Math.random(5, 10)
+    assert(r2 >= 5 && r2 <= 10, __FILE__, __LINE__)
+
+    val r3 = Math.random(2.5, 5.5)
+    assert(r3 >= 2.5 && r3 <= 5.5, __FILE__, __LINE__)
+
+    println("Passed ${__FUNC__}")
+}
+
+testMathFeatures()

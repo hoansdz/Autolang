@@ -295,13 +295,13 @@ void ACompiler::loadMainSource(LibraryData *library) {
 		newEstimate.classes += libEstimate.classes;
 		newEstimate.functions += libEstimate.functions;
 		newEstimate.constructorNode += libEstimate.constructorNode;
-		newEstimate.ifNode += libEstimate.ifNode;
-		newEstimate.whileNode += libEstimate.whileNode;
-		newEstimate.returnNode += libEstimate.returnNode;
-		newEstimate.setNode += libEstimate.setNode;
-		newEstimate.binaryNode += libEstimate.binaryNode;
-		newEstimate.tryCatchNode += libEstimate.tryCatchNode;
-		newEstimate.throwNode += libEstimate.throwNode;
+		// newEstimate.ifNode += libEstimate.ifNode;
+		// newEstimate.whileNode += libEstimate.whileNode;
+		// newEstimate.returnNode += libEstimate.returnNode;
+		// newEstimate.setNode += libEstimate.setNode;
+		// newEstimate.binaryNode += libEstimate.binaryNode;
+		// newEstimate.tryCatchNode += libEstimate.tryCatchNode;
+		// newEstimate.throwNode += libEstimate.throwNode;
 	}
 
 	context.mode = library;
@@ -530,8 +530,8 @@ void ACompiler::generateBytecodes() {
 					inputClass->throwError(
 					    context.lexerString[declaration->nameId] +
 					    " must be extends " +
-					    compile.classes[conditionClassId]->name + " but " +
-					    compile.classes[inputClassId]->name + " found");
+					    compile.classes[conditionClassId]->getName(compile) + " but " +
+					    compile.classes[inputClassId]->getName(compile) + " found");
 				}
 			}
 		}
@@ -672,7 +672,7 @@ void ACompiler::generateBytecodes() {
 				throw ParserError(
 				    node->line,
 				    "Function " +
-				        compile.functions[node->id]->toString(compile) +
+				        context.functionInfo[node->id]->toString(in_data) +
 				        " is marked @override");
 			}
 			if (func->functionFlags & FunctionFlags::FUNC_IS_NATIVE)
@@ -806,6 +806,92 @@ void ACompiler::setLimitOpcodeCount(uint32_t limitOpcodeCount) {
 uint32_t ACompiler::getLimitOpcodeCount() { return vm.limitOpcodeCount; }
 #endif
 
+static std::string escapeRegexLiteral(const std::string &str) {
+	static const std::string specialChars = ".^$*+?()[]{}|\\-";
+	std::string result = "";
+	for (char c : str) {
+		if (specialChars.find(c) != std::string::npos) {
+			result += '\\';
+		}
+		result += c;
+	}
+	return result;
+}
+
+#ifndef NO_INCLUDE_LIBS_HTTP
+void ACompiler::setAllowedDomainsRules(const std::vector<AllowRule> &rules) {
+	if (vm.allowedDomainsRegex) {
+		delete vm.allowedDomainsRegex;
+		vm.allowedDomainsRegex = nullptr;
+	}
+	if (rules.empty()) {
+		return;
+	}
+	std::string mergedPattern = "";
+	for (size_t i = 0; i < rules.size(); ++i) {
+		if (i > 0) {
+			mergedPattern += "|";
+		}
+		std::string pattern;
+		if (rules[i].type == AllowRuleType::PLAIN_PREFIX) {
+			pattern = escapeRegexLiteral(rules[i].value) + ".*";
+		} else {
+			pattern = rules[i].value;
+		}
+		mergedPattern += "(?:" + pattern + ")";
+	}
+	try {
+		vm.allowedDomainsRegex = new std::regex(mergedPattern);
+	} catch (const std::regex_error &e) {
+		throw std::invalid_argument(std::string("Invalid regex pattern: ") + e.what());
+	}
+}
+#endif
+
+#ifndef NO_INCLUDE_LIBS_FILE
+void ACompiler::setAllowFileRead(bool allow) {
+	vm.allowFileRead = allow;
+}
+void ACompiler::setAllowFileWrite(bool allow) {
+	vm.allowFileWrite = allow;
+}
+void ACompiler::setAllowFileDelete(bool allow) {
+	vm.allowFileDelete = allow;
+}
+
+void ACompiler::setAllowedFilePathsRules(const std::vector<AllowRule> &rules) {
+	if (vm.allowedFilePathsRegex) {
+		delete vm.allowedFilePathsRegex;
+		vm.allowedFilePathsRegex = nullptr;
+	}
+	if (rules.empty()) {
+		return;
+	}
+	std::string mergedPattern = "";
+	for (size_t i = 0; i < rules.size(); ++i) {
+		if (i > 0) {
+			mergedPattern += "|";
+		}
+		std::string pattern;
+		if (rules[i].type == AllowRuleType::PLAIN_PREFIX) {
+			pattern = escapeRegexLiteral(rules[i].value) + ".*";
+		} else {
+			pattern = rules[i].value;
+		}
+		mergedPattern += "(?:" + pattern + ")";
+	}
+	try {
+		vm.allowedFilePathsRegex = new std::regex(mergedPattern);
+	} catch (const std::regex_error &e) {
+		throw std::invalid_argument(std::string("Invalid regex pattern: ") + e.what());
+	}
+}
+
+void ACompiler::setFileBasePath(const std::string &path) {
+	vm.fileBasePath = path;
+}
+#endif
+
 void ACompiler::refresh() {
 	parserContext.refresh(vm.data);
 	if (mainSource) {
@@ -842,7 +928,7 @@ ACompiler::ACompiler(ACompilerConfig config) {
 	AutoLang::DefaultClass::init(*this);
 	AutoLang::DefaultFunction::init(*this);
 	AutoLang::Libs::time::init(*this);
-	// AutoLang::Libs::vm::init(*this);
+	AutoLang::Libs::vm::init(*this);
 
 	vm.data.constPool.push_back(DefaultClass::nullObject);
 	vm.data.constPool.push_back(DefaultClass::trueObject);

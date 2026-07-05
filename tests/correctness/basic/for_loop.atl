@@ -1,11 +1,51 @@
 func testForLoop() {
+	// Basic range loop: 1..10 inclusive
 	var a = 0
 	val b = 10
 	val c = 0
-	for (i in 1..(b - c)){
+	for (i in 1..(b - c)) {
 		a += i
 	}
-	assert(a == 55, __FILE__, __LINE__)
+	assert(a == 55, __FILE__, __LINE__)  // sum 1..10
+
+	// Exclusive range: 0..<10 (0 to 9)
+	var sumExclusive = 0
+	for (i in 0..<10) {
+		sumExclusive += i
+	}
+	assert(sumExclusive == 45, __FILE__, __LINE__)  // sum 0..9
+
+	// Single-element range
+	var singleSum = 0
+	for (i in 3..3) {
+		singleSum += i
+	}
+	assert(singleSum == 3, __FILE__, __LINE__)
+
+	// Loop variable scoping: capture last value
+	var lastI = -1
+	for (i in 0..4) {
+		lastI = i
+	}
+	assert(lastI == 4, __FILE__, __LINE__)
+
+	// Nested for loops: count iterations = 3*3 = 9
+	var product = 0
+	for (i in 1..3) {
+		for (j in 1..3) {
+			product += i * j
+		}
+	}
+	assert(product == 36, __FILE__, __LINE__)
+
+	// Loop over array
+	val items = <Int>[10, 20, 30, 40, 50]
+	var sumItems = 0
+	for (item in items) {
+		sumItems += item
+	}
+	assert(sumItems == 150, __FILE__, __LINE__)
+
 	println("Passed ${__FUNC__}")
 }
 

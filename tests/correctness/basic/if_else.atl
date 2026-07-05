@@ -1,11 +1,17 @@
 func testIfExpression() {
-
+	// Basic if expression as value
 	val a = if (true) 10 else 20
 	assert(a == 10, __FILE__, __LINE__)
 
 	val b = if (false) 10 else 20
 	assert(b == 20, __FILE__, __LINE__)
 
+	val c = <Int>[]
+	if (c.size() == 1 && c[1] == 1) {
+
+	}
+
+	// Nested if expression with scoping (inner `a` shadows outer)
 	if (true) {
 		val a = if (a == 10) {
 			20
@@ -16,6 +22,59 @@ func testIfExpression() {
 		assert(a == 20, __FILE__, __LINE__)
 	}
 	assert(a == 10, __FILE__, __LINE__)
+
+	// when used as grade classifier
+	val score = 75
+	val grade = when (score) {
+		score >= 90 -> "A"
+		score >= 80 -> "B"
+		score >= 70 -> "C"
+		score >= 60 -> "D"
+		else -> "F"
+	}
+	assert(grade == "C", __FILE__, __LINE__)
+
+	// Exact value matching with when
+	val day = 3
+	val dayName = when (day) {
+		1 -> "Mon"
+		2 -> "Tue"
+		3 -> "Wed"
+		4 -> "Thu"
+		5 -> "Fri"
+		else -> "Weekend"
+	}
+	assert(dayName == "Wed", __FILE__, __LINE__)
+
+	// if statement (no value)
+	var counter = 0
+	if (true) {
+		counter += 1
+	}
+	if (false) {
+		counter += 100
+	} else {
+		counter += 2
+	}
+	assert(counter == 3, __FILE__, __LINE__)
+
+	// Nested branching as expression using when
+	val x = 5
+	val result = when (x) {
+		x > 10 -> "big"
+		x > 0  -> "small"
+		else   -> "negative"
+	}
+	assert(result == "small", __FILE__, __LINE__)
+
+	// when with range check
+	val n = 42
+	val category = when (n) {
+		n in 0..9   -> "single digit"
+		n in 10..99 -> "double digit"
+		else        -> "large"
+	}
+	assert(category == "double digit", __FILE__, __LINE__)
 
 	println("Passed ${__FUNC__}")
 }

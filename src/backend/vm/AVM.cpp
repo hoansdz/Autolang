@@ -42,16 +42,16 @@ void AVM::run() {
 			}
 			if (funcs.size() > 16) {
 				for (size_t i = funcs.size(); i-- > funcs.size() - 8;) {
-					std::cerr << "At function " << funcs[i]->name << "\n";
+					std::cerr << "At function " << funcs[i]->getName(data) << "\n";
 				}
 				std::cerr << "... (" << funcs.size() - 16
 				          << " frames omitted) \n";
 				for (size_t i = 8; i-- > 0;) {
-					std::cerr << "At function " << funcs[i]->name << "\n";
+					std::cerr << "At function " << funcs[i]->getName(data) << "\n";
 				}
 			} else {
 				for (size_t i = funcs.size(); i-- > 0;) {
-					std::cerr << "At function " << funcs[i]->name << "\n";
+					std::cerr << "At function " << funcs[i]->getName(data) << "\n";
 				}
 			}
 			break;
@@ -111,7 +111,7 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 			assert(object != nullptr);
 			stackAllocator[size] = object;
 		}
-		// std::cerr<<data.classes[stackAllocator[0]->type]->name<<" type\n";
+		// std::cerr<<data.classes[stackAllocator[0]->type]->getName(compile)<<" type\n";
 		currentCallFrame->func =
 		    data.functions[data.classes[stackAllocator[0]->type]
 		                       ->vtable[funcPos]];
@@ -567,7 +567,7 @@ resumeCallFrame:;
 				return;
 			}
 			callFrames.pop();
-			// std::cerr<<"from "<<currentCallFrame->func->name<<"\n";
+			// std::cerr<<"from "<<currentCallFrame->func->getName(compile)<<"\n";
 			auto oldCallFrame = callFrames.top();
 			oldCallFrame->exception = currentCallFrame->exception;
 			currentCallFrame = oldCallFrame;
@@ -591,7 +591,7 @@ resumeCallFrame:;
 	uint32_t &i = currentCallFrame->i;
 	const size_t size = currentCallFrame->func->bytecodes.size;
 	notifier->callFrame = currentCallFrame;
-	// std::cerr << "Called function " << currentCallFrame->func->name << " "
+	// std::cerr << "Called function " << currentCallFrame->func->getName(compile) << " "
 	//           << currentCallFrame->fromStackAllocator << " with "
 	//           << currentCallFrame->func->argSize << " arguments and "
 	//           << currentCallFrame->func->maxDeclaration
@@ -1057,7 +1057,7 @@ resumeCallFrame:;
 					uint32_t pos = get_u32(bytecodes, i);
 					// std::cerr << pos << " "
 					//           << DefaultFunction::to_string(*notifier, obj)
-					//           << " " << data.classes[obj->type]->name <<
+					//           << " " << data.classes[obj->type]->getName(compile) <<
 					//           "\n";
 					stackAllocator.set(data.manager, pos, obj);
 					break;
@@ -1111,7 +1111,7 @@ resumeCallFrame:;
 				case AutoLang::Opcode::LOCAL_LOAD_MEMBER_AND_STORE: {
 					uint32_t pos = get_u32(bytecodes, i);
 					AObject *obj = stackAllocator[pos];
-					// std::cerr<<currentFunction->name<<"
+					// std::cerr<<currentFunction->getName(compile)<<"
 					// "<<DefaultFunction::to_string(*notifier, obj)<<"
 					// "<<pos<<" "<<obj->member->size<<"\n";
 					obj->member->data[get_u32(bytecodes, i)] = stack.pop();
@@ -1243,6 +1243,26 @@ resumeCallFrame:;
 					}
 					break;
 				}
+				case AutoLang::Opcode::JUMP_IF_FALSE_NO_POP: {
+					AObject *obj = stack.top();
+					if (obj == DefaultClass::falseObject) {
+						i = get_u32(bytecodes, i);
+					} else {
+						i += 4;
+						stack.pop();
+					}
+					break;
+				}
+				case AutoLang::Opcode::JUMP_IF_TRUE_NO_POP: {
+					AObject *obj = stack.top();
+					if (obj == DefaultClass::trueObject) {
+						i = get_u32(bytecodes, i);
+					} else {
+						i += 4;
+						stack.pop();
+					}
+					break;
+				}
 				case AutoLang::Opcode::JUMP: {
 					i = get_u32(bytecodes, i);
 					break;
@@ -1322,8 +1342,8 @@ resumeCallFrame:;
 						break;
 					}
 					notifier->throwException(
-					    "Cannot cast " + data.classes[obj->type]->name +
-					    " to " + data.classes[classId]->name);
+					    "Cannot cast " + data.classes[obj->type]->getName(data) +
+					    " to " + data.classes[classId]->getName(data));
 					data.manager.release(stack.pop());
 					goto resumeCallFrame;
 				}
@@ -1873,8 +1893,8 @@ resumeCallFrame:;
 					AObject *b = stack.pop();
 					AObject *a = stack.top();
 					// std::cerr << a->refCount << " " << b->refCount << "\n";
-					// std::cerr << data.classes[a->type]->name << " "
-					//           << data.classes[b->type]->name << "\n";
+					// std::cerr << data.classes[a->type]->getName(compile) << " "
+					//           << data.classes[b->type]->getName(compile) << "\n";
 					// std::cerr << a->i << " " << b->i << "\n";
 					if (a->refCount <= 1) {
 						a->i -= b->i;
@@ -1957,7 +1977,7 @@ resumeCallFrame:;
 		stackAllocator.freeTo(currentCallFrame->fromStackAllocator);
 		goto resumeCallFrame;
 	} catch (const std::exception &err) {
-		std::cerr << "Function " << currentFunction->name
+		std::cerr << "Function " << currentFunction->getName(data)
 		          << ", bytecode at position " << i << ": "
 		          << uint32_t(bytecodes[i]) << "\n";
 		throw std::runtime_error(err.what());

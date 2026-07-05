@@ -77,7 +77,7 @@ void ForNode::optimize(in_func) {
 			auto classInfo = context.classInfo[data->classId];
 			if (classInfo->genericTypeId.empty()) {
 				throwError("Cannot loop in " +
-				           compile.classes[data->classId]->name);
+				           compile.classes[data->classId]->getName(compile));
 			}
 			auto baseClassId = classInfo->baseClassId;
 			switch (baseClassId) {
@@ -107,9 +107,9 @@ void ForNode::optimize(in_func) {
 								break;
 							}
 							throwError("Type mismatch: expected '" +
-							           compile.classes[target]->name +
+							           compile.classes[target]->getName(compile) +
 							           "' but '" +
-							           compile.classes[detach->classId]->name +
+							           compile.classes[detach->classId]->getName(compile) +
 							           "' found");
 							break;
 						}
@@ -118,7 +118,7 @@ void ForNode::optimize(in_func) {
 				}
 				default: {
 					throwError("Cannot loop in " +
-					           compile.classes[data->classId]->name);
+					           compile.classes[data->classId]->getName(compile));
 				}
 			}
 			break;
@@ -281,7 +281,7 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			auto classInfo = context.classInfo[data->classId];
 			if (classInfo->genericTypeId.empty()) {
 				throwError("Cannot loop in " +
-				           compile.classes[data->classId]->name);
+				           compile.classes[data->classId]->getName(compile));
 			}
 			auto baseClassId = classInfo->baseClassId;
 			switch (baseClassId) {
@@ -314,7 +314,7 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				}
 				default: {
 					throwError("Cannot loop in " +
-					           compile.classes[data->classId]->name);
+					           compile.classes[data->classId]->getName(compile));
 				}
 			}
 			break;

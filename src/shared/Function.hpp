@@ -7,22 +7,23 @@
 #include "shared/FunctionFlags.hpp"
 #include "shared/ObjectManager.hpp"
 #include "shared/StackAllocator.hpp"
+#include "shared/Type.hpp"
 
 
 namespace AutoLang {
 
 struct Function {
-	std::string name;
+	StringArenaOffset nameStringOffset;
 	uint32_t argSize;
-	ClassId *args;
 	ClassId returnId;
 	uint32_t functionFlags;
+	uint32_t maxDeclaration;
+	FunctionId id;
+	ClassId *args;
 	union {
 		ANativeFunctionData *native;
 		Bytecodes bytecodes;
 	};
-	uint32_t maxDeclaration;
-	FunctionId id;
 	Function()
 	    : args(nullptr), returnId(0),
 	      functionFlags(FunctionFlags::FUNC_IS_NATIVE), maxDeclaration(0),
@@ -35,19 +36,6 @@ struct Function {
 	//       returnNullable(returnNullable), args(args),
 	//       nullableArgs(nullableArgs), returnId(returnId),
 	//       maxDeclaration(native ? nullableArgs.size() : 0) {}
-	uint32_t loadHash() {
-		int64_t hash = 1469598103934665603ull; // FNV offset
-		bool isStatic = functionFlags & FunctionFlags::FUNC_IS_STATIC;
-		if (isStatic) {
-			hash ^= 488;
-			hash *= 1099511628211ull;
-		}
-		for (size_t i = !isStatic; i < argSize; ++i) {
-			hash ^= args[i];
-			hash *= 1099511628211ull;
-		}
-		return hash;
-	}
 
 	~Function() {
 		// if (!(functionFlags & FunctionFlags::FUNC_IS_NATIVE)) {
@@ -56,6 +44,8 @@ struct Function {
 		if (args)
 			delete[] args;
 	}
+
+	std::string getName(CompiledProgram &data);
 
 	// Support log
 	std::string toString(CompiledProgram &data);

@@ -9,9 +9,12 @@
 @import("./correctness/basic/recursion.atl")
 @import("./correctness/basic/override.atl")
 @import("./correctness/basic/null_access.atl")
+@import("./correctness/basic/break_continue.atl")
+@import("./correctness/basic/optional_access.atl")
 @import("./correctness/basic/generics.atl")
 @import("./correctness/basic/array_sugar_syntax.atl")
 @import("./correctness/basic/set_sugar_syntax.atl")
+@import("./correctness/basic/map_sugar_syntax.atl")
 @import("./correctness/basic/enum.atl")
 @import("./correctness/basic/when.atl")
 @import("./correctness/basic/functional.atl")
@@ -24,12 +27,12 @@
 @import("./correctness/stdlib/map.atl")
 @import("./correctness/stdlib/file.atl")
 @import("./correctness/stdlib/json.atl")
-
-@import("./correctness/basic/set_sugar_syntax.atl")
-@import("./correctness/basic/set_sugar_syntax.atl")
-
-val _________ = 5
-
-@import("../tests/testCorrectness.atl")
-
-@import("./correctness/basic/test_infer.atl")
+@import("./correctness/stdlib/http.atl")
+@import("./correctness/stdlib/file_permission.atl")
+@import("./correctness/stdlib/bytes.atl")
+@import("./correctness/stdlib/string.atl")
+@import("./correctness/stdlib/math.atl")
+@import("./correctness/stdlib/date.atl")
+@import("./correctness/stdlib/regex.atl")
+@import("./correctness/stdlib/time.atl")
+@import("./correctness/stdlib/vm.atl")

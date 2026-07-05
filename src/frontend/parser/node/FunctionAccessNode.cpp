@@ -8,6 +8,9 @@
 namespace AutoLang {
 
 void FunctionAccessNode::optimize(in_func) {
+	if (caller) {
+		caller->optimize(in_data);
+	}
 	if (funcId) {
 		return;
 	}
@@ -79,7 +82,7 @@ void FunctionAccessNode::optimize(in_func) {
 					} else {
 						found += "\n";
 					}
-					found += compile.functions[v]->toString(compile);
+					found += context.functionInfo[v]->toString(in_data);
 				}
 			}
 			throwError("Ambiguous reference to: '" +
@@ -89,7 +92,7 @@ void FunctionAccessNode::optimize(in_func) {
 
 	if (*classDeclaration->classId != DefaultClass::functionClassId) {
 		throwError("Expected Function but " +
-		           compile.classes[*classDeclaration->classId]->name +
+		           compile.classes[*classDeclaration->classId]->getName(compile) +
 		           " found");
 	}
 
@@ -118,7 +121,7 @@ void FunctionAccessNode::optimize(in_func) {
 					}
 				}
 				if (matchFuncId) {
-					throwError("Ambiguous call " + func->name);
+					throwError("Ambiguous call " + func->getName(compile));
 				}
 				matchFuncId = funcId;
 			nextFunc:;
@@ -141,7 +144,7 @@ matched:;
 		if (!caller) {
 			throwError(
 			    "Expected static function but found non static function: " +
-			    compile.functions[*funcId]->name);
+			    compile.functions[*funcId]->getName(compile));
 		}
 		object = caller;
 		return;

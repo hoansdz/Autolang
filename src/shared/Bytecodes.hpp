@@ -6,8 +6,8 @@
 namespace AutoLang {
 
 struct Bytecodes {
-    uint32_t offset;
-    uint32_t size;
+    uint32_t offset = 0;
+    uint32_t size = 0;
 };
 
 } // namespace AutoLang

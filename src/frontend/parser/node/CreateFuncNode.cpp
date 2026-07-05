@@ -29,6 +29,7 @@ template <bool addToGlobalScope> void CreateFuncNode::pushFunction(in_func) {
 	auto func = compile.functions[id];
 	auto funcInfo = context.functionInfo[id];
 	funcInfo->clazz = clazz;
+	funcInfo->id = id;
 	func->maxDeclaration = parameter->parameters.size();
 	funcInfo->declaration = parameter->parameters.size();
 	funcInfo->parameter = parameter;
@@ -63,6 +64,7 @@ void CreateFuncNode::pushNativeFunction(in_func, ANativeFunctionData *native) {
 	auto funcInfo = context.functionInfo[id];
 	func->native = native;
 	funcInfo->clazz = clazz;
+	funcInfo->id = id;
 	func->maxDeclaration = parameter->parameters.size();
 	funcInfo->declaration = parameter->parameters.size();
 	funcInfo->parameter = parameter;
@@ -80,8 +82,8 @@ ExprNode *CreateFuncNode::copy(in_func) {
 			throwError("Cannot find __CLASS__");
 		}
 		newNameId =
-		    context
-		        .lexerStringMap[compile.classes[*context.currentClassId]->name];
+		    context.lexerStringMap[compile.classes[*context.currentClassId]
+		                               ->getName(compile)];
 	}
 	auto newCreateFuncNode = context.newFunctions.push(
 	    line, context.currentClassId, newNameId, nullptr,
@@ -108,22 +110,22 @@ void CreateFuncNode::optimize(in_func) {
 	}
 
 	if (contextCallClassId) {
-		funcInfo->hash = func->loadHash();
+		funcInfo->hash = funcInfo->loadHash(func);
 		auto classInfo = context.classInfo[*contextCallClassId];
 		if (func->functionFlags & FunctionFlags::FUNC_IS_STATIC) {
 			auto &hash = classInfo->staticFunc[nameId];
 			auto it = hash.find(funcInfo->hash);
-			if (it != hash.end() &&
-			    compile.functions[it->second]->name == func->name) {
-				throwError("Redefined function : " + func->toString(compile));
+			if (it != hash.end() && compile.functions[it->second]->getName(
+			                            compile) == func->getName(compile)) {
+				throwError("Redefined function : " + funcInfo->toString(in_data));
 			}
 			hash[funcInfo->hash] = func->id;
 		} else {
 			auto &hash = classInfo->func[nameId];
 			auto it = hash.find(funcInfo->hash);
-			if (it != hash.end() &&
-			    compile.functions[it->second]->name == func->name) {
-				throwError("Redefined function : " + func->toString(compile));
+			if (it != hash.end() && compile.functions[it->second]->getName(
+			                            compile) == func->getName(compile)) {
+				throwError("Redefined function : " + funcInfo->toString(in_data));
 			}
 			// std::cerr<<"Created "<<name<<" hash "<<funcInfo->hash<<"\n";
 			hash[funcInfo->hash] = func->id;

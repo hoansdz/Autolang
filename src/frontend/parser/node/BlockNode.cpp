@@ -31,7 +31,7 @@ void BlockNode::loadReturnValueClassId(in_func, uint32_t line,
                                        std::optional<ClassId> &currentClassId,
                                        ClassId newClassId) {
 	if (!currentClassId) {
-		// std::cerr << compile.classes[newClassId]->name << "\n";
+		// std::cerr << compile.classes[newClassId]->getName(compile) << "\n";
 		currentClassId = newClassId;
 		return;
 	}
@@ -53,8 +53,8 @@ void BlockNode::loadReturnValueClassId(in_func, uint32_t line,
 		return;
 	}
 	throw ParserError(line,
-	                  "Cannot cast '" + compile.classes[*currentClassId]->name +
-	                      "' to '" + compile.classes[newClassId]->name + "'");
+	                  "Cannot cast '" + compile.classes[*currentClassId]->getName(compile) +
+	                      "' to '" + compile.classes[newClassId]->getName(compile) + "'");
 }
 
 void BlockNode::loadClassNode(in_func, ExprNode *&node,
@@ -163,7 +163,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 			if (currentClassId &&
 			    currentClassId != DefaultClass::functionClassId) {
 				n->throwError("Cannot cast 'Function' to '" +
-				              compile.classes[*currentClassId]->name + "'");
+				              compile.classes[*currentClassId]->getName(compile) + "'");
 			}
 			if (newClassDeclaration) {
 				// if (n->mustInfer) {
@@ -276,7 +276,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 				if (currentClassId) {
 					if (currentClassId != DefaultClass::voidClassId) {
 						throwError("Cannot cast '" +
-						           compile.classes[*currentClassId]->name +
+						           compile.classes[*currentClassId]->getName(compile) +
 						           "' to Void'");
 					}
 				} else {
@@ -401,7 +401,7 @@ void BlockNode::loadClassAndOptimize(in_func) {
 			auto classDeclaration = context.classDeclarationAllocator.push();
 			classDeclaration->baseClassLexerStringId =
 			    context.createLexerStringIfNotExists(
-			        compile.classes[*currentClassId]->name);
+			        compile.classes[*currentClassId]->getName(compile));
 			classDeclaration->classId = *currentClassId;
 			classDeclaration->line = n->classDeclaration->line;
 			if (nullable) {

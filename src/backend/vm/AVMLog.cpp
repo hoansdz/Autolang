@@ -36,7 +36,8 @@ void AVM::log() {
 
 std::string Function::toString(CompiledProgram &data) {
 	bool isFirst = true;
-	std::string result = "[" + std::to_string(id) + "] " + name + ": (";
+	std::string result =
+	    "[" + std::to_string(id) + "] " + getName(data) + ": (";
 	for (int i = 0; i < argSize; ++i) {
 		ClassId classId = args[i];
 		if (isFirst) {
@@ -44,24 +45,33 @@ std::string Function::toString(CompiledProgram &data) {
 		} else {
 			result += ", ";
 		}
-		result += data.classes[classId]->name;
+		result += data.classes[classId]->getName(data);
 	}
 	result += ")->";
-	result += data.classes[returnId]->name;
+	result += data.classes[returnId]->getName(data);
 	if (functionFlags & FunctionFlags::FUNC_RETURN_NULLABLE)
 		result += "?";
 	return result;
 }
 
+std::string Function::getName(CompiledProgram &data) {
+	return data.stringArena.get(nameStringOffset);
+}
+
+std::string AClass::getName(CompiledProgram &data) {
+	return data.stringArena.get(nameStringOffset);
+}
+
 void AClass::log(CompiledProgram &data) {
-	std::cerr << "[" << id << "]: Class " + name
-	          << (inheritance.empty() ? ""
-	                                  : std::string(" extends ") +
-	                                        data.classes[*parentId]->name)
+	std::cerr << "[" << id << "]: Class " << getName(data)
+	          << (inheritance.empty()
+	                  ? ""
+	                  : std::string(" extends ") +
+	                        data.classes[*parentId]->getName(data))
 	          << "\n";
 	for (auto &[name, offset] : memberMap) {
 		std::cerr << "[" << offset << "] " << name << ": "
-		          << data.classes[memberId[offset]]->name << "\n";
+		          << data.classes[memberId[offset]]->getName(data) << "\n";
 	}
 	for (auto &[name, vecs] : funcMap) {
 		for (auto funcId : vecs) {
@@ -158,20 +168,20 @@ void AVM::log(Function *currentFunction) {
 			case AutoLang::Opcode::CALL_FUNCTION: {
 				uint32_t funcId = get_u32(bytecodes, i);
 				std::cerr << funcId << " " << data.functions.size() << "\n";
-				std::cerr << "CALL_FUNCTION	 " << data.functions[funcId]->name
-				          << "\n";
+				std::cerr << "CALL_FUNCTION	 "
+				          << data.functions[funcId]->getName(data) << "\n";
 				break;
 			}
 			case AutoLang::Opcode::CALL_NATIVE_FUNCTION: {
 				uint32_t funcId = get_u32(bytecodes, i);
 				std::cerr << "CALL_NATIVE_FUNCTION	 "
-				          << data.functions[funcId]->name << "\n";
+				          << data.functions[funcId]->getName(data) << "\n";
 				break;
 			}
 			case AutoLang::Opcode::CALL_VOID_NATIVE_FUNCTION: {
 				uint32_t funcId = get_u32(bytecodes, i);
 				std::cerr << "CALL_VOID_NATIVE_FUNCTION	 "
-				          << data.functions[funcId]->name << "\n";
+				          << data.functions[funcId]->getName(data) << "\n";
 				break;
 			}
 			case AutoLang::Opcode::CALL_FUNCTION_OBJECT: {
@@ -182,7 +192,7 @@ void AVM::log(Function *currentFunction) {
 			case AutoLang::Opcode::CALL_VOID_FUNCTION: {
 				uint32_t funcId = get_u32(bytecodes, i);
 				std::cerr << "CALL_VOID_FUNCTION	 "
-				          << data.functions[funcId]->name << "\n";
+				          << data.functions[funcId]->getName(data) << "\n";
 				break;
 			}
 			case AutoLang::Opcode::CALL_VTABLE_FUNCTION: {
@@ -207,8 +217,8 @@ void AVM::log(Function *currentFunction) {
 			case AutoLang::Opcode::CREATE_FUNCTION_OBJECT: {
 				Function *func = data.functions[get_u32(bytecodes, i)];
 				uint32_t size = get_u32(bytecodes, i);
-				std::cerr << "CREATE_FUNCTION_OBJECT   " << func->name << " "
-				          << size << "\n";
+				std::cerr << "CREATE_FUNCTION_OBJECT   " << func->getName(data)
+				          << " " << size << "\n";
 				break;
 			}
 			case AutoLang::Opcode::CREATE_FUNCTION_OBJECT_FROM_VTABLE: {
@@ -253,11 +263,13 @@ void AVM::log(Function *currentFunction) {
 				break;
 			case AutoLang::Opcode::SAFE_CAST:
 				std::cerr << "SAFE_CAST	 "
-				          << data.classes[get_u32(bytecodes, i)]->name << "\n";
+				          << data.classes[get_u32(bytecodes, i)]->getName(data)
+				          << "\n";
 				break;
 			case AutoLang::Opcode::UNSAFE_CAST:
 				std::cerr << "UNSAFE_CAST	 "
-				          << data.classes[get_u32(bytecodes, i)]->name << "\n";
+				          << data.classes[get_u32(bytecodes, i)]->getName(data)
+				          << "\n";
 				break;
 			case AutoLang::Opcode::ADD_TRY_BLOCK:
 				std::cerr << "ADD_TRY_BLOCK	 " << get_u32(bytecodes, i) << "\n";
@@ -303,15 +315,16 @@ void AVM::log(Function *currentFunction) {
 			case AutoLang::Opcode::CREATE_OBJECT: {
 				uint32_t classId = get_u32(bytecodes, i);
 				uint32_t memberCount = get_u32(bytecodes, i);
-				std::cerr << "CREATE_OBJECT	 " << data.classes[classId]->name
-				          << "     " << memberCount << "\n";
+				std::cerr << "CREATE_OBJECT	 "
+				          << data.classes[classId]->getName(data) << "     "
+				          << memberCount << "\n";
 				break;
 			}
 			case AutoLang::Opcode::FAST_SAVE_MEMBER: {
 				uint32_t classId = get_u32(bytecodes, i);
 				uint32_t memberCount = get_u32(bytecodes, i);
 				std::cerr << "FAST_SAVE_MEMBER	 "
-				          << data.classes[classId]->name << "     "
+				          << data.classes[classId]->getName(data) << "     "
 				          << memberCount << "\n";
 				break;
 			}
@@ -320,8 +333,9 @@ void AVM::log(Function *currentFunction) {
 				uint32_t keyId = get_u32(bytecodes, i);
 				uint32_t count = get_u32(bytecodes, i);
 				std::cerr << "CREATE_SET_OBJECT	 "
-				          << data.classes[classId]->name << "     "
-				          << data.classes[keyId]->name << " " << count << "\n";
+				          << data.classes[classId]->getName(data) << "     "
+				          << data.classes[keyId]->getName(data) << " " << count
+				          << "\n";
 				break;
 			}
 			case AutoLang::Opcode::CREATE_MAP_OBJECT: {
@@ -329,14 +343,15 @@ void AVM::log(Function *currentFunction) {
 				uint32_t keyId = get_u32(bytecodes, i);
 				uint32_t count = get_u32(bytecodes, i);
 				std::cerr << "CREATE_MAP_OBJECT	 "
-				          << data.classes[classId]->name << "     "
-				          << data.classes[keyId]->name << " " << count << "\n";
+				          << data.classes[classId]->getName(data) << "     "
+				          << data.classes[keyId]->getName(data) << " " << count
+				          << "\n";
 				break;
 			}
 			case AutoLang::Opcode::CREATE_NATIVE_OBJECT: {
 				uint32_t classId = get_u32(bytecodes, i);
 				std::cerr << "CREATE_NATIVE_OBJECT	 "
-				          << data.classes[classId]->name << "\n";
+				          << data.classes[classId]->getName(data) << "\n";
 				break;
 			}
 			case AutoLang::Opcode::LOAD_GLOBAL:
@@ -544,6 +559,14 @@ void AVM::log(Function *currentFunction) {
 			}
 			case AutoLang::Opcode::JUMP_IF_FALSE:
 				std::cerr << "JUMP_IF_FALSE	 " << get_u32(bytecodes, i) << "\n";
+				break;
+			case AutoLang::Opcode::JUMP_IF_FALSE_NO_POP:
+				std::cerr << "JUMP_IF_FALSE_NO_POP	 " << get_u32(bytecodes, i)
+				          << "\n";
+				break;
+			case AutoLang::Opcode::JUMP_IF_TRUE_NO_POP:
+				std::cerr << "JUMP_IF_TRUE_NO_POP	 " << get_u32(bytecodes, i)
+				          << "\n";
 				break;
 			case AutoLang::Opcode::JUMP_IF_NULL:
 				std::cerr << "JUMP_IF_NULL	 " << get_u32(bytecodes, i) << "\n";

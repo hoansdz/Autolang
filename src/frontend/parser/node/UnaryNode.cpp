@@ -82,7 +82,7 @@ ExprNode *UnaryNode::resolve(in_func) {
 			}
 			throwError("Cannot find operator '" +
 			           Lexer::Token(0, op).toString(context) + "' with class " +
-			           compile.classes[value->classId]->name);
+			           compile.classes[value->classId]->getName(compile));
 		}
 		case NodeType::CAST: {
 			switch (op) {
@@ -131,7 +131,7 @@ ExprNode *UnaryNode::resolve(in_func) {
 			}
 			throwError("Cannot find operator '" +
 			           Lexer::Token(0, op).toString(context) + "' with class " +
-			           compile.classes[value->classId]->name);
+			           compile.classes[value->classId]->getName(compile));
 		}
 		default: {
 		}
@@ -150,6 +150,11 @@ void UnaryNode::optimize(in_func) {
 			throwError("Expected value if use operator '" +
 			           Lexer::Token(0, op).toString(context) + "'");
 		}
+		case NodeType::VAR:
+		case NodeType::GET_PROP: {
+			static_cast<AccessNode *>(value)->cloneable = false;
+			break;
+		}
 		default: {
 			break;
 		}
@@ -158,7 +163,7 @@ void UnaryNode::optimize(in_func) {
 	if (value->isNullable()) {
 		throwError("Operator " + Lexer::Token(0, op).toString(context) +
 		           " cannot be applied to operand of type '" +
-		           compile.classes[value->classId]->name + "?'");
+		           compile.classes[value->classId]->getName(compile) + "?'");
 	}
 	switch (op) {
 		case Lexer::TokenType::PLUS: {
@@ -173,9 +178,10 @@ void UnaryNode::optimize(in_func) {
 					return;
 				}
 				default:
-					throwError("Cannot cast class " +
-					           compile.classes[value->classId]->name +
-					           " to number");
+					throwError(
+					    "Cannot cast class " +
+					    compile.classes[value->classId]->getName(compile) +
+					    " to number");
 			}
 		}
 		case Lexer::TokenType::MINUS: {
@@ -190,9 +196,10 @@ void UnaryNode::optimize(in_func) {
 					return;
 				}
 				default:
-					throwError("Cannot cast class " +
-					           compile.classes[value->classId]->name +
-					           " to number");
+					throwError(
+					    "Cannot cast class " +
+					    compile.classes[value->classId]->getName(compile) +
+					    " to number");
 			}
 		}
 		case Lexer::TokenType::NOT: {
@@ -201,7 +208,8 @@ void UnaryNode::optimize(in_func) {
 				return;
 			}
 			throwError("Cannot cast class " +
-			           compile.classes[value->classId]->name + " to Bool");
+			           compile.classes[value->classId]->getName(compile) +
+			           " to Bool");
 		}
 		default: {
 			classId = value->classId;

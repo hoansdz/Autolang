@@ -15,6 +15,12 @@ class CompilerWrapper {
 	AutoLang::ACompiler compiler;
 	AutoLang::LibraryConfig mainSourceConfig;
 	std::stringstream buffer;
+#ifndef NO_INCLUDE_LIBS_HTTP
+	std::vector<AutoLang::AllowRule> pendingDomainRules;
+#endif
+#ifndef NO_INCLUDE_LIBS_FILE
+	std::vector<AutoLang::AllowRule> pendingPathRules;
+#endif
 
 	CompilerWrapper(bool addStdFile, bool addStdRegex, bool addStdJson,
 	                bool addStdMath)
@@ -80,6 +86,74 @@ class CompilerWrapper {
 	}
 
 	uint32_t getLimitOpcodeCount() { return compiler.getLimitOpcodeCount(); }
+
+	// ---- Domain whitelist builder (avoids emscripten::val as parameter) ----
+	void clearDomainRules() {
+#ifndef NO_INCLUDE_LIBS_HTTP
+		pendingDomainRules.clear();
+#endif
+	}
+	void addDomainRule(int type, const std::string &value) {
+#ifndef NO_INCLUDE_LIBS_HTTP
+		pendingDomainRules.push_back({
+		    type == 0 ? AutoLang::AllowRuleType::PLAIN_PREFIX
+		             : AutoLang::AllowRuleType::REGEX,
+		    value});
+#endif
+	}
+	void applyDomainRules() {
+#ifndef NO_INCLUDE_LIBS_HTTP
+		compiler.setAllowedDomainsRules(pendingDomainRules);
+		pendingDomainRules.clear();
+#endif
+	}
+
+
+
+	void setAllowFileRead(bool allow) {
+#ifndef NO_INCLUDE_LIBS_FILE
+		compiler.setAllowFileRead(allow);
+#endif
+	}
+
+	void setAllowFileWrite(bool allow) {
+#ifndef NO_INCLUDE_LIBS_FILE
+		compiler.setAllowFileWrite(allow);
+#endif
+	}
+
+	void setAllowFileDelete(bool allow) {
+#ifndef NO_INCLUDE_LIBS_FILE
+		compiler.setAllowFileDelete(allow);
+#endif
+	}
+
+	// ---- File path whitelist builder (avoids emscripten::val as parameter) ----
+	void clearPathRules() {
+#ifndef NO_INCLUDE_LIBS_FILE
+		pendingPathRules.clear();
+#endif
+	}
+	void addPathRule(int type, const std::string &value) {
+#ifndef NO_INCLUDE_LIBS_FILE
+		pendingPathRules.push_back({
+		    type == 0 ? AutoLang::AllowRuleType::PLAIN_PREFIX
+		             : AutoLang::AllowRuleType::REGEX,
+		    value});
+#endif
+	}
+	void applyPathRules() {
+#ifndef NO_INCLUDE_LIBS_FILE
+		compiler.setAllowedFilePathsRules(pendingPathRules);
+		pendingPathRules.clear();
+#endif
+	}
+
+	void setFileBasePath(const std::string &path) {
+#ifndef NO_INCLUDE_LIBS_FILE
+		compiler.setFileBasePath(path);
+#endif
+	}
 
 	void setMainSourceConfig(bool allowLateinitKeyword,
 	                         bool allowNonNullAssertion) {
@@ -193,6 +267,17 @@ EMSCRIPTEN_BINDINGS(autolang_module) {
 	    .function("setMainSourceConfig", &CompilerWrapper::setMainSourceConfig)
 	    .function("setLimitOpcodeCount", &CompilerWrapper::setLimitOpcodeCount)
 	    .function("getLimitOpcodeCount", &CompilerWrapper::getLimitOpcodeCount)
+	    .function("clearDomainRules",  &CompilerWrapper::clearDomainRules)
+	    .function("addDomainRule",    &CompilerWrapper::addDomainRule)
+	    .function("applyDomainRules", &CompilerWrapper::applyDomainRules)
+
+	    .function("setAllowFileRead",  &CompilerWrapper::setAllowFileRead)
+	    .function("setAllowFileWrite", &CompilerWrapper::setAllowFileWrite)
+	    .function("setAllowFileDelete",&CompilerWrapper::setAllowFileDelete)
+	    .function("clearPathRules",    &CompilerWrapper::clearPathRules)
+	    .function("addPathRule",       &CompilerWrapper::addPathRule)
+	    .function("applyPathRules",    &CompilerWrapper::applyPathRules)
+	    .function("setFileBasePath", &CompilerWrapper::setFileBasePath)
 	    .function("getOutput", &CompilerWrapper::getOutput)
 	    .function("setOutput", &CompilerWrapper::setOutput)
 	    .function("clearOutput", &CompilerWrapper::clearOutput)

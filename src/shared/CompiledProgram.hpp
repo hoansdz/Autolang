@@ -10,6 +10,7 @@
 #include "shared/Function.hpp"
 #include "shared/ObjectManager.hpp"
 #include "shared/StackAllocator.hpp"
+#include "shared/StringArena.hpp"
 #include <cstdint>
 #include <tuple>
 #include <vector>
@@ -32,13 +33,15 @@ struct CompiledProgram {
 	ObjectManager manager;
 	FunctionId mainFunctionId;
 	std::vector<uint8_t> allBytecodes;
+	std::vector<uint32_t> allGenericType;
+	StringArena stringArena;
 	ChunkArena<Function, 64> functionAllocator;
 	std::vector<Function *> functions;
 	HashMap<std::string, std::vector<FunctionId>> funcMap;
 	ChunkArena<AClass, 64> classAllocator;
 	std::vector<AClass *> classes;
 	HashMap<std::string, ClassId> classMap;
-	ChunkArena<AObject, 64> constObjectAllocator;
+	ChunkArena<AObject, 32> constObjectAllocator;
 	std::vector<AObject *> constPool;
 	void refresh();
 	void destroy();

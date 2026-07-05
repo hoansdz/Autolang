@@ -328,7 +328,15 @@ inline AObject *get(NativeFuncInData) {
 				return DefaultClass::nullObject;
 			}
 
-			return it->second;
+			AObject *value = it->second;
+			switch (value->type) {
+				case DefaultClass::intClassId:
+					return notifier.createInt(value->i);
+				case DefaultClass::floatClassId:
+					return notifier.createFloat(value->f);
+				default:
+					return value;
+			}
 		}
 
 		case DefaultClass::floatClassId: {
@@ -342,7 +350,15 @@ inline AObject *get(NativeFuncInData) {
 			if (it == map->end())
 				return DefaultClass::nullObject;
 
-			return it->second;
+			AObject *value = it->second;
+			switch (value->type) {
+				case DefaultClass::intClassId:
+					return notifier.createInt(value->i);
+				case DefaultClass::floatClassId:
+					return notifier.createFloat(value->f);
+				default:
+					return value;
+			}
 		}
 
 		case DefaultClass::stringClassId: {
@@ -356,7 +372,15 @@ inline AObject *get(NativeFuncInData) {
 			if (it == map->end())
 				return DefaultClass::nullObject;
 
-			return it->second;
+			AObject *value = it->second;
+			switch (value->type) {
+				case DefaultClass::intClassId:
+					return notifier.createInt(value->i);
+				case DefaultClass::floatClassId:
+					return notifier.createFloat(value->f);
+				default:
+					return value;
+			}
 		}
 
 		default: {
@@ -365,7 +389,15 @@ inline AObject *get(NativeFuncInData) {
 			if (it == map->end())
 				return DefaultClass::nullObject;
 
-			return it->second;
+			AObject *value = it->second;
+			switch (value->type) {
+				case DefaultClass::intClassId:
+					return notifier.createInt(value->i);
+				case DefaultClass::floatClassId:
+					return notifier.createFloat(value->f);
+				default:
+					return value;
+			}
 		}
 	}
 }

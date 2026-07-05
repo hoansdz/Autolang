@@ -29,7 +29,7 @@ public:
         char* str = new char[2];
         str[0] = chr;
         str[1] = '\0';
-        return new AString(str, 2);
+        return new AString(str, 1);
     }
 
     template<typename T>

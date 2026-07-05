@@ -23,14 +23,16 @@ struct FunctionInfo {
 	std::vector<ClassDeclaration *> genericTypeId;
 	HashMap<DeclarationNode *, DeclarationNode *> reflectDeclarationMap;
 	Offset virtualPosition;
+	uint32_t id;
 	uint32_t declaration; // Count declaration
 	int64_t hash;
 	FunctionInfo() : body(0), declaration(0) {}
-	void loadHash();
+	int64_t loadHash(Function *func);
 	inline void popBackScope() {
 		declaration -= scopes.back().size();
 		scopes.pop();
 	}
+	std::string toString(in_func);
 	inline GenericDeclarationNode *
 	findGenericDeclaration(LexerStringId nameId) {
 		if (!genericData)

@@ -159,7 +159,7 @@ void SetNode::optimize(in_func) {
 				auto clazz = compile.classes[valueNode->caller->classId];
 				throwError("Cannot find member name '" +
 				           context.lexerString[valueNode->nameId] +
-				           "' in class " + clazz->name);
+				           "' in class " + clazz->getName(compile));
 			}
 			std::vector<FunctionId> *funcs[1];
 			funcs[0] = &it->second;
@@ -195,6 +195,7 @@ void SetNode::optimize(in_func) {
 		case NodeType::GET_PROP: {
 			auto detachNode = static_cast<GetPropNode *>(detach);
 			detachNode->isStore = true;
+			detachNode->cloneable = false;
 			if (detach->classId != AutoLang::DefaultClass::nullClassId) {
 				break;
 			}
@@ -219,8 +220,8 @@ void SetNode::optimize(in_func) {
 						    detachNode->declaration->nullable;
 					}
 					// printDebug(std::string("SetNode: Declaration ") +
-					// node->declaration->name + " is " +
-					// compile.classes[value->classId]->name);
+					// node->declaration->getName(compile) + " is " +
+					// compile.classes[value->classId]->getName(compile));
 				}
 				detach->classId = value->classId;
 				if (value->classId == DefaultClass::functionClassId) {
@@ -232,10 +233,12 @@ void SetNode::optimize(in_func) {
 			// detachNode->declaration->classId)
 			// }
 			if (detachNode->isVal) {
-				throwError("Cannot change " +
-				           compile.classes[detachNode->caller->classId]->name +
-				           "." + context.lexerString[detachNode->nameId] +
-				           " because it's val");
+				throwError(
+				    "Cannot change " +
+				    compile.classes[detachNode->caller->classId]->getName(
+				        compile) +
+				    "." + context.lexerString[detachNode->nameId] +
+				    " because it's val");
 			}
 			// Nullable
 			if (value->classId == AutoLang::DefaultClass::nullClassId) {
@@ -244,7 +247,7 @@ void SetNode::optimize(in_func) {
 					    detachNode->declaration->name +
 					    " cannot detach null value, you must declare " +
 					    compile.classes[detachNode->declaration->classId]
-					        ->name +
+					        ->getName(compile) +
 					    "? to can detach null");
 				}
 				if (op != Lexer::TokenType::EQUAL) {
@@ -267,6 +270,7 @@ void SetNode::optimize(in_func) {
 		case NodeType::VAR: {
 			auto node = static_cast<VarNode *>(detach);
 			node->isStore = true;
+			node->cloneable = false;
 			if (detach->classId != AutoLang::DefaultClass::nullClassId &&
 			    detach->classId != node->declaration->classId) {
 				detach->classId = node->declaration->classId;
@@ -285,8 +289,8 @@ void SetNode::optimize(in_func) {
 					if (node->declaration->mustInferenceNullable) {
 						node->declaration->nullable = value->isNullable();
 						node->nullable = node->declaration->nullable;
-						// std::cerr << "Set " << node->declaration->name << "
-						// is "
+						// std::cerr << "Set " <<
+						// node->declaration->getName(compile) << " is "
 						//           << (detachNullable ? "nullable" :
 						//           "non null")
 						//           << "\n";
@@ -294,13 +298,13 @@ void SetNode::optimize(in_func) {
 					// if (value->classDeclaration) {
 					// 	std::cerr
 					// 	    << (std::string("SetNode: Declaration ") +
-					// 	        node->declaration->name + " is " +
+					// 	        node->declaration->getName(compile) + " is " +
 					// 	        value->classDeclaration->getName<true>(in_data))
 					// 	    << "\n";
 					// } else {
 					// 	std::cerr << (std::string("SetNode__: Declaration ") +
-					// 	              node->declaration->name + " is " +
-					// 	              compile.classes[value->classId]->name)
+					// 	              node->declaration->getName(compile) + " is
+					// " + compile.classes[value->classId]->getName(compile))
 					// 	          << "\n";
 					// 	//   value->getClassName(in_data))
 					// }
@@ -316,7 +320,8 @@ void SetNode::optimize(in_func) {
 					throwError(
 					    node->declaration->name +
 					    " cannot detach null value, you must declare " +
-					    compile.classes[node->declaration->classId]->name +
+					    compile.classes[node->declaration->classId]->getName(
+					        compile) +
 					    "? to can detach null");
 				}
 				if (op != Lexer::TokenType::EQUAL) {
@@ -344,7 +349,7 @@ void SetNode::optimize(in_func) {
 			}
 			case NodeType::CONST_VAL: {
 				if (op != Lexer::TokenType::EQUAL ||
-				    static_cast<AccessNode *>(detach)->isVal) {	
+				    static_cast<AccessNode *>(detach)->isVal) {
 					// Optimize call primary instead of copies
 					static_cast<ConstValueNode *>(value)->isLoadPrimary = true;
 				}
@@ -361,9 +366,9 @@ void SetNode::optimize(in_func) {
 					           node->declaration->name +
 					           " to non null variable " + detachName);
 				}
-				if (!(detachNode->isVal && node->isVal)) {
-					node->cloneable = true;
-				}
+				// if (detachNode->isVal && node->isVal) {
+				// 	node->cloneable = false;
+				// }
 				break;
 			}
 			case NodeType::CALL: {
@@ -392,8 +397,10 @@ void SetNode::optimize(in_func) {
 			           "' with nullable value");
 		}
 	} else if (value->isNullable()) {
-		throwError("Cannot detach '" + compile.classes[detach->classId]->name +
-		           "' with '" + compile.classes[value->classId]->name +
+		throwError("Cannot detach '" +
+		           compile.classes[detach->classId]->getName(compile) +
+		           "' with '" +
+		           compile.classes[value->classId]->getName(compile) +
 		           "?' (Nullable value)");
 	}
 
@@ -412,8 +419,9 @@ void SetNode::optimize(in_func) {
 			}
 			throwError("Cannot use " + Lexer::Token(0, op).toString(context) +
 			           " operator with " +
-			           compile.classes[detach->classId]->name + " and " +
-			           compile.classes[value->classId]->name);
+			           compile.classes[detach->classId]->getName(compile) +
+			           " and " +
+			           compile.classes[value->classId]->getName(compile));
 		} else {
 			if (detach->classId == DefaultClass::functionClassId &&
 			    detach->classDeclaration != value->classDeclaration) {
@@ -470,8 +478,10 @@ void SetNode::optimize(in_func) {
 					throwError("What happen");
 			}
 		} catch (const ParserError &err) {
-			throwError("Cannot cast " + compile.classes[value->classId]->name +
-			           " to " + compile.classes[detach->classId]->name);
+			throwError("Cannot cast " +
+			           compile.classes[value->classId]->getName(compile) +
+			           " to " +
+			           compile.classes[detach->classId]->getName(compile));
 		}
 	}
 	if (detach->classId == DefaultClass::anyClassId) {
@@ -486,14 +496,16 @@ void SetNode::optimize(in_func) {
 	switch (detach->kind) {
 		case NodeType::VAR: {
 			throwError("Type mismatch: expected '" +
-			           compile.classes[detach->classId]->name +
-			           "' but found '" + compile.classes[value->classId]->name +
+			           compile.classes[detach->classId]->getName(compile) +
+			           "' but found '" +
+			           compile.classes[value->classId]->getName(compile) +
 			           (value->isNullable() ? "?" : "") + "'");
 		}
 		case NodeType::GET_PROP: {
 			throwError("Type mismatch: expected '" +
-			           compile.classes[detach->classId]->name +
-			           "' but found '" + compile.classes[value->classId]->name +
+			           compile.classes[detach->classId]->getName(compile) +
+			           "' but found '" +
+			           compile.classes[value->classId]->getName(compile) +
 			           (value->isNullable() ? "?" : "") + "'");
 		}
 		default:

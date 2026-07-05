@@ -98,7 +98,7 @@ bool GetPropNode::optimizeSkipIfNotFoundMember(in_func) {
 		// for (int i = 0; i<clazz->memberId.size(); ++i) {
 		// 	printDebug("MemId: "+std::to_string(clazz->memberId[i]));
 		// }
-		// printDebug("Class " + clazz->name + " GetProp: "+name+" "+" has:
+		// printDebug("Class " + clazz->getName(compile) + " GetProp: "+name+" "+" has:
 		// "+std::to_string((uintptr_t)declarationNode));
 		if (clazz->memberId[id] != declaration->classId)
 			clazz->memberId[id] = declaration->classId;
@@ -107,22 +107,22 @@ bool GetPropNode::optimizeSkipIfNotFoundMember(in_func) {
 			classDeclaration = declaration->classDeclaration;
 		}
 		// clazz->memberId[id];
-		// printDebug("Class " + clazz->name + " GetProp: " + name + " " +
+		// printDebug("Class " + clazz->getName(compile) + " GetProp: " + name + " " +
 		//            " has id: " + std::to_string(id) + " " +
 		//            std::to_string(classId) + " " +
-		//            compile.classes[classId]->name);
+		//            compile.classes[classId]->getName(compile));
 	}
 	if (nullable) {
 		nullable = declaration->nullable;
 	}
-	if (!cloneable) {
+	if (cloneable) {
 		switch (classId) {
 			case DefaultClass::intClassId:
 			case DefaultClass::floatClassId: {
-				cloneable = true;
 				break;
 			}
 			default: {
+				cloneable = false;
 				break;
 			}
 		}
@@ -170,7 +170,7 @@ void GetPropNode::optimize(in_func) {
 		auto it_ = classInfo->staticMember.find(nameId);
 		if (it_ == classInfo->staticMember.end())
 			throwError("Cannot find member name '" + name + "' in class " +
-			           clazz->name);
+			           clazz->getName(compile));
 		declaration = it_->second;
 		if (declaration->accessModifier != Lexer::TokenType::PUBLIC &&
 		    (!contextCallClassId || *contextCallClassId != clazz->id)) {
@@ -198,7 +198,7 @@ void GetPropNode::optimize(in_func) {
 		// for (int i = 0; i<clazz->memberId.size(); ++i) {
 		// 	printDebug("MemId: "+std::to_string(clazz->memberId[i]));
 		// }
-		// printDebug("Class " + clazz->name + " GetProp: "+name+" "+" has:
+		// printDebug("Class " + clazz->getName(compile) + " GetProp: "+name+" "+" has:
 		// "+std::to_string((uintptr_t)declarationNode));
 		if (clazz->memberId[id] != declaration->classId)
 			clazz->memberId[id] = declaration->classId;
@@ -206,24 +206,24 @@ void GetPropNode::optimize(in_func) {
 		if (classId == DefaultClass::functionClassId) {
 			classDeclaration = declaration->classDeclaration;
 		}
-		// std::cerr << ("Class " + clazz->name + " GetProp: " + name + " " +
+		// std::cerr << ("Class " + clazz->getName(compile) + " GetProp: " + name + " " +
 		//               " has id: " + std::to_string(id) + " " +
 		//               std::to_string(classId) + " " +
-		//               compile.classes[classId]->name +
+		//               compile.classes[classId]->getName(compile) +
 		//               (declaration->nullable ? "?" : ""))
 		//           << "\n";
 	}
 	if (nullable) {
 		nullable = declaration->nullable;
 	}
-	if (!cloneable) {
+	if (cloneable) {
 		switch (classId) {
 			case DefaultClass::intClassId:
 			case DefaultClass::floatClassId: {
-				cloneable = true;
 				break;
 			}
 			default: {
+				cloneable = false;
 				break;
 			}
 		}
@@ -249,6 +249,7 @@ ExprNode *GetPropNode::copy(in_func) {
 	    nullable, accessNullable);
 	newNode->isStore = isStore;
 	newNode->classId = classId;
+	newNode->cloneable = cloneable;
 	return newNode;
 }
 
@@ -267,16 +268,7 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					put_opcode_u32(bytecodes, varNode->declaration->id);
 					put_opcode_u32(bytecodes, id);
 					if (cloneable) {
-						switch (classId) {
-							case DefaultClass::intClassId:
-							case DefaultClass::floatClassId: {
-								bytecodes.emplace_back(Opcode::CLONE);
-								break;
-							}
-							default: {
-								break;
-							}
-						}
+						bytecodes.emplace_back(Opcode::CLONE);
 					}
 					return;
 				}
@@ -325,7 +317,7 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			throwError("Bug: Setnode not ensure store data is non nullable");
 		}
 		warning(in_data, "Access static variables: we recommend call " +
-		                     compile.classes[caller->classId]->name + "." +
+		                     compile.classes[caller->classId]->getName(compile) + "." +
 		                     context.lexerString[nameId]);
 		accessNullable = false;
 	}
@@ -336,16 +328,7 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		bytecodes.emplace_back(Opcode::LOAD_GLOBAL);
 		put_opcode_u32(bytecodes, id);
 		if (cloneable) {
-			switch (classId) {
-				case DefaultClass::intClassId:
-				case DefaultClass::floatClassId: {
-					bytecodes.emplace_back(Opcode::CLONE);
-					break;
-				}
-				default: {
-					break;
-				}
-			}
+			bytecodes.emplace_back(Opcode::CLONE);
 		}
 	}
 }

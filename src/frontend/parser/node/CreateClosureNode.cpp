@@ -34,7 +34,7 @@ void CreateClosureNode::optimize(in_func) {
 			//         classDeclaration->inputClassId.size();
 			// for (; j < parameter->parameters.size(); ++j) {
 			// 	auto declaration = parameter->parameters[j];
-			// 	message += declaration->name;
+			// 	message += declaration->getName(compile);
 			// 	if (declaration->classDeclaration) {
 			// 		message +=
 			// 		    ": " + declaration->classDeclaration->getName(in_data);
@@ -119,7 +119,8 @@ void CreateClosureNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	declarationCount += delta;
 	func->maxDeclaration = maxDeclaration;
 	for (auto declaration : newDeclaration) {
-		// std::cerr << declaration->name << " " << declaration->id << "\n";
+		// std::cerr << declaration->getName(compile) << " " << declaration->id
+		// << "\n";
 		declaration->id += delta;
 	}
 	auto listOffset =

@@ -98,6 +98,12 @@ struct AObject {
 				flags = AObject::Flags::OBJ_IS_FREE;
 				return;
 			}
+			case AutoLang::DefaultClass::bytesClassId: {
+				delete[] bytes->data;
+				delete bytes;
+				flags = AObject::Flags::OBJ_IS_FREE;
+				return;
+			}
 			case AutoLang::DefaultClass::functionClassId: {
 				for (int i = function->size; i-- > 0;) {
 					--function->args[i]->refCount;

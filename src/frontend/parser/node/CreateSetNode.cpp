@@ -23,7 +23,7 @@ void CreateSetNode::optimize(in_func) {
 	auto classInfo = context.classInfo[classId];
 	if (classInfo->baseClassId != DefaultClass::setClassId) {
 		throwError("Type mismatch, expected Set<> but '" +
-		           compile.classes[classId]->name + "' found");
+		           compile.classes[classId]->getName(compile) + "' found");
 	}
 	auto genericType = classInfo->genericTypeId[0];
 	auto valueMustBeClassId = *genericType->classId;
@@ -61,15 +61,15 @@ void CreateSetNode::optimize(in_func) {
 				if (genericType->nullable) {
 					continue;
 				}
-				// std::cerr << compile.classes[classId]->name << "\n";
+				// std::cerr << compile.classes[classId]->getName(compile) << "\n";
 				throwError("Value in Set must non null");
 			}
 		}
 		if (valueMustBeClassId == DefaultClass::anyClassId) {
 			continue;
 		}
-		throwError("Cannot cast " + compile.classes[value->classId]->name +
-		           " to " + compile.classes[valueMustBeClassId]->name);
+		throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) +
+		           " to " + compile.classes[valueMustBeClassId]->getName(compile));
 	}
 }
 

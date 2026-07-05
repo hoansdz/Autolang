@@ -3,8 +3,8 @@
 
 #include "backend/vm/ANotifier.hpp"
 #include "frontend/parser/Debugger.hpp"
-#include "shared/DefaultFunction.hpp"
 #include "shared/DefaultClass.hpp"
+#include "shared/DefaultFunction.hpp"
 #include <cmath>
 #include <iostream>
 
@@ -109,8 +109,9 @@ AObject *plus(NativeFuncInData) {
 			break;
 	}
 	notifier.throwException(
-	    "Cannot plus " + notifier.vm->data.classes[obj1->type]->name + " and " +
-	    notifier.vm->data.classes[obj2->type]->name);
+	    "Cannot plus " +
+	    notifier.vm->data.classes[obj1->type]->getName(notifier.vm->data) + " and " +
+	    notifier.vm->data.classes[obj2->type]->getName(notifier.vm->data));
 	return nullptr;
 }
 
@@ -161,8 +162,9 @@ AObject *minus(NativeFuncInData) {
 			break;
 	}
 	notifier.throwException(
-	    "Cannot minus " + notifier.vm->data.classes[obj1->type]->name +
-	    " and " + notifier.vm->data.classes[obj2->type]->name);
+	    "Cannot minus " +
+	    notifier.vm->data.classes[obj1->type]->getName(notifier.vm->data) + " and " +
+	    notifier.vm->data.classes[obj2->type]->getName(notifier.vm->data));
 	return nullptr;
 }
 
@@ -213,8 +215,9 @@ AObject *mul(NativeFuncInData) {
 			break;
 	}
 	notifier.throwException(
-	    "Cannot multiply " + notifier.vm->data.classes[obj1->type]->name +
-	    " and " + notifier.vm->data.classes[obj2->type]->name);
+	    "Cannot multiply " +
+	    notifier.vm->data.classes[obj1->type]->getName(notifier.vm->data) + " and " +
+	    notifier.vm->data.classes[obj2->type]->getName(notifier.vm->data));
 	return nullptr;
 }
 
@@ -292,8 +295,9 @@ AObject *divide(NativeFuncInData) {
 			break;
 	}
 	notifier.throwException(
-	    "Cannot divide " + notifier.vm->data.classes[obj1->type]->name +
-	    " and " + notifier.vm->data.classes[obj2->type]->name);
+	    "Cannot divide " +
+	    notifier.vm->data.classes[obj1->type]->getName(notifier.vm->data) + " and " +
+	    notifier.vm->data.classes[obj2->type]->getName(notifier.vm->data));
 	return nullptr;
 divideByZero:;
 	notifier.throwException("Cannot divide by zero");
@@ -510,10 +514,10 @@ AObject *op_less_than(NativeFuncInData) {
 		default:
 			break;
 	}
-	notifier.throwException("Cannot compare < between " +
-	                        notifier.vm->data.classes[obj1->type]->name +
-	                        " and " +
-	                        notifier.vm->data.classes[obj2->type]->name);
+	notifier.throwException(
+	    "Cannot compare < between " +
+	    notifier.vm->data.classes[obj1->type]->getName(notifier.vm->data) + " and " +
+	    notifier.vm->data.classes[obj2->type]->getName(notifier.vm->data));
 	return nullptr;
 }
 
@@ -563,10 +567,10 @@ AObject *op_greater_than(NativeFuncInData) {
 		default:
 			break;
 	}
-	notifier.throwException("Cannot compare > between " +
-	                        notifier.vm->data.classes[obj1->type]->name +
-	                        " and " +
-	                        notifier.vm->data.classes[obj2->type]->name);
+	notifier.throwException(
+	    "Cannot compare > between " +
+	    notifier.vm->data.classes[obj1->type]->getName(notifier.vm->data) + " and " +
+	    notifier.vm->data.classes[obj2->type]->getName(notifier.vm->data));
 	return nullptr;
 }
 
@@ -616,10 +620,10 @@ AObject *op_less_than_eq(NativeFuncInData) {
 		default:
 			break;
 	}
-	notifier.throwException("Cannot compare <= between " +
-	                        notifier.vm->data.classes[obj1->type]->name +
-	                        " and " +
-	                        notifier.vm->data.classes[obj2->type]->name);
+	notifier.throwException(
+	    "Cannot compare <= between " +
+	    notifier.vm->data.classes[obj1->type]->getName(notifier.vm->data) + " and " +
+	    notifier.vm->data.classes[obj2->type]->getName(notifier.vm->data));
 	return nullptr;
 }
 
@@ -669,10 +673,10 @@ AObject *op_greater_than_eq(NativeFuncInData) {
 		default:
 			break;
 	}
-	notifier.throwException("Cannot compare >= between " +
-	                        notifier.vm->data.classes[obj1->type]->name +
-	                        " and " +
-	                        notifier.vm->data.classes[obj2->type]->name);
+	notifier.throwException(
+	    "Cannot compare >= between " +
+	    notifier.vm->data.classes[obj1->type]->getName(notifier.vm->data) + " and " +
+	    notifier.vm->data.classes[obj2->type]->getName(notifier.vm->data));
 	return nullptr;
 }
 
@@ -750,8 +754,9 @@ AObject *mod(NativeFuncInData) {
 			break;
 	}
 	notifier.throwException(
-	    "Cannot mod " + notifier.vm->data.classes[obj1->type]->name + " and " +
-	    notifier.vm->data.classes[obj2->type]->name);
+	    "Cannot mod " +
+	    notifier.vm->data.classes[obj1->type]->getName(notifier.vm->data) + " and " +
+	    notifier.vm->data.classes[obj2->type]->getName(notifier.vm->data));
 	return nullptr;
 divideByZero:;
 	notifier.throwException("Cannot divide by zero");
@@ -775,8 +780,9 @@ AObject *bitwise_and(NativeFuncInData) {
 			break;
 	}
 	notifier.throwException(
-	    "Cannot bitwise and " + notifier.vm->data.classes[obj1->type]->name +
-	    " and " + notifier.vm->data.classes[obj2->type]->name);
+	    "Cannot bitwise and " +
+	    notifier.vm->data.classes[obj1->type]->getName(notifier.vm->data) + " and " +
+	    notifier.vm->data.classes[obj2->type]->getName(notifier.vm->data));
 	return nullptr;
 }
 
@@ -797,8 +803,9 @@ AObject *bitwise_or(NativeFuncInData) {
 			break;
 	}
 	notifier.throwException(
-	    "Cannot bitwise or " + notifier.vm->data.classes[obj1->type]->name +
-	    " and " + notifier.vm->data.classes[obj2->type]->name);
+	    "Cannot bitwise or " +
+	    notifier.vm->data.classes[obj1->type]->getName(notifier.vm->data) + " and " +
+	    notifier.vm->data.classes[obj2->type]->getName(notifier.vm->data));
 	return nullptr;
 }
 
@@ -812,8 +819,9 @@ AObject *op_and_and(NativeFuncInData) {
 	}
 
 	notifier.throwException(
-	    "Cannot use && between " + notifier.vm->data.classes[obj1->type]->name +
-	    " and " + notifier.vm->data.classes[obj2->type]->name);
+	    "Cannot use && between " +
+	    notifier.vm->data.classes[obj1->type]->getName(notifier.vm->data) + " and " +
+	    notifier.vm->data.classes[obj2->type]->getName(notifier.vm->data));
 	return nullptr;
 }
 
@@ -827,8 +835,9 @@ AObject *op_or_or(NativeFuncInData) {
 	}
 
 	notifier.throwException(
-	    "Cannot use || between " + notifier.vm->data.classes[obj1->type]->name +
-	    " and " + notifier.vm->data.classes[obj2->type]->name);
+	    "Cannot use || between " +
+	    notifier.vm->data.classes[obj1->type]->getName(notifier.vm->data) + " and " +
+	    notifier.vm->data.classes[obj2->type]->getName(notifier.vm->data));
 	return nullptr;
 }
 
@@ -880,8 +889,9 @@ AObject *plus_eq(NativeFuncInData) {
 			break;
 	}
 	notifier.throwException(
-	    "Cannot use += between " + notifier.vm->data.classes[obj1->type]->name +
-	    " and " + notifier.vm->data.classes[obj2->type]->name);
+	    "Cannot use += between " +
+	    notifier.vm->data.classes[obj1->type]->getName(notifier.vm->data) + " and " +
+	    notifier.vm->data.classes[obj2->type]->getName(notifier.vm->data));
 	return nullptr;
 }
 
@@ -925,8 +935,9 @@ AObject *minus_eq(NativeFuncInData) {
 			break;
 	}
 	notifier.throwException(
-	    "Cannot use -= between " + notifier.vm->data.classes[obj1->type]->name +
-	    " and " + notifier.vm->data.classes[obj2->type]->name);
+	    "Cannot use -= between " +
+	    notifier.vm->data.classes[obj1->type]->getName(notifier.vm->data) + " and " +
+	    notifier.vm->data.classes[obj2->type]->getName(notifier.vm->data));
 	return nullptr;
 }
 
@@ -970,8 +981,9 @@ AObject *mul_eq(NativeFuncInData) {
 			break;
 	}
 	notifier.throwException(
-	    "Cannot use *= between " + notifier.vm->data.classes[obj1->type]->name +
-	    " and " + notifier.vm->data.classes[obj2->type]->name);
+	    "Cannot use *= between " +
+	    notifier.vm->data.classes[obj1->type]->getName(notifier.vm->data) + " and " +
+	    notifier.vm->data.classes[obj2->type]->getName(notifier.vm->data));
 	return nullptr;
 }
 
@@ -1027,8 +1039,9 @@ AObject *divide_eq(NativeFuncInData) {
 			break;
 	}
 	notifier.throwException(
-	    "Cannot use /= between " + notifier.vm->data.classes[obj1->type]->name +
-	    " and " + notifier.vm->data.classes[obj2->type]->name);
+	    "Cannot use /= between " +
+	    notifier.vm->data.classes[obj1->type]->getName(notifier.vm->data) + " and " +
+	    notifier.vm->data.classes[obj2->type]->getName(notifier.vm->data));
 	return nullptr;
 
 divideByZero:;
@@ -1048,8 +1061,9 @@ AObject *plus_plus(NativeFuncInData) {
 		default:
 			break;
 	}
-	notifier.throwException("Cannot use ++ operator on " +
-	                        notifier.vm->data.classes[obj->type]->name);
+	notifier.throwException(
+	    "Cannot use ++ operator on " +
+	    notifier.vm->data.classes[obj->type]->getName(notifier.vm->data));
 	return nullptr;
 }
 
@@ -1065,8 +1079,9 @@ AObject *minus_minus(NativeFuncInData) {
 		default:
 			break;
 	}
-	notifier.throwException("Cannot use -- operator on " +
-	                        notifier.vm->data.classes[obj->type]->name);
+	notifier.throwException(
+	    "Cannot use -- operator on " +
+	    notifier.vm->data.classes[obj->type]->getName(notifier.vm->data));
 	return nullptr;
 }
 
@@ -1082,8 +1097,9 @@ AObject *negative(NativeFuncInData) {
 		default:
 			break;
 	}
-	notifier.throwException("Cannot use negative operator on " +
-	                        notifier.vm->data.classes[obj->type]->name);
+	notifier.throwException(
+	    "Cannot use negative operator on " +
+	    notifier.vm->data.classes[obj->type]->getName(notifier.vm->data));
 	return nullptr;
 }
 
@@ -1092,8 +1108,9 @@ AObject *op_not(NativeFuncInData) {
 	if (obj->type == AutoLang::DefaultClass::boolClassId) {
 		return notifier.createBool(!obj->b);
 	}
-	notifier.throwException("Cannot use ! operator on " +
-	                        notifier.vm->data.classes[obj->type]->name);
+	notifier.throwException(
+	    "Cannot use ! operator on " +
+	    notifier.vm->data.classes[obj->type]->getName(notifier.vm->data));
 	return nullptr;
 }
 

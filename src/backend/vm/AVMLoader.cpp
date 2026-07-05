@@ -13,6 +13,7 @@ AVM::AVM(bool allowDebug)
     : allowDebug(allowDebug), notifier(new ANotifier(this)) {
 	data.manager.notifier = notifier;
 	data.allBytecodes.reserve(256);
+	data.allGenericType.reserve(64);
 }
 
 void AVM::start() {
@@ -101,6 +102,16 @@ AVM::~AVM() {
 	delete[] tempAllocateArea;
 	if (globalVariables)
 		delete[] globalVariables;
+#ifndef NO_INCLUDE_LIBS_HTTP
+	if (allowedDomainsRegex) {
+		delete allowedDomainsRegex;
+	}
+#endif
+#ifndef NO_INCLUDE_LIBS_FILE
+	if (allowedFilePathsRegex) {
+		delete allowedFilePathsRegex;
+	}
+#endif
 }
 
 } // namespace AutoLang

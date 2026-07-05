@@ -12,6 +12,8 @@
 #include <chrono>
 #include <regex>
 #include <string>
+#include <memory>
+#include <vector>
 
 
 namespace AutoLang {
@@ -62,7 +64,13 @@ class AVM {
 #ifndef NO_INCLUDE_LIBS_HTTP
 	uint32_t maxDownloadSize = UINT32_MAX;
 	std::regex *allowedDomainsRegex = nullptr;
-	bool allowAllDomains = false;
+#endif
+#ifndef NO_INCLUDE_LIBS_FILE
+	bool allowFileRead = true;
+	bool allowFileWrite = true;
+	bool allowFileDelete = true;
+	std::regex *allowedFilePathsRegex = nullptr;
+	std::string fileBasePath = "";
 #endif
 	inline AObject *getConstObject(uint32_t id);
 

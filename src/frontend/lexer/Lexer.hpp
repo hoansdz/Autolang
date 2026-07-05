@@ -237,13 +237,13 @@ struct Estimate {
 	uint32_t classes = 0;
 	uint32_t functions = 0;
 	uint32_t constructorNode = 0;
-	uint32_t ifNode = 0;
-	uint32_t whileNode = 0;
-	uint32_t returnNode = 0;
-	uint32_t setNode = 0;
-	uint32_t binaryNode = 0;
-	uint32_t tryCatchNode = 0;
-	uint32_t throwNode = 0;
+	// uint32_t ifNode = 0;
+	// uint32_t whileNode = 0;
+	// uint32_t returnNode = 0;
+	// uint32_t setNode = 0;
+	// uint32_t binaryNode = 0;
+	// uint32_t tryCatchNode = 0;
+	// uint32_t throwNode = 0;
 };
 
 struct Context {

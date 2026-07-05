@@ -68,7 +68,8 @@ func testFunctionClosures() {
     var total = 0
     for (i in 0..10000) {
         val adder = {|v: Int| v + i}
-        total += adder(1)
+        val res = adder(1)
+        total += res
     }
     assert(total == 50015001, __FILE__, __LINE__)
 

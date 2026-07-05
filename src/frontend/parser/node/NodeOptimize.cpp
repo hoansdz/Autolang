@@ -97,7 +97,7 @@ ExprNode *UnknowNode::copy(in_func) {
 		switch (nameId) {
 			case lexerId__CLASS__: {
 				return context.constValuePool.push(
-				    0, context.getCurrentClass(in_data)->name);
+				    0, context.getCurrentClass(in_data)->getName(compile));
 			}
 		}
 		auto classInfo = context.classInfo[*contextCallClassId];
@@ -172,7 +172,7 @@ void ReturnNode::optimize(in_func) {
 	}
 	auto func = compile.functions[funcId];
 	auto funcInfo = context.functionInfo[funcId];
-	// std::cerr<<"Loading "<<func->name<<"\n";
+	// std::cerr<<"Loading "<<func->getName(compile)<<"\n";
 	if (value) {
 		if (func->returnId == DefaultClass::voidClassId && throwErrIfVoid) {
 			throwError("Cannot return value, function return Void");
@@ -283,11 +283,11 @@ void ReturnNode::optimize(in_func) {
 				value->optimize(in_data);
 				break;
 			}
-			case NodeType::VAR:
-			case NodeType::GET_PROP: {
-				auto node = static_cast<AccessNode *>(value);
-				node->cloneable = true;
-			}
+			// case NodeType::VAR:
+			// case NodeType::GET_PROP: {
+			// 	auto node = static_cast<AccessNode *>(value);
+			// 	node->cloneable = true;
+			// }
 			default: {
 				value->optimize(in_data);
 				break;
@@ -299,11 +299,11 @@ void ReturnNode::optimize(in_func) {
 				return;
 			}
 			case DefaultClass::nullClassId: {
-				// std::cerr << "Loaded " << func->name << "\n";
+				// std::cerr << "Loaded " << func->getName(compile) << "\n";
 				switch (value->classId) {
 					case DefaultClass::nullClassId: {
 						throwError("Cannot infer return type for function '" +
-						           func->name +
+						           func->getName(compile) +
 						           "' "
 						           "because its body is a null literal.");
 					}
@@ -345,8 +345,8 @@ void ReturnNode::optimize(in_func) {
 			    context.castPool.push(value, func->returnId)->resolve(in_data));
 			return;
 		}
-		throwError("Cannot cast " + compile.classes[value->classId]->name +
-		           " to " + compile.classes[func->returnId]->name);
+		throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) +
+		           " to " + compile.classes[func->returnId]->getName(compile));
 	}
 	if (func->returnId != AutoLang::DefaultClass::voidClassId) {
 		throwError("Must return value");

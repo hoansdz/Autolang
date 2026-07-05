@@ -201,7 +201,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 				                  "Extended class must have constructor");
 			}
 		}
-		// std::cerr<<"Clazz: "<<clazz->name<<" "<<declarationThis->id<<"\n";
+		// std::cerr<<"Clazz: "<<clazz->getName(compile)<<" "<<declarationThis->id<<"\n";
 		// Has PrimaryConstructor
 		//  bool hasPrimaryConstructor = false;
 		if (expect(token, Lexer::TokenType::LPAREN)) {
@@ -348,7 +348,7 @@ void loadConstructor(in_func, size_t &i) {
 		throw ParserError(firstLine, "@native is only supported functions");
 	} else if (clazz->classFlags & ClassFlags::CLASS_NATIVE_DATA) {
 		throw ParserError(
-		    firstLine, "Class " + clazz->name +
+		    firstLine, "Class " + clazz->getName(compile) +
 		                   " marked @native_data, @constructor must be native");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_OVERRIDE) {
@@ -403,7 +403,7 @@ void loadConstructor(in_func, size_t &i) {
 	                             classInfo->declarationThis);
 	parameter->defaultValuePos += 1;
 	auto constructor = context.createConstructorPool.push(
-	    firstLine, *context.currentClassId, context.lexerStringMap[clazz->name],
+	    firstLine, *context.currentClassId, context.lexerStringMap[clazz->getName(compile)],
 	    parameter, false, functionFlags);
 	classInfo->secondaryConstructor.push_back(constructor);
 	constructor->pushFunction(in_data);
@@ -411,8 +411,8 @@ void loadConstructor(in_func, size_t &i) {
 	auto func = compile.functions[constructor->funcId];
 	auto funcInfo = context.functionInfo[constructor->funcId];
 	// compile
-	//     .funcMap[compile.classes[*context.currentClassId]->name + "." +
-	//              compile.classes[*context.currentClassId]->name]
+	//     .funcMap[compile.classes[*context.currentClassId]->getName(compile) + "." +
+	//              compile.classes[*context.currentClassId]->getName(compile)]
 	//     .push_back(constructor->funcId);
 
 	if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {

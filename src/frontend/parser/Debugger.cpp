@@ -379,7 +379,7 @@ initial:;
 	return nullptr;
 err_call_func:;
 	printDebug(context.currentClassId
-	               ? compile.classes[*context.currentClassId]->name
+	               ? compile.classes[*context.currentClassId]->getName(compile)
 	               : "None");
 	throw ParserError(token->line, "Command are not allowed outside function ");
 err_call_class:;
@@ -1612,7 +1612,7 @@ ConstValueNode *findConstValueNode(in_func, size_t &i, LexerStringId nameId) {
 		}
 		case lexerId__FUNC__: {
 			return context.constValuePool.push(
-			    0, context.getCurrentFunction(in_data)->name);
+			    0, context.getCurrentFunction(in_data)->getName(compile));
 		}
 		case lexerId__CLASS__: {
 			if (context.currentClassId) {
@@ -1623,7 +1623,7 @@ ConstValueNode *findConstValueNode(in_func, size_t &i, LexerStringId nameId) {
 			}
 			return context.constValuePool.push(
 			    0, context.currentClassId
-			           ? context.getCurrentClass(in_data)->name
+			           ? context.getCurrentClass(in_data)->getName(compile)
 			           : "");
 		}
 		case lexerIdtrue:

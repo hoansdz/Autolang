@@ -188,14 +188,14 @@ createNode:;
 		if (context.currentClassId) {
 			if (context.currentFunctionId == context.mainFunctionId) {
 				declarationName =
-				    context.getCurrentClass(in_data)->name + '.' + name;
+				    context.getCurrentClass(in_data)->getName(compile) + '.' + name;
 			} else {
-				declarationName = context.getCurrentClass(in_data)->name + "." +
-				                  func->name + '.' + name;
+				declarationName = context.getCurrentClass(in_data)->getName(compile) + "." +
+				                  func->getName(compile) + '.' + name;
 			}
 		} else {
 			if (context.currentFunctionId != context.mainFunctionId) {
-				declarationName = func->name + '.' + name;
+				declarationName = func->getName(compile) + '.' + name;
 			} else {
 				declarationName = name;
 			}
@@ -224,7 +224,7 @@ createNode:;
 	    isInFunction || isStatic);
 	node->accessModifier = accessModifier;
 	node->mustInferenceNullable = !sugarSyntax && !classDeclaration;
-	// printDebug(node->name + " is " + (node->accessModifier ==
+	// printDebug(node->getName(compile) + " is " + (node->accessModifier ==
 	// Lexer::TokenType::PUBLIC ? "public" : "private")); printDebug((isVal ?
 	// "val " : "var ") + name + " has id " + std::to_string(node->id) + " " +
 	// (isGlobal ? "1 " : "0 " ) + (isStatic ? "1 " : "0 "));
@@ -266,7 +266,7 @@ createNode:;
 		auto clazz = context.getCurrentClass(in_data);
 		auto classInfo = context.getCurrentClassInfo(in_data);
 		uint32_t nodeId = clazz->memberId.size();
-		// printDebug(compile.classes[context.currentClassInfo->declarationThis->classId]->name);
+		// printDebug(compile.classes[context.currentClassInfo->declarationThis->classId]->getName(compile));
 		// printDebug((uintptr_t)context.currentClass);
 		// std::cerr << nodeId << " is node id of " << name <<'\n';
 		if (classInfo->genericData) {
@@ -362,7 +362,7 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 		throw ParserError(context.tokens[i].line,
 		                  "Expected class name but not found");
 	}
-	ClassDeclaration *result;
+	ClassDeclaration *result = nullptr;
 	bool expectFunction = false;
 	switch (token->type) {
 		case Lexer::TokenType::IDENTIFIER: {

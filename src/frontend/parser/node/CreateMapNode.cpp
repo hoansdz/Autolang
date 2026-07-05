@@ -24,7 +24,7 @@ void CreateMapNode::optimize(in_func) {
 	auto classInfo = context.classInfo[classId];
 	if (classInfo->baseClassId != DefaultClass::mapClassId) {
 		throwError("Type mismatch, expected Map<> but '" +
-		           compile.classes[classId]->name + "' found");
+		           compile.classes[classId]->getName(compile) + "' found");
 	}
 
 	auto keyMustBeClassId = *classInfo->genericTypeId[0]->classId;
@@ -67,8 +67,8 @@ void CreateMapNode::optimize(in_func) {
 		if (keyMustBeClassId == DefaultClass::anyClassId) {
 			goto loadValue;
 		}
-		throwError("Cannot cast " + compile.classes[key->classId]->name +
-		           " to " + compile.classes[keyMustBeClassId]->name);
+		throwError("Cannot cast " + compile.classes[key->classId]->getName(compile) +
+		           " to " + compile.classes[keyMustBeClassId]->getName(compile));
 	loadValue:;
 		switch (value->kind) {
 			case NodeType::CREATE_ARRAY: {
@@ -109,8 +109,8 @@ void CreateMapNode::optimize(in_func) {
 		if (valueMustBeClassId == DefaultClass::anyClassId) {
 			continue;
 		}
-		throwError("Cannot cast " + compile.classes[value->classId]->name +
-		           " to " + compile.classes[valueMustBeClassId]->name);
+		throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) +
+		           " to " + compile.classes[valueMustBeClassId]->getName(compile));
 	}
 }
 

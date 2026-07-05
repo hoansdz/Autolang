@@ -19,7 +19,7 @@ void RangeNode::optimize(in_func) {
 	}
 	if (from->isNullable()) {
 		throwError("Type mismatch: inferred type is " +
-		           compile.classes[from->classId]->name +
+		           compile.classes[from->classId]->getName(compile) +
 		           "? but Int was expected");
 	}
 	to->optimize(in_data);
@@ -28,7 +28,7 @@ void RangeNode::optimize(in_func) {
 	}
 	if (to->isNullable()) {
 		throwError("Type mismatch: inferred type is " +
-		           compile.classes[to->classId]->name +
+		           compile.classes[to->classId]->getName(compile) +
 		           "? but Int was expected");
 	}
 }

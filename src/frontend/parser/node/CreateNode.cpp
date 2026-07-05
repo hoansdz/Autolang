@@ -81,7 +81,7 @@ void DeclarationNode::optimize(in_func) {
 		return;
 	}
 	// printDebug("DeclarationNode: " + name + " is " +
-	//            compile.classes[classId]->name);
+	//            compile.classes[classId]->getName(compile));
 }
 
 ExprNode *DeclarationNode::copy(in_func) {
@@ -165,7 +165,7 @@ void CreateConstructorNode::pushFunction(in_func) {
 	if (isPrimary) {
 		auto classInfo = context.classInfo[clazz->id];
 		func->functionFlags |= FunctionFlags::FUNC_IS_DATA_CONSTRUCTOR;
-		// printDebug(clazz->name);
+		// printDebug(clazz->getName(compile));
 		// printDebug(arguments.size());
 		for (size_t i = 1; i < parameter->parameters.size(); ++i) {
 			auto param = parameter->parameters[i];
@@ -180,7 +180,8 @@ void CreateConstructorNode::pushFunction(in_func) {
 ExprNode *CreateConstructorNode::copy(in_func) {
 	auto constructor = context.createConstructorPool.push(
 	    line, *context.currentClassId,
-	    context.lexerStringMap[compile.classes[*context.currentClassId]->name],
+	    context.lexerStringMap[compile.classes[*context.currentClassId]
+	                               ->getName(compile)],
 	    parameter->copy(in_data), true, functionFlags);
 	constructor->pushFunction(in_data);
 	return constructor;
@@ -207,21 +208,24 @@ void CreateConstructorNode::optimize(in_func) {
 			//     context.getPropPool.push(
 			//         line, nullptr, classId,
 			//         context.varPool.push(line, classInfo->declarationThis,
-			//         false, false), argument->name, true, true, false),
+			//         false, false), argument->getName(compile), true, true,
+			//         false),
 			//     context.varPool.push(line, argument, false, true));
 			// body.nodes.push_back(setNode);
 			clazz->memberId[i - 1] = param->classId;
-			// printDebug("Member: " + std::to_string(i) + " " + argument->name
-			// + " is " + compile.classes[argument->classId]->name);
+			// printDebug("Member: " + std::to_string(i) + " " +
+			// argument->getName(compile)
+			// + " is " + compile.classes[argument->classId]->getName(compile));
 		}
 	}
 
 	// Check redefine
-	funcInfo->hash = func->loadHash();
+	funcInfo->hash = funcInfo->loadHash(func);
 	auto &hash = classInfo->func[nameId];
 	auto it = hash.find(funcInfo->hash);
-	if (it != hash.end() && compile.functions[it->second]->name == func->name) {
-		throwError("Redefined function : " + func->toString(compile));
+	if (it != hash.end() && compile.functions[it->second]->getName(compile) ==
+	                            func->getName(compile)) {
+		throwError("Redefined function : " + funcInfo->toString(in_data));
 	}
 	hash[funcInfo->hash] = func->id;
 
@@ -242,7 +246,7 @@ void CreateConstructorNode::optimize(in_func) {
 				}
 				node->isSuper = true;
 				node->nameId = context.createLexerStringIfNotExists(
-				    compile.classes[classInfo->parent]->name);
+				    compile.classes[classInfo->parent]->getName(compile));
 				break;
 			}
 			default:
@@ -275,7 +279,8 @@ void CreateClassNode::pushClass(in_func) {
 	// 	classInfo->parent = *superDeclaration->classId;
 	// }
 	// auto clazz = compile.classes[classId];
-	// std::cerr << "Created class name: " << clazz->name << " id " << classId
+	// std::cerr << "Created class name: " << clazz->getName(compile) << " id "
+	// << classId
 	//           << "\n";
 }
 
@@ -329,7 +334,8 @@ void CreateClassNode::loadSuper(in_func) {
 		}
 
 		if (superClass->classFlags & ClassFlags::CLASS_NO_EXTENDS) {
-			throwError("@no_extends is already applied to " + superClass->name);
+			throwError("@no_extends is already applied to " +
+			           superClass->getName(compile));
 		}
 
 		loadedSuper = true;
@@ -338,8 +344,8 @@ void CreateClassNode::loadSuper(in_func) {
 			auto node = context.findCreateClassNode(superClassId);
 			if (!node) {
 				throwError("Bug: Cannot find create class node " +
-				           compile.classes[superClassId]->name + " " +
-				           std::to_string(superClassId));
+				           compile.classes[superClassId]->getName(compile) +
+				           " " + std::to_string(superClassId));
 			}
 			node->loadSuper(in_data);
 		}
@@ -365,7 +371,7 @@ void CreateClassNode::loadSuper(in_func) {
 			if (it != memberToFind.end()) {
 				throwError("Member '" + declaration->name +
 				           "' is already declared in superclass '" +
-				           superClass->name +
+				           superClass->getName(compile) +
 				           "'. Overriding is not supported yet.");
 			}
 			classInfo->memberMap[declaration->baseName] = declaration->id;
@@ -421,7 +427,7 @@ void CreateClassNode::loadSuper(in_func) {
 						if (superFunc->functionFlags &
 						    FunctionFlags::FUNC_NO_OVERRIDE) {
 							throwError("Function " +
-							           superFunc->toString(compile) +
+							           superFuncInfo->toString(in_data) +
 							           " is marked @no_override");
 						}
 						ClassId parentId = *clazz->parentId;
@@ -455,7 +461,8 @@ void CreateClassNode::loadSuper(in_func) {
 						func->functionFlags |= FunctionFlags::FUNC_IS_VIRTUAL;
 					}
 					funcOverride.resize(superFunc->id + 1);
-					// std::cerr << superFunc->name << " & " << func->name <<
+					// std::cerr << superFunc->getName(compile) << " & " <<
+					// func->getName(compile) <<
 					// "\n"; std::cerr << superFuncInfo->virtualPosition << " &
 					// "
 					//           << funcInfo->virtualPosition << "\n"

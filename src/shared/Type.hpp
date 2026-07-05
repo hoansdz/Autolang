@@ -20,6 +20,7 @@ using InitLibFn = const char* (*)();
 using ClassId = uint32_t;
 using FunctionId = uint32_t;
 using LexerStringId = uint32_t;
+using StringArenaOffset = uint32_t;
 using Offset = uint32_t;
 using BytecodePos = uint32_t;
 using MemberOffset = uint32_t;

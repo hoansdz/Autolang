@@ -1,0 +1,34 @@
+func testBytesFeaturesExhaustive() {
+    val b = Bytes()
+    assert(b.size() == 0, __FILE__, __LINE__)
+    assert(b.isEmpty() == true, __FILE__, __LINE__)
+
+    b.append(10)
+    b.append(20)
+    b.append(30)
+    b.append(40)
+
+    assert(b.size() == 4, __FILE__, __LINE__)
+    assert(b.isEmpty() == false, __FILE__, __LINE__)
+    assert(b.get(0) == 10, __FILE__, __LINE__)
+    assert(b.get(3) == 40, __FILE__, __LINE__)
+
+    b.set(1, 99)
+    assert(b.get(1) == 99, __FILE__, __LINE__)
+
+    val s = b.slice(1, 3)
+    assert(s.size() == 2, __FILE__, __LINE__)
+    assert(s.get(0) == 99, __FILE__, __LINE__)
+    assert(s.get(1) == 30, __FILE__, __LINE__)
+
+    val str = b.toString()
+    assert(str == "[10, 99, 30, 40]", __FILE__, __LINE__)
+
+    b.clear()
+    assert(b.size() == 0, __FILE__, __LINE__)
+    assert(b.isEmpty() == true, __FILE__, __LINE__)
+
+    println("Passed testBytesFeaturesExhaustive")
+}
+
+testBytesFeaturesExhaustive()

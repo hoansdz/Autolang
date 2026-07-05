@@ -158,7 +158,7 @@ struct HasClassIdNode : ExprNode {
 			return classDeclaration->getName(in_data) +
 			       (isNullable() ? "?" : "");
 		}
-		return compile.classes[classId]->name + +(isNullable() ? "?" : "");
+		return compile.classes[classId]->getName(compile) + +(isNullable() ? "?" : "");
 	}
 	HasClassIdNode(NodeType kind, ClassId classId, uint32_t line,
 	               ClassDeclaration *classDeclaration = nullptr)
@@ -251,7 +251,7 @@ struct AccessNode : NullableNode {
 	DeclarationNode *declaration;
 	bool isStore;
 	bool isVal;
-	bool cloneable = false;
+	bool cloneable = true;
 	AccessNode(NodeType kind, uint32_t line, DeclarationNode *declaration,
 	           bool nullable, ClassId classId = 0, bool isVal = false,
 	           bool isStore = false)
@@ -369,6 +369,7 @@ struct BinaryNode : HasClassIdNode {
 	std::optional<ClassId> contextCallClassId;
 	HasClassIdNode *left;
 	HasClassIdNode *right;
+	bool optimized = false; // For && to skip right expression or || to jump to end
 	BinaryNode(uint32_t line, std::optional<ClassId> contextCallClassId,
 	           Lexer::TokenType op, HasClassIdNode *left, HasClassIdNode *right)
 	    : HasClassIdNode(NodeType::BINARY, 0, line), op(op),
@@ -387,6 +388,9 @@ struct BinaryNode : HasClassIdNode {
 	                                 HasClassIdNode *right);
 	ExprNode *copy(in_func) override;
 	inline void rewrite(in_func, uint8_t *bytecodes) override {
+		if (optimized) {
+			return;
+		}
 		left->rewrite(in_data, bytecodes);
 		right->rewrite(in_data, bytecodes);
 	}

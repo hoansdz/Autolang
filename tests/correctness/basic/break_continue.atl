@@ -1,13 +1,55 @@
 func testBreakContinue() {
-	val a = 5
-	while (a >= 3) {
-		a -= 2;
-		for (val i in 0..9) {
-			if (i == 2) break
+	// Test break in for loop
+	var breakAt = -1
+	for (i in 0..9) {
+		if (i == 4) {
+			breakAt = i
+			break
 		}
-		continue
-		assert(false, __FILE__, __LINE__)
 	}
+	assert(breakAt == 4, __FILE__, __LINE__)
+
+	// Test break exits only inner loop
+	var outerCount = 0
+	var innerBreakAt = -1
+	for (i in 0..2) {
+		outerCount += 1
+		for (j in 0..9) {
+			if (j == 2) {
+				innerBreakAt = j
+				break
+			}
+		}
+	}
+	assert(outerCount == 3, __FILE__, __LINE__)
+	assert(innerBreakAt == 2, __FILE__, __LINE__)
+
+	// Test continue skips rest of loop body
+	var sum = 0
+	for (i in 0..9) {
+		if (i % 2 == 0) continue
+		sum += i  // Only odd: 1+3+5+7+9 = 25
+	}
+	assert(sum == 25, __FILE__, __LINE__)
+
+	// Test break in while loop
+	var n = 0
+	while (true) {
+		n += 1
+		if (n == 5) break
+	}
+	assert(n == 5, __FILE__, __LINE__)
+
+	// Test continue in while loop (code after continue unreachable)
+	var whileSum = 0
+	var k = 0
+	while (k < 10) {
+		k += 1
+		if (k % 2 == 0) continue
+		whileSum += k  // Only odd k: 1+3+5+7+9 = 25
+	}
+	assert(whileSum == 25, __FILE__, __LINE__)
+
 	println("Passed ${__FUNC__}")
 }
 

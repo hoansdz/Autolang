@@ -1,0 +1,33 @@
+func testMapSugarSyntax() {
+    // 1. Explicitly typed Map sugar syntax
+    val m1 = <String, Int>{"one": 1, "two": 2, "three": 3}
+    assert(m1.size() == 3, __FILE__, __LINE__)
+    assert(m1.get("one") == 1, __FILE__, __LINE__)
+    assert(m1.get("two") == 2, __FILE__, __LINE__)
+    assert(m1.get("three") == 3, __FILE__, __LINE__)
+
+    // 2. Empty Map sugar syntax
+    val m2 = <String, Float>{}
+    assert(m2.size() == 0, __FILE__, __LINE__)
+    assert(m2.isEmpty(), __FILE__, __LINE__)
+
+    // 3. Implicitly typed Map sugar syntax (inferred from variable type)
+    val m3: Map<Int, String> = {10: "ten", 20: "twenty"}
+    assert(m3.size() == 2, __FILE__, __LINE__)
+    assert(m3.get(10) == "ten", __FILE__, __LINE__)
+    assert(m3.get(20) == "twenty", __FILE__, __LINE__)
+
+    // 4. Nested Maps using sugar syntax
+    val nested = <String, Map<String, Int>>{
+        "outer1": <String, Int>{"inner1": 100},
+        "outer2": <String, Int>{"inner2": 200}
+    }
+    assert(nested.size() == 2, __FILE__, __LINE__)
+    val inner = nested.get("outer1")
+    assert(inner != null, __FILE__, __LINE__)
+    assert(inner!.get("inner1") == 100, __FILE__, __LINE__)
+
+    println("Passed ${__FUNC__}")
+}
+
+testMapSugarSyntax()

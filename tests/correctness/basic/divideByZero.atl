@@ -1,15 +1,36 @@
 func testDivideByZero() {
+	// Int divide by zero -> exception
 	var errorCaught = false
-
 	try {
 		val a = 10
-		val b = a / 0
-	} 
-	catch (e) {
+		val zero = 0
+		val b = a / zero
+	} catch (e) {
 		errorCaught = true
 	}
-
 	assert(errorCaught, __FILE__, __LINE__)
+
+	// Int modulo by zero -> exception
+	errorCaught = false
+	try {
+		val a = 10
+		val zero = 0
+		val b = a % zero
+	} catch (e) {
+		errorCaught = true
+	}
+	assert(errorCaught, __FILE__, __LINE__)
+
+	// Exception in try block doesn't affect code after catch
+	var afterCatch = 0
+	try {
+		val zero = 0
+		val a = 5 / zero
+	} catch (e) {
+		afterCatch = 42
+	}
+	assert(afterCatch == 42, __FILE__, __LINE__)
+
 	println("Passed ${__FUNC__}")
 }
 
