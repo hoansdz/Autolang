@@ -1,8 +1,9 @@
 
 
-func plus(a: Int, b: Int, c: Int) = a + b + c
+fun _d(): Float = 0
+fun plus(a: Int, b: Int, c: Int): Float = a + b + c + _d()
 
-func testFunction() {
+fun testFunction() {
 	static val m = 4
 	val x = plus(2, 3, m)
 	assert(x == 9, __FILE__, __LINE__)

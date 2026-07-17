@@ -17,6 +17,7 @@
 #include "frontend/ACompiler.hpp"
 #include "frontend/parser/Debugger.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "shared/ClassFlags.hpp"
 #include "shared/Utils.hpp"
 
 namespace AutoLang {
@@ -36,7 +37,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 		if (!context.currentClassId &&
 		    context.currentFunctionId == context.mainFunctionId) {
 			throw ParserError(token->line,
-			                  "Static cannot be declarated in file scope");
+			                  "Static cannot be declared in file scope");
 		}
 		isGlobal = true;
 		context.modifierflags &= ~ModifierFlags::MF_STATIC;
@@ -65,13 +66,23 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 	LexerStringId baseName = token->indexData;
 	std::string &name = context.lexerString[token->indexData];
 	if (context.currentClassId) {
+		auto clazz = context.getCurrentClass(in_data);
 		auto classInfo = context.getCurrentClassInfo(in_data);
+
+#ifdef __EMSCRIPTEN__
+		if (clazz->classFlags & ClassFlags::CLASS_JS_OBJECT) {
+			throw ParserError(
+			    token->line,
+			    "@js_object class is already under automatic memory"
+			    " management, it can't have any member");
+		}
+#endif
 		if (isMapExist(context.getCurrentClass(in_data)->memberMap, name) ||
 		    classInfo->staticMember.find(baseName) !=
 		        classInfo->staticMember.end())
 			throw ParserError(token->line,
-			                  "Declaration: Redefination variable name \"" +
-			                      name + "\"");
+			                  "Declaration: Redefined variable name \"" + name +
+			                      "\"");
 	}
 	// Sugar syntax val a? = 1
 	bool nullable = true;
@@ -113,13 +124,13 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 		if (sugarSyntax) {
 			throw ParserError(
 			    token->line,
-			    std::string("Sugar syntax ") + (isVal ? "val " : "var ") +
+			    std::string("Sugar syntax '") + (isVal ? "val " : "var ") +
 			        name + (nullable ? "?" : "!") +
-			        " can be used when fast declare, cannot use with " +
-			        classDeclaration->getName(in_data) + "? " + "use " +
+			        "' cannot be combined with an explicit type '" +
+			        classDeclaration->getName(in_data) + "'; use '" +
 			        (isVal ? "val " : "var ") + name + ": " +
 			        classDeclaration->getName(in_data) +
-			        (nullable ? "?" : "!") + " instead of");
+			        (nullable ? "?" : "!") + "' instead");
 		}
 		nullable = classDeclaration->nullable;
 		if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
@@ -188,10 +199,12 @@ createNode:;
 		if (context.currentClassId) {
 			if (context.currentFunctionId == context.mainFunctionId) {
 				declarationName =
-				    context.getCurrentClass(in_data)->getName(compile) + '.' + name;
+				    context.getCurrentClass(in_data)->getName(compile) + '.' +
+				    name;
 			} else {
-				declarationName = context.getCurrentClass(in_data)->getName(compile) + "." +
-				                  func->getName(compile) + '.' + name;
+				declarationName =
+				    context.getCurrentClass(in_data)->getName(compile) + "." +
+				    func->getName(compile) + '.' + name;
 			}
 		} else {
 			if (context.currentFunctionId != context.mainFunctionId) {
@@ -242,8 +255,8 @@ createNode:;
 		} else {
 			auto it = funcInfo->scopes.back().find(baseName);
 			if (it != funcInfo->scopes.back().end())
-				throw ParserError(token->line,
-				                  context.lexerString[baseName] + " has exist");
+				throw ParserError(token->line, context.lexerString[baseName] +
+				                                   " already exists");
 			funcInfo->scopes.back()[baseName] = node;
 			if (funcInfo->genericData) {
 				funcInfo->genericData->staticDeclaration.push_back(
@@ -265,7 +278,7 @@ createNode:;
 	    context.currentFunctionId == context.mainFunctionId) {
 		auto clazz = context.getCurrentClass(in_data);
 		auto classInfo = context.getCurrentClassInfo(in_data);
-		uint32_t nodeId = clazz->memberId.size();
+		uint32_t nodeId = clazz->memberMap.size();
 		// printDebug(compile.classes[context.currentClassInfo->declarationThis->classId]->getName(compile));
 		// printDebug((uintptr_t)context.currentClass);
 		// std::cerr << nodeId << " is node id of " << name <<'\n';
@@ -274,7 +287,6 @@ createNode:;
 		}
 		classInfo->memberMap[baseName] = nodeId;
 		clazz->memberMap[node->name] = nodeId;
-		clazz->memberId.push_back(0);
 		// Add member id
 		node->id = nodeId;
 
@@ -395,18 +407,18 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 				case lexerIdFunction: {
 					throw ParserError(
 					    token->line,
-					    "Function cannot used as a type for declaration");
+					    "Function cannot be used as a type for declaration");
 				}
 				case lexerIdNull: {
 					throw ParserError(
 					    token->line,
-					    "Null cannot used as a type for declaration");
+					    "Null cannot be used as a type for declaration");
 				}
 				case lexerIdVoid: {
 					if (!allowReturnVoid) {
 						throw ParserError(
 						    token->line,
-						    "Void cannot used as a type for declaration");
+						    "Void cannot be used as a type for declaration");
 					}
 					break;
 				}
@@ -455,7 +467,7 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 			break;
 		}
 		case Lexer::TokenType::GT: {
-			throw ParserError(token->line, "Generic must have type argument");
+			throw ParserError(token->line, "Generic must have a type argument");
 		}
 	}
 // auto currentFuncInfo = context.getCurrentFunctionInfo(in_data);

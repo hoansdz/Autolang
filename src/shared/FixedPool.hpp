@@ -16,7 +16,7 @@ public:
 	FixedPool(const FixedPool&) = delete;
 	FixedPool& operator=(const FixedPool&) = delete;
 	inline void allocate(uint32_t size) {
-		if (objects) throw std::runtime_error("No reallocate");
+		assert(objects);
 		this->size = size;
 		objects = static_cast<T*>(::operator new(sizeof(T) * size));
 	}

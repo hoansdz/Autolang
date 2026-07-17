@@ -13,7 +13,10 @@ AVM::AVM(bool allowDebug)
     : allowDebug(allowDebug), notifier(new ANotifier(this)) {
 	data.manager.notifier = notifier;
 	data.allBytecodes.reserve(256);
-	data.allGenericType.reserve(64);
+	data.allGenericType.reserve(32);
+	data.allGenericTypeNullable.reserve(32);
+	data.allMemberId.reserve(16);
+	data.allMemberNullable.reserve(16);
 }
 
 void AVM::start() {

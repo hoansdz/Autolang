@@ -100,8 +100,6 @@ bool GetPropNode::optimizeSkipIfNotFoundMember(in_func) {
 		// }
 		// printDebug("Class " + clazz->getName(compile) + " GetProp: "+name+" "+" has:
 		// "+std::to_string((uintptr_t)declarationNode));
-		if (clazz->memberId[id] != declaration->classId)
-			clazz->memberId[id] = declaration->classId;
 		classId = declaration->classId;
 		if (classId == DefaultClass::functionClassId) {
 			classDeclaration = declaration->classDeclaration;
@@ -200,8 +198,6 @@ void GetPropNode::optimize(in_func) {
 		// }
 		// printDebug("Class " + clazz->getName(compile) + " GetProp: "+name+" "+" has:
 		// "+std::to_string((uintptr_t)declarationNode));
-		if (clazz->memberId[id] != declaration->classId)
-			clazz->memberId[id] = declaration->classId;
 		classId = declaration->classId;
 		if (classId == DefaultClass::functionClassId) {
 			classDeclaration = declaration->classDeclaration;

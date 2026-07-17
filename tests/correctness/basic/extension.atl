@@ -1,0 +1,67 @@
+class ExtPoint(val x: Int, val y: Int) {
+}
+
+// 1. Extension function không tham số, truy cập thuộc tính qua `this`
+fun ExtPoint.sum(): Int {
+	return this.x + this.y
+}
+
+// 2. Extension function có tham số
+fun ExtPoint.multiply(factor: Int): Int {
+	return (this.x + this.y) * factor
+}
+
+// 3. Extension function dạng biểu thức ngắn (Expression body `=`)
+fun ExtPoint.diff(): Int = this.x - this.y
+
+// 4. Extension function cho class tĩnh hoặc gọi lẫn nhau
+fun ExtPoint.isOrigin(): Bool {
+	return this.x == 0 and this.y == 0
+}
+
+// 5. Thử nghiệm extension function tĩnh (static fun)
+static fun ExtPoint.createDefault(): ExtPoint {
+	return ExtPoint(0, 0)
+}
+
+// 6. Extension function cho built-in class (ví dụ String) nếu được hỗ trợ
+fun String.exclaim(): String {
+	return this + "!"
+}
+
+fun Int.doubleValue(): Int {
+	return this * 2
+}
+
+fun testExtensionFunctions() {
+	val p1 = ExtPoint(3, 4)
+	
+	// Test 1: Gọi extension không tham số
+	assert(p1.sum() == 7, __FILE__, __LINE__)
+
+	// Test 2: Gọi extension có tham số
+	assert(p1.multiply(2) == 14, __FILE__, __LINE__)
+
+	// Test 3: Expression body extension
+	assert(p1.diff() == -1, __FILE__, __LINE__)
+
+	// Test 4: Gọi extension trả về Bool
+	assert(p1.isOrigin() == false, __FILE__, __LINE__)
+
+	// Test 5: Gọi static extension function
+	val p2 = ExtPoint.createDefault()
+	assert(p2.x == 0, __FILE__, __LINE__)
+	assert(p2.y == 0, __FILE__, __LINE__)
+	assert(p2.isOrigin() == true, __FILE__, __LINE__)
+
+	// Test 6: Gọi extension trên built-in class
+	val greeting = "hello"
+	assert(greeting.exclaim() == "hello!", __FILE__, __LINE__)
+
+	val num = 5
+	assert(num.doubleValue() == 10, __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+testExtensionFunctions()

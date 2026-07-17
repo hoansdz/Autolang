@@ -2,16 +2,16 @@
 var globalSum = 0
 
 // Named callback function to pass into forEach
-func accumulateSum(value: Int) {
+fun accumulateSum(value: Int) {
     globalSum += value
 }
 
 // Helper function to test nested sets
-func testNestedSetSyntax(data: Set<Set<Int>>) {
+fun testNestedSetSyntax(data: Set<Set<Int>>) {
     assert(data.size() == 3, __FILE__, __LINE__)
 }
 
-func testAllSetFeatures() {
+fun testAllSetFeatures() {
 
     // 1. Test: __CLASS__() explicit constructor (and private create)
     val explicitSet = Set<Int>()

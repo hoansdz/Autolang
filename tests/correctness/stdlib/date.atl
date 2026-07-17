@@ -1,6 +1,6 @@
 @import("std/date")
 
-func testDateFeatures() {
+fun testDateFeatures() {
     // 1. Current timestamp
     val ms = Date.currentTimeMillis()
     assert(ms > 0, __FILE__, __LINE__)

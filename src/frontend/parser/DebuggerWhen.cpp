@@ -9,6 +9,7 @@ namespace AutoLang {
 HasClassIdNode *loadWhenExpression(in_func, size_t &i, HasClassIdNode *value) {
 	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
+	uint32_t tokenIndex = i;
 	switch (token->type) {
 		case Lexer::TokenType::IN_:
 		case Lexer::TokenType::IS: {
@@ -20,12 +21,14 @@ HasClassIdNode *loadWhenExpression(in_func, size_t &i, HasClassIdNode *value) {
 			auto op = token->type;
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 				--i;
-				throw ParserError(context.tokens[i].line,
-				                  "Bug: Lexer not ensure close bracket");
+				throw ParserError(
+				    context.tokens[i].line,
+				    "Bug: Lexer did not ensure a closing bracket");
 			}
 			auto right = loadExpression(in_data, 0, i);
-			return context.binaryNodePool.push(
-			    token->line, context.currentClassId, op, value, right);
+			return context.binaryNodePool.push(token->line, tokenIndex,
+			                                   context.currentClassId, op,
+			                                   value, right);
 		}
 		default: {
 			auto condition = loadExpression(in_data, 0, i);
@@ -33,26 +36,28 @@ HasClassIdNode *loadWhenExpression(in_func, size_t &i, HasClassIdNode *value) {
 				return condition;
 			}
 			return context.binaryNodePool.push(
-			    token->line, context.currentClassId, Lexer::TokenType::EQEQ,
-			    value, condition);
+			    token->line, tokenIndex, context.currentClassId,
+			    Lexer::TokenType::EQEQ, value, condition);
 		}
 	}
 }
 
 HasClassIdNode *loadWhenCondition(in_func, size_t &i, HasClassIdNode *value) {
 	Lexer::Token *token = &context.tokens[i];
+	uint32_t tokenIndex = i;
 	auto left = loadWhenExpression(in_data, i, value);
 	while (nextToken(&token, context.tokens, i)) {
 		switch (token->type) {
 			case Lexer::TokenType::COMMA: {
 				if (!nextToken(&token, context.tokens, i)) {
 					--i;
-					throw ParserError(context.tokens[i].line,
-					                  "Bug: Lexer not ensure close bracket");
+					throw ParserError(
+					    context.tokens[i].line,
+					    "Bug: Lexer did not ensure a closing bracket");
 				}
 				auto right = loadWhenExpression(in_data, i, value);
 				left = context.binaryNodePool.push(
-				    token->line, context.currentClassId,
+				    token->line, tokenIndex, context.currentClassId,
 				    Lexer::TokenType::OR_OR, left, right);
 				break;
 			}
@@ -61,48 +66,50 @@ HasClassIdNode *loadWhenCondition(in_func, size_t &i, HasClassIdNode *value) {
 				return left;
 			}
 			default: {
-				throw ParserError(token->line, "Expected when condition but '" +
-				                                   token->toString(context) +
-				                                   "' found");
+				throw ParserError(token->line,
+				                  "Expected 'when' condition but '" +
+				                      token->toString(context) + "' found");
 			}
 		}
 	}
 	--i;
 	throw ParserError(context.tokens[i].line,
-	                  "Bug: Lexer not ensure close bracket");
+	                  "Bug: Lexer did not ensure a closing bracket");
 }
 
-WhenNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
+HasClassIdNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
-		throw ParserError(firstLine, "Expected ( after when but not found");
+		throw ParserError(firstLine, "Expected '(' after when but not found");
 	}
 	HasClassIdNode *value = nullptr;
 	if (expect(token, Lexer::TokenType::LPAREN)) {
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
 			throw ParserError(firstLine,
-			                  "Expected expression after when but not found");
+			                  "Expected expression after 'when' but not found");
 		}
 		value = loadExpression(in_data, 0, i);
 		if (!nextToken(&token, context.tokens, i) ||
 		    !expect(token, Lexer::TokenType::RPAREN)) {
 			--i;
-			throw ParserError(firstLine, "Expected ) after when but not found");
+			throw ParserError(firstLine,
+			                  "Expected ')' after 'when' but not found");
 		}
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
 			throw ParserError(
 			    firstLine,
-			    "Expected body open with { after when but not found");
+			    "Expected body to open with '{' after 'when' but not found");
 		}
 	}
 	if (!expect(token, Lexer::TokenType::LBRACE)) {
 		--i;
-		throw ParserError(firstLine,
-		                  "Expected body open with { after when but not found");
+		throw ParserError(
+		    firstLine,
+		    "Expected body to open with '{' after 'when' but not found");
 	}
 	IfNode *mainIfNode = nullptr;
 	IfNode *currentIfNode = nullptr;
@@ -110,7 +117,8 @@ WhenNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 	while (true) {
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
-			throw ParserError(firstLine, "Bug: Lexer not ensure close bracket");
+			throw ParserError(firstLine,
+			                  "Bug: Lexer did not ensure a closing bracket");
 		}
 		switch (token->type) {
 			case Lexer::TokenType::RBRACE: {
@@ -123,13 +131,13 @@ WhenNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 			}
 			case Lexer::TokenType::ELSE: {
 				if (loadedElse) {
-					throw ParserError(token->line, "Duplicated else condition");
+					throw ParserError(token->line, "Duplicate 'else' branch");
 				}
 				if (!nextToken(&token, context.tokens, i)) {
 					--i;
 					throw ParserError(
 					    context.tokens[i].line,
-					    "Expected -> after condition but not found");
+					    "Expected '->' after condition but not found");
 				}
 				if (!nextToken(&token, context.tokens, i)) {
 					--i;
@@ -154,8 +162,9 @@ WhenNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 			}
 			default: {
 				if (loadedElse) {
-					throw ParserError(token->line,
-					                  "Else must be the last branch in when");
+					throw ParserError(
+					    token->line,
+					    "'else' must be the last branch in 'when'");
 				}
 				auto condition = loadWhenCondition(in_data, i, value);
 				if (!nextToken(&token, context.tokens, i)) {

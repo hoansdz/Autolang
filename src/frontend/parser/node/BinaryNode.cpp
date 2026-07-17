@@ -104,8 +104,8 @@ ExprNode *BinaryNode::resolve(in_func) {
 				}
 				default: {
 					auto *result = context.callNodePool.push(
-					    line, contextCallClassId, right, lexerIdcontains,
-					    std::vector<HasClassIdNode *>{left},
+					    line, tokenIndex, contextCallClassId, right,
+					    lexerIdcontains, std::vector<HasClassIdNode *>{left},
 					    context.justFindStatic, true, false);
 					left = nullptr;
 					right = nullptr;
@@ -258,8 +258,8 @@ void BinaryNode::optimize(in_func) {
 								      FunctionFlags::FUNC_PUBLIC))
 									continue;
 								auto callNode = context.callNodePool.push(
-								    right->line, std::nullopt, right,
-								    lexerIdtoString,
+								    right->line, tokenIndex, std::nullopt,
+								    right, lexerIdtoString,
 								    std::vector<HasClassIdNode *>{}, false,
 								    right->isNullable(), false);
 								right = callNode;
@@ -308,7 +308,7 @@ void BinaryNode::optimize(in_func) {
 								      FunctionFlags::FUNC_PUBLIC))
 									continue;
 								auto callNode = context.callNodePool.push(
-								    left->line, std::nullopt, left,
+								    left->line, tokenIndex, std::nullopt, left,
 								    lexerIdtoString,
 								    std::vector<HasClassIdNode *>{}, false,
 								    left->isNullable(), false);
@@ -754,7 +754,8 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		case Lexer::TokenType::AND_AND: {
 			left->putBytecodes(in_data, bytecodes);
 			bytecodes.emplace_back(Opcode::JUMP_IF_FALSE_NO_POP);
-			BytecodePos jumpOffset = bytecodes.size() - context.currentBytecodePos;
+			BytecodePos jumpOffset =
+			    bytecodes.size() - context.currentBytecodePos;
 			put_opcode_u32(bytecodes, 0);
 			right->putBytecodes(in_data, bytecodes);
 			rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
@@ -765,7 +766,8 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		case Lexer::TokenType::OR_OR: {
 			left->putBytecodes(in_data, bytecodes);
 			bytecodes.emplace_back(Opcode::JUMP_IF_TRUE_NO_POP);
-			BytecodePos jumpOffset = bytecodes.size() - context.currentBytecodePos;
+			BytecodePos jumpOffset =
+			    bytecodes.size() - context.currentBytecodePos;
 			put_opcode_u32(bytecodes, 0);
 			right->putBytecodes(in_data, bytecodes);
 			rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
@@ -793,66 +795,66 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			}
 		}
 		case Lexer::TokenType::PLUS: {
-			switch (left->classId) {
-				case DefaultClass::intClassId: {
-					switch (right->classId) {
-						case DefaultClass::intClassId: {
-							bytecodes.emplace_back(AutoLang::Opcode::I_CAL_I);
-							return;
-						}
-						case DefaultClass::floatClassId: {
-							bytecodes.emplace_back(AutoLang::Opcode::I_CAL_F);
-							return;
-						}
-					}
-					break;
-				}
-				case DefaultClass::floatClassId: {
-					switch (right->classId) {
-						case DefaultClass::intClassId: {
-							bytecodes.emplace_back(AutoLang::Opcode::F_CAL_I);
-							return;
-						}
-						case DefaultClass::floatClassId: {
-							bytecodes.emplace_back(AutoLang::Opcode::F_CAL_F);
-							return;
-						}
-					}
-					break;
-				}
-			}
+			// switch (left->classId) {
+			// 	case DefaultClass::intClassId: {
+			// 		switch (right->classId) {
+			// 			case DefaultClass::intClassId: {
+			// 				bytecodes.emplace_back(AutoLang::Opcode::I_CAL_I);
+			// 				return;
+			// 			}
+			// 			case DefaultClass::floatClassId: {
+			// 				bytecodes.emplace_back(AutoLang::Opcode::I_CAL_F);
+			// 				return;
+			// 			}
+			// 		}
+			// 		break;
+			// 	}
+			// 	case DefaultClass::floatClassId: {
+			// 		switch (right->classId) {
+			// 			case DefaultClass::intClassId: {
+			// 				bytecodes.emplace_back(AutoLang::Opcode::F_CAL_I);
+			// 				return;
+			// 			}
+			// 			case DefaultClass::floatClassId: {
+			// 				bytecodes.emplace_back(AutoLang::Opcode::F_CAL_F);
+			// 				return;
+			// 			}
+			// 		}
+			// 		break;
+			// 	}
+			// }
 			bytecodes.emplace_back(AutoLang::Opcode::PLUS);
 			return;
 		}
 		case Lexer::TokenType::MINUS: {
-			switch (left->classId) {
-				case DefaultClass::intClassId: {
-					switch (right->classId) {
-						case DefaultClass::intClassId: {
-							bytecodes.emplace_back(AutoLang::Opcode::I_MINUS_I);
-							return;
-						}
-						case DefaultClass::floatClassId: {
-							bytecodes.emplace_back(AutoLang::Opcode::I_MINUS_F);
-							return;
-						}
-					}
-					break;
-				}
-				case DefaultClass::floatClassId: {
-					switch (right->classId) {
-						case DefaultClass::intClassId: {
-							bytecodes.emplace_back(AutoLang::Opcode::F_MINUS_I);
-							return;
-						}
-						case DefaultClass::floatClassId: {
-							bytecodes.emplace_back(AutoLang::Opcode::F_MINUS_F);
-							return;
-						}
-					}
-					break;
-				}
-			}
+			// switch (left->classId) {
+			// 	case DefaultClass::intClassId: {
+			// 		switch (right->classId) {
+			// 			case DefaultClass::intClassId: {
+			// 				bytecodes.emplace_back(AutoLang::Opcode::I_MINUS_I);
+			// 				return;
+			// 			}
+			// 			case DefaultClass::floatClassId: {
+			// 				bytecodes.emplace_back(AutoLang::Opcode::I_MINUS_F);
+			// 				return;
+			// 			}
+			// 		}
+			// 		break;
+			// 	}
+			// 	case DefaultClass::floatClassId: {
+			// 		switch (right->classId) {
+			// 			case DefaultClass::intClassId: {
+			// 				bytecodes.emplace_back(AutoLang::Opcode::F_MINUS_I);
+			// 				return;
+			// 			}
+			// 			case DefaultClass::floatClassId: {
+			// 				bytecodes.emplace_back(AutoLang::Opcode::F_MINUS_F);
+			// 				return;
+			// 			}
+			// 		}
+			// 		break;
+			// 	}
+			// }
 			bytecodes.emplace_back(AutoLang::Opcode::MINUS);
 			return;
 		}
@@ -904,7 +906,7 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 
 ExprNode *BinaryNode::copy(in_func) {
 	return context.binaryNodePool.push(
-	    line, contextCallClassId, op,
+	    line, tokenIndex, contextCallClassId, op,
 	    static_cast<HasClassIdNode *>(left->copy(in_data)),
 	    static_cast<HasClassIdNode *>(right->copy(in_data)));
 }

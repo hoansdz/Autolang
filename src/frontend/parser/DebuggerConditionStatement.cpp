@@ -14,23 +14,23 @@ IfNode *loadIf(in_func, size_t &i, bool mustReturnValue) {
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 	    !expect(token, Lexer::TokenType::LPAREN)) {
 		--i;
-		throw ParserError(firstLine, "Expected ( after if but not found");
+		throw ParserError(firstLine, "Expected '(' after 'if' but not found");
 	}
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 		--i;
 		throw ParserError(firstLine,
-		                  "Expected expression after if but not found");
+		                  "Expected an expression after 'if' but not found");
 	}
 	node->condition = loadExpression(in_data, 0, i);
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::RPAREN)) {
 		--i;
-		throw ParserError(context.tokens[i].line, "Expected ) but not found");
+		throw ParserError(context.tokens[i].line, "Expected ')' but not found");
 	}
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		throw ParserError(context.tokens[i].line,
-		                  "Expected command after if but not found");
+		                  "Expected a command after 'if' but not found");
 	}
 	loadBody<false>(in_data, node->ifTrue.nodes, i);
 	if (!nextToken(&token, context.tokens, i) ||
@@ -46,7 +46,7 @@ IfNode *loadIf(in_func, size_t &i, bool mustReturnValue) {
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		throw ParserError(token->line,
-		                  "Expected command after else but not found");
+		                  "Expected a command after 'else' but not found");
 	}
 	node->ifFalse = context.blockNodePool.push(token->line);
 	loadBody<false>(in_data, node->ifFalse->nodes, i);

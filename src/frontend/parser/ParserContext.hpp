@@ -33,6 +33,7 @@ enum AnnotationFlags : uint32_t {
 	AN_WAIT_INPUT = 1u << 4,
 	AN_NO_EXTENDS = 1u << 5,
 	AN_NATIVE_DATA = 1u << 6,
+	AN_JS_OBJECT = 1u << 7,
 };
 
 struct LibraryData;
@@ -72,6 +73,9 @@ struct ParserContext {
 	std::vector<std::string> lexerString;
 	HashMap<std::string, LexerStringId> lexerStringMap;
 
+	std::vector<std::string> stdLexerString;
+	HashMap<std::string, LexerStringId> stdLexerStringMap;
+
 	Lexer::Context *mainLexerContext;
 	HashMap<std::string, LibraryData *> importMap;
 	std::vector<LibraryData *> loadingLibs;
@@ -95,7 +99,7 @@ struct ParserContext {
 	HashMap<LexerStringId, std::vector<CreateFuncNode *>> genericFunctionMap;
 	std::vector<FunctionId> mustInferenceFunctionType;
 	HashMap<LexerStringId, std::vector<FunctionId>> globalFunction;
-	// Find, example func load<T>(a: T)
+	// Find, example fun load<T>(a: T)
 	GenericData *preloadGenericData = nullptr;
 	ChunkArena<GenericData, 8> genericDataPool;
 	HashMap<DeclarationOffset, DeclarationOffset>
@@ -145,33 +149,32 @@ struct ParserContext {
 	ChunkArena<CreateConstructorNode, 32> createConstructorPool;
 	ChunkArena<BinaryNode, 128> binaryNodePool;
 	ChunkArena<IfNode, 128> ifPool;
-	ChunkArena<WhileNode, 64> whilePool;
-	ChunkArena<TryCatchNode, 32> tryCatchPool;
+	ChunkArena<WhileNode, 32> whilePool;
+	ChunkArena<TryCatchNode, 16> tryCatchPool;
 	ChunkArena<ThrowNode, 32> throwPool;
 	ChunkArena<CastNode, 32> castPool;
-	ChunkArena<RuntimeCastNode, 32> runtimeCastPool;
+	ChunkArena<RuntimeCastNode, 16> runtimeCastPool;
 	ChunkArena<VarNode, 128> varPool;
 	ChunkArena<GetPropNode, 128> getPropPool;
 	ChunkArena<UnknowNode, 128> unknowNodePool;
 	ChunkArena<OptionalAccessNode, 32> optionalAccessNodePool;
-	ChunkArena<NullCoalescingNode, 64> nullCoalescingPool;
+	ChunkArena<NullCoalescingNode, 32> nullCoalescingPool;
 	ChunkArena<BlockNode, 64> blockNodePool;
 	ChunkArena<CallNode, 64> callNodePool;
 	// ChunkArena<CallNode, 16> callFuncObjectNodePool;
 	ChunkArena<ClassAccessNode, 32> classAccessPool;
 	ChunkArena<ConstValueNode, 128> constValuePool;
 	ChunkArena<UnaryNode, 16> unaryNodePool;
-	ChunkArena<ForNode, 64> forPool;
-	ChunkArena<RangeNode, 32> rangeNode;
+	ChunkArena<SkipNode, 16> skipNodePool;
+	ChunkArena<ForNode, 32> forPool;
+	ChunkArena<RangeNode, 16> rangeNode;
 	ChunkArena<CreateArrayNode, 32> createArrayPool;
 	ChunkArena<CreateSetNode, 16> createSetPool;
 	ChunkArena<CreateMapNode, 16> createMapPool;
-	ChunkArena<WhenNode, 32> whenNodePool;
+	ChunkArena<WhenNode, 16> whenNodePool;
 	ChunkArena<FunctionAccessNode, 8> functionAccessPool;
 	ChunkArena<CreateClosureNode, 32> createClosurePool;
-	ChunkArena<GetPointerNode, 8> getPointerPool;
-
-	std::vector<uint8_t> closureBytecodes;
+	// ChunkArena<GetPointerNode, 8> getPointerPool;
 
 	std::optional<ClassId> currentClassId = std::nullopt;
 	uint32_t mainFunctionId;

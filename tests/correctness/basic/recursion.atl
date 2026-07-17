@@ -1,9 +1,9 @@
-func fact(n: Int): Int {
+fun fact(n: Int): Int {
 	if (n <= 1) return 1
 	return n * fact(n - 1)
 }
 
-func testRecursion() {
+fun testRecursion() {
 	assert(fact(5) == 120, __FILE__, __LINE__)
 	println("Passed ${__FUNC__}")
 }

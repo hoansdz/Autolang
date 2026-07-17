@@ -1,6 +1,6 @@
 enum State {
 	INITIAL, RUNNING, LOADED;
-	func getName(): String = when (this) {
+	fun getName(): String = when (this) {
 		INITIAL -> "INITIAL"
 		RUNNING -> "RUNNING"
 		LOADED -> "LOADED"
@@ -8,7 +8,7 @@ enum State {
 	}
 }
 
-func testEnum() {
+fun testEnum() {
 	val a = State.RUNNING
 
 	assert(State.INITIAL != State.RUNNING, __FILE__, __LINE__)

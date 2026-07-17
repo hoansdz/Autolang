@@ -1,4 +1,4 @@
-func testBreakContinue() {
+fun testBreakContinue() {
 	// Test break in for loop
 	var breakAt = -1
 	for (i in 0..9) {

@@ -11,17 +11,20 @@ namespace AutoLang {
 CreateFuncNode *loadFunc(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
+	uint32_t tokenIndex = i;
 
 	uint32_t functionFlags = 0;
 	if (context.annotationFlags & AnnotationFlags::AN_NO_CONSTRUCTOR) {
 		throw ParserError(firstLine,
-		                  "@no_constructor is only supported classes");
+		                  "@no_constructor is only supported on classes");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NATIVE_DATA) {
-		throw ParserError(firstLine, "@native_data is only supported classes");
+		throw ParserError(firstLine,
+		                  "@native_data is only supported on classes");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_EXTENDS) {
-		throw ParserError(firstLine, "@no_extends is only supported classes");
+		throw ParserError(firstLine,
+		                  "@no_extends is only supported on classes");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NATIVE) {
 		functionFlags |= FunctionFlags::FUNC_HAS_BODY;
@@ -38,11 +41,11 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		functionFlags |= FunctionFlags::FUNC_WAIT_INPUT;
 		if (!(functionFlags & FunctionFlags::FUNC_IS_NATIVE)) {
 			throw ParserError(firstLine,
-			                  "@wait_input must followed by @native");
+			                  "@wait_input must be followed by @native");
 		}
 	}
-	if (!context.currentClassId ||
-	    (context.modifierflags & ModifierFlags::MF_STATIC)) {
+	bool hasStaticFlag = (context.modifierflags & ModifierFlags::MF_STATIC);
+	if (!context.currentClassId || hasStaticFlag) {
 		functionFlags |= FunctionFlags::FUNC_IS_STATIC;
 		context.modifierflags &= ~ModifierFlags::MF_STATIC;
 	}
@@ -64,58 +67,135 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			break;
 	}
 	// Name
+	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
+	    !expect(token, Lexer::TokenType::IDENTIFIER)) {
+		--i;
+		throw ParserError(firstLine, "Expected name after 'fun' but not found");
+	}
+	std::optional<LexerStringId> classNameId;
+	LexerStringId nameId = token->indexData;
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 		--i;
-		throw ParserError(firstLine, "Expected name but not found");
+		throw ParserError(firstLine,
+		                  "Expected '(' after function name but not found");
 	}
-	LexerStringId nameId = token->indexData;
-	// ClassDeclaration *mustRenameFunctionDeclaration = nullptr;
-	switch (token->type) {
-		case Lexer::TokenType::IDENTIFIER: {
-			switch (token->indexData) {
-				case lexerId__FILE__: {
-					throw ParserError(firstLine, "__FILE__ is a magic const");
-				}
-				case lexerId__LINE__: {
-					throw ParserError(firstLine, "__LINE__ is a magic const");
-				}
-				case lexerId__FUNC__: {
-					throw ParserError(firstLine, "__FUNC__ is a magic const");
-				}
-				case lexerId__CLASS__: {
-					if (!context.currentClassId) {
-						throw ParserError(firstLine,
-						                  "Function name must not empty, must "
-						                  "declare in class");
-					}
-					auto clazz = context.getCurrentClass(in_data);
-					auto classInfo = context.getCurrentClassInfo(in_data);
-					if (!classInfo->genericData) {
-						nameId =
-						    context.createLexerStringIfNotExists(clazz->getName(compile));
-						break;
-					}
-					nameId = lexerId__CLASS__;
-					break;
-				}
-				case lexerIdsuper: {
-					throw ParserError(firstLine, "Super is a keyword");
-				}
-				default: {
-					break;
-				}
+	if (token->type == Lexer::TokenType::DOT) {
+		if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
+			--i;
+			throw ParserError(firstLine,
+			                  "Expected function name after class name: '" +
+			                      context.lexerString[*classNameId] +
+			                      "' but not found");
+		}
+		switch (token->type) {
+			case Lexer::TokenType::LT: {
+				throw ParserError(
+				    firstLine, "Generic class extension hasn't supported yet");
 			}
+			case Lexer::TokenType::IDENTIFIER: {
+				classNameId = nameId;
+				nameId = token->indexData;
+				functionFlags |= FunctionFlags::FUNC_UNUSABLE;
+				if (!hasStaticFlag) {
+					functionFlags &= ~FunctionFlags::FUNC_IS_STATIC;
+				}
+				if (context.currentClassId) {
+					throw ParserError(token->line,
+					                  "Error: Extension function are not "
+					                  "allowed inside class");
+				}
+				if (context.currentFunctionId != context.mainFunctionId) {
+					throw ParserError(token->line,
+					                  "Error: Extension function are not "
+					                  "allowed inside function");
+				}
+				if (context.currentClosureNode) {
+					throw ParserError(token->line,
+					                  "Error: Extension function are not "
+					                  "allowed inside closure");
+				}
+				auto it =
+				    compile.classMap.find(context.lexerString[*classNameId]);
+				if (it == compile.classMap.end()) {
+					throw ParserError(
+					    firstLine,
+					    "Cannot find class name: '" +
+					        context.lexerString[*classNameId] +
+					        "'. Extension must be declared after class");
+				}
+				context.currentClassId = it->second;
+				if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
+					--i;
+					throw ParserError(
+					    firstLine,
+					    "Expected '(' after function name but not found");
+				}
+				break;
+			}
+			default: {
+				throw ParserError(firstLine,
+				                  "Expected function name after class name: '" +
+				                      context.lexerString[*classNameId] +
+				                      "' but not found");
+			}
+		}
+	}
+	if (!context.currentClassId && context.modifierflags) {
+		switch (accessModifier) {
+			case Lexer::TokenType::PUBLIC: {
+				throw ParserError(
+				    token->line,
+				    "Error: 'public' can only be used for class members");
+				break;
+			}
+			case Lexer::TokenType::PRIVATE: {
+				throw ParserError(
+				    token->line,
+				    "Error: 'private' can only be used for class members");
+				break;
+			}
+			case Lexer::TokenType::PROTECTED: {
+				throw ParserError(
+				    token->line,
+				    "Error: 'protected' can only be used for class members");
+				break;
+			}
+			default:
+				break;
+		}
+	}
+	switch (nameId) {
+		case lexerId__FILE__: {
+			throw ParserError(firstLine, "__FILE__ is a magic const");
+		}
+		case lexerId__LINE__: {
+			throw ParserError(firstLine, "__LINE__ is a magic const");
+		}
+		case lexerId__FUNC__: {
+			throw ParserError(firstLine, "__FUNC__ is a magic const");
+		}
+		case lexerId__CLASS__: {
+			if (!context.currentClassId) {
+				throw ParserError(firstLine,
+				                  "Function name cannot be empty; __CLASS__ "
+				                  "must be used inside a class");
+			}
+			auto clazz = context.getCurrentClass(in_data);
+			auto classInfo = context.getCurrentClassInfo(in_data);
+			if (!classInfo->genericData) {
+				nameId = context.createLexerStringIfNotExists(
+				    clazz->getName(compile));
+				break;
+			}
+			nameId = lexerId__CLASS__;
 			break;
 		}
-		default: {
-			--i;
-			throw ParserError(firstLine, "Expected name but not found");
+		case lexerIdsuper: {
+			throw ParserError(firstLine, "'super' is a reserved keyword");
 		}
-	}
-
-	if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
-		--i;
-		throw ParserError(firstLine, "Expected ( but not found");
+		default: {
+			break;
+		}
 	}
 
 	context.preloadGenericData = nullptr;
@@ -123,9 +203,9 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 	switch (token->type) {
 		case Lexer::TokenType::LT: {
 			if (context.currentClassId) {
-				throw ParserError(
-				    token->line,
-				    "Generic functions in class doesn't supported now");
+				throw ParserError(token->line,
+				                  "Generic functions inside a class are "
+				                  "not supported yet");
 			}
 			functionFlags |= FunctionFlags::FUNC_SKIP_LOAD;
 			context.isInGeneric = false;
@@ -165,14 +245,15 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 					case Lexer::TokenType::EXTENDS: {
 						// auto condition =
 						//     (token->type == Lexer::TokenType::EXTENDS)
-						//         ? GenericDeclarationCondition::MUST_EXTENDS
+						//         ?
+						//         GenericDeclarationCondition::MUST_EXTENDS
 						//         : GenericDeclarationCondition::MUST_IS;
 						auto classDeclaration = loadClassDeclaration(
 						    in_data, i, token->line, false);
 						if (!nextToken(&token, context.tokens, i)) {
-							throw ParserError(
-							    firstLine,
-							    "Expected '>' after class name but not found");
+							throw ParserError(firstLine,
+							                  "Expected '>' after class "
+							                  "name but not found");
 						}
 						declarationData->condition =
 						    GenericDeclarationCondition{classDeclaration};
@@ -215,7 +296,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 
 	// Arguments
 	if (!expect(token, Lexer::TokenType::LPAREN)) {
-		throw ParserError(firstLine, "Expected ( but '" +
+		throw ParserError(firstLine, "Expected '(' but '" +
 		                                 context.tokens[i].toString(context) +
 		                                 "' found");
 	}
@@ -270,9 +351,9 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				throw ParserError(firstLine,
 				                  "@native function must not have a body");
 			}
-			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
+			if (!nextToken(&token, context.tokens, i)) {
 				throw ParserError(firstLine,
-				                  "Expected value after = but not found");
+				                  "Expected value after '=' but not found");
 			}
 			if (!(functionFlags & FunctionFlags::FUNC_IS_STATIC) &&
 			    context.currentClassId) {
@@ -282,8 +363,8 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				parameter->defaultValuePos += 1;
 			}
 			CreateFuncNode *node = context.newFunctions.push(
-			    firstLine, context.currentClassId, nameId, classDeclaration,
-			    std::move(parameter), functionFlags);
+			    firstLine, tokenIndex, context.currentClassId, nameId,
+			    classDeclaration, std::move(parameter), functionFlags);
 			node->pushFunction(in_data);
 			auto func = compile.functions[node->id];
 			auto funcInfo = context.functionInfo[node->id];
@@ -320,6 +401,9 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			context.preloadGenericData = nullptr;
 			if (context.isInGeneric)
 				context.isInGeneric = false;
+			if (classNameId) {
+				context.currentClassId = std::nullopt;
+			}
 			return node;
 		}
 		default: {
@@ -332,7 +416,6 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 	}
 
 createFunc:;
-
 	// Add this
 	if (!(functionFlags & FunctionFlags::FUNC_IS_STATIC) &&
 	    context.currentClassId) {
@@ -342,9 +425,9 @@ createFunc:;
 		parameter->defaultValuePos += 1;
 	}
 
-	CreateFuncNode *node =
-	    context.newFunctions.push(firstLine, context.currentClassId, nameId,
-	                              classDeclaration, parameter, functionFlags);
+	CreateFuncNode *node = context.newFunctions.push(
+	    firstLine, tokenIndex, context.currentClassId, nameId, classDeclaration,
+	    parameter, functionFlags);
 	if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 		auto &token = context.annotationMetadata[AnnotationFlags::AN_NATIVE];
 		const auto &name = context.lexerString[token.indexData];
@@ -373,6 +456,9 @@ createFunc:;
 		// context.gotoFunction(context.mainFunctionId);
 		if (context.isInGeneric)
 			context.isInGeneric = false;
+		if (classNameId) {
+			context.currentClassId = std::nullopt;
+		}
 		return node;
 	} else {
 		node->pushFunction(in_data);
@@ -391,7 +477,6 @@ createFunc:;
 	// "<<compile.classes[func->returnId]->getName(compile)<<"\n";
 	context.gotoFunction(node->id);
 	auto &scope = funcInfo->scopes.back();
-
 	for (size_t i = 0; i < node->parameter->parameters.size(); ++i) {
 		auto *param = node->parameter->parameters[i];
 		param->id = i;
@@ -416,8 +501,9 @@ createFunc:;
 				}
 			}
 			if (!hasReturn) {
-				throw ParserError(firstLine, "Function " + func->getName(compile) +
-				                                 " didn't declare return");
+				throw ParserError(firstLine,
+				                  "Function " + func->getName(compile) +
+				                      " is missing a return statement");
 			}
 		}
 	} catch (const ParserError &err) {
@@ -425,9 +511,15 @@ createFunc:;
 		context.preloadGenericData = nullptr;
 		if (context.isInGeneric)
 			context.isInGeneric = false;
+		if (classNameId) {
+			context.currentClassId = std::nullopt;
+		}
 		throw err;
 	}
 
+	if (classNameId) {
+		context.currentClassId = std::nullopt;
+	}
 	return node;
 }
 
@@ -473,8 +565,8 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 			throw ParserError(
 			    firstLine,
 			    "Error: Empty closure parameter list is not allowed\nNote: "
-			    "Use "
-			    "{|param|} instead of {} to declare parameters explicitly");
+			    "Use {|param|} instead of {} to declare parameters "
+			    "explicitly");
 			--i;
 			parameter = context.parameterPool.push();
 		}

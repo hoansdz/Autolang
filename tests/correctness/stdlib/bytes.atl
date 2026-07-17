@@ -1,4 +1,6 @@
-func testBytesFeaturesExhaustive() {
+@import("std/bytes")
+
+fun testBytesFeaturesExhaustive() {
     val b = Bytes()
     assert(b.size() == 0, __FILE__, __LINE__)
     assert(b.isEmpty() == true, __FILE__, __LINE__)

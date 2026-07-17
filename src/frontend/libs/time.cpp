@@ -40,10 +40,10 @@ void init(ACompiler &compiler) {
 @no_constructor
 class Time {
     @native("now")
-    static func now(): Int
+    static fun now(): Int
 
     @native("time_format")
-    static func format(timestamp: Int): String
+    static fun format(timestamp: Int): String
 }
     )###",
 	                                LibraryConfig(),

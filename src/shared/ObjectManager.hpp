@@ -49,6 +49,15 @@ class ObjectManager {
 		obj->bytes = new ABytes(size, size, new uint8_t[size]);
 		return obj;
 	}
+#ifdef __EMSCRIPTEN__
+	inline AObject *getJsObject(ClassId classId, emscripten::val *jsObject) {
+		auto obj = areaAllocator.getObject();
+		obj->type = classId;
+		obj->jsObject = jsObject;
+		obj->flags = AObject::Flags::OBJ_IS_JS_OBJECT;
+		return obj;
+	}
+#endif
 	inline AObject *get(int64_t i) {
 		if (intObjects.index == 0) {
 			AObject *obj = areaAllocator.getObject();
@@ -113,6 +122,20 @@ class ObjectManager {
 				obj->flags = AObject::Flags::OBJ_IS_FREE;
 				return;
 			}
+#ifndef NO_INCLUDE_LIBS_JSON
+			case AutoLang::DefaultClass::jsonClassId: {
+				delete obj->json;
+				obj->flags = AObject::Flags::OBJ_IS_FREE;
+				return;
+			}
+#endif
+#ifdef __EMSCRIPTEN__
+			case AutoLang::DefaultClass::jsObjectClassId: {
+				delete obj->jsObject;
+				obj->flags = AObject::Flags::OBJ_IS_FREE;
+				return;
+			}
+#endif
 			case AutoLang::DefaultClass::bytesClassId: {
 				delete[] obj->bytes->data;
 				delete obj->bytes;
@@ -130,6 +153,13 @@ class ObjectManager {
 			default:
 				break;
 		}
+#ifdef __EMSCRIPTEN__
+		if (obj->flags & AObject::Flags::OBJ_IS_JS_OBJECT) {
+			delete obj->jsObject;
+			obj->flags = AObject::Flags::OBJ_IS_FREE;
+			return;
+		}
+#endif
 		if (obj->flags & AObject::Flags::OBJ_IS_NATIVE_DATA) {
 			if (obj->data->destructor) {
 				obj->data->destructor(*notifier, obj->data->data);

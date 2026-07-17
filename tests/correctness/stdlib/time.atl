@@ -1,6 +1,6 @@
 @import("std/time")
 
-func testTimeFeatures() {
+fun testTimeFeatures() {
     val t = Time.now()
     assert(t > 0, __FILE__, __LINE__)
 

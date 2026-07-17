@@ -113,7 +113,7 @@ ExprNode *UnknowNode::copy(in_func) {
 }
 
 void UnknowNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	throwError("Unknow node can't putbytecodes");
+	throwError("Unknown node can't putbytecodes");
 }
 
 ExprNode *WhileNode::resolve(in_func) {
@@ -189,7 +189,7 @@ void ReturnNode::optimize(in_func) {
 					break;
 				}
 				if (value->classId == DefaultClass::nullClassId) {
-					if (context.classInfo[func->returnId]->baseClassId ==
+					if (compile.classes[func->returnId]->genericBaseClassId ==
 					    DefaultClass::mapClassId) {
 						value = context.createMapPool.push(
 						    value->line, nullptr,
@@ -341,12 +341,16 @@ void ReturnNode::optimize(in_func) {
 		}
 		if (value->classId == DefaultClass::intClassId &&
 		    func->returnId == DefaultClass::floatClassId) {
-			value = static_cast<HasClassIdNode *>(
-			    context.castPool.push(value, func->returnId)->resolve(in_data));
+			auto castNode = context.castPool.push(value, func->returnId);
+			value = static_cast<HasClassIdNode *>(castNode->resolve(in_data));
+			if (value != castNode) {
+				value->optimize(in_data);
+			}
 			return;
 		}
-		throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) +
-		           " to " + compile.classes[func->returnId]->getName(compile));
+		throwError("Cannot cast " +
+		           compile.classes[value->classId]->getName(compile) + " to " +
+		           compile.classes[func->returnId]->getName(compile));
 	}
 	if (func->returnId != AutoLang::DefaultClass::voidClassId) {
 		throwError("Must return value");

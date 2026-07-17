@@ -1,6 +1,6 @@
 @import("std/math")
 
-func testMathFeatures() {
+fun testMathFeatures() {
     // 1. Constants
     assert(Math.PI > 3.14 && Math.PI < 3.15, __FILE__, __LINE__)
     assert(Math.E > 2.71 && Math.E < 2.72, __FILE__, __LINE__)

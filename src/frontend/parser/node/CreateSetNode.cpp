@@ -20,8 +20,9 @@ void CreateSetNode::optimize(in_func) {
 	if (classId == DefaultClass::nullClassId) {
 		throwError("Type mismatch in set initialization");
 	}
+	auto clazz = compile.classes[classId];
 	auto classInfo = context.classInfo[classId];
-	if (classInfo->baseClassId != DefaultClass::setClassId) {
+	if (clazz->genericBaseClassId != DefaultClass::setClassId) {
 		throwError("Type mismatch, expected Set<> but '" +
 		           compile.classes[classId]->getName(compile) + "' found");
 	}

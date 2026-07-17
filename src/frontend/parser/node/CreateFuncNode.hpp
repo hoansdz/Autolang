@@ -10,21 +10,23 @@
 
 namespace AutoLang {
 
-// func name(arguments): returnClass { body }
+// fun name(arguments): returnClass { body }
 struct CreateFuncNode : ExprNode {
 	std::optional<ClassId> contextCallClassId;
 	LexerStringId nameId;
+	uint32_t tokenIndex;
 	ClassDeclaration *classDeclaration;
 	FunctionId id;
 	Parameter *parameter;
 	uint32_t functionFlags;
-	CreateFuncNode(uint32_t line, std::optional<ClassId> contextCallClassId,
+	CreateFuncNode(uint32_t line, uint32_t tokenIndex,
+	               std::optional<ClassId> contextCallClassId,
 	               LexerStringId nameId, ClassDeclaration *classDeclaration,
 	               Parameter *parameter, uint32_t functionFlags)
 	    : ExprNode(NodeType::CREATE_FUNC, line),
 	      contextCallClassId(contextCallClassId), nameId(nameId),
-	      classDeclaration(classDeclaration), parameter(parameter),
-	      functionFlags(functionFlags) {}
+	      tokenIndex(tokenIndex), classDeclaration(classDeclaration),
+	      parameter(parameter), functionFlags(functionFlags) {}
 	template <bool addToGlobalScope = true> void pushFunction(in_func);
 	template <bool addToGlobalScope = true>
 	void pushNativeFunction(in_func, ANativeFunctionData *native);

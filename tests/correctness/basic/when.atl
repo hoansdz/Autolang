@@ -1,4 +1,4 @@
-func testWhen() {
+fun testWhen() {
 	val a = 5
 	when (a) {
 		in 1..9 -> {}

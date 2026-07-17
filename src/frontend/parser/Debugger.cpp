@@ -16,9 +16,9 @@
 namespace AutoLang {
 
 void freeData(in_func) {
-	for (auto *funcInfo : context.functionInfo) {
-		funcInfo->body.refresh();
-	}
+	// for (auto *funcInfo : context.functionInfo) {
+	// 	funcInfo->body.refresh();
+	// }
 	// size_t sizeNewClasses = context.newClasses.getSize();
 	// for (size_t i = 0 ; i < sizeNewClasses; ++i) {
 	// 	context.newClasses[i]->body.refresh();
@@ -27,13 +27,14 @@ void freeData(in_func) {
 	// for (size_t i = 0 ; i < context.createConstructorPool.size; ++i) {
 	// 	context.createConstructorPool[i]->body.refresh();
 	// }
-	for (auto *node : context.staticNode) {
-		ExprNode::deleteNode(node);
-	}
-	context.staticNode.clear();
-	context.createConstructorPool.destroy();
-	context.newClasses.refresh();
-	context.newFunctions.refresh();
+	// for (auto *node : context.staticNode) {
+	// 	ExprNode::deleteNode(node);
+	// }
+	// context.staticNode.clear();
+	// context.createConstructorPool.destroy();
+	// context.newClasses.refresh();
+	// context.newFunctions.refresh();
+	// context.declarationNodePool.refresh();
 	// context.binaryNodePool.refresh();
 }
 
@@ -64,8 +65,7 @@ void estimate(in_func, Lexer::Context &lexerContext) {
 	// context.throwPool.allocate(lexerContext.estimate.throwNode);
 	// context.binaryNodePool.allocate(estimateBinaryNode);
 
-	context.constValue.reserve(3 // Const
-	);
+	context.constValue.reserve(3); // Const
 
 	context.newClasses.allocate(estimateNewClasses);
 	context.newFunctions.allocate(estimateNewFunctions);
@@ -145,7 +145,7 @@ initial:;
 				    token->line,
 				    "'" + Lexer::Token(0, token->type).toString(context) +
 				        "' only allowed inside a loop");
-			return new SkipNode(token->type, token->line);
+			return context.skipNodePool.push(token->type, token->line);
 		}
 		case Lexer::TokenType::TRY: {
 			if (!isInFunction)
@@ -198,7 +198,8 @@ initial:;
 			}
 			auto node = loadFunc(in_data, i);
 			if (!node)
-				throw ParserError(0, "Bug return");
+				throw ParserError(
+				    0, "Internal error: loadFunc returned null unexpectedly");
 			if (context.currentClassId) {
 				auto classInfo = context.getCurrentClassInfo(in_data);
 				classInfo->createFunctionNodes.push_back(
@@ -233,6 +234,11 @@ initial:;
 			return nullptr;
 		}
 		case Lexer::TokenType::CLASS: {
+			if (context.currentClassId) {
+				throw ParserError(token->line,
+				                  "Error: Class declarations are not "
+				                  "allowed inside other class");
+			}
 			if (context.currentFunctionId != context.mainFunctionId) {
 				throw ParserError(token->line,
 				                  "Error: Class declarations are not "
@@ -266,10 +272,6 @@ initial:;
 			goto initial;
 		}
 		case Lexer::TokenType::PUBLIC: {
-			if (isInFunction)
-				throw ParserError(
-				    token->line,
-				    "Error: 'public' can only be used for class members");
 			if (context.modifierflags & ModifierFlags::MF_PUBLIC)
 				throw ParserError(token->line, "Duplicate modifier 'public'");
 			if (context.modifierflags & ModifierFlags::MF_PRIVATE)
@@ -290,10 +292,6 @@ initial:;
 			goto initial;
 		}
 		case Lexer::TokenType::PRIVATE: {
-			if (isInFunction)
-				throw ParserError(
-				    token->line,
-				    "Error: 'private' can only be used for class members");
 			if (context.modifierflags & ModifierFlags::MF_PRIVATE)
 				throw ParserError(token->line,
 				                  "Error: Duplicate modifier 'private'");
@@ -315,10 +313,6 @@ initial:;
 			goto initial;
 		}
 		case Lexer::TokenType::PROTECTED: {
-			if (isInFunction)
-				throw ParserError(
-				    token->line,
-				    "Error: 'protected' can only be used for class members");
 			if (context.modifierflags & ModifierFlags::MF_PROTECTED)
 				throw ParserError(token->line,
 				                  "Duplicate modifier 'protected'");
@@ -378,12 +372,11 @@ initial:;
 	++i;
 	return nullptr;
 err_call_func:;
-	printDebug(context.currentClassId
-	               ? compile.classes[*context.currentClassId]->getName(compile)
-	               : "None");
-	throw ParserError(token->line, "Command are not allowed outside function ");
-err_call_class:;
-	throw ParserError(token->line, "Command are not allowed outside class ");
+	throw ParserError(token->line,
+	                  "Command are not allowed outside a function ");
+	// err_call_class:;
+	// 	throw ParserError(token->line, "Command are not allowed outside class
+	// ");
 }
 
 template <bool loadedLBrace>
@@ -413,9 +406,9 @@ bool loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i,
 			if (node == nullptr)
 				continue;
 			if (context.annotationFlags || context.modifierflags) {
-				ExprNode::deleteNode(node);
-				ensureNoAnnotations(in_data, i);
-				ensureNoKeyword(in_data, i);
+				throw ParserError(
+				    node->line,
+				    "Bug: Annotations and modifiers hasn't reset yet");
 			}
 			nodes.push_back(node);
 		} catch (const ParserError &err) {
@@ -453,6 +446,7 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 	HasClassIdNode *left = parsePrimary(in_data, i);
 	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
+	uint32_t tokenIndex = i;
 	while (nextToken(&token, context.tokens, i)) {
 		switch (token->type) {
 			case Lexer::TokenType::COMMA:
@@ -468,12 +462,12 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 		int precedence = getPrecedence(token->type);
 		if (precedence == -1 || precedence < minPrecedence)
 			break;
-		if (firstLine != token->line) {
-			--i;
-			return left;
-		}
+		// if (firstLine != token->line) {
+		// 	--i;
+		// 	return left;
+		// }
 		Lexer::TokenType op = token->type;
-		if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
+		if (!nextToken(&token, context.tokens, i)) {
 			--i;
 			throw ParserError(
 			    context.tokens[i].line,
@@ -497,8 +491,8 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 				break;
 		}
 		// auto binaryNode = context.binaryNodePool.push(op, left, right);
-		left = context.binaryNodePool.push(firstLine, context.currentClassId,
-		                                   op, left, right);
+		left = context.binaryNodePool.push(
+		    firstLine, tokenIndex, context.currentClassId, op, left, right);
 		// auto binaryNode =
 		//     std::make_unique<BinaryNode>(firstLine, op, left.release(),
 		//     right);
@@ -527,10 +521,10 @@ std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 	char openBracket = getOpenBracket(token->type);
 	if (openBracket == '\0')
 		throw ParserError(token->line,
-		                  "AUnexpected token " + token->toString(context));
+		                  "Unexpected token " + token->toString(context));
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
-		throw ParserError(0, "Bug: Lexer not ensure close bracket");
+		throw ParserError(0, "Bug: Lexer did not ensure a closing bracket");
 	}
 	std::vector<HasClassIdNode *> nodes;
 	switch (token->type) {
@@ -540,8 +534,8 @@ std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 			if (!isCloseBracket(openBracket, token->type)) {
 				for (auto *node : nodes)
 					ExprNode::deleteNode(node);
-				throw ParserError(token->line,
-				                  "Bug: ALexer not ensure close bracket");
+				throw ParserError(
+				    token->line, "Bug: Lexer did not ensure a closing bracket");
 			}
 			return nodes;
 		}
@@ -565,8 +559,9 @@ std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 				if (!isCloseBracket(openBracket, token->type)) {
 					// for (auto *node : nodes)
 					// 	ExprNode::deleteNode(node);
-					throw ParserError(token->line,
-					                  "Bug: BLexer not ensure close bracket");
+					throw ParserError(
+					    token->line,
+					    "Bug: Lexer did not ensure a closing bracket");
 				}
 				return nodes;
 			}
@@ -581,9 +576,9 @@ std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 							if (!isCloseBracket(openBracket, token->type)) {
 								for (auto *node : nodes)
 									ExprNode::deleteNode(node);
-								throw ParserError(
-								    token->line,
-								    "Bug: ELexer not ensure close bracket");
+								throw ParserError(token->line,
+								                  "Bug: Lexer did not ensure a "
+								                  "closing bracket");
 							}
 							return nodes;
 						}
@@ -596,17 +591,16 @@ std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 			}
 			default: {
 				--i;
-				int *a = nullptr;
-				*a = 5;
 				throw ParserError(token->line,
-				                  "AUnknow token " + token->toString(context));
+				                  "Unknown token " + token->toString(context));
 			}
 		}
 	}
 expectedCloseBracket:
 	for (auto *node : nodes)
 		ExprNode::deleteNode(node);
-	throw ParserError(token->line, "Bug: CLexer not ensure close bracket");
+	throw ParserError(token->line,
+	                  "Bug: Lexer did not ensure a closing bracket");
 }
 
 HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
@@ -614,13 +608,13 @@ HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
 	Lexer::Token *token;
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
-		throw ParserError(0, "Bug: Lexer not ensure close bracket");
+		throw ParserError(0, "Bug: Lexer did not ensure a closing bracket");
 	}
 	switch (token->type) {
 		case Lexer::TokenType::RPAREN:
 		case Lexer::TokenType::RBRACKET: {
 			throw ParserError(token->line,
-			                  "Bug: Lexer not ensure close bracket");
+			                  "Bug: Lexer did not ensure a closing bracket");
 		}
 		case Lexer::TokenType::RBRACE: {
 			switch (canBeNodeType) {
@@ -675,7 +669,8 @@ HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
 			auto firstExpression = loadExpression(in_data, 0, i);
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
-				throw ParserError(0, "Bug: Lexer not ensure close bracket");
+				throw ParserError(
+				    0, "Bug: Lexer did not ensure a closing bracket");
 			}
 			switch (token->type) {
 				case Lexer::TokenType::COMMA: {
@@ -694,8 +689,9 @@ HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
 				}
 				case Lexer::TokenType::RPAREN:
 				case Lexer::TokenType::RBRACKET: {
-					throw ParserError(token->line,
-					                  "Bug: Lexer not ensure close bracket");
+					throw ParserError(
+					    token->line,
+					    "Bug: Lexer did not ensure a closing bracket");
 				}
 				case Lexer::TokenType::RBRACE: {
 					return context.createSetPool.push(
@@ -704,7 +700,7 @@ HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
 				}
 			}
 			throw ParserError(token->line,
-			                  "BUnexpected token " + token->toString(context));
+			                  "Unexpected token " + token->toString(context));
 		}
 	}
 }
@@ -718,8 +714,8 @@ HasClassIdNode *loadSet(in_func, size_t &i, HasClassIdNode *firstExpression) {
 			using namespace Lexer;
 			case Lexer::TokenType::RPAREN:
 			case Lexer::TokenType::RBRACKET: {
-				throw ParserError(token->line,
-				                  "Bug: Lexer not ensure close bracket");
+				throw ParserError(
+				    token->line, "Bug: Lexer did not ensure a closing bracket");
 			}
 			case Lexer::TokenType::RBRACE: {
 				return context.createSetPool.push(token->line, nullptr,
@@ -728,8 +724,9 @@ HasClassIdNode *loadSet(in_func, size_t &i, HasClassIdNode *firstExpression) {
 			case TokenType::COMMA: {
 				if (!nextToken(&token, context.tokens, i)) {
 					--i;
-					throw ParserError(context.tokens[i].line,
-					                  "Bug: Lexer not ensure close bracket");
+					throw ParserError(
+					    context.tokens[i].line,
+					    "Bug: Lexer did not ensure a closing bracket");
 				}
 				if (expect(token, Lexer::TokenType::RBRACE)) {
 					return context.createSetPool.push(token->line, nullptr,
@@ -741,13 +738,13 @@ HasClassIdNode *loadSet(in_func, size_t &i, HasClassIdNode *firstExpression) {
 			default: {
 				--i;
 				throw ParserError(token->line,
-				                  "Unknow token " + token->toString(context));
+				                  "Unknown token " + token->toString(context));
 			}
 		}
 	}
 	--i;
 	throw ParserError(context.tokens[i].line,
-	                  "Bug: Lexer not ensure close bracket");
+	                  "Bug: Lexer did not ensure a closing bracket");
 }
 
 HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode *firstExpression) {
@@ -756,7 +753,7 @@ HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode *firstExpression) {
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		throw ParserError(context.tokens[i].line,
-		                  "Bug: Lexer not ensure close bracket");
+		                  "Bug: Lexer did not ensure a closing bracket");
 	}
 	values.push_back(
 	    std::make_pair(firstExpression, loadExpression(in_data, 0, i)));
@@ -765,8 +762,8 @@ HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode *firstExpression) {
 			using namespace Lexer;
 			case Lexer::TokenType::RPAREN:
 			case Lexer::TokenType::RBRACKET: {
-				throw ParserError(token->line,
-				                  "Bug: Lexer not ensure close bracket");
+				throw ParserError(
+				    token->line, "Bug: Lexer did not ensure a closing bracket");
 			}
 			case Lexer::TokenType::RBRACE: {
 				return context.createMapPool.push(token->line, nullptr,
@@ -775,8 +772,9 @@ HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode *firstExpression) {
 			case TokenType::COMMA: {
 				if (!nextToken(&token, context.tokens, i)) {
 					--i;
-					throw ParserError(context.tokens[i].line,
-					                  "Bug: Lexer not ensure close bracket");
+					throw ParserError(
+					    context.tokens[i].line,
+					    "Bug: Lexer did not ensure a closing bracket");
 				}
 				if (expect(token, Lexer::TokenType::RBRACE)) {
 					return context.createMapPool.push(token->line, nullptr,
@@ -790,8 +788,9 @@ HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode *firstExpression) {
 				}
 				if (!nextToken(&token, context.tokens, i)) {
 					--i;
-					throw ParserError(context.tokens[i].line,
-					                  "Bug: Lexer not ensure close bracket");
+					throw ParserError(
+					    context.tokens[i].line,
+					    "Bug: Lexer did not ensure a closing bracket");
 				}
 				values.push_back(
 				    std::make_pair(key, loadExpression(in_data, 0, i)));
@@ -800,13 +799,13 @@ HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode *firstExpression) {
 			default: {
 				--i;
 				throw ParserError(token->line,
-				                  "Unknow token " + token->toString(context));
+				                  "Unknown token " + token->toString(context));
 			}
 		}
 	}
 	--i;
 	throw ParserError(context.tokens[i].line,
-	                  "Bug: Lexer not ensure close bracket");
+	                  "Bug: Lexer did not ensure a closing bracket");
 }
 
 template <Lexer::TokenType closeBracket, bool mustHaveColon,
@@ -816,7 +815,7 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		throw ParserError(context.tokens[i].line,
-		                  "Bug: DLexer not ensure close bracket");
+		                  "Bug: Lexer did not ensure a closing bracket");
 	}
 	auto parameter = context.parameterPool.push();
 	switch (token->type) {
@@ -835,7 +834,8 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 			break;
 		}
 		default:
-			throw ParserError(token->line, "Expected name but not found");
+			throw ParserError(token->line,
+			                  "Expected parameter name but not found");
 	}
 	bool addedDefaultValue = false;
 	while (nextToken(&token, context.tokens, i)) {
@@ -851,7 +851,7 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
 				throw ParserError(context.tokens[i].line,
-				                  "Expected name but not found");
+				                  "Expected parameter name but not found");
 			}
 		}
 		if (!expect(token, Lexer::TokenType::IDENTIFIER)) {
@@ -936,7 +936,7 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 	}
 	--i;
 	throw ParserError(context.tokens[i].line,
-	                  "Bug: DLexer not ensure close bracket");
+	                  "Bug: Lexer did not ensure a closing bracket");
 }
 
 HasClassIdNode *parsePrimary(in_func, size_t &i) {
@@ -1109,32 +1109,42 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 	bool addOptionalNode = false;
 	while (true) {
 		uint32_t endLine = context.tokens[i].line;
-		if (!nextTokenSameLine(&token, context.tokens, i, endLine)) {
-			--i;
-			if (addOptionalNode) {
-				return context.optionalAccessNodePool.push(firstLine, node);
-			}
-			return node;
-		}
+		if (!nextToken(&token, context.tokens, i))
+			goto ret;
 		switch (token->type) {
 			case Lexer::TokenType::LBRACKET: {
+				if (token->line != endLine)
+					goto ret;
 				uint32_t firstLine = token->line;
+				size_t tokenIndex = i;
 				auto arguments = loadListArgument(in_data, i);
 				node = context.callNodePool.push(
-				    firstLine, context.currentClassId, node, lexerIdLRBRACKET,
-				    std::move(arguments), context.justFindStatic,
-				    !nextTokenIfMarkNonNull(in_data, i), false);
+				    firstLine, tokenIndex, context.currentClassId, node,
+				    lexerIdLRBRACKET, std::move(arguments),
+				    context.justFindStatic, !nextTokenIfMarkNonNull(in_data, i),
+				    false);
 				break;
 			}
 			case Lexer::TokenType::LPAREN: {
+				if (token->line != endLine)
+					goto ret;
+				size_t tokenIndex = i;
 				auto arguments = loadListArgument(in_data, i);
 				auto callNode = context.callNodePool.push(
-				    firstLine, context.currentClassId, nullptr, 0,
+				    firstLine, tokenIndex, context.currentClassId, nullptr, 0,
 				    std::move(arguments), context.justFindStatic,
 				    !nextTokenIfMarkNonNull(in_data, i), false);
 				callNode->funcObject = node;
 				node = callNode;
 				break;
+			}
+			case Lexer::TokenType::EXMARK: {
+				if (!nextToken(&token, context.tokens, i) ||
+				    !expect(token, Lexer::TokenType::DOT)) {
+					--i;
+					goto ret;
+				}
+				node->setNullable(false);
 			}
 			case Lexer::TokenType::QMARK_DOT:
 			case Lexer::TokenType::DOT: {
@@ -1353,9 +1363,10 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			}
 			// std::cerr << "Created callnode "
 			//           << classDeclaration->getName(in_data) << "\n";
+			size_t tokenIndex = i;
 			auto arguments = loadListArgument(in_data, i);
 			auto callNode = context.callNodePool.push(
-			    firstLine, context.currentClassId, nullptr,
+			    firstLine, tokenIndex, context.currentClassId, nullptr,
 			    context.createLexerStringIfNotExists(
 			        classDeclaration->getName(in_data)),
 			    std::move(arguments), context.justFindStatic,
@@ -1439,11 +1450,12 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			}
 
 			{
+				size_t tokenIndex = i;
 				auto funcObject = context.findDeclaration(
 				    in_data, token->line, token->indexData, false);
 				if (funcObject) {
 					return context.callNodePool.push(
-					    firstLine, context.currentClassId, nullptr,
+					    firstLine, tokenIndex, context.currentClassId, nullptr,
 					    identifier->indexData, context.justFindStatic,
 					    std::move(arguments),
 					    !nextTokenIfMarkNonNull(in_data, i), false);
@@ -1451,8 +1463,9 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			}
 
 			addThisToClosure(in_data, i);
+			size_t tokenIndex = i;
 			auto callNode = context.callNodePool.push(
-			    firstLine, context.currentClassId, nullptr,
+			    firstLine, tokenIndex, context.currentClassId, nullptr,
 			    identifier->indexData, std::move(arguments),
 			    context.justFindStatic, !nextTokenIfMarkNonNull(in_data, i),
 			    false);
@@ -1487,18 +1500,21 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			auto varNode =
 			    findIdentifierNode(in_data, i, identifier->indexData, true);
 			uint32_t firstLine = token->line;
+			size_t tokenIndex = i;
 			auto arguments = loadListArgument(in_data, i);
 			bool nullable = !nextTokenIfMarkNonNull(in_data, i);
 			return context.callNodePool.push(
-			    firstLine, context.currentClassId, varNode, lexerIdLRBRACKET,
-			    std::move(arguments), context.justFindStatic, nullable, false);
+			    firstLine, tokenIndex, context.currentClassId, varNode,
+			    lexerIdLRBRACKET, std::move(arguments), context.justFindStatic,
+			    nullable, false);
 		}
 		case Lexer::TokenType::LBRACE: {
 			addThisToClosure(in_data, i);
 			uint32_t firstLine = token->line;
+			size_t tokenIndex = i;
 			auto closureNode = loadClosure(in_data, i);
 			return context.callNodePool.push(
-			    firstLine, context.currentClassId, nullptr,
+			    firstLine, tokenIndex, context.currentClassId, nullptr,
 			    identifier->indexData,
 			    std::vector<HasClassIdNode *>{closureNode},
 			    context.justFindStatic, false, false);
@@ -1557,10 +1573,18 @@ HasClassIdNode *findIdentifierNode(in_func, size_t &i, LexerStringId nameId,
 			    nameId, nullable, context.justFindStaticMember);
 		}
 		addThisToClosure(in_data, i);
-		auto declarationThis =
-		    context.classInfo[*context.currentClassId]->declarationThis;
-		return context.varPool.push(declarationThis->line, declarationThis,
-		                            false, false);
+		if (context.currentFunctionId == context.mainFunctionId ||
+		    !(context.getCurrentFunction(in_data)->functionFlags &
+		      FunctionFlags::FUNC_IS_STATIC)) {
+			auto declarationThis =
+			    context.classInfo[*context.currentClassId]->declarationThis;
+			return context.varPool.push(declarationThis->line, declarationThis,
+			                            false, false);
+		}
+		return context.unknowNodePool.push(
+		    context.tokens[i].line, context.currentClassId,
+		    context.currentFunctionId, nameId, nullable,
+		    context.justFindStaticMember);
 	}
 	auto varNode = findVarNode(in_data, i, nameId, nullable);
 	if (varNode) {
@@ -1669,7 +1693,8 @@ Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t &i) {
 		case ModifierFlags::MF_PROTECTED:
 			return Lexer::TokenType::PROTECTED;
 		default:
-			throw ParserError(0, "Bug: Parser not ensure one modifier");
+			throw ParserError(
+			    0, "Bug: Parser did not ensure exactly one modifier");
 	}
 }
 
@@ -1688,10 +1713,9 @@ void ensureEndline(in_func, size_t &i) {
 			break;
 		}
 		--i;
-		throw ParserError(context.tokens[i].line,
-		                  "Command not allowed here because cannot call multi "
-		                  "command in a line: " +
-		                      line);
+		throw ParserError(
+		    context.tokens[i].line,
+		    "Multiple commands are not allowed on a single line: " + line);
 	}
 	--i;
 }

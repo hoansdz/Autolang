@@ -1,6 +1,6 @@
 @import("std/file")
 
-func testFilePermission() {
+fun testFilePermission() {
     // Test: File path length > 512 -> should get blocked with SecurityError
     try {
         var longPath = "a"

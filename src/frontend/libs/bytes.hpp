@@ -10,16 +10,6 @@ namespace Libs {
 namespace bytes {
 
 void init(AutoLang::ACompiler &compiler);
-AObject *constructor(NativeFuncInData);
-AObject *resize(NativeFuncInData);
-AObject *append(NativeFuncInData);
-AObject *size(NativeFuncInData);
-AObject *is_empty(NativeFuncInData);
-AObject *get(NativeFuncInData);
-AObject *set(NativeFuncInData);
-AObject *clear(NativeFuncInData);
-AObject *slice(NativeFuncInData);
-AObject *to_string(NativeFuncInData);
 
 } // namespace file
 } // namespace Libs

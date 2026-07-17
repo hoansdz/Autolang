@@ -1,4 +1,4 @@
-func testForLoop() {
+fun testForLoop() {
 	// Basic range loop: 1..10 inclusive
 	var a = 0
 	val b = 10

@@ -79,7 +79,8 @@ void ForNode::optimize(in_func) {
 				throwError("Cannot loop in " +
 				           compile.classes[data->classId]->getName(compile));
 			}
-			auto baseClassId = classInfo->baseClassId;
+			auto clazz = compile.classes[data->classId];
+			auto baseClassId = clazz->genericBaseClassId;
 			switch (baseClassId) {
 				case DefaultClass::setClassId:
 				case DefaultClass::arrayClassId: {
@@ -106,19 +107,20 @@ void ForNode::optimize(in_func) {
 								}
 								break;
 							}
-							throwError("Type mismatch: expected '" +
-							           compile.classes[target]->getName(compile) +
-							           "' but '" +
-							           compile.classes[detach->classId]->getName(compile) +
-							           "' found");
+							throwError(
+							    "Type mismatch: expected '" +
+							    compile.classes[target]->getName(compile) +
+							    "' but '" +
+							    compile.classes[detach->classId]->getName(
+							        compile) +
+							    "' found");
 							break;
 						}
 					}
 					break;
 				}
 				default: {
-					throwError("Cannot loop in " +
-					           compile.classes[data->classId]->getName(compile));
+					throwError("Cannot loop in " + clazz->getName(compile));
 				}
 			}
 			break;
@@ -278,12 +280,12 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		}
 		default: {
 			data->optimize(in_data);
+			auto clazz = compile.classes[data->classId];
 			auto classInfo = context.classInfo[data->classId];
 			if (classInfo->genericTypeId.empty()) {
-				throwError("Cannot loop in " +
-				           compile.classes[data->classId]->getName(compile));
+				throwError("Cannot loop in " + clazz->getName(compile));
 			}
-			auto baseClassId = classInfo->baseClassId;
+			auto baseClassId = clazz->genericBaseClassId;
 			switch (baseClassId) {
 				case DefaultClass::setClassId:
 				case DefaultClass::arrayClassId: {
@@ -313,8 +315,7 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					break;
 				}
 				default: {
-					throwError("Cannot loop in " +
-					           compile.classes[data->classId]->getName(compile));
+					throwError("Cannot loop in " + clazz->getName(compile));
 				}
 			}
 			break;

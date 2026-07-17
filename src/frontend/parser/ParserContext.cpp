@@ -227,10 +227,8 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	mainFunctionId = compile.mainFunctionId;
 
 	loadingLibs.clear();
-	hasError = false;
 	tokens.clear();
 	importMap.clear();
-	closureCount = 0;
 
 	for (auto &funcInfo : functionInfo) {
 		funcInfo->body.refresh();
@@ -277,15 +275,15 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	ifPool.destroy();
 	whilePool.destroy();
 	tryCatchPool.destroy();
+	skipNodePool.destroy();
+	closureScopes.clear();
+	genericDataPool.destroy();
 
 	declarationNodePool.refresh();
 	returnPool.destroy();
 	setValuePool.destroy();
 
 	throwPool.destroy();
-
-	returnPool.destroy();
-	setValuePool.destroy();
 	binaryNodePool.destroy();
 	castPool.destroy();
 	runtimeCastPool.destroy();
@@ -308,11 +306,9 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	whenNodePool.destroy();
 	functionAccessPool.destroy();
 	classDeclarationAllocator.destroy();
-	createClosurePool.destroy();
 	genericCallers.clear();
 	checkValidateExtends.clear();
 	allClosureNode.clear();
-	loadingLibs.clear();
 
 	currentClassId = std::nullopt;
 
@@ -322,6 +318,8 @@ void ParserContext::refresh(CompiledProgram &compile) {
 		delete str;
 	}
 	constStringMap.clear();
+	lexerString = stdLexerString;
+	lexerStringMap = stdLexerStringMap;
 }
 
 void ParserContext::logError(uint32_t line, const std::string &message) {

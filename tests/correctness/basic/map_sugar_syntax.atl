@@ -1,4 +1,4 @@
-func testMapSugarSyntax() {
+fun testMapSugarSyntax() {
     // 1. Explicitly typed Map sugar syntax
     val m1 = <String, Int>{"one": 1, "two": 2, "three": 3}
     assert(m1.size() == 3, __FILE__, __LINE__)

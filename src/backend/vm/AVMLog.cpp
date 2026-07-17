@@ -1,6 +1,7 @@
 #ifndef AVMLOG_CPP
 #define AVMLOG_CPP
 
+#include "backend/vm/ANotifier.hpp"
 #include "backend/vm/AVM.hpp"
 #include "shared/DefaultClass.hpp"
 #include "shared/DefaultFunction.hpp"
@@ -63,15 +64,18 @@ std::string AClass::getName(CompiledProgram &data) {
 }
 
 void AClass::log(CompiledProgram &data) {
+	ClassId *memberId = &data.allMemberId[memberIdOffset];
 	std::cerr << "[" << id << "]: Class " << getName(data)
-	          << (inheritance.empty()
-	                  ? ""
-	                  : std::string(" extends ") +
-	                        data.classes[*parentId]->getName(data))
+	          << (parentId ? std::string(" extends ") +
+	                             data.classes[parentId]->getName(data)
+	                       : "")
 	          << "\n";
 	for (auto &[name, offset] : memberMap) {
 		std::cerr << "[" << offset << "] " << name << ": "
-		          << data.classes[memberId[offset]]->getName(data) << "\n";
+		          << data.classes[memberId[offset]]->getName(data)
+		          << (data.allMemberNullable[memberIdOffset + offset] ? "?"
+		                                                              : "")
+		          << "\n";
 	}
 	for (auto &[name, vecs] : funcMap) {
 		for (auto funcId : vecs) {

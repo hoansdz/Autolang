@@ -1,5 +1,5 @@
 class Animal() {
-	func sound(): String {
+	fun sound(): String {
 		return "None"
 	} 
 }
@@ -9,7 +9,7 @@ class Dog extends Animal {
 		super()
 	}
 	@override
-	func sound(): String {
+	fun sound(): String {
 		return "Go"
 	}
 }
@@ -19,12 +19,12 @@ class Cat extends Animal {
 		super()
 	}
 	@override
-	func sound(): String {
+	fun sound(): String {
 		return "Meow"
 	}
 }
 
-func testOverride() {
+fun testOverride() {
 	val cat: Animal = Cat()
 	val dog: Animal = Dog()
 	assert(cat.sound() == "Meow", __FILE__, __LINE__)

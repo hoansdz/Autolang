@@ -1,8 +1,8 @@
-func globalIncrement(n: Int): Int {
+fun globalIncrement(n: Int): Int {
     return n + 1
 }
 
-func testSetExhaustive() {
+fun testSetExhaustive() {
     val emptySet = <Int>{}
     assert(emptySet.size() == 0, __FILE__, __LINE__)
 

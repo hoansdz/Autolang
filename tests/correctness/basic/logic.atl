@@ -1,13 +1,13 @@
 class TestLogicClass {
 	val a = true
 
-	func test() {
+	fun test() {
 		assert((!a) == false, __FILE__, __LINE__)
 		assert(-(!a) == 0, __FILE__, __LINE__)
 	}
 }
 
-func testLogic() {
+fun testLogic() {
 	// Basic boolean values
 	assert(true == true, __FILE__, __LINE__)
 	assert(false == false, __FILE__, __LINE__)

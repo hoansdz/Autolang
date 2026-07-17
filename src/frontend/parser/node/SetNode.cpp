@@ -13,6 +13,10 @@ ExprNode *SetNode::resolve(in_func) {
 		auto result = static_cast<CallNode *>(detach);
 		if (result->nameId != lexerIdLRBRACKET)
 			return this;
+		if (op != Lexer::TokenType::EQUAL) {
+			throwError("Cannot perform read-modify-write operation on index "
+			           "access. Use direct assignment instead");
+		}
 		result->nameId = lexerIdset;
 		result->arguments.push_back(value);
 		detach = nullptr;
@@ -33,8 +37,8 @@ void SetNode::optimize(in_func) {
 					auto createArrayNode =
 					    static_cast<CreateArrayNode *>(value);
 					if (!createArrayNode->classDeclaration) {
-						auto classInfo = context.classInfo[detach->classId];
-						if (classInfo->baseClassId !=
+						auto clazz = compile.classes[detach->classId];
+						if (clazz->genericBaseClassId !=
 						    DefaultClass::arrayClassId) {
 							if (detach->classId == DefaultClass::nullClassId) {
 								throwError("Cannot infer type for initializer "
@@ -53,10 +57,10 @@ void SetNode::optimize(in_func) {
 				case NodeType::CREATE_SET: {
 					auto createSetNode = static_cast<CreateSetNode *>(value);
 					if (!createSetNode->classDeclaration) {
-						auto classInfo = context.classInfo[detach->classId];
-						if (classInfo->baseClassId !=
+						auto clazz = compile.classes[detach->classId];
+						if (clazz->genericBaseClassId !=
 						    DefaultClass::setClassId) {
-							if (classInfo->baseClassId ==
+							if (clazz->genericBaseClassId ==
 							        DefaultClass::mapClassId &&
 							    createSetNode->values.empty()) {
 								auto newValue = context.createMapPool.push(
@@ -87,8 +91,8 @@ void SetNode::optimize(in_func) {
 				case NodeType::CREATE_MAP: {
 					auto createMapNode = static_cast<CreateMapNode *>(value);
 					if (!createMapNode->classDeclaration) {
-						auto classInfo = context.classInfo[detach->classId];
-						if (classInfo->baseClassId !=
+						auto clazz = compile.classes[detach->classId];
+						if (clazz->genericBaseClassId !=
 						    DefaultClass::mapClassId) {
 							if (detach->classId == DefaultClass::nullClassId) {
 								throwError("Cannot infer type for initializer "
@@ -210,9 +214,6 @@ void SetNode::optimize(in_func) {
 						detachNode->declaration->classDeclaration =
 						    value->classDeclaration;
 					}
-					compile.classes[detachNode->caller->classId]
-					    ->memberId[detachNode->declaration->id] =
-					    detachNode->declaration->classId;
 					// Marked non null won't run example val a! = 1
 					if (detachNode->declaration->mustInferenceNullable) {
 						detachNode->declaration->nullable = value->isNullable();

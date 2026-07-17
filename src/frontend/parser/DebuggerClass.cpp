@@ -16,14 +16,15 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 
 	uint32_t classFlags = 0;
 	if (context.annotationFlags & AnnotationFlags::AN_NATIVE) {
-		throw ParserError(firstLine, "@native is only supported functions");
+		throw ParserError(firstLine, "@native is only supported on functions");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_OVERRIDE) {
-		throw ParserError(firstLine, "@override is only supported functions");
+		throw ParserError(firstLine,
+		                  "@override is only supported on functions");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_OVERRIDE) {
 		throw ParserError(firstLine,
-		                  "@no_override is only supported functions");
+		                  "@no_override is only supported on functions");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_CONSTRUCTOR) {
 		classFlags |= ClassFlags::CLASS_NO_CONSTRUCTOR;
@@ -34,6 +35,11 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 	if (context.annotationFlags & AnnotationFlags::AN_NATIVE_DATA) {
 		// classFlags |= ClassFlags::CLASS_NATIVE_DATA;
 	}
+#ifdef __EMSCRIPTEN__
+	if (context.annotationFlags & AnnotationFlags::AN_JS_OBJECT) {
+		classFlags |= ClassFlags::CLASS_JS_OBJECT;
+	}
+#endif
 
 	// Name
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
@@ -45,7 +51,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 	const std::string &name = context.lexerString[nameId];
 
 	if (context.defaultClassMap.find(nameId) != context.defaultClassMap.end()) {
-		throw ParserError(firstLine, "Class " + name + " has exists");
+		throw ParserError(firstLine, "Class " + name + " already exists");
 	}
 
 	auto node = context.newClasses.push(firstLine, nameId,
@@ -201,15 +207,16 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 				                  "Extended class must have constructor");
 			}
 		}
-		// std::cerr<<"Clazz: "<<clazz->getName(compile)<<" "<<declarationThis->id<<"\n";
-		// Has PrimaryConstructor
+		// std::cerr<<"Clazz: "<<clazz->getName(compile)<<"
+		// "<<declarationThis->id<<"\n"; Has PrimaryConstructor
 		//  bool hasPrimaryConstructor = false;
 		if (expect(token, Lexer::TokenType::LPAREN)) {
 			if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
-				throw ParserError(context.tokens[i].line,
-				                  "Extended class doesn't support data class "
-				                  "constructor, you must "
-				                  "declare constructor and call super");
+				throw ParserError(
+				    context.tokens[i].line,
+				    "Extended classes don't support a primary (data class) "
+				    "constructor; you must declare a constructor and call "
+				    "super");
 			}
 			if (classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR) {
 				throw ParserError(
@@ -254,8 +261,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 			    classInfo->secondaryConstructor.empty()) {
 				if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
 					throw ParserError(
-					    firstLine,
-					    "Extended class must be declarated constructor");
+					    firstLine, "Extended class must declare a constructor");
 				}
 				auto parameter = context.parameterPool.push();
 				parameter->defaultValuePos = 1;
@@ -276,8 +282,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 			    classInfo->secondaryConstructor.empty()) {
 				if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
 					throw ParserError(
-					    firstLine,
-					    "Extended class must be declarated constructor");
+					    firstLine, "Extended class must declare a constructor");
 				}
 
 				auto parameter = context.parameterPool.push();
@@ -315,7 +320,7 @@ void loadConstructor(in_func, size_t &i) {
 	}
 	if (classInfo->primaryConstructor)
 		throw ParserError(firstLine,
-		                  "Cannot declare constructor in data class");
+		                  "Cannot declare constructor in a data class");
 	uint32_t functionFlags = 0;
 	Lexer::TokenType accessModifier = getAndEnsureOneAccessModifier(in_data, i);
 	switch (accessModifier) {
@@ -336,38 +341,42 @@ void loadConstructor(in_func, size_t &i) {
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_CONSTRUCTOR) {
 		throw ParserError(firstLine,
-		                  "@no_constructor is only supported classes");
+		                  "@no_constructor is only supported on classes");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NATIVE_DATA) {
-		throw ParserError(firstLine, "@native_data is only supported classes");
+		throw ParserError(firstLine,
+		                  "@native_data is only supported on classes");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_EXTENDS) {
-		throw ParserError(firstLine, "@no_extends is only supported classes");
+		throw ParserError(firstLine,
+		                  "@no_extends is only supported on classes");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NATIVE) {
-		throw ParserError(firstLine, "@native is only supported functions");
+		throw ParserError(firstLine, "@native is only supported on functions");
 	} else if (clazz->classFlags & ClassFlags::CLASS_NATIVE_DATA) {
 		throw ParserError(
-		    firstLine, "Class " + clazz->getName(compile) +
-		                   " marked @native_data, @constructor must be native");
+		    firstLine,
+		    "Class " + clazz->getName(compile) +
+		        " is marked @native_data, so the constructor must be native");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_OVERRIDE) {
-		throw ParserError(firstLine, "@override is only supported functions");
+		throw ParserError(firstLine,
+		                  "@override is only supported on functions");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_OVERRIDE) {
 		throw ParserError(firstLine,
-		                  "@no_override is only supported functions");
+		                  "@no_override is only supported on functions");
 	}
 
 	// Arguments
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
-		throw ParserError(context.tokens[i].line, "Expected ( but not found");
+		throw ParserError(context.tokens[i].line, "Expected '(' but not found");
 	}
 	Parameter *parameter = nullptr;
 	if (expect(token, Lexer::TokenType::LPAREN)) {
 		if (firstLine != token->line) {
-			throw ParserError(firstLine, "Expected ( but not found");
+			throw ParserError(firstLine, "Expected '(' but not found");
 		}
 		parameter = loadListDeclaration(in_data, i);
 		if (!parameter->parameterDefaultValues.empty() &&
@@ -403,15 +412,17 @@ void loadConstructor(in_func, size_t &i) {
 	                             classInfo->declarationThis);
 	parameter->defaultValuePos += 1;
 	auto constructor = context.createConstructorPool.push(
-	    firstLine, *context.currentClassId, context.lexerStringMap[clazz->getName(compile)],
-	    parameter, false, functionFlags);
+	    firstLine, *context.currentClassId,
+	    context.lexerStringMap[clazz->getName(compile)], parameter, false,
+	    functionFlags);
 	classInfo->secondaryConstructor.push_back(constructor);
 	constructor->pushFunction(in_data);
 	context.gotoFunction(constructor->funcId);
 	auto func = compile.functions[constructor->funcId];
 	auto funcInfo = context.functionInfo[constructor->funcId];
 	// compile
-	//     .funcMap[compile.classes[*context.currentClassId]->getName(compile) + "." +
+	//     .funcMap[compile.classes[*context.currentClassId]->getName(compile) +
+	//     "." +
 	//              compile.classes[*context.currentClassId]->getName(compile)]
 	//     .push_back(constructor->funcId);
 

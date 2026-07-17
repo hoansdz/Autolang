@@ -20,9 +20,10 @@ struct AClass
 	StringArenaOffset nameStringOffset;
 	ClassId id;
 	uint32_t classFlags;
-	std::optional<ClassId> parentId;
+	ClassId parentId;
+	ClassId genericBaseClassId;
 	GenericTypes genericType;
-	std::vector<ClassId> memberId;
+	Offset memberIdOffset;
 	std::vector<FunctionId> vtable; // Override function
 	HashMap<std::string, MemberOffset> memberMap;
 	HashMap<std::string, std::vector<FunctionId>> funcMap;

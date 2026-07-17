@@ -53,9 +53,34 @@ void IfNode::optimize(in_func) {
 	if (loadReturnBlock) {
 		context.mustReturnValueNode = this;
 	}
-	ifTrue.optimize(in_data);
-	if (ifFalse)
-		ifFalse->optimize(in_data);
+	if (!ifFalse || mustReturnValue) {
+		ifTrue.optimize(in_data);
+		ClassId trueClassId = classId;
+		if (ifFalse) {
+			ifFalse->optimize(in_data);
+		} else {
+			if (ifTrue.hasValue && condition->kind == NodeType::CONST_VAL &&
+			    static_cast<ConstValueNode *>(condition)->obj->b) {
+				mustReturnValue = true;
+			}
+		}
+		if (classId == DefaultClass::floatClassId &&
+		    trueClassId == DefaultClass::intClassId) {
+			ifTrue.autoCastToFloat = true;
+		}
+	} else {
+		ifTrue.optimize(in_data);
+		ClassId trueClassId = classId;
+		if (ifFalse)
+			ifFalse->optimize(in_data);
+		if (classId == DefaultClass::floatClassId &&
+		    trueClassId == DefaultClass::intClassId) {
+			ifTrue.autoCastToFloat = true;
+		}
+		if (ifTrue.hasValue && ifFalse->hasValue) {
+			mustReturnValue = true;
+		}
+	}
 	// std::cerr << getClassName(in_data) << "\n";
 	if (loadReturnBlock) {
 		if (classId == DefaultClass::nullClassId && nullable) {

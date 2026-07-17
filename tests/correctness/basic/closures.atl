@@ -1,15 +1,15 @@
-func makeAdder(x: Int): (Int) -> Int {
+fun makeAdder(x: Int): (Int) -> Int {
     return {|y| x + y}
 }
 
-func abc(a: Int, b: Int, c: (Int, Int) -> Int): Int = c(a, b)
+fun abc(a: Int, b: Int, c: (Int, Int) -> Int): Int = c(a, b)
 
 class TestParentClosureClass {
-	func test() {
+	fun test() {
 		assert(false, __FILE__, __LINE__)
 	}
 
-	func getTestFunction() = test
+	fun getTestFunction() = test // return test
 }
 
 class TestClosureClass extends TestParentClosureClass {
@@ -24,11 +24,11 @@ class TestClosureClass extends TestParentClosureClass {
 	}
 
 	@override
-	func test() {
+	fun test() {
 		assert(true, __FILE__, __LINE__)
 	}
 
-    func createMethodClosure(base: Int): (Int) -> Int {
+    fun createMethodClosure(base: Int): (Int) -> Int {
         val factor1: Float = 1
 		static val factor2: Int = 1
         return {|y|
@@ -37,7 +37,7 @@ class TestClosureClass extends TestParentClosureClass {
     }
 }
 
-func testFunctionClosures() {
+fun testFunctionClosures() {
     val factor = 10
     val explicitAdd = {|x: Int| -> { x + factor }}
     assert(explicitAdd(5) == 15, __FILE__, __LINE__)
@@ -76,7 +76,7 @@ func testFunctionClosures() {
     println("Passed ${__FUNC__}")
 }
 
-func testClassClosures() {
+fun testClassClosures() {
     val clazz = TestClosureClass()
     clazz.n = 7
 	val testFunc = clazz.getTestFunction()

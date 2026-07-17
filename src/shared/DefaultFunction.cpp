@@ -11,11 +11,11 @@ namespace DefaultFunction {
 void init(ACompiler& compiler) {
 	// compiler.registerBuiltInLibrary("stdlib", false, R"###(
 	// 	@native("print")
-	// 	func print(value: Any?)
+	// 	fun print(value: Any?)
 	// 	@native("println")
-	// 	func println(value: Any?)
+	// 	fun println(value: Any?)
 	// 	@native("get_refcount")
-	// 	func getRefCount(value: Any?): Int
+	// 	fun getRefCount(value: Any?): Int
 	// )###", ANativeMap({
 	// 	{"print", &print},
 	// 	{"println", &println},

@@ -1,7 +1,7 @@
 class FunctionalTest {
 	var value = 5
 	
-	func plus_plus() {
+	fun plus_plus() {
 		value += 1
 	} 
 	
@@ -13,26 +13,26 @@ class FunctionalTest {
 class FunctionalTestGeneric<T, R> {
 	lateinit val f: (T) -> R
 
-	func get(): R = f(1)
+	fun get(): R = f(1)
 	
 	constructor (f: (T) -> R) {
 		this.f = f
 	}
 }
 
-func testFunctionalSquare(value: Float): Int {
+fun testFunctionalSquare(value: Float): Int {
 	return Int(value * value)
 }
-func testFunctionalLoad(onLoad: (Float)->Int): Int {
+fun testFunctionalLoad(onLoad: (Float)->Int): Int {
 	return onLoad(125)
 }
-func testFunctionalEmptyParams(): Int {
+fun testFunctionalEmptyParams(): Int {
 	return 0
 }
 
-func testFunctionalInput(value: Int) = "OK"
+fun testFunctionalInput(value: Int) = "OK"
 
-func testFunctional<T, R>() {
+fun testFunctional<T, R>() {
 
 	val a: Float -> Int = testFunctionalSquare
 	val b = a

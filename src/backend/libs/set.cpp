@@ -293,7 +293,7 @@ AObject *for_each(NativeFuncInData) {
 
 AObject *to_array(NativeFuncInData) {
 	auto unorderedSetData = static_cast<AUnorderedSet *>(args[0]->data->data);
-	auto newArr = notifier.createArray(args[1]->i);
+	auto newArr = notifier.createArray(notifier.callFrame->func->returnId);
 
 	switch (unorderedSetData->type) {
 		case DefaultClass::intClassId: {

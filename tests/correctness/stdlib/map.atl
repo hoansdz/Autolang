@@ -2,11 +2,11 @@ class TestMapFeaturesExhaustive {
 	var mapKeySum = 0
 	var mapValueSum = 0
 
-	func a() {
+	fun a() {
 		mapKeySum = 999
 	}
 
-	func testMapFeaturesExhaustive() {
+	fun testMapFeaturesExhaustive() {
 		// 1. Test: Explicit Constructor, isEmpty, size
 		val explicitMap = Map<String, Int>()
 		assert(explicitMap.isEmpty() == true, __FILE__, __LINE__)

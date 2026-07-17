@@ -15,7 +15,7 @@ inline void loadEnumBody(in_func, size_t &i, CreateClassNode *node,
 	while (true) {
 		if (!nextToken(&token, context.tokens, i)) {
 			throw ParserError(firstLine,
-			                  "Bug: Lexer is not ensure close bracket");
+			                  "Bug: Lexer did not ensure a closing bracket");
 		}
 	initial:;
 		switch (token->type) {
@@ -40,7 +40,7 @@ inline void loadEnumBody(in_func, size_t &i, CreateClassNode *node,
 				auto it = classInfo->constValue.find(token->indexData);
 				if (it != classInfo->constValue.end()) {
 					throw ParserError(
-					    token->line, "Duplicat value " +
+					    token->line, "Duplicate value " +
 					                     context.lexerString[token->indexData]);
 				}
 				Offset id = compile.registerEnumConstPool(node->classId);
@@ -49,7 +49,7 @@ inline void loadEnumBody(in_func, size_t &i, CreateClassNode *node,
 				                                compile.constPool[id], id);
 				if (!nextToken(&token, context.tokens, i)) {
 					throw ParserError(firstLine,
-					                  "Bug: Lexer is not ensure close bracket");
+					                  "Bug: Lexer did not ensure a closing bracket");
 				}
 				switch (token->type) {
 					case Lexer::TokenType::COMMA: {
@@ -109,7 +109,7 @@ void loadEnum(in_func, size_t &i) {
 	const std::string &name = context.lexerString[nameId];
 
 	if (context.defaultClassMap.find(nameId) != context.defaultClassMap.end()) {
-		throw ParserError(firstLine, "Class " + name + " has exists");
+		throw ParserError(firstLine, "Class " + name + " already exists");
 	}
 
 	auto node = context.newClasses.push(firstLine, nameId,

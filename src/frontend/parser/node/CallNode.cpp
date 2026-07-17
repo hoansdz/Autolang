@@ -261,7 +261,7 @@ void CallNode::optimize(in_func) {
 	if (count == 0)
 		throwError(std::string("Cannot find function name : ") + funcName);
 	bool ambitiousCall = false;
-	uint8_t foundIndex;
+	// uint8_t foundIndex;
 	bool found = false;
 	MatchOverload first;
 	MatchOverload second;
@@ -274,7 +274,7 @@ void CallNode::optimize(in_func) {
 			continue;
 		}
 		found = true;
-		foundIndex = j;
+		// foundIndex = j;
 		break;
 	} // Find function
 	for (; j < count; ++j) {
@@ -286,7 +286,7 @@ void CallNode::optimize(in_func) {
 				ambitiousCall = true;
 				continue;
 			}
-			foundIndex = j;
+			// foundIndex = j;
 			ambitiousCall = false;
 			first = second;
 		}
@@ -309,30 +309,44 @@ void CallNode::optimize(in_func) {
 		for (int j = 0; j < count; ++j) {
 			auto &vecs = *funcVec[j];
 			if (vecs.empty()) {
-				found = "EMPTY";
 				printDebug("Empty");
 			}
 			for (auto v : vecs) {
+				auto func = compile.functions[v];
+				auto funcInfo = context.functionInfo[v];
+				// if (func->functionFlags & FunctionFlags::FUNC_UNUSABLE) {
+				// 	continue;
+				// }
 				if (isFirst1) {
 					isFirst1 = false;
 				} else {
 					found += "\n";
 				}
-				found += context.functionInfo[v]->toString(in_data);
+				found += funcInfo->toString(in_data);
 			}
 		}
-		throwError(std::string("Cannot find function name: " +
-		                       context.lexerString[nameId] +
-		                       " has arguments : ") +
-		           currentFuncLog + ") \nFound: " + found);
+		throwError(
+		    std::string(
+		        "Cannot find function name: " + context.lexerString[nameId] +
+		        (caller
+		             ? " in class '" +
+		                   compile.classes[caller->classId]->getName(compile) +
+		                   "'"
+		             : "") +
+		        " has arguments : ") +
+		    currentFuncLog + ") " + (found.empty() ? "" : "\nFound: " + found));
 	}
 	if (ambitiousCall) {
 		std::string message = "Ambiguous Call : " + funcName;
 		for (int j = 0; j < count; ++j) {
 			auto &vecs = *funcVec[j];
 			for (auto v : vecs) {
-				message +=
-				    "\n  Founded " + context.functionInfo[v]->toString(in_data);
+				auto func = compile.functions[v];
+				auto funcInfo = context.functionInfo[v];
+				if (func->functionFlags & FunctionFlags::FUNC_UNUSABLE) {
+					continue;
+				}
+				message += "\n  Founded " + funcInfo->toString(in_data);
 			}
 		}
 
@@ -361,6 +375,8 @@ void CallNode::optimize(in_func) {
 			auto funcExpectClass = funcInfo->parameter->parameters[i];
 			auto funcExpectClassId = func->args[i++];
 			auto funcExpectClassInfo = context.classInfo[funcExpectClassId];
+			auto genericBaseClassId =
+			    compile.classes[funcExpectClassId]->genericBaseClassId;
 			if (argument->isNullable() && !funcExpectClass->nullable) {
 				if (mode->flags & LibraryFlags::ALLOW_NON_NULL_ASSERTION) {
 					throwError(
@@ -421,7 +437,7 @@ void CallNode::optimize(in_func) {
 				case DefaultClass::nullClassId: {
 					switch (argument->kind) {
 						case NodeType::CREATE_ARRAY: {
-							if (funcExpectClassInfo->baseClassId !=
+							if (genericBaseClassId !=
 							    DefaultClass::arrayClassId) {
 								goto notFound;
 							}
@@ -431,7 +447,7 @@ void CallNode::optimize(in_func) {
 							break;
 						}
 						case NodeType::CREATE_MAP: {
-							if (funcExpectClassInfo->baseClassId !=
+							if (genericBaseClassId !=
 							    DefaultClass::mapClassId) {
 								goto notFound;
 							}
@@ -441,9 +457,9 @@ void CallNode::optimize(in_func) {
 							break;
 						}
 						case NodeType::CREATE_SET: {
-							if (funcExpectClassInfo->baseClassId !=
+							if (genericBaseClassId !=
 							    DefaultClass::setClassId) {
-								if (funcExpectClassInfo->baseClassId ==
+								if (genericBaseClassId ==
 								    DefaultClass::mapClassId) {
 									argument = context.createMapPool.push(
 									    argument->line, nullptr,
@@ -662,9 +678,11 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 					auto &argument = arguments[j];
 					auto funcExpectClassInfo =
 					    context.classInfo[funcExpectClassId];
+					auto genericBaseClassId =
+					    compile.classes[funcExpectClassId]->genericBaseClassId;
 					switch (argument->kind) {
 						case NodeType::CREATE_ARRAY: {
-							if (funcExpectClassInfo->baseClassId !=
+							if (genericBaseClassId !=
 							    DefaultClass::arrayClassId) {
 								goto err;
 							}
@@ -673,7 +691,7 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 							break;
 						}
 						case NodeType::CREATE_MAP: {
-							if (funcExpectClassInfo->baseClassId !=
+							if (genericBaseClassId !=
 							    DefaultClass::mapClassId) {
 								goto err;
 							}
@@ -682,9 +700,9 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 							break;
 						}
 						case NodeType::CREATE_SET: {
-							if (funcExpectClassInfo->baseClassId !=
+							if (genericBaseClassId !=
 							    DefaultClass::setClassId) {
-								if (funcExpectClassInfo->baseClassId !=
+								if (genericBaseClassId !=
 								    DefaultClass::mapClassId) {
 									goto err;
 								}
@@ -775,6 +793,10 @@ bool CallNode::match(in_func, MatchOverload &match,
 				continue;
 			skip = true;
 		}
+		if (match.func->functionFlags & FunctionFlags::FUNC_UNUSABLE &&
+		    funcInfo->tokenIndex > tokenIndex) {
+			continue;
+		}
 		size_t argumentSize = arguments.size() + skip;
 		if (argumentSize < funcInfo->parameter->defaultValuePos ||
 		    argumentSize > funcInfo->parameter->parameters.size())
@@ -792,18 +814,23 @@ bool CallNode::match(in_func, MatchOverload &match,
 			// and " + compile.classes[funcExpectClassId]->getName(compile));
 
 			if (funcExpectClassId == inputClassId) {
-				if (funcExpectClassId == DefaultClass::functionClassId &&
-				    arguments[j]->kind != NodeType::FUNCTION_ACCESS) {
-					// Function access expected context to know what function
-					// auto funcInfo = context.functionInfo[match.id];
-					// std::cerr << j << " "
-					//           << funcInfo->parameter->parameters[j + skip]
-					//                  ->classDeclaration
-					//           << " " << arguments[j]->getNodeType() << "\n";
-					if (!funcInfo->parameter->parameters[j + skip]
-					         ->classDeclaration->isMatch(
-					             arguments[j]->classDeclaration)) {
-						goto finished;
+				if (funcExpectClassId == DefaultClass::functionClassId) {
+					if (arguments[j]->kind != NodeType::FUNCTION_ACCESS) {
+						// Function access expected context to know what
+						// function auto funcInfo =
+						// context.functionInfo[match.id]; std::cerr << j << " "
+						//           << funcInfo->parameter->parameters[j +
+						//           skip]
+						//                  ->classDeclaration
+						//           << " " << arguments[j]->getNodeType() <<
+						//           "\n";
+						if (!funcInfo->parameter->parameters[j + skip]
+						         ->classDeclaration->isMatch(
+						             arguments[j]->classDeclaration)) {
+							goto finished;
+						}
+					} else {
+						
 					}
 				}
 				match.score += 2;
@@ -819,25 +846,28 @@ bool CallNode::match(in_func, MatchOverload &match,
 						auto argument = arguments[j];
 						auto funcExpectClassInfo =
 						    context.classInfo[funcExpectClassId];
+						auto genericBaseClassId =
+						    compile.classes[funcExpectClassId]
+						        ->genericBaseClassId;
 						switch (argument->kind) {
 							case NodeType::CREATE_ARRAY: {
-								if (funcExpectClassInfo->baseClassId !=
+								if (genericBaseClassId !=
 								    DefaultClass::arrayClassId) {
 									goto finished;
 								}
 								break;
 							}
 							case NodeType::CREATE_MAP: {
-								if (funcExpectClassInfo->baseClassId !=
+								if (genericBaseClassId !=
 								    DefaultClass::mapClassId) {
 									goto finished;
 								}
 								break;
 							}
 							case NodeType::CREATE_SET: {
-								if (funcExpectClassInfo->baseClassId !=
+								if (genericBaseClassId !=
 								    DefaultClass::setClassId) {
-									if (funcExpectClassInfo->baseClassId ==
+									if (genericBaseClassId ==
 									    DefaultClass::mapClassId) {
 										break;
 									}
@@ -923,7 +953,7 @@ void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				bytecodes.emplace_back(Opcode::CREATE_OBJECT);
 				put_opcode_u32(bytecodes, classId);
 				put_opcode_u32(bytecodes,
-				               compile.classes[classId]->memberId.size());
+				               compile.classes[classId]->memberMap.size());
 			}
 		}
 	}
@@ -990,7 +1020,7 @@ ExprNode *CallNode::copy(in_func) {
 		    static_cast<HasClassIdNode *>(argument->copy(in_data)));
 	}
 	auto newNode = context.callNodePool.push(
-	    line, context.currentClassId, newCaller, nameId,
+	    line, tokenIndex, context.currentClassId, newCaller, nameId,
 	    std::move(newArguments), justFindStatic, nullable, accessNullable);
 	newNode->classId = classId;
 	newNode->classDeclaration = classDeclaration;

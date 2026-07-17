@@ -3,13 +3,13 @@
 @no_constructor
 class Int {
 	@native("to_string")
-	func toString(): String
+	fun toString(): String
 }
 @no_extends
 @no_constructor
 class Float {
 	@native("to_string")
-	func toString(): String
+	fun toString(): String
 }
 @no_extends
 @no_constructor
@@ -20,92 +20,92 @@ class Bool {
 @no_constructor
 class String {
 	@native("string_constructor")
-	static func String(): String
+	static fun String(): String
 	
 	@native("string_constructor")
-	static func String(str: String): String
+	static fun String(str: String): String
 
 	@native("string_constructor")
-	static func String(str: String, repeatTimes: Int): String
+	static fun String(str: String, repeatTimes: Int): String
 
 	@native("string_size")
-	func size(): Int
+	fun size(): Int
 
 	@native("str_is_empty")
-	func isEmpty(): Bool
+	fun isEmpty(): Bool
 
 	@native("str_to_int")
-	func toInt(): Int
+	fun toInt(): Int
 
 	@native("str_to_float")
-	func toFloat(): Float
+	fun toFloat(): Float
 
 	@native("str_get")
-	func get(position: Int): String
+	fun get(position: Int): String
 
 	// @native("str_set")
-	// func set(position: Int, chr: Int)
+	// fun set(position: Int, chr: Int)
 
 	// @native("str_set")
-	// func set(position: Int, str: String)
+	// fun set(position: Int, str: String)
 
 	@native("str_char_at")
-	func charAt(position: Int): Int
+	fun charAt(position: Int): Int
 
 	@native("str_substr")
-	func substr(from: Int): String
+	fun substr(from: Int): String
 
 	@native("str_substr")
-	func substr(from: Int, length: Int): String
+	fun substr(from: Int, length: Int): String
 
 	@native("str_trim")
-	func trim(): String
+	fun trim(): String
 
 	@native("str_contains")
-	func contains(sub: String): Bool
+	fun contains(sub: String): Bool
 
 	@native("str_index_of")
-	func indexOf(sub: String): Int
+	fun indexOf(sub: String): Int
 
 	@native("str_split")
-	func split(delimiter: String, classId: Int = getClassId(Array<String>)): Array<String>
+	fun split(delimiter: String, classId: Int = getClassId(Array<String>)): Array<String>
 
 	@native("str_replace")
-	func replace(old: String, new: String): String
+	fun replace(old: String, new: String): String
 }
 
 @no_constructor
 @no_extends
 class Bytes {
     @native("bytes_constructor")
-    static func Bytes(initialSize: Int = 0): Bytes
+    static fun Bytes(initialSize: Int = 0): Bytes
 
 	// @native("bytes_resize")
-	// func resize(size: Int)
+	// fun resize(size: Int)
 
     @native("bytes_append")
-    func append(value: Int)
+    fun append(value: Int)
 
     @native("bytes_size")
-    func size(): Int
+    fun size(): Int
 
     @native("bytes_is_empty")
-    func isEmpty(): Bool
+    fun isEmpty(): Bool
 
     @native("bytes_get")
-    func get(index: Int): Int
+    fun get(index: Int): Int
 
     @native("bytes_set")
-    func set(index: Int, value: Int)
+    fun set(index: Int, value: Int)
 
     @native("bytes_clear")
-    func clear()
+    fun clear()
 
     @native("bytes_slice")
-    func slice(from: Int, to: Int): Bytes
+    fun slice(from: Int, to: Int): Bytes
 
     @native("bytes_to_string")
-    func toString(): String
+    fun toString(): String
 }
 
 @no_extends
@@ -141,151 +141,151 @@ class Exception(val message: String) {
 @no_extends
 class Array<T> {
 
-	static func __CLASS__(): Array<T> = <T>[]
+	static fun __CLASS__(): Array<T> = <T>[]
 
 	@native("arr_add")
-	func add(value: T)
+	fun add(value: T)
 
 	@native("arr_remove")
-	func remove(index: Int)
+	fun remove(index: Int)
 
 	@native("arr_size")
-	func size(): Int
+	fun size(): Int
 
 	@native("arr_is_empty")
-	func isEmpty(): Bool
+	fun isEmpty(): Bool
 
 	@native("arr_get")
-	func get(index: Int): T
+	fun get(index: Int): T
 
 	@native("arr_set")
-	func set(index: Int, value: T)
+	fun set(index: Int, value: T)
 
 	@native("arr_clear")
-	func clear()
+	fun clear()
 
 	@native("arr_contains")
-	func contains(value: T): Bool
+	fun contains(value: T): Bool
 
 	@native("arr_for_each")
-	func forEach(fn: (T) -> Void)
+	fun forEach(fn: (T) -> Void)
 
 	@native("arr_filter")
-	func filter(fn: (T) -> Bool): Array<T>
+	fun filter(fn: (T) -> Bool): Array<T>
 
 	@native("arr_sort")
-	func sort(comparator: (T, T) -> Int)
+	fun sort(comparator: (T, T) -> Int)
 
 	@native("arr_slice")
-	func slice(from: Int, to: Int): Array<T>
+	fun slice(from: Int, to: Int): Array<T>
 
 	@native("arr_index_of")
-	func indexOf(value: T): Int
+	fun indexOf(value: T): Int
 
 	@native("arr_reserve")
-	func reserve(capacity: Int)
+	fun reserve(capacity: Int)
 
 	@native("arr_pop")
-	func pop(): T?
+	fun pop(): T?
 
 	@native("arr_insert")
-	func insert(index: Int, value: T)
+	fun insert(index: Int, value: T)
 
 	@native("arr_to_string")
-	func toString(): String
+	fun toString(): String
 }
 
 @no_extends
 @no_constructor
 class Set<T> {
-	static func __CLASS__(): Set<T> = <T>{}
+	static fun __CLASS__(): Set<T> = <T>{}
 
 	@native("set_add")
-	func add(value: T)
+	fun add(value: T)
 
 	@native("set_remove")
-	func remove(value: T)
+	fun remove(value: T)
 
 	@native("set_size")
-	func size(): Int
+	fun size(): Int
 
 	@native("set_contains")
-	func contains(value: T): Bool
+	fun contains(value: T): Bool
 
 	@native("set_clear")
-	func clear()
+	fun clear()
 
 	@native("set_is_empty")
-    func isEmpty(): Bool
+    fun isEmpty(): Bool
 
     @native("set_for_each")
-    func forEach(fn: (T) -> Void)
+    fun forEach(fn: (T) -> Void)
 
     @native("set_to_array")
-    func toArray(classId: Int = getClassId(Array<T>)): Array<T>
+    fun toArray(classId: Int = getClassId(Array<T>)): Array<T>
 
 	@native("set_union")
-    func union(other: Set<T>): Set<T>
+    fun union(other: Set<T>): Set<T>
 
     @native("set_intersect")
-    func intersect(other: Set<T>): Set<T>
+    fun intersect(other: Set<T>): Set<T>
 
     @native("set_difference")
-    func difference(other: Set<T>): Set<T>
+    fun difference(other: Set<T>): Set<T>
 	
 	@native("set_to_string")
-	func toString(): String
+	fun toString(): String
 }
 
 @no_extends
 @no_constructor
 class Map<K, V> {
-	static func __CLASS__(): Map<K, V> = <K, V>{}
+	static fun __CLASS__(): Map<K, V> = <K, V>{}
 	
 	@native("map_get")
-	func get(key: K): V?
+	fun get(key: K): V?
 
 	@native("map_get_or_default")
-	func getOrDefault(key: K, defaultValue: V): V
+	fun getOrDefault(key: K, defaultValue: V): V
 	
 	@native("map_set")
-	func set(key: K, value: V)
+	fun set(key: K, value: V)
 
 	@native("map_is_empty")
-    func isEmpty(): Bool
+    fun isEmpty(): Bool
 
     @native("map_contains_key")
-    func containsKey(key: K): Bool
+    fun containsKey(key: K): Bool
 
 	@native("map_size")
-	func size(): Int
+	fun size(): Int
 
 	@native("map_for_each")
-    func forEach(fn: (K, V) -> Void)
+    fun forEach(fn: (K, V) -> Void)
 
 	@native("map_keys")
-    func keys(classId: Int = getClassId(Array<K>)): Array<K>
+    fun keys(classId: Int = getClassId(Array<K>)): Array<K>
 
 	@native("map_values")
-    func values(classId: Int = getClassId(Array<V>)): Array<V>
+    fun values(classId: Int = getClassId(Array<V>)): Array<V>
 
 	@native("map_remove")
-	func remove(key: K)
+	fun remove(key: K)
 
 	@native("map_clear")
-	func clear()
+	fun clear()
 
 	@native("map_to_string")
-	func toString(): String
+	fun toString(): String
 }
 	
 @native("print")
-func print(value: Any? = "")
+fun print(value: Any? = "")
 @native("println")
-func println(value: Any? = "")
+fun println(value: Any? = "")
 @native("get_refcount")
-func getRefCount(value: Any?): Int
-func assert(condition: Bool, fileName: String, line: Int) {
+fun getRefCount(value: Any?): Int
+fun assert(condition: Bool, fileName: String, line: Int) {
 	if (condition) {
 		return
 	}
@@ -293,5 +293,5 @@ func assert(condition: Bool, fileName: String, line: Int) {
 }
 // @wait_input
 // @native("input")
-// func input(): String
+// fun input(): String
 	)###

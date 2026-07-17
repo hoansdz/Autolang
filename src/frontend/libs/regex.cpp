@@ -98,18 +98,18 @@ void init(ACompiler &compiler) {
 class Regex {
     
     @native("regex_constructor")
-    private static func _create(classId: Int, pattern: String): Regex
+    private static fun _create(classId: Int, pattern: String): Regex
     
-    static func compile(pattern: String): Regex = _create(getClassId(Regex), pattern)
+    static fun compile(pattern: String): Regex = _create(getClassId(Regex), pattern)
 
     @native("regex_is_match")
-    func isMatch(text: String): Bool
+    fun isMatch(text: String): Bool
 
     @native("regex_find_all")
-    func findAll(text: String, arrayClassId: Int = getClassId(Array<String>)): Array<String>
+    fun findAll(text: String, arrayClassId: Int = getClassId(Array<String>)): Array<String>
 
     @native("regex_replace")
-    func replace(text: String, replacement: String): String
+    fun replace(text: String, replacement: String): String
 }
     )###",
 	                                LibraryConfig(), std::move(nativeMap));

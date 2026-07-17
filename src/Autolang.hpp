@@ -21,6 +21,14 @@
 #include "backend/libs/set.cpp"
 #include "backend/vm/ANotifier.cpp"
 #include "backend/vm/AVM.cpp"
+#if defined(__GNUC__) || defined(__clang__)
+#define AUTOLANG_USE_COMPUTED_GOTO_
+#endif
+#ifdef AUTOLANG_USE_COMPUTED_GOTO
+#include "backend/vm/AVM_run_computed_goto.cpp"
+#else
+#include "backend/vm/AVM_run_switch.cpp"
+#endif
 #include "backend/vm/AVMLoader.cpp"
 #include "backend/vm/AVMLog.cpp"
 #include "frontend/ACompiler.cpp"

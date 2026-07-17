@@ -1,4 +1,4 @@
-func testDivideByZero() {
+fun testDivideByZero() {
 	// Int divide by zero -> exception
 	var errorCaught = false
 	try {

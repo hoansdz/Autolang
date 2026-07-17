@@ -1,6 +1,6 @@
 // pi_bench.al
 val start = Time.now()
-func benchmarkPi() {
+fun benchmarkPi() {
     val iterations = 10000000
     var pi = 0.0
     var i = 0

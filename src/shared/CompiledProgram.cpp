@@ -20,12 +20,17 @@ void CompiledProgram::destroy() {
 	classAllocator.destroy();
 	classes.clear();
 	classMap.clear();
-	constObjectAllocator.destroy();
 	constPool.clear();
+	constObjectAllocator.destroy();
 	constPool.push_back(DefaultClass::nullObject);
 	constPool.push_back(DefaultClass::trueObject);
 	constPool.push_back(DefaultClass::falseObject);
 	stringArena.reset();
+	allBytecodes.clear();
+	allGenericType.clear();
+	allMemberId.clear();
+	allMemberNullable.clear();
+	allGenericTypeNullable.clear();
 }
 
 void CompiledProgram::refresh() { manager.refresh(); }
@@ -78,13 +83,15 @@ FunctionId CompiledProgram::registerFunction(AClass *clazz, std::string name,
 ClassId CompiledProgram::registerClass(std::string name, uint32_t classFlags) {
 	auto it = classMap.find(name);
 	if (it != classMap.end())
-		throw std::runtime_error("Class " + name + " has exist");
+		throw std::runtime_error("Class " + name + " already exists");
 	ClassId id = classes.size();
 	AClass *clazz = classAllocator.push();
 	// std::cerr << "Created class name: " << name << " " << id << "\n";
 	clazz->nameStringOffset = stringArena.push_back(name);
 	clazz->id = id;
 	clazz->classFlags = classFlags;
+	clazz->genericBaseClassId = 0;
+	clazz->parentId = 0;
 	classes.push_back(clazz);
 	classMap[name] = id;
 	return id;
@@ -147,6 +154,12 @@ CompiledProgram::~CompiledProgram() {
 	manager.destroy();
 	classAllocator.destroy();
 	functionAllocator.destroy();
+	for (auto obj : constPool) {
+		if (obj->type == DefaultClass::stringClassId) {
+			delete obj->str;
+		}
+	}
+	constObjectAllocator.destroy();
 }
 
 } // namespace AutoLang

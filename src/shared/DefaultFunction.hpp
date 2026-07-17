@@ -147,10 +147,8 @@ AObject *to_int(NativeFuncInData) {
 		default:
 			break;
 	}
-	notifier.throwException(
-	    "Cannot cast " +
-	    notifier.vm->data.classes[obj->type]->getName(notifier.vm->data) +
-	    " to Int");
+	notifier.throwException("Cannot cast '" + notifier.getClassName(obj->type) +
+	                        "' to 'Int'");
 	return nullptr;
 }
 
@@ -171,10 +169,8 @@ AObject *to_float(NativeFuncInData) {
 		default:
 			break;
 	}
-	notifier.throwException(
-	    "Cannot cast " +
-	    notifier.vm->data.classes[obj->type]->getName(notifier.vm->data) +
-	    " to Float");
+	notifier.throwException("Cannot cast '" + notifier.getClassName(obj->type) +
+	                        "' to 'Float'");
 	return nullptr;
 }
 
@@ -190,10 +186,8 @@ AObject *to_string(NativeFuncInData) {
 		default:
 			break;
 	}
-	notifier.throwException(
-	    "Cannot cast " +
-	    notifier.vm->data.classes[obj->type]->getName(notifier.vm->data) +
-	    " to String");
+	notifier.throwException("Cannot cast '" + notifier.getClassName(obj->type) +
+	                        "' to 'String'");
 	return nullptr;
 }
 
@@ -263,6 +257,85 @@ AObject *str_get(NativeFuncInData) {
 	}
 
 	return notifier.createString(AString::from(str->data[pos]));
+}
+
+inline AObject *str_starts_with(NativeFuncInData) {
+    AString *str = args[0]->str;
+    AString *prefix = args[1]->str;
+    if (prefix->size > str->size) return DefaultClass::falseObject;
+    return notifier.createBool(std::memcmp(str->data, prefix->data, prefix->size) == 0);
+}
+
+inline AObject *str_ends_with(NativeFuncInData) {
+    AString *str = args[0]->str;
+    AString *suffix = args[1]->str;
+    if (suffix->size > str->size) return DefaultClass::falseObject;
+    return notifier.createBool(std::memcmp(str->data + str->size - suffix->size, suffix->data, suffix->size) == 0);
+}
+
+inline AObject *str_last_index_of(NativeFuncInData) {
+    std::string_view full(args[0]->str->data, args[0]->str->size);
+    std::string_view target(args[1]->str->data, args[1]->str->size);
+    auto pos = full.rfind(target);
+    if (pos == std::string_view::npos) return notifier.createInt(-1);
+    return notifier.createInt(static_cast<int64_t>(pos));
+}
+
+inline AObject *str_to_lower(NativeFuncInData) {
+    AString *str = args[0]->str;
+    char *newStr = new char[str->size + 1];
+    for (size_t i = 0; i < str->size; ++i) {
+        char c = str->data[i];
+        newStr[i] = (c >= 'A' && c <= 'Z') ? (c + 32) : c;
+    }
+    newStr[str->size] = '\0';
+    return notifier.createString(new AString(newStr, str->size));
+}
+
+inline AObject *str_to_upper(NativeFuncInData) {
+    AString *str = args[0]->str;
+    char *newStr = new char[str->size + 1];
+    for (size_t i = 0; i < str->size; ++i) {
+        char c = str->data[i];
+        newStr[i] = (c >= 'a' && c <= 'z') ? (c - 32) : c;
+    }
+    newStr[str->size] = '\0';
+    return notifier.createString(new AString(newStr, str->size));
+}
+
+inline AObject *str_replace(NativeFuncInData) {
+    std::string_view full(args[0]->str->data, args[0]->str->size);
+    std::string_view oldStr(args[1]->str->data, args[1]->str->size);
+    std::string_view newStr(args[2]->str->data, args[2]->str->size);
+
+    if (oldStr.empty()) return notifier.createString(AString::copy(args[0]->str));
+
+    size_t count = 0;
+    size_t pos = 0;
+    while ((pos = full.find(oldStr, pos)) != std::string_view::npos) {
+        ++count;
+        pos += oldStr.length();
+    }
+
+    if (count == 0) return notifier.createString(AString::copy(args[0]->str));
+
+    size_t newSize = full.length() + count * (newStr.length() - oldStr.length());
+    char *resultStr = new char[newSize + 1];
+    
+    size_t writePos = 0;
+    size_t readPos = 0;
+    while ((pos = full.find(oldStr, readPos)) != std::string_view::npos) {
+        size_t chunkLen = pos - readPos;
+        std::memcpy(resultStr + writePos, full.data() + readPos, chunkLen);
+        writePos += chunkLen;
+        std::memcpy(resultStr + writePos, newStr.data(), newStr.length());
+        writePos += newStr.length();
+        readPos = pos + oldStr.length();
+    }
+    std::memcpy(resultStr + writePos, full.data() + readPos, full.length() - readPos);
+    resultStr[newSize] = '\0';
+
+    return notifier.createString(new AString(resultStr, newSize));
 }
 
 // AObject *str_set(NativeFuncInData) {
@@ -353,23 +426,6 @@ AObject *str_index_of(NativeFuncInData) {
 AObject *str_is_empty(NativeFuncInData) {
 	AString *str = args[0]->str;
 	return notifier.createBool(str->size == 0);
-}
-
-AObject *str_replace(NativeFuncInData) {
-	std::string full(args[0]->str->data, args[0]->str->size);
-	std::string oldStr(args[1]->str->data, args[1]->str->size);
-	std::string newStr(args[2]->str->data, args[2]->str->size);
-
-	if (oldStr.empty())
-		return notifier.createString(AString::copy(args[0]->str));
-
-	size_t pos = 0;
-	while ((pos = full.find(oldStr, pos)) != std::string::npos) {
-		full.replace(pos, oldStr.length(), newStr);
-		pos += newStr.length();
-	}
-
-	return notifier.createString(AString::from(full));
 }
 
 AObject *str_split(NativeFuncInData) {

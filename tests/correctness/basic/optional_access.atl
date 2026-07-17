@@ -2,15 +2,15 @@ class OptionalAccess(var child: OptionalAccess?) {
     static val a = 7
 	val x = 0
 	val m = 0
-    func hello(value: Int) {
+    fun hello(value: Int) {
         this.x += value
     }
-	func get(): Int? {
+	fun get(): Int? {
 		return null
 	}
 }
 
-func testOptionalAccess() {
+fun testOptionalAccess() {
     // Null safe call on null -> no-op
     var a: OptionalAccess?
     a?.hello(1)

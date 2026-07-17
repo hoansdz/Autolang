@@ -34,6 +34,9 @@ struct CompiledProgram {
 	FunctionId mainFunctionId;
 	std::vector<uint8_t> allBytecodes;
 	std::vector<uint32_t> allGenericType;
+	std::vector<uint32_t> allMemberId;
+	std::vector<bool> allMemberNullable;
+	std::vector<bool> allGenericTypeNullable;
 	StringArena stringArena;
 	ChunkArena<Function, 64> functionAllocator;
 	std::vector<Function *> functions;

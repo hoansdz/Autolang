@@ -2,6 +2,7 @@
 #define ACOMPILER_CPP
 
 #include "ACompiler.hpp"
+#include "frontend/libs/bytes.hpp"
 #include "frontend/libs/math.hpp"
 #include "frontend/libs/stdlib.hpp"
 #include "frontend/libs/time.hpp"
@@ -191,9 +192,13 @@ void ACompiler::loadBuiltInFunctions() {
 		if (!library->lexerContext.tokens.empty())
 			continue;
 		lexerTextToToken(library);
+		library->lexerContext.bracketStack.clear();
+		library->lexerContext.bracketStack.shrink_to_fit();
 	}
 	parserContext.importMap.clear();
 	loadedBuiltIn = true;
+	parserContext.stdLexerString = parserContext.lexerString;
+	parserContext.stdLexerStringMap = parserContext.lexerStringMap;
 }
 
 void ACompiler::loadMainSource(const char *path, LibraryConfig config,
@@ -284,6 +289,7 @@ void ACompiler::loadMainSource(LibraryData *library) {
 	} catch (const ParserError &err) {
 		context.logError(err.line, err.message);
 		state = CompilerState::CT_ERROR;
+		return;
 	}
 
 	auto &newEstimate = mainSource->lexerContext.estimate;
@@ -311,6 +317,37 @@ void ACompiler::loadMainSource(LibraryData *library) {
 	context.loadingLibs.push_back(library);
 	loadedMainSource = true;
 	state = CompilerState::CT_ANALYZED;
+}
+
+bool ACompiler::compileAndRun(const char *path, LibraryConfig config,
+                              const ANativeMap &nativeFuncMap) {
+	try {
+		if (compile(path, config, nativeFuncMap)) {
+			run();
+		}
+		refresh();
+		return true;
+	} catch (const std::exception &e) {
+		std::cerr << e.what() << "\n";
+	}
+	refresh();
+	return false;
+}
+
+bool ACompiler::compileAndRun(const char *path, const char *data,
+                              LibraryConfig config,
+                              const ANativeMap &nativeFuncMap) {
+	try {
+		if (compile(path, data, config, nativeFuncMap)) {
+			run();
+		}
+		refresh();
+		return true;
+	} catch (const std::exception &e) {
+		std::cerr << e.what() << "\n";
+	}
+	refresh();
+	return false;
 }
 
 bool ACompiler::compile(const char *path, LibraryConfig config,
@@ -364,8 +401,12 @@ void ACompiler::generateBytecodes() {
 	auto &compile = vm.data;
 
 	estimate(in_data, mainSource->lexerContext);
-
+	// long long line = context.tokens.empty() ? 0 : context.tokens[0].line;
 	// for (auto& token : context.tokens) {
+	// 	if(line != token.line) {
+	// 		std::cerr<<"\n";
+	// 		line = token.line;
+	// 	}
 	// 	std::cerr<<token.toString(context)<<" ";
 	// }
 	// std::cerr<<"\n";
@@ -382,11 +423,10 @@ void ACompiler::generateBytecodes() {
 			if (node == nullptr) {
 				continue;
 			}
-			if (context.annotationFlags || context.modifierflags) {
-				ExprNode::deleteNode(node);
-				ensureNoKeyword(in_data, i);
-				ensureNoAnnotations(in_data, i);
-			}
+			// if (context.annotationFlags || context.modifierflags) {
+			// 	throw ParserError(node->line, "Bug: Annotations and modifiers
+			// hasn't reset yet");
+			// }
 			context.getCurrentFunctionInfo(in_data)->body.nodes.push_back(node);
 		} catch (const std::runtime_error &err) {
 			context.hasError = true;
@@ -530,8 +570,10 @@ void ACompiler::generateBytecodes() {
 					inputClass->throwError(
 					    context.lexerString[declaration->nameId] +
 					    " must be extends " +
-					    compile.classes[conditionClassId]->getName(compile) + " but " +
-					    compile.classes[inputClassId]->getName(compile) + " found");
+					    compile.classes[conditionClassId]->getName(compile) +
+					    " but " +
+					    compile.classes[inputClassId]->getName(compile) +
+					    " found");
 				}
 			}
 		}
@@ -705,6 +747,7 @@ void ACompiler::generateBytecodes() {
 			--mainFunc->bytecodes.offset;
 		}
 
+		printDebug("Start put closure's bytecode on vector allBytecodes");
 		for (auto closure : context.allClosureNode) {
 			auto func = compile.functions[*closure->funcId];
 			func->bytecodes.offset = compile.allBytecodes.size();
@@ -712,6 +755,20 @@ void ACompiler::generateBytecodes() {
 			compile.allBytecodes.insert(compile.allBytecodes.end(),
 			                            closure->currentBytecodes.begin(),
 			                            closure->currentBytecodes.end());
+		}
+
+		printDebug("Put member data to classes");
+		for (int i = 0; i < sizeNewClasses; ++i) {
+			auto *node = context.newClasses[i];
+			auto clazz = compile.classes[node->classId];
+			auto classInfo = context.classInfo[clazz->id];
+			if (classInfo->genericData || classInfo->member.empty())
+				continue;
+			clazz->memberIdOffset = compile.allMemberId.size();
+			for (auto member : classInfo->member) {
+				compile.allMemberId.push_back(member->classId);
+				compile.allMemberNullable.push_back(member->nullable);
+			}
 		}
 
 		printDebug("Real Declarations: " +
@@ -734,13 +791,6 @@ void ACompiler::generateBytecodes() {
 		// size_t total = 0;
 		// for (auto& [k, v] : compile.funcMap)
 		// 	++total;
-
-		for (auto *lib : generatedLibraries) {
-			delete lib;
-		}
-		mainSource = nullptr;
-		generatedLibraryMap.clear();
-		generatedLibraries.clear();
 
 		// printDebug("TOTAL FUNC IN MAP: " + std::to_string(total));
 	} catch (const ParserError &err) {
@@ -843,21 +893,16 @@ void ACompiler::setAllowedDomainsRules(const std::vector<AllowRule> &rules) {
 	try {
 		vm.allowedDomainsRegex = new std::regex(mergedPattern);
 	} catch (const std::regex_error &e) {
-		throw std::invalid_argument(std::string("Invalid regex pattern: ") + e.what());
+		throw std::invalid_argument(std::string("Invalid regex pattern: ") +
+		                            e.what());
 	}
 }
 #endif
 
 #ifndef NO_INCLUDE_LIBS_FILE
-void ACompiler::setAllowFileRead(bool allow) {
-	vm.allowFileRead = allow;
-}
-void ACompiler::setAllowFileWrite(bool allow) {
-	vm.allowFileWrite = allow;
-}
-void ACompiler::setAllowFileDelete(bool allow) {
-	vm.allowFileDelete = allow;
-}
+void ACompiler::setAllowFileRead(bool allow) { vm.allowFileRead = allow; }
+void ACompiler::setAllowFileWrite(bool allow) { vm.allowFileWrite = allow; }
+void ACompiler::setAllowFileDelete(bool allow) { vm.allowFileDelete = allow; }
 
 void ACompiler::setAllowedFilePathsRules(const std::vector<AllowRule> &rules) {
 	if (vm.allowedFilePathsRegex) {
@@ -883,7 +928,8 @@ void ACompiler::setAllowedFilePathsRules(const std::vector<AllowRule> &rules) {
 	try {
 		vm.allowedFilePathsRegex = new std::regex(mergedPattern);
 	} catch (const std::regex_error &e) {
-		throw std::invalid_argument(std::string("Invalid regex pattern: ") + e.what());
+		throw std::invalid_argument(std::string("Invalid regex pattern: ") +
+		                            e.what());
 	}
 }
 
@@ -903,7 +949,6 @@ void ACompiler::refresh() {
 	}
 	generatedLibraryMap.clear();
 	generatedLibraries.clear();
-	vm.data.allBytecodes.clear();
 	vm.data.destroy();
 	// AutoLang::DefaultClass::init(vm.data);
 	// AutoLang::Libs::stdlib::init(*this);
@@ -928,7 +973,7 @@ ACompiler::ACompiler(ACompilerConfig config) {
 	AutoLang::DefaultClass::init(*this);
 	AutoLang::DefaultFunction::init(*this);
 	AutoLang::Libs::time::init(*this);
-	AutoLang::Libs::vm::init(*this);
+	// AutoLang::Libs::vm::init(*this);
 
 	vm.data.constPool.push_back(DefaultClass::nullObject);
 	vm.data.constPool.push_back(DefaultClass::trueObject);
@@ -960,7 +1005,9 @@ ACompiler::ACompiler(ACompilerConfig config) {
 	}
 #endif
 #ifndef NO_INCLUDE_LIBS_DATE
-	AutoLang::Libs::date::init(*this);
+	if (config.addStdDate) {
+		AutoLang::Libs::date::init(*this);
+	}
 #endif
 #ifndef NO_INCLUDE_LIBS_REGEX
 	if (config.addStdRegex) {
@@ -973,16 +1020,19 @@ ACompiler::ACompiler(ACompilerConfig config) {
 	}
 #endif
 #ifndef NO_INCLUDE_LIBS_HTTP
-	if (config.addHttpJson) {
+	if (config.addStdHttp) {
 		AutoLang::Libs::http::init(*this);
 	}
 #endif
+	if (config.addStdBytes) {
+		AutoLang::Libs::bytes::init(*this);
+	}
 }
 
 ACompiler::~ACompiler() {
 	auto &context = parserContext;
 	auto &compile = vm.data;
-	freeData(in_data);
+	// freeData(in_data);
 	parserContext.refresh(vm.data);
 	if (mainSource) {
 		mainSource->lexerContext.refresh();

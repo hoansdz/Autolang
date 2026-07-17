@@ -1,8 +1,8 @@
 #ifndef LEXER_HPP
 #define LEXER_HPP
 
-#include "third_party/ankerl/unordered_dense.h"
 #include "shared/Type.hpp"
+#include "third_party/ankerl/unordered_dense.h"
 #include <exception>
 #include <fstream>
 #include <iostream>
@@ -112,6 +112,7 @@ enum TokenType : uint8_t {
 	THROW,
 	EXTENDS,
 	NATIVE,
+	JS_OBJECT,
 	OVERRIDE,
 	NO_OVERRIDE,
 	NO_CONSTRUCTOR,
@@ -146,7 +147,7 @@ static const HashMap<std::string, TokenType> CAST = {
     {"for", TokenType::FOR},
     {"in", TokenType::IN_},
     {"or", TokenType::OR_OR},
-    {"func", TokenType::FUNC},
+    {"fun", TokenType::FUNC},
     {"return", TokenType::RETURN},
     {"continue", TokenType::CONTINUE},
     {"break", TokenType::BREAK},
@@ -161,6 +162,7 @@ static const HashMap<std::string, TokenType> CAST = {
     {"constructor", TokenType::CONSTRUCTOR},
     {"extends", TokenType::EXTENDS},
     {"native", TokenType::NATIVE},
+	{"js_object", TokenType::JS_OBJECT},
     {"override", TokenType::OVERRIDE},
     {"no_override", TokenType::NO_OVERRIDE},
     {"no_constructor", TokenType::NO_CONSTRUCTOR},
@@ -276,11 +278,11 @@ struct Context {
 
 inline bool nextLine(Context &context, const char *lines, uint32_t &i);
 inline bool isOperator(char chr);
-inline bool isEndOfLine(Context &context, uint32_t &i);
+inline bool isEndOfLine(Context &context, uint32_t i);
 void loadFile(ParserContext *mainContext, LibraryData *library);
 void load(ParserContext *mainContext, LibraryData *library,
           std::vector<Offset> *importOffset);
-template <bool addLParen, bool isChar>
+template <bool addLParen, bool isChar, bool isRawString>
 inline void loadQuote(Context &context, uint32_t &i);
 std::string loadIdentifier(Context &context, uint32_t &i);
 std::string loadNumber(Context &context, uint32_t &i);

@@ -2,13 +2,13 @@
 var globalArraySum = 0
 
 // Named callback function for sort
-func arraySortValue(a: Int, b: Int): Int = when {
+fun arraySortValue(a: Int, b: Int): Int = when {
     a > b -> 1
     a == b -> 0
     else -> -1
 }
 
-func testArrayFeaturesExhaustive() {
+fun testArrayFeaturesExhaustive() {
     // 1. Test: Explicit Constructor Array<Int>(), reserve, isEmpty, size
     val explicitArr = Array<Int>()
     explicitArr.reserve(10)

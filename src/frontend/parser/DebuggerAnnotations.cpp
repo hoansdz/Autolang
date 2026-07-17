@@ -15,7 +15,7 @@ void loadAnnotations(in_func, size_t &i) {
 		std::cerr << ((int)(token->type == Lexer::TokenType::AT_SIGN)) << " "
 		          << token->line << "\n";
 		--i;
-		throw ParserError(firstLine, "Unexpected @");
+		throw ParserError(firstLine, "Expected annotation name after '@'");
 	}
 	switch (token->type) {
 		case Lexer::TokenType::OVERRIDE: {
@@ -26,7 +26,7 @@ void loadAnnotations(in_func, size_t &i) {
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
 				throw ParserError(context.tokens[i].line,
-				                  "@override must be followed by function");
+				                  "@override must be followed by a function");
 			}
 			--i;
 			break;
@@ -39,8 +39,9 @@ void loadAnnotations(in_func, size_t &i) {
 			context.annotationFlags |= AnnotationFlags::AN_NO_OVERRIDE;
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
-				throw ParserError(context.tokens[i].line,
-				                  "@no_override must be followed by function");
+				throw ParserError(
+				    context.tokens[i].line,
+				    "@no_override must be followed by a function");
 			}
 			--i;
 			break;
@@ -54,7 +55,7 @@ void loadAnnotations(in_func, size_t &i) {
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
 				throw ParserError(context.tokens[i].line,
-				                  "@wait_input must be followed by function");
+				                  "@wait_input must be followed by a function");
 			}
 			--i;
 			break;
@@ -67,11 +68,11 @@ void loadAnnotations(in_func, size_t &i) {
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 			    !expect(token, Lexer::TokenType::LPAREN)) {
 				--i;
-				throw ParserError(firstLine, "@native expected string value");
+				throw ParserError(firstLine, "@native expects a string value");
 			}
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 			    !expect(token, Lexer::TokenType::STRING)) {
-				throw ParserError(firstLine, "@native expected string value");
+				throw ParserError(firstLine, "@native expects a string value");
 			}
 			context.annotationMetadata[AnnotationFlags::AN_NATIVE] = *token;
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
@@ -83,7 +84,7 @@ void loadAnnotations(in_func, size_t &i) {
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
 				throw ParserError(context.tokens[i].line,
-				                  "@native must be followed by function");
+				                  "@native must be followed by a function");
 			}
 			--i;
 			break;
@@ -96,8 +97,9 @@ void loadAnnotations(in_func, size_t &i) {
 			context.annotationFlags |= AnnotationFlags::AN_NO_CONSTRUCTOR;
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
-				throw ParserError(context.tokens[i].line,
-				                  "@no_constructor must be followed by class");
+				throw ParserError(
+				    context.tokens[i].line,
+				    "@no_constructor must be followed by a class");
 			}
 			--i;
 			break;
@@ -111,7 +113,7 @@ void loadAnnotations(in_func, size_t &i) {
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
 				throw ParserError(context.tokens[i].line,
-				                  "@no_extends must be followed by class");
+				                  "@no_extends must be followed by a class");
 			}
 			--i;
 			break;
@@ -125,21 +127,38 @@ void loadAnnotations(in_func, size_t &i) {
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
 				throw ParserError(context.tokens[i].line,
-				                  "@native_data must be followed by class");
+				                  "@native_data must be followed by a class");
 			}
 			--i;
 			break;
 		}
+// #ifdef __EMSCRIPTEN__
+		case Lexer::TokenType::JS_OBJECT: {
+			if (context.annotationFlags & AnnotationFlags::AN_JS_OBJECT) {
+				throw ParserError(firstLine,
+				                  "Duplicate annotation @js_object");
+			}
+			context.annotationFlags |= AnnotationFlags::AN_JS_OBJECT;
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(context.tokens[i].line,
+				                  "@js_object must be followed by a class");
+			}
+			--i;
+			break;
+		}
+// #endif
 		case Lexer::TokenType::IMPORT: {
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 			    !expect(token, Lexer::TokenType::LPAREN)) {
 				--i;
-				throw ParserError(firstLine,
-				                  "Bug: @import not ensure ( bracket");
+				throw ParserError(
+				    firstLine, "Bug: @import is missing opening '(' bracket");
 			}
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 			    !expect(token, Lexer::TokenType::STRING)) {
-				throw ParserError(firstLine, "Bug: @import not ensure (String");
+				throw ParserError(firstLine,
+				                  "Bug: @import is missing a string argument");
 			}
 			std::string path = context.lexerString[token->indexData];
 			if (path[0] == '.') {
@@ -160,18 +179,18 @@ void loadAnnotations(in_func, size_t &i) {
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 			    !expect(token, Lexer::TokenType::RPAREN)) {
 				--i;
-				throw ParserError(firstLine,
-				                  "Bug: @import not ensure (String)");
+				throw ParserError(
+				    firstLine, "Bug: @import is missing closing ')' bracket");
 			}
 			if (!mustAppend)
 				break;
 			auto it =
 			    context.mainLexerContext->library->dependencies.find(path);
 			if (it == context.mainLexerContext->library->dependencies.end()) {
-				throw ParserError(
-				    firstLine, "Bug: Library '" +
-				                   context.mainLexerContext->library->path +
-				                   "' not ensure dependencies '" + path + "'");
+				throw ParserError(firstLine,
+				                  "Bug: Library '" +
+				                      context.mainLexerContext->library->path +
+				                      "' is missing dependency '" + path + "'");
 			}
 			auto library = it->second;
 			context.mode = library;

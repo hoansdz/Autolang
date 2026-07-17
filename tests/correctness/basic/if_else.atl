@@ -1,4 +1,4 @@
-func testIfExpression() {
+fun testIfExpression() {
 	// Basic if expression as value
 	val a = if (true) 10 else 20
 	assert(a == 10, __FILE__, __LINE__)

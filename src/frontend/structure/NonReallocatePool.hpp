@@ -19,7 +19,11 @@ public:
 	NonReallocatePool(const NonReallocatePool&) = delete;
 	NonReallocatePool& operator=(const NonReallocatePool&) = delete;
 	inline void allocate(size_t size) {
-		if (objects) throw std::runtime_error("No reallocate");
+		// assert(objects);
+		if (objects) {
+			int *a = nullptr;
+			*a = 5;
+		}
 		this->size = size;
 		objects = static_cast<T*>(::operator new(sizeof(T) * size));
 	}

@@ -23,11 +23,15 @@ class CompilerWrapper {
 #endif
 
 	CompilerWrapper(bool addStdFile, bool addStdRegex, bool addStdJson,
-	                bool addStdMath)
+	                bool addStdHttp, bool addStdMath, bool addStdBytes,
+	                bool addStdDate)
 	    : compiler(AutoLang::ACompilerConfig{.addStdFile = addStdFile,
 	                                         .addStdRegex = addStdRegex,
 	                                         .addStdJson = addStdJson,
-	                                         .addStdMath = addStdMath}) {
+	                                         .addStdMath = addStdMath,
+	                                         .addStdDate = addStdDate,
+	                                         .addStdBytes = addStdBytes,
+	                                         .addStdHttp = addStdHttp}) {
 		setvbuf(stderr, NULL, _IONBF, 0);
 	}
 
@@ -95,10 +99,10 @@ class CompilerWrapper {
 	}
 	void addDomainRule(int type, const std::string &value) {
 #ifndef NO_INCLUDE_LIBS_HTTP
-		pendingDomainRules.push_back({
-		    type == 0 ? AutoLang::AllowRuleType::PLAIN_PREFIX
-		             : AutoLang::AllowRuleType::REGEX,
-		    value});
+		pendingDomainRules.push_back(
+		    {type == 0 ? AutoLang::AllowRuleType::PLAIN_PREFIX
+		               : AutoLang::AllowRuleType::REGEX,
+		     value});
 #endif
 	}
 	void applyDomainRules() {
@@ -107,8 +111,6 @@ class CompilerWrapper {
 		pendingDomainRules.clear();
 #endif
 	}
-
-
 
 	void setAllowFileRead(bool allow) {
 #ifndef NO_INCLUDE_LIBS_FILE
@@ -128,7 +130,8 @@ class CompilerWrapper {
 #endif
 	}
 
-	// ---- File path whitelist builder (avoids emscripten::val as parameter) ----
+	// ---- File path whitelist builder (avoids emscripten::val as parameter)
+	// ----
 	void clearPathRules() {
 #ifndef NO_INCLUDE_LIBS_FILE
 		pendingPathRules.clear();
@@ -136,10 +139,10 @@ class CompilerWrapper {
 	}
 	void addPathRule(int type, const std::string &value) {
 #ifndef NO_INCLUDE_LIBS_FILE
-		pendingPathRules.push_back({
-		    type == 0 ? AutoLang::AllowRuleType::PLAIN_PREFIX
-		             : AutoLang::AllowRuleType::REGEX,
-		    value});
+		pendingPathRules.push_back({type == 0
+		                                ? AutoLang::AllowRuleType::PLAIN_PREFIX
+		                                : AutoLang::AllowRuleType::REGEX,
+		                            value});
 #endif
 	}
 	void applyPathRules() {
@@ -167,16 +170,22 @@ class CompilerWrapper {
 			if (compiler.compile(path.c_str(), data.c_str(),
 			                     mainSourceConfig)) {
 				compiler.run();
-				compiler.refresh();
-				std::cerr.rdbuf(old);
-				return true;
 			}
+			compiler.refresh();
+			std::cerr.rdbuf(old);
+			return true;
 		} catch (const std::exception &e) {
 			std::cerr << e.what() << "\n";
 		}
 		compiler.refresh();
 		std::cerr.rdbuf(old);
 		return false;
+	}
+
+	void loadBuiltInFunctions() {
+		if (!compiler.loadedBuiltIn) {
+			loadBuiltInFunctions();
+		}
 	}
 
 	bool compile(std::string path, std::string data) {
@@ -197,10 +206,11 @@ class CompilerWrapper {
 	bool run() {
 		try {
 			compiler.run();
-			compiler.refresh();
 		} catch (const std::exception &e) {
+			compiler.refresh();
 			return false;
 		}
+		compiler.refresh();
 		return true;
 	}
 
@@ -257,7 +267,7 @@ class CompilerWrapper {
 
 EMSCRIPTEN_BINDINGS(autolang_module) {
 	class_<CompilerWrapper>("ACompiler")
-	    .constructor<bool, bool, bool, bool>()
+	    .constructor<bool, bool, bool, bool, bool, bool, bool>()
 	    .function("compileAndRun", &CompilerWrapper::compileAndRun)
 	    .function("run", &CompilerWrapper::run)
 	    .function("compile", &CompilerWrapper::compile)
@@ -267,16 +277,18 @@ EMSCRIPTEN_BINDINGS(autolang_module) {
 	    .function("setMainSourceConfig", &CompilerWrapper::setMainSourceConfig)
 	    .function("setLimitOpcodeCount", &CompilerWrapper::setLimitOpcodeCount)
 	    .function("getLimitOpcodeCount", &CompilerWrapper::getLimitOpcodeCount)
-	    .function("clearDomainRules",  &CompilerWrapper::clearDomainRules)
-	    .function("addDomainRule",    &CompilerWrapper::addDomainRule)
+	    .function("clearDomainRules", &CompilerWrapper::clearDomainRules)
+	    .function("addDomainRule", &CompilerWrapper::addDomainRule)
 	    .function("applyDomainRules", &CompilerWrapper::applyDomainRules)
+	    .function("loadBuiltInLibraries",
+	              &CompilerWrapper::loadBuiltInFunctions)
 
-	    .function("setAllowFileRead",  &CompilerWrapper::setAllowFileRead)
+	    .function("setAllowFileRead", &CompilerWrapper::setAllowFileRead)
 	    .function("setAllowFileWrite", &CompilerWrapper::setAllowFileWrite)
-	    .function("setAllowFileDelete",&CompilerWrapper::setAllowFileDelete)
-	    .function("clearPathRules",    &CompilerWrapper::clearPathRules)
-	    .function("addPathRule",       &CompilerWrapper::addPathRule)
-	    .function("applyPathRules",    &CompilerWrapper::applyPathRules)
+	    .function("setAllowFileDelete", &CompilerWrapper::setAllowFileDelete)
+	    .function("clearPathRules", &CompilerWrapper::clearPathRules)
+	    .function("addPathRule", &CompilerWrapper::addPathRule)
+	    .function("applyPathRules", &CompilerWrapper::applyPathRules)
 	    .function("setFileBasePath", &CompilerWrapper::setFileBasePath)
 	    .function("getOutput", &CompilerWrapper::getOutput)
 	    .function("setOutput", &CompilerWrapper::setOutput)

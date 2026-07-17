@@ -1,8 +1,8 @@
-func globalCalculate(n: Int): Float {
+fun globalCalculate(n: Int): Float {
     return n * n + 5
 }
 
-func testCallableEquivalenceAndMixing() {
+fun testCallableEquivalenceAndMixing() {
     val matrix = <Array<Int>>[[1, 2], [3, 4]]
     
     val capturedOffset = 5

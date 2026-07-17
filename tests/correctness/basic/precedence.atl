@@ -1,4 +1,4 @@
-func testPrecedence() {
+fun testPrecedence() {
 	// Multiplication before addition
 	val a = 1 + 2 * 3
 	assert(a == 7, __FILE__, __LINE__)

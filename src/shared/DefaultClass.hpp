@@ -24,6 +24,8 @@ constexpr ClassId exceptionClassId = 9;
 constexpr ClassId arrayClassId = 10;
 constexpr ClassId setClassId = 11;
 constexpr ClassId mapClassId = 12;
+constexpr ClassId jsonClassId = 13;
+constexpr ClassId jsObjectClassId = 14;
 extern AObject* nullObject;
 extern AObject* trueObject;
 extern AObject* falseObject;

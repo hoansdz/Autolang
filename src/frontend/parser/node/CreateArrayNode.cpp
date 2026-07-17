@@ -20,8 +20,9 @@ void CreateArrayNode::optimize(in_func) {
 	if (classId == DefaultClass::nullClassId) {
 		throwError("Type mismatch in array initialization");
 	}
+	auto clazz = compile.classes[classId];
 	auto classInfo = context.classInfo[classId];
-	if (classInfo->baseClassId != DefaultClass::arrayClassId) {
+	if (clazz->genericBaseClassId != DefaultClass::arrayClassId) {
 		throwError("Type mismatch, expected Array<> but '" +
 		           compile.classes[classId]->getName(compile) + "' found");
 	}
@@ -56,8 +57,9 @@ void CreateArrayNode::optimize(in_func) {
 		if (valueMustBeClassId == DefaultClass::anyClassId) {
 			continue;
 		}
-		throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) +
-		           " to " + compile.classes[valueMustBeClassId]->getName(compile));
+		throwError("Cannot cast " +
+		           compile.classes[value->classId]->getName(compile) + " to " +
+		           compile.classes[valueMustBeClassId]->getName(compile));
 	}
 }
 

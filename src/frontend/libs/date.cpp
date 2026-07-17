@@ -190,53 +190,52 @@ void init(ACompiler &compiler) {
 class Date {
     
     @native("date_constructor_now")
-    static func now(classId: Int = getClassId(Date)): Date
+    static fun now(classId: Int = getClassId(Date)): Date
 
     @native("date_constructor_ts")
-    static func fromTimestamp(timestamp: Int, classId: Int = getClassId(Date)): Date
+    static fun fromTimestamp(timestamp: Int, classId: Int = getClassId(Date)): Date
 
     @native("date_get_year")
-    func getYear(): Int
+    fun getYear(): Int
 
     @native("date_get_month")
-    func getMonth(): Int
+    fun getMonth(): Int
 
     @native("date_get_day")
-    func getDay(): Int
+    fun getDay(): Int
 
     @native("date_get_hours")
-    func getHours(): Int
+    fun getHours(): Int
 
     @native("date_get_minutes")
-    func getMinutes(): Int
+    fun getMinutes(): Int
 
     @native("date_get_seconds")
-    func getSeconds(): Int
+    fun getSeconds(): Int
 
     @native("date_get_time")
-    func getTime(): Int
-
+    fun getTime(): Int
     
     @native("date_format")
-    func format(pattern: String): String
+    fun format(pattern: String): String
 
     @native("date_current_time_millis")
-    static func currentTimeMillis(): Int
+    static fun currentTimeMillis(): Int
 
     @native("date_add_days")
-    func addDays(days: Int): Date
+    fun addDays(days: Int): Date
 
     @native("date_add_hours")
-    func addHours(hours: Int): Date
+    fun addHours(hours: Int): Date
 
     @native("date_add_minutes")
-    func addMinutes(minutes: Int): Date
+    fun addMinutes(minutes: Int): Date
 
     @native("date_add_seconds")
-    func addSeconds(seconds: Int): Date
+    fun addSeconds(seconds: Int): Date
 
     @native("date_is_leap_year")
-    func isLeapYear(): Bool
+    fun isLeapYear(): Bool
 }
     )###",
 	    LibraryConfig(),

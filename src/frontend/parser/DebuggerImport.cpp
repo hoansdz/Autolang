@@ -22,11 +22,11 @@ LibraryData *loadImport(in_func, LibraryData* currentLibrary, std::vector<Lexer:
 	if (!nextTokenSameLine(&token, tokens, i, firstLine) ||
 	    !expect(token, Lexer::TokenType::LPAREN)) {
 		--i;
-		throw ParserError(firstLine, "@import expected string value (");
+		throw ParserError(firstLine, "@import expects an opening '(' bracket");
 	}
 	if (!nextTokenSameLine(&token, tokens, i, firstLine) ||
 	    !expect(token, Lexer::TokenType::STRING)) {
-		throw ParserError(firstLine, "@import expected string value (String");
+		throw ParserError(firstLine, "@import expects a string value");
 	}
 	const std::string &path = context.lexerString[token->indexData];
 	if (!nextTokenSameLine(&token, tokens, i, firstLine) ||
@@ -36,7 +36,7 @@ LibraryData *loadImport(in_func, LibraryData* currentLibrary, std::vector<Lexer:
 		                             "string value, not an expression");
 	}
 	if (path.empty()) {
-		throw ParserError(firstLine, "import path is empty");
+		throw ParserError(firstLine, "Import path is empty");
 	}
 	// {
 	// 	auto it = context.importMap.find(path);

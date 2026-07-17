@@ -472,7 +472,7 @@ enum FileMode {
     WRITE_READ,    
     APPEND_READ;   
 
-    func getId(): Int = when (this) {
+    fun getId(): Int = when (this) {
         READ -> 0
         WRITE -> 1
         APPEND -> 2
@@ -482,7 +482,7 @@ enum FileMode {
         else -> -1
     }
 
-    func toString(): String = when (this) {
+    fun toString(): String = when (this) {
         READ -> "READ"
         WRITE -> "WRITE"
         APPEND -> "APPEND"
@@ -498,58 +498,58 @@ enum FileMode {
 class File {
     
     @native("file_constructor")
-    private static func __CLASS__(classId: Int, path: String, modeId: Int): File
+    private static fun __CLASS__(classId: Int, path: String, modeId: Int): File
 
-    static func __CLASS__(path: String, mode: FileMode): File = File(getClassId(File), path, mode.getId())
+    static fun __CLASS__(path: String, mode: FileMode): File = File(getClassId(File), path, mode.getId())
 
     @native("file_read_text")
-    func readText(): String
+    fun readText(): String
 
     @native("file_for_each_line")
-    func forEachLine(fn: (String) -> Void)
+    fun forEachLine(fn: (String) -> Void)
 
     @native("file_write")
-    func write(text: String)
+    fun write(text: String)
 
     @native("file_close")
-    func close()
+    fun close()
 
     @native("file_seek")
-    func seek(position: Int)
+    fun seek(position: Int)
 
     @native("file_exists")
-    static func exists(path: String): Bool
+    static fun exists(path: String): Bool
 
     @native("file_delete")
-    static func delete(path: String): Bool
+    static fun delete(path: String): Bool
 
     @native("file_get_parent")
-    static func getParent(path: String): String
+    static fun getParent(path: String): String
 
     @native("file_get_absolute_path")
-    static func getAbsolutePath(path: String): String
+    static fun getAbsolutePath(path: String): String
 
     @native("file_is_directory")
-    static func isDirectory(path: String): Bool
+    static fun isDirectory(path: String): Bool
 
     @native("file_is_file")
-    static func isFile(path: String): Bool
+    static fun isFile(path: String): Bool
     
     @native("file_get_all_files")
-    static func getAllFiles(dirPath: String, arrayClassId: Int = getClassId(Array<String>)): Array<String>
+    static fun getAllFiles(dirPath: String, arrayClassId: Int = getClassId(Array<String>)): Array<String>
 
     @native("file_get_name")
-    static func getName(path: String): String
+    static fun getName(path: String): String
 
     @native("file_get_size")
-    static func getSize(path: String): Int
+    static fun getSize(path: String): Int
 
     @native("file_get_extension")
-    static func getExtension(path: String): String
+    static fun getExtension(path: String): String
     
     
     @native("file_get_last_modified")
-    static func getLastModified(path: String): Int
+    static fun getLastModified(path: String): Int
 }
     )###",
 	    LibraryConfig(),

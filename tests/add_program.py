@@ -6,7 +6,7 @@ with open("tests/stress_10k_flat.txt", "w", encoding="utf-8") as f:
     f.write("class RootBase {\n")
     f.write("    var id: Int = 0\n")
     f.write("    constructor(id: Int) { this.id = id }\n")
-    f.write("    func rootInfo() { println(\"RootBase\") }\n")
+    f.write("    fun rootInfo() { println(\"RootBase\") }\n")
     f.write("}\n\n")
 
     # 2. 10,000 Classes kế thừa ngang hàng từ RootBase
@@ -19,7 +19,7 @@ with open("tests/stress_10k_flat.txt", "w", encoding="utf-8") as f:
         f.write(f"        super({i})\n")
         f.write(f"    }}\n")
         
-        f.write(f"    func info{i}() {{\n")
+        f.write(f"    fun info{i}() {{\n")
         f.write(f"        println(\"I am class {i}\")\n")
         f.write(f"    }}\n")
         f.write(f"}}\n\n")

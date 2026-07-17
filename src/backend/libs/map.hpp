@@ -4,7 +4,6 @@
 #include "shared/AObject.hpp"
 #include "shared/Type.hpp"
 
-
 namespace AutoLang {
 class ACompiler;
 namespace Libs {

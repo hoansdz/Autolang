@@ -1,6 +1,6 @@
 // fib_bench.al
 val start = Time.now()
-func fib(n: Int): Int {
+fun fib(n: Int): Int {
     if (n < 2) {
         return n
     }
@@ -8,7 +8,7 @@ func fib(n: Int): Int {
     return fib(n - 1) + fib(n - 2)
 }
 
-func benchmarkFib() {
+fun benchmarkFib() {
     val n = 35
     val result = fib(n)
     println("Fibonacci(35) = ${result}")

@@ -1,4 +1,4 @@
-func testBasicOperator() {
+fun testBasicOperator() {
 	// Arithmetic
 	val a = 1 + 2
 	assert(a == 3, __FILE__, __LINE__)

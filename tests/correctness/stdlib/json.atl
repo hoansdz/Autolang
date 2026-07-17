@@ -1,6 +1,6 @@
 @import ("std/json")
 
-func testJsonFeaturesExhaustive() {
+fun testJsonFeaturesExhaustive() {
     val rawText = "{\"name\": \"AutoLang\", \"version\": 1.0, \"isFast\": true, \"data\": null}"
     val obj = Json.parse(rawText)
     

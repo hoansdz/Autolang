@@ -15,40 +15,42 @@ TryCatchNode *loadTryCatch(in_func, size_t &i) {
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::LBRACE)) {
 		--i;
-		throw ParserError(firstLine,
-		                  "Expected body open with { after try but not found");
+		throw ParserError(
+		    firstLine, "Expected body open with '{' after 'try' but not found");
 	}
 	loadBody<false>(in_data, node->body.nodes, i, true);
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::CATCH)) {
 		--i;
-		throw ParserError(firstLine, "Expected catch after try but not found");
+		throw ParserError(firstLine,
+		                  "Expected 'catch' after 'try' but not found");
 	}
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::LPAREN)) {
 		--i;
 		throw ParserError(firstLine,
-		                  "Expected left paren after catch but not found");
+		                  "Expected '(' after 'catch' but not found");
 	}
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::IDENTIFIER)) {
 		--i;
-		throw ParserError(firstLine,
-		                  "Expected variable name after catch but not found");
+		throw ParserError(
+		    firstLine, "Expected a variable name after 'catch' but not found");
 	}
 	LexerStringId baseName = token->indexData;
 	const std::string &name = context.lexerString[token->indexData];
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::RPAREN)) {
 		--i;
-		throw ParserError(firstLine,
-		                  "Expected variable name after try but not found");
+		throw ParserError(
+		    firstLine, "Expected ')' after catch variable name but not found");
 	}
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::LBRACE)) {
 		--i;
 		throw ParserError(
-		    firstLine, "Expected body open with { after catch but not found");
+		    firstLine,
+		    "Expected body to open with '{' after 'catch' but not found");
 	}
 	auto funcInfo = context.getCurrentFunctionInfo(in_data);
 	funcInfo->scopes.emplace_back();
@@ -67,7 +69,7 @@ ThrowNode *loadThrow(in_func, size_t &i) {
 	uint32_t firstLine = token->line;
 	if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 		throw ParserError(firstLine,
-		                  "Expected value after throw but not found");
+		                  "Expected an expression after 'throw' but not found");
 	}
 	return context.throwPool.push(firstLine, loadExpression(in_data, 0, i));
 }

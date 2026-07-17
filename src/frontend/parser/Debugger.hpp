@@ -79,7 +79,7 @@ template <bool loadedLBrace>
 bool loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i,
               bool createScope = true);
 IfNode *loadIf(in_func, size_t &i, bool mustReturnValue);
-WhenNode *loadWhen(in_func, size_t &i, bool mustReturnValue);
+HasClassIdNode *loadWhen(in_func, size_t &i, bool mustReturnValue);
 ExprNode *loadFor(in_func, size_t &i);
 WhileNode *loadWhile(in_func, size_t &i);
 TryCatchNode *loadTryCatch(in_func, size_t &i);

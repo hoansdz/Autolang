@@ -1,14 +1,14 @@
-func testInfer<T>(value: Array<T>): Array<T> {
+fun testInfer<T>(value: Array<T>): Array<T> {
 	return []
 }
-func testInfer<T>(value: Set<T>): Set<T> {
+fun testInfer<T>(value: Set<T>): Set<T> {
 	return {}
 }
-func testInfer<T, K>(value: Map<T, K>): Map<T, K> {
+fun testInfer<T, K>(value: Map<T, K>): Map<T, K> {
 	return {}
 }
 
-func testInferValue<T>() {
+fun testInferValue<T>() {
 	testInfer<String>([])
 	testInfer<Float>({})
 	testInfer<String, Float>({})

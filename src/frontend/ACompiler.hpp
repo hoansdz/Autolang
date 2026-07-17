@@ -91,9 +91,11 @@ struct ACompilerConfig {
 	bool addStdJson = true;
 #endif
 #ifndef NO_INCLUDE_LIBS_HTTP
-	bool addHttpJson = true;
+	bool addStdHttp = true;
 #endif
 	bool addStdMath = true;
+	bool addStdBytes = true;
+	bool addStdDate = true;
 };
 
 class ACompiler {
@@ -140,6 +142,11 @@ class ACompiler {
 	void loadBuiltInFunctions();
 	void generateBytecodes();
 	void run();
+	bool compileAndRun(const char *path, LibraryConfig config = LibraryConfig(),
+	             const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP);
+	bool compileAndRun(const char *path, const char *data,
+	             LibraryConfig config = LibraryConfig(),
+	             const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP);
 	bool compile(const char *path, LibraryConfig config = LibraryConfig(),
 	             const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP);
 	bool compile(const char *path, const char *data,

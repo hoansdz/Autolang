@@ -1,15 +1,15 @@
 class TestPositionMember(val a: Int, val b: Int) {
 	val c: Int = 3
-	func test() {
+	fun test() {
 		assert(a != b && a != c && b != c, __FILE__, __LINE__)
 	}
 }
 
-func testPositionFunc(a: Int, b: Int) {
+fun testPositionFunc(a: Int, b: Int) {
 	assert(a != b, __FILE__, __LINE__)
 }
 
-func testPosition() {
+fun testPosition() {
 	testPositionFunc(1, 2)
 	TestPositionMember(1, 2).test()
 	val value = 67

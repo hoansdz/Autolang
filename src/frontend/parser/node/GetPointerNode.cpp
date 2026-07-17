@@ -44,8 +44,9 @@ void GetPointerNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 void GetPointerNode::rewrite(in_func, uint8_t *bytecodes) {}
 
 ExprNode *GetPointerNode::copy(in_func) {
-	return context.getPointerPool.push(
-	    line, static_cast<HasClassIdNode *>(value->copy(in_data)));
+	// return context.getPointerPool.push(
+	//     line, static_cast<HasClassIdNode *>(value->copy(in_data)));
+	return nullptr;
 }
 
 } // namespace AutoLang

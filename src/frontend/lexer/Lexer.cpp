@@ -14,6 +14,8 @@
 namespace AutoLang {
 namespace Lexer {
 
+bool isEndOfLine(Context &context, uint32_t i) { return i >= context.lineSize; }
+
 void loadFile(ParserContext *mainContext, LibraryData *library) {
 	std::ifstream file(library->path, std::ios::binary | std::ios::ate);
 	if (!file.is_open()) {
@@ -89,13 +91,20 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 		case '\"': {
 			context.pos = i + 1;
 			++i;
-			loadQuote<true, false>(context, i);
+			if (!isEndOfLine(context, i + 1) && context.line[i] == '\"' &&
+			    context.line[i + 1] == '\"') {
+				i += 2;
+				loadQuote<true, false, true>(context, i);
+			} else {
+				loadQuote<true, false, false>(context, i);
+			}
+
 			return true;
 		}
 		case '\'': {
 			context.pos = i + 1;
 			++i;
-			loadQuote<true, true>(context, i);
+			loadQuote<true, true, false>(context, i);
 			return true;
 		}
 		case '(':
@@ -222,7 +231,7 @@ start:;
 		return;
 	}
 	if (!nextLine(context, context.library->rawData.data(), i)) {
-		throw LexerError(firstLine, std::string("Expected A '") +
+		throw LexerError(firstLine, std::string("Expected '") +
 		                                getCloseBracket(chr) +
 		                                "' but not found");
 	}
@@ -357,7 +366,7 @@ std::string loadNumber(Context &context, uint32_t &i) {
 			case 'E': {
 				if (scientific)
 					throw LexerError(context.linePos,
-					                 "Unknow value: " +
+					                 "Unknown value: " +
 					                     std::string(context.line + context.pos,
 					                                 i - context.pos));
 				scientific = true;
@@ -467,32 +476,43 @@ ended:;
 	return std::string(context.line + context.pos, i - context.pos);
 }
 
-template <bool addLParen, bool isChar>
+template <bool addLParen, bool isChar, bool isRawString>
 void loadQuote(Context &context, uint32_t &i) {
 	constexpr char quote = isChar ? '\'' : '\"';
 	bool isSpecialCase = false;
 	std::string newStr;
 	char chr;
+back:;
 	for (; !isEndOfLine(context, i); ++i) {
 		chr = context.line[i];
 		if (!isSpecialCase) {
 			switch (chr) {
 				case '\\': {
-					isSpecialCase = true;
+					if constexpr (!isRawString) {
+						isSpecialCase = true;
+					} else {
+						newStr += '\\';
+					}
 					continue;
 				}
 				//("Hello ${value + value} ${value}")
 				case '$': {
-					if (isEndOfLine(context, ++i))
+					if (isEndOfLine(context, ++i)) {
+						if constexpr (isRawString) {
+							newStr += '$';
+							break;
+						}
 						throw LexerError(context.linePos,
-						                 std::string("Expected ") + quote +
-						                     " but not found");
+						                 std::string("Expected '") + quote +
+						                     "' but not found");
+					}
 					if constexpr (isChar) {
 						throw LexerError(context.linePos,
 						                 "Invalid char literal: interpolation "
 						                 "is not allowed");
 						return;
 					}
+					auto linePos = context.linePos;
 					chr = context.line[i];
 					if (chr != '{') {
 						if (!std::isalpha(chr) && chr != '_') {
@@ -501,65 +521,90 @@ void loadQuote(Context &context, uint32_t &i) {
 							break;
 						}
 						if constexpr (addLParen) {
-							context.tokens.emplace_back(context.linePos,
+							context.tokens.emplace_back(linePos,
 							                            TokenType::LPAREN);
 						}
 						context.tokens.emplace_back(
-						    context.linePos, TokenType::STRING,
+						    linePos, TokenType::STRING,
 						    pushLexerString(context, std::move(newStr)));
-						context.tokens.emplace_back(context.linePos,
+						context.tokens.emplace_back(linePos,
 						                            TokenType::PLUS);
 						context.pos = i;
 						pushIdentifier(context, i);
 						if (context.line[i] == quote) {
-							++i;
-							if constexpr (addLParen) {
-								context.tokens.emplace_back(context.linePos,
-								                            TokenType::RPAREN);
+							if constexpr (!isRawString) {
+								++i;
+								if constexpr (addLParen) {
+									context.tokens.emplace_back(
+									    linePos, TokenType::RPAREN);
+								}
+								return;
+							} else {
+								if (!isEndOfLine(context, i + 2) &&
+								    context.line[i + 1] == '\"' &&
+								    context.line[i + 2] == '\"') {
+									i += 3;
+									if constexpr (addLParen) {
+										context.tokens.emplace_back(
+										    linePos, TokenType::RPAREN);
+									}
+									return;
+								}
 							}
-							return;
 						}
-						context.tokens.emplace_back(context.linePos,
-						                            TokenType::PLUS);
-						loadQuote<false, isChar>(context, i);
+						context.tokens.emplace_back(linePos, TokenType::PLUS);
+						loadQuote<false, isChar, isRawString>(context, i);
 						if constexpr (addLParen) {
-							context.tokens.emplace_back(context.linePos,
+							context.tokens.emplace_back(linePos,
 							                            TokenType::RPAREN);
 						}
 						return;
 					}
 					if constexpr (addLParen) {
-						context.tokens.emplace_back(context.linePos,
-						                            TokenType::LPAREN);
+						context.tokens.emplace_back(linePos, TokenType::LPAREN);
 					}
 					context.tokens.emplace_back(
-					    context.linePos, TokenType::STRING,
+					    linePos, TokenType::STRING,
 					    pushLexerString(context, std::move(newStr)));
-					context.tokens.emplace_back(context.linePos,
-					                            TokenType::PLUS);
+					context.tokens.emplace_back(linePos, TokenType::PLUS);
 					// '{' => '(' to support "Hello ${a}"  => ("Hello" + (a))
 					// instead of ("Hello" + {a})
 					uint32_t bracketReplacePos = context.tokens.size();
 					pushAndEnsureBracket(context, i);
 					context.tokens[bracketReplacePos].type = TokenType::LPAREN;
 					context.tokens.back().type = TokenType::RPAREN;
-					if (isEndOfLine(context, i))
-						throw LexerError(context.linePos,
-						                 std::string("Expected ") + quote +
-						                     " but not found");
-					if (context.line[i] == quote) {
-						++i;
-						if constexpr (addLParen) {
-							context.tokens.emplace_back(context.linePos,
-							                            TokenType::RPAREN);
+					if constexpr (!isRawString) {
+						if (isEndOfLine(context, i)) {
+							throw LexerError(linePos,
+							                 std::string("Expected '") + quote +
+							                     "' but not found");
 						}
-						return;
+						if (context.line[i] == quote) {
+							++i;
+							if constexpr (addLParen) {
+								context.tokens.emplace_back(linePos,
+								                            TokenType::RPAREN);
+							}
+							return;
+						}
+					} else {
+						if (!isEndOfLine(context, i + 2) &&
+						    context.line[i] == '\"' &&
+						    context.line[i + 1] == '\"' &&
+						    context.line[i + 2] == '\"') {
+							i += 3;
+							if constexpr (addLParen) {
+								context.tokens.emplace_back(linePos,
+								                            TokenType::RPAREN);
+							}
+							return;
+						}
 					}
-					context.tokens.emplace_back(context.linePos,
-					                            TokenType::PLUS);
-					loadQuote<false, isChar>(context, i);
+
+					context.tokens.emplace_back(linePos, TokenType::PLUS);
+					loadQuote<false, isChar, isRawString>(context, i);
 					if constexpr (addLParen) {
-						context.tokens.emplace_back(context.linePos,
+						context.tokens.emplace_back(linePos,
 						                            TokenType::RPAREN);
 					}
 					return;
@@ -592,10 +637,25 @@ void loadQuote(Context &context, uint32_t &i) {
 						}
 					}
 				}
-				context.tokens.emplace_back(
-				    context.linePos, TokenType::STRING,
-				    pushLexerString(context, std::move(newStr)));
-				return;
+				if constexpr (!isRawString) {
+					context.tokens.emplace_back(
+					    context.linePos, TokenType::STRING,
+					    pushLexerString(context, std::move(newStr)));
+					return;
+				} else {
+					if (!isEndOfLine(context, i + 1) &&
+					    context.line[i] == '\"' &&
+					    context.line[i + 1] == '\"') {
+						i += 2;
+						context.tokens.emplace_back(
+						    context.linePos, TokenType::STRING,
+						    pushLexerString(context, std::move(newStr)));
+						return;
+					}
+					newStr += '\"';
+					newStr += context.line[i];
+					continue;
+				}
 			}
 			newStr += chr;
 			continue;
@@ -629,8 +689,16 @@ void loadQuote(Context &context, uint32_t &i) {
 		}
 		isSpecialCase = false;
 	}
+	if constexpr (isRawString) {
+		if (!nextLine(context, ParserContext::mode->rawData.data(), i)) {
+			throw LexerError(context.linePos,
+			                 std::string("Expected '\"\"\"' but not found"));
+		}
+		newStr += '\n';
+		goto back;
+	}
 	throw LexerError(context.linePos,
-	                 std::string("Expected ") + quote + " but not found");
+	                 std::string("Expected '") + quote + "' but not found");
 }
 
 bool isOperator(char chr) {
@@ -759,12 +827,14 @@ std::string Token::toString(ParserContext &context) {
 			return "END_IMPORT";
 		case TokenType::IDENTIFIER:
 			return context.lexerString[indexData];
+		case TokenType::NUMBER:
+			return context.lexerString[indexData];
 		default:
 			for (auto &pair : CAST) {
 				if (pair.second == type)
 					return pair.first;
 			}
-			return context.lexerString[indexData];
+			return "UNKNOW";
 	}
 }
 
@@ -817,10 +887,6 @@ out:;
 	// std::to_string(context.lineSize) + "} " + std::string(context.line,
 	// context.lineSize));
 	return true;
-}
-
-bool isEndOfLine(Context &context, uint32_t &i) {
-	return i >= context.lineSize;
 }
 
 char getCloseBracket(char chr) {

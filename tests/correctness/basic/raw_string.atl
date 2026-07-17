@@ -1,0 +1,94 @@
+fun testRawString() {
+	// 1. Nội dung đơn giản, không có interpolation
+	val s1 = """Hello World"""
+	assert(s1 == "Hello World", __FILE__, __LINE__)
+
+	// 2. Backslash KHÔNG được xử lý như escape sequence
+	val s2 = """Hello\nWorld"""
+	assert(s2 == "Hello\\nWorld", __FILE__, __LINE__)
+
+	val s3 = """path\to\file"""
+	assert(s3 == "path\\to\\file", __FILE__, __LINE__)
+
+	val s4 = """\t tab \r carriage"""
+	assert(s4 == "\\t tab \\r carriage", __FILE__, __LINE__)
+
+	// 3. Dấu ngoặc kép đơn bên trong không cần escape
+	val s5 = """She said "hello" to him"""
+	assert(s5 == "She said \"hello\" to him", __FILE__, __LINE__)
+
+	// 4. Interpolation với $value (identifier đơn giản)
+	val name = "World"
+	val s6 = """Hello $name"""
+	assert(s6 == "Hello World", __FILE__, __LINE__)
+
+	val count = 42
+	val s7 = """Count is $count items"""
+	assert(s7 == "Count is 42 items", __FILE__, __LINE__)
+
+	// 5. Interpolation với ${...} (biểu thức)
+	val a = 10
+	val b = 20
+	val s8 = """Sum is ${a + b}"""
+	assert(s8 == "Sum is 30", __FILE__, __LINE__)
+
+	val s9 = """Result: ${a * b - 5}"""
+	assert(s9 == "Result: 195", __FILE__, __LINE__)
+
+	// 6. Nhiều interpolation trong một raw string
+	val x = 3
+	val y = 7
+	val s10 = """$x plus $y equals ${x + y}"""
+	assert(s10 == "3 plus 7 equals 10", __FILE__, __LINE__)
+
+	// 7. Interpolation với string expression bên trong ${}
+	val word = "raw"
+	val s11 = """This is a ${word} string"""
+	assert(s11 == "This is a raw string", __FILE__, __LINE__)
+
+	// 8. Raw string multiline (span nhiều dòng)
+	val multiline = """Line one
+Line two
+Line three"""
+	assert(multiline.contains("Line one"), __FILE__, __LINE__)
+	assert(multiline.contains("Line two"), __FILE__, __LINE__)
+	assert(multiline.contains("Line three"), __FILE__, __LINE__)
+	assert(multiline.contains("\n"), __FILE__, __LINE__)
+
+	// 9. Multiline với interpolation
+	val item = "pizza"
+	val price = 15
+	val receipt = """Item: $item
+Price: ${price} USD
+Total: ${price * 2} USD"""
+	assert(receipt.contains("pizza"), __FILE__, __LINE__)
+	assert(receipt.contains("15"), __FILE__, __LINE__)
+	assert(receipt.contains("30"), __FILE__, __LINE__)
+
+	// 10. Raw string rỗng
+	val empty = """"""
+	assert(empty == "", __FILE__, __LINE__)
+	assert(empty.size() == 0, __FILE__, __LINE__)
+
+	// 11. $ ở cuối dòng (không theo sau bởi identifier hợp lệ) - giữ nguyên $
+	val s12 = """Price: 100$"""
+	assert(s12 == "Price: 100$", __FILE__, __LINE__)
+
+	// 12. Backslash ở cuối (không xử lý escape)
+	val s13 = """windows\path\"""
+	assert(s13 == "windows\\path\\", __FILE__, __LINE__)
+
+	// 13. Kết hợp backslash và interpolation
+	val dir = "home"
+	val s14 = """C:\$dir\file.txt"""
+	assert(s14 == "C:\\home\\file.txt", __FILE__, __LINE__)
+
+	// 14. Interpolation với method call bên trong ${}
+	val numStr = "123"
+	val s15 = """Value is ${numStr.toInt() + 1}"""
+	assert(s15 == "Value is 124", __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+testRawString()

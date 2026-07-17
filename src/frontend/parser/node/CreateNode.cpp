@@ -161,6 +161,7 @@ void CreateConstructorNode::pushFunction(in_func) {
 	func->maxDeclaration = parameter->parameters.size();
 	funcInfo->declaration = parameter->parameters.size();
 	funcInfo->parameter = parameter;
+	funcInfo->tokenIndex = 0;
 
 	if (isPrimary) {
 		auto classInfo = context.classInfo[clazz->id];
@@ -171,7 +172,6 @@ void CreateConstructorNode::pushFunction(in_func) {
 			auto param = parameter->parameters[i];
 			classInfo->memberMap[param->baseName] = i - 1;
 			clazz->memberMap[param->name] = i - 1;
-			clazz->memberId.push_back(0);
 			classInfo->member.push_back(param);
 		}
 	}
@@ -191,31 +191,15 @@ void CreateConstructorNode::optimize(in_func) {
 	const auto &name = context.lexerString[nameId];
 	auto func = compile.functions[funcId];
 	auto funcInfo = context.functionInfo[funcId];
-	AClass *clazz = compile.classes[classId];
+	auto clazz = compile.classes[classId];
 	// Add argument class id
 	auto classInfo = context.classInfo[classId];
+	ClassId *memberId = &compile.allMemberId[clazz->memberIdOffset];
 	for (size_t i = 0; i < parameter->parameters.size(); ++i) {
 		auto &param = parameter->parameters[i];
 		func->args[i] = param->classId;
 		if (isPrimary && i != 0) {
-
-			// printDebug((uintptr_t)clazz);
-			// printDebug(classInfo->declarationThis->className);
-			// printDebug(std::to_string(i) + " ... " +
-			// std::to_string(clazz->memberId.size()));
-			// auto setNode = context.setValuePool.push(
-			//     line,
-			//     context.getPropPool.push(
-			//         line, nullptr, classId,
-			//         context.varPool.push(line, classInfo->declarationThis,
-			//         false, false), argument->getName(compile), true, true,
-			//         false),
-			//     context.varPool.push(line, argument, false, true));
-			// body.nodes.push_back(setNode);
-			clazz->memberId[i - 1] = param->classId;
-			// printDebug("Member: " + std::to_string(i) + " " +
-			// argument->getName(compile)
-			// + " is " + compile.classes[argument->classId]->getName(compile));
+			memberId[i - 1] = param->classId;
 		}
 	}
 
@@ -246,7 +230,7 @@ void CreateConstructorNode::optimize(in_func) {
 				}
 				node->isSuper = true;
 				node->nameId = context.createLexerStringIfNotExists(
-				    compile.classes[classInfo->parent]->getName(compile));
+				    compile.classes[clazz->parentId]->getName(compile));
 				break;
 			}
 			default:
@@ -264,8 +248,11 @@ void CreateConstructorNode::optimize(in_func) {
 void CreateClassNode::pushClass(in_func) {
 	classId = compile.registerClass(context.lexerString[nameId], classFlags);
 	context.defaultClassMap[nameId] = classId;
+	auto clazz = compile.classes[classId];
 	auto classInfo = context.classInfoAllocator.push();
 	context.classInfo.push_back(classInfo);
+	clazz->memberIdOffset = compile.allMemberId.size();
+	clazz->parentId = 0;
 	// if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
 	// 	if (!classInfo->genericData) {
 	// 		return;
@@ -316,8 +303,8 @@ void CreateClassNode::optimize(in_func) {
 			throwError("Unresolved class name " +
 			           superDeclaration->getName(in_data));
 		}
-		auto classInfo = context.classInfo[classId];
-		classInfo->parent = *superDeclaration->classId;
+		auto clazz = compile.classes[classId];
+		clazz->parentId = *superDeclaration->classId;
 	}
 }
 
@@ -325,7 +312,7 @@ void CreateClassNode::loadSuper(in_func) {
 	if ((classFlags & ClassFlags::CLASS_HAS_PARENT) && !loadedSuper) {
 		auto clazz = compile.classes[classId];
 		auto classInfo = context.classInfo[classId];
-		auto superClassId = classInfo->parent;
+		auto superClassId = clazz->parentId;
 		auto superClass = compile.classes[superClassId];
 		auto superClassInfo = context.classInfo[superClassId];
 
@@ -390,9 +377,6 @@ void CreateClassNode::loadSuper(in_func) {
 			newStaticMember[key] = declaration;
 		}
 		classInfo->staticMember = std::move(newStaticMember);
-		clazz->memberId.insert(clazz->memberId.begin(),
-		                       superClass->memberId.begin(),
-		                       superClass->memberId.end());
 		uint32_t maxSize = std::max<ClassId>(
 		    superClassId, superClass->inheritance.getSize() * 64);
 		clazz->inheritance.from(superClass->inheritance, maxSize);
@@ -430,7 +414,7 @@ void CreateClassNode::loadSuper(in_func) {
 							           superFuncInfo->toString(in_data) +
 							           " is marked @no_override");
 						}
-						ClassId parentId = *clazz->parentId;
+						ClassId parentId = clazz->parentId;
 						while (true) {
 							auto parentClassInfo = context.classInfo[parentId];
 							auto it1 = parentClassInfo->func.find(funcNameId);
@@ -444,7 +428,7 @@ void CreateClassNode::loadSuper(in_func) {
 							parentClass->vtable.push_back(offset);
 							if (!parentClass->parentId)
 								break;
-							parentId = *parentClass->parentId;
+							parentId = parentClass->parentId;
 						}
 						superFuncInfo->virtualPosition = clazz->vtable.size();
 						superFunc->functionFlags |=

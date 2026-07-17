@@ -2,6 +2,7 @@
 #define ANOTIFIER_CPP
 
 #include "ANotifier.hpp"
+#include "backend/vm/AVM.hpp"
 #include "shared/DefaultFunction.hpp"
 
 namespace AutoLang {

@@ -4,6 +4,10 @@
 #include "backend/libs/array.hpp"
 #include "backend/vm/AVM.hpp"
 #include <sstream>
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#include <emscripten/bind.h>
+#endif
 
 namespace AutoLang {
 
@@ -20,6 +24,9 @@ class ANotifier {
 	}
 	[[nodiscard]] inline AObject *createBool(bool value) {
 		return vm->data.manager.createBoolObject(value);
+	}
+	[[nodiscard]] inline AObject *createNull() {
+		return DefaultClass::nullObject;
 	}
 	template <typename T> [[nodiscard]] inline AObject *createString(T value) {
 		return vm->data.manager.createString(value);
@@ -43,10 +50,22 @@ class ANotifier {
 		    vm->data.manager.get(classId, new ANativeData{data, destructor});
 		return obj;
 	}
+	[[nodiscard]] inline AObject *createObject(ClassId classId) {
+		auto obj = vm->data.manager.getEmptyObject();
+		obj->type = classId;
+		return obj;
+	}
 	[[nodiscard]] inline AObject *createBytes(uint32_t size) {
 		return vm->data.manager.getBytes(size);
 	}
-	inline AObject *createMemberObject(uint32_t type, size_t memberCount) {
+#ifdef __EMSCRIPTEN__
+	[[nodiscard]] inline AObject *getJsObject(ClassId classId,
+	                                          emscripten::val *jsObject) {
+		return vm->data.manager.getJsObject(classId, jsObject);
+	}
+#endif
+	[[nodiscard]] inline AObject *createMemberObject(uint32_t type,
+	                                                 size_t memberCount) {
 		auto obj = vm->data.manager.get(type, memberCount);
 		return obj;
 	}
@@ -86,7 +105,9 @@ class ANotifier {
 		arr->member->data[arr->member->size++] = obj;
 	}
 	inline size_t getArraySize(AObject *arr) { return arr->member->size; }
-	inline bool hasException() { return vm->callFrames.top()->exception; }
+	inline bool hasException() {
+		return vm->callFrames.index && vm->callFrames.top()->exception;
+	}
 	template <typename T> inline void throwException(T message) {
 		callFrame->exception = createException(message);
 		callFrame->exception->retain();
@@ -120,6 +141,13 @@ class ANotifier {
 			return nullptr;
 		}
 		return vm->stack.pop();
+	}
+	inline std::string getClassName(ClassId classId) {
+		return vm->data.classes[classId]->getName(vm->data);
+	}
+	inline bool instanceof(AObject *obj, ClassId classId) {
+		return obj->type == classId ||
+		       vm->data.classes[obj->type]->inheritance.get(classId);
 	}
 	std::string toString(AObject *obj);
 	inline void input(AObject *obj) { vm->input(obj); }

@@ -17,7 +17,7 @@ void CreateClosureNode::optimize(in_func) {
 	std::string name = "Closure@" + std::to_string(context.closureCount++);
 	LexerStringId nameId = context.createLexerStringIfNotExists(name);
 	CreateFuncNode *node = context.newFunctions.push(
-	    line, context.currentClassId, nameId, nullptr, parameter,
+	    line, 0, context.currentClassId, nameId, nullptr, parameter,
 	    FUNC_IS_STATIC | FUNC_SKIP_LOAD | FUNC_PRIVATE);
 	node->pushFunction<false>(in_data);
 	funcId = node->id;

@@ -70,7 +70,7 @@ enum NodeType : uint8_t {
 	CREATE_CLOSURE,
 	CREATE_ENUM_VALUE,
 	WHEN,
-	GET_POINTER
+	GET_POINTER,
 };
 
 struct DeclarationNode;
@@ -121,10 +121,12 @@ struct SkipNode : ExprNode {
 
 struct BlockNode : ExprNode {
 	std::vector<ExprNode *> nodes;
+	bool hasValue = false;
+	bool autoCastToFloat = false;
 	BlockNode(uint32_t line) : ExprNode(NodeType::BLOCK, line) {}
-	static void loadReturnValueClassId(in_func, uint32_t line,
-	                                   std::optional<ClassId> &currentClassId,
-	                                   ClassId newClassId);
+	void loadReturnValueClassId(in_func, uint32_t line,
+	                            std::optional<ClassId> &currentClassId,
+	                            ClassId newClassId);
 	inline void loadClassNode(in_func, ExprNode *&node,
 	                          std::optional<ClassId> &currentClassId,
 	                          bool &nullable, bool &isStatic, bool &hasValue,
@@ -158,7 +160,8 @@ struct HasClassIdNode : ExprNode {
 			return classDeclaration->getName(in_data) +
 			       (isNullable() ? "?" : "");
 		}
-		return compile.classes[classId]->getName(compile) + +(isNullable() ? "?" : "");
+		return compile.classes[classId]->getName(compile) +
+		       +(isNullable() ? "?" : "");
 	}
 	HasClassIdNode(NodeType kind, ClassId classId, uint32_t line,
 	               ClassDeclaration *classDeclaration = nullptr)
@@ -366,14 +369,18 @@ struct UnaryNode : HasClassIdNode {
 // 1 + 2 * 3 ...
 struct BinaryNode : HasClassIdNode {
 	Lexer::TokenType op;
+	uint32_t tokenIndex;
 	std::optional<ClassId> contextCallClassId;
 	HasClassIdNode *left;
 	HasClassIdNode *right;
-	bool optimized = false; // For && to skip right expression or || to jump to end
-	BinaryNode(uint32_t line, std::optional<ClassId> contextCallClassId,
-	           Lexer::TokenType op, HasClassIdNode *left, HasClassIdNode *right)
+	bool optimized =
+	    false; // For && to skip right expression or || to jump to end
+	BinaryNode(uint32_t line, uint32_t tokenIndex,
+	           std::optional<ClassId> contextCallClassId, Lexer::TokenType op,
+	           HasClassIdNode *left, HasClassIdNode *right)
 	    : HasClassIdNode(NodeType::BINARY, 0, line), op(op),
-	      contextCallClassId(contextCallClassId), left(left), right(right) {}
+	      tokenIndex(tokenIndex), contextCallClassId(contextCallClassId),
+	      left(left), right(right) {}
 	ExprNode *leftOpRight(in_func, ConstValueNode *l, ConstValueNode *r);
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;
@@ -661,6 +668,7 @@ struct CallNode : NullableNode {
 	std::optional<ClassId> contextCallClassId;
 	HasClassIdNode *caller;
 	HasClassIdNode *funcObject;
+	uint32_t tokenIndex;
 	LexerStringId nameId;
 	std::vector<HasClassIdNode *> arguments;
 	ClassDeclaration *inputGenericArguments;
@@ -670,21 +678,23 @@ struct CallNode : NullableNode {
 	bool pauseVM = false;
 	bool accessNullable;
 	bool isSuper = false;
-	CallNode(uint32_t line, std::optional<ClassId> contextCallClassId,
-	         HasClassIdNode *caller, LexerStringId nameId,
-	         std::vector<HasClassIdNode *> arguments, bool justFindStatic,
-	         bool nullable, bool accessNullable)
+	CallNode(uint32_t line, uint32_t tokenIndex,
+	         std::optional<ClassId> contextCallClassId, HasClassIdNode *caller,
+	         LexerStringId nameId, std::vector<HasClassIdNode *> arguments,
+	         bool justFindStatic, bool nullable, bool accessNullable)
 	    : NullableNode(NodeType::CALL, 0, nullable, line),
 	      contextCallClassId(contextCallClassId), caller(caller),
-	      funcObject(nullptr), nameId(nameId), arguments(std::move(arguments)),
-	      justFindStatic(justFindStatic), accessNullable(accessNullable) {}
-	CallNode(uint32_t line, std::optional<ClassId> contextCallClassId,
+	      funcObject(nullptr), tokenIndex(tokenIndex), nameId(nameId),
+	      arguments(std::move(arguments)), justFindStatic(justFindStatic),
+	      accessNullable(accessNullable) {}
+	CallNode(uint32_t line, uint32_t tokenIndex,
+	         std::optional<ClassId> contextCallClassId,
 	         HasClassIdNode *funcObject, LexerStringId nameId,
 	         bool justFindStatic, std::vector<HasClassIdNode *> arguments,
 	         bool nullable, bool accessNullable)
 	    : NullableNode(NodeType::CALL, 0, nullable, line),
 	      contextCallClassId(contextCallClassId), caller(nullptr),
-	      funcObject(funcObject), nameId(nameId),
+	      funcObject(funcObject), tokenIndex(tokenIndex), nameId(nameId),
 	      arguments(std::move(arguments)), accessNullable(accessNullable) {}
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;

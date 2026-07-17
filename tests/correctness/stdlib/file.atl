@@ -4,11 +4,11 @@ class TestFileFeaturesExhaustive {
     var lineCount = 0
 
     // Callback dùng cho forEachLine
-    func countLines(line: String) {
+    fun countLines(line: String) {
         lineCount += 1
     }
 
-    func testFileFeaturesExhaustive() {
+    fun testFileFeaturesExhaustive() {
         val testPath = "test_autolang_fs.txt"
 
         // --- 0. Setup (Dọn dẹp rác nếu file bị sót từ lần chạy trước) ---

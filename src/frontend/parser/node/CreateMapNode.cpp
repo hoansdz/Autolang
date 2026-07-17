@@ -21,8 +21,9 @@ void CreateMapNode::optimize(in_func) {
 	if (classId == DefaultClass::nullClassId) {
 		throwError("Type mismatch in map initialization");
 	}
+	auto clazz = compile.classes[classId];
 	auto classInfo = context.classInfo[classId];
-	if (classInfo->baseClassId != DefaultClass::mapClassId) {
+	if (clazz->genericBaseClassId != DefaultClass::mapClassId) {
 		throwError("Type mismatch, expected Map<> but '" +
 		           compile.classes[classId]->getName(compile) + "' found");
 	}

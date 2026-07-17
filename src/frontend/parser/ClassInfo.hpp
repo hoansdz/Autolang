@@ -12,7 +12,6 @@
 namespace AutoLang {
 
 struct ClassInfo {
-	ClassId baseClassId;
 	GenericData *genericData = nullptr;
 	std::vector<DeclarationNode *> allDeclarationNode;
 	std::vector<DeclarationNode *> member;
@@ -27,7 +26,6 @@ struct ClassInfo {
 	std::vector<CreateConstructorNode *> secondaryConstructor;
 	std::vector<CreateFuncNode *> createFunctionNodes;
 	DeclarationNode *declarationThis = nullptr;
-	ClassId parent;
 
 	AccessNode *findDeclaration(in_func, uint32_t line, LexerStringId nameId,
 	                            bool isStatic = false);

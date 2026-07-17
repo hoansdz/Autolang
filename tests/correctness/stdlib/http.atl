@@ -1,11 +1,19 @@
 @import("std/http")
 
-func testHttpFeatures() {
+fun checkResponse(res: HttpResponse) {
+    assert(res.status >= 100 && res.status < 600, __FILE__, __LINE__)
+    assert(res.url != "", __FILE__, __LINE__)
+    assert(res.headers.size() >= 0, __FILE__, __LINE__)
+    assert(res.body.size() >= 0, __FILE__, __LINE__)
+}
+
+fun testHttpFeatures() {
     try {
         // Attempt a GET request. Even if it fails due to network issues (DNS/timeout),
         // we check that the exception is NOT a SecurityError.
-        val res = Http.get("https://google.com", 2000)
-        println("Http.get success, length: ${res.size()}")
+        val res = Http.get("https://example.com", 2000)
+        checkResponse(res)
+        println("Http.get ok: ${res.ok}, status: ${res.status}, url: ${res.url}, body size: ${res.body.size()}")
     } catch (e) {
         val errStr = e.message
         assert(errStr.indexOf("SecurityError") == -1, __FILE__, __LINE__)
@@ -13,8 +21,9 @@ func testHttpFeatures() {
     }
 
     try {
-        val res = Http.post("https://google.com", "test body", 2000)
-        println("Http.post success, length: ${res.size()}")
+        val res = Http.post("https://example.com", "test body", 2000)
+        checkResponse(res)
+        println("Http.post ok: ${res.ok}, status: ${res.status}, url: ${res.url}, body size: ${res.body.size()}")
     } catch (e) {
         val errStr = e.message
         assert(errStr.indexOf("SecurityError") == -1, __FILE__, __LINE__)
@@ -22,8 +31,9 @@ func testHttpFeatures() {
     }
 
     try {
-        val res = Http.delete("https://google.com", 2000)
-        println("Http.delete success, length: ${res.size()}")
+        val res = Http.delete("https://example.com", 2000)
+        checkResponse(res)
+        println("Http.delete ok: ${res.ok}, status: ${res.status}, url: ${res.url}, body size: ${res.body.size()}")
     } catch (e) {
         val errStr = e.message
         assert(errStr.indexOf("SecurityError") == -1, __FILE__, __LINE__)
@@ -31,9 +41,11 @@ func testHttpFeatures() {
     }
 
     try {
-        val urls = <String>["https://google.com", "https://httpbin.org"]
-        val res = Http.getAll(urls, 2000)
-        println("Http.getAll success, count: ${res.size()}")
+        val urls = <String>["https://example.com", "https://httpbin.org/get"]
+        val responses = Http.getAll(urls, 2000)
+        assert(responses.size() == urls.size(), __FILE__, __LINE__)
+        checkResponse(responses.get(0))
+        println("Http.getAll success, count: ${responses.size()}")
     } catch (e) {
         val errStr = e.message
         assert(errStr.indexOf("SecurityError") == -1, __FILE__, __LINE__)

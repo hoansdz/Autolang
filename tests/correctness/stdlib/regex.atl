@@ -1,6 +1,6 @@
 @import("std/regex")
 
-func testRegexFeatures() {
+fun testRegexFeatures() {
     // 1. Compile and match
     val re = Regex.compile("[0-9]+")
     assert(re.isMatch("123") == true, __FILE__, __LINE__)

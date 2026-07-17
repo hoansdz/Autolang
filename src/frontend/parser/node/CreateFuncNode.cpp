@@ -33,6 +33,7 @@ template <bool addToGlobalScope> void CreateFuncNode::pushFunction(in_func) {
 	func->maxDeclaration = parameter->parameters.size();
 	funcInfo->declaration = parameter->parameters.size();
 	funcInfo->parameter = parameter;
+	funcInfo->tokenIndex = tokenIndex;
 	if (classDeclaration &&
 	    classDeclaration->classId == DefaultClass::functionClassId) {
 		funcInfo->returnClass = classDeclaration;
@@ -68,6 +69,7 @@ void CreateFuncNode::pushNativeFunction(in_func, ANativeFunctionData *native) {
 	func->maxDeclaration = parameter->parameters.size();
 	funcInfo->declaration = parameter->parameters.size();
 	funcInfo->parameter = parameter;
+	funcInfo->tokenIndex = tokenIndex;
 	if (classDeclaration &&
 	    classDeclaration->classId == DefaultClass::functionClassId) {
 		funcInfo->returnClass = classDeclaration;
@@ -86,7 +88,7 @@ ExprNode *CreateFuncNode::copy(in_func) {
 		                               ->getName(compile)];
 	}
 	auto newCreateFuncNode = context.newFunctions.push(
-	    line, context.currentClassId, newNameId, nullptr,
+	    line, tokenIndex, context.currentClassId, newNameId, nullptr,
 	    parameter->copy(in_data), functionFlags);
 	if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 		newCreateFuncNode->pushNativeFunction(in_data,
@@ -117,7 +119,8 @@ void CreateFuncNode::optimize(in_func) {
 			auto it = hash.find(funcInfo->hash);
 			if (it != hash.end() && compile.functions[it->second]->getName(
 			                            compile) == func->getName(compile)) {
-				throwError("Redefined function : " + funcInfo->toString(in_data));
+				throwError("Redefined function : " +
+				           funcInfo->toString(in_data));
 			}
 			hash[funcInfo->hash] = func->id;
 		} else {
@@ -125,7 +128,8 @@ void CreateFuncNode::optimize(in_func) {
 			auto it = hash.find(funcInfo->hash);
 			if (it != hash.end() && compile.functions[it->second]->getName(
 			                            compile) == func->getName(compile)) {
-				throwError("Redefined function : " + funcInfo->toString(in_data));
+				throwError("Redefined function : " +
+				           funcInfo->toString(in_data));
 			}
 			// std::cerr<<"Created "<<name<<" hash "<<funcInfo->hash<<"\n";
 			hash[funcInfo->hash] = func->id;

@@ -1,4 +1,4 @@
-func testStringFeatures() {
+fun testStringFeatures() {
     // 1. Constructors
     val s1 = String()
     assert(s1 == "", __FILE__, __LINE__)

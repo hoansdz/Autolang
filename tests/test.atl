@@ -35,10 +35,10 @@ class ListPerson {
     constructor (a: String) {
         println("hello ${a + 1}")
     }
-    func begin(): PersonNode? {
+    fun begin(): PersonNode? {
     	return beginNode
     }
-    func addPerson(person: Person) {
+    fun addPerson(person: Person) {
 		println("${person.name}")
     	size += 1
     	if (beginNode == null) {
@@ -52,7 +52,7 @@ class ListPerson {
         currentNode!.next = PersonNode(currentNode, person, null)
         currentNode!.next!.prev = currentNode
     }
-    func deletePerson(index: Int) {
+    fun deletePerson(index: Int) {
     	if (index >= size) {
         	return
         }
@@ -71,7 +71,7 @@ class ListPerson {
     }
 }
 
-func main(): ListPerson {
+fun main(): ListPerson {
   val listPerson = ListPerson(5)
   println(getRefCount(listPerson))
 
@@ -94,7 +94,7 @@ func main(): ListPerson {
 }
 val list = main()
 
-func test() {
+fun test() {
     println(1e5)
     println(1_000_000)
     println(3)
@@ -117,13 +117,13 @@ println("2".toInt().toString())
 println(list.begin()?.next?.currentPerson.name)
 println(Person("A", 1, 1.0).name)
 
-func side(): Int {
+fun side(): Int {
     println("SIDE")
     return 10
 }
 
 
-func testqmarkqmark() {
+fun testqmarkqmark() {
 	var a: Int? = null
 	var b: Int? = 5
 	println(a ?? 1)          // 1

@@ -18,7 +18,7 @@
 //         analysis(path)
 //     }
 
-//     func analysis(path: String) {
+//     fun analysis(path: String) {
 //         if (File.isFile(path)) {
 //             analysisFile(path)
 //             return
@@ -26,7 +26,7 @@
 //         analysisFolder(path)
 //     }
 
-//     func analysisFile(path: String) {
+//     fun analysisFile(path: String) {
 //         totalFile += 1
 //         totalSize += File.getSize(path)
 //         val extension = File.getExtension(path)
@@ -55,18 +55,18 @@
 //         }
 //     }
 
-//     func analysisFolder(path: String) {
+//     fun analysisFolder(path: String) {
 //         val allFiles = File.getAllFiles(path)
 //         allFiles.forEach(analysis)
 //         totalFolder += 1
 //     }
 // }
 
-// func forEachMapExtension(extension: String, count: Int) {
+// fun forEachMapExtension(extension: String, count: Int) {
 //     println("Extension ${extension}: $count")
 // }
 
-// func main() {
+// fun main() {
 //     val a = FileAnalysis("D:\\code\\AutoLangC\\tests\\correctness")
 //     println("Total file: ${a.totalFile}")
 //     println("Total folder: ${a.totalFolder}")
@@ -90,12 +90,12 @@
 
 // class Database {
 //     // Returns a raw JSON string containing mock data for 10 vegetable products
-//     static private func _get_products(): String {
+//     static private fun _get_products(): String {
 //         return "{\"data\":[{\"name\":\"Dalat Carrot\",\"price\":25,\"weight\":0.5,\"inStock\":true},{\"name\":\"Highland Potato\",\"price\":30,\"weight\":1.0,\"inStock\":false},{\"name\":\"Broccoli\",\"price\":45,\"weight\":0.4,\"inStock\":true},{\"name\":\"Cherry Tomato\",\"price\":35,\"weight\":0.3,\"inStock\":true},{\"name\":\"Onion\",\"price\":18,\"weight\":1.0,\"inStock\":false},{\"name\":\"Pumpkin\",\"price\":22,\"weight\":1.5,\"inStock\":true},{\"name\":\"Purple Cabbage\",\"price\":40,\"weight\":0.8,\"inStock\":true},{\"name\":\"Old Ginger\",\"price\":60,\"weight\":0.2,\"inStock\":false},{\"name\":\"Seedless Lime\",\"price\":15,\"weight\":0.5,\"inStock\":true},{\"name\":\"Lyson Garlic\",\"price\":120,\"weight\":0.2,\"inStock\":true}]}"
 //     }
 
 //     // Parses JSON and returns an Array of Product instances
-//     public static func get_products(): Array<Product> {
+//     public static fun get_products(): Array<Product> {
 //         val jsonStr = _get_products()
 //         val json = Json.parse(jsonStr)
 //         val products = json["data"].toJsonArray()

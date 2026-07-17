@@ -369,37 +369,37 @@ class Math {
 	static val PI: Float = 3.141592653589793
 	static val E: Float  = 2.718281828459045
 
-	@native("round") static func round(value: Float): Int
-	@native("floor") static func floor(value: Float): Int
-	@native("ceil")  static func ceil(value: Float): Int
-	@native("trunc") static func trunc(value: Float): Int
+	@native("round") static fun round(value: Float): Int
+	@native("floor") static fun floor(value: Float): Int
+	@native("ceil")  static fun ceil(value: Float): Int
+	@native("trunc") static fun trunc(value: Float): Int
 	
-	@native("abs") static func abs(value: Int): Int
-	@native("abs") static func abs(value: Float): Float
+	@native("abs") static fun abs(value: Int): Int
+	@native("abs") static fun abs(value: Float): Float
 
-	@native("pow") static func pow(base: Float, exp_: Float): Float
-	@native("pow") static func pow(base: Int, exp_: Int): Int
-	@native("sqrt") static func sqrt(value: Float): Float
-	@native("sqrt") static func sqrt(value: Int): Float
-	@native("exp") static func exp(value: Float): Float
-	@native("log") static func log(value: Float): Float
+	@native("pow") static fun pow(base: Float, exp_: Float): Float
+	@native("pow") static fun pow(base: Int, exp_: Int): Int
+	@native("sqrt") static fun sqrt(value: Float): Float
+	@native("sqrt") static fun sqrt(value: Int): Float
+	@native("exp") static fun exp(value: Float): Float
+	@native("log") static fun log(value: Float): Float
 
-	@native("sin") static func sin(value: Float): Float
-	@native("sin") static func sin(value: Int): Float
-	@native("cos") static func cos(value: Float): Float
-	@native("cos") static func cos(value: Int): Float
-	@native("tan") static func tan(value: Float): Float
-	@native("tan") static func tan(value: Int): Float
+	@native("sin") static fun sin(value: Float): Float
+	@native("sin") static fun sin(value: Int): Float
+	@native("cos") static fun cos(value: Float): Float
+	@native("cos") static fun cos(value: Int): Float
+	@native("tan") static fun tan(value: Float): Float
+	@native("tan") static fun tan(value: Int): Float
 
-	@native("fmod") static func fmod(num1: Float, num2: Float): Float
-	@native("min") static func min(a: Int, b: Int): Int
-	@native("min") static func min(a: Float, b: Float): Float
-	@native("max") static func max(a: Int, b: Int): Int
-	@native("max") static func max(a: Float, b: Float): Float
+	@native("fmod") static fun fmod(num1: Float, num2: Float): Float
+	@native("min") static fun min(a: Int, b: Int): Int
+	@native("min") static fun min(a: Float, b: Float): Float
+	@native("max") static fun max(a: Int, b: Int): Int
+	@native("max") static fun max(a: Float, b: Float): Float
 
-	@native("random") static func random(): Float
-	@native("random") static func random(minValue: Int, maxValue: Int): Int
-	@native("random") static func random(minValue: Float, maxValue: Float): Float
+	@native("random") static fun random(): Float
+	@native("random") static fun random(minValue: Int, maxValue: Int): Int
+	@native("random") static fun random(minValue: Float, maxValue: Float): Float
 }
     )###",
 	                                LibraryConfig(), std::move(nativeMap));

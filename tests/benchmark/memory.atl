@@ -3,7 +3,7 @@ val start = Time.now()
 class Node<T>(val data: T, var next: Node<T>?) {
 }
 
-func benchmarkMemory() {
+fun benchmarkMemory() {
     var i = 1_000_000
     var list: Node<Int>? = null
     

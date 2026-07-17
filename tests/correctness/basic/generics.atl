@@ -1,29 +1,29 @@
 class GAnimal() {
-	func sound() = "Nothing"
+	fun sound() = "Nothing"
 }
 
 class GDog extends GAnimal {
 	constructor () {
 		super()
 	}
-	func sound() = "Go"
+	fun sound() = "Go"
 }
 
 class GCat extends GAnimal {
 	constructor () {
 		super()
 	}
-	func sound() = "Meow"
+	fun sound() = "Meow"
 }
 
 class GenericTest<T extends GAnimal>() {
 	val value: T = T()
-	func sound() = value.sound()
+	fun sound() = value.sound()
 }
 
 class GWrapper<T>() {
 	val value: T?
-	func get(): T? = value
+	fun get(): T? = value
 }
 
 class GWrapperGenericTest<T, R> extends GWrapper<T> {
@@ -32,7 +32,7 @@ class GWrapperGenericTest<T, R> extends GWrapper<T> {
 		super()
 		this.x = x
 	}
-	func getValue(): T? = value
+	fun getValue(): T? = value
 }
 
 class GTestGet<Parent, Child> {
@@ -47,7 +47,7 @@ class GTestGet<Parent, Child> {
 	//Not support generic function in class now
 }
 
-func testGenericFunctionWithStatic<T>(value: T): T {
+fun testGenericFunctionWithStatic<T>(value: T): T {
 	static var v: T?
 	if (v == null) {
 		v = value
@@ -55,7 +55,7 @@ func testGenericFunctionWithStatic<T>(value: T): T {
 	return v!
 }
 
-func testGenerics() {
+fun testGenerics() {
 	val f1 = GenericTest<GAnimal>()
 	assert(f1 is GenericTest<GAnimal> && f1.value.sound() == f1.sound() && f1.sound() == "Nothing", __FILE__, __LINE__)
 	val f2 = GenericTest<GDog>()
@@ -64,7 +64,7 @@ func testGenerics() {
 	assert(f3 is GenericTest<GCat> && f3.value.sound() == f3.sound() && f3.sound() == "Meow", __FILE__, __LINE__)
 	val f4 = GWrapperGenericTest<GCat, Int>(null)
 	assert(f4.getValue()?.sound() == null, __FILE__, __LINE__)
-	val f5 = GWrapperGenericTest<GCat, Int>(null)
+	val f5 = GWrapperGenericTest<GCat, Float>(null)
 	f5.value = GCat()
 	assert(f5.getValue()?.sound() == "Meow", __FILE__, __LINE__)
 	val f6 = GTestGet<GAnimal, GCat>(GCat())

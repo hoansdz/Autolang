@@ -66,7 +66,7 @@ void WhileNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	breakPos = bytecodes.size() - context.currentBytecodePos;
 }
 
-void ReturnNode::putOptimizedBytecodes(in_func, HasClassIdNode *value,
+void ReturnNode::putOptimizedBytecodes(in_func, HasClassIdNode *value, 
                                        std::vector<uint8_t> &bytecodes) {
 	if (value) {
 		switch (value->kind) {
