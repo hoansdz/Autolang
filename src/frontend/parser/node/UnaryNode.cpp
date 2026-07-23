@@ -4,7 +4,7 @@
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ExprNode *UnaryNode::resolve(in_func) {
 	// if (value->kind == NodeType::UNARY)
@@ -22,17 +22,17 @@ ExprNode *UnaryNode::resolve(in_func) {
 		case NodeType::CONST_VAL: {
 			auto value = static_cast<ConstValueNode *>(this->value);
 			switch (op) {
-				using namespace AutoLang;
+				using namespace Autolang;
 				case Lexer::TokenType::PLUS: {
 					switch (value->classId) {
-						case AutoLang::DefaultClass::intClassId: {
+						case Autolang::DefaultClass::intClassId: {
 							return this;
 						}
-						case AutoLang::DefaultClass::floatClassId: {
+						case Autolang::DefaultClass::floatClassId: {
 							return context.constValuePool.push(
 							    value->line, static_cast<int64_t>(value->f));
 						}
-						case AutoLang::DefaultClass::boolClassId: {
+						case Autolang::DefaultClass::boolClassId: {
 							return context.constValuePool.push(
 							    value->line,
 							    static_cast<int64_t>(value->obj->b));
@@ -44,15 +44,15 @@ ExprNode *UnaryNode::resolve(in_func) {
 				}
 				case Lexer::TokenType::MINUS: {
 					switch (value->classId) {
-						case AutoLang::DefaultClass::intClassId: {
+						case Autolang::DefaultClass::intClassId: {
 							return context.constValuePool.push(value->line,
 							                                   -value->i);
 						}
-						case AutoLang::DefaultClass::floatClassId: {
+						case Autolang::DefaultClass::floatClassId: {
 							return context.constValuePool.push(value->line,
 							                                   -value->f);
 						}
-						case AutoLang::DefaultClass::boolClassId: {
+						case Autolang::DefaultClass::boolClassId: {
 							return context.constValuePool.push(
 							    value->line,
 							    -static_cast<int64_t>(value->obj->b));
@@ -63,14 +63,14 @@ ExprNode *UnaryNode::resolve(in_func) {
 					break;
 				}
 				case Lexer::TokenType::NOT: {
-					if (value->classId == AutoLang::DefaultClass::boolClassId) {
+					if (value->classId == Autolang::DefaultClass::boolClassId) {
 						return context.constValuePool.push(value->line,
 						                                   !value->obj->b);
 					}
 					// if (value->classId ==
-					// AutoLang::DefaultClass::nullClassId)
+					// Autolang::DefaultClass::nullClassId)
 					// {
-					// 	value->classId = AutoLang::DefaultClass::boolClassId;
+					// 	value->classId = Autolang::DefaultClass::boolClassId;
 					// 	value->obj = ObjectManager::create(true);
 					// 	value->id = context.getBoolConstValuePosition(true);
 					// 	return value;
@@ -86,18 +86,18 @@ ExprNode *UnaryNode::resolve(in_func) {
 		}
 		case NodeType::CAST: {
 			switch (op) {
-				using namespace AutoLang;
+				using namespace Autolang;
 				case Lexer::TokenType::PLUS: {
 					switch (value->classId) {
-						case AutoLang::DefaultClass::intClassId:
-						case AutoLang::DefaultClass::floatClassId: {
+						case Autolang::DefaultClass::intClassId:
+						case Autolang::DefaultClass::floatClassId: {
 							auto result = value;
 							value = nullptr;
 							ExprNode::deleteNode(this);
 							return result;
 						}
-						case AutoLang::DefaultClass::boolClassId: {
-							value->classId = AutoLang::DefaultClass::intClassId;
+						case Autolang::DefaultClass::boolClassId: {
+							value->classId = Autolang::DefaultClass::intClassId;
 							auto result = value;
 							value = nullptr;
 							ExprNode::deleteNode(this);
@@ -110,9 +110,9 @@ ExprNode *UnaryNode::resolve(in_func) {
 				}
 				case Lexer::TokenType::MINUS: {
 					switch (value->classId) {
-						case AutoLang::DefaultClass::intClassId:
-						case AutoLang::DefaultClass::floatClassId:
-						case AutoLang::DefaultClass::boolClassId: {
+						case Autolang::DefaultClass::intClassId:
+						case Autolang::DefaultClass::floatClassId:
+						case Autolang::DefaultClass::boolClassId: {
 							return this;
 						}
 						default:
@@ -121,7 +121,7 @@ ExprNode *UnaryNode::resolve(in_func) {
 					break;
 				}
 				case Lexer::TokenType::NOT: {
-					if (value->classId == AutoLang::DefaultClass::boolClassId) {
+					if (value->classId == Autolang::DefaultClass::boolClassId) {
 						return this;
 					}
 					break;
@@ -279,15 +279,15 @@ void UnaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				return;
 			}
 			switch (value->classId) {
-				case AutoLang::DefaultClass::intClassId: {
+				case Autolang::DefaultClass::intClassId: {
 					bytecodes.emplace_back(Opcode::TO_INT);
 					return;
 				}
-				case AutoLang::DefaultClass::floatClassId: {
+				case Autolang::DefaultClass::floatClassId: {
 					bytecodes.emplace_back(Opcode::TO_FLOAT);
 					return;
 				}
-				case AutoLang::DefaultClass::boolClassId: {
+				case Autolang::DefaultClass::boolClassId: {
 					bytecodes.emplace_back(Opcode::TO_INT);
 					return;
 				}
@@ -319,6 +319,6 @@ void UnaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 
 UnaryNode::~UnaryNode() { deleteNode(value); }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

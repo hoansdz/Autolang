@@ -7,7 +7,7 @@
 #include <regex>
 #include <string>
 
-namespace AutoLang {
+namespace Autolang {
 class ACompiler;
 
 namespace Libs {
@@ -117,5 +117,5 @@ class Regex {
 
 } // namespace regex
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 #endif

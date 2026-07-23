@@ -1,6 +1,6 @@
 # Standard Libraries (`src/frontend/libs`)
 
-This directory implements the core standard library functions and APIs exposed to the AutoLang programming language.
+This directory implements the core standard library functions and APIs exposed to the Autolang programming language.
 
 ## Key Modules
 

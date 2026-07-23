@@ -5,7 +5,8 @@
 CXX = g++
 LAUNCHER = sccache
 
-# 1. Đường dẫn Include chỉ cần trỏ vào thư mục header của CPR (không cần trỏ sâu vào curl nữa)
+# 1. Include paths
+# Only point to the CPR and Curl header directories.
 CXXFLAGS = -O2 -pipe -std=c++17 -DNOMINMAX -DCURL_STATICLIB -I src \
            -I src/third_party/curl/include \
            -I src/third_party \
@@ -13,22 +14,23 @@ CXXFLAGS = -O2 -pipe -std=c++17 -DNOMINMAX -DCURL_STATICLIB -I src \
            -Wno-unused-parameter -Wno-unused-variable -Wno-switch \
            -Wno-sign-compare -Wno-reorder
 
-# 2. Linker Libraries: Nạp trực tiếp file tĩnh của CPR, Curl và các thư viện mạng Windows
+# 2. Link libraries
+# Link the static Curl library and the required Windows networking libraries.
 LIBS = src/third_party/libs/libcurl.a -lws2_32 -lwldap32 -lcrypt32 -ladvapi32 -lbcrypt
 
-# Thuật toán đệ quy thuần Make để quét file trong thư mục con
+# Recursive Make function to find source files in subdirectories.
 rwildcard = $(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
 
-# Tự động nhận diện Hệ Điều Hành (Cross-platform Magic)
+# Detect the target operating system.
 ifeq ($(OS),Windows_NT)
-	# Lệnh chuẩn của Windows CMD
+	# Windows CMD commands
 	FIX_PATH = $(subst /,\,$1)
 	MKDIR = if not exist "$(call FIX_PATH,$1)" mkdir "$(call FIX_PATH,$1)"
 	RMDIR = if exist "$(call FIX_PATH,$1)" rmdir /s /q "$(call FIX_PATH,$1)"
 	TARGET = build/autolang.exe
 	RUN_CMD = $(call FIX_PATH,$(TARGET))
 else
-	# Lệnh chuẩn của Linux / macOS
+	# Linux / macOS commands
 	FIX_PATH = $1
 	MKDIR = mkdir -p $1
 	RMDIR = rm -rf $1
@@ -36,8 +38,9 @@ else
 	RUN_CMD = ./$(TARGET)
 endif
 
-# 3. CHỈ quét source code của Autolang (KHÔNG quét mã nguồn của CPR nữa)
-# Sau này bạn có thêm file vào src/ thì mở comment dòng dưới:
+# 3. Source files
+# Only compile Autolang sources.
+# Uncomment the line below when additional source files are added.
 # SRC = $(call rwildcard,src,*.cpp) tests/main.cpp
 SRC = tests/main.cpp
 
@@ -46,29 +49,30 @@ DEPS = $(OBJ:.o=.d)
 
 .PHONY: all run clean
 
-# Target mặc định khi gõ `mingw32-make`
+# Default target.
 all: $(TARGET)
 
-# 4. Bước Linker: Ghép các file .o thành file thực thi kèm theo thư viện tĩnh
+# 4. Link object files into the final executable.
 $(TARGET): $(OBJ)
-	@echo [LINKING ALL TOGETHER] $@
+	@echo [LINKING] $@
 	$(LAUNCHER) $(CXX) $(OBJ) $(LIBS) -o $(TARGET)
 
-# Target chạy test ngay sau khi build
+# Build and run.
 run: all
 	@echo [RUNNING] $(TARGET)
 	@$(RUN_CMD)
 
-# 5. Bước Compile: Dịch từng file .cpp sang .o (Tự động tạo thư mục con chứa .o)
+# 5. Compile each source file into an object file.
+# Automatically create the output directory if needed.
 build/%.o: %.cpp
 	@$(call MKDIR,$(dir $@))
 	@echo [COMPILING] $<
 	$(LAUNCHER) $(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Nhúng file .d để Make biết khi nào bạn sửa file .h / .hpp thì phải build lại .cpp
+# Include dependency files so changes to headers trigger recompilation.
 -include $(DEPS)
 
-# Dọn dẹp rác
+# Remove all build artifacts.
 clean:
 	@echo [CLEANING] build directory...
 	@$(call RMDIR,build)

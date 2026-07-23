@@ -1,6 +1,6 @@
 # Frontend Directory (`src/frontend`)
 
-This directory houses the frontend compiler suite of AutoLang, responsible for converting raw source code into Compiled Program bytecode structure.
+This directory houses the frontend compiler suite of Autolang, responsible for converting raw source code into Compiled Program bytecode structure.
 
 ## Subdirectories
 

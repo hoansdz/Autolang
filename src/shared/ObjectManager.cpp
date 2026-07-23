@@ -3,7 +3,7 @@
 
 #include "ObjectManager.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 void ObjectManager::destroy() {
     for (size_t i = 0; i < intObjects.index; ++i) {

@@ -4,19 +4,19 @@
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 void ConstValueNode::optimize(in_func) {
 	if (id != UINT32_MAX)
 		return;
 	switch (classId) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			id = compile.registerConstPool<int64_t>(context.constIntMap, i);
 			return;
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			id = compile.registerConstPool<double>(context.constFloatMap, f);
 			return;
-		case AutoLang::DefaultClass::stringClassId:
+		case Autolang::DefaultClass::stringClassId:
 			id = compile.registerConstPool(context.constStringMap,
 			                               AString::from(*str));
 			return;
@@ -28,11 +28,11 @@ void ConstValueNode::optimize(in_func) {
 ExprNode *ConstValueNode::copy(in_func) { return this; }
 
 void ConstValueNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	if (classId == AutoLang::DefaultClass::nullClassId) {
+	if (classId == Autolang::DefaultClass::nullClassId) {
 		bytecodes.emplace_back(Opcode::LOAD_NULL);
 		return;
 	}
-	if (classId == AutoLang::DefaultClass::boolClassId) {
+	if (classId == Autolang::DefaultClass::boolClassId) {
 		bytecodes.emplace_back(obj->b ? Opcode::LOAD_TRUE : LOAD_FALSE);
 		return;
 	}
@@ -42,11 +42,11 @@ void ConstValueNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 }
 
 ConstValueNode::~ConstValueNode() {
-	if (classId != AutoLang::DefaultClass::stringClassId || !str)
+	if (classId != Autolang::DefaultClass::stringClassId || !str)
 		return;
 	delete str;
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

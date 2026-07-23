@@ -7,7 +7,7 @@
 #include <string>
 #include <third_party/nlohmann/json.hpp>
 
-namespace AutoLang {
+namespace Autolang {
 class ACompiler;
 
 namespace Libs {
@@ -372,37 +372,37 @@ AObject* jsonValueToAObject(ANotifier& notifier, const nlohmann::json& field, Cl
     }
 
     switch (targetClassId) {
-        case AutoLang::DefaultClass::intClassId:
+        case Autolang::DefaultClass::intClassId:
             if (!field.is_number_integer()) {
                 notifier.throwException("JSON value is not an Int");
                 return nullptr;
             }
             return notifier.createInt(field.get<int64_t>());
             
-        case AutoLang::DefaultClass::floatClassId:
+        case Autolang::DefaultClass::floatClassId:
             if (!field.is_number()) {
                 notifier.throwException("JSON value is not a Float");
                 return nullptr;
             }
             return notifier.createFloat(field.get<double>());
             
-        case AutoLang::DefaultClass::stringClassId:
+        case Autolang::DefaultClass::stringClassId:
             if (!field.is_string()) {
                 notifier.throwException("JSON value is not a String");
                 return nullptr;
             }
             return notifier.createString(field.get<std::string>());
             
-        case AutoLang::DefaultClass::boolClassId:
+        case Autolang::DefaultClass::boolClassId:
             if (!field.is_boolean()) {
                 notifier.throwException("JSON value is not a Bool");
                 return nullptr;
             }
             return notifier.createBool(field.get<bool>());
             
-        case AutoLang::DefaultClass::jsonClassId: {
+        case Autolang::DefaultClass::jsonClassId: {
             auto j_copy = new nlohmann::json(field);
-            auto newObj = notifier.createObject(AutoLang::DefaultClass::jsonClassId);
+            auto newObj = notifier.createObject(Autolang::DefaultClass::jsonClassId);
             newObj->json = j_copy;
             return newObj;
         }
@@ -411,7 +411,7 @@ AObject* jsonValueToAObject(ANotifier& notifier, const nlohmann::json& field, Cl
             auto clazz = notifier.vm->data.classes[targetClassId];
             
             switch (clazz->genericBaseClassId) {
-                case AutoLang::DefaultClass::arrayClassId: {
+                case Autolang::DefaultClass::arrayClassId: {
                     ClassId genericElemClassId = notifier.vm->data.allGenericType[clazz->genericType.offset];
                     bool genericElemNullable = notifier.vm->data.allGenericTypeNullable[clazz->genericType.offset];
                     return jsonArrayToAObject(notifier, field, targetClassId, genericElemClassId, genericElemNullable);
@@ -723,5 +723,5 @@ void init(ACompiler &compiler) {
 
 } // namespace json
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 #endif

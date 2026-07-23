@@ -1,6 +1,6 @@
-# AutoLang Virtual Machine (`src/backend/vm`)
+# Autolang Virtual Machine (`src/backend/vm`)
 
-This directory contains the core runtime interpreter and execution manager for AutoLang bytecode.
+This directory contains the core runtime interpreter and execution manager for Autolang bytecode.
 
 ## Key Components
 

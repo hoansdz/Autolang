@@ -3,7 +3,7 @@
 
 #include "shared/Type.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 class ACompiler;
 namespace Libs {
 namespace array {
@@ -28,6 +28,6 @@ AObject *to_string(NativeFuncInData);
 std::string to_string(ANotifier &notifier, AObject *obj);
 } // namespace array
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

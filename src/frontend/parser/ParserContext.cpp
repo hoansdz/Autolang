@@ -5,7 +5,7 @@
 #include "frontend/ACompiler.hpp"
 #include "frontend/parser/Debugger.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 LibraryData *ParserContext::mode = nullptr;
 
@@ -71,12 +71,12 @@ void ParserContext::init(CompiledProgram &compile) {
 	constValue[lexerIdtrue] = &constValues[1];
 	constValue[lexerIdfalse] = &constValues[2];
 
-	annotationMetadata.reserve(4);
+	annotationMetadata.reserve(8);
 	closureScopes.reserve(4);
 
 	{
-		using namespace AutoLang::DefaultClass;
-		using TT = AutoLang::Lexer::TokenType;
+		using namespace Autolang::DefaultClass;
+		using TT = Autolang::Lexer::TokenType;
 		binaryOpResultType = {
 		    // int, float, bool
 		    {makeTuple(intClassId, intClassId, (uint8_t)TT::PLUS), intClassId},
@@ -234,9 +234,10 @@ void ParserContext::refresh(CompiledProgram &compile) {
 		funcInfo->body.refresh();
 	}
 
-	for (auto *node : staticNode) {
-		ExprNode::deleteNode(node);
-	}
+	// for (auto *node : staticNode) {
+	// 	ExprNode::deleteNode(node);
+	// }
+	
 	staticNode.clear();
 	allClassDeclarations.clear();
 
@@ -439,7 +440,7 @@ DeclarationNode *ParserContext::makeDeclarationNode(
 		    line, context.currentClassId, baseName, name, classDeclaration,
 		    isVal, isGlobal, nullable);
 		context.currentClosureNode->newDeclaration.push_back(node);
-		node->classId = AutoLang::DefaultClass::nullClassId;
+		node->classId = Autolang::DefaultClass::nullClassId;
 		node->id = loadId ? context.currentClosureNode->declarationCount++ : 0;
 		if (context.currentClassId) {
 			auto classInfo = context.classInfo[*context.currentClassId];
@@ -475,7 +476,7 @@ DeclarationNode *ParserContext::makeDeclarationNode(
 	DeclarationNode *node =
 	    declarationNodePool.push(line, context.currentClassId, baseName, name,
 	                             classDeclaration, isVal, isGlobal, nullable);
-	node->classId = AutoLang::DefaultClass::nullClassId;
+	node->classId = Autolang::DefaultClass::nullClassId;
 	node->id = loadId ? funcInfo->declaration++ : 0;
 	if (context.currentClassId) {
 		auto classInfo = context.classInfo[*context.currentClassId];
@@ -506,6 +507,6 @@ ParserContext::~ParserContext() {
 	// }
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

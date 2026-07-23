@@ -3,7 +3,7 @@
 
 #include "AreaAllocator.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 template <size_t size> void AreaAllocator<size>::destroy(ANotifier& notifier) {
 	auto *currentChunk = head;

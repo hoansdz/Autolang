@@ -4,7 +4,7 @@
 #include "ClassInfo.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 AccessNode *ClassInfo::findDeclaration(in_func, uint32_t line,
                                        LexerStringId nameId, bool isStatic) {
@@ -59,6 +59,6 @@ DeclarationNode *ClassInfo::findAllMember(in_func, uint32_t line,
 
 ClassInfo::~ClassInfo() {}
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

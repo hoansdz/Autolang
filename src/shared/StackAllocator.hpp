@@ -6,7 +6,7 @@
 #include <cstring>
 #include <vector>
 
-namespace AutoLang {
+namespace Autolang {
 
 class AVM;
 
@@ -136,6 +136,6 @@ class StackAllocator {
     }
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

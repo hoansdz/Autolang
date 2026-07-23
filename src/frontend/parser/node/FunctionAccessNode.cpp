@@ -5,7 +5,7 @@
 #include "frontend/parser/ParserContext.hpp"
 #include "shared/ClassFlags.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 void FunctionAccessNode::optimize(in_func) {
 	if (caller) {
@@ -180,6 +180,6 @@ void FunctionAccessNode::rewrite(in_func, uint8_t *bytecodes) {
 	}
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

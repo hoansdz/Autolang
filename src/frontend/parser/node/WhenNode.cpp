@@ -4,7 +4,7 @@
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ExprNode *WhenNode::resolve(in_func) {
 	if (ifNode == nullptr)
@@ -63,6 +63,6 @@ ExprNode *WhenNode::copy(in_func) {
 
 WhenNode::~WhenNode() {}
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

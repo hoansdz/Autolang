@@ -9,7 +9,7 @@
 #include <iomanip>
 #include <sstream>
 
-namespace AutoLang {
+namespace Autolang {
 class ACompiler;
 
 namespace Libs {
@@ -261,5 +261,5 @@ class Date {
 
 } // namespace date
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 #endif

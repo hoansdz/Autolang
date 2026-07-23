@@ -7,7 +7,7 @@
 #include "shared/ClassFlags.hpp"
 #include <memory>
 
-namespace AutoLang {
+namespace Autolang {
 
 CreateClassNode *loadClass(in_func, size_t &i) {
 	ensureNoKeyword(in_data, i);
@@ -38,6 +38,10 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 #ifdef __EMSCRIPTEN__
 	if (context.annotationFlags & AnnotationFlags::AN_JS_OBJECT) {
 		classFlags |= ClassFlags::CLASS_JS_OBJECT;
+	}
+#elif __PYBIND11__
+	if (context.annotationFlags & AnnotationFlags::AN_PY_OBJECT) {
+		classFlags |= ClassFlags::CLASS_PY_OBJECT;
 	}
 #endif
 
@@ -456,6 +460,6 @@ void loadConstructor(in_func, size_t &i) {
 	context.gotoFunction(context.mainFunctionId);
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

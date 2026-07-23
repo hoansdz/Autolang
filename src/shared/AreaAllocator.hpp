@@ -3,7 +3,7 @@
 
 #include "shared/AObject.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 template <size_t size> class AreaAllocator {
   public:
@@ -57,6 +57,6 @@ template <size_t size> class AreaAllocator {
 	void destroy(ANotifier& notifier);
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

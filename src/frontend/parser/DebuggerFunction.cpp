@@ -6,7 +6,7 @@
 #include "frontend/parser/ParserContext.hpp"
 #include "shared/FunctionFlags.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 CreateFuncNode *loadFunc(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
@@ -530,7 +530,7 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 		--i;
 		throw ParserError(firstLine, "Expected body but not found");
 	}
-	AutoLang::Parameter *parameter;
+	Autolang::Parameter *parameter;
 	auto classDeclaration = context.classDeclarationAllocator.push();
 	classDeclaration->classId = DefaultClass::functionClassId;
 	classDeclaration->baseClassLexerStringId = lexerIdFunction;
@@ -538,7 +538,7 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 	bool loadedLBrace = true;
 	if constexpr (hasParams) {
 		if (token->type == Lexer::TokenType::OR) {
-			parameter = loadListDeclaration<AutoLang::Lexer::OR, false, false>(
+			parameter = loadListDeclaration<Autolang::Lexer::OR, false, false>(
 			    in_data, i, false);
 			classDeclaration->inputClassId.reserve(
 			    parameter->parameters.size() + 1);
@@ -640,6 +640,14 @@ ReturnNode *loadReturn(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
 	auto func = context.getCurrentFunction(in_data);
+	if (!context.currentClosureNode &&
+	    context.currentFunctionId == context.mainFunctionId) {
+		throw ParserError(firstLine,
+		                  context.currentClassId
+		                      ? "'return' cannot be used directly in class body"
+		                      : "'return' statement outside of a function");
+	}
+
 	if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 		--i;
 		if (context.currentClassId) {
@@ -662,6 +670,6 @@ ReturnNode *loadReturn(in_func, size_t &i) {
 	                               loadExpression(in_data, 0, i));
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

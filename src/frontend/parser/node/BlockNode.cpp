@@ -4,7 +4,7 @@
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ExprNode *BlockNode::resolve(in_func) {
 	ParserContext::mode = mode;
@@ -290,21 +290,54 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 		case NodeType::RET: {
 			auto n = static_cast<ReturnNode *>(node);
 
-			if (!hasValue) {
-				hasValue = true;
+			if (!context.currentClosureNode) {
+				node->optimize(in_data);
+				break;
 			}
 
 			if (context.mustReturnValueNode->kind != NodeType::CREATE_CLOSURE) {
-				if (autoCastToFloat && n->value) {
-					n->value = static_cast<HasClassIdNode *>(
-					    context.castPool
-					        .push(n->value, DefaultClass::floatClassId)
-					        ->resolve(in_data));
-					n->optimize(in_data);
+				auto &closureBody = context.currentClosureNode->body;
+				if (!closureBody.hasValue) {
+					closureBody.hasValue = true;
+				}
+				if (n->value) {
+					if (closureBody.autoCastToFloat) {
+						n->value = static_cast<HasClassIdNode *>(
+						    context.castPool
+						        .push(n->value, DefaultClass::floatClassId)
+						        ->resolve(in_data));
+						n->optimize(in_data);
+						break;
+					}
+					auto value = static_cast<ExprNode *>(n->value);
+					loadClassNode(in_data, value,
+					              *context.currentClosureCurrentClassId,
+					              *context.currentClosureNullable,
+					              *context.currentClosureIsStatic,
+					              closureBody.hasValue, newClassDeclaration);
+					node = value;
 					break;
 				}
 				n->optimize(in_data);
+				if (*context.currentClosureCurrentClassId) {
+					if (*context.currentClosureCurrentClassId !=
+					    DefaultClass::voidClassId) {
+						throwError(
+						    "Cannot cast '" +
+						    compile
+						        .classes[**context.currentClosureCurrentClassId]
+						        ->getName(compile) +
+						    "' to 'Void'");
+					}
+				} else {
+					*context.currentClosureCurrentClassId =
+					    DefaultClass::voidClassId;
+				}
 				break;
+			}
+
+			if (!hasValue) {
+				hasValue = true;
 			}
 
 			if (!n->value) {
@@ -320,12 +353,12 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 				} else {
 					currentClassId = DefaultClass::voidClassId;
 				}
-			} else {
-				auto value = static_cast<ExprNode *>(n->value);
-				loadClassNode(in_data, value, currentClassId, nullable,
-				              isStatic, hasValue, newClassDeclaration);
-				node = value;
+				break;
 			}
+			auto value = static_cast<ExprNode *>(n->value);
+			loadClassNode(in_data, value, currentClassId, nullable, isStatic,
+			              hasValue, newClassDeclaration);
+			node = value;
 			break;
 		}
 		default: {
@@ -345,6 +378,9 @@ void BlockNode::loadClassAndOptimize(in_func) {
 		case NodeType::CREATE_CLOSURE: {
 			auto *n =
 			    static_cast<CreateClosureNode *>(context.mustReturnValueNode);
+			context.currentClosureCurrentClassId = &currentClassId;
+			context.currentClosureNullable = &nullable;
+			context.currentClosureIsStatic = &isStatic;
 			auto returnClass = n->classDeclaration->inputClassId[0];
 			if (returnClass) {
 				currentClassId = *returnClass->classId;
@@ -544,10 +580,26 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	if (context.mustReturnValueNode) {
 		for (size_t i = 0; i < nodes.size(); ++i) {
 			auto *node = nodes[i];
-			if (context.mustReturnValueNode->kind == NodeType::IF) {
-				node->putBytecodes(in_data, bytecodes);
+			if (i < nodes.size() - 1 && context.mustReturnValueNode->kind != NodeType::IF) {
 				switch (node->kind) {
 					case NodeType::CALL: {
+						auto currentNode = static_cast<CallNode *>(node);
+						node->putBytecodes(in_data, bytecodes);
+						if (currentNode->isSuper)
+							bytecodes.emplace_back(Opcode::POP_NO_RELEASE);
+						break;
+					}
+					default: {
+						node->putBytecodes(in_data, bytecodes);
+						break;
+					}
+				}
+				continue;
+			}
+			if (context.mustReturnValueNode->kind == NodeType::IF) {
+				switch (node->kind) {
+					case NodeType::CALL: {
+						node->putBytecodes(in_data, bytecodes);
 						auto *n = static_cast<CallNode *>(node);
 						if (n->classId == DefaultClass::voidClassId)
 							break;
@@ -569,8 +621,6 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					case NodeType::FUNCTION_ACCESS:
 					case NodeType::CONST_VAL:
 					case NodeType::BINARY:
-					case NodeType::GET_PROP:
-					case NodeType::VAR:
 					case NodeType::CREATE_ARRAY:
 					case NodeType::CREATE_MAP:
 					case NodeType::CREATE_SET:
@@ -579,7 +629,26 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					case NodeType::RUNTIME_CAST:
 					case NodeType::OPTIONAL_ACCESS:
 					case NodeType::UNARY: {
+						node->putBytecodes(in_data, bytecodes);
 						if (autoCastToFloat) {
+							bytecodes.emplace_back(Opcode::TO_FLOAT);
+						}
+						if (i != nodes.size() - 1) {
+							bytecodes.emplace_back(Opcode::JUMP);
+							static_cast<IfNode *>(context.mustReturnValueNode)
+							    ->jumpPosition.push_back(
+							        bytecodes.size() -
+							        context.currentBytecodePos);
+							put_opcode_u32(bytecodes, 0);
+						}
+						break;
+					}
+					case NodeType::GET_PROP:
+					case NodeType::VAR: {
+						node->putBytecodes(in_data, bytecodes);
+						if (autoCastToFloat &&
+						    static_cast<HasClassIdNode *>(node)->classId !=
+						        DefaultClass::floatClassId) {
 							bytecodes.emplace_back(Opcode::TO_FLOAT);
 						}
 						if (i != nodes.size() - 1) {
@@ -593,12 +662,24 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 						break;
 					}
 					case NodeType::WHEN: {
-						auto *n = static_cast<WhenNode *>(node);
-						if (!n->ifNode->mustReturnValue)
-							break;
-						if (autoCastToFloat) {
-							bytecodes.emplace_back(Opcode::TO_FLOAT);
+						auto *n = static_cast<WhenNode *>(node)->ifNode;
+
+						if (!n->mustReturnValue) {
+							if (autoCastToFloat) {
+								n->ifTrue.autoCastToFloat = true;
+
+								if (n->ifFalse) {
+									n->ifFalse->autoCastToFloat = true;
+								}
+							}
+							node->putBytecodes(in_data, bytecodes);
+						} else {
+							node->putBytecodes(in_data, bytecodes);
+							if (autoCastToFloat) {
+								bytecodes.emplace_back(Opcode::TO_FLOAT);
+							}
 						}
+
 						if (i != nodes.size() - 1) {
 							bytecodes.emplace_back(Opcode::JUMP);
 							static_cast<IfNode *>(context.mustReturnValueNode)
@@ -611,11 +692,23 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					}
 					case NodeType::IF: {
 						auto *n = static_cast<IfNode *>(node);
-						if (!n->mustReturnValue)
-							break;
-						if (autoCastToFloat) {
-							bytecodes.emplace_back(Opcode::TO_FLOAT);
+
+						if (!n->mustReturnValue) {
+							if (autoCastToFloat) {
+								n->ifTrue.autoCastToFloat = true;
+
+								if (n->ifFalse) {
+									n->ifFalse->autoCastToFloat = true;
+								}
+							}
+							node->putBytecodes(in_data, bytecodes);
+						} else {
+							node->putBytecodes(in_data, bytecodes);
+							if (autoCastToFloat) {
+								bytecodes.emplace_back(Opcode::TO_FLOAT);
+							}
 						}
+
 						if (i != nodes.size() - 1) {
 							bytecodes.emplace_back(Opcode::JUMP);
 							static_cast<IfNode *>(context.mustReturnValueNode)
@@ -626,8 +719,9 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 						}
 						break;
 					}
-					default:
+					default: {
 						throwError("Unknown return value");
+					}
 				}
 			} else {
 				switch (node->kind) {
@@ -685,18 +779,16 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 						break;
 					}
 					case NodeType::WHEN: {
-						auto *n = static_cast<WhenNode *>(node);
-						if (!n->ifNode->mustReturnValue) {
-							// if (n->ifNode->ifTrue.hasValue ||
-							// (m->ifNode->ifFalse &&)) {
+						auto *n = static_cast<WhenNode *>(node)->ifNode;
+						if (!n->mustReturnValue) {
+							if (autoCastToFloat) {
+								n->ifTrue.autoCastToFloat = true;
 
-							// }
-							if (autoCastToFloat && n->ifNode->ifTrue.hasValue) {
-								n->ifNode->ifTrue.autoCastToFloat = true;
-								if (n->ifNode->ifFalse) {
-									n->ifNode->ifFalse->autoCastToFloat = true;
+								if (n->ifFalse) {
+									n->ifFalse->autoCastToFloat = true;
 								}
 							}
+
 							node->putBytecodes(in_data, bytecodes);
 							break;
 						}
@@ -717,12 +809,14 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					case NodeType::IF: {
 						auto *n = static_cast<IfNode *>(node);
 						if (!n->mustReturnValue) {
-							if (autoCastToFloat && n->ifTrue.hasValue) {
+							if (autoCastToFloat) {
 								n->ifTrue.autoCastToFloat = true;
+
 								if (n->ifFalse) {
 									n->ifFalse->autoCastToFloat = true;
 								}
 							}
+
 							node->putBytecodes(in_data, bytecodes);
 							break;
 						}
@@ -775,20 +869,31 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				// 		currentNode->jumpIfNullPos = bytecodes.size() -
 				// context.currentBytecodePos; 		break;
 				// 	}
-				// 	case NodeType::UNARY:
-				// 	case NodeType::NULL_COALESCING:
-				// 	case NodeType::BINARY:
-				// 	case NodeType::CAST:
-				// 	case NodeType::GET_PROP: {
-				// 		node->putBytecodes(in_data, bytecodes);
-				// 		bytecodes.emplace_back(Opcode::POP);
-				// 		break;
-				// 	}
-				// 	case NodeType::CLASS_ACCESS:
-				// 	case NodeType::CONST_VAL:
-				// 	case NodeType::VAR: {
-				// 		break;
-				// 	}
+			// case NodeType::CONST_VAL:
+			// case NodeType::CREATE_CLOSURE:
+			// case NodeType::FUNCTION_ACCESS:
+			// case NodeType::BINARY:
+			// case NodeType::GET_PROP:
+			// case NodeType::VAR:
+			// case NodeType::CREATE_ARRAY:
+			// case NodeType::CREATE_MAP:
+			// case NodeType::CREATE_SET:
+			// case NodeType::NULL_COALESCING:
+			// case NodeType::CAST:
+			// case NodeType::RUNTIME_CAST:
+			// case NodeType::OPTIONAL_ACCESS:
+			// case NodeType::UNARY: {
+			// 	node->putBytecodes(in_data, bytecodes);
+			// 	if (autoCastToFloat) {
+			// 		bytecodes.emplace_back(Opcode::TO_FLOAT);
+			// 	}
+			// 	break;
+			// }
+			// 	case NodeType::CLASS_ACCESS:
+			// 	case NodeType::CONST_VAL:
+			// 	case NodeType::VAR: {
+			// 		break;
+			// 	}
 			default: {
 				node->putBytecodes(in_data, bytecodes);
 				break;
@@ -813,6 +918,6 @@ BlockNode::~BlockNode() {
 	}
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

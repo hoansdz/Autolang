@@ -12,20 +12,20 @@ using namespace emscripten;
 
 class CompilerWrapper {
   public:
-	AutoLang::ACompiler compiler;
-	AutoLang::LibraryConfig mainSourceConfig;
+	Autolang::ACompiler compiler;
+	Autolang::LibraryConfig mainSourceConfig;
 	std::stringstream buffer;
 #ifndef NO_INCLUDE_LIBS_HTTP
-	std::vector<AutoLang::AllowRule> pendingDomainRules;
+	std::vector<Autolang::AllowRule> pendingDomainRules;
 #endif
 #ifndef NO_INCLUDE_LIBS_FILE
-	std::vector<AutoLang::AllowRule> pendingPathRules;
+	std::vector<Autolang::AllowRule> pendingPathRules;
 #endif
 
 	CompilerWrapper(bool addStdFile, bool addStdRegex, bool addStdJson,
 	                bool addStdHttp, bool addStdMath, bool addStdBytes,
 	                bool addStdDate)
-	    : compiler(AutoLang::ACompilerConfig{.addStdFile = addStdFile,
+	    : compiler(Autolang::ACompilerConfig{.addStdFile = addStdFile,
 	                                         .addStdRegex = addStdRegex,
 	                                         .addStdJson = addStdJson,
 	                                         .addStdMath = addStdMath,
@@ -40,7 +40,7 @@ class CompilerWrapper {
 			compiler.setOnError(nullptr);
 			return;
 		}
-		compiler.setOnError(new AutoLang::FunctionEvent(func));
+		compiler.setOnError(new Autolang::FunctionEvent(func));
 	}
 
 	void setOnWarning(val func) {
@@ -48,7 +48,7 @@ class CompilerWrapper {
 			compiler.setOnWarning(nullptr);
 			return;
 		}
-		compiler.setOnWarning(new AutoLang::FunctionEvent(func));
+		compiler.setOnWarning(new Autolang::FunctionEvent(func));
 	}
 
 	void registerBuiltInLibrary(std::string name, std::string data,
@@ -57,7 +57,7 @@ class CompilerWrapper {
 		if (!mapFunction.as<bool>()) {
 			compiler.registerBuiltInLibrary(
 			    name.c_str(), data.c_str(),
-			    AutoLang::LibraryConfig(autoImport, allowLateinitKeyword,
+			    Autolang::LibraryConfig(autoImport, allowLateinitKeyword,
 			                            allowNonNullAssertion));
 			return;
 		}
@@ -79,10 +79,10 @@ class CompilerWrapper {
 		}
 		auto lib = compiler.registerBuiltInLibrary(
 		    name.c_str(), data.c_str(),
-		    AutoLang::LibraryConfig(autoImport, allowLateinitKeyword,
+		    Autolang::LibraryConfig(autoImport, allowLateinitKeyword,
 		                            allowNonNullAssertion),
 		    nativeMap);
-		lib->flags |= AutoLang::LibraryFlags::IS_JS_BRIDGE;
+		lib->flags |= Autolang::LibraryFlags::IS_JS_BRIDGE;
 	}
 
 	void setLimitOpcodeCount(uint32_t count) {
@@ -100,8 +100,8 @@ class CompilerWrapper {
 	void addDomainRule(int type, const std::string &value) {
 #ifndef NO_INCLUDE_LIBS_HTTP
 		pendingDomainRules.push_back(
-		    {type == 0 ? AutoLang::AllowRuleType::PLAIN_PREFIX
-		               : AutoLang::AllowRuleType::REGEX,
+		    {type == 0 ? Autolang::AllowRuleType::PLAIN_PREFIX
+		               : Autolang::AllowRuleType::REGEX,
 		     value});
 #endif
 	}
@@ -140,8 +140,8 @@ class CompilerWrapper {
 	void addPathRule(int type, const std::string &value) {
 #ifndef NO_INCLUDE_LIBS_FILE
 		pendingPathRules.push_back({type == 0
-		                                ? AutoLang::AllowRuleType::PLAIN_PREFIX
-		                                : AutoLang::AllowRuleType::REGEX,
+		                                ? Autolang::AllowRuleType::PLAIN_PREFIX
+		                                : Autolang::AllowRuleType::REGEX,
 		                            value});
 #endif
 	}

@@ -28,7 +28,7 @@
 #include <filesystem>
 #include <iostream>
 
-namespace AutoLang {
+namespace Autolang {
 
 LibraryData *ACompiler::requestImport(LibraryData *currentLibrary,
                                       const char *path) {
@@ -289,6 +289,8 @@ void ACompiler::loadMainSource(LibraryData *library) {
 	} catch (const ParserError &err) {
 		context.logError(err.line, err.message);
 		state = CompilerState::CT_ERROR;
+		context.currentClassId = std::nullopt;
+		context.currentFunctionId = context.mainFunctionId;
 		return;
 	}
 
@@ -950,10 +952,10 @@ void ACompiler::refresh() {
 	generatedLibraryMap.clear();
 	generatedLibraries.clear();
 	vm.data.destroy();
-	// AutoLang::DefaultClass::init(vm.data);
-	// AutoLang::Libs::stdlib::init(*this);
-	// AutoLang::DefaultClass::init(*this);
-	// AutoLang::DefaultFunction::init(*this);
+	// Autolang::DefaultClass::init(vm.data);
+	// Autolang::Libs::stdlib::init(*this);
+	// Autolang::DefaultClass::init(*this);
+	// Autolang::DefaultFunction::init(*this);
 	vm.data.mainFunctionId = vm.data.registerFunction(
 	    nullptr, ".main", nullptr, 0,
 	    static_cast<uint32_t>(FunctionFlags::FUNC_IS_STATIC));
@@ -969,11 +971,11 @@ void ACompiler::refresh() {
 ACompiler::ACompiler(ACompilerConfig config) {
 	// auto startCompiler = std::chrono::high_resolution_clock::now();
 
-	AutoLang::Libs::stdlib::init(*this);
-	AutoLang::DefaultClass::init(*this);
-	AutoLang::DefaultFunction::init(*this);
-	AutoLang::Libs::time::init(*this);
-	// AutoLang::Libs::vm::init(*this);
+	Autolang::Libs::stdlib::init(*this);
+	Autolang::DefaultClass::init(*this);
+	Autolang::DefaultFunction::init(*this);
+	Autolang::Libs::time::init(*this);
+	// Autolang::Libs::vm::init(*this);
 
 	vm.data.constPool.push_back(DefaultClass::nullObject);
 	vm.data.constPool.push_back(DefaultClass::trueObject);
@@ -984,8 +986,8 @@ ACompiler::ACompiler(ACompilerConfig config) {
 	    static_cast<uint32_t>(FunctionFlags::FUNC_IS_STATIC));
 	parserContext.functionInfo.push_back(
 	    parserContext.functionInfoAllocator.push());
-	// AutoLang::DefaultClass::init(vm.data);
-	// AutoLang::DefaultFunction::init(vm.data);
+	// Autolang::DefaultClass::init(vm.data);
+	// Autolang::DefaultFunction::init(vm.data);
 
 	parserContext.init(vm.data);
 
@@ -996,36 +998,36 @@ ACompiler::ACompiler(ACompilerConfig config) {
 	//           << " ms" << '\n';
 	state = CompilerState::CT_READY;
 	if (config.addStdMath) {
-		AutoLang::Libs::Math::init(*this);
+		Autolang::Libs::Math::init(*this);
 	}
 	// state = CompilerState::CT_READY;
 #ifndef NO_INCLUDE_LIBS_FILE
 	if (config.addStdFile) {
-		AutoLang::Libs::file::init(*this);
+		Autolang::Libs::file::init(*this);
 	}
 #endif
 #ifndef NO_INCLUDE_LIBS_DATE
 	if (config.addStdDate) {
-		AutoLang::Libs::date::init(*this);
+		Autolang::Libs::date::init(*this);
 	}
 #endif
 #ifndef NO_INCLUDE_LIBS_REGEX
 	if (config.addStdRegex) {
-		AutoLang::Libs::regex::init(*this);
+		Autolang::Libs::regex::init(*this);
 	}
 #endif
 #ifndef NO_INCLUDE_LIBS_JSON
 	if (config.addStdJson) {
-		AutoLang::Libs::json::init(*this);
+		Autolang::Libs::json::init(*this);
 	}
 #endif
 #ifndef NO_INCLUDE_LIBS_HTTP
 	if (config.addStdHttp) {
-		AutoLang::Libs::http::init(*this);
+		Autolang::Libs::http::init(*this);
 	}
 #endif
 	if (config.addStdBytes) {
-		AutoLang::Libs::bytes::init(*this);
+		Autolang::Libs::bytes::init(*this);
 	}
 }
 
@@ -1049,6 +1051,6 @@ ACompiler::~ACompiler() {
 	}
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

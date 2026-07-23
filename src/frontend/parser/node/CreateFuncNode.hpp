@@ -8,7 +8,7 @@
 #include <iostream>
 #include <vector>
 
-namespace AutoLang {
+namespace Autolang {
 
 // fun name(arguments): returnClass { body }
 struct CreateFuncNode : ExprNode {
@@ -35,6 +35,6 @@ struct CreateFuncNode : ExprNode {
 	~CreateFuncNode() {}
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

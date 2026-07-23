@@ -6,7 +6,7 @@
 #include "shared/DefaultFunction.hpp"
 
 
-namespace AutoLang {
+namespace Autolang {
 namespace Libs {
 namespace Debugger {
 void init(ACompiler &compiler) {
@@ -32,6 +32,6 @@ AObject *getClassName(NativeFuncInData) {}
 AObject *getClassId(NativeFuncInData) {}
 } // namespace Debugger
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

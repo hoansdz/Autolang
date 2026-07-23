@@ -7,7 +7,7 @@
 #include "shared/ClassFlags.hpp"
 #include <memory>
 
-namespace AutoLang {
+namespace Autolang {
 
 ClassId loadClassGenerics(in_func, std::string &name,
                           ClassDeclaration *classDeclaration) {
@@ -687,5 +687,5 @@ void loadFunctionGenerics(in_func, std::string &name,
 	}
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 #endif

@@ -4,7 +4,7 @@
 #include "frontend/parser/node/CreateFuncNode.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 template <bool addToGlobalScope> void CreateFuncNode::pushFunction(in_func) {
 	AClass *clazz =
@@ -12,7 +12,7 @@ template <bool addToGlobalScope> void CreateFuncNode::pushFunction(in_func) {
 	id = compile.registerFunction(clazz, context.lexerString[nameId],
 	                              new ClassId[parameter->parameters.size()]{},
 	                              parameter->parameters.size(),
-	                              AutoLang::DefaultClass::voidClassId,
+	                              Autolang::DefaultClass::voidClassId,
 	                              functionFlags);
 	// Function can be overrided, it will be recreated in override phase
 	if (clazz) {
@@ -47,7 +47,7 @@ void CreateFuncNode::pushNativeFunction(in_func, ANativeFunctionData *native) {
 	id = compile.registerFunction(
 	    clazz, context.lexerString[nameId],
 	    new ClassId[parameter->parameters.size()]{},
-	    parameter->parameters.size(), AutoLang::DefaultClass::voidClassId,
+	    parameter->parameters.size(), Autolang::DefaultClass::voidClassId,
 	    functionFlags | FunctionFlags::FUNC_IS_NATIVE);
 	// Function can be overrided, it will be recreated in override phase
 	if (clazz) {
@@ -137,6 +137,6 @@ void CreateFuncNode::optimize(in_func) {
 	}
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

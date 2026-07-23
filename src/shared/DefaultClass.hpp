@@ -4,7 +4,7 @@
 #include <iostream>
 #include "shared/Type.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 class ACompiler;
 struct AObject;
@@ -26,6 +26,7 @@ constexpr ClassId setClassId = 11;
 constexpr ClassId mapClassId = 12;
 constexpr ClassId jsonClassId = 13;
 constexpr ClassId jsObjectClassId = 14;
+constexpr ClassId pyObjectClassId = 14;
 extern AObject* nullObject;
 extern AObject* trueObject;
 extern AObject* falseObject;

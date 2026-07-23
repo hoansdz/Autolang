@@ -11,7 +11,7 @@
 #include <chrono>
 #include <string>
 
-namespace AutoLang {
+namespace Autolang {
 
 enum Opcode : uint8_t {
 	CALL_FUNCTION = 0,

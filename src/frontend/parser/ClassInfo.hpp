@@ -9,7 +9,7 @@
 #include "frontend/parser/GenericData.hpp"
 #include <vector>
 
-namespace AutoLang {
+namespace Autolang {
 
 struct ClassInfo {
 	GenericData *genericData = nullptr;
@@ -40,6 +40,6 @@ struct ClassInfo {
 	~ClassInfo();
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

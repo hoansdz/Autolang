@@ -10,7 +10,7 @@
 #include <cstring>
 #include <string>
 
-namespace AutoLang {
+namespace Autolang {
 namespace Libs {
 namespace bytes {
 
@@ -502,6 +502,6 @@ fun Int.toBigEndianBytes(): Bytes
 
 } // namespace bytes
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

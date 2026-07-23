@@ -8,7 +8,7 @@
 #include "shared/Type.hpp"
 #include <functional>
 
-namespace AutoLang {
+namespace Autolang {
 
 void DeclarationNode::optimize(in_func) {
 	if (loaded) {
@@ -489,6 +489,6 @@ void CreateClassNode::loadSuper(in_func) {
 	}
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

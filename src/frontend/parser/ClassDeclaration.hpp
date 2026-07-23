@@ -6,7 +6,7 @@
 #include <optional>
 #include <vector>
 
-namespace AutoLang {
+namespace Autolang {
 
 struct ParserContext;
 struct CompiledProgram;
@@ -47,6 +47,6 @@ struct ClassDeclaration {
 	[[noreturn]] inline void throwError(std::string message);
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

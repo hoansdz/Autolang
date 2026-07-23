@@ -4,7 +4,7 @@
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ExprNode *RangeNode::resolve(in_func) {
 	from = static_cast<HasClassIdNode *>(from->resolve(in_data));
@@ -54,6 +54,6 @@ RangeNode::~RangeNode() {
 	deleteNode(to);
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -9,7 +9,7 @@
 #include "shared/InheritanceBitset.hpp"
 #include "shared/Bytecodes.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 struct CompiledProgram;
 

@@ -4,7 +4,7 @@
 #include "frontend/parser/Debugger.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 HasClassIdNode *loadWhenExpression(in_func, size_t &i, HasClassIdNode *value) {
 	Lexer::Token *token = &context.tokens[i];
@@ -192,6 +192,6 @@ HasClassIdNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 	}
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

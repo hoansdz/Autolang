@@ -1,6 +1,6 @@
 # Lexical Analyzer (`src/frontend/lexer`)
 
-This directory contains the Lexer (tokenizer) responsible for scanning the source characters of AutoLang and producing a stream of tokens.
+This directory contains the Lexer (tokenizer) responsible for scanning the source characters of Autolang and producing a stream of tokens.
 
 ## Key Files
 

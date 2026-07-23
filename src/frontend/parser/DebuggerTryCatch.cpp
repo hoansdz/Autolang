@@ -4,7 +4,7 @@
 #include "frontend/parser/Debugger.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 TryCatchNode *loadTryCatch(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
@@ -57,7 +57,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i) {
 	auto declarationNode = context.makeDeclarationNode(
 	    in_data, token->line, baseName, name, nullptr, true,
 	    context.currentFunctionId == context.mainFunctionId, false, true, true);
-	declarationNode->classId = AutoLang::DefaultClass::exceptionClassId;
+	declarationNode->classId = Autolang::DefaultClass::exceptionClassId;
 	funcInfo->scopes.back()[baseName] = declarationNode;
 	node->exceptionDeclaration = declarationNode;
 	loadBody<false>(in_data, node->catchBody.nodes, i, true);
@@ -74,6 +74,6 @@ ThrowNode *loadThrow(in_func, size_t &i) {
 	return context.throwPool.push(firstLine, loadExpression(in_data, 0, i));
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

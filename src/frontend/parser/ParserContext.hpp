@@ -15,7 +15,7 @@
 #include <set>
 #include <vector>
 
-namespace AutoLang {
+namespace Autolang {
 
 enum ModifierFlags : uint32_t {
 	MF_PUBLIC = 1u << 0,
@@ -33,7 +33,11 @@ enum AnnotationFlags : uint32_t {
 	AN_WAIT_INPUT = 1u << 4,
 	AN_NO_EXTENDS = 1u << 5,
 	AN_NATIVE_DATA = 1u << 6,
+#ifdef __EMSCRIPTEN__
 	AN_JS_OBJECT = 1u << 7,
+#elif __PYBIND11__
+	AN_PY_OBJECT = 1u << 7,
+#endif
 };
 
 struct LibraryData;
@@ -94,6 +98,10 @@ struct ParserContext {
 	HashMap<AnnotationFlags, Lexer::Token> annotationMetadata;
 	// Declaration new functions by users
 	CreateClosureNode *currentClosureNode = nullptr;
+	std::optional<ClassId> *currentClosureCurrentClassId;
+	bool *currentClosureNullable;
+	// bool hasValue = false;
+	bool *currentClosureIsStatic;
 	std::vector<CreateClosureNode *> closureScopes;
 	NonReallocatePool<CreateFuncNode> newFunctions;
 	HashMap<LexerStringId, std::vector<CreateFuncNode *>> genericFunctionMap;
@@ -292,6 +300,6 @@ struct ParserContext {
 	~ParserContext();
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

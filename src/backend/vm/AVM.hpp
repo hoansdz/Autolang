@@ -16,10 +16,7 @@
 #include <vector>
 
 
-namespace AutoLang {
-
-template <typename K, typename V>
-size_t estimateUnorderedMapSize(const HashMap<K, V> &map);
+namespace Autolang {
 
 enum class VMState { READY, RUNNING, HALTED, WAITING, ERR };
 
@@ -40,9 +37,8 @@ struct CallFrame {
 	uint32_t i;
 	uint32_t fromStackAllocator;
 	uint32_t startStackCount;
+	uint32_t catchPositionIndex;
 	AObject *exception;
-	std::vector<uint32_t> catchPosition;
-	CallFrame() { catchPosition.reserve(4); }
 };
 
 class ANotifier;
@@ -103,10 +99,10 @@ class AVM {
 	inline bool callFunction(CallFrame *&currentCallFrame,
 	                         Function *currentFunction, uint8_t *bytecodes,
 	                         uint32_t &i);
-	template <bool hasValue>
-	inline bool callNativeFunction(CallFrame *&currentCallFrame,
-	                               Function *currentFunction,
-	                               uint8_t *bytecodes, uint32_t &i);
+	// template <bool hasValue>
+	// inline bool callNativeFunction(CallFrame *&currentCallFrame,
+	//                                Function *currentFunction,
+	//                                uint8_t *bytecodes, uint32_t &i);
 	inline bool callFunctionObject(AObject *obj);
 	inline bool callFunction(Function *currentFunction);
 	inline bool callFunction(CallFrame *currentCallFrame,
@@ -125,6 +121,6 @@ class AVM {
 	// friend ACompiler;
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-namespace AutoLang {
+namespace Autolang {
 
 struct ParserContext;
 struct DeclarationNode;
@@ -274,29 +274,29 @@ struct ConstValueNode : HasClassIdNode {
 	uint32_t id = UINT32_MAX;
 	ConstValueNode()
 	    : HasClassIdNode(NodeType::CONST_VAL,
-	                     AutoLang::DefaultClass::intClassId, line) {}
+	                     Autolang::DefaultClass::intClassId, line) {}
 	ConstValueNode(uint32_t line, int64_t i)
 	    : HasClassIdNode(NodeType::CONST_VAL,
-	                     AutoLang::DefaultClass::intClassId, line),
+	                     Autolang::DefaultClass::intClassId, line),
 	      i(i) {}
 	ConstValueNode(uint32_t line, double f)
 	    : HasClassIdNode(NodeType::CONST_VAL,
-	                     AutoLang::DefaultClass::floatClassId, line),
+	                     Autolang::DefaultClass::floatClassId, line),
 	      f(f) {}
 	ConstValueNode(uint32_t line, std::string str)
 	    : HasClassIdNode(NodeType::CONST_VAL,
-	                     AutoLang::DefaultClass::stringClassId, line),
+	                     Autolang::DefaultClass::stringClassId, line),
 	      str(new std::string(std::move(str))) {}
 	ConstValueNode(uint32_t line, bool b)
 	    : HasClassIdNode(NodeType::CONST_VAL,
-	                     AutoLang::DefaultClass::boolClassId, line),
+	                     Autolang::DefaultClass::boolClassId, line),
 	      obj(ObjectManager::createBoolObject(b)), id(b ? 1 : 2) {}
 	ConstValueNode(uint32_t line, AObject *obj, uint32_t id)
 	    : HasClassIdNode(NodeType::CONST_VAL, obj->type, line), obj(obj),
 	      id(id) {}
 	static inline uint32_t getBoolId(bool b) { return b ? 1 : 2; }
 	bool isNullable() override {
-		return classId == AutoLang::DefaultClass::nullClassId;
+		return classId == Autolang::DefaultClass::nullClassId;
 	}
 	bool isStaticValue() override { return true; }
 	void optimize(in_func) override;
@@ -464,7 +464,7 @@ struct GetPropNode : AccessNode {
 	            HasClassIdNode *caller, LexerStringId nameId, bool isInitial,
 	            bool nullable, bool accessNullable)
 	    : AccessNode(NodeType::GET_PROP, line, declaration, nullable,
-	                 AutoLang::DefaultClass::nullClassId),
+	                 Autolang::DefaultClass::nullClassId),
 	      contextCallClassId(contextCallClassId), caller(caller),
 	      nameId(nameId), isInitial(isInitial), isStatic(false),
 	      accessNullable(accessNullable) {}
@@ -555,7 +555,7 @@ struct VarNode : AccessNode {
 	VarNode(uint32_t line, DeclarationNode *declaration, bool isStore,
 	        bool nullable)
 	    : AccessNode(NodeType::VAR, line, declaration, nullable,
-	                 AutoLang::DefaultClass::nullClassId, true, isStore) {}
+	                 Autolang::DefaultClass::nullClassId, true, isStore) {}
 	void optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	ExprNode *copy(in_func) override;
@@ -833,6 +833,6 @@ struct WhenNode : NullableNode {
 	~WhenNode();
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -1,0 +1,62 @@
+class CustomException extends Exception {
+	constructor(msg: String) {
+		super(msg)
+	}
+}
+
+fun throwCustomException(msg: String) {
+	throw CustomException(msg)
+}
+
+fun exceptionFuncC() {
+	throw Exception("Error from C")
+}
+
+fun exceptionFuncB() {
+	exceptionFuncC()
+}
+
+fun testExceptionFeatures() {
+	// 1. Basic Try-Catch with Custom Exception
+	var caughtCustom = false
+	try {
+		throwCustomException("My Custom Message")
+	} catch (e) {
+		assert(e is CustomException, __FILE__, __LINE__)
+		assert(e.message == "My Custom Message", __FILE__, __LINE__)
+		caughtCustom = true
+	}
+	assert(caughtCustom, __FILE__, __LINE__)
+
+	// 2. Exception Propagation
+	var caughtPropagated = false
+	try {
+		exceptionFuncB()
+	} catch (e) {
+		assert(e.message == "Error from C", __FILE__, __LINE__)
+		caughtPropagated = true
+	}
+	assert(caughtPropagated, __FILE__, __LINE__)
+
+	// 3. Nested Try-Catch
+	var nestedInnerCaught = false
+	var nestedOuterCaught = false
+	try {
+		try {
+			throwCustomException("Inner Error")
+		} catch (e) {
+			assert(e is CustomException, __FILE__, __LINE__)
+			assert(e.message == "Inner Error", __FILE__, __LINE__)
+			nestedInnerCaught = true
+			throw Exception("Outer Error")
+		}
+	} catch (e) {
+		assert(e.message == "Outer Error", __FILE__, __LINE__)
+		nestedOuterCaught = true
+	}
+	assert(nestedInnerCaught && nestedOuterCaught, __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+testExceptionFeatures()

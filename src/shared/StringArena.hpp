@@ -46,7 +46,10 @@ class StringArena {
 	const char *get(uint32_t offset) const { return buffer + offset; }
 
 	void reset() {
-		if (capacity == initial_capacity) return;
+		if (capacity == initial_capacity) {
+			current_size = 0;
+			return;
+		}
     
 		char* new_buffer = static_cast<char *>(realloc(buffer, initial_capacity));
 		if (new_buffer) {

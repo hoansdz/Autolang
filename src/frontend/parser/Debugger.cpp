@@ -13,7 +13,7 @@
 #include <functional>
 #include <memory>
 
-namespace AutoLang {
+namespace Autolang {
 
 void freeData(in_func) {
 	// for (auto *funcInfo : context.functionInfo) {
@@ -253,9 +253,6 @@ initial:;
 			return nullptr;
 		}
 		case Lexer::TokenType::RETURN: {
-			if (!isInFunction)
-				throw ParserError(token->line,
-				                  "Error: Cannot return outside of a function");
 			return loadReturn(in_data, i);
 		}
 		case Lexer::TokenType::AT_SIGN: {
@@ -865,7 +862,7 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 			    context.tokens[i].line,
 			    "Expected ':' after parameter name but not found");
 		}
-		AutoLang::ClassDeclaration *classDeclaration = nullptr;
+		Autolang::ClassDeclaration *classDeclaration = nullptr;
 		if (!expect(token, Lexer::TokenType::COLON)) {
 			if constexpr (mustHaveColon) {
 				throw ParserError(
@@ -1793,7 +1790,7 @@ int getPrecedence(Lexer::TokenType type) {
 
 ConstValueNode *loadNumber(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
-	uint32_t type = AutoLang::DefaultClass::intClassId;
+	uint32_t type = Autolang::DefaultClass::intClassId;
 	const std::string &data = context.lexerString[token->indexData];
 	const char *s = data.c_str();
 	while (*s) {
@@ -1801,20 +1798,20 @@ ConstValueNode *loadNumber(in_func, size_t &i) {
 			case '.':
 			case 'e':
 			case 'E': {
-				type = AutoLang::DefaultClass::floatClassId;
+				type = Autolang::DefaultClass::floatClassId;
 				goto foundFlag;
 			}
 		}
 		++s;
 	}
 foundFlag:
-	return type == AutoLang::DefaultClass::intClassId
+	return type == Autolang::DefaultClass::intClassId
 	           ? context.constValuePool.push(
 	                 token->line, static_cast<int64_t>(std::stoll(data)))
 	           : context.constValuePool.push(
 	                 token->line, static_cast<double>(std::stod(data)));
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -10,7 +10,7 @@
 #include <cmath>
 #include <random>
 
-namespace AutoLang {
+namespace Autolang {
 namespace Libs {
 namespace Math {
 
@@ -45,8 +45,8 @@ AObject *random(NativeFuncInData) {
 		auto obj1 = args[0];
 		auto obj2 = args[1];
 
-		if (obj1->type == AutoLang::DefaultClass::intClassId &&
-		    obj2->type == AutoLang::DefaultClass::intClassId) {
+		if (obj1->type == Autolang::DefaultClass::intClassId &&
+		    obj2->type == Autolang::DefaultClass::intClassId) {
 
 			int64_t min = obj1->i;
 			int64_t max = obj2->i;
@@ -60,16 +60,16 @@ AObject *random(NativeFuncInData) {
 			return notifier.createInt(dist(rng));
 		}
 
-		if ((obj1->type == AutoLang::DefaultClass::floatClassId ||
-		     obj1->type == AutoLang::DefaultClass::intClassId) &&
-		    (obj2->type == AutoLang::DefaultClass::floatClassId ||
-		     obj2->type == AutoLang::DefaultClass::intClassId)) {
+		if ((obj1->type == Autolang::DefaultClass::floatClassId ||
+		     obj1->type == Autolang::DefaultClass::intClassId) &&
+		    (obj2->type == Autolang::DefaultClass::floatClassId ||
+		     obj2->type == Autolang::DefaultClass::intClassId)) {
 
-			double min = (obj1->type == AutoLang::DefaultClass::intClassId)
+			double min = (obj1->type == Autolang::DefaultClass::intClassId)
 			                 ? obj1->i
 			                 : obj1->f;
 
-			double max = (obj2->type == AutoLang::DefaultClass::intClassId)
+			double max = (obj2->type == Autolang::DefaultClass::intClassId)
 			                 ? obj2->i
 			                 : obj2->f;
 
@@ -93,9 +93,9 @@ AObject *random(NativeFuncInData) {
 AObject *abs(NativeFuncInData) {
 	auto obj = args[0];
 	switch (obj->type) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			return notifier.createInt(static_cast<int64_t>(std::abs(obj->i)));
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			return notifier.createFloat(std::abs(obj->f));
 		default: {
 			notifier.throwException("Wrong type");
@@ -107,9 +107,9 @@ AObject *abs(NativeFuncInData) {
 AObject *round(NativeFuncInData) {
 	auto obj1 = args[0];
 	switch (obj1->type) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			return notifier.createInt(obj1->i);
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			return notifier.createInt(
 			    static_cast<int64_t>(std::round(obj1->f)));
 		default: {
@@ -122,9 +122,9 @@ AObject *round(NativeFuncInData) {
 AObject *floor(NativeFuncInData) {
 	auto obj1 = args[0];
 	switch (obj1->type) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			return notifier.createInt(obj1->i);
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			return notifier.createInt(
 			    static_cast<int64_t>(std::floor(obj1->f)));
 		default: {
@@ -137,9 +137,9 @@ AObject *floor(NativeFuncInData) {
 AObject *ceil(NativeFuncInData) {
 	auto obj1 = args[0];
 	switch (obj1->type) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			return notifier.createInt(obj1->i);
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			return notifier.createInt(static_cast<int64_t>(std::ceil(obj1->f)));
 		default: {
 			notifier.throwException("Wrong type");
@@ -151,9 +151,9 @@ AObject *ceil(NativeFuncInData) {
 AObject *trunc(NativeFuncInData) {
 	auto obj = args[0];
 	switch (obj->type) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			return notifier.createInt(obj->i);
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			return notifier.createInt(static_cast<int64_t>(std::trunc(obj->f)));
 		default: {
 			notifier.throwException("Wrong type");
@@ -165,9 +165,9 @@ AObject *trunc(NativeFuncInData) {
 AObject *sin(NativeFuncInData) {
 	auto obj1 = args[0];
 	switch (obj1->type) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			return notifier.createFloat(std::sin(obj1->i));
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			return notifier.createFloat(std::sin(obj1->f));
 		default: {
 			notifier.throwException("Wrong type");
@@ -179,9 +179,9 @@ AObject *sin(NativeFuncInData) {
 AObject *cos(NativeFuncInData) {
 	auto obj1 = args[0];
 	switch (obj1->type) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			return notifier.createFloat(std::cos(obj1->i));
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			return notifier.createFloat(std::cos(obj1->f));
 		default: {
 			notifier.throwException("Wrong type");
@@ -193,9 +193,9 @@ AObject *cos(NativeFuncInData) {
 AObject *tan(NativeFuncInData) {
 	auto obj1 = args[0];
 	switch (obj1->type) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			return notifier.createFloat(std::tan(obj1->i));
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			return notifier.createFloat(std::tan(obj1->f));
 		default: {
 			notifier.throwException("Wrong type");
@@ -211,9 +211,9 @@ AObject *pow(NativeFuncInData) {
 	auto obj2 = args[1];
 
 	switch (obj1->type) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			switch (obj2->type) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					try {
 						return notifier.createInt(
 						    integer_pow(obj1->i, obj2->i));
@@ -221,18 +221,18 @@ AObject *pow(NativeFuncInData) {
 						notifier.throwException(e.what());
 						return nullptr;
 					}
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return notifier.createFloat(std::pow(obj1->i, obj2->f));
 				default: {
 					notifier.throwException("Wrong type");
 					return nullptr;
 				}
 			}
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			switch (obj2->type) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return notifier.createFloat(std::pow(obj1->f, obj2->i));
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return notifier.createFloat(std::pow(obj1->f, obj2->f));
 				default: {
 					notifier.throwException("Wrong type");
@@ -251,22 +251,22 @@ AObject *fmod(NativeFuncInData) {
 	auto obj2 = args[1];
 
 	switch (obj1->type) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			switch (obj2->type) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return notifier.createFloat(std::fmod(obj1->i, obj2->i));
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return notifier.createFloat(std::fmod(obj1->i, obj2->f));
 				default: {
 					notifier.throwException("Wrong type");
 					return nullptr;
 				}
 			}
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			switch (obj2->type) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return notifier.createFloat(std::fmod(obj1->f, obj2->i));
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return notifier.createFloat(std::fmod(obj1->f, obj2->f));
 				default: {
 					notifier.throwException("Wrong type");
@@ -283,7 +283,7 @@ AObject *fmod(NativeFuncInData) {
 AObject *sqrt(NativeFuncInData) {
 	auto obj = args[0];
 	double val =
-	    (obj->type == AutoLang::DefaultClass::intClassId) ? obj->i : obj->f;
+	    (obj->type == Autolang::DefaultClass::intClassId) ? obj->i : obj->f;
 	if (val < 0) {
 		notifier.throwException("Square root of negative number");
 		return nullptr;
@@ -294,14 +294,14 @@ AObject *sqrt(NativeFuncInData) {
 AObject *exp(NativeFuncInData) {
 	auto obj = args[0];
 	double val =
-	    (obj->type == AutoLang::DefaultClass::intClassId) ? obj->i : obj->f;
+	    (obj->type == Autolang::DefaultClass::intClassId) ? obj->i : obj->f;
 	return notifier.createFloat(std::exp(val));
 }
 
 AObject *log(NativeFuncInData) {
 	auto obj = args[0];
 	double val =
-	    (obj->type == AutoLang::DefaultClass::intClassId) ? obj->i : obj->f;
+	    (obj->type == Autolang::DefaultClass::intClassId) ? obj->i : obj->f;
 	if (val <= 0) {
 		notifier.throwException("Logarithm of non-positive number");
 		return nullptr;
@@ -313,15 +313,15 @@ AObject *m_min(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 
-	if (obj1->type == AutoLang::DefaultClass::intClassId &&
-	    obj2->type == AutoLang::DefaultClass::intClassId) {
+	if (obj1->type == Autolang::DefaultClass::intClassId &&
+	    obj2->type == Autolang::DefaultClass::intClassId) {
 		return notifier.createInt(std::min(obj1->i, obj2->i));
 	}
 
 	double v1 =
-	    (obj1->type == AutoLang::DefaultClass::intClassId) ? obj1->i : obj1->f;
+	    (obj1->type == Autolang::DefaultClass::intClassId) ? obj1->i : obj1->f;
 	double v2 =
-	    (obj2->type == AutoLang::DefaultClass::intClassId) ? obj2->i : obj2->f;
+	    (obj2->type == Autolang::DefaultClass::intClassId) ? obj2->i : obj2->f;
 	return notifier.createFloat(std::min(v1, v2));
 }
 
@@ -329,19 +329,19 @@ AObject *m_max(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 
-	if (obj1->type == AutoLang::DefaultClass::intClassId &&
-	    obj2->type == AutoLang::DefaultClass::intClassId) {
+	if (obj1->type == Autolang::DefaultClass::intClassId &&
+	    obj2->type == Autolang::DefaultClass::intClassId) {
 		return notifier.createInt(std::max(obj1->i, obj2->i));
 	}
 
 	double v1 =
-	    (obj1->type == AutoLang::DefaultClass::intClassId) ? obj1->i : obj1->f;
+	    (obj1->type == Autolang::DefaultClass::intClassId) ? obj1->i : obj1->f;
 	double v2 =
-	    (obj2->type == AutoLang::DefaultClass::intClassId) ? obj2->i : obj2->f;
+	    (obj2->type == Autolang::DefaultClass::intClassId) ? obj2->i : obj2->f;
 	return notifier.createFloat(std::max(v1, v2));
 }
 
-void init(AutoLang::ACompiler &compiler) {
+void init(Autolang::ACompiler &compiler) {
 	auto nativeMap = ANativeMap();
 	nativeMap.reserve(20);
 
@@ -407,5 +407,5 @@ class Math {
 
 } // namespace Math
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 #endif

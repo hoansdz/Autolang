@@ -10,7 +10,7 @@
 #include "shared/Type.hpp"
 
 
-namespace AutoLang {
+namespace Autolang {
 
 struct Function {
 	StringArenaOffset nameStringOffset;
@@ -51,6 +51,6 @@ struct Function {
 	std::string toString(CompiledProgram &data);
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

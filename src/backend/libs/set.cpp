@@ -9,7 +9,7 @@
 #include "shared/DefaultOperator.hpp"
 #include "shared/Type.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 namespace Libs {
 namespace set {
 
@@ -576,6 +576,6 @@ AObject *to_string(NativeFuncInData) {
 
 } // namespace set
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

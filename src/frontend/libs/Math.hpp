@@ -4,13 +4,13 @@
 #include "shared/Type.hpp"
 #include <cmath>
 
-namespace AutoLang {
+namespace Autolang {
 class ACompiler;
 
 namespace Libs {
 namespace Math {
 
-void init(AutoLang::ACompiler &compiler);
+void init(Autolang::ACompiler &compiler);
 int64_t integer_pow(int64_t base, int64_t exp);
 
 AObject *abs(NativeFuncInData);
@@ -36,5 +36,5 @@ inline bool isIntegerFloat(double x) { return std::floor(x) == x; }
 
 } // namespace Math
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 #endif

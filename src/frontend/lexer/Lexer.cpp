@@ -11,7 +11,7 @@
 		++context.estimate.val;                                                \
 		break;
 
-namespace AutoLang {
+namespace Autolang {
 namespace Lexer {
 
 bool isEndOfLine(Context &context, uint32_t i) { return i >= context.lineSize; }
@@ -904,5 +904,5 @@ char getCloseBracket(char chr) {
 }
 
 } // namespace Lexer
-} // namespace AutoLang
+} // namespace Autolang
 #endif

@@ -6,7 +6,7 @@
 #include "frontend/parser/ParserContext.hpp"
 #include "frontend/parser/node/CreateNode.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ExprNode *UnknowNode::resolve(in_func) {
 	{
@@ -124,7 +124,7 @@ ExprNode *WhileNode::resolve(in_func) {
 
 void WhileNode::optimize(in_func) {
 	condition->optimize(in_data);
-	if (condition->classId != AutoLang::DefaultClass::boolClassId)
+	if (condition->classId != Autolang::DefaultClass::boolClassId)
 		throwError("Cannot use expression of type '" +
 		           condition->getClassName(in_data) +
 		           "' as a condition, expected 'Bool'");
@@ -319,10 +319,10 @@ void ReturnNode::optimize(in_func) {
 				break;
 			}
 		}
-		if (value->classId == AutoLang::DefaultClass::nullClassId) {
+		if (value->classId == Autolang::DefaultClass::nullClassId) {
 		}
 		if (!(func->functionFlags & FunctionFlags::FUNC_RETURN_NULLABLE)) {
-			if (value->classId == AutoLang::DefaultClass::nullClassId) {
+			if (value->classId == Autolang::DefaultClass::nullClassId) {
 				throwError("Cannot return null because functions returns "
 				           "non null value");
 			}
@@ -330,13 +330,13 @@ void ReturnNode::optimize(in_func) {
 				throwError("Cannot return nullable variable because functions "
 				           "returns non null value");
 			}
-		} else if (value->classId == AutoLang::DefaultClass::nullClassId) {
+		} else if (value->classId == Autolang::DefaultClass::nullClassId) {
 			return;
 		}
 		if (value->classId == func->returnId) {
 			return;
 		}
-		if (compile.classes[func->returnId]->inheritance.get(value->classId)) {
+		if (compile.classes[value->classId]->inheritance.get(func->returnId)) {
 			return;
 		}
 		if (value->classId == DefaultClass::intClassId &&
@@ -352,7 +352,7 @@ void ReturnNode::optimize(in_func) {
 		           compile.classes[value->classId]->getName(compile) + " to " +
 		           compile.classes[func->returnId]->getName(compile));
 	}
-	if (func->returnId != AutoLang::DefaultClass::voidClassId) {
+	if (func->returnId != Autolang::DefaultClass::voidClassId) {
 		throwError("Must return value");
 	}
 }
@@ -363,6 +363,6 @@ ExprNode *ReturnNode::copy(in_func) {
 	    value ? static_cast<HasClassIdNode *>(value->copy(in_data)) : nullptr);
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

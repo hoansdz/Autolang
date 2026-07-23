@@ -1,6 +1,9 @@
 build/
 .vscode
 .VSCodeCounter
+.cache
+.continue
+.dist
 .clang-format
 .CMakeLists.txt
 .cache/clangd/index/

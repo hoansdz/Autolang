@@ -15,7 +15,7 @@
 #include "shared/ClassFlags.hpp"
 #include "shared/CompiledProgram.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 ConstValueNode *toInt(in_func, ConstValueNode *value);
 ConstValueNode *toFloat(in_func, ConstValueNode *value);
 ConstValueNode *toBool(in_func, ConstValueNode *value);
@@ -23,10 +23,10 @@ ConstValueNode *toString(in_func, ConstValueNode *value);
 
 static void prepareOperands(in_func, ConstValueNode *&left,
                             ConstValueNode *&right) {
-	if (left->classId == AutoLang::DefaultClass::boolClassId) {
+	if (left->classId == Autolang::DefaultClass::boolClassId) {
 		left = toInt(in_data, left);
 	}
-	if (right->classId == AutoLang::DefaultClass::boolClassId) {
+	if (right->classId == Autolang::DefaultClass::boolClassId) {
 		right = toInt(in_data, right);
 	}
 }
@@ -44,15 +44,15 @@ ConstValueNode *plus(in_func, ConstValueNode *left, ConstValueNode *right) {
 	prepareOperands(in_data, left, right);
 
 	switch (left->classId) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i + right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i + right->f);
-				case AutoLang::DefaultClass::stringClassId:
+				case Autolang::DefaultClass::stringClassId:
 					return context.constValuePool.push(
 					    left->line,
 					    std::to_string(left->i) +
@@ -62,15 +62,15 @@ ConstValueNode *plus(in_func, ConstValueNode *left, ConstValueNode *right) {
 			}
 			break;
 
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f + right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f + right->f);
-				case AutoLang::DefaultClass::stringClassId:
+				case Autolang::DefaultClass::stringClassId:
 					return context.constValuePool.push(
 					    left->line,
 					    std::to_string(left->f) +
@@ -80,16 +80,16 @@ ConstValueNode *plus(in_func, ConstValueNode *left, ConstValueNode *right) {
 			}
 			break;
 
-		case AutoLang::DefaultClass::stringClassId: {
+		case Autolang::DefaultClass::stringClassId: {
 			std::string &strLeft = *static_cast<std::string *>(left->str);
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(
 					    left->line, strLeft + std::to_string(right->i));
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(
 					    left->line, strLeft + std::to_string(right->f));
-				case AutoLang::DefaultClass::stringClassId:
+				case Autolang::DefaultClass::stringClassId:
 					return context.constValuePool.push(
 					    left->line,
 					    strLeft + *static_cast<std::string *>(right->str));
@@ -108,24 +108,24 @@ ConstValueNode *minus(in_func, ConstValueNode *left, ConstValueNode *right) {
 	prepareOperands(in_data, left, right);
 
 	switch (left->classId) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i - right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i - right->f);
 				default:
 					break;
 			}
 			break;
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f - right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f - right->f);
 				default:
@@ -142,24 +142,24 @@ ConstValueNode *mul(in_func, ConstValueNode *left, ConstValueNode *right) {
 	prepareOperands(in_data, left, right);
 
 	switch (left->classId) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i * right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i * right->f);
 				default:
 					break;
 			}
 			break;
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f * right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f * right->f);
 				default:
@@ -175,33 +175,33 @@ ConstValueNode *mul(in_func, ConstValueNode *left, ConstValueNode *right) {
 ConstValueNode *divide(in_func, ConstValueNode *left, ConstValueNode *right) {
 	prepareOperands(in_data, left, right);
 
-	if (right->classId == AutoLang::DefaultClass::intClassId && right->i == 0) {
+	if (right->classId == Autolang::DefaultClass::intClassId && right->i == 0) {
 		throw ParserError(right->line, "Division by zero");
 	}
-	if (right->classId == AutoLang::DefaultClass::floatClassId &&
+	if (right->classId == Autolang::DefaultClass::floatClassId &&
 	    right->f == 0.0) {
 		throw ParserError(right->line, "Division by zero");
 	}
 
 	switch (left->classId) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i / right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i / right->f);
 				default:
 					break;
 			}
 			break;
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f / right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f / right->f);
 				default:
@@ -215,21 +215,21 @@ ConstValueNode *divide(in_func, ConstValueNode *left, ConstValueNode *right) {
 }
 
 ConstValueNode *mod(in_func, ConstValueNode *left, ConstValueNode *right) {
-	if (right->classId == AutoLang::DefaultClass::intClassId && right->i == 0) {
+	if (right->classId == Autolang::DefaultClass::intClassId && right->i == 0) {
 		throw ParserError(right->line, "Modulo by zero");
 	}
-	if (right->classId == AutoLang::DefaultClass::floatClassId &&
+	if (right->classId == Autolang::DefaultClass::floatClassId &&
 	    right->f == 0.0) {
 		throw ParserError(right->line, "Modulo by zero");
 	}
 
 	switch (left->classId) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i % right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(
 					    left->line,
 					    static_cast<double>(std::fmod(left->i, right->f)));
@@ -237,13 +237,13 @@ ConstValueNode *mod(in_func, ConstValueNode *left, ConstValueNode *right) {
 					break;
 			}
 			break;
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(
 					    left->line,
 					    static_cast<double>(std::fmod(left->f, right->i)));
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(
 					    left->line,
 					    static_cast<double>(std::fmod(left->f, right->f)));
@@ -259,8 +259,8 @@ ConstValueNode *mod(in_func, ConstValueNode *left, ConstValueNode *right) {
 
 ConstValueNode *bitwise_and(in_func, ConstValueNode *left,
                             ConstValueNode *right) {
-	if (left->classId == AutoLang::DefaultClass::intClassId &&
-	    right->classId == AutoLang::DefaultClass::intClassId) {
+	if (left->classId == Autolang::DefaultClass::intClassId &&
+	    right->classId == Autolang::DefaultClass::intClassId) {
 		return context.constValuePool.push(left->line, left->i & right->i);
 	}
 	throw ParserError(left->line, "Invalid types for operator &");
@@ -268,8 +268,8 @@ ConstValueNode *bitwise_and(in_func, ConstValueNode *left,
 
 ConstValueNode *bitwise_or(in_func, ConstValueNode *left,
                            ConstValueNode *right) {
-	if (left->classId == AutoLang::DefaultClass::intClassId &&
-	    right->classId == AutoLang::DefaultClass::intClassId) {
+	if (left->classId == Autolang::DefaultClass::intClassId &&
+	    right->classId == Autolang::DefaultClass::intClassId) {
 		return context.constValuePool.push(left->line, left->i | right->i);
 	}
 	throw ParserError(left->line, "Invalid types for operator |");
@@ -277,39 +277,39 @@ ConstValueNode *bitwise_or(in_func, ConstValueNode *left,
 
 ConstValueNode *op_eqeq(in_func, ConstValueNode *left, ConstValueNode *right) {
 	switch (left->classId) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i == right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i == right->f);
 				default:
 					break;
 			}
 			break;
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f == right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f == right->f);
 				default:
 					break;
 			}
 			break;
-		case AutoLang::DefaultClass::boolClassId: {
-			if (right->classId == AutoLang::DefaultClass::boolClassId) {
+		case Autolang::DefaultClass::boolClassId: {
+			if (right->classId == Autolang::DefaultClass::boolClassId) {
 				return context.constValuePool.push(
 				    left->line, left->obj->b == right->obj->b);
 			}
 			throwInvalidCompare(in_data, left, right, "==");
 		}
-		case AutoLang::DefaultClass::stringClassId: {
-			if (right->classId == AutoLang::DefaultClass::stringClassId) {
+		case Autolang::DefaultClass::stringClassId: {
+			if (right->classId == Autolang::DefaultClass::stringClassId) {
 				return context.constValuePool.push(
 				    left->line, *static_cast<std::string *>(left->str) ==
 				                    *static_cast<std::string *>(right->str));
@@ -334,39 +334,39 @@ ConstValueNode *op_eqeq(in_func, ConstValueNode *left, ConstValueNode *right) {
 ConstValueNode *op_not_eq(in_func, ConstValueNode *left,
                           ConstValueNode *right) {
 	switch (left->classId) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i != right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i != right->f);
 				default:
 					break;
 			}
 			break;
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f != right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f != right->f);
 				default:
 					break;
 			}
 			break;
-		case AutoLang::DefaultClass::boolClassId: {
-			if (right->classId == AutoLang::DefaultClass::boolClassId) {
+		case Autolang::DefaultClass::boolClassId: {
+			if (right->classId == Autolang::DefaultClass::boolClassId) {
 				return context.constValuePool.push(
 				    left->line, left->obj->b != right->obj->b);
 			}
 			throwInvalidCompare(in_data, left, right, "!=");
 		}
-		case AutoLang::DefaultClass::stringClassId: {
-			if (right->classId == AutoLang::DefaultClass::stringClassId) {
+		case Autolang::DefaultClass::stringClassId: {
+			if (right->classId == Autolang::DefaultClass::stringClassId) {
 				return context.constValuePool.push(
 				    left->line, *static_cast<std::string *>(left->str) !=
 				                    *static_cast<std::string *>(right->str));
@@ -389,24 +389,24 @@ ConstValueNode *op_greater_than(in_func, ConstValueNode *left,
                                 ConstValueNode *right) {
 	prepareOperands(in_data, left, right);
 	switch (left->classId) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i > right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i > right->f);
 				default:
 					break;
 			}
 			break;
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f > right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f > right->f);
 				default:
@@ -423,24 +423,24 @@ ConstValueNode *op_less_than(in_func, ConstValueNode *left,
                              ConstValueNode *right) {
 	prepareOperands(in_data, left, right);
 	switch (left->classId) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i < right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i < right->f);
 				default:
 					break;
 			}
 			break;
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f < right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f < right->f);
 				default:
@@ -457,24 +457,24 @@ ConstValueNode *op_greater_than_eq(in_func, ConstValueNode *left,
                                    ConstValueNode *right) {
 	prepareOperands(in_data, left, right);
 	switch (left->classId) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i >= right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i >= right->f);
 				default:
 					break;
 			}
 			break;
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f >= right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f >= right->f);
 				default:
@@ -491,24 +491,24 @@ ConstValueNode *op_less_than_eq(in_func, ConstValueNode *left,
                                 ConstValueNode *right) {
 	prepareOperands(in_data, left, right);
 	switch (left->classId) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i <= right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->i <= right->f);
 				default:
 					break;
 			}
 			break;
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			switch (right->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f <= right->i);
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(left->line,
 					                                   left->f <= right->f);
 				default:
@@ -523,14 +523,14 @@ ConstValueNode *op_less_than_eq(in_func, ConstValueNode *left,
 
 ConstValueNode *toInt(in_func, ConstValueNode *value) {
 	switch (value->classId) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			return value;
 
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			return context.constValuePool.push(value->line,
 			                                   static_cast<int64_t>(value->f));
 
-		case AutoLang::DefaultClass::boolClassId:
+		case Autolang::DefaultClass::boolClassId:
 			return context.constValuePool.push(
 			    value->line, static_cast<int64_t>(value->obj->b));
 
@@ -542,14 +542,14 @@ ConstValueNode *toInt(in_func, ConstValueNode *value) {
 
 ConstValueNode *toFloat(in_func, ConstValueNode *value) {
 	switch (value->classId) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			return context.constValuePool.push(value->line,
 			                                   static_cast<double>(value->i));
 
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			return value;
 
-		case AutoLang::DefaultClass::boolClassId:
+		case Autolang::DefaultClass::boolClassId:
 			return context.constValuePool.push(
 			    value->line, static_cast<double>(value->obj->b));
 
@@ -561,13 +561,13 @@ ConstValueNode *toFloat(in_func, ConstValueNode *value) {
 
 ConstValueNode *toBool(in_func, ConstValueNode *value) {
 	switch (value->classId) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			return context.constValuePool.push(value->line, value->i != 0);
 
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			return context.constValuePool.push(value->line, value->f != 0);
 
-		case AutoLang::DefaultClass::boolClassId:
+		case Autolang::DefaultClass::boolClassId:
 			return value;
 
 		default:
@@ -578,19 +578,19 @@ ConstValueNode *toBool(in_func, ConstValueNode *value) {
 
 ConstValueNode *toString(in_func, ConstValueNode *value) {
 	switch (value->classId) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			return context.constValuePool.push(value->line,
 			                                   std::to_string(value->i));
 
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			return context.constValuePool.push(value->line,
 			                                   std::to_string(value->f));
 
-		case AutoLang::DefaultClass::boolClassId:
+		case Autolang::DefaultClass::boolClassId:
 			return context.constValuePool.push(
 			    value->line, value->obj->b ? "true" : "false");
 
-		case AutoLang::DefaultClass::stringClassId:
+		case Autolang::DefaultClass::stringClassId:
 			return value;
 
 		default:
@@ -599,6 +599,6 @@ ConstValueNode *toString(in_func, ConstValueNode *value) {
 	throw ParserError(value->line, "Cannot convert to String");
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -6,7 +6,7 @@
 #include "frontend/parser/ParserContext.hpp"
 #include "shared/ClassFlags.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ExprNode *CallNode::resolve(in_func) {
 	for (auto &argument : arguments) {
@@ -103,7 +103,7 @@ void CallNode::optimize(in_func) {
 			}
 			case NodeType::CALL: {
 				argument->optimize(in_data);
-				if (argument->classId == AutoLang::DefaultClass::voidClassId) {
+				if (argument->classId == Autolang::DefaultClass::voidClassId) {
 					throwError("Cannot input Void value at parameter " +
 					           std::to_string(i + 1));
 				}
@@ -731,7 +731,7 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 			}
 			// Never functionClassId
 			case DefaultClass::intClassId: {
-				if (funcExpectClassId == AutoLang::DefaultClass::floatClassId) {
+				if (funcExpectClassId == Autolang::DefaultClass::floatClassId) {
 					argument = static_cast<HasClassIdNode *>(
 					    context.castPool
 					        .push(argument, DefaultClass::floatClassId)
@@ -887,7 +887,7 @@ bool CallNode::match(in_func, MatchOverload &match,
 				}
 				case DefaultClass::intClassId: {
 					if (funcExpectClassId ==
-					    AutoLang::DefaultClass::floatClassId) {
+					    Autolang::DefaultClass::floatClassId) {
 						++match.score;
 						continue;
 					}
@@ -1038,6 +1038,6 @@ CallNode::~CallNode() {
 	}
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

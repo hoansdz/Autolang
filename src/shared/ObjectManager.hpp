@@ -5,7 +5,7 @@
 #include "shared/AreaAllocator.hpp"
 #include <iostream>
 
-namespace AutoLang {
+namespace Autolang {
 
 class ObjectManager {
   private:
@@ -19,7 +19,7 @@ class ObjectManager {
 	Stack<AObject *, size> floatObjects;
 	inline void add(AObject *obj) {
 		switch (obj->type) {
-			case AutoLang::DefaultClass::intClassId: {
+			case Autolang::DefaultClass::intClassId: {
 				// std::cerr<<"released " << obj << "\n";
 				if (intObjects.index == size) {
 					areaAllocator.release(obj);
@@ -28,7 +28,7 @@ class ObjectManager {
 				intObjects.objects[intObjects.index++] = obj;
 				return;
 			}
-			case AutoLang::DefaultClass::floatClassId: {
+			case Autolang::DefaultClass::floatClassId: {
 				if (floatObjects.index == size) {
 					areaAllocator.release(obj);
 					return;
@@ -57,11 +57,19 @@ class ObjectManager {
 		obj->flags = AObject::Flags::OBJ_IS_JS_OBJECT;
 		return obj;
 	}
+#elif __PYBIND11__
+	inline AObject *getPyObject(ClassId classId, pybind11::object *pyObject) {
+		auto obj = areaAllocator.getObject();
+		obj->type = classId;
+		obj->pyObject = pyObject;
+		obj->flags = AObject::Flags::OBJ_IS_PY_OBJECT;
+		return obj;
+	}
 #endif
 	inline AObject *get(int64_t i) {
 		if (intObjects.index == 0) {
 			AObject *obj = areaAllocator.getObject();
-			obj->type = AutoLang::DefaultClass::intClassId;
+			obj->type = Autolang::DefaultClass::intClassId;
 			obj->i = i;
 			return obj;
 		}
@@ -72,7 +80,7 @@ class ObjectManager {
 	inline AObject *get(double f) {
 		if (floatObjects.index == 0) {
 			AObject *obj = areaAllocator.getObject();
-			obj->type = AutoLang::DefaultClass::floatClassId;
+			obj->type = Autolang::DefaultClass::floatClassId;
 			obj->f = f;
 			return obj;
 		}
@@ -82,13 +90,13 @@ class ObjectManager {
 	}
 	inline AObject *get(AString *str) {
 		auto obj = areaAllocator.getObject();
-		obj->type = AutoLang::DefaultClass::stringClassId;
+		obj->type = Autolang::DefaultClass::stringClassId;
 		obj->str = str;
 		return obj;
 	}
 	inline AObject *get(FunctionObject *function) {
 		auto obj = areaAllocator.getObject();
-		obj->type = AutoLang::DefaultClass::functionClassId;
+		obj->type = Autolang::DefaultClass::functionClassId;
 		obj->function = function;
 		return obj;
 	}
@@ -104,45 +112,51 @@ class ObjectManager {
 			return;
 		}
 		switch (obj->type) {
-			case AutoLang::DefaultClass::intClassId:
-			case AutoLang::DefaultClass::floatClassId: {
+			case Autolang::DefaultClass::intClassId:
+			case Autolang::DefaultClass::floatClassId: {
 				obj->flags = AObject::Flags::OBJ_IS_FREE;
 				return;
 			}
-			case AutoLang::DefaultClass::nullClassId:
-			case AutoLang::DefaultClass::boolClassId: {
+			case Autolang::DefaultClass::nullClassId:
+			case Autolang::DefaultClass::boolClassId: {
 				int *a = nullptr;
 				*a = 5;
 				assert(false && "Critical Bug: free bool/null object");
 				obj->flags = AObject::Flags::OBJ_IS_FREE;
 				return;
 			}
-			case AutoLang::DefaultClass::stringClassId: {
+			case Autolang::DefaultClass::stringClassId: {
 				delete obj->str;
 				obj->flags = AObject::Flags::OBJ_IS_FREE;
 				return;
 			}
 #ifndef NO_INCLUDE_LIBS_JSON
-			case AutoLang::DefaultClass::jsonClassId: {
+			case Autolang::DefaultClass::jsonClassId: {
 				delete obj->json;
 				obj->flags = AObject::Flags::OBJ_IS_FREE;
 				return;
 			}
 #endif
 #ifdef __EMSCRIPTEN__
-			case AutoLang::DefaultClass::jsObjectClassId: {
+			case Autolang::DefaultClass::jsObjectClassId: {
 				delete obj->jsObject;
 				obj->flags = AObject::Flags::OBJ_IS_FREE;
 				return;
 			}
+#elif __PYBIND11__
+			case Autolang::DefaultClass::pyObjectClassId: {
+				delete obj->pyObject;
+				obj->flags = AObject::Flags::OBJ_IS_FREE;
+				return;
+			}
 #endif
-			case AutoLang::DefaultClass::bytesClassId: {
+			case Autolang::DefaultClass::bytesClassId: {
 				delete[] obj->bytes->data;
 				delete obj->bytes;
 				obj->flags = AObject::Flags::OBJ_IS_FREE;
 				return;
 			}
-			case AutoLang::DefaultClass::functionClassId: {
+			case Autolang::DefaultClass::functionClassId: {
 				for (int i = obj->function->size; i-- > 0;) {
 					release(obj->function->args[i]);
 				}
@@ -204,8 +218,8 @@ class ObjectManager {
 		floatObjects.refresh();
 	}
 	static inline AObject *create(bool b) {
-		return b ? AutoLang::DefaultClass::trueObject
-		         : AutoLang::DefaultClass::falseObject;
+		return b ? Autolang::DefaultClass::trueObject
+		         : Autolang::DefaultClass::falseObject;
 	}
 	static inline AObject *createBoolObject(bool b) { return create(b); }
 	inline AObject *get(uint32_t type, size_t memberCount) {
@@ -233,6 +247,6 @@ class ObjectManager {
 	void destroy();
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

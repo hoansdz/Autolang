@@ -6,7 +6,7 @@
 #include "frontend/parser/ParserContext.hpp"
 #include "frontend/parser/node/CreateNode.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 void SkipNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	bytecodes.emplace_back(Opcode::JUMP);
@@ -117,6 +117,6 @@ void ReturnNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	putOptimizedBytecodes(in_data, value, bytecodes);
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

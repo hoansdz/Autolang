@@ -12,13 +12,13 @@
 #include <string>
 #include <vector>
 
-namespace AutoLang {
+namespace Autolang {
 
 struct ParserContext;
 
-struct ParserError : AutoLang::Lexer::LexerError {
+struct ParserError : Autolang::Lexer::LexerError {
 	ParserError(uint32_t line, std::string msg)
-	    : AutoLang::Lexer::LexerError(line, msg) {}
+	    : Autolang::Lexer::LexerError(line, msg) {}
 };
 
 inline void lexerData(in_func, ACompiler &compiler, LibraryData *library,
@@ -128,6 +128,6 @@ inline bool nextTokenSameLine(Lexer::Token **token,
 	return (*token)->line == line;
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

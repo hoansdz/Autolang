@@ -6,7 +6,7 @@
 #include "shared/ClassFlags.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 inline void loadEnumBody(in_func, size_t &i, CreateClassNode *node,
                          uint32_t firstLine, AClass *lastClass) {
@@ -159,6 +159,6 @@ void loadEnum(in_func, size_t &i) {
 	}
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

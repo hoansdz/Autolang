@@ -8,7 +8,7 @@
 #include "shared/ANativeFunctionData.hpp"
 #include <iostream>
 
-namespace AutoLang {
+namespace Autolang {
 
 enum class CompilerState { CT_READY, CT_ERROR, CT_ANALYZED, CT_BYTECODE_READY };
 
@@ -29,7 +29,11 @@ enum LibraryFlags : uint32_t {
 	AUTO_IMPORT = 1u << 1,
 	IS_MAIN_LIB = 1u << 2,
 	IS_FILE = 1u << 3,
+#ifdef __PYBIND11__
+	IS_PY_BRIDGE = 1u << 4,
+#else
 	IS_JS_BRIDGE = 1u << 4,
+#endif
 	ALLOW_LATEINIT_KEYWORD = 1u << 5,
 	ALLOW_NON_NULL_ASSERTION = 1u << 6
 };
@@ -71,6 +75,10 @@ struct LibraryData {
 #ifdef __EMSCRIPTEN__
 					if (flags & IS_JS_BRIDGE) {
 						delete v.jsFunction;
+					}
+#elif __PYBIND11__
+					if (flags & IS_PY_BRIDGE) {
+						delete v.pyFunction;
 					}
 #endif
 					break;
@@ -119,17 +127,17 @@ class ACompiler {
 	void loadMainSource(LibraryData *library);
 	void loadMainSource(
 	    const char *path, LibraryConfig config = LibraryConfig(),
-	    const ANativeMap &nativeFuncMap = AutoLang::EMPTY_NATIVE_MAP);
+	    const ANativeMap &nativeFuncMap = Autolang::EMPTY_NATIVE_MAP);
 	void loadMainSource(
 	    const char *path, const char *data,
 	    LibraryConfig config = LibraryConfig(),
-	    const ANativeMap &nativeFuncMap = AutoLang::EMPTY_NATIVE_MAP);
+	    const ANativeMap &nativeFuncMap = Autolang::EMPTY_NATIVE_MAP);
 	LibraryData *requestImport(LibraryData *currentLibrary, const char *path);
 
 	AVM vm = AVM(false);
 	ACompiler(ACompilerConfig config = ACompilerConfig());
 	~ACompiler();
-	inline AutoLang::CompilerState getState() { return state; }
+	inline Autolang::CompilerState getState() { return state; }
 	void refresh();
 	LibraryData *
 	registerBuiltInLibrary(const char *path,
@@ -183,10 +191,10 @@ class ACompiler {
 		parserContext.onWarning = onWarning;
 	}
 	inline bool hasError() {
-		return state == AutoLang::CompilerState::CT_ERROR;
+		return state == Autolang::CompilerState::CT_ERROR;
 	}
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -4,7 +4,7 @@
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ExprNode *SetNode::resolve(in_func) {
 	detach = static_cast<HasClassIdNode *>(detach->resolve(in_data));
@@ -200,13 +200,13 @@ void SetNode::optimize(in_func) {
 			auto detachNode = static_cast<GetPropNode *>(detach);
 			detachNode->isStore = true;
 			detachNode->cloneable = false;
-			if (detach->classId != AutoLang::DefaultClass::nullClassId) {
+			if (detach->classId != Autolang::DefaultClass::nullClassId) {
 				break;
 			}
-			if (detachNode->classId == AutoLang::DefaultClass::nullClassId) {
+			if (detachNode->classId == Autolang::DefaultClass::nullClassId) {
 				if (detachNode->declaration->classId ==
-				    AutoLang::DefaultClass::nullClassId) {
-					if (value->classId == AutoLang::DefaultClass::nullClassId) {
+				    Autolang::DefaultClass::nullClassId) {
+					if (value->classId == Autolang::DefaultClass::nullClassId) {
 						throwError("Ambigous inference member class id");
 					}
 					detachNode->declaration->classId = value->classId;
@@ -242,7 +242,7 @@ void SetNode::optimize(in_func) {
 				    " because it's val");
 			}
 			// Nullable
-			if (value->classId == AutoLang::DefaultClass::nullClassId) {
+			if (value->classId == Autolang::DefaultClass::nullClassId) {
 				if (!detachNode->declaration->nullable) {
 					throwError(
 					    detachNode->declaration->name +
@@ -272,15 +272,15 @@ void SetNode::optimize(in_func) {
 			auto node = static_cast<VarNode *>(detach);
 			node->isStore = true;
 			node->cloneable = false;
-			if (detach->classId != AutoLang::DefaultClass::nullClassId &&
+			if (detach->classId != Autolang::DefaultClass::nullClassId &&
 			    detach->classId != node->declaration->classId) {
 				detach->classId = node->declaration->classId;
 			}
 			// First value example val a = 1
-			if (detach->classId == AutoLang::DefaultClass::nullClassId) {
+			if (detach->classId == Autolang::DefaultClass::nullClassId) {
 				if (node->declaration->classId ==
-				        AutoLang::DefaultClass::nullClassId &&
-				    value->classId != AutoLang::DefaultClass::nullClassId) {
+				        Autolang::DefaultClass::nullClassId &&
+				    value->classId != Autolang::DefaultClass::nullClassId) {
 					node->declaration->classId = value->classId;
 					if (value->classId == DefaultClass::functionClassId) {
 						node->declaration->classDeclaration =
@@ -316,7 +316,7 @@ void SetNode::optimize(in_func) {
 				}
 			}
 			// Nullable
-			if (value->classId == AutoLang::DefaultClass::nullClassId) {
+			if (value->classId == Autolang::DefaultClass::nullClassId) {
 				if (!detach->isNullable()) {
 					throwError(
 					    node->declaration->name +
@@ -408,12 +408,12 @@ void SetNode::optimize(in_func) {
 	if (detach->classId == value->classId) {
 		if (op != Lexer::TokenType::EQUAL) {
 			switch (detach->classId) {
-				case AutoLang::DefaultClass::intClassId:
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::floatClassId:
 					return;
 				default:
 					if (detach->classId ==
-					        AutoLang::DefaultClass::stringClassId &&
+					        Autolang::DefaultClass::stringClassId &&
 					    op == Lexer::TokenType::PLUS_EQUAL)
 						return;
 					break;
@@ -450,12 +450,12 @@ void SetNode::optimize(in_func) {
 		}
 		return;
 	}
-	if ((detach->classId == AutoLang::DefaultClass::intClassId ||
-	     detach->classId == AutoLang::DefaultClass::floatClassId) &&
-	    (value->classId == AutoLang::DefaultClass::intClassId ||
-	     value->classId == AutoLang::DefaultClass::floatClassId)) {
-		if (detach->classId == AutoLang::DefaultClass::intClassId &&
-		    value->classId == AutoLang::DefaultClass::floatClassId) {
+	if ((detach->classId == Autolang::DefaultClass::intClassId ||
+	     detach->classId == Autolang::DefaultClass::floatClassId) &&
+	    (value->classId == Autolang::DefaultClass::intClassId ||
+	     value->classId == Autolang::DefaultClass::floatClassId)) {
+		if (detach->classId == Autolang::DefaultClass::intClassId &&
+		    value->classId == Autolang::DefaultClass::floatClassId) {
 			throwError("Cannot cast 'Float' to 'Int'");
 		}
 		if (value->kind != NodeType::CONST_VAL) {
@@ -465,12 +465,12 @@ void SetNode::optimize(in_func) {
 		// Optimize
 		try {
 			switch (detach->classId) {
-				case AutoLang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::intClassId:
 					value =
 					    toInt(in_data, static_cast<ConstValueNode *>(value));
 					value->optimize(in_data);
 					return;
-				case AutoLang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::floatClassId:
 					value =
 					    toFloat(in_data, static_cast<ConstValueNode *>(value));
 					value->optimize(in_data);
@@ -618,6 +618,6 @@ SetNode::~SetNode() {
 	deleteNode(value);
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

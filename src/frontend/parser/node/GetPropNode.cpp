@@ -5,7 +5,7 @@
 #include "frontend/parser/ParserContext.hpp"
 #include "shared/ClassFlags.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ExprNode *GetPropNode::resolve(in_func) {
 	caller = static_cast<HasClassIdNode *>(caller->resolve(in_data));
@@ -341,6 +341,6 @@ void GetPropNode::rewrite(in_func, uint8_t *bytecodes) {
 
 GetPropNode::~GetPropNode() { deleteNode(caller); }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -1,0 +1,163 @@
+class StaticTestClass() {
+	static val staticVal = 42
+	static var staticVar = 100
+	static var initializedByFunc: Int?
+
+	static fun staticMethod(x: Int): Int {
+		return x * 2
+	}
+
+	static fun updateStaticVar(delta: Int) {
+		staticVar = staticVar + delta
+	}
+
+	static fun getSumOfStatics(): Int {
+		return staticVal + staticVar
+	}
+
+	static fun doubleStaticMethod(x: Int): Int {
+		return staticMethod(x) * 2
+	}
+
+	fun getStaticVal(): Int {
+		return staticVal
+	}
+
+	fun getStaticVar(): Int {
+		return staticVar
+	}
+
+	fun incrementStaticVar() {
+		staticVar = staticVar + 1
+	}
+}
+
+fun testLocalStaticInFunction(): Int {
+	static var localStatic = 0
+	localStatic = localStatic + 1
+	return localStatic
+}
+
+class LocalStaticInClassMethod() {
+	fun testLocalStatic(): Int {
+		static var methodStatic = 10
+		methodStatic = methodStatic + 2
+		return methodStatic
+	}
+}
+
+// Test case for generic static variables
+class GenericStaticTest<T>() {
+	static var value: Int = 0
+}
+
+class ComplexStaticInit() {
+	static var complexVal: Int?
+}
+
+var globalInitCounter = 0
+fun getComplexInitValue(): Int {
+	globalInitCounter = globalInitCounter + 1
+	return 500
+}
+
+class ParentStatic() {
+	static var parentVar = 10
+	static fun parentFun(): Int {
+		return parentVar + 5
+	}
+}
+
+class ChildStatic extends ParentStatic {
+	constructor() {
+		super()
+	}
+}
+
+class PrivateStaticClass() {
+	private static var secret = 100
+	static fun getSecret(): Int {
+		return secret
+	}
+	fun instanceGetSecret(): Int {
+		return secret
+	}
+}
+
+fun testStatic() {
+	// 1. Test static variables in Class
+	assert(StaticTestClass.staticVal == 42, __FILE__, __LINE__)
+	assert(StaticTestClass.staticVar == 100, __FILE__, __LINE__)
+	
+	// Modify static var via Class
+	StaticTestClass.staticVar = 200
+	assert(StaticTestClass.staticVar == 200, __FILE__, __LINE__)
+
+	// Access via instance
+	val inst1 = StaticTestClass()
+	assert(inst1.getStaticVal() == 42, __FILE__, __LINE__)
+	assert(inst1.getStaticVar() == 200, __FILE__, __LINE__)
+
+	inst1.incrementStaticVar()
+	assert(StaticTestClass.staticVar == 201, __FILE__, __LINE__)
+	
+	val inst2 = StaticTestClass()
+	assert(inst2.getStaticVar() == 201, __FILE__, __LINE__)
+
+	// 2. Test static functions in Class and their interactions
+	assert(StaticTestClass.staticMethod(21) == 42, __FILE__, __LINE__)
+	
+	// Test interaction between static functions and static variables
+	assert(StaticTestClass.getSumOfStatics() == 42 + 201, __FILE__, __LINE__)
+	StaticTestClass.updateStaticVar(9) // staticVar = 201 + 9 = 210
+	assert(StaticTestClass.staticVar == 210, __FILE__, __LINE__)
+	assert(StaticTestClass.getSumOfStatics() == 252, __FILE__, __LINE__)
+
+	// Test static function calling another static function
+	assert(StaticTestClass.doubleStaticMethod(5) == 20, __FILE__, __LINE__)
+
+	// Assign value from static function to static variable after declaration
+	assert(StaticTestClass.initializedByFunc == null, __FILE__, __LINE__)
+	StaticTestClass.initializedByFunc = StaticTestClass.staticMethod(50)
+	assert(StaticTestClass.initializedByFunc == 100, __FILE__, __LINE__)
+
+	// 3. Test local static variables in Function
+	assert(testLocalStaticInFunction() == 1, __FILE__, __LINE__)
+	assert(testLocalStaticInFunction() == 2, __FILE__, __LINE__)
+	assert(testLocalStaticInFunction() == 3, __FILE__, __LINE__)
+
+	// 4. Test local static variables in Class Method
+	val m1 = LocalStaticInClassMethod()
+	val m2 = LocalStaticInClassMethod()
+	assert(m1.testLocalStatic() == 12, __FILE__, __LINE__)
+	assert(m2.testLocalStatic() == 14, __FILE__, __LINE__) // static of method is shared between instances
+	assert(m1.testLocalStatic() == 16, __FILE__, __LINE__)
+
+	// 5. Test static variables in Generic Class
+	GenericStaticTest<Int>.value = 5
+	GenericStaticTest<String>.value = 10
+	assert(GenericStaticTest<Int>.value == 5, __FILE__, __LINE__)
+	assert(GenericStaticTest<String>.value == 10, __FILE__, __LINE__)
+
+	// 6. Test dynamic assignment to static variable after declaration
+	assert(ComplexStaticInit.complexVal == null, __FILE__, __LINE__)
+	ComplexStaticInit.complexVal = getComplexInitValue()
+	assert(ComplexStaticInit.complexVal == 500, __FILE__, __LINE__)
+	assert(globalInitCounter == 1, __FILE__, __LINE__)
+
+	// 7. Test inheritance of static members and functions
+	assert(ChildStatic.parentVar == 10, __FILE__, __LINE__)
+	assert(ChildStatic.parentFun() == 15, __FILE__, __LINE__)
+	ChildStatic.parentVar = 20
+	assert(ParentStatic.parentVar == 20, __FILE__, __LINE__)
+	assert(ChildStatic.parentFun() == 25, __FILE__, __LINE__)
+
+	// 8. Test private static members access within the class
+	assert(PrivateStaticClass.getSecret() == 100, __FILE__, __LINE__)
+	val privateInst = PrivateStaticClass()
+	assert(privateInst.instanceGetSecret() == 100, __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+testStatic()

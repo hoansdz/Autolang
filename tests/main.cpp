@@ -48,11 +48,11 @@ int main(int argc, char *argv[]) {
 #ifdef _WIN32
 				MemoryInfo baseMem = getMemoryUsage();
 #endif
-				AutoLang::ACompiler compiler;
+				Autolang::ACompiler compiler;
 				compiler.setLimitOpcodeCount(1000000);
 				if (compiler.compileAndRun(
 				        "./tests/testCorrectness.atl",
-				        AutoLang::LibraryConfig(false, true, true))) {
+				    Autolang::LibraryConfig(false, true, true))) {
 #ifdef _WIN32
 					MemoryInfo currentMem = getMemoryUsage();
 					printMemoryUsage(baseMem, currentMem);

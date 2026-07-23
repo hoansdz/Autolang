@@ -4,13 +4,13 @@
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ExprNode *IfNode::resolve(in_func) {
 	condition = static_cast<HasClassIdNode *>(condition->resolve(in_data));
 	// if (condition->kind == NodeType::CONST_VAL) {
 	// 	if (static_cast<ConstValueNode *>(condition)->classId !=
-	// 	    AutoLang::DefaultClass::boolClassId) {
+	// 	    Autolang::DefaultClass::boolClassId) {
 	// 		throwError("Cannot use expression of type '" +
 	// 		           condition->getClassName(in_data) +
 	// 		           "' as a condition, expected 'Bool'");
@@ -43,7 +43,7 @@ ExprNode *IfNode::resolve(in_func) {
 
 void IfNode::optimize(in_func) {
 	condition->optimize(in_data);
-	if (condition->classId != AutoLang::DefaultClass::boolClassId)
+	if (condition->classId != Autolang::DefaultClass::boolClassId)
 		throwError("Cannot use expression of type '" +
 		           condition->getClassName(in_data) +
 		           "' as a condition, expected 'Bool'");
@@ -113,6 +113,8 @@ void IfNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	auto lastMustReturnValueNode = context.mustReturnValueNode;
 	if (mustReturnValue) {
 		context.mustReturnValueNode = this;
+	} else {
+		context.mustReturnValueNode = nullptr;
 	}
 	ifTrue.putBytecodes(in_data, bytecodes);
 	if (ifFalse) {
@@ -131,9 +133,7 @@ void IfNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		                   jumpIfFalseByte,
 		                   bytecodes.size() - context.currentBytecodePos);
 	}
-	if (mustReturnValue) {
-		context.mustReturnValueNode = lastMustReturnValueNode;
-	}
+	context.mustReturnValueNode = lastMustReturnValueNode;
 	BytecodePos endBlock = bytecodes.size() - context.currentBytecodePos;
 	for (auto pos : jumpPosition) {
 		rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos, pos,
@@ -152,6 +152,6 @@ IfNode::~IfNode() {
 	deleteNode(ifFalse);
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

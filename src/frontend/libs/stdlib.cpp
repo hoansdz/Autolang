@@ -11,7 +11,13 @@
 #include "shared/DefaultFunction.hpp"
 #include "shared/DefaultOperator.hpp"
 
-namespace AutoLang {
+#ifdef __PYBIND11__
+#define AUTOLANG_NATIVE_CLASS "@no_extends\n@no_constructor\n@py_object\nclass PyObject {}"
+#elif __EMSCRIPTEN__
+#define AUTOLANG_NATIVE_CLASS "@no_extends\n@no_constructor\n@js_object\nclass JsObject {}"
+#endif
+
+namespace Autolang {
 namespace Libs {
 namespace stdlib {
 void init(ACompiler &compiler) {
@@ -293,14 +299,11 @@ class Map<K, V> {
 class Json {
 
 }
-
-@no_extends
-@no_constructor
-@js_object
-class JsObject {
-
-}
-	
+)###"
+#ifdef AUTOLANG_NATIVE_CLASS 
+AUTOLANG_NATIVE_CLASS
+#endif
+R"###(
 @native("print")
 fun print(value: Any? = "")
 @native("println")
@@ -341,7 +344,7 @@ fun assert(condition: Bool, fileName: String, line: Int) {
 	         {"str_last_index_of", &DefaultFunction::str_last_index_of},
 	         {"str_to_lower", &DefaultFunction::str_to_lower},
 	         {"str_to_upper", &DefaultFunction::str_to_upper},
-	         {"input", &DefaultFunction::input_str},
+	        //  {"input", &DefaultFunction::input_str},
 	         {"arr_add", &array::add},
 	         {"arr_remove", &array::remove},
 	         {"arr_size", &array::size},
@@ -388,5 +391,5 @@ fun assert(condition: Bool, fileName: String, line: Int) {
 }
 } // namespace stdlib
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 #endif

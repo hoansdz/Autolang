@@ -15,7 +15,7 @@
 #include <tuple>
 #include <vector>
 
-namespace AutoLang {
+namespace Autolang {
 
 struct PairHash {
 	template <typename T1, typename T2, typename T3>
@@ -35,6 +35,7 @@ struct CompiledProgram {
 	std::vector<uint8_t> allBytecodes;
 	std::vector<uint32_t> allGenericType;
 	std::vector<uint32_t> allMemberId;
+	std::vector<uint32_t> allCatchPosition;
 	std::vector<bool> allMemberNullable;
 	std::vector<bool> allGenericTypeNullable;
 	StringArena stringArena;
@@ -56,7 +57,7 @@ struct CompiledProgram {
 	    AClass *clazz, std::string name, ClassId *args, uint32_t argSize,
 	    uint32_t functionFlags) {
 		return registerFunction(clazz, std::move(name), args, argSize,
-		                        AutoLang::DefaultClass::voidClassId,
+		                        Autolang::DefaultClass::voidClassId,
 		                        functionFlags);
 	}
 	ClassId registerClass(std::string name, uint32_t classFlags);
@@ -70,6 +71,6 @@ struct CompiledProgram {
 	~CompiledProgram();
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

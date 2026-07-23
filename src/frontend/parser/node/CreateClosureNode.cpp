@@ -4,7 +4,7 @@
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ExprNode *CreateClosureNode::resolve(in_func) {
 	for (auto *&object : objects) {
@@ -77,8 +77,11 @@ void CreateClosureNode::optimize(in_func) {
 	for (int i = 0; i < parameter->parameters.size(); ++i) {
 		func->args[i] = parameter->parameters[i]->classId;
 	}
+	auto lastClosureNode = context.currentClosureNode;
+	context.currentClosureNode = this;
 	funcInfo->body.resolve(in_data);
 	funcInfo->body.optimize(in_data);
+	context.currentClosureNode = lastClosureNode;
 	context.mustReturnValueNode = lastMustReturnValueNode;
 	func->returnId = *classDeclaration->inputClassId[0]->classId;
 	if (func->returnId != DefaultClass::voidClassId) {
@@ -240,6 +243,6 @@ ExprNode *CreateClosureNode::copy(in_func) {
 	return newNode;
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

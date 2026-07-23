@@ -5,12 +5,12 @@
 #include "backend/vm/AVM.hpp"
 #include "shared/DefaultFunction.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 std::string ANotifier::toString(AObject *obj) {
 	return DefaultFunction::to_string(*this, obj);
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

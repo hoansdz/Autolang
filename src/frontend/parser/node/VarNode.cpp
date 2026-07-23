@@ -4,7 +4,7 @@
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 void VarNode::optimize(in_func) {
 	// std::cerr << "loaded " << declaration->getName(compile) << " "
@@ -62,6 +62,6 @@ void VarNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		}
 	}
 }
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

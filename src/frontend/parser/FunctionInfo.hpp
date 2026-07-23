@@ -10,7 +10,7 @@
 #include "frontend/parser/node/OptimizeNode.hpp"
 #include <vector>
 
-namespace AutoLang {
+namespace Autolang {
 
 struct FunctionInfo {
 	AClass *clazz; // Context class
@@ -48,6 +48,6 @@ struct FunctionInfo {
 	~FunctionInfo();
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

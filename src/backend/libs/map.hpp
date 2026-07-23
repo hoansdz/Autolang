@@ -4,7 +4,7 @@
 #include "shared/AObject.hpp"
 #include "shared/Type.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 class ACompiler;
 namespace Libs {
 namespace map {
@@ -56,6 +56,6 @@ AObject *to_string(NativeFuncInData);
 std::string to_string(ANotifier &notifier, AObject *obj);
 } // namespace map
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

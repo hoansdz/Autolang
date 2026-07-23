@@ -3,13 +3,13 @@
 
 #include "shared/Type.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 class ACompiler;
 
 namespace Libs {
 namespace date {
 
-void init(AutoLang::ACompiler &compiler);
+void init(Autolang::ACompiler &compiler);
 // AObject *constructor(NativeFuncInData);
 // AObject *read_text(NativeFuncInData);
 // AObject *for_each_line(NativeFuncInData);
@@ -30,5 +30,5 @@ void init(AutoLang::ACompiler &compiler);
 
 } // namespace file
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 #endif

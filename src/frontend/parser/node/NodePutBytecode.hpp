@@ -3,7 +3,7 @@
 
 #include "frontend/parser/node/Node.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 
 

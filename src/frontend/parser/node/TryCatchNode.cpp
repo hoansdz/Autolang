@@ -4,7 +4,7 @@
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ExprNode *TryCatchNode::resolve(in_func) {
 	body.resolve(in_data);
@@ -58,6 +58,6 @@ ExprNode *TryCatchNode::copy(in_func) {
 	return newNode;
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

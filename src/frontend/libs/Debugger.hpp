@@ -3,7 +3,7 @@
 
 #include "shared/Type.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 class ACompiler;
 namespace Libs {
 namespace Debugger {
@@ -14,6 +14,6 @@ AObject *getClassId(NativeFuncInData);
 
 } // namespace Debugger
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-namespace AutoLang {
+namespace Autolang {
 
 enum OperatorId : uint8_t {
     OP_PLUS_PLUS = 0,    // ++

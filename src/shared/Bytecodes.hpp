@@ -3,13 +3,13 @@
 
 #include <iostream>
 
-namespace AutoLang {
+namespace Autolang {
 
 struct Bytecodes {
     uint32_t offset = 0;
     uint32_t size = 0;
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

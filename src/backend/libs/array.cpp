@@ -10,7 +10,7 @@
 #include <algorithm>
 #include <string>
 
-namespace AutoLang {
+namespace Autolang {
 class ACompiler;
 namespace Libs {
 namespace array {
@@ -41,7 +41,7 @@ AObject *add(NativeFuncInData) {
 AObject *remove(NativeFuncInData) {
 	auto obj = args[0];
 
-	if (args[1]->type != AutoLang::DefaultClass::intClassId) {
+	if (args[1]->type != Autolang::DefaultClass::intClassId) {
 		notifier.throwException("Array.remove: index must be Int");
 		return nullptr;
 	}
@@ -296,7 +296,7 @@ AObject *index_of(NativeFuncInData) {
 AObject *get(NativeFuncInData) {
 	auto obj = args[0];
 
-	if (args[1]->type != AutoLang::DefaultClass::intClassId) {
+	if (args[1]->type != Autolang::DefaultClass::intClassId) {
 		notifier.throwException("Array.get: index must be Int");
 		return nullptr;
 	}
@@ -310,9 +310,9 @@ AObject *get(NativeFuncInData) {
 
 	AObject *value = obj->member->data[index];
 	switch (value->type) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			return notifier.createInt(value->i);
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			return notifier.createFloat(value->f);
 		default:
 			return value;
@@ -322,7 +322,7 @@ AObject *get(NativeFuncInData) {
 AObject *set(NativeFuncInData) {
 	auto obj = args[0];
 
-	if (args[1]->type != AutoLang::DefaultClass::intClassId) {
+	if (args[1]->type != Autolang::DefaultClass::intClassId) {
 		notifier.throwException("Array.set: index must be Int");
 		return nullptr;
 	}
@@ -377,6 +377,6 @@ AObject *to_string(NativeFuncInData) {
 
 } // namespace array
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

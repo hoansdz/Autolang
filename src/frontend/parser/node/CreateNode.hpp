@@ -8,7 +8,7 @@
 #include <iostream>
 #include <vector>
 
-namespace AutoLang {
+namespace Autolang {
 
 // var val name: className = value
 struct DeclarationNode : HasClassIdNode {
@@ -87,6 +87,6 @@ struct CreateClassNode : HasClassIdNode {
 	~CreateClassNode() {}
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

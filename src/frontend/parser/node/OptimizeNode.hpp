@@ -9,7 +9,7 @@
 
 struct CompiledProgram;
 
-namespace AutoLang {
+namespace Autolang {
 
 struct ConstValueNode;
 struct ParserContext;
@@ -40,6 +40,6 @@ ConstValueNode *toFloat(in_func, ConstValueNode *value);
 ConstValueNode *toBool(in_func, ConstValueNode *value);
 ConstValueNode *toString(in_func, ConstValueNode *value);
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

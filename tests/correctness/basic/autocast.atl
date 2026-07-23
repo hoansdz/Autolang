@@ -1,0 +1,302 @@
+class CastGrandParent() {
+	fun name() = "GrandParent"
+}
+
+class CastParentLevel extends CastGrandParent {
+	constructor() {
+		super()
+	}
+	@override
+	fun name() = "Parent"
+}
+
+class CastChildLevel extends CastParentLevel {
+	constructor() {
+		super()
+	}
+	@override
+	fun name() = "Child"
+}
+
+class CastParent() {
+	fun identify() = "Parent"
+}
+
+class CastChild extends CastParent {
+	constructor() {
+		super()
+	}
+	@override
+	fun identify() = "Child"
+}
+
+class ShadowTestClass {
+	var n = 10
+	constructor() {}
+
+	fun getShadowClosure(localN: Int): (Int) -> Int {
+		val closure = {|n: Int| // n che field this.n
+			this.n + localN + n // 10 + 20 + 30 = 60
+		}
+		return closure
+	}
+}
+
+fun acceptFloat(f: Float): Float {
+	return f
+}
+
+fun returnFloatFromInt(x: Int): Float {
+	return x
+}
+
+fun acceptParent(p: CastParent): String {
+	return p.identify()
+}
+
+fun returnParentFromChild(c: CastChild): CastParent {
+	return c
+}
+
+fun acceptAny(x: Any): String {
+	return when (x) {
+		is Int -> {
+			(x as Int).toString()
+		}
+		is String -> {
+			x as String
+		}
+		else -> {
+			"Unknown"
+		}
+	}
+}
+
+fun testAutoCast() {
+	// 1. Auto Cast Int to Float
+	val f1: Float = 10
+	assert(f1 == 10.0, __FILE__, __LINE__)
+	assert(f1.toString().contains("."), __FILE__, __LINE__)
+
+	var f2: Float = 20
+	f2 = 30
+	assert(f2 == 30.0, __FILE__, __LINE__)
+	assert(f2.toString().contains("."), __FILE__, __LINE__)
+
+	// Mix arithmetic
+	val mix1 = 3 + 1.5
+	val mix2 = 1.5 + 3
+	val mix3 = 5 - 2.5
+	val mix4 = 2.5 - 1
+	val mix5 = 2 * 1.5
+	val mix6 = 1.5 * 2
+	val mix7 = 5.0 / 2
+	
+	assert(mix1 == 4.5 && mix1.toString().contains("."), __FILE__, __LINE__)
+	assert(mix2 == 4.5 && mix2.toString().contains("."), __FILE__, __LINE__)
+	assert(mix3 == 2.5 && mix3.toString().contains("."), __FILE__, __LINE__)
+	assert(mix4 == 1.5 && mix4.toString().contains("."), __FILE__, __LINE__)
+	assert(mix5 == 3.0 && mix5.toString().contains("."), __FILE__, __LINE__)
+	assert(mix6 == 3.0 && mix6.toString().contains("."), __FILE__, __LINE__)
+	assert(mix7 == 2.5 && mix7.toString().contains("."), __FILE__, __LINE__)
+
+	// Function parameter and return auto cast
+	val paramFloat = acceptFloat(5)
+	assert(paramFloat == 5.0 && paramFloat.toString().contains("."), __FILE__, __LINE__)
+
+	val retFloat = returnFloatFromInt(42)
+	assert(retFloat == 42.0 && retFloat.toString().contains("."), __FILE__, __LINE__)
+
+	// Collection sugar auto cast
+	val arrFloat: Array<Float> = <Float>[1, 2, 3]
+	assert(arrFloat.get(0) == 1.0 && arrFloat.get(0).toString().contains("."), __FILE__, __LINE__)
+	assert(arrFloat.get(2) == 3.0 && arrFloat.get(2).toString().contains("."), __FILE__, __LINE__)
+
+	val mapFloat: Map<String, Float> = <String, Float>{"one": 1, "two": 2}
+	assert(mapFloat.get("one") == 1.0 && mapFloat.get("one")!.toString().contains("."), __FILE__, __LINE__)
+
+	val setFloat: Set<Float> = <Float>{10, 20}
+	assert(setFloat.contains(10.0), __FILE__, __LINE__)
+
+	// Nested If and When Cast Tests
+	val a = 1
+	val testNestedIf = {||
+		if (a == 1) {
+			if (a == 1) {
+				1 // Int auto cast to Float
+			} else {
+				2.0
+			}
+		} else {
+			3.0
+		}
+	}
+	val resIf = testNestedIf()
+	assert(resIf == 1.0 && resIf.toString().contains("."), __FILE__, __LINE__)
+
+	val testNestedWhen = {||
+		when (a) {
+			1 -> {
+				when (a) {
+					1 -> 5 // Int auto cast to Float
+					else -> 6.0
+				}
+			}
+			else -> 7.0
+		}
+	}
+	val resWhen = testNestedWhen()
+	assert(resWhen == 5.0 && resWhen.toString().contains("."), __FILE__, __LINE__)
+
+	// Direct when expression auto cast Int to Float
+	val valWhen1: Float = when (a) {
+		1 -> {
+			15
+		}
+		else -> {
+			20.5
+		}
+	}
+	assert(valWhen1 == 15.0 && valWhen1.toString().contains("."), __FILE__, __LINE__)
+
+	val valWhen2: Float = when (a) {
+		1 -> 150
+		else -> 200.5
+	}
+	assert(valWhen2 == 150.0 && valWhen2.toString().contains("."), __FILE__, __LINE__)
+
+	// Check if nested structures without else cause incorrect early returns
+	val testNestedNoElse = {||
+		if (a == 1) {
+			if (a == 1) {
+				1
+			}
+		}
+		0
+		return 2.0
+	}
+	val resNoElse = testNestedNoElse()
+	assert(resNoElse == 2.0 && resNoElse.toString().contains("."), __FILE__, __LINE__)
+
+	// 2. Auto Cast Child to Parent (Upcast)
+	val p1: CastParent = CastChild()
+	assert(p1.identify() == "Child", __FILE__, __LINE__)
+
+	val child = CastChild()
+	assert(acceptParent(child) == "Child", __FILE__, __LINE__)
+	
+	val p2 = returnParentFromChild(child)
+	assert(p2.identify() == "Child", __FILE__, __LINE__)
+
+	// Parent collection with Child items
+	val arrParents: Array<CastParent> = <CastParent>[CastChild()]
+	assert(arrParents.get(0).identify() == "Child", __FILE__, __LINE__)
+
+	// 3. Test Any and Type Operators (is, as, as?)
+	val valAnyInt: Any = 100
+	val valAnyFloat: Any = 200.5
+	val valAnyStr: Any = "Hello Any"
+
+	assert(valAnyInt is Int, __FILE__, __LINE__)
+	assert(valAnyFloat is Float, __FILE__, __LINE__)
+	assert(valAnyStr is String, __FILE__, __LINE__)
+	assert(!(valAnyInt is Float), __FILE__, __LINE__)
+
+	// Unsafe cast (as)
+	val castInt: Int = valAnyInt as Int
+	assert(castInt == 100, __FILE__, __LINE__)
+	
+	val castFloat: Float = valAnyFloat as Float
+	assert(castFloat == 200.5, __FILE__, __LINE__)
+
+	// Safe cast (as?)
+	val safeCastInt = valAnyInt as? Int
+	assert(safeCastInt != null && safeCastInt! == 100, __FILE__, __LINE__)
+
+	val safeCastFail = valAnyInt as? Float
+	assert(safeCastFail == null, __FILE__, __LINE__)
+
+	// Any upcast with function parameter
+	assert(acceptAny(42) == "42", __FILE__, __LINE__)
+	assert(acceptAny("Hello") == "Hello", __FILE__, __LINE__)
+	assert(acceptAny(3.14) == "Unknown", __FILE__, __LINE__)
+
+	// 4. Test Closure Auto Cast (Explicit type and Type inference)
+	val castClosure: (Int) -> Float = {|x|
+		x
+	}
+	val resClosure1 = castClosure(5)
+	assert(resClosure1 == 5.0 && resClosure1.toString().contains("."), __FILE__, __LINE__)
+
+	val inferClosure = {|x: Int|
+		x
+	}
+	val resClosure2: Float = inferClosure(10)
+
+	// 5. Test Casts inside Closure Body (various types of casts processed inside closures)
+	val complexClosure = {|x: Int|
+		// Var assignment with auto cast inside closure
+		var f: Float = x
+		
+		// Function argument auto-cast inside closure
+		val f2 = acceptFloat(x)
+		
+		// Safe cast (as?) inside closure
+		val valAny: Any = x
+		val safeCast = valAny as? Int
+		
+		// Nested if/when casting inside closure
+		val nestedVal: Float = if (x == 5) {
+			10 // Int auto cast to Float
+		} else {
+			20.5
+		}
+		
+		f + f2 + safeCast! + nestedVal
+	}
+	val resComplex = complexClosure(5) // 5.0 + 5.0 + 5 + 10.0 = 25.0
+	assert(resComplex == 25.0 && resComplex.toString().contains("."), __FILE__, __LINE__)
+
+	// 6. Test Nullable Inference with If and When
+	var nullableIf = if (a == 1) 10 else null
+	assert(nullableIf == 10, __FILE__, __LINE__)
+	nullableIf = null
+	assert(nullableIf == null, __FILE__, __LINE__)
+
+	var nullableWhen = when (a) {
+		1 -> {
+			20.5
+		}
+		else -> {
+			null
+		}
+	}
+	assert(nullableWhen == 20.5, __FILE__, __LINE__)
+	nullableWhen = null
+	assert(nullableWhen == null, __FILE__, __LINE__)
+
+	// 7. Multi-level Inheritance & Cast Tests
+	val gp: CastGrandParent = CastChildLevel()
+	assert(gp.name() == "Child", __FILE__, __LINE__)
+	assert(gp is CastChildLevel, __FILE__, __LINE__)
+	assert(gp is CastParentLevel, __FILE__, __LINE__)
+	assert(gp is CastGrandParent, __FILE__, __LINE__)
+
+	val castParent = gp as CastParentLevel
+	assert(castParent.name() == "Child", __FILE__, __LINE__)
+
+	val safeCastChild = gp as? CastChildLevel
+	assert(safeCastChild != null && safeCastChild!.name() == "Child", __FILE__, __LINE__)
+
+	val safeCastParentFail = CastParentLevel() as? CastChildLevel
+	assert(safeCastParentFail == null, __FILE__, __LINE__)
+
+	// 8. Shadowing in Closures Tests
+	val shadowClass = ShadowTestClass()
+	val shadowClosure = shadowClass.getShadowClosure(20)
+	assert(shadowClosure(30) == 60, __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+testAutoCast()

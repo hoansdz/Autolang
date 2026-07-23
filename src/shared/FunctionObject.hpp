@@ -7,7 +7,7 @@
 #include <cstring>
 #include <memory>
 
-namespace AutoLang {
+namespace Autolang {
 
 struct AObject;
 struct Function;
@@ -24,6 +24,6 @@ struct FunctionObject {
 		delete []args;
 	}
 };
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -4,7 +4,7 @@
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ExprNode *ForNode::resolve(in_func) {
 	// detach = static_cast<VarNode *>(detach->resolve(in_data));
@@ -27,12 +27,12 @@ void ForNode::optimize(in_func) {
 	switch (data->kind) {
 		case NodeType::RANGE: {
 			switch (detach->classId) {
-				case AutoLang::DefaultClass::nullClassId: {
+				case Autolang::DefaultClass::nullClassId: {
 					detach->declaration->classId =
-					    AutoLang::DefaultClass::intClassId;
+					    Autolang::DefaultClass::intClassId;
 					break;
 				}
-				case AutoLang::DefaultClass::intClassId: {
+				case Autolang::DefaultClass::intClassId: {
 					break;
 				}
 				default: {
@@ -47,7 +47,7 @@ void ForNode::optimize(in_func) {
 				    false;
 			}
 			switch (rangeNode->from->classId) {
-				case AutoLang::DefaultClass::intClassId: {
+				case Autolang::DefaultClass::intClassId: {
 					break;
 				}
 				default: {
@@ -56,7 +56,7 @@ void ForNode::optimize(in_func) {
 			}
 			rangeNode->to->optimize(in_data);
 			switch (rangeNode->to->classId) {
-				case AutoLang::DefaultClass::intClassId: {
+				case Autolang::DefaultClass::intClassId: {
 					break;
 				}
 				default: {
@@ -87,7 +87,7 @@ void ForNode::optimize(in_func) {
 					auto classType = classInfo->genericTypeId[0];
 					ClassId target = *classType->classId;
 					switch (detach->classId) {
-						case AutoLang::DefaultClass::nullClassId: {
+						case Autolang::DefaultClass::nullClassId: {
 							detach->declaration->classId = target;
 							if (target == DefaultClass::functionClassId) {
 								detach->declaration->classDeclaration =
@@ -200,11 +200,11 @@ bool ForNode::putOptimizedRangeBytecode(in_func,
 		}
 		case NodeType::CONST_VAL: {
 			auto rightNode = static_cast<ConstValueNode *>(right);
-			if (right->classId == AutoLang::DefaultClass::nullClassId) {
+			if (right->classId == Autolang::DefaultClass::nullClassId) {
 				// throwError("Null must be cleared by optimizer");
 				return false;
 			}
-			if (right->classId == AutoLang::DefaultClass::boolClassId) {
+			if (right->classId == Autolang::DefaultClass::boolClassId) {
 				return false;
 			}
 			bytecodes.emplace_back(detach->declaration->isGlobal
@@ -342,6 +342,6 @@ ForNode::~ForNode() {
 	deleteNode(iteratorNode);
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

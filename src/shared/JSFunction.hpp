@@ -1,6 +1,7 @@
 #ifndef JS_FUNCTION_HPP
 #define JS_FUNCTION_HPP
 
+#include "DefaultClass.hpp"
 #include "backend/libs/map.hpp"
 #include "backend/libs/set.hpp"
 #include "backend/vm/ANotifier.hpp"
@@ -11,10 +12,10 @@
 #include <emscripten/bind.h>
 
 using namespace emscripten;
-using namespace AutoLang::Libs::set;
-using namespace AutoLang::Libs::map;
+using namespace Autolang::Libs::set;
+using namespace Autolang::Libs::map;
 
-namespace AutoLang {
+namespace Autolang {
 
 inline emscripten::val aobjectToJs(ANotifier &notifier, AObject *obj);
 inline AObject *jsValueToAObject(ANotifier &notifier, const val &value,
@@ -147,6 +148,19 @@ inline val aobjectToJs(ANotifier &notifier, AObject *obj) {
 		case DefaultClass::nullClassId: {
 			return val::null();
 		}
+		case DefaultClass::functionClassId: {
+			notifier.throwException(
+			    "Unsupported JS conversion: Cannot cast Function to JS Object");
+			return val::undefined();
+		}
+		case DefaultClass::bytesClassId: {
+			if (obj->bytes->size == 0) {
+				return val::global("Uint8Array").new_();
+			}
+			val view = emscripten::val(emscripten::typed_memory_view(
+			    obj->bytes->size, obj->bytes->data));
+			return val::global("Uint8Array").new_(view);
+		}
 #ifdef __EMSCRIPTEN__
 		case DefaultClass::jsObjectClassId: {
 			return *obj->jsObject;
@@ -164,6 +178,8 @@ inline val aobjectToJs(ANotifier &notifier, AObject *obj) {
 				for (size_t i = 0; i < obj->member->size; ++i) {
 					arr.call<void>("push",
 					               aobjectToJs(notifier, obj->member->data[i]));
+					if (notifier.hasException())
+						return val::undefined();
 				}
 				return arr;
 			}
@@ -177,6 +193,8 @@ inline val aobjectToJs(ANotifier &notifier, AObject *obj) {
 			auto clazz = notifier.vm->data.classes[obj->type];
 
 			if (clazz->classFlags & ClassFlags::CLASS_IS_ENUM) {
+				notifier.throwException(
+				    "Unsupported JS conversion: Cannot cast Enum to JS Object");
 				return val::undefined();
 			}
 
@@ -185,6 +203,10 @@ inline val aobjectToJs(ANotifier &notifier, AObject *obj) {
 			for (const auto &[memberName, memberPos] : clazz->memberMap) {
 				AObject *memberVal = obj->member->data[memberPos];
 				jsObj.set(memberName, aobjectToJs(notifier, memberVal));
+
+				if (notifier.hasException()) {
+					return val::undefined();
+				}
 			}
 			return jsObj;
 		}
@@ -237,7 +259,7 @@ inline AObject *jsSetToAObject(ANotifier &notifier, const val &jsSet,
 	    elemNullable ? DefaultClass::anyClassId : elemClassId;
 
 	AObject *newSet =
-	    AutoLang::Libs::set::constructor(notifier, setClassId, storageKeyId);
+	    Autolang::Libs::set::constructor(notifier, setClassId, storageKeyId);
 	auto unorderedSetData = static_cast<AUnorderedSet *>(newSet->data->data);
 
 	val iterator = jsSet.call<val>("values");
@@ -305,7 +327,7 @@ inline AObject *jsMapToAObject(ANotifier &notifier, const val &jsMap,
 	ClassId storageKeyId = keyNullable ? DefaultClass::anyClassId : keyClassId;
 
 	AObject *newMap =
-	    AutoLang::Libs::map::constructor(notifier, mapClassId, storageKeyId);
+	    Autolang::Libs::map::constructor(notifier, mapClassId, storageKeyId);
 	auto hashMapData = static_cast<AHashMap *>(newMap->data->data);
 
 	val iterator = jsMap.call<val>("entries");
@@ -512,6 +534,31 @@ inline AObject *jsValueToAObject(ANotifier &notifier, const val &value,
 			notifier.throwException("Expected null in array element");
 			return nullptr;
 		}
+		case DefaultClass::functionClassId:
+		case DefaultClass::anyClassId: {
+			notifier.throwException("Unsupported Js Object to '" +
+			                        notifier.getClassName(elemClassId) + "'");
+			return nullptr;
+		}
+		case DefaultClass::bytesClassId: {
+			if (!value.instanceof(val::global("Uint8Array"))) {
+				notifier.throwException("Expected Uint8Array");
+				return nullptr;
+			}
+
+			size_t size = value["length"].as<size_t>();
+			AObject *bytesObj = notifier.createBytes(size);
+
+			if (size > 0) {
+				val heap = val::module_property("HEAPU8");
+				heap.call<void>(
+				    "set", value,
+				    val(reinterpret_cast<uintptr_t>(bytesObj->bytes->data)));
+				bytesObj->bytes->size = size;
+			}
+
+			return bytesObj;
+		}
 		default: {
 			auto clazz = notifier.vm->data.classes[elemClassId];
 			if (clazz->classFlags & ClassFlags::CLASS_IS_ENUM) {
@@ -626,25 +673,23 @@ inline AObject *returnJsObjectToAObject(ANotifier &notifier, val value) {
 }
 
 EM_ASYNC_JS(emscripten::EM_VAL, call_and_await_js,
-            (EM_VAL func_handle, EM_VAL this_handle, EM_VAL args_handle),
-            {
-                let js_func = Emval.toValue(func_handle);
-                let js_this = Emval.toValue(this_handle);
-                let js_args = Emval.toValue(args_handle);
+            (EM_VAL func_handle, EM_VAL this_handle, EM_VAL args_handle), {
+	            let js_func = Emval.toValue(func_handle);
+	            let js_this = Emval.toValue(this_handle);
+	            let js_args = Emval.toValue(args_handle);
 
-                try {
-                    let result = await Promise.resolve(js_func.apply(js_this, js_args));
-                    return Emval.toHandle({ success: true, value: result });
-                } catch (error) {
-                    let fullErrorLog = (error instanceof Error && error.stack) 
-                        ? error.stack 
-                        : String(error);
+	            try {
+		            let result =
+		                await Promise.resolve(js_func.apply(js_this, js_args));
+		            return Emval.toHandle({success : true, value : result});
+	            } catch (error) {
+		            let fullErrorLog = (error instanceof Error && error.stack)
+		                                   ? error.stack
+		                                   : String(error);
 
-                    return Emval.toHandle({ 
-                        success: false, 
-                        error: fullErrorLog
-                    });
-                }
+		            return Emval.toHandle(
+		                {success : false, error : fullErrorLog});
+	            }
             });
 
 inline AObject *callJSFunction(val *jsFunction, NativeFuncInData) {
@@ -699,6 +744,6 @@ inline AObject *callJSFunction(val *jsFunction, NativeFuncInData) {
 	return returnJsObjectToAObject(notifier, response["value"]);
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

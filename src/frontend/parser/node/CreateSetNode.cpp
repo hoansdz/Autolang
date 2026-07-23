@@ -4,7 +4,7 @@
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ExprNode *CreateSetNode::resolve(in_func) {
 	for (auto *&value : values) {
@@ -121,6 +121,6 @@ ExprNode *CreateSetNode::copy(in_func) {
 
 CreateSetNode::~CreateSetNode() {}
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -6,7 +6,7 @@
 #include "frontend/parser/ParserContext.hpp"
 #include <filesystem>
 
-namespace AutoLang {
+namespace Autolang {
 
 void loadAnnotations(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
@@ -132,7 +132,7 @@ void loadAnnotations(in_func, size_t &i) {
 			--i;
 			break;
 		}
-// #ifdef __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 		case Lexer::TokenType::JS_OBJECT: {
 			if (context.annotationFlags & AnnotationFlags::AN_JS_OBJECT) {
 				throw ParserError(firstLine,
@@ -147,7 +147,22 @@ void loadAnnotations(in_func, size_t &i) {
 			--i;
 			break;
 		}
-// #endif
+#elif __PYBIND11__
+        case Lexer::TokenType::PY_OBJECT: {
+            if (context.annotationFlags & AnnotationFlags::AN_PY_OBJECT) {
+                throw ParserError(firstLine,
+                                  "Duplicate annotation @py_object");
+            }
+            context.annotationFlags |= AnnotationFlags::AN_PY_OBJECT;
+            if (!nextToken(&token, context.tokens, i)) {
+                --i;
+                throw ParserError(context.tokens[i].line,
+                                  "@py_object must be followed by a class");
+            }
+            --i;
+            break;
+        }
+#endif
 		case Lexer::TokenType::IMPORT: {
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 			    !expect(token, Lexer::TokenType::LPAREN)) {
@@ -212,6 +227,6 @@ void loadAnnotations(in_func, size_t &i) {
 	}
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

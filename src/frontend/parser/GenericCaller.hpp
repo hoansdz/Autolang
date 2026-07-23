@@ -5,12 +5,12 @@
 #include "frontend/parser/ClassDeclaration.hpp"
 #include <vector>
 
-namespace AutoLang {
+namespace Autolang {
 
 struct GenericCaller : ClassDeclaration {
 	
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

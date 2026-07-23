@@ -6,14 +6,14 @@
 #include "frontend/parser/node/CreateNode.hpp"
 #include "frontend/parser/node/NodePutBytecode.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ExprNode *CastNode::resolve(in_func) {
 	value = static_cast<HasClassIdNode *>(value->resolve(in_data));
 	if (value->classId == classId) {
 		switch (classId) {
-			case AutoLang::DefaultClass::intClassId:
-			case AutoLang::DefaultClass::floatClassId: {
+			case Autolang::DefaultClass::intClassId:
+			case Autolang::DefaultClass::floatClassId: {
 				break;
 			}
 			default: {
@@ -32,19 +32,19 @@ ExprNode *CastNode::resolve(in_func) {
 			case NodeType::CONST_VAL: {
 				auto node = static_cast<ConstValueNode *>(value);
 				switch (classId) {
-					case AutoLang::DefaultClass::intClassId: {
+					case Autolang::DefaultClass::intClassId: {
 						auto result = toInt(in_data, node);
 						value = nullptr;
 						ExprNode::deleteNode(this);
 						return result;
 					}
-					case AutoLang::DefaultClass::floatClassId: {
+					case Autolang::DefaultClass::floatClassId: {
 						auto result = toFloat(in_data, node);
 						value = nullptr;
 						ExprNode::deleteNode(this);
 						return result;
 					}
-					case AutoLang::DefaultClass::boolClassId: {
+					case Autolang::DefaultClass::boolClassId: {
 						auto result = toBool(in_data, node);
 						value = nullptr;
 						ExprNode::deleteNode(this);
@@ -85,13 +85,13 @@ void CastNode::optimize(in_func) {
 		return;
 	}
 	switch (classId) {
-		case AutoLang::DefaultClass::intClassId: {
+		case Autolang::DefaultClass::intClassId: {
 			switch (value->classId) {
-				case AutoLang::DefaultClass::intClassId:
-				case AutoLang::DefaultClass::floatClassId: {
+				case Autolang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::floatClassId: {
 					return;
 				}
-				case AutoLang::DefaultClass::boolClassId: {
+				case Autolang::DefaultClass::boolClassId: {
 					return;
 				}
 				default: {
@@ -100,11 +100,11 @@ void CastNode::optimize(in_func) {
 			}
 			break;
 		}
-		case AutoLang::DefaultClass::floatClassId: {
+		case Autolang::DefaultClass::floatClassId: {
 			switch (value->classId) {
-				case AutoLang::DefaultClass::intClassId:
-				case AutoLang::DefaultClass::floatClassId:
-				case AutoLang::DefaultClass::boolClassId: {
+				case Autolang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::floatClassId:
+				case Autolang::DefaultClass::boolClassId: {
 					return;
 				}
 				default: {
@@ -115,15 +115,15 @@ void CastNode::optimize(in_func) {
 			}
 			break;
 		}
-		case AutoLang::DefaultClass::boolClassId: {
+		case Autolang::DefaultClass::boolClassId: {
 			switch (value->classId) {
-				case AutoLang::DefaultClass::intClassId:
-				case AutoLang::DefaultClass::floatClassId: {
+				case Autolang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::floatClassId: {
 					throwError(
 					    "Type Error: Cannot cast Int/Float to Bool. Use "
 					    "explicit comparison like 'value != 0' instead.");
 				}
-				case AutoLang::DefaultClass::boolClassId: {
+				case Autolang::DefaultClass::boolClassId: {
 					return;
 				}
 				default: {
@@ -151,17 +151,17 @@ errCast:;
 void CastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	value->putBytecodes(in_data, bytecodes);
 	switch (classId) {
-		case AutoLang::DefaultClass::intClassId: {
+		case Autolang::DefaultClass::intClassId: {
 			switch (value->classId) {
-				case AutoLang::DefaultClass::intClassId: {
-					// bytecodes.emplace_back(Opcode::INT_FROM_INT);
+				case Autolang::DefaultClass::intClassId: {
+					bytecodes.emplace_back(Opcode::TO_INT);
 					return;
 				}
-				case AutoLang::DefaultClass::floatClassId: {
+				case Autolang::DefaultClass::floatClassId: {
 					bytecodes.emplace_back(Opcode::FLOAT_TO_INT);
 					return;
 				}
-				case AutoLang::DefaultClass::boolClassId: {
+				case Autolang::DefaultClass::boolClassId: {
 					bytecodes.emplace_back(Opcode::BOOL_TO_INT);
 					return;
 				}
@@ -170,17 +170,17 @@ void CastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				}
 			}
 		}
-		case AutoLang::DefaultClass::floatClassId: {
+		case Autolang::DefaultClass::floatClassId: {
 			switch (value->classId) {
-				case AutoLang::DefaultClass::intClassId: {
+				case Autolang::DefaultClass::intClassId: {
 					bytecodes.emplace_back(Opcode::INT_TO_FLOAT);
 					return;
 				}
-				case AutoLang::DefaultClass::floatClassId: {
-					// bytecodes.emplace_back(Opcode::FLOAT_FROM_FLOAT);
+				case Autolang::DefaultClass::floatClassId: {
+					bytecodes.emplace_back(Opcode::TO_FLOAT);
 					return;
 				}
-				case AutoLang::DefaultClass::boolClassId: {
+				case Autolang::DefaultClass::boolClassId: {
 					bytecodes.emplace_back(Opcode::BOOL_TO_FLOAT);
 					return;
 				}
@@ -241,5 +241,5 @@ ExprNode *RuntimeCastNode::copy(in_func) {
 
 RuntimeCastNode::~RuntimeCastNode() { deleteNode(value); }
 
-} // namespace AutoLang
+} // namespace Autolang
 #endif

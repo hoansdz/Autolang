@@ -19,7 +19,7 @@
 #define FETCH_IMPLEMENTATION_LIBCURL
 #endif
 
-namespace AutoLang {
+namespace Autolang {
 class ACompiler;
 
 namespace Libs {
@@ -55,12 +55,12 @@ inline bool checkUrlSecurity(const char *url, ANotifier &notifier) {
 
 inline AObject *createHeadersMap(ANotifier &notifier, ClassId mapClassId,
                                  const std::string &rawHeaders) {
-	AObject *newMap = AutoLang::Libs::map::constructor(
+	AObject *newMap = Autolang::Libs::map::constructor(
 	    notifier, mapClassId, DefaultClass::stringClassId);
 	auto hashMapData =
-	    static_cast<AutoLang::Libs::map::AHashMap *>(newMap->data->data);
+	    static_cast<Autolang::Libs::map::AHashMap *>(newMap->data->data);
 	auto map =
-	    static_cast<AutoLang::Libs::map::StringHashMap *>(hashMapData->data);
+	    static_cast<Autolang::Libs::map::StringHashMap *>(hashMapData->data);
 
 	std::istringstream stream(rawHeaders);
 	std::string line;
@@ -718,5 +718,5 @@ class Http {
 
 } // namespace http
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 #endif

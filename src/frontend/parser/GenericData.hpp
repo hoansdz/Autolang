@@ -4,7 +4,7 @@
 #include "frontend/parser/node/Node.hpp"
 #include "frontend/parser/node/CreateNode.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 struct GenericData {
 	HashMap<DeclarationOffset, DeclarationOffset>
@@ -30,6 +30,6 @@ struct GenericData {
 	}
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -7,9 +7,11 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #include <emscripten/bind.h>
+#elif __PYBIND11__
+#include <pybind11/embed.h>
 #endif
 
-namespace AutoLang {
+namespace Autolang {
 
 class ANotifier {
   public:
@@ -63,6 +65,11 @@ class ANotifier {
 	                                          emscripten::val *jsObject) {
 		return vm->data.manager.getJsObject(classId, jsObject);
 	}
+#elif __PYBIND11__
+	[[nodiscard]] inline AObject *getPyObject(ClassId classId,
+	                                          pybind11::object *pyObject) {
+		return vm->data.manager.getPyObject(classId, pyObject);
+	}
 #endif
 	[[nodiscard]] inline AObject *createMemberObject(uint32_t type,
 	                                                 size_t memberCount) {
@@ -80,7 +87,7 @@ class ANotifier {
 	[[nodiscard]] inline AObject *createArray(ClassId classId) {
 		auto obj = vm->data.manager.createEmptyObject();
 		obj->type = classId;
-		obj->member = new NormalArray<AutoLang::AObject *>(0);
+		obj->member = new NormalArray<Autolang::AObject *>(0);
 		obj->flags |= AObject::Flags::OBJ_IS_ARRAY;
 		return obj;
 	}
@@ -155,6 +162,6 @@ class ANotifier {
 	ANotifier(AVM *vm) : vm(vm) {}
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

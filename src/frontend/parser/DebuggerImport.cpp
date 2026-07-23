@@ -5,7 +5,7 @@
 #include "frontend/parser/ParserContext.hpp"
 #include "frontend/ACompiler.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 LibraryData *loadImport(in_func, LibraryData* currentLibrary, std::vector<Lexer::Token> &tokens,
                         ACompiler &compiler, size_t i) {
@@ -57,6 +57,6 @@ LibraryData *loadImport(in_func, LibraryData* currentLibrary, std::vector<Lexer:
 	return library;
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -8,7 +8,7 @@
 #include "shared/ClassFlags.hpp"
 #include <iostream>
 
-namespace AutoLang {
+namespace Autolang {
 
 #define optimizeNode(token, func)                                              \
 	case Lexer::TokenType::token:                                              \
@@ -17,7 +17,7 @@ namespace AutoLang {
 ExprNode *BinaryNode::leftOpRight(in_func, ConstValueNode *l,
                                   ConstValueNode *r) {
 	switch (op) {
-		using namespace AutoLang;
+		using namespace Autolang;
 		case Lexer::TokenType::PLUS:
 			return plus(in_data, l, r);
 		case Lexer::TokenType::MINUS:
@@ -51,21 +51,21 @@ ExprNode *BinaryNode::leftOpRight(in_func, ConstValueNode *l,
 		case Lexer::TokenType::EQEQEQ: {
 			const bool result = op == Lexer::TokenType::EQEQEQ;
 			switch (l->classId) {
-				case AutoLang::DefaultClass::boolClassId: {
-					if (r->classId == AutoLang::DefaultClass::boolClassId) {
+				case Autolang::DefaultClass::boolClassId: {
+					if (r->classId == Autolang::DefaultClass::boolClassId) {
 						const bool equal = (l->obj->b == r->obj->b);
 						return context.constValuePool.push(
 						    line, result ? equal : !equal);
 					} else if (r->classId ==
-					           AutoLang::DefaultClass::nullClassId) {
+					           Autolang::DefaultClass::nullClassId) {
 						return context.constValuePool.push(line, !result);
 					}
 				}
-				case AutoLang::DefaultClass::nullClassId: {
-					if (r->classId == AutoLang::DefaultClass::nullClassId) {
+				case Autolang::DefaultClass::nullClassId: {
+					if (r->classId == Autolang::DefaultClass::nullClassId) {
 						return context.constValuePool.push(line, result);
 					} else if (r->classId ==
-					           AutoLang::DefaultClass::boolClassId) {
+					           Autolang::DefaultClass::boolClassId) {
 						return context.constValuePool.push(line, !result);
 					}
 					break;
@@ -226,12 +226,12 @@ void BinaryNode::optimize(in_func) {
 			}
 
 			switch (left->classId) {
-				case AutoLang::DefaultClass::boolClassId: {
+				case Autolang::DefaultClass::boolClassId: {
 					left = context.castPool.push(
-					    left, AutoLang::DefaultClass::intClassId);
+					    left, Autolang::DefaultClass::intClassId);
 					break;
 				}
-				case AutoLang::DefaultClass::stringClassId: {
+				case Autolang::DefaultClass::stringClassId: {
 					switch (right->classId) {
 						case DefaultClass::intClassId:
 						case DefaultClass::floatClassId:
@@ -276,12 +276,12 @@ void BinaryNode::optimize(in_func) {
 			// std::cerr<<compile.classes[left->classId]->getName(compile)<<'\n';
 
 			switch (right->classId) {
-				case AutoLang::DefaultClass::boolClassId: {
+				case Autolang::DefaultClass::boolClassId: {
 					right = context.castPool.push(
-					    right, AutoLang::DefaultClass::intClassId);
+					    right, Autolang::DefaultClass::intClassId);
 					break;
 				}
-				case AutoLang::DefaultClass::stringClassId: {
+				case Autolang::DefaultClass::stringClassId: {
 					switch (left->classId) {
 						case DefaultClass::intClassId:
 						case DefaultClass::floatClassId:
@@ -341,16 +341,16 @@ void BinaryNode::optimize(in_func) {
 				throwError("Expected value if use operator '" +
 				           Lexer::Token(0, op).toString(context) + "'");
 			}
-			if (left->classId == AutoLang::DefaultClass::boolClassId) {
+			if (left->classId == Autolang::DefaultClass::boolClassId) {
 				left = context.castPool.push(
-				    left, AutoLang::DefaultClass::intClassId);
+				    left, Autolang::DefaultClass::intClassId);
 				break;
 			}
 			// std::cerr<<compile.classes[left->classId]->getName(compile)<<'\n';
 
-			if (right->classId == AutoLang::DefaultClass::boolClassId) {
+			if (right->classId == Autolang::DefaultClass::boolClassId) {
 				right = context.castPool.push(
-				    right, AutoLang::DefaultClass::intClassId);
+				    right, Autolang::DefaultClass::intClassId);
 			}
 			if (left->isNullable() || right->isNullable()) {
 				throwError(
@@ -367,9 +367,9 @@ void BinaryNode::optimize(in_func) {
 				throwError("Expected value if use operator '" +
 				           Lexer::Token(0, op).toString(context) + "'");
 			}
-			classId = AutoLang::DefaultClass::boolClassId;
-			if (left->classId == AutoLang::DefaultClass::nullClassId ||
-			    right->classId == AutoLang::DefaultClass::nullClassId) {
+			classId = Autolang::DefaultClass::boolClassId;
+			if (left->classId == Autolang::DefaultClass::nullClassId ||
+			    right->classId == Autolang::DefaultClass::nullClassId) {
 				op = Lexer::TokenType::EQEQEQ;
 				return;
 			}
@@ -387,9 +387,9 @@ void BinaryNode::optimize(in_func) {
 				throwError("Expected value if use operator '" +
 				           Lexer::Token(0, op).toString(context) + "'");
 			}
-			classId = AutoLang::DefaultClass::boolClassId;
-			if (left->classId == AutoLang::DefaultClass::nullClassId ||
-			    right->classId == AutoLang::DefaultClass::nullClassId) {
+			classId = Autolang::DefaultClass::boolClassId;
+			if (left->classId == Autolang::DefaultClass::nullClassId ||
+			    right->classId == Autolang::DefaultClass::nullClassId) {
 				op = Lexer::TokenType::NOTEQEQ;
 				return;
 			}
@@ -734,10 +734,10 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		}
 		switch (op) {
 			case Lexer::TokenType::EQEQEQ:
-				bytecodes.emplace_back(AutoLang::Opcode::IS_NULL);
+				bytecodes.emplace_back(Autolang::Opcode::IS_NULL);
 				return;
 			case Lexer::TokenType::NOTEQEQ:
-				bytecodes.emplace_back(AutoLang::Opcode::IS_NON_NULL);
+				bytecodes.emplace_back(Autolang::Opcode::IS_NON_NULL);
 				return;
 			default: {
 				throwError("Cannot use operator '" +
@@ -799,11 +799,11 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			// 	case DefaultClass::intClassId: {
 			// 		switch (right->classId) {
 			// 			case DefaultClass::intClassId: {
-			// 				bytecodes.emplace_back(AutoLang::Opcode::I_CAL_I);
+			// 				bytecodes.emplace_back(Autolang::Opcode::I_CAL_I);
 			// 				return;
 			// 			}
 			// 			case DefaultClass::floatClassId: {
-			// 				bytecodes.emplace_back(AutoLang::Opcode::I_CAL_F);
+			// 				bytecodes.emplace_back(Autolang::Opcode::I_CAL_F);
 			// 				return;
 			// 			}
 			// 		}
@@ -812,18 +812,18 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			// 	case DefaultClass::floatClassId: {
 			// 		switch (right->classId) {
 			// 			case DefaultClass::intClassId: {
-			// 				bytecodes.emplace_back(AutoLang::Opcode::F_CAL_I);
+			// 				bytecodes.emplace_back(Autolang::Opcode::F_CAL_I);
 			// 				return;
 			// 			}
 			// 			case DefaultClass::floatClassId: {
-			// 				bytecodes.emplace_back(AutoLang::Opcode::F_CAL_F);
+			// 				bytecodes.emplace_back(Autolang::Opcode::F_CAL_F);
 			// 				return;
 			// 			}
 			// 		}
 			// 		break;
 			// 	}
 			// }
-			bytecodes.emplace_back(AutoLang::Opcode::PLUS);
+			bytecodes.emplace_back(Autolang::Opcode::PLUS);
 			return;
 		}
 		case Lexer::TokenType::MINUS: {
@@ -831,11 +831,11 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			// 	case DefaultClass::intClassId: {
 			// 		switch (right->classId) {
 			// 			case DefaultClass::intClassId: {
-			// 				bytecodes.emplace_back(AutoLang::Opcode::I_MINUS_I);
+			// 				bytecodes.emplace_back(Autolang::Opcode::I_MINUS_I);
 			// 				return;
 			// 			}
 			// 			case DefaultClass::floatClassId: {
-			// 				bytecodes.emplace_back(AutoLang::Opcode::I_MINUS_F);
+			// 				bytecodes.emplace_back(Autolang::Opcode::I_MINUS_F);
 			// 				return;
 			// 			}
 			// 		}
@@ -844,58 +844,58 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			// 	case DefaultClass::floatClassId: {
 			// 		switch (right->classId) {
 			// 			case DefaultClass::intClassId: {
-			// 				bytecodes.emplace_back(AutoLang::Opcode::F_MINUS_I);
+			// 				bytecodes.emplace_back(Autolang::Opcode::F_MINUS_I);
 			// 				return;
 			// 			}
 			// 			case DefaultClass::floatClassId: {
-			// 				bytecodes.emplace_back(AutoLang::Opcode::F_MINUS_F);
+			// 				bytecodes.emplace_back(Autolang::Opcode::F_MINUS_F);
 			// 				return;
 			// 			}
 			// 		}
 			// 		break;
 			// 	}
 			// }
-			bytecodes.emplace_back(AutoLang::Opcode::MINUS);
+			bytecodes.emplace_back(Autolang::Opcode::MINUS);
 			return;
 		}
 		case Lexer::TokenType::STAR:
-			bytecodes.emplace_back(AutoLang::Opcode::MUL);
+			bytecodes.emplace_back(Autolang::Opcode::MUL);
 			return;
 		case Lexer::TokenType::SLASH:
-			bytecodes.emplace_back(AutoLang::Opcode::DIVIDE);
+			bytecodes.emplace_back(Autolang::Opcode::DIVIDE);
 			return;
 		case Lexer::TokenType::PERCENT:
-			bytecodes.emplace_back(AutoLang::Opcode::MOD);
+			bytecodes.emplace_back(Autolang::Opcode::MOD);
 			return;
 		case Lexer::TokenType::AND:
-			bytecodes.emplace_back(AutoLang::Opcode::BITWISE_AND);
+			bytecodes.emplace_back(Autolang::Opcode::BITWISE_AND);
 			return;
 		case Lexer::TokenType::OR:
-			bytecodes.emplace_back(AutoLang::Opcode::BITWISE_OR);
+			bytecodes.emplace_back(Autolang::Opcode::BITWISE_OR);
 			return;
 		case Lexer::TokenType::NOTEQEQ:
-			bytecodes.emplace_back(AutoLang::Opcode::NOTEQ_POINTER);
+			bytecodes.emplace_back(Autolang::Opcode::NOTEQ_POINTER);
 			return;
 		case Lexer::TokenType::EQEQEQ:
-			bytecodes.emplace_back(AutoLang::Opcode::EQUAL_POINTER);
+			bytecodes.emplace_back(Autolang::Opcode::EQUAL_POINTER);
 			return;
 		case Lexer::TokenType::NOTEQ:
-			bytecodes.emplace_back(AutoLang::Opcode::NOTEQ_VALUE);
+			bytecodes.emplace_back(Autolang::Opcode::NOTEQ_VALUE);
 			return;
 		case Lexer::TokenType::EQEQ:
-			bytecodes.emplace_back(AutoLang::Opcode::EQUAL_VALUE);
+			bytecodes.emplace_back(Autolang::Opcode::EQUAL_VALUE);
 			return;
 		case Lexer::TokenType::LT:
-			bytecodes.emplace_back(AutoLang::Opcode::LESS_THAN);
+			bytecodes.emplace_back(Autolang::Opcode::LESS_THAN);
 			return;
 		case Lexer::TokenType::GT:
-			bytecodes.emplace_back(AutoLang::Opcode::GREATER_THAN);
+			bytecodes.emplace_back(Autolang::Opcode::GREATER_THAN);
 			return;
 		case Lexer::TokenType::GTE:
-			bytecodes.emplace_back(AutoLang::Opcode::GREATER_THAN_EQ);
+			bytecodes.emplace_back(Autolang::Opcode::GREATER_THAN_EQ);
 			return;
 		case Lexer::TokenType::LTE:
-			bytecodes.emplace_back(AutoLang::Opcode::LESS_THAN_EQ);
+			bytecodes.emplace_back(Autolang::Opcode::LESS_THAN_EQ);
 			return;
 		default:
 			// std::cerr<<this<<'\n';
@@ -911,6 +911,6 @@ ExprNode *BinaryNode::copy(in_func) {
 	    static_cast<HasClassIdNode *>(right->copy(in_data)));
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -20,7 +20,7 @@
 #include "shared/ClassFlags.hpp"
 #include "shared/Utils.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
@@ -555,6 +555,6 @@ void loadListGenericDeclarationType(in_func, size_t &i, uint32_t line,
 	}
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -3,16 +3,20 @@
 
 #ifdef __EMSCRIPTEN__
 #include "shared/JSFunction.hpp"
-#include <emscripten/bind.h>
 using namespace emscripten;
+#elif __PYBIND11__
+#include "shared/PYFunction.hpp"
+using namespace pybind11;
 #endif
 
-namespace AutoLang {
+namespace Autolang {
 
 enum FunctionEventType : uint8_t {
 	FE_LAMBDA,
 #ifdef __EMSCRIPTEN__
 	FE_JS_FUNCTION,
+#elif __PYBIND11__
+	FE_PY_FUNCTION,
 #endif
 };
 
@@ -22,6 +26,8 @@ struct FunctionEvent {
 		std::function<void(std::string_view message)> nativeLambda;
 #ifdef __EMSCRIPTEN__
 		val jsFunction;
+#elif __PYBIND11__
+		py::object pyFunction;
 #endif
 	};
 	FunctionEvent(std::function<void(std::string_view)> func) {
@@ -34,6 +40,11 @@ struct FunctionEvent {
 		type = FE_JS_FUNCTION;
 		new (&jsFunction) val(std::move(jsFunc));
 	}
+#elif __PYBIND11__
+	FunctionEvent(py::object pyFunc) {
+		type = FE_PY_FUNCTION;
+		new (&pyFunction) py::object(std::move(pyFunc));
+	}
 #endif
 	FunctionEvent(const FunctionEvent &) = delete;
 	FunctionEvent &operator=(const FunctionEvent &) = delete;
@@ -44,8 +55,13 @@ struct FunctionEvent {
 				break;
 			}
 #ifdef __EMSCRIPTEN__
-			default: {
+			case FE_JS_FUNCTION: {
 				jsFunction(val(std::string(message)));
+				break;
+			}
+#elif __PYBIND11__
+			case FE_PY_FUNCTION: {
+				pyFunction(std::string(message));
 				break;
 			}
 #endif
@@ -61,6 +77,10 @@ struct FunctionEvent {
 			case FE_JS_FUNCTION:
 				jsFunction.~val();
 				break;
+#elif __PYBIND11__
+			case FE_PY_FUNCTION:
+				pyFunction.~object();
+				break;
 #endif
 			default:
 				break;
@@ -68,6 +88,6 @@ struct FunctionEvent {
 	}
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

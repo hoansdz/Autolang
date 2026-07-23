@@ -6,7 +6,7 @@
 #include "shared/DefaultClass.hpp"
 #include "shared/DefaultFunction.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 void AVM::log() {
 	log(data.main);
@@ -15,7 +15,7 @@ void AVM::log() {
 	for (int i = 0; i < data.constPool.size(); ++i) {
 		tempAllocateArea[0] = data.constPool[i];
 		std::cerr << '[' << i << "] ";
-		AutoLang::DefaultFunction::println(*notifier, tempAllocateArea, 1);
+		Autolang::DefaultFunction::println(*notifier, tempAllocateArea, 1);
 	}
 	std::cerr << "-------------------" << "\n";
 	std::cerr << "Function: " << data.functions.size() << " elements" << "\n";
@@ -91,17 +91,17 @@ void AClass::log(CompiledProgram &data) {
 }
 
 #define BYTECODE_PRINT_SINGLE(bytecode)                                        \
-	case AutoLang::Opcode::bytecode:                                           \
+	case Autolang::Opcode::bytecode:                                           \
 		std::cerr << #bytecode << "\n";                                        \
 		break;
 
 #define PRINT_BYTECODE_1_uint32(bytecode)                                      \
-	case AutoLang::Opcode::bytecode:                                           \
+	case Autolang::Opcode::bytecode:                                           \
 		std::cerr << #bytecode << "    " << get_u32(bytecodes, i) << "\n";     \
 		break;
 
 #define PRINT_BYTECODE_2_uint32(bytecode)                                      \
-	case AutoLang::Opcode::bytecode: {                                         \
+	case Autolang::Opcode::bytecode: {                                         \
 		uint32_t pos1 = get_u32(bytecodes, i);                                 \
 		uint32_t pos2 = get_u32(bytecodes, i);                                 \
 		std::cerr << #bytecode << "  " << pos1 << "  " << pos2 << "\n";        \
@@ -109,7 +109,7 @@ void AClass::log(CompiledProgram &data) {
 	}
 
 #define PRINT_DATA_CAL_DATA(opcode, data1, data2)                              \
-	case AutoLang::Opcode::opcode: {                                           \
+	case Autolang::Opcode::opcode: {                                           \
 		uint8_t tablePos = bytecodes[i++];                                     \
 		uint32_t pos1 = get_u32(bytecodes, i);                                 \
 		uint32_t pos2 = get_u32(bytecodes, i);                                 \
@@ -119,7 +119,7 @@ void AClass::log(CompiledProgram &data) {
 	}
 
 #define PRINT_DATA_MEMBER_CAL_DATA(opcode, data1, data2)                       \
-	case AutoLang::Opcode::opcode: {                                           \
+	case Autolang::Opcode::opcode: {                                           \
 		uint8_t tablePos = bytecodes[i++];                                     \
 		uint32_t pos1 = get_u32(bytecodes, i);                                 \
 		uint32_t pos2 = get_u32(bytecodes, i);                                 \
@@ -130,7 +130,7 @@ void AClass::log(CompiledProgram &data) {
 	}
 
 #define PRINT_DATA_CAL_DATA_MEMBER(opcode, data1, data2)                       \
-	case AutoLang::Opcode::opcode: {                                           \
+	case Autolang::Opcode::opcode: {                                           \
 		uint8_t tablePos = bytecodes[i++];                                     \
 		uint32_t pos1 = get_u32(bytecodes, i);                                 \
 		uint32_t pos2 = get_u32(bytecodes, i);                                 \
@@ -141,7 +141,7 @@ void AClass::log(CompiledProgram &data) {
 	}
 
 #define PRINT_DATA_MEMBER_CAL_DATA_MEMBER(opcode, data1, data2)                \
-	case AutoLang::Opcode::opcode: {                                           \
+	case Autolang::Opcode::opcode: {                                           \
 		uint8_t tablePos = bytecodes[i++];                                     \
 		uint32_t pos1 = get_u32(bytecodes, i);                                 \
 		uint32_t pos2 = get_u32(bytecodes, i);                                 \
@@ -169,69 +169,69 @@ void AVM::log(Function *currentFunction) {
 		std::cerr << "[" << i << "] ";
 		uint8_t b = bytecodes[i++];
 		switch (b) {
-			case AutoLang::Opcode::CALL_FUNCTION: {
+			case Autolang::Opcode::CALL_FUNCTION: {
 				uint32_t funcId = get_u32(bytecodes, i);
 				std::cerr << funcId << " " << data.functions.size() << "\n";
 				std::cerr << "CALL_FUNCTION	 "
 				          << data.functions[funcId]->getName(data) << "\n";
 				break;
 			}
-			case AutoLang::Opcode::CALL_NATIVE_FUNCTION: {
+			case Autolang::Opcode::CALL_NATIVE_FUNCTION: {
 				uint32_t funcId = get_u32(bytecodes, i);
 				std::cerr << "CALL_NATIVE_FUNCTION	 "
 				          << data.functions[funcId]->getName(data) << "\n";
 				break;
 			}
-			case AutoLang::Opcode::CALL_VOID_NATIVE_FUNCTION: {
+			case Autolang::Opcode::CALL_VOID_NATIVE_FUNCTION: {
 				uint32_t funcId = get_u32(bytecodes, i);
 				std::cerr << "CALL_VOID_NATIVE_FUNCTION	 "
 				          << data.functions[funcId]->getName(data) << "\n";
 				break;
 			}
-			case AutoLang::Opcode::CALL_FUNCTION_OBJECT: {
+			case Autolang::Opcode::CALL_FUNCTION_OBJECT: {
 				std::cerr << "CALL_FUNCTION_OBJECT	 "
 				          << "\n";
 				break;
 			}
-			case AutoLang::Opcode::CALL_VOID_FUNCTION: {
+			case Autolang::Opcode::CALL_VOID_FUNCTION: {
 				uint32_t funcId = get_u32(bytecodes, i);
 				std::cerr << "CALL_VOID_FUNCTION	 "
 				          << data.functions[funcId]->getName(data) << "\n";
 				break;
 			}
-			case AutoLang::Opcode::CALL_VTABLE_FUNCTION: {
+			case Autolang::Opcode::CALL_VTABLE_FUNCTION: {
 				uint32_t funcPos = get_u32(bytecodes, i);
 				uint32_t argumentCount = get_u32(bytecodes, i);
 				std::cerr << "CALL_VTABLE_FUNCTION	 " << funcPos << " "
 				          << argumentCount << "\n";
 				break;
 			}
-			case AutoLang::Opcode::CALL_VTABLE_VOID_FUNCTION: {
+			case Autolang::Opcode::CALL_VTABLE_VOID_FUNCTION: {
 				uint32_t funcPos = get_u32(bytecodes, i);
 				uint32_t argumentCount = get_u32(bytecodes, i);
 				std::cerr << "CALL_VTABLE_VOID_FUNCTION	 " << funcPos << " "
 				          << argumentCount << "\n";
 				break;
 			}
-			case AutoLang::Opcode::CALL_DATA_CONTRUCTOR: {
+			case Autolang::Opcode::CALL_DATA_CONTRUCTOR: {
 				uint32_t funcPos = get_u32(bytecodes, i);
 				std::cerr << "CALL_DATA_CONTRUCTOR	 " << funcPos << "\n";
 				break;
 			}
-			case AutoLang::Opcode::CREATE_FUNCTION_OBJECT: {
+			case Autolang::Opcode::CREATE_FUNCTION_OBJECT: {
 				Function *func = data.functions[get_u32(bytecodes, i)];
 				uint32_t size = get_u32(bytecodes, i);
 				std::cerr << "CREATE_FUNCTION_OBJECT   " << func->getName(data)
 				          << " " << size << "\n";
 				break;
 			}
-			case AutoLang::Opcode::CREATE_FUNCTION_OBJECT_FROM_VTABLE: {
+			case Autolang::Opcode::CREATE_FUNCTION_OBJECT_FROM_VTABLE: {
 				auto funcPos = get_u32(bytecodes, i);
 				std::cerr << "CREATE_FUNCTION_OBJECT_FROM_VTABLE   " << funcPos
 				          << "\n";
 				break;
 			}
-			case AutoLang::Opcode::FOR_LIST: {
+			case Autolang::Opcode::FOR_LIST: {
 				bool isGlobal = bytecodes[i++] == Opcode::STORE_GLOBAL;
 				uint32_t containerPos = get_u32(bytecodes, i);
 				uint32_t pos = get_u32(bytecodes, i);
@@ -241,7 +241,7 @@ void AVM::log(Function *currentFunction) {
 				          << posJumpIfFalse << "\n";
 				break;
 			}
-			case AutoLang::Opcode::FOR_SET: {
+			case Autolang::Opcode::FOR_SET: {
 				bool isGlobal = bytecodes[i++] == Opcode::STORE_GLOBAL;
 				uint32_t containerPos = get_u32(bytecodes, i);
 				uint32_t pos = get_u32(bytecodes, i);
@@ -251,38 +251,38 @@ void AVM::log(Function *currentFunction) {
 				          << posJumpIfFalse << "\n";
 				break;
 			}
-			case AutoLang::Opcode::IN_RANGE:
+			case Autolang::Opcode::IN_RANGE:
 				std::cerr << "IN_RANGE	 " << (bytecodes[i++] ? "LT" : "LTE")
 				          << "\n";
 				break;
-			case AutoLang::Opcode::LOAD_CONST: {
+			case Autolang::Opcode::LOAD_CONST: {
 				auto obj = data.constPool[get_u32(bytecodes, i)];
 				std::cerr << "LOAD_CONST	 "
 				          << DefaultFunction::to_string(*notifier, obj) << "\n";
 				// std::cerr << "LOAD_CONST	 " << get_u32(bytecodes, i) << "\n";
 				break;
 			}
-			case AutoLang::Opcode::IS:
+			case Autolang::Opcode::IS:
 				std::cerr << "IS	 " << get_u32(bytecodes, i) << "\n";
 				break;
-			case AutoLang::Opcode::SAFE_CAST:
+			case Autolang::Opcode::SAFE_CAST:
 				std::cerr << "SAFE_CAST	 "
 				          << data.classes[get_u32(bytecodes, i)]->getName(data)
 				          << "\n";
 				break;
-			case AutoLang::Opcode::UNSAFE_CAST:
+			case Autolang::Opcode::UNSAFE_CAST:
 				std::cerr << "UNSAFE_CAST	 "
 				          << data.classes[get_u32(bytecodes, i)]->getName(data)
 				          << "\n";
 				break;
-			case AutoLang::Opcode::ADD_TRY_BLOCK:
+			case Autolang::Opcode::ADD_TRY_BLOCK:
 				std::cerr << "ADD_TRY_BLOCK	 " << get_u32(bytecodes, i) << "\n";
 				break;
-			case AutoLang::Opcode::REMOVE_TRY_AND_JUMP:
+			case Autolang::Opcode::REMOVE_TRY_AND_JUMP:
 				std::cerr << "REMOVE_TRY_AND_JUMP	 " << get_u32(bytecodes, i)
 				          << "\n";
 				break;
-			case AutoLang::Opcode::LOAD_CONST_PRIMARY: {
+			case Autolang::Opcode::LOAD_CONST_PRIMARY: {
 				auto obj = data.constPool[get_u32(bytecodes, i)];
 				std::cerr << "CONST_PRIMARY	 \""
 				          << DefaultFunction::to_string(*notifier, obj)
@@ -302,21 +302,21 @@ void AVM::log(Function *currentFunction) {
 				PRINT_BYTECODE_1_uint32(NOT_GLOBAL);
 				PRINT_BYTECODE_2_uint32(NOT_LOCAL_MEMBER);
 				PRINT_BYTECODE_2_uint32(NOT_GLOBAL_MEMBER);
-			case AutoLang::Opcode::RETURN_LOCAL_MEMBER: {
+			case Autolang::Opcode::RETURN_LOCAL_MEMBER: {
 				uint32_t pos = get_u32(bytecodes, i);
 				uint32_t memberId = get_u32(bytecodes, i);
 				std::cerr << "RETURN_LOCAL_MEMBER	 " << pos << "     "
 				          << memberId << "\n";
 				break;
 			}
-			case AutoLang::Opcode::RETURN_GLOBAL_MEMBER: {
+			case Autolang::Opcode::RETURN_GLOBAL_MEMBER: {
 				uint32_t pos = get_u32(bytecodes, i);
 				uint32_t memberId = get_u32(bytecodes, i);
 				std::cerr << "RETURN_GLOBAL_MEMBER	 " << pos << "     "
 				          << memberId << "\n";
 				break;
 			}
-			case AutoLang::Opcode::CREATE_OBJECT: {
+			case Autolang::Opcode::CREATE_OBJECT: {
 				uint32_t classId = get_u32(bytecodes, i);
 				uint32_t memberCount = get_u32(bytecodes, i);
 				std::cerr << "CREATE_OBJECT	 "
@@ -324,7 +324,7 @@ void AVM::log(Function *currentFunction) {
 				          << memberCount << "\n";
 				break;
 			}
-			case AutoLang::Opcode::FAST_SAVE_MEMBER: {
+			case Autolang::Opcode::FAST_SAVE_MEMBER: {
 				uint32_t classId = get_u32(bytecodes, i);
 				uint32_t memberCount = get_u32(bytecodes, i);
 				std::cerr << "FAST_SAVE_MEMBER	 "
@@ -332,7 +332,7 @@ void AVM::log(Function *currentFunction) {
 				          << memberCount << "\n";
 				break;
 			}
-			case AutoLang::Opcode::CREATE_SET_OBJECT: {
+			case Autolang::Opcode::CREATE_SET_OBJECT: {
 				uint32_t classId = get_u32(bytecodes, i);
 				uint32_t keyId = get_u32(bytecodes, i);
 				uint32_t count = get_u32(bytecodes, i);
@@ -342,7 +342,7 @@ void AVM::log(Function *currentFunction) {
 				          << "\n";
 				break;
 			}
-			case AutoLang::Opcode::CREATE_MAP_OBJECT: {
+			case Autolang::Opcode::CREATE_MAP_OBJECT: {
 				uint32_t classId = get_u32(bytecodes, i);
 				uint32_t keyId = get_u32(bytecodes, i);
 				uint32_t count = get_u32(bytecodes, i);
@@ -352,22 +352,22 @@ void AVM::log(Function *currentFunction) {
 				          << "\n";
 				break;
 			}
-			case AutoLang::Opcode::CREATE_NATIVE_OBJECT: {
+			case Autolang::Opcode::CREATE_NATIVE_OBJECT: {
 				uint32_t classId = get_u32(bytecodes, i);
 				std::cerr << "CREATE_NATIVE_OBJECT	 "
 				          << data.classes[classId]->getName(data) << "\n";
 				break;
 			}
-			case AutoLang::Opcode::LOAD_GLOBAL:
+			case Autolang::Opcode::LOAD_GLOBAL:
 				std::cerr << "LOAD_GLOBAL	 " << get_u32(bytecodes, i) << "\n";
 				break;
-			case AutoLang::Opcode::STORE_GLOBAL:
+			case Autolang::Opcode::STORE_GLOBAL:
 				std::cerr << "STORE_GLOBAL	 " << get_u32(bytecodes, i) << "\n";
 				break;
-			case AutoLang::Opcode::LOAD_LOCAL:
+			case Autolang::Opcode::LOAD_LOCAL:
 				std::cerr << "LOAD_LOCAL	 " << get_u32(bytecodes, i) << "\n";
 				break;
-			case AutoLang::Opcode::STORE_LOCAL:
+			case Autolang::Opcode::STORE_LOCAL:
 				std::cerr << "STORE_LOCAL	 " << get_u32(bytecodes, i) << "\n";
 				break;
 				PRINT_DATA_CAL_DATA(GLOBAL_CAL_GLOBAL, globalVariables,
@@ -438,52 +438,52 @@ void AVM::log(Function *currentFunction) {
 				PRINT_BYTECODE_2_uint32(LOCAL_STORE_LOCAL_CLONE);
 				PRINT_BYTECODE_2_uint32(LOCAL_STORE_GLOBAL_CLONE);
 				PRINT_BYTECODE_2_uint32(LOCAL_STORE_CONST_CLONE);
-			case AutoLang::Opcode::LOCAL_LOAD_MEMBER: {
+			case Autolang::Opcode::LOCAL_LOAD_MEMBER: {
 				uint32_t pos = get_u32(bytecodes, i);
 				uint32_t memberId = get_u32(bytecodes, i);
 				std::cerr << "LOCAL_LOAD_MEMBER	 " << pos << " " << memberId
 				          << "\n";
 				break;
 			}
-			case AutoLang::Opcode::GLOBAL_LOAD_MEMBER: {
+			case Autolang::Opcode::GLOBAL_LOAD_MEMBER: {
 				uint32_t pos = get_u32(bytecodes, i);
 				uint32_t memberId = get_u32(bytecodes, i);
 				std::cerr << "GLOBAL_LOAD_MEMBER	 " << pos << " " << memberId
 				          << "\n";
 				break;
 			}
-			case AutoLang::Opcode::GLOBAL_LOAD_MEMBER_AND_STORE: {
+			case Autolang::Opcode::GLOBAL_LOAD_MEMBER_AND_STORE: {
 				uint32_t pos = get_u32(bytecodes, i);
 				uint32_t memberId = get_u32(bytecodes, i);
 				std::cerr << "GLOBAL_LOAD_MEMBER_AND_STORE	 " << pos << " "
 				          << memberId << "\n";
 				break;
 			}
-			case AutoLang::Opcode::LOCAL_LOAD_MEMBER_AND_STORE: {
+			case Autolang::Opcode::LOCAL_LOAD_MEMBER_AND_STORE: {
 				uint32_t pos = get_u32(bytecodes, i);
 				uint32_t memberId = get_u32(bytecodes, i);
 				std::cerr << "LOCAL_LOAD_MEMBER_AND_STORE	 " << pos << " "
 				          << memberId << "\n";
 				break;
 			}
-			case AutoLang::Opcode::LOAD_MEMBER:
+			case Autolang::Opcode::LOAD_MEMBER:
 				std::cerr << "LOAD_MEMBER	 " << get_u32(bytecodes, i) << "\n";
 				break;
-			case AutoLang::Opcode::LOAD_MEMBER_IF_NNULL_OR_JUMP: {
+			case Autolang::Opcode::LOAD_MEMBER_IF_NNULL_OR_JUMP: {
 				uint32_t memberId = get_u32(bytecodes, i);
 				uint32_t jumpIfFalsePos = get_u32(bytecodes, i);
 				std::cerr << "LOAD_MEMBER_IF_NNULL_OR_JUMP	 "
 				          << " " << memberId << " " << jumpIfFalsePos << "\n";
 				break;
 			}
-			case AutoLang::Opcode::LOAD_MEMBER_CAN_RET_NULL_OR_JUMP: {
+			case Autolang::Opcode::LOAD_MEMBER_CAN_RET_NULL_OR_JUMP: {
 				uint32_t memberId = get_u32(bytecodes, i);
 				uint32_t jumpIfFalsePos = get_u32(bytecodes, i);
 				std::cerr << "LOAD_MEMBER_CAN_RET_NULL_OR_JUMP	 "
 				          << " " << memberId << " " << jumpIfFalsePos << "\n";
 				break;
 			}
-			case AutoLang::Opcode::STORE_MEMBER:
+			case Autolang::Opcode::STORE_MEMBER:
 				std::cerr << "STORE_MEMBER	 " << get_u32(bytecodes, i) << "\n";
 				break;
 				BYTECODE_PRINT_SINGLE(POP)
@@ -497,7 +497,7 @@ void AVM::log(Function *currentFunction) {
 				BYTECODE_PRINT_SINGLE(WAIT_INPUT)
 				BYTECODE_PRINT_SINGLE(THROW_EXCEPTION)
 				BYTECODE_PRINT_SINGLE(CLONE)
-			case AutoLang::Opcode::LOCAL_CAL_CONST_JUMP: {
+			case Autolang::Opcode::LOCAL_CAL_CONST_JUMP: {
 				uint32_t operatorTablePos = bytecodes[i++];
 				uint32_t pos1 = get_u32(bytecodes, i);
 				uint32_t pos2 = get_u32(bytecodes, i);
@@ -507,7 +507,7 @@ void AVM::log(Function *currentFunction) {
 				          << "\n";
 				break;
 			}
-			case AutoLang::Opcode::GLOBAL_CAL_GLOBAL_JUMP: {
+			case Autolang::Opcode::GLOBAL_CAL_GLOBAL_JUMP: {
 				uint32_t operatorTablePos = bytecodes[i++];
 				uint32_t pos1 = get_u32(bytecodes, i);
 				uint32_t pos2 = get_u32(bytecodes, i);
@@ -517,7 +517,7 @@ void AVM::log(Function *currentFunction) {
 				          << "\n";
 				break;
 			}
-			case AutoLang::Opcode::GLOBAL_CAL_LOCAL_JUMP: {
+			case Autolang::Opcode::GLOBAL_CAL_LOCAL_JUMP: {
 				uint32_t operatorTablePos = bytecodes[i++];
 				uint32_t pos1 = get_u32(bytecodes, i);
 				uint32_t pos2 = get_u32(bytecodes, i);
@@ -527,7 +527,7 @@ void AVM::log(Function *currentFunction) {
 				          << "\n";
 				break;
 			}
-			case AutoLang::Opcode::GLOBAL_CAL_CONST_JUMP: {
+			case Autolang::Opcode::GLOBAL_CAL_CONST_JUMP: {
 				uint32_t operatorTablePos = bytecodes[i++];
 				uint32_t pos1 = get_u32(bytecodes, i);
 				uint32_t pos2 = get_u32(bytecodes, i);
@@ -537,7 +537,7 @@ void AVM::log(Function *currentFunction) {
 				          << "\n";
 				break;
 			}
-			case AutoLang::Opcode::LOCAL_CAL_LOCAL_JUMP: {
+			case Autolang::Opcode::LOCAL_CAL_LOCAL_JUMP: {
 				uint32_t operatorTablePos = bytecodes[i++];
 				uint32_t pos1 = get_u32(bytecodes, i);
 				uint32_t pos2 = get_u32(bytecodes, i);
@@ -547,7 +547,7 @@ void AVM::log(Function *currentFunction) {
 				          << "\n";
 				break;
 			}
-			case AutoLang::Opcode::LOCAL_CAL_GLOBAL_JUMP: {
+			case Autolang::Opcode::LOCAL_CAL_GLOBAL_JUMP: {
 				uint32_t operatorTablePos = bytecodes[i++];
 				uint32_t pos1 = get_u32(bytecodes, i);
 				uint32_t pos2 = get_u32(bytecodes, i);
@@ -557,41 +557,41 @@ void AVM::log(Function *currentFunction) {
 				          << "\n";
 				break;
 			}
-			case AutoLang::Opcode::JUMP: {
+			case Autolang::Opcode::JUMP: {
 				std::cerr << "JUMP	 " << get_u32(bytecodes, i) << "\n";
 				break;
 			}
-			case AutoLang::Opcode::JUMP_IF_FALSE:
+			case Autolang::Opcode::JUMP_IF_FALSE:
 				std::cerr << "JUMP_IF_FALSE	 " << get_u32(bytecodes, i) << "\n";
 				break;
-			case AutoLang::Opcode::JUMP_IF_FALSE_NO_POP:
+			case Autolang::Opcode::JUMP_IF_FALSE_NO_POP:
 				std::cerr << "JUMP_IF_FALSE_NO_POP	 " << get_u32(bytecodes, i)
 				          << "\n";
 				break;
-			case AutoLang::Opcode::JUMP_IF_TRUE_NO_POP:
+			case Autolang::Opcode::JUMP_IF_TRUE_NO_POP:
 				std::cerr << "JUMP_IF_TRUE_NO_POP	 " << get_u32(bytecodes, i)
 				          << "\n";
 				break;
-			case AutoLang::Opcode::JUMP_IF_NULL:
+			case Autolang::Opcode::JUMP_IF_NULL:
 				std::cerr << "JUMP_IF_NULL	 " << get_u32(bytecodes, i) << "\n";
 				break;
-			case AutoLang::Opcode::JUMP_AND_DELETE_IF_NULL:
+			case Autolang::Opcode::JUMP_AND_DELETE_IF_NULL:
 				std::cerr << "JUMP_AND_DELETE_IF_NULL	 "
 				          << get_u32(bytecodes, i) << "\n";
 				break;
-			case AutoLang::Opcode::JUMP_AND_SET_IF_NULL:
+			case Autolang::Opcode::JUMP_AND_SET_IF_NULL:
 				std::cerr << "JUMP_AND_SET_IF_NULL	 " << get_u32(bytecodes, i)
 				          << "\n";
 				break;
-			case AutoLang::Opcode::JUMP_IF_NON_NULL:
+			case Autolang::Opcode::JUMP_IF_NON_NULL:
 				std::cerr << "JUMP_IF_NON_NULL	 " << get_u32(bytecodes, i)
 				          << "\n";
 				break;
-			case AutoLang::Opcode::PLUS_PLUS_GLOBAL:
+			case Autolang::Opcode::PLUS_PLUS_GLOBAL:
 				std::cerr << "PLUS_PLUS_GLOBAL	 " << get_u32(bytecodes, i)
 				          << "\n";
 				break;
-			case AutoLang::Opcode::PLUS_PLUS_LOCAL:
+			case Autolang::Opcode::PLUS_PLUS_LOCAL:
 				std::cerr << "PLUS_PLUS_LOCAL	 " << get_u32(bytecodes, i)
 				          << "\n";
 				break;
@@ -600,10 +600,10 @@ void AVM::log(Function *currentFunction) {
 				BYTECODE_PRINT_SINGLE(TO_STRING)
 				BYTECODE_PRINT_SINGLE(PLUS_PLUS)
 				BYTECODE_PRINT_SINGLE(MINUS_MINUS)
-			case AutoLang::Opcode::AND_AND:
+			case Autolang::Opcode::AND_AND:
 				std::cerr << "AND	 " << "\n";
 				break;
-			case AutoLang::Opcode::OR_OR:
+			case Autolang::Opcode::OR_OR:
 				std::cerr << "OR	 " << "\n";
 				break;
 				BYTECODE_PRINT_SINGLE(PLUS)
@@ -652,6 +652,6 @@ void AVM::log(Function *currentFunction) {
 	}
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

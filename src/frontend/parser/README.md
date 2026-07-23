@@ -4,7 +4,7 @@ This directory contains the components responsible for parsing the token stream 
 
 ## Subdirectories
 
-- **[node](file:///d:/code/AutoLangC/src/frontend/parser/node)**: Houses the definition and specific implementations of all AST Nodes representing AutoLang expressions, statements, and declarations.
+- **[node](file:///d:/code/AutoLangC/src/frontend/parser/node)**: Houses the definition and specific implementations of all AST Nodes representing Autolang expressions, statements, and declarations.
 
 ---
 

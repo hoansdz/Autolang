@@ -4,7 +4,7 @@
 #include "frontend/parser/ClassDeclaration.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ClassDeclaration::ClassDeclaration() { mode = ParserContext::mode; }
 
@@ -365,6 +365,6 @@ template <bool addNullable> std::string ClassDeclaration::getName(in_func) {
 	return name;
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

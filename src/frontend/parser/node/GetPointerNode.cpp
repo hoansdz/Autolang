@@ -4,7 +4,7 @@
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ExprNode *GetPointerNode::resolve(in_func) { return value->resolve(in_data); }
 
@@ -49,6 +49,6 @@ ExprNode *GetPointerNode::copy(in_func) {
 	return nullptr;
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

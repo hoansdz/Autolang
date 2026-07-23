@@ -7,7 +7,7 @@
 #include <iostream>
 #include <sstream>
 
-namespace AutoLang {
+namespace Autolang {
 
 AVM::AVM(bool allowDebug)
     : allowDebug(allowDebug), notifier(new ANotifier(this)) {
@@ -17,6 +17,7 @@ AVM::AVM(bool allowDebug)
 	data.allGenericTypeNullable.reserve(32);
 	data.allMemberId.reserve(16);
 	data.allMemberNullable.reserve(16);
+	data.allCatchPosition.reserve(16);
 }
 
 void AVM::start() {
@@ -117,6 +118,6 @@ AVM::~AVM() {
 #endif
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

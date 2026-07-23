@@ -4,7 +4,7 @@
 #include "frontend/parser/Debugger.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 IfNode *loadIf(in_func, size_t &i, bool mustReturnValue) {
 	Lexer::Token *token = &context.tokens[i];
@@ -53,6 +53,6 @@ IfNode *loadIf(in_func, size_t &i, bool mustReturnValue) {
 	return node;
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

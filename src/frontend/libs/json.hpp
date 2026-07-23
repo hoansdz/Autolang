@@ -3,15 +3,15 @@
 
 #include "shared/Type.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 class ACompiler;
 
 namespace Libs {
 namespace json {
 
-void init(AutoLang::ACompiler &compiler);
+void init(Autolang::ACompiler &compiler);
 
 } // namespace json
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 #endif

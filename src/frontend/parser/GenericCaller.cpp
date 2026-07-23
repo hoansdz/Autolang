@@ -3,8 +3,8 @@
 
 #include "GenericCaller.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

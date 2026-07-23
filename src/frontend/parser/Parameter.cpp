@@ -5,7 +5,7 @@
 #include "frontend/parser/ParserContext.hpp"
 #include "frontend/parser/node/CreateNode.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 Parameter *Parameter::copy(in_func) {
 	Parameter *newParameter = context.parameterPool.push();
@@ -35,6 +35,6 @@ Parameter *Parameter::copy(in_func) {
 	return newParameter;
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

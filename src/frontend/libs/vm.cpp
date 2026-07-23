@@ -7,7 +7,7 @@
 #include <string>
 
 
-namespace AutoLang {
+namespace Autolang {
 class ACompiler;
 namespace Libs {
 namespace vm {
@@ -33,6 +33,6 @@ class VM {
 
 } // namespace vm
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

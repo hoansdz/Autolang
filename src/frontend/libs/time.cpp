@@ -7,7 +7,7 @@
 #include <ctime>
 #include <string>
 
-namespace AutoLang {
+namespace Autolang {
 class ACompiler;
 namespace Libs {
 namespace time {
@@ -55,6 +55,6 @@ class Time {
 
 } // namespace time
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

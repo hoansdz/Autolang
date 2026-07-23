@@ -1,0 +1,105 @@
+name: Build & Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+jobs:
+  # ─────────────────────────────────────────────
+  # JOB 1: Build wheel cho Windows, Linux, macOS
+  # ─────────────────────────────────────────────
+  build_wheels:
+    name: Wheel · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest   # MSVC → .pyd
+          - ubuntu-latest    # GCC  → manylinux .so
+          - macos-13         # Clang Intel x86_64 → .so
+          - macos-14         # Clang Apple Silicon arm64 → .so
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install cibuildwheel
+        run: pip install cibuildwheel==2.21
+
+      - name: Build wheels
+        run: python -m cibuildwheel --output-dir wheelhouse tests/pybind11/release
+
+      - name: Upload wheel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: ./wheelhouse/*.whl
+
+  # ─────────────────────────────────────────────
+  # JOB 2: Build source distribution (sdist)
+  # ─────────────────────────────────────────────
+  build_sdist:
+    name: Source Distribution (sdist)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install build tools
+        run: pip install setuptools pybind11 build
+
+      - name: Build sdist
+        # Fix đường dẫn ra bằng cách dùng thư mục gốc (project root) làm chuẩn, tránh đi lùi ../../../
+        run: python -m build --sdist tests/pybind11/release --outdir dist
+
+      - name: Upload sdist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
+  # ─────────────────────────────────────────────
+  # JOB 3: Publish lên PyPI (chỉ khi push tag)
+  # ─────────────────────────────────────────────
+  publish:
+    name: Publish to PyPI
+    needs: [build_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    environment: pypi
+    permissions:
+      id-token: write
+
+    steps:
+      # Sửa chỗ này: Tạo sẵn folder dist trước khi download để tránh lỗi đường dẫn
+      - name: Create dist directory
+        run: mkdir dist
+
+      - name: Download tất cả wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist/
+
+      - name: Download sdist
+        uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist/
+
+      - name: Publish lên PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # Mặc định action này sẽ tự tìm mọi file trong folder dist/ để push lên

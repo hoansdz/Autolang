@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <iostream>
 
-namespace AutoLang {
+namespace Autolang {
 
 CompiledProgram::CompiledProgram() {}
 
@@ -25,7 +25,6 @@ void CompiledProgram::destroy() {
 	constPool.push_back(DefaultClass::nullObject);
 	constPool.push_back(DefaultClass::trueObject);
 	constPool.push_back(DefaultClass::falseObject);
-	stringArena.reset();
 	allBytecodes.clear();
 	allGenericType.clear();
 	allMemberId.clear();
@@ -119,7 +118,7 @@ Offset CompiledProgram::registerConstPool(
 	// "+std::to_string(constPool.size()));
 	constPool.push_back(constObjectAllocator.push(value));
 	AObject *obj = constPool.back();
-	obj->refCount = AutoLang::DefaultClass::refCountForGlobal;
+	obj->refCount = Autolang::DefaultClass::refCountForGlobal;
 	obj->flags = AObject::Flags::OBJ_IS_CONST;
 	return id;
 }
@@ -128,7 +127,7 @@ Offset CompiledProgram::registerEnumConstPool(ClassId classId) {
 	uint32_t id = constPool.size();
 	constPool.push_back(constObjectAllocator.push(classId));
 	AObject *obj = constPool.back();
-	obj->refCount = AutoLang::DefaultClass::refCountForGlobal;
+	obj->refCount = Autolang::DefaultClass::refCountForGlobal;
 	obj->flags = AObject::Flags::OBJ_IS_CONST & AObject::Flags::OBJ_IS_NO_DATA;
 	return id;
 }
@@ -145,7 +144,7 @@ Offset CompiledProgram::registerConstPool(HashMap<T, uint32_t> &map, T value) {
 	// "+std::to_string(constPool.size()));
 	constPool.push_back(constObjectAllocator.push(value));
 	AObject *obj = constPool.back();
-	obj->refCount = AutoLang::DefaultClass::refCountForGlobal;
+	obj->refCount = Autolang::DefaultClass::refCountForGlobal;
 	obj->flags = AObject::Flags::OBJ_IS_CONST;
 	return id;
 }
@@ -162,6 +161,6 @@ CompiledProgram::~CompiledProgram() {
 	constObjectAllocator.destroy();
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

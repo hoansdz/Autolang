@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-namespace AutoLang {
+namespace Autolang {
 
 enum FunctionFlags : uint32_t {
 	FUNC_IS_CONSTRUCTOR = 1u << 0,

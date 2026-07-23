@@ -12,7 +12,7 @@
 #include <iostream>
 #include <sstream>
 
-namespace AutoLang {
+namespace Autolang {
 class ACompiler;
 namespace DefaultFunction {
 
@@ -50,13 +50,13 @@ std::string to_string(ANotifier &notifier, AObject *obj, std::string space) {
 	}
 	uint32_t type = obj->type;
 	switch (type) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			return std::to_string(obj->i);
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			return std::to_string(obj->f);
-		case AutoLang::DefaultClass::stringClassId:
+		case Autolang::DefaultClass::stringClassId:
 			return std::string(obj->str->data);
-		case AutoLang::DefaultClass::nullClassId:
+		case Autolang::DefaultClass::nullClassId:
 			return "null";
 		case DefaultClass::boolClassId:
 			return (obj == DefaultClass::trueObject ? "true" : "false");
@@ -134,13 +134,13 @@ AObject *get_refcount(NativeFuncInData) {
 AObject *to_int(NativeFuncInData) {
 	auto obj = args[0];
 	switch (obj->type) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			return notifier.createInt(obj->i);
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			return notifier.createInt(static_cast<int64_t>(obj->f));
-		case AutoLang::DefaultClass::boolClassId:
+		case Autolang::DefaultClass::boolClassId:
 			return notifier.createInt(static_cast<int64_t>(obj->b));
-		case AutoLang::DefaultClass::stringClassId: {
+		case Autolang::DefaultClass::stringClassId: {
 			char *end;
 			return notifier.createInt(std::strtoll(obj->str->data, &end, 10));
 		}
@@ -155,13 +155,13 @@ AObject *to_int(NativeFuncInData) {
 AObject *to_float(NativeFuncInData) {
 	auto obj = args[0];
 	switch (obj->type) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			return notifier.createFloat(static_cast<double>(obj->i));
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			return notifier.createFloat(obj->f);
-		case AutoLang::DefaultClass::boolClassId:
+		case Autolang::DefaultClass::boolClassId:
 			return notifier.createFloat(static_cast<double>(obj->b));
-		case AutoLang::DefaultClass::stringClassId: {
+		case Autolang::DefaultClass::stringClassId: {
 			// Check error but unused
 			char *end;
 			return notifier.createFloat(std::strtod(obj->str->data, &end));
@@ -177,11 +177,11 @@ AObject *to_float(NativeFuncInData) {
 AObject *to_string(NativeFuncInData) {
 	auto obj = args[0];
 	switch (obj->type) {
-		case AutoLang::DefaultClass::intClassId:
+		case Autolang::DefaultClass::intClassId:
 			return notifier.createString(AString::from(obj->i));
-		case AutoLang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId:
 			return notifier.createString(AString::from(obj->f));
-		case AutoLang::DefaultClass::stringClassId:
+		case Autolang::DefaultClass::stringClassId:
 			return notifier.createString(AString::copy(obj->str));
 		default:
 			break;
@@ -520,6 +520,6 @@ AObject *input_str(NativeFuncInData) {
 }
 
 } // namespace DefaultFunction
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -4,7 +4,7 @@
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ExprNode *ThrowNode::resolve(in_func) {
 	value = static_cast<HasClassIdNode *>(value->resolve(in_data));
@@ -44,6 +44,6 @@ ExprNode *ThrowNode::copy(in_func) {
 
 ThrowNode::~ThrowNode() { deleteNode(value); }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

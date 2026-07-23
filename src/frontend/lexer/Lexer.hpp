@@ -22,7 +22,7 @@ inline void printDebug(long msg) {
 #endif
 }
 
-namespace AutoLang {
+namespace Autolang {
 
 struct LibraryData;
 struct ParserContext;
@@ -112,7 +112,11 @@ enum TokenType : uint8_t {
 	THROW,
 	EXTENDS,
 	NATIVE,
+#ifdef __EMSCRIPTEN__
 	JS_OBJECT,
+#elif __PYBIND11__
+	PY_OBJECT,
+#endif
 	OVERRIDE,
 	NO_OVERRIDE,
 	NO_CONSTRUCTOR,
@@ -162,7 +166,11 @@ static const HashMap<std::string, TokenType> CAST = {
     {"constructor", TokenType::CONSTRUCTOR},
     {"extends", TokenType::EXTENDS},
     {"native", TokenType::NATIVE},
-	{"js_object", TokenType::JS_OBJECT},
+#ifdef __EMSCRIPTEN__
+    {"js_object", TokenType::JS_OBJECT},
+#elif __PYBIND11__
+    {"py_object", TokenType::PY_OBJECT},
+#endif
     {"override", TokenType::OVERRIDE},
     {"no_override", TokenType::NO_OVERRIDE},
     {"no_constructor", TokenType::NO_CONSTRUCTOR},
@@ -294,6 +302,6 @@ inline uint32_t pushLexerString(Context &context, std::string &&str);
 inline char getCloseBracket(char chr);
 
 } // namespace Lexer
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -4,13 +4,13 @@
 #include "shared/Type.hpp"
 #include <regex>
 
-namespace AutoLang {
+namespace Autolang {
 class ACompiler;
 
 namespace Libs {
 namespace regex {
 
-void init(AutoLang::ACompiler &compiler);
+void init(Autolang::ACompiler &compiler);
 
 AObject *constructor(NativeFuncInData);
 AObject *is_match(NativeFuncInData);
@@ -19,5 +19,5 @@ AObject *replace(NativeFuncInData);
 
 } // namespace RegexLib
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 #endif

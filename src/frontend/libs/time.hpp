@@ -3,7 +3,7 @@
 
 #include "shared/Type.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 class ACompiler;
 namespace Libs {
 namespace time {
@@ -12,6 +12,6 @@ void init(ACompiler &compiler);
 
 }
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

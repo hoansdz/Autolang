@@ -4,7 +4,7 @@
 #include "frontend/parser/Debugger.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 WhileNode *loadWhile(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
@@ -67,7 +67,7 @@ ExprNode *loadFor(in_func, size_t &i) {
 	auto declarationNode = context.makeDeclarationNode(
 	    in_data, token->line, baseName, name, nullptr, true,
 	    context.currentFunctionId == context.mainFunctionId, false, true, true);
-	declarationNode->classId = AutoLang::DefaultClass::nullClassId;
+	declarationNode->classId = Autolang::DefaultClass::nullClassId;
 	declaration =
 	    context.varPool.push(firstLine, declarationNode, false, false);
 	if (!nextToken(&token, context.tokens, i) ||
@@ -91,7 +91,7 @@ ExprNode *loadFor(in_func, size_t &i) {
 		    context.createLexerStringIfNotExists(".iterator"), ".iterator",
 		    nullptr, true, context.currentFunctionId == context.mainFunctionId,
 		    false, true, true);
-		declarationNode->classId = AutoLang::DefaultClass::intClassId;
+		declarationNode->classId = Autolang::DefaultClass::intClassId;
 		iteratorNode =
 		    context.varPool.push(firstLine, declarationNode, false, false);
 	}
@@ -114,6 +114,6 @@ ExprNode *loadFor(in_func, size_t &i) {
 	//}
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -13,6 +13,13 @@ fun testNullAccess() {
 
 	var f1 = (value?.value ?? 2)
 	assert(f1 == 10, __FILE__, __LINE__)
+
+	var secondaryValue: NullAccessTest? = null
+	assert((secondaryValue?.value ?? 2) == 2, __FILE__, __LINE__)
+	secondaryValue = NullAccessTest(3)
+	assert((secondaryValue?.value ?? 2) == 3, __FILE__, __LINE__)
+	assert(secondaryValue!.value == 3, __FILE__, __LINE__)
+
 	value = null
 	val f2 = (null ?? 2)
 	assert(f2 == 2, __FILE__, __LINE__)

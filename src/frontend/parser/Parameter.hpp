@@ -5,7 +5,7 @@
 #include <vector>
 #include <cstdint>
 
-namespace AutoLang {
+namespace Autolang {
 
 struct DeclarationNode;
 struct HasClassIdNode;
@@ -17,6 +17,6 @@ struct Parameter {
 	Parameter *copy(in_func);
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -6,7 +6,7 @@
 #include "shared/DefaultFunction.hpp"
 #include "frontend/ACompiler.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 namespace DefaultClass {
 
 AObject* nullObject = nullptr;

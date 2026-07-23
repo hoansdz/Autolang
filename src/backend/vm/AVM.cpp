@@ -10,7 +10,7 @@
 #include <functional>
 #include <iostream>
 
-namespace AutoLang {
+namespace Autolang {
 
 void AVM::run() {
 	// std::cerr << "----------------RUNTIME----------------" << '\n';
@@ -22,7 +22,7 @@ void AVM::run() {
 	mainCallFrame->exception = nullptr;
 	mainCallFrame->startStackCount = 0;
 	mainCallFrame->i = 0;
-	mainCallFrame->catchPosition.clear();
+	mainCallFrame->catchPositionIndex = 0;
 #ifdef AUTOLANG_LIMIT_OPCODE
 	currentLimitOpcodeCount = limitOpcodeCount;
 #endif
@@ -97,7 +97,7 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 	    stackAllocator.getTop() + currentFunction->maxDeclaration;
 	currentCallFrame->exception = nullptr;
 	currentCallFrame->startStackCount = stack.getSize();
-	currentCallFrame->catchPosition.clear();
+	currentCallFrame->catchPositionIndex = data.allCatchPosition.size();
 	stackAllocator.setTop(currentCallFrame->fromStackAllocator);
 	uint32_t argumentCount;
 	if constexpr (loadVirtual) {
@@ -168,59 +168,59 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 		return true;
 	}
 	if constexpr (isConstructor) {
-		AutoLang::DefaultFunction::data_constructor(
+		Autolang::DefaultFunction::data_constructor(
 		    *notifier, stackAllocator.currentPtr, argumentCount);
 	}
 	currentCallFrame->i = 0;
 	return false;
 }
 
-template <bool hasValue>
-bool AVM::callNativeFunction(CallFrame *&currentCallFrame,
-                             Function *currentFunction, uint8_t *bytecodes,
-                             uint32_t &i) {
-	uint32_t fromStackAllocator =
-	    stackAllocator.getTop() + currentFunction->maxDeclaration;
-	stackAllocator.setTop(fromStackAllocator);
-	auto *func = data.functions[get_u32(bytecodes, i)];
-	stackAllocator.ensure(func->argSize);
-	currentCallFrame->func = func;
-	for (size_t size = func->argSize; size-- > 0;) {
-		auto object = stack.pop();
-		assert(object != nullptr);
-		stackAllocator[size] = object;
-	}
+// template <bool hasValue>
+// bool AVM::callNativeFunction(CallFrame *&currentCallFrame,
+//                              Function *currentFunction, uint8_t *bytecodes,
+//                              uint32_t &i) {
+// 	uint32_t fromStackAllocator =
+// 	    stackAllocator.getTop() + currentFunction->maxDeclaration;
+// 	stackAllocator.setTop(fromStackAllocator);
+// 	auto *func = data.functions[get_u32(bytecodes, i)];
+// 	stackAllocator.ensure(func->argSize);
+// 	currentCallFrame->func = func;
+// 	for (size_t size = func->argSize; size-- > 0;) {
+// 		auto object = stack.pop();
+// 		assert(object != nullptr);
+// 		stackAllocator[size] = object;
+// 	}
 
-	auto obj =
-	    (*func->native)(*notifier, stackAllocator.currentPtr, func->argSize);
-	currentCallFrame->func = currentFunction;
-	stackAllocator.clear(data.manager, fromStackAllocator,
-	                     fromStackAllocator + func->argSize - 1);
-	if (currentCallFrame->exception) {
-		if (callFrames.getSize() == callFrames.getMaxSize()) {
-			notifier->throwException("Runtime Error: Stack Overflow.\nDetails: "
-			                         "Maximum call frame limit of " +
-			                         std::to_string(callFrames.getMaxSize()) +
-			                         " exceeded.");
-			return false;
-		}
-		auto callFrame = callFrames.push();
-		callFrame->fromStackAllocator = fromStackAllocator;
-		callFrame->func = func;
-		callFrame->startStackCount = stack.getSize();
-		callFrame->exception = currentCallFrame->exception;
-		callFrame->catchPosition.clear();
-		currentCallFrame->exception = nullptr;
-		return false;
-	}
-	if constexpr (hasValue) {
-		assert(obj != nullptr);
-		obj->retain();
-		stack.push(obj);
-	}
-	stackAllocator.freeTo(currentCallFrame->fromStackAllocator);
-	return true;
-}
+// 	auto obj =
+// 	    (*func->native)(*notifier, stackAllocator.currentPtr, func->argSize);
+// 	currentCallFrame->func = currentFunction;
+// 	stackAllocator.clear(data.manager, fromStackAllocator,
+// 	                     fromStackAllocator + func->argSize - 1);
+// 	if (currentCallFrame->exception) {
+// 		if (callFrames.getSize() == callFrames.getMaxSize()) {
+// 			notifier->throwException("Runtime Error: Stack Overflow.\nDetails: "
+// 			                         "Maximum call frame limit of " +
+// 			                         std::to_string(callFrames.getMaxSize()) +
+// 			                         " exceeded.");
+// 			return false;
+// 		}
+// 		auto callFrame = callFrames.push();
+// 		callFrame->fromStackAllocator = fromStackAllocator;
+// 		callFrame->func = func;
+// 		callFrame->startStackCount = stack.getSize();
+// 		callFrame->exception = currentCallFrame->exception;
+// 		callFrame->catchPosition.clear();
+// 		currentCallFrame->exception = nullptr;
+// 		return false;
+// 	}
+// 	if constexpr (hasValue) {
+// 		assert(obj != nullptr);
+// 		obj->retain();
+// 		stack.push(obj);
+// 	}
+// 	stackAllocator.freeTo(currentCallFrame->fromStackAllocator);
+// 	return true;
+// }
 
 bool AVM::callFunctionObject(AObject *obj) {
 	auto funcObj = obj->function;
@@ -240,7 +240,7 @@ bool AVM::callFunctionObject(AObject *obj) {
 	currentCallFrame->exception = nullptr;
 	currentCallFrame->func = funcObj->function;
 	currentCallFrame->startStackCount = stack.getSize();
-	currentCallFrame->catchPosition.clear();
+	currentCallFrame->catchPositionIndex = data.allCatchPosition.size();
 	stackAllocator.setTop(fromStackAllocator);
 
 	if (funcObj->function->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
@@ -289,7 +289,7 @@ inline bool AVM::callFunction(Function *currentFunction) {
 	currentCallFrame->exception = nullptr;
 	currentCallFrame->func = currentFunction;
 	currentCallFrame->startStackCount = stack.getSize();
-	currentCallFrame->catchPosition.clear();
+	currentCallFrame->catchPositionIndex = data.allCatchPosition.size();
 	stackAllocator.setTop(currentCallFrame->fromStackAllocator);
 	uint32_t argumentCount = currentFunction->argSize;
 
@@ -339,7 +339,7 @@ bool AVM::callFunction(CallFrame *currentCallFrame, uint32_t argumentCount) {
 	}
 	if (currentCallFrame->func->functionFlags &
 	    FunctionFlags::FUNC_IS_DATA_CONSTRUCTOR) {
-		AutoLang::DefaultFunction::data_constructor(
+		Autolang::DefaultFunction::data_constructor(
 		    *notifier, stackAllocator.currentPtr, argumentCount);
 		// if (currentCallFrame->func->)
 		// stack.push(stackAllocator[0]);
@@ -364,12 +364,12 @@ bool AVM::callFunction(CallFrame *currentCallFrame, uint32_t argumentCount) {
 AObject *AVM::getConstObject(uint32_t id) {
 	AObject *obj = data.constPool[id];
 	switch (obj->type) {
-		case AutoLang::DefaultClass::intClassId: {
+		case Autolang::DefaultClass::intClassId: {
 			auto newObj = data.manager.create(obj->i);
 			newObj->refCount = 1;
 			return newObj;
 		}
-		case AutoLang::DefaultClass::floatClassId: {
+		case Autolang::DefaultClass::floatClassId: {
 			auto newObj = data.manager.create(obj->f);
 			newObj->refCount = 1;
 			return newObj;
@@ -436,20 +436,6 @@ uint32_t AVM::get_u32(uint8_t *code, uint32_t &ip) {
 	return val;
 }
 
-template <typename K, typename V>
-size_t estimateUnorderedMapSize(const HashMap<K, V> &map) {
-	size_t total = sizeof(map);
-	total += map.bucket_count() * sizeof(void *); // bucket array
-
-	for (const auto &[key, value] : map) {
-		total += sizeof(std::pair<const K, V>);
-		total += sizeof(key);
-		total += sizeof(value);
-	}
-
-	return total;
-}
-
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

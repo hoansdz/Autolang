@@ -4,7 +4,7 @@
 #include "FunctionInfo.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 AccessNode *Scopes::findDeclaration(in_func, uint32_t line,
                                     LexerStringId nameId, bool isStatic) {
@@ -69,6 +69,6 @@ std::string FunctionInfo::toString(in_func) {
 
 FunctionInfo::~FunctionInfo() {}
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -4,7 +4,7 @@
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ExprNode *NullCoalescingNode::resolve(in_func) {
 	left = static_cast<HasClassIdNode *>(left->resolve(in_data));
@@ -122,6 +122,6 @@ NullCoalescingNode::~NullCoalescingNode() {
 	deleteNode(right);
 }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

@@ -3,15 +3,15 @@
 
 #include "shared/Type.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 class ACompiler;
 
 namespace Libs {
 namespace bytes {
 
-void init(AutoLang::ACompiler &compiler);
+void init(Autolang::ACompiler &compiler);
 
 } // namespace file
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 #endif

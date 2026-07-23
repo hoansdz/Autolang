@@ -6,15 +6,15 @@
 #include <functional>
 #include <third_party/ankerl/unordered_dense.h>
 
-namespace AutoLang {
+namespace Autolang {
 struct AObject;
 struct ANativeFunctionData;
 class ANotifier;
 class ACompiler;
 }
 
-#define NativeFuncInput AutoLang::ANotifier&, AutoLang::AObject ** ,size_t
-#define NativeFuncInData AutoLang::ANotifier& notifier, AutoLang::AObject **args, size_t argSize
+#define NativeFuncInput Autolang::ANotifier&, Autolang::AObject ** ,size_t
+#define NativeFuncInData Autolang::ANotifier& notifier, Autolang::AObject **args, size_t argSize
 
 using InitLibFn = const char* (*)();
 using ClassId = uint32_t;
@@ -39,8 +39,8 @@ template<
     class Equal = std::equal_to<T>
 >
 using HashSet = ankerl::unordered_dense::set<T, Hash, Equal>;
-using ANativeFunction = AutoLang::AObject*(*)(NativeFuncInput);
-using ANativeLambdaFunction = std::function<AutoLang::AObject*(NativeFuncInput)>;
-using ANativeMap = HashMap<std::string, AutoLang::ANativeFunctionData>;
+using ANativeFunction = Autolang::AObject*(*)(NativeFuncInput);
+using ANativeLambdaFunction = std::function<Autolang::AObject*(NativeFuncInput)>;
+using ANativeMap = HashMap<std::string, Autolang::ANativeFunctionData>;
 
 #endif

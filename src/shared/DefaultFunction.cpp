@@ -5,7 +5,7 @@
 #include "shared/DefaultClass.hpp"
 #include "frontend/ACompiler.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 namespace DefaultFunction {
 
 void init(ACompiler& compiler) {
@@ -22,61 +22,61 @@ void init(ACompiler& compiler) {
 	// 	{"get_refcount", &get_refcount}
 	// }));
 	// compile.registerFunction(nullptr, true, "print()",
-	//                          new ClassId[1]{AutoLang::DefaultClass::anyClassId},
+	//                          new ClassId[1]{Autolang::DefaultClass::anyClassId},
 	//                          {true}, &print);
 	// compile.registerFunction(nullptr, true, "println()",
-	//                          new ClassId[1]{AutoLang::DefaultClass::anyClassId},
+	//                          new ClassId[1]{Autolang::DefaultClass::anyClassId},
 	//                          {true}, &println);
 	// compile.registerFunction(nullptr, true, "getRefCount()",
-	//                          new ClassId[1]{AutoLang::DefaultClass::anyClassId},
-	//                          {true}, AutoLang::DefaultClass::intClassId, false,
+	//                          new ClassId[1]{Autolang::DefaultClass::anyClassId},
+	//                          {true}, Autolang::DefaultClass::intClassId, false,
 	//                          &get_refcount);
-	// auto integer = compile.classes[AutoLang::DefaultClass::intClassId];
+	// auto integer = compile.classes[Autolang::DefaultClass::intClassId];
 	// compile.registerFunction(integer, false, "toString()",
-	//                          new ClassId[1]{AutoLang::DefaultClass::intClassId},
-	//                          {false}, AutoLang::DefaultClass::stringClassId,
+	//                          new ClassId[1]{Autolang::DefaultClass::intClassId},
+	//                          {false}, Autolang::DefaultClass::stringClassId,
 	//                          false, &to_string);
 	// compile.registerFunction(integer, false, "toFloat()",
-	//                          new ClassId[1]{AutoLang::DefaultClass::intClassId},
-	//                          {false}, AutoLang::DefaultClass::floatClassId,
-	//                          false, &AutoLang::DefaultFunction::to_float);
-	// auto Float = compile.classes[AutoLang::DefaultClass::floatClassId];
+	//                          new ClassId[1]{Autolang::DefaultClass::intClassId},
+	//                          {false}, Autolang::DefaultClass::floatClassId,
+	//                          false, &Autolang::DefaultFunction::to_float);
+	// auto Float = compile.classes[Autolang::DefaultClass::floatClassId];
 	// compile.registerFunction(
 	//     Float, false, "toInt()",
-	//     new ClassId[1]{AutoLang::DefaultClass::floatClassId}, {false},
-	//     AutoLang::DefaultClass::intClassId, false,
-	//     &AutoLang::DefaultFunction::to_int);
+	//     new ClassId[1]{Autolang::DefaultClass::floatClassId}, {false},
+	//     Autolang::DefaultClass::intClassId, false,
+	//     &Autolang::DefaultFunction::to_int);
 	// compile.registerFunction(
 	//     Float, false, "toString()",
-	//     new ClassId[1]{AutoLang::DefaultClass::floatClassId}, {false},
-	//     AutoLang::DefaultClass::stringClassId, false,
-	//     &AutoLang::DefaultFunction::to_string);
-	// auto string = compile.classes[AutoLang::DefaultClass::stringClassId];
+	//     new ClassId[1]{Autolang::DefaultClass::floatClassId}, {false},
+	//     Autolang::DefaultClass::stringClassId, false,
+	//     &Autolang::DefaultFunction::to_string);
+	// auto string = compile.classes[Autolang::DefaultClass::stringClassId];
 	// compile.registerFunction(
 	//     string, false, "toInt()",
-	//     new ClassId[1]{AutoLang::DefaultClass::stringClassId}, {false},
-	//     AutoLang::DefaultClass::intClassId, false,
-	//     &AutoLang::DefaultFunction::to_int);
+	//     new ClassId[1]{Autolang::DefaultClass::stringClassId}, {false},
+	//     Autolang::DefaultClass::intClassId, false,
+	//     &Autolang::DefaultFunction::to_int);
 	// compile.registerFunction(
 	//     string, false, "size()",
-	//     new ClassId[1]{AutoLang::DefaultClass::stringClassId}, {false},
-	//     AutoLang::DefaultClass::intClassId, false,
-	//     &AutoLang::DefaultFunction::get_string_size);
+	//     new ClassId[1]{Autolang::DefaultClass::stringClassId}, {false},
+	//     Autolang::DefaultClass::intClassId, false,
+	//     &Autolang::DefaultFunction::get_string_size);
 	// compile.registerFunction(
 	//     string, true, "String()",
-	//     new ClassId[2]{AutoLang::DefaultClass::stringClassId,
-	//                    AutoLang::DefaultClass::stringClassId},
-	//     {false, false}, AutoLang::DefaultClass::stringClassId, false,
-	//     &AutoLang::DefaultFunction::string_constructor);
+	//     new ClassId[2]{Autolang::DefaultClass::stringClassId,
+	//                    Autolang::DefaultClass::stringClassId},
+	//     {false, false}, Autolang::DefaultClass::stringClassId, false,
+	//     &Autolang::DefaultFunction::string_constructor);
 	// compile.registerFunction(
 	//     string, true, "String()",
-	//     new ClassId[3]{AutoLang::DefaultClass::stringClassId,
-	//                    AutoLang::DefaultClass::stringClassId,
-	//                    AutoLang::DefaultClass::intClassId},
-	//     {false, false, false}, AutoLang::DefaultClass::stringClassId, false,
-	//     &AutoLang::DefaultFunction::string_constructor);
+	//     new ClassId[3]{Autolang::DefaultClass::stringClassId,
+	//                    Autolang::DefaultClass::stringClassId,
+	//                    Autolang::DefaultClass::intClassId},
+	//     {false, false, false}, Autolang::DefaultClass::stringClassId, false,
+	//     &Autolang::DefaultFunction::string_constructor);
 }
 } // namespace DefaultFunction
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

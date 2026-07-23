@@ -1,6 +1,6 @@
 # Third Party Libraries (`src/third_party`)
 
-This directory contains external dependency libraries integrated directly into the AutoLang build process.
+This directory contains external dependency libraries integrated directly into the Autolang build process.
 
 ## Libraries
 

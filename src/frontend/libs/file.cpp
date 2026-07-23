@@ -22,7 +22,7 @@
 #define FTELL ftello
 #endif
 
-namespace AutoLang {
+namespace Autolang {
 class ACompiler;
 
 namespace Libs {
@@ -576,5 +576,5 @@ class File {
 
 } // namespace file
 } // namespace Libs
-} // namespace AutoLang
+} // namespace Autolang
 #endif

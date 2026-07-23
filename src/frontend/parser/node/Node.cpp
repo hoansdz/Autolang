@@ -6,7 +6,7 @@
 #include "frontend/parser/ParserContext.hpp"
 #include "frontend/parser/node/CreateNode.hpp"
 
-namespace AutoLang {
+namespace Autolang {
 
 ExprNode::ExprNode(NodeType kind, uint32_t line) : line(line), kind(kind) {
 	mode = ParserContext::mode;
@@ -142,6 +142,6 @@ BinaryNode::~BinaryNode() {
 
 WhileNode::~WhileNode() { deleteNode(condition); }
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif

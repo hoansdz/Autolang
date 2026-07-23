@@ -8,15 +8,22 @@
 #include "shared/JSFunction.hpp"
 #include <emscripten/bind.h>
 using namespace emscripten;
+#elif __PYBIND11__
+#include "shared/PYFunction.hpp"
+#include <pybind11/embed.h>
+using namespace pybind11;
+
 #endif
 
-namespace AutoLang {
+namespace Autolang {
 
 enum ANativeFunctionType : uint8_t {
 	FUNC,
 	LAMBDA,
 #ifdef __EMSCRIPTEN__
 	JS_FUNCTION,
+#elif __PYBIND11__
+	PY_FUNCTION,
 #endif
 };
 
@@ -27,6 +34,8 @@ struct ANativeFunctionData {
 		ANativeLambdaFunction *nativeLambda;
 #ifdef __EMSCRIPTEN__
 		val *jsFunction;
+#elif __PYBIND11__
+		object *pyFunction;
 #endif
 	};
 	ANativeFunctionData() : type(ANativeFunctionType::FUNC), native(nullptr) {}
@@ -38,6 +47,9 @@ struct ANativeFunctionData {
 #ifdef __EMSCRIPTEN__
 	ANativeFunctionData(val *jsFunction)
 	    : type(ANativeFunctionType::JS_FUNCTION), jsFunction(jsFunction) {}
+#elif __PYBIND11__
+	ANativeFunctionData(object *pyFunction)
+	    : type(ANativeFunctionType::PY_FUNCTION), pyFunction(pyFunction) {}
 #endif
 	inline AObject *operator()(NativeFuncInData) {
 		switch (type) {
@@ -52,6 +64,11 @@ struct ANativeFunctionData {
 				return callJSFunction(jsFunction, notifier, args, argSize);
 			}
 #endif
+#ifdef __PYBIND11__
+			case PY_FUNCTION: {
+				return callPyFunction(pyFunction, notifier, args, argSize);
+			}
+#endif
 			default: {
 				// notifier.throwException("What happen when call operator()");
 				return nullptr;
@@ -60,6 +77,6 @@ struct ANativeFunctionData {
 	}
 };
 
-} // namespace AutoLang
+} // namespace Autolang
 
 #endif
