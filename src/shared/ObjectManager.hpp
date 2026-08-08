@@ -47,6 +47,7 @@ class ObjectManager {
 		auto obj = areaAllocator.getObject();
 		obj->type = DefaultClass::bytesClassId;
 		obj->bytes = new ABytes(size, size, new uint8_t[size]);
+		areaAllocator.addManagedMemory(sizeof(ABytes) + size);
 		return obj;
 	}
 #ifdef __EMSCRIPTEN__
@@ -92,6 +93,9 @@ class ObjectManager {
 		auto obj = areaAllocator.getObject();
 		obj->type = Autolang::DefaultClass::stringClassId;
 		obj->str = str;
+		if (str) {
+			areaAllocator.addManagedMemory(sizeof(AString) + str->size);
+		}
 		return obj;
 	}
 	inline AObject *get(FunctionObject *function) {
@@ -126,13 +130,19 @@ class ObjectManager {
 				return;
 			}
 			case Autolang::DefaultClass::stringClassId: {
+				if (obj->str) {
+					areaAllocator.addManagedMemory(-static_cast<int64_t>(sizeof(AString) + obj->str->size));
+				}
 				delete obj->str;
 				obj->flags = AObject::Flags::OBJ_IS_FREE;
 				return;
 			}
 #ifndef NO_INCLUDE_LIBS_JSON
 			case Autolang::DefaultClass::jsonClassId: {
-				delete obj->json;
+				if (obj->json) {
+					areaAllocator.addManagedMemory(-128);
+					delete obj->json;
+				}
 				obj->flags = AObject::Flags::OBJ_IS_FREE;
 				return;
 			}
@@ -151,6 +161,9 @@ class ObjectManager {
 			}
 #endif
 			case Autolang::DefaultClass::bytesClassId: {
+				if (obj->bytes) {
+					areaAllocator.addManagedMemory(-static_cast<int64_t>(sizeof(ABytes) + obj->bytes->capacity));
+				}
 				delete[] obj->bytes->data;
 				delete obj->bytes;
 				obj->flags = AObject::Flags::OBJ_IS_FREE;
@@ -188,6 +201,7 @@ class ObjectManager {
 				continue;
 			release(mem);
 		}
+		areaAllocator.addManagedMemory(-static_cast<int64_t>(sizeof(NormalArray<AObject *>) + obj->member->maxSize * sizeof(AObject *)));
 		delete obj->member;
 		obj->flags = AObject::Flags::OBJ_IS_FREE;
 	}
@@ -227,6 +241,7 @@ class ObjectManager {
 		obj->type = type;
 		obj->member = new NormalArray<AObject *>(memberCount);
 		obj->flags = AObject::Flags::OBJ_HAS_MEMBER_DATA;
+		areaAllocator.addManagedMemory(sizeof(NormalArray<AObject *>) + memberCount * sizeof(AObject *));
 		return obj;
 	}
 	inline AObject *createEmptyObject() { return areaAllocator.getObject(); }
@@ -243,6 +258,18 @@ class ObjectManager {
 	}
 	inline AObject *createString(std::string str) {
 		return get(AString::from(str));
+	}
+	inline void setMaxManagedMemory(size_t limit) {
+		areaAllocator.maxManagedMemory = limit;
+	}
+	inline size_t getMaxManagedMemory() const {
+		return areaAllocator.maxManagedMemory;
+	}
+	inline size_t getCurrentManagedMemory() const {
+		return areaAllocator.currentManagedMemory;
+	}
+	inline void addManagedMemory(int64_t delta) {
+		areaAllocator.addManagedMemory(delta);
 	}
 	void destroy();
 };

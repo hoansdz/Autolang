@@ -75,6 +75,17 @@ fun testIfExpression() {
 		else        -> "large"
 	}
 	assert(category == "double digit", __FILE__, __LINE__)
+	while (true) {
+		
+		try {
+			while (true) {
+
+			}
+		}
+		catch (e) {
+			println(e)
+		}
+	}
 
 	println("Passed ${__FUNC__}")
 }

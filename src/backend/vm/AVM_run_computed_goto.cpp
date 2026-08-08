@@ -522,8 +522,8 @@ resumeCallFrame:;
 	if (ip >= size)                                                            \
 		goto endFunction;                                                      \
 	if (--currentLimitOpcodeCount == 0) {                                      \
-		notifier->throwException("VMException: instruction limit exceeded (" + \
-		                         std::to_string(limitOpcodeCount) + ")");      \
+		notifier->throwFatalException("Instruction limit exceeded (" +         \
+		                              std::to_string(limitOpcodeCount) + ")"); \
 		goto resumeCallFrame;                                                  \
 	}                                                                          \
 	goto *dispatchTable[bytecodes[ip++]]
@@ -539,7 +539,7 @@ resumeCallFrame:;
 	do_ILLEGAL: {
 		std::cerr << "Illegal opcode: " << int(bytecodes[ip - 1])
 		          << " at i=" << (ip - 1) << "\n";
-		notifier->throwException("VMException: illegal opcode");
+		notifier->throwFatalException("VMException: illegal opcode");
 		goto resumeCallFrame;
 	}
 

@@ -19,7 +19,7 @@ void CreateMapNode::optimize(in_func) {
 		classId = *classDeclaration->classId;
 	}
 	if (classId == DefaultClass::nullClassId) {
-		throwError("Type mismatch in map initialization");
+		throwError("Cannot infer key/value type for Map initialization");
 	}
 	auto clazz = compile.classes[classId];
 	auto classInfo = context.classInfo[classId];
@@ -62,7 +62,7 @@ void CreateMapNode::optimize(in_func) {
 				if (classInfo->genericTypeId[0]->nullable) {
 					goto loadValue;
 				}
-				throwError("Key in Map must non null");
+				throwError("Keys in Map must be non-null");
 			}
 		}
 		if (keyMustBeClassId == DefaultClass::anyClassId) {
@@ -104,7 +104,7 @@ void CreateMapNode::optimize(in_func) {
 				if (classInfo->genericTypeId[1]->nullable) {
 					continue;
 				}
-				throwError("Value in map must non null");
+				throwError("Values in Map must be non-null");
 			}
 		}
 		if (valueMustBeClassId == DefaultClass::anyClassId) {

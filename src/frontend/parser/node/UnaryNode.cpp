@@ -272,6 +272,7 @@ void UnaryNode::putOptimizedBytecodes(in_func,
 }
 
 void UnaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	loadOpcodeLine(in_data, bytecodes);
 	switch (op) {
 		case Lexer::TokenType::PLUS: {
 			value->putBytecodes(in_data, bytecodes);

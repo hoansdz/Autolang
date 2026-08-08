@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
 project(AutoLangC)
 
-# Định nghĩa chuẩn C++20 như bạn yêu cầu
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# Định nghĩa chuẩn C++17
+set(CMAKE_CXX_STANDARD 17)
+if(MINGW)
+    add_compile_options(-Wa,-mbig-obj)
+endif()
 
 # -------------------------------------------------------------------
 # 1. TỰ ĐỘNG TẢI VÀ BIÊN DỊCH LIBCURL (STATIC LINK)
@@ -30,20 +32,15 @@ FetchContent_MakeAvailable(curl)
 # -------------------------------------------------------------------
 # Lưu ý: file(GLOB) không tự nhận diện khi bạn tạo file .cpp mới (phải clear cache CMake).
 # Cách tốt nhất và chuẩn khuyến nghị của CMake là liệt kê rõ ràng các file nguồn:
-file(GLOB_RECURSE SRC "src/*.cpp") # Quét tất cả file .cpp trong src và các thư mục con của src
+file(GLOB_RECURSE SRC "src/*.cpp") # Quét tất cả file .cpp trong src
+list(FILTER SRC EXCLUDE REGEX ".*AVM_run_computed_goto\\.cpp$")
+
+# Tạo library cho việc nhúng AutoLangC vào dự án khác (C++ Embedding)
+add_library(autolang_lib STATIC ${SRC})
+target_include_directories(autolang_lib PUBLIC src)
+target_compile_definitions(autolang_lib PUBLIC CURL_STATICLIB)
+target_link_libraries(autolang_lib PUBLIC libcurl)
 
 # Tạo file thực thi autolang từ các file nguồn của bạn và file main của test
-add_executable(autolang ${SRC} "tests/main.cpp")
-
-# Thay vì dùng include_directories(src) toàn cục, ta dùng target_include_directories
-# Điều này giúp khu biệt phạm vi include chỉ trong target autolang, tránh xung đột bừa bãi
-target_include_directories(autolang PRIVATE src)
-
-# -------------------------------------------------------------------
-# 3. LIÊN KẾT LIBCURL VÀO PROJECT
-# -------------------------------------------------------------------
-# Định nghĩa macro biên dịch tĩnh cho Curl (bắt buộc trên Windows)
-target_compile_definitions(autolang PRIVATE CURL_STATICLIB)
-
-# Link thư viện libcurl vào project autolang của bạn
-target_link_libraries(autolang PRIVATE libcurl)
+add_executable(autolang "tests/main.cpp")
+target_link_libraries(autolang PRIVATE autolang_lib)

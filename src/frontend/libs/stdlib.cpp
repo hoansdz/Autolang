@@ -310,12 +310,8 @@ fun print(value: Any? = "")
 fun println(value: Any? = "")
 @native("get_refcount")
 fun getRefCount(value: Any?): Int
-fun assert(condition: Bool, fileName: String, line: Int) {
-	if (condition) {
-		return
-	}
-	throw Exception("${fileName}:${line}: Wrong")
-}
+@native("assert")
+fun assert(condition: Bool, fileName: String, line: Int)
 // @wait_input
 // @native("input")
 // fun input(): String
@@ -325,6 +321,7 @@ fun assert(condition: Bool, fileName: String, line: Int) {
 	        {{"string_constructor", &DefaultFunction::string_constructor},
 	         {"print", &DefaultFunction::print},
 	         {"println", &DefaultFunction::println},
+			 {"assert", &DefaultFunction::assert_},
 	         {"get_refcount", &DefaultFunction::get_refcount},
 	         {"str_to_int", &DefaultFunction::to_int},
 	         {"str_to_float", &DefaultFunction::to_float},

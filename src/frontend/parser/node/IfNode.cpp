@@ -106,6 +106,7 @@ ExprNode *IfNode::copy(in_func) {
 }
 
 void IfNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	loadOpcodeLine(in_data, bytecodes);
 	condition->putBytecodes(in_data, bytecodes);
 	bytecodes.emplace_back(Opcode::JUMP_IF_FALSE);
 	size_t jumpIfFalseByte = bytecodes.size() - context.currentBytecodePos;

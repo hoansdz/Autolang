@@ -31,7 +31,8 @@ void AVM::run() {
 		case VMState::ERR: {
 			assert(mainCallFrame->exception);
 			std::vector<Function *> funcs;
-			std::cerr << "Exception: "
+			std::cerr << (isFatalException ? std::string("VMException: ")
+			                               : std::string("Exception: "))
 			          << mainCallFrame->exception->member->data[0]->str->data
 			          << "\n";
 			for (uint32_t i = 0; i < callFrames.getMaxSize(); ++i) {
@@ -42,18 +43,47 @@ void AVM::run() {
 			}
 			if (funcs.size() > 16) {
 				for (size_t i = funcs.size(); i-- > funcs.size() - 8;) {
-					std::cerr << "At function " << funcs[i]->getName(data) << "\n";
+					std::cerr
+					    << "  At " << funcs[i]->getName(data) << " ("
+					    << (funcs[i]->functionFlags &
+					                FunctionFlags::FUNC_IS_NATIVE
+					            ? "Native"
+					            : std::string(funcs[i]->path) + ":" +
+					                  std::to_string(searchLine(
+					                      funcs[i], callFrames.objects[i].i)))
+					    << ")\n";
 				}
-				std::cerr << "... (" << funcs.size() - 16
+				std::cerr << "  ... (" << funcs.size() - 16
 				          << " frames omitted) \n";
-				for (size_t i = 8; i-- > 0;) {
-					std::cerr << "At function " << funcs[i]->getName(data) << "\n";
+				for (size_t i = 8; i-- > 1;) {
+					std::cerr
+					    << "  At " << funcs[i]->getName(data) << " ("
+					    << (funcs[i]->functionFlags &
+					                FunctionFlags::FUNC_IS_NATIVE
+					            ? "Native"
+					            : std::string(funcs[i]->path) + ":" +
+					                  std::to_string(searchLine(
+					                      funcs[i], callFrames.objects[i].i)))
+					    << ")\n";
 				}
 			} else {
-				for (size_t i = funcs.size(); i-- > 0;) {
-					std::cerr << "At function " << funcs[i]->getName(data) << "\n";
+				for (size_t i = funcs.size(); i-- > 1;) {
+					std::cerr
+					    << "  At " << funcs[i]->getName(data) << " ("
+					    << (funcs[i]->functionFlags &
+					                FunctionFlags::FUNC_IS_NATIVE
+					            ? "Native"
+					            : std::string(funcs[i]->path) + ":" +
+					                  std::to_string(searchLine(
+					                      funcs[i], callFrames.objects[i].i)))
+					    << ")\n";
 				}
 			}
+			auto [line, path] =
+			    searchMainLine(funcs[0], callFrames.objects[0].i);
+			std::cerr << "  At .main ("
+			          << std::string(path) + ":" + std::to_string(line)
+			          << ")\n";
 			break;
 		}
 		case VMState::WAITING: {
@@ -86,10 +116,10 @@ template <bool loadVirtual, bool hasValue, bool isConstructor>
 bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
                        uint8_t *bytecodes, uint32_t &i) {
 	if (callFrames.getSize() == callFrames.getMaxSize()) {
-		notifier->throwException("Runtime Error: Stack Overflow.\nDetails: "
-		                         "Maximum call frame limit of " +
-		                         std::to_string(callFrames.getMaxSize()) +
-		                         " exceeded.");
+		notifier->throwFatalException(
+		    "Runtime Error: Stack Overflow.\nDetails: "
+		    "Maximum call frame limit of " +
+		    std::to_string(callFrames.getMaxSize()) + " exceeded.");
 		return false;
 	}
 	currentCallFrame = callFrames.push();
@@ -111,7 +141,8 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 			assert(object != nullptr);
 			stackAllocator[size] = object;
 		}
-		// std::cerr<<data.classes[stackAllocator[0]->type]->getName(compile)<<" type\n";
+		// std::cerr<<data.classes[stackAllocator[0]->type]->getName(compile)<<"
+		// type\n";
 		currentCallFrame->func =
 		    data.functions[data.classes[stackAllocator[0]->type]
 		                       ->vtable[funcPos]];
@@ -229,10 +260,10 @@ bool AVM::callFunctionObject(AObject *obj) {
 	    stackAllocator.getTop() +
 	    ((callFrames.index != 0) ? callFrames.top()->func->maxDeclaration : 0);
 	if (callFrames.getSize() == callFrames.getMaxSize()) {
-		notifier->throwException("Runtime Error: Stack Overflow.\nDetails: "
-		                         "Maximum call frame limit of " +
-		                         std::to_string(callFrames.getMaxSize()) +
-		                         " exceeded.");
+		notifier->throwFatalException(
+		    "Runtime Error: Stack Overflow.\nDetails: "
+		    "Maximum call frame limit of " +
+		    std::to_string(callFrames.getMaxSize()) + " exceeded.");
 		return false;
 	}
 	auto currentCallFrame = callFrames.push();
@@ -277,10 +308,10 @@ bool AVM::callFunctionObject(AObject *obj) {
 
 inline bool AVM::callFunction(Function *currentFunction) {
 	if (callFrames.getSize() == callFrames.getMaxSize()) {
-		notifier->throwException("Runtime Error: Stack Overflow.\nDetails: "
-		                         "Maximum call frame limit of " +
-		                         std::to_string(callFrames.getMaxSize()) +
-		                         " exceeded.");
+		notifier->throwFatalException(
+		    "Runtime Error: Stack Overflow.\nDetails: "
+		    "Maximum call frame limit of " +
+		    std::to_string(callFrames.getMaxSize()) + " exceeded.");
 		return false;
 	}
 	auto currentCallFrame = callFrames.push();

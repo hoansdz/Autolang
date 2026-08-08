@@ -18,11 +18,13 @@ template <typename MapType, bool ReleaseKey>
 static void destroyMap(ANotifier &notifier, void *hashMapData) {
 	auto hashMapData_ = static_cast<AHashMap *>(hashMapData);
 	auto map = static_cast<MapType *>(hashMapData_->data);
+	size_t mapSize = map->size();
 	for (auto &pair : *map) {
 		if constexpr (ReleaseKey)
 			notifier.release(pair.first);
 		notifier.release(pair.second);
 	}
+	notifier.addManagedMemory(-static_cast<int64_t>(mapSize * 32));
 	delete map;
 	delete hashMapData_;
 }
@@ -248,6 +250,7 @@ inline AObject *remove(NativeFuncInData) {
 
 			notifier.release(it->second);
 			map->erase(it);
+			notifier.addManagedMemory(-32);
 			break;
 		}
 
@@ -259,6 +262,7 @@ inline AObject *remove(NativeFuncInData) {
 
 			notifier.release(it->second);
 			map->erase(it);
+			notifier.addManagedMemory(-32);
 			break;
 		}
 
@@ -271,6 +275,7 @@ inline AObject *remove(NativeFuncInData) {
 			notifier.release(it->first);
 			notifier.release(it->second);
 			map->erase(it);
+			notifier.addManagedMemory(-32);
 			break;
 		}
 
@@ -283,6 +288,7 @@ inline AObject *remove(NativeFuncInData) {
 			notifier.release(it->first);
 			notifier.release(it->second);
 			map->erase(it);
+			notifier.addManagedMemory(-32);
 		}
 	}
 
@@ -482,8 +488,6 @@ inline AObject *set(NativeFuncInData) {
 	AObject *key = args[1];
 	AObject *value = args[2];
 
-	value->retain();
-
 	switch (hashMapData->type) {
 
 		case DefaultClass::intClassId: {
@@ -496,10 +500,13 @@ inline AObject *set(NativeFuncInData) {
 
 			auto it = map->find(key->i);
 			if (it != map->end()) {
+				value->retain();
 				notifier.release(it->second);
 				it->second = value;
 			} else {
+				value->retain();
 				(*map)[key->i] = value;
+				notifier.addManagedMemory(32);
 			}
 			break;
 		}
@@ -514,10 +521,13 @@ inline AObject *set(NativeFuncInData) {
 
 			auto it = map->find(key->f);
 			if (it != map->end()) {
+				value->retain();
 				notifier.release(it->second);
 				it->second = value;
 			} else {
+				value->retain();
 				(*map)[key->f] = value;
+				notifier.addManagedMemory(32);
 			}
 			break;
 		}
@@ -532,11 +542,14 @@ inline AObject *set(NativeFuncInData) {
 
 			auto it = map->find(key);
 			if (it != map->end()) {
+				value->retain();
 				notifier.release(it->second);
 				it->second = value;
 			} else {
+				value->retain();
 				key->retain();
 				(*map)[key] = value;
+				notifier.addManagedMemory(32);
 			}
 			break;
 		}
@@ -546,11 +559,14 @@ inline AObject *set(NativeFuncInData) {
 
 			auto it = map->find(key);
 			if (it != map->end()) {
+				value->retain();
 				notifier.release(it->second);
 				it->second = value;
 			} else {
+				value->retain();
 				key->retain();
 				(*map)[key] = value;
+				notifier.addManagedMemory(32);
 			}
 		}
 	}
@@ -565,37 +581,45 @@ inline AObject *clear(NativeFuncInData) {
 
 		case DefaultClass::intClassId: {
 			auto map = static_cast<IntHashMap *>(hashMapData->data);
+			size_t mapSize = map->size();
 			for (auto &p : *map)
 				notifier.release(p.second);
 			map->clear();
+			notifier.addManagedMemory(-static_cast<int64_t>(mapSize * 32));
 			break;
 		}
 
 		case DefaultClass::floatClassId: {
 			auto map = static_cast<FloatHashMap *>(hashMapData->data);
+			size_t mapSize = map->size();
 			for (auto &p : *map)
 				notifier.release(p.second);
 			map->clear();
+			notifier.addManagedMemory(-static_cast<int64_t>(mapSize * 32));
 			break;
 		}
 
 		case DefaultClass::stringClassId: {
 			auto map = static_cast<StringHashMap *>(hashMapData->data);
+			size_t mapSize = map->size();
 			for (auto &p : *map) {
 				notifier.release(p.first);
 				notifier.release(p.second);
 			}
 			map->clear();
+			notifier.addManagedMemory(-static_cast<int64_t>(mapSize * 32));
 			break;
 		}
 
 		default: {
 			auto map = static_cast<ObjectHashMap *>(hashMapData->data);
+			size_t mapSize = map->size();
 			for (auto &p : *map) {
 				notifier.release(p.first);
 				notifier.release(p.second);
 			}
 			map->clear();
+			notifier.addManagedMemory(-static_cast<int64_t>(mapSize * 32));
 		}
 	}
 

@@ -438,20 +438,10 @@ void AVM::log(Function *currentFunction) {
 				PRINT_BYTECODE_2_uint32(LOCAL_STORE_LOCAL_CLONE);
 				PRINT_BYTECODE_2_uint32(LOCAL_STORE_GLOBAL_CLONE);
 				PRINT_BYTECODE_2_uint32(LOCAL_STORE_CONST_CLONE);
-			case Autolang::Opcode::LOCAL_LOAD_MEMBER: {
-				uint32_t pos = get_u32(bytecodes, i);
-				uint32_t memberId = get_u32(bytecodes, i);
-				std::cerr << "LOCAL_LOAD_MEMBER	 " << pos << " " << memberId
-				          << "\n";
-				break;
-			}
-			case Autolang::Opcode::GLOBAL_LOAD_MEMBER: {
-				uint32_t pos = get_u32(bytecodes, i);
-				uint32_t memberId = get_u32(bytecodes, i);
-				std::cerr << "GLOBAL_LOAD_MEMBER	 " << pos << " " << memberId
-				          << "\n";
-				break;
-			}
+
+				PRINT_BYTECODE_2_uint32(LOCAL_LOAD_MEMBER);
+				PRINT_BYTECODE_2_uint32(GLOBAL_LOAD_MEMBER);
+
 			case Autolang::Opcode::GLOBAL_LOAD_MEMBER_AND_STORE: {
 				uint32_t pos = get_u32(bytecodes, i);
 				uint32_t memberId = get_u32(bytecodes, i);
@@ -468,6 +458,10 @@ void AVM::log(Function *currentFunction) {
 			}
 			case Autolang::Opcode::LOAD_MEMBER:
 				std::cerr << "LOAD_MEMBER	 " << get_u32(bytecodes, i) << "\n";
+				break;
+			case Autolang::Opcode::LOAD_LATEINIT_MEMBER:
+				std::cerr << "LOAD_LATEINIT_MEMBER	 " << get_u32(bytecodes, i)
+				          << "\n";
 				break;
 			case Autolang::Opcode::LOAD_MEMBER_IF_NNULL_OR_JUMP: {
 				uint32_t memberId = get_u32(bytecodes, i);
@@ -488,6 +482,7 @@ void AVM::log(Function *currentFunction) {
 				break;
 				BYTECODE_PRINT_SINGLE(POP)
 				BYTECODE_PRINT_SINGLE(POP_NO_RELEASE)
+				BYTECODE_PRINT_SINGLE(CHECK_FORCE_NON_NULL)
 				BYTECODE_PRINT_SINGLE(RETURN)
 				BYTECODE_PRINT_SINGLE(RETURN_VALUE)
 				BYTECODE_PRINT_SINGLE(INT_FROM_INT)

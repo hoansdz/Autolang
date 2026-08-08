@@ -20,6 +20,7 @@ struct ARegexHandle {
 static void destroyRegex(ANotifier &notifier, void *regexData) {
 	auto handle = static_cast<ARegexHandle *>(regexData);
 	if (handle) {
+		notifier.addManagedMemory(-128);
 		delete handle;
 	}
 }
@@ -29,8 +30,8 @@ inline AObject *constructor(NativeFuncInData) {
 	const std::string &pattern = args[1]->str->data;
 
 	try {
-
 		auto handle = new ARegexHandle{std::regex(pattern)};
+		notifier.addManagedMemory(128);
 		return notifier.createNativeData(classId, handle, destroyRegex);
 	} catch (const std::regex_error &e) {
 

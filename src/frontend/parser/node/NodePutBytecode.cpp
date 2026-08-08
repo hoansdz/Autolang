@@ -23,7 +23,7 @@ void SkipNode::rewrite(in_func, uint8_t *bytecodes) {
 			rewrite_opcode_u32(bytecodes, jumpBytePos, context.breakPos);
 			break;
 		default:
-			throwError("Wrong type");
+			throwError("Invalid jump target type for skip node (expected 'continue' or 'break')");
 	}
 }
 
@@ -38,6 +38,7 @@ void CanBreakContinueNode::rewrite(in_func, uint8_t *bytecodes) {
 }
 
 void WhileNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	loadOpcodeLine(in_data, bytecodes);
 	continuePos = bytecodes.size() - context.currentBytecodePos;
 
 	if (condition->kind == NodeType::CONST_VAL) {
@@ -114,6 +115,7 @@ void ReturnNode::putOptimizedBytecodes(in_func, HasClassIdNode *value,
 }
 
 void ReturnNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	loadOpcodeLine(in_data, bytecodes);
 	putOptimizedBytecodes(in_data, value, bytecodes);
 }
 

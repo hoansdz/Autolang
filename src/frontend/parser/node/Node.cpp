@@ -2,6 +2,7 @@
 #define NODE_CPP
 
 #include "frontend/parser/node/Node.cpp"
+#include "frontend/ACompiler.hpp"
 #include "frontend/parser/Debugger.hpp"
 #include "frontend/parser/ParserContext.hpp"
 #include "frontend/parser/node/CreateNode.hpp"
@@ -10,6 +11,23 @@ namespace Autolang {
 
 ExprNode::ExprNode(NodeType kind, uint32_t line) : line(line), kind(kind) {
 	mode = ParserContext::mode;
+}
+
+void ExprNode::loadOpcodeLine(in_func, std::vector<uint8_t> &bytecodes) {
+	if (context.currentFunctionId == context.mainFunctionId) {
+		compile.allMainFunctionOpcodeLines.emplace_back(
+		    line, bytecodes.size() - context.currentBytecodePos,
+		    mode->path.c_str());
+		// std::cerr << compile.allMainFunctionOpcodeLines.back().path << ":"
+		//           << compile.allMainFunctionOpcodeLines.back().line << "\n";
+		return;
+	}
+	if (!context.currentAllOpcodeLine->empty() &&
+	    context.currentAllOpcodeLine->back().line == line) {
+		return;
+	}
+	context.currentAllOpcodeLine->emplace_back(
+	    line, bytecodes.size() - context.currentBytecodePos);
 }
 
 void ExprNode::throwError(std::string message) {

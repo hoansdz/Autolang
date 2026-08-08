@@ -8,8 +8,9 @@
 
 #ifdef _WIN32
 
-#include <windows.h>
 #include <psapi.h>
+#include <windows.h>
+
 
 struct MemoryInfo {
 	SIZE_T workingSet;
@@ -50,21 +51,25 @@ int main(int argc, char *argv[]) {
 #endif
 				Autolang::ACompiler compiler;
 				compiler.setLimitOpcodeCount(1000000);
-				if (compiler.compileAndRun(
+				compiler.setMaxManagedMemory(1024 * 1024);
+				compiler.compileAndRun("./tests/testCorrectness.atl", "");
+				if (compiler.compile(
 				        "./tests/testCorrectness.atl",
-				    Autolang::LibraryConfig(false, true, true))) {
+				        Autolang::LibraryConfig(false, true, true))) {
 #ifdef _WIN32
 					MemoryInfo currentMem = getMemoryUsage();
 					printMemoryUsage(baseMem, currentMem);
 #endif
+					compiler.run();
+					compiler.refresh();
 				}
-// 				compiler.compileAndRun(
-// 				    "./tests/a.atl",
-// 				    AutoLang::LibraryConfig(false, true, true));
-// 				#ifdef _WIN32
-// 					MemoryInfo currentMem = getMemoryUsage();
-// 					printMemoryUsage(baseMem, currentMem);
-// #				endif
+				// compiler.compileAndRun(
+				//     "./tests/a.atl",
+				//     Autolang::LibraryConfig(false, true, true));
+				// 				#ifdef _WIN32
+				// 					MemoryInfo currentMem = getMemoryUsage();
+				// 					printMemoryUsage(baseMem, currentMem);
+				// #				endif
 			}
 		} catch (const std::logic_error &err) {
 			std::cerr << err.what();

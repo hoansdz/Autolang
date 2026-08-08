@@ -91,6 +91,16 @@ class CompilerWrapper {
 
 	uint32_t getLimitOpcodeCount() { return compiler.getLimitOpcodeCount(); }
 
+	void setMaxManagedMemory(size_t limit) {
+		compiler.setMaxManagedMemory(limit);
+	}
+
+	size_t getMaxManagedMemory() { return compiler.getMaxManagedMemory(); }
+
+	size_t getCurrentManagedMemory() {
+		return compiler.getCurrentManagedMemory();
+	}
+
 	// ---- Domain whitelist builder (avoids emscripten::val as parameter) ----
 	void clearDomainRules() {
 #ifndef NO_INCLUDE_LIBS_HTTP
@@ -167,17 +177,13 @@ class CompilerWrapper {
 	bool compileAndRun(std::string path, std::string data) {
 		std::streambuf *old = std::cerr.rdbuf(buffer.rdbuf());
 		try {
-			if (compiler.compile(path.c_str(), data.c_str(),
-			                     mainSourceConfig)) {
-				compiler.run();
-			}
-			compiler.refresh();
+			compiler.compileAndRun(path.c_str(), data.c_str(),
+			                       mainSourceConfig);
 			std::cerr.rdbuf(old);
 			return true;
 		} catch (const std::exception &e) {
 			std::cerr << e.what() << "\n";
 		}
-		compiler.refresh();
 		std::cerr.rdbuf(old);
 		return false;
 	}
@@ -277,6 +283,10 @@ EMSCRIPTEN_BINDINGS(autolang_module) {
 	    .function("setMainSourceConfig", &CompilerWrapper::setMainSourceConfig)
 	    .function("setLimitOpcodeCount", &CompilerWrapper::setLimitOpcodeCount)
 	    .function("getLimitOpcodeCount", &CompilerWrapper::getLimitOpcodeCount)
+	    .function("setMaxManagedMemory", &CompilerWrapper::setMaxManagedMemory)
+	    .function("getMaxManagedMemory", &CompilerWrapper::getMaxManagedMemory)
+	    .function("getCurrentManagedMemory",
+	              &CompilerWrapper::getCurrentManagedMemory)
 	    .function("clearDomainRules", &CompilerWrapper::clearDomainRules)
 	    .function("addDomainRule", &CompilerWrapper::addDomainRule)
 	    .function("applyDomainRules", &CompilerWrapper::applyDomainRules)

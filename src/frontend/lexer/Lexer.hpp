@@ -136,6 +136,7 @@ enum TokenType : uint8_t {
 	MINUS_GT,
 
 	// ===== Special =====
+	NON_NULL,
 	END_OF_FILE,
 	INVALID
 };

@@ -27,8 +27,17 @@ template <size_t size> class AreaAllocator {
 
   public:
 	size_t countObject;
-	AreaAllocator() : head(nullptr), freeSlot(nullptr), countObject(0) {}
+	size_t maxManagedMemory;
+	size_t currentManagedMemory;
+	bool changedMemory;
+	AreaAllocator()
+	    : head(nullptr), freeSlot(nullptr), countObject(0),
+	      maxManagedMemory(32 * 1024 * 1024), currentManagedMemory(0),
+	      changedMemory(false) {}
+
 	inline AObject *getObject() {
+		currentManagedMemory += sizeof(AObject);
+		changedMemory = true;
 		if (freeSlot != nullptr) {
 			auto *obj = &freeSlot->obj;
 			obj->flags = 0;
@@ -49,12 +58,33 @@ template <size_t size> class AreaAllocator {
 		return &newChunk->data[0].obj;
 	}
 	inline void release(AObject *obj) {
+		if (currentManagedMemory >= sizeof(AObject)) {
+			currentManagedMemory -= sizeof(AObject);
+		} else {
+			currentManagedMemory = 0;
+		}
+		changedMemory = true;
 		AreaChunkSlot *slot = reinterpret_cast<AreaChunkSlot *>(obj);
 		obj->flags = AObject::Flags::OBJ_IS_FREE;
 		slot->nextFree = freeSlot;
 		freeSlot = slot;
 	}
-	void destroy(ANotifier& notifier);
+
+	inline void addManagedMemory(int64_t delta) {
+		if (delta >= 0) {
+			currentManagedMemory += static_cast<size_t>(delta);
+		} else {
+			size_t neg = static_cast<size_t>(-delta);
+			if (currentManagedMemory >= neg) {
+				currentManagedMemory -= neg;
+			} else {
+				currentManagedMemory = 0;
+			}
+		}
+		changedMemory = true;
+	}
+
+	void destroy(ANotifier &notifier);
 };
 
 } // namespace Autolang

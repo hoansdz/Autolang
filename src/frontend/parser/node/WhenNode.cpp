@@ -16,6 +16,9 @@ ExprNode *WhenNode::resolve(in_func) {
 }
 
 void WhenNode::optimize(in_func) {
+	if (isForceNonNull) {
+		ifNode->isForceNonNull = true;
+	}
 	if (value) {
 		value->optimize(in_data);
 	}
@@ -39,6 +42,7 @@ void WhenNode::optimize(in_func) {
 }
 
 void WhenNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	loadOpcodeLine(in_data, bytecodes);
 	if (ifNode == nullptr)
 		return;
 	ifNode->putBytecodes(in_data, bytecodes);

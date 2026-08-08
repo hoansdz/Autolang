@@ -26,6 +26,7 @@ void OptionalAccessNode::optimize(in_func) {
 
 void OptionalAccessNode::putBytecodes(in_func,
                                       std::vector<uint8_t> &bytecodes) {
+										loadOpcodeLine(in_data, bytecodes);
 	auto lastJumpIfNullNode = context.jumpIfNullNode;
 	context.jumpIfNullNode = this;
 	value->putBytecodes(in_data, bytecodes);

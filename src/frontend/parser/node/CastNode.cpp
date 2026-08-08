@@ -149,6 +149,7 @@ errCast:;
 }
 
 void CastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	loadOpcodeLine(in_data, bytecodes);
 	value->putBytecodes(in_data, bytecodes);
 	switch (classId) {
 		case Autolang::DefaultClass::intClassId: {
@@ -166,7 +167,7 @@ void CastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					return;
 				}
 				default: {
-					throwError("Bug: Unknown cast type");
+					throwError("Internal Compiler Error: Unsupported source type for Int cast");
 				}
 			}
 		}
@@ -185,7 +186,7 @@ void CastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					return;
 				}
 				default: {
-					throwError("Bug: Unknown cast type");
+					throwError("Internal Compiler Error: Unsupported source type for Float cast");
 				}
 			}
 		}
@@ -224,6 +225,7 @@ void RuntimeCastNode::optimize(in_func) {
 }
 
 void RuntimeCastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	loadOpcodeLine(in_data, bytecodes);
 	value->putBytecodes(in_data, bytecodes);
 	if (value->classId == classId ||
 	    compile.classes[value->classId]->inheritance.get(classId) ||

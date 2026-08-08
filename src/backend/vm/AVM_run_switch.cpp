@@ -193,6 +193,12 @@ void AVM::resume() {
 	auto currentCallFrame = callFrames.top();
 resumeCallFrame:;
 	if (currentCallFrame->exception) {
+		if (isFatalException) {
+			while (data.allCatchPosition.size() >
+			       currentCallFrame->catchPositionIndex) {
+				data.allCatchPosition.pop_back();
+			}
+		}
 		if (data.allCatchPosition.size() <=
 		    currentCallFrame->catchPositionIndex) {
 			// std::cerr << currentCallFrame->fromStackAllocator << " & "
@@ -259,12 +265,20 @@ resumeCallFrame:;
 
 #ifdef AUTOLANG_LIMIT_OPCODE
 			if (--currentLimitOpcodeCount == 0) {
-				notifier->throwException(
-				    "VMException: instruction limit exceeded (" +
-				    std::to_string(limitOpcodeCount) + ")");
+				notifier->throwFatalException("Instruction limit exceeded (" +
+				                              std::to_string(limitOpcodeCount) +
+				                              ")");
 				goto resumeCallFrame;
 			}
 #endif
+			if (data.manager.areaAllocator.changedMemory) {
+				if (data.manager.getCurrentManagedMemory() >
+				    data.manager.getMaxManagedMemory()) {
+					notifier->throwMemoryLimitExceeded();
+					goto resumeCallFrame;
+				}
+				data.manager.areaAllocator.changedMemory = false;
+			}
 			switch (bytecodes[i++]) {
 				case Autolang::Opcode::CALL_FUNCTION_OBJECT: {
 					auto obj = stack.pop();
@@ -617,6 +631,15 @@ resumeCallFrame:;
 					}
 					break;
 				}
+				case Autolang::Opcode::CHECK_FORCE_NON_NULL: {
+					auto obj = stack.top();
+					if (obj == DefaultClass::nullObject) {
+						notifier->throwException(
+						    "Cannot unwrap null value with '!' operator");
+						goto resumeCallFrame;
+					}
+					break;
+				}
 				case Autolang::Opcode::RETURN_LOCAL: {
 					while (stack.getSize() >
 					       currentCallFrame->startStackCount) {
@@ -757,6 +780,50 @@ resumeCallFrame:;
 					stack.push(member);
 					break;
 				}
+				case Autolang::Opcode::LOCAL_LOAD_LATEINIT_MEMBER: {
+					uint32_t pos = get_u32(bytecodes, i);
+					AObject *obj = stackAllocator[pos];
+					uint32_t memberIndex = get_u32(bytecodes, i);
+					AObject *member = obj->member->data[memberIndex];
+					if (member) {
+						member->retain();
+						stack.push(member);
+						break;
+					}
+					auto clazz = data.classes[obj->type];
+					std::string className = notifier->getClassName(obj->type);
+					for (auto &[name, index] : clazz->memberMap) {
+						if (index != memberIndex)
+							continue;
+						notifier->throwException("Member '" + name +
+						                         "' at class '" + className +
+						                         "' is uninitialized ");
+						goto resumeCallFrame;
+					}
+					break;
+				}
+				case Autolang::Opcode::GLOBAL_LOAD_LATEINIT_MEMBER: {
+					uint32_t pos = get_u32(bytecodes, i);
+					AObject *obj = globalVariables[pos];
+					uint32_t memberIndex = get_u32(bytecodes, i);
+					AObject *member = obj->member->data[memberIndex];
+					if (member) {
+						member->retain();
+						stack.push(member);
+						break;
+					}
+					auto clazz = data.classes[obj->type];
+					std::string className = notifier->getClassName(obj->type);
+					for (auto &[name, index] : clazz->memberMap) {
+						if (index != memberIndex)
+							continue;
+						notifier->throwException("Member '" + name +
+						                         "' at class '" + className +
+						                         "' is uninitialized ");
+						goto resumeCallFrame;
+					}
+					break;
+				}
 				case Autolang::Opcode::GLOBAL_LOAD_MEMBER_AND_STORE: {
 					uint32_t pos = get_u32(bytecodes, i);
 					AObject *obj = globalVariables[pos];
@@ -777,6 +844,30 @@ resumeCallFrame:;
 					stack.top() = (*parent->member)[get_u32(bytecodes, i)];
 					stack.top()->retain();
 					data.manager.release(parent);
+					break;
+				}
+				case Autolang::Opcode::LOAD_LATEINIT_MEMBER: {
+					AObject *parent = stack.top();
+					uint32_t memberIndex = get_u32(bytecodes, i);
+					AObject *member = parent->member->data[memberIndex];
+					if (member) {
+						stack.top() = member;
+						member->retain();
+						data.manager.release(parent);
+						break;
+					}
+					auto clazz = data.classes[parent->type];
+					std::string className =
+					    notifier->getClassName(parent->type);
+					for (auto &[name, index] : clazz->memberMap) {
+						if (index != memberIndex)
+							continue;
+						data.manager.release(parent);
+						notifier->throwException("Member '" + name +
+						                         "' at class '" + className +
+						                         "' is uninitialized ");
+						goto resumeCallFrame;
+					}
 					break;
 				}
 				case Autolang::Opcode::LOAD_MEMBER_IF_NNULL_OR_JUMP: {

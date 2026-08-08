@@ -43,12 +43,14 @@ ExprNode *VarNode::copy(in_func) {
 	    context.varPool.push(line, newDeclaration, isStore, nullable);
 	newNode->classId = classId;
 	newNode->cloneable = cloneable;
+	newNode->isForceNonNull = isForceNonNull;
 	return newNode;
 }
 
 bool VarNode::isStaticValue() { return declaration && declaration->isGlobal; }
 
 void VarNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	loadOpcodeLine(in_data, bytecodes);
 	if (isStore) {
 		bytecodes.emplace_back(declaration->isGlobal ? Opcode::STORE_GLOBAL
 		                                             : Opcode::STORE_LOCAL);
@@ -57,6 +59,9 @@ void VarNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		bytecodes.emplace_back(declaration->isGlobal ? Opcode::LOAD_GLOBAL
 		                                             : Opcode::LOAD_LOCAL);
 		put_opcode_u32(bytecodes, declaration->id);
+		if (isForceNonNull) {
+			bytecodes.push_back(Opcode::CHECK_FORCE_NON_NULL);
+		}
 		if (cloneable) {
 			bytecodes.emplace_back(Opcode::CLONE);
 		}

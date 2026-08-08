@@ -10,11 +10,10 @@
 #include "shared/ObjectManager.hpp"
 #include "shared/StackAllocator.hpp"
 #include <chrono>
+#include <memory>
 #include <regex>
 #include <string>
-#include <memory>
 #include <vector>
-
 
 namespace Autolang {
 
@@ -25,11 +24,11 @@ enum class VMState { READY, RUNNING, HALTED, WAITING, ERR };
 #endif
 
 #ifndef MAX_STACK_ALLOCATOR
-#define MAX_STACK_ALLOCATOR 512
+#define MAX_STACK_ALLOCATOR 1024
 #endif
 
 #ifndef MAX_CALL_FRAME
-#define MAX_CALL_FRAME 256
+#define MAX_CALL_FRAME 512
 #endif
 
 struct CallFrame {
@@ -74,6 +73,9 @@ class AVM {
 	AObject **globalVariables = nullptr;
 	inline void setGlobalVariables(uint32_t i, AObject *object);
 	void restart();
+	uint32_t searchLine(Function *func, uint32_t opcodeIndex);
+	std::pair<uint32_t, const char *> searchMainLine(Function *func,
+	                                                 uint32_t opcodeIndex);
 
 	template <size_t index> inline void inputTempAllocateArea() {
 		if constexpr (index > 0) {
@@ -111,12 +113,23 @@ class AVM {
 	void run();
 	void input(AObject *inputData);
 
-	//   public:
 	VMState state = VMState::READY;
+	bool isFatalException = false;
 	[[nodiscard]] explicit AVM(bool allowDebug);
 	void start();
 	void log();
 	CompiledProgram data;
+
+	inline void setMaxManagedMemory(size_t limit) {
+		data.manager.setMaxManagedMemory(limit);
+	}
+	inline size_t getMaxManagedMemory() {
+		return data.manager.getMaxManagedMemory();
+	}
+	inline size_t getCurrentManagedMemory() {
+		return data.manager.getCurrentManagedMemory();
+	}
+
 	~AVM();
 	// friend ACompiler;
 };

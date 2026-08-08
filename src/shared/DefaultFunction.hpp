@@ -34,6 +34,16 @@ inline AObject *str_get(NativeFuncInData);
 inline AObject *str_set(NativeFuncInData);
 inline AObject *str_char_at(NativeFuncInData);
 
+AObject *assert_(NativeFuncInData) {
+	auto condition = args[0];
+	if (condition->b) {
+		return nullptr;
+	}
+	notifier.throwException(std::string("At ") + args[1]->str->data + ":" +
+	                        std::to_string(args[2]->i) + ": Wrong");
+	return nullptr;
+}
+
 AObject *data_constructor(NativeFuncInData) {
 	AObject *obj = args[0];
 	for (size_t i = 1; i < argSize; ++i) {
@@ -222,6 +232,13 @@ AObject *string_constructor(NativeFuncInData) {
 				return notifier.createString(new AString(newStr, 0));
 			}
 			size_t newSize = oldAStr->size * count;
+			int64_t delta = static_cast<int64_t>(sizeof(AString) + newSize + 1);
+			if (notifier.getCurrentManagedMemory() + delta >
+			    notifier.getMaxManagedMemory()) {
+				notifier.throwMemoryLimitExceeded(
+				    notifier.getCurrentManagedMemory() + delta);
+				return nullptr;
+			}
 			char *newStr = new char[newSize + 1];
 			for (int i = 0; i < count; ++i) {
 				memcpy(&newStr[i * oldAStr->size], oldAStr->data,
@@ -260,82 +277,91 @@ AObject *str_get(NativeFuncInData) {
 }
 
 inline AObject *str_starts_with(NativeFuncInData) {
-    AString *str = args[0]->str;
-    AString *prefix = args[1]->str;
-    if (prefix->size > str->size) return DefaultClass::falseObject;
-    return notifier.createBool(std::memcmp(str->data, prefix->data, prefix->size) == 0);
+	AString *str = args[0]->str;
+	AString *prefix = args[1]->str;
+	if (prefix->size > str->size)
+		return DefaultClass::falseObject;
+	return notifier.createBool(
+	    std::memcmp(str->data, prefix->data, prefix->size) == 0);
 }
 
 inline AObject *str_ends_with(NativeFuncInData) {
-    AString *str = args[0]->str;
-    AString *suffix = args[1]->str;
-    if (suffix->size > str->size) return DefaultClass::falseObject;
-    return notifier.createBool(std::memcmp(str->data + str->size - suffix->size, suffix->data, suffix->size) == 0);
+	AString *str = args[0]->str;
+	AString *suffix = args[1]->str;
+	if (suffix->size > str->size)
+		return DefaultClass::falseObject;
+	return notifier.createBool(std::memcmp(str->data + str->size - suffix->size,
+	                                       suffix->data, suffix->size) == 0);
 }
 
 inline AObject *str_last_index_of(NativeFuncInData) {
-    std::string_view full(args[0]->str->data, args[0]->str->size);
-    std::string_view target(args[1]->str->data, args[1]->str->size);
-    auto pos = full.rfind(target);
-    if (pos == std::string_view::npos) return notifier.createInt(-1);
-    return notifier.createInt(static_cast<int64_t>(pos));
+	std::string_view full(args[0]->str->data, args[0]->str->size);
+	std::string_view target(args[1]->str->data, args[1]->str->size);
+	auto pos = full.rfind(target);
+	if (pos == std::string_view::npos)
+		return notifier.createInt(-1);
+	return notifier.createInt(static_cast<int64_t>(pos));
 }
 
 inline AObject *str_to_lower(NativeFuncInData) {
-    AString *str = args[0]->str;
-    char *newStr = new char[str->size + 1];
-    for (size_t i = 0; i < str->size; ++i) {
-        char c = str->data[i];
-        newStr[i] = (c >= 'A' && c <= 'Z') ? (c + 32) : c;
-    }
-    newStr[str->size] = '\0';
-    return notifier.createString(new AString(newStr, str->size));
+	AString *str = args[0]->str;
+	char *newStr = new char[str->size + 1];
+	for (size_t i = 0; i < str->size; ++i) {
+		char c = str->data[i];
+		newStr[i] = (c >= 'A' && c <= 'Z') ? (c + 32) : c;
+	}
+	newStr[str->size] = '\0';
+	return notifier.createString(new AString(newStr, str->size));
 }
 
 inline AObject *str_to_upper(NativeFuncInData) {
-    AString *str = args[0]->str;
-    char *newStr = new char[str->size + 1];
-    for (size_t i = 0; i < str->size; ++i) {
-        char c = str->data[i];
-        newStr[i] = (c >= 'a' && c <= 'z') ? (c - 32) : c;
-    }
-    newStr[str->size] = '\0';
-    return notifier.createString(new AString(newStr, str->size));
+	AString *str = args[0]->str;
+	char *newStr = new char[str->size + 1];
+	for (size_t i = 0; i < str->size; ++i) {
+		char c = str->data[i];
+		newStr[i] = (c >= 'a' && c <= 'z') ? (c - 32) : c;
+	}
+	newStr[str->size] = '\0';
+	return notifier.createString(new AString(newStr, str->size));
 }
 
 inline AObject *str_replace(NativeFuncInData) {
-    std::string_view full(args[0]->str->data, args[0]->str->size);
-    std::string_view oldStr(args[1]->str->data, args[1]->str->size);
-    std::string_view newStr(args[2]->str->data, args[2]->str->size);
+	std::string_view full(args[0]->str->data, args[0]->str->size);
+	std::string_view oldStr(args[1]->str->data, args[1]->str->size);
+	std::string_view newStr(args[2]->str->data, args[2]->str->size);
 
-    if (oldStr.empty()) return notifier.createString(AString::copy(args[0]->str));
+	if (oldStr.empty())
+		return notifier.createString(AString::copy(args[0]->str));
 
-    size_t count = 0;
-    size_t pos = 0;
-    while ((pos = full.find(oldStr, pos)) != std::string_view::npos) {
-        ++count;
-        pos += oldStr.length();
-    }
+	size_t count = 0;
+	size_t pos = 0;
+	while ((pos = full.find(oldStr, pos)) != std::string_view::npos) {
+		++count;
+		pos += oldStr.length();
+	}
 
-    if (count == 0) return notifier.createString(AString::copy(args[0]->str));
+	if (count == 0)
+		return notifier.createString(AString::copy(args[0]->str));
 
-    size_t newSize = full.length() + count * (newStr.length() - oldStr.length());
-    char *resultStr = new char[newSize + 1];
-    
-    size_t writePos = 0;
-    size_t readPos = 0;
-    while ((pos = full.find(oldStr, readPos)) != std::string_view::npos) {
-        size_t chunkLen = pos - readPos;
-        std::memcpy(resultStr + writePos, full.data() + readPos, chunkLen);
-        writePos += chunkLen;
-        std::memcpy(resultStr + writePos, newStr.data(), newStr.length());
-        writePos += newStr.length();
-        readPos = pos + oldStr.length();
-    }
-    std::memcpy(resultStr + writePos, full.data() + readPos, full.length() - readPos);
-    resultStr[newSize] = '\0';
+	size_t newSize =
+	    full.length() + count * (newStr.length() - oldStr.length());
+	char *resultStr = new char[newSize + 1];
 
-    return notifier.createString(new AString(resultStr, newSize));
+	size_t writePos = 0;
+	size_t readPos = 0;
+	while ((pos = full.find(oldStr, readPos)) != std::string_view::npos) {
+		size_t chunkLen = pos - readPos;
+		std::memcpy(resultStr + writePos, full.data() + readPos, chunkLen);
+		writePos += chunkLen;
+		std::memcpy(resultStr + writePos, newStr.data(), newStr.length());
+		writePos += newStr.length();
+		readPos = pos + oldStr.length();
+	}
+	std::memcpy(resultStr + writePos, full.data() + readPos,
+	            full.length() - readPos);
+	resultStr[newSize] = '\0';
+
+	return notifier.createString(new AString(resultStr, newSize));
 }
 
 // AObject *str_set(NativeFuncInData) {

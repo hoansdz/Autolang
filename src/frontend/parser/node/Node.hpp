@@ -92,16 +92,34 @@ struct Scopes {
 };
 
 struct ExprNode {
-	LibraryData *mode;
+	LibraryData *mode; // Library include path (can be std/http or D:\...)
 	uint32_t line;
 	NodeType kind;
 	ExprNode(NodeType kind, uint32_t line = 0);
 	[[noreturn]] inline void throwError(std::string message);
 	void warning(in_func, std::string message);
 	static inline void deleteNode(ExprNode *node) {};
+	void loadOpcodeLine(in_func, std::vector<uint8_t> &bytecodes);
 	std::string getNodeType();
 	bool canCast(in_func, ClassDeclaration *from, ClassDeclaration *to);
 	bool canCast(in_func, ClassId from, ClassId to);
+	inline bool isNullableNode() {
+		switch (kind) {
+			case NodeType::VAR:
+			case NodeType::GET_PROP:
+			case NodeType::UNKNOW:
+			case NodeType::CALL:
+			case NodeType::CAST:
+			case NodeType::IF:
+			case NodeType::OPTIONAL_ACCESS:
+			case NodeType::NULL_COALESCING:
+			case NodeType::RUNTIME_CAST:
+			case NodeType::WHEN:
+				return true;
+			default:
+				return false;
+		}
+	}
 	virtual ExprNode *resolve(in_func) { return this; }
 	virtual void optimize(in_func) {}
 	virtual void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {};
@@ -178,6 +196,7 @@ struct HasClassIdNode : ExprNode {
 
 struct NullableNode : HasClassIdNode {
 	bool nullable;
+	bool isForceNonNull = false;
 	NullableNode(NodeType kind, ClassId classId, bool nullable, uint32_t line)
 	    : HasClassIdNode(kind, classId, line), nullable(nullable) {}
 	bool isNullable() override { return nullable; }
@@ -622,6 +641,7 @@ struct CreateClosureNode : HasClassIdNode {
 	std::vector<HasClassIdNode *> objects;
 	std::vector<DeclarationNode *> newDeclaration;
 	std::vector<uint8_t> currentBytecodes;
+	std::vector<OpcodeLine> currentOpcodeLine;
 	Parameter *parameter;
 	BlockNode body;
 	std::optional<FunctionId> funcId;

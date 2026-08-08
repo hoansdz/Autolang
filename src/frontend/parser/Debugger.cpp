@@ -16,25 +16,25 @@
 namespace Autolang {
 
 void freeData(in_func) {
-	// for (auto *funcInfo : context.functionInfo) {
-	// 	funcInfo->body.refresh();
-	// }
-	// size_t sizeNewClasses = context.newClasses.getSize();
-	// for (size_t i = 0 ; i < sizeNewClasses; ++i) {
-	// 	context.newClasses[i]->body.refresh();
-	// 	context.newClasses[i]->body.nodes.clear();
-	// }
+	for (auto *funcInfo : context.functionInfo) {
+		funcInfo->body.refresh();
+	}
+	size_t sizeNewClasses = context.newClasses.getSize();
+	for (size_t i = 0 ; i < sizeNewClasses; ++i) {
+		context.newClasses[i]->body.refresh();
+		context.newClasses[i]->body.nodes.clear();
+	}
 	// for (size_t i = 0 ; i < context.createConstructorPool.size; ++i) {
 	// 	context.createConstructorPool[i]->body.refresh();
 	// }
 	// for (auto *node : context.staticNode) {
 	// 	ExprNode::deleteNode(node);
 	// }
-	// context.staticNode.clear();
-	// context.createConstructorPool.destroy();
-	// context.newClasses.refresh();
-	// context.newFunctions.refresh();
-	// context.declarationNodePool.refresh();
+	context.staticNode.clear();
+	context.createConstructorPool.destroy();
+	context.newClasses.refresh();
+	context.newFunctions.refresh();
+	context.declarationNodePool.refresh();
 	// context.binaryNodePool.refresh();
 }
 
@@ -1115,11 +1115,14 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 				uint32_t firstLine = token->line;
 				size_t tokenIndex = i;
 				auto arguments = loadListArgument(in_data, i);
+				bool isForceNonNull = nextTokenIfMarkNonNull(in_data, i);
 				node = context.callNodePool.push(
 				    firstLine, tokenIndex, context.currentClassId, node,
 				    lexerIdLRBRACKET, std::move(arguments),
-				    context.justFindStatic, !nextTokenIfMarkNonNull(in_data, i),
-				    false);
+				    context.justFindStatic, !isForceNonNull, false);
+				if (isForceNonNull) {
+					static_cast<CallNode *>(node)->isForceNonNull = true;
+				}
 				break;
 			}
 			case Lexer::TokenType::LPAREN: {
@@ -1127,21 +1130,27 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 					goto ret;
 				size_t tokenIndex = i;
 				auto arguments = loadListArgument(in_data, i);
+				bool isForceNonNull = nextTokenIfMarkNonNull(in_data, i);
 				auto callNode = context.callNodePool.push(
 				    firstLine, tokenIndex, context.currentClassId, nullptr, 0,
 				    std::move(arguments), context.justFindStatic,
-				    !nextTokenIfMarkNonNull(in_data, i), false);
+				    !isForceNonNull, false);
+				if (isForceNonNull) {
+					callNode->isForceNonNull = true;
+				}
 				callNode->funcObject = node;
 				node = callNode;
 				break;
 			}
 			case Lexer::TokenType::EXMARK: {
+				node->setNullable(false);
+				if (node->isNullableNode()) {
+					static_cast<NullableNode *>(node)->isForceNonNull = true;
+				}
 				if (!nextToken(&token, context.tokens, i) ||
 				    !expect(token, Lexer::TokenType::DOT)) {
-					--i;
 					goto ret;
 				}
-				node->setNullable(false);
 			}
 			case Lexer::TokenType::QMARK_DOT:
 			case Lexer::TokenType::DOT: {
@@ -1258,8 +1267,8 @@ bool nextTokenIfMarkNonNull(in_func, size_t &i) {
 		if (!(context.mode->flags & LibraryFlags::ALLOW_NON_NULL_ASSERTION)) {
 			throw ParserError(
 			    token->line,
-			    "Error: Non-null assertion operator '!' is disabled. \nNote: "
-			    "Enable 'allowNonNullAssertion' to use it.");
+			    "Non-null assertion operator '!' is disabled (enable "
+			    "'allowNonNullAssertion' option to use it)");
 		}
 		return true;
 	}
@@ -1362,12 +1371,16 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			//           << classDeclaration->getName(in_data) << "\n";
 			size_t tokenIndex = i;
 			auto arguments = loadListArgument(in_data, i);
+			bool isForceNonNull = nextTokenIfMarkNonNull(in_data, i);
 			auto callNode = context.callNodePool.push(
 			    firstLine, tokenIndex, context.currentClassId, nullptr,
 			    context.createLexerStringIfNotExists(
 			        classDeclaration->getName(in_data)),
-			    std::move(arguments), context.justFindStatic,
-			    !nextTokenIfMarkNonNull(in_data, i), false);
+			    std::move(arguments), context.justFindStatic, !isForceNonNull,
+			    false);
+			if (isForceNonNull) {
+				callNode->isForceNonNull = true;
+			}
 			// if (classDeclaration->isGenerics(in_data)) {
 
 			// Must rename in both if T in class, R in function
@@ -1451,21 +1464,28 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 				auto funcObject = context.findDeclaration(
 				    in_data, token->line, token->indexData, false);
 				if (funcObject) {
-					return context.callNodePool.push(
+					auto isForceNonNull = nextTokenIfMarkNonNull(in_data, i);
+					auto callNode = context.callNodePool.push(
 					    firstLine, tokenIndex, context.currentClassId, nullptr,
 					    identifier->indexData, context.justFindStatic,
-					    std::move(arguments),
-					    !nextTokenIfMarkNonNull(in_data, i), false);
+					    std::move(arguments), !isForceNonNull, false);
+					if (isForceNonNull) {
+						callNode->isForceNonNull = true;
+					}
+					return callNode;
 				}
 			}
 
 			addThisToClosure(in_data, i);
 			size_t tokenIndex = i;
+			auto isForceNonNull = nextTokenIfMarkNonNull(in_data, i);
 			auto callNode = context.callNodePool.push(
 			    firstLine, tokenIndex, context.currentClassId, nullptr,
 			    identifier->indexData, std::move(arguments),
-			    context.justFindStatic, !nextTokenIfMarkNonNull(in_data, i),
-			    false);
+			    context.justFindStatic, !isForceNonNull, false);
+			if (isForceNonNull) {
+				callNode->isForceNonNull = isForceNonNull;
+			}
 			auto funcInfo = context.getCurrentFunctionInfo(in_data);
 			if (context.currentClassId) {
 				if (context.currentFunctionId != context.mainFunctionId &&
@@ -1499,11 +1519,15 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			uint32_t firstLine = token->line;
 			size_t tokenIndex = i;
 			auto arguments = loadListArgument(in_data, i);
-			bool nullable = !nextTokenIfMarkNonNull(in_data, i);
-			return context.callNodePool.push(
+			auto isForceNonNull = nextTokenIfMarkNonNull(in_data, i);
+			auto callNode = context.callNodePool.push(
 			    firstLine, tokenIndex, context.currentClassId, varNode,
 			    lexerIdLRBRACKET, std::move(arguments), context.justFindStatic,
-			    nullable, false);
+			    !isForceNonNull, false);
+			if (isForceNonNull) {
+				callNode->isForceNonNull = isForceNonNull;
+			}
+			return callNode;
 		}
 		case Lexer::TokenType::LBRACE: {
 			addThisToClosure(in_data, i);
@@ -1520,9 +1544,9 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			if (!(context.mode->flags &
 			      LibraryFlags::ALLOW_NON_NULL_ASSERTION)) {
 				throw ParserError(token->line,
-				                  "Error: Non-null assertion operator '!' is "
-				                  "disabled. \nNote: "
-				                  "Enable 'allowNonNullAssertion' to use it.");
+				                  "Non-null assertion operator '!' is "
+				                  "disabled (enable 'allowNonNullAssertion' "
+				                  "option to use it)");
 			}
 			++i;
 			nullable = false;
@@ -1536,11 +1560,19 @@ doneLT:;
 	token = &context.tokens[i];
 	if (!allowAddThis) {
 		addThisToClosure(in_data, i);
-		return context.unknowNodePool.push(
+		auto node = context.unknowNodePool.push(
 		    token->line, context.currentClassId, context.currentFunctionId,
 		    identifier->indexData, nullable, context.justFindStaticMember);
+		if (!nullable) {
+			node->isForceNonNull = true;
+		}
+		return node;
 	}
-	return findIdentifierNode(in_data, i, identifier->indexData, nullable);
+	auto node = findIdentifierNode(in_data, i, identifier->indexData, nullable);
+	if (!nullable && node->isNullableNode()) {
+		static_cast<NullableNode *>(node)->isForceNonNull = true;
+	}
+	return node;
 }
 
 bool addThisToClosure(in_func, size_t &i) {

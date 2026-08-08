@@ -49,6 +49,20 @@ bool GetPropNode::optimizeSkipIfNotFoundMember(in_func) {
 			isStatic = true;
 			break;
 		}
+		case NodeType::IF:
+		case NodeType::WHEN:
+		case NodeType::CREATE_CLOSURE:
+		case NodeType::FUNCTION_ACCESS:
+		case NodeType::CONST_VAL:
+		case NodeType::BINARY:
+		case NodeType::CREATE_ARRAY:
+		case NodeType::CREATE_MAP:
+		case NodeType::CREATE_SET:
+		case NodeType::NULL_COALESCING:
+		case NodeType::OPTIONAL_ACCESS:
+		case NodeType::UNARY:
+		case NodeType::CAST:
+		case NodeType::RUNTIME_CAST:
 		case NodeType::CALL:
 		case NodeType::GET_PROP: {
 			break;
@@ -58,7 +72,7 @@ bool GetPropNode::optimizeSkipIfNotFoundMember(in_func) {
 			break;
 		}
 		default: {
-			throwError("Cannot find caller");
+			throwError("Cannot resolve target expression for member access");
 		}
 	}
 	auto clazz = compile.classes[caller->classId];
@@ -74,7 +88,7 @@ bool GetPropNode::optimizeSkipIfNotFoundMember(in_func) {
 		declaration = it_->second;
 		if (declaration->accessModifier != Lexer::TokenType::PUBLIC &&
 		    (!contextCallClassId || *contextCallClassId != clazz->id)) {
-			throwError("Cannot access private -a member name '" + name + "'");
+			throwError("Cannot access private member name '" + name + "'");
 		}
 		isStatic = true;
 		isVal = declaration->isVal;
@@ -84,7 +98,8 @@ bool GetPropNode::optimizeSkipIfNotFoundMember(in_func) {
 			classDeclaration = declaration->classDeclaration;
 		}
 	} else if (isStatic) {
-		throwError("Cannot access non static member " + name);
+		throwError("Cannot access non-static member '" + name +
+		           "' from static context");
 	}
 	if (!isStatic) {
 		// a.a = ...
@@ -98,14 +113,16 @@ bool GetPropNode::optimizeSkipIfNotFoundMember(in_func) {
 		// for (int i = 0; i<clazz->memberId.size(); ++i) {
 		// 	printDebug("MemId: "+std::to_string(clazz->memberId[i]));
 		// }
-		// printDebug("Class " + clazz->getName(compile) + " GetProp: "+name+" "+" has:
+		// printDebug("Class " + clazz->getName(compile) + " GetProp: "+name+"
+		// "+" has:
 		// "+std::to_string((uintptr_t)declarationNode));
 		classId = declaration->classId;
 		if (classId == DefaultClass::functionClassId) {
 			classDeclaration = declaration->classDeclaration;
 		}
 		// clazz->memberId[id];
-		// printDebug("Class " + clazz->getName(compile) + " GetProp: " + name + " " +
+		// printDebug("Class " + clazz->getName(compile) + " GetProp: " + name +
+		// " " +
 		//            " has id: " + std::to_string(id) + " " +
 		//            std::to_string(classId) + " " +
 		//            compile.classes[classId]->getName(compile));
@@ -147,6 +164,20 @@ void GetPropNode::optimize(in_func) {
 			isStatic = true;
 			break;
 		}
+		case NodeType::IF:
+		case NodeType::WHEN:
+		case NodeType::CREATE_CLOSURE:
+		case NodeType::FUNCTION_ACCESS:
+		case NodeType::CONST_VAL:
+		case NodeType::BINARY:
+		case NodeType::CREATE_ARRAY:
+		case NodeType::CREATE_MAP:
+		case NodeType::CREATE_SET:
+		case NodeType::NULL_COALESCING:
+		case NodeType::OPTIONAL_ACCESS:
+		case NodeType::UNARY:
+		case NodeType::CAST:
+		case NodeType::RUNTIME_CAST:
 		case NodeType::CALL:
 		case NodeType::GET_PROP: {
 			break;
@@ -156,7 +187,7 @@ void GetPropNode::optimize(in_func) {
 			break;
 		}
 		default: {
-			throwError("Cannot find caller");
+			throwError("Cannot resolve target expression for member access");
 		}
 	}
 	auto clazz = compile.classes[caller->classId];
@@ -172,7 +203,7 @@ void GetPropNode::optimize(in_func) {
 		declaration = it_->second;
 		if (declaration->accessModifier != Lexer::TokenType::PUBLIC &&
 		    (!contextCallClassId || *contextCallClassId != clazz->id)) {
-			throwError("Cannot access private -a member name '" + name + "'");
+			throwError("Cannot access private member name '" + name + "'");
 		}
 		isStatic = true;
 		isVal = declaration->isVal;
@@ -182,7 +213,8 @@ void GetPropNode::optimize(in_func) {
 			classDeclaration = declaration->classDeclaration;
 		}
 	} else if (isStatic) {
-		throwError("Cannot access non static member " + name);
+		throwError("Cannot access non-static member '" + name +
+		           "' from static context");
 	}
 	if (!isStatic) {
 		// a.a = ...
@@ -196,13 +228,15 @@ void GetPropNode::optimize(in_func) {
 		// for (int i = 0; i<clazz->memberId.size(); ++i) {
 		// 	printDebug("MemId: "+std::to_string(clazz->memberId[i]));
 		// }
-		// printDebug("Class " + clazz->getName(compile) + " GetProp: "+name+" "+" has:
+		// printDebug("Class " + clazz->getName(compile) + " GetProp: "+name+"
+		// "+" has:
 		// "+std::to_string((uintptr_t)declarationNode));
 		classId = declaration->classId;
 		if (classId == DefaultClass::functionClassId) {
 			classDeclaration = declaration->classDeclaration;
 		}
-		// std::cerr << ("Class " + clazz->getName(compile) + " GetProp: " + name + " " +
+		// std::cerr << ("Class " + clazz->getName(compile) + " GetProp: " +
+		// name + " " +
 		//               " has id: " + std::to_string(id) + " " +
 		//               std::to_string(classId) + " " +
 		//               compile.classes[classId]->getName(compile) +
@@ -245,24 +279,36 @@ ExprNode *GetPropNode::copy(in_func) {
 	    nullable, accessNullable);
 	newNode->isStore = isStore;
 	newNode->classId = classId;
+	newNode->isForceNonNull = isForceNonNull;
 	newNode->cloneable = cloneable;
 	return newNode;
 }
 
 void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	loadOpcodeLine(in_data, bytecodes);
 	if (!isStatic) {
 		switch (caller->kind) {
 			case NodeType::VAR: {
 				auto varNode = static_cast<VarNode *>(caller);
 				if (!isStore) {
-					if (varNode->isNullable()) {
+					if (varNode->isNullable() || varNode->isForceNonNull) {
 						break;
 					}
-					bytecodes.emplace_back(varNode->declaration->isGlobal
-					                           ? Opcode::GLOBAL_LOAD_MEMBER
-					                           : Opcode::LOCAL_LOAD_MEMBER);
+					if (declaration->isLateInit) {
+						bytecodes.emplace_back(
+						    varNode->declaration->isGlobal
+						        ? Opcode::GLOBAL_LOAD_LATEINIT_MEMBER
+						        : Opcode::LOCAL_LOAD_LATEINIT_MEMBER);
+					} else {
+						bytecodes.emplace_back(varNode->declaration->isGlobal
+						                           ? Opcode::GLOBAL_LOAD_MEMBER
+						                           : Opcode::LOCAL_LOAD_MEMBER);
+					}
 					put_opcode_u32(bytecodes, varNode->declaration->id);
 					put_opcode_u32(bytecodes, id);
+					if (isForceNonNull) {
+						bytecodes.emplace_back(Opcode::CHECK_FORCE_NON_NULL);
+					}
 					if (cloneable) {
 						bytecodes.emplace_back(Opcode::CLONE);
 					}
@@ -302,8 +348,15 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			jumpIfNullPos = bytecodes.size() - context.currentBytecodePos;
 			put_opcode_u32(bytecodes, 0);
 		} else {
-			bytecodes.emplace_back(Opcode::LOAD_MEMBER);
+			if (declaration->isLateInit) {
+				bytecodes.emplace_back(Opcode::LOAD_LATEINIT_MEMBER);
+			} else {
+				bytecodes.emplace_back(Opcode::LOAD_MEMBER);
+			}
 			put_opcode_u32(bytecodes, id);
+			if (isForceNonNull) {
+				bytecodes.emplace_back(Opcode::CHECK_FORCE_NON_NULL);
+			}
 		}
 		return;
 	}
@@ -312,9 +365,10 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		if (isStore) {
 			throwError("Bug: Setnode not ensure store data is non nullable");
 		}
-		warning(in_data, "Access static variables: we recommend call " +
-		                     compile.classes[caller->classId]->getName(compile) + "." +
-		                     context.lexerString[nameId]);
+		warning(in_data,
+		        "Access static variables: we recommend call " +
+		            compile.classes[caller->classId]->getName(compile) + "." +
+		            context.lexerString[nameId]);
 		accessNullable = false;
 	}
 	if (isStore) {
@@ -323,6 +377,9 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	} else {
 		bytecodes.emplace_back(Opcode::LOAD_GLOBAL);
 		put_opcode_u32(bytecodes, id);
+		if (isForceNonNull) {
+			bytecodes.emplace_back(Opcode::CHECK_FORCE_NON_NULL);
+		}
 		if (cloneable) {
 			bytecodes.emplace_back(Opcode::CLONE);
 		}

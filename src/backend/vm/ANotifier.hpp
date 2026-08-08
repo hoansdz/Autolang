@@ -119,6 +119,10 @@ class ANotifier {
 		callFrame->exception = createException(message);
 		callFrame->exception->retain();
 	}
+	template <typename T> inline void throwFatalException(T message) {
+		throwException(message);
+		vm->isFatalException = true;
+	}
 	template <typename... Args>
 	[[nodiscard]] inline AObject *callFunctionObject(AObject *funcObject,
 	                                                 Args &&...args) {
@@ -152,12 +156,66 @@ class ANotifier {
 	inline std::string getClassName(ClassId classId) {
 		return vm->data.classes[classId]->getName(vm->data);
 	}
+	inline std::string getMemberName(ClassId classId, uint32_t index) {
+		auto clazz = vm->data.classes[classId];
+		for (auto &[name, memberIndex] : clazz->memberMap) {
+			if (memberIndex != index)
+				continue;
+			return name;
+		}
+		return "";
+	}
 	inline bool instanceof(AObject *obj, ClassId classId) {
 		return obj->type == classId ||
 		       vm->data.classes[obj->type]->inheritance.get(classId);
 	}
 	std::string toString(AObject *obj);
 	inline void input(AObject *obj) { vm->input(obj); }
+	inline void setMaxManagedMemory(size_t limit) {
+		vm->data.manager.setMaxManagedMemory(limit);
+	}
+	inline size_t getMaxManagedMemory() const {
+		return vm->data.manager.getMaxManagedMemory();
+	}
+	inline size_t getCurrentManagedMemory() const {
+		return vm->data.manager.getCurrentManagedMemory();
+	}
+	inline void addManagedMemory(int64_t delta) {
+		vm->data.manager.addManagedMemory(delta);
+	}
+	static inline std::string formatMemorySize(double bytes) {
+		constexpr double KB = 1024.0;
+		constexpr double MB = 1024.0 * 1024.0;
+		constexpr double GB = 1024.0 * 1024.0 * 1024.0;
+
+		std::ostringstream ss;
+		ss.precision(2);
+		ss << std::fixed;
+
+		if (bytes >= GB) {
+			ss << (bytes / GB) << " GB";
+		} else if (bytes >= MB) {
+			ss << (bytes / MB) << " MB";
+		} else if (bytes >= KB) {
+			ss << (bytes / KB) << " KB";
+		} else if (bytes == 1.0) {
+			return "1 byte";
+		} else {
+			return std::to_string(static_cast<uint64_t>(bytes)) + " bytes";
+		}
+
+		return ss.str();
+	}
+	inline void throwMemoryLimitExceeded(int64_t projectedMemory = 0) {
+		int64_t current = projectedMemory > 0
+		                      ? static_cast<int64_t>(projectedMemory)
+		                      : getCurrentManagedMemory();
+		std::string msg =
+		    "Memory limit exceeded: " + formatMemorySize(current) +
+		    " used (max limit: " + formatMemorySize(getMaxManagedMemory()) +
+		    ")";
+		throwFatalException(msg);
+	}
 	inline void release(AObject *obj) { vm->data.manager.release(obj); }
 	ANotifier(AVM *vm) : vm(vm) {}
 };

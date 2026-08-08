@@ -34,6 +34,7 @@ void RangeNode::optimize(in_func) {
 }
 
 void RangeNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	loadOpcodeLine(in_data, bytecodes);
 	from->putBytecodes(in_data, bytecodes);
 	to->putBytecodes(in_data, bytecodes);
 }

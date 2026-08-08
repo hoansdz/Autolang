@@ -71,7 +71,12 @@ ExprNode *BinaryNode::leftOpRight(in_func, ConstValueNode *l,
 					break;
 				}
 			}
-			throw ParserError(line, "What happen");
+			throw ParserError(
+			    line, "Cannot use operator '" +
+			              Lexer::Token(0, op).toString(context) + "' between " +
+			              compile.classes[l->classId]->getName(compile) +
+			              " and " +
+			              compile.classes[r->classId]->getName(compile));
 		}
 		case Lexer::TokenType::AND_AND:
 			return context.constValuePool.push(line, l->obj->b && r->obj->b);
@@ -152,9 +157,9 @@ ExprNode *BinaryNode::resolve(in_func) {
 		auto value = leftOpRight(in_data, l, r);
 		left = nullptr;
 		right = nullptr;
-		ExprNode::deleteNode(l);
-		ExprNode::deleteNode(r);
-		ExprNode::deleteNode(this);
+		// ExprNode::deleteNode(l);
+		// ExprNode::deleteNode(r);
+		// ExprNode::deleteNode(this);
 		return value;
 	} catch (const std::runtime_error &err) {
 		// throwError("Cannot use " + Lexer::Token(0, op).toString(context) +
@@ -207,7 +212,8 @@ void BinaryNode::optimize(in_func) {
 				    "Cannot use operator '" +
 				    Lexer::Token(0, op).toString(context) +
 				    "' with nullable value: " + left->getClassName(in_data) +
-				    " + " + right->getClassName(in_data));
+				    " " + Lexer::Token(0, op).toString(context) + " " +
+				    right->getClassName(in_data));
 			}
 			if (right->kind == NodeType::RANGE &&
 			    left->classId != DefaultClass::intClassId) {
@@ -221,7 +227,7 @@ void BinaryNode::optimize(in_func) {
 		case Lexer::TokenType::PLUS: {
 			if (left->kind == NodeType::CLASS_ACCESS ||
 			    right->kind == NodeType::CLASS_ACCESS) {
-				throwError("Expected value if use operator '" +
+				throwError("Expected value operand when using operator '" +
 				           Lexer::Token(0, op).toString(context) + "'");
 			}
 
@@ -329,7 +335,8 @@ void BinaryNode::optimize(in_func) {
 				    "Cannot use operator '" +
 				    Lexer::Token(0, op).toString(context) +
 				    "' with nullable value: " + left->getClassName(in_data) +
-				    " + " + right->getClassName(in_data));
+				    " " + Lexer::Token(0, op).toString(context) + " " +
+				    right->getClassName(in_data));
 			}
 			break;
 		}
@@ -338,7 +345,7 @@ void BinaryNode::optimize(in_func) {
 		case Lexer::TokenType::SLASH: {
 			if (left->kind == NodeType::CLASS_ACCESS ||
 			    right->kind == NodeType::CLASS_ACCESS) {
-				throwError("Expected value if use operator '" +
+				throwError("Expected value operand when using operator '" +
 				           Lexer::Token(0, op).toString(context) + "'");
 			}
 			if (left->classId == Autolang::DefaultClass::boolClassId) {
@@ -357,14 +364,15 @@ void BinaryNode::optimize(in_func) {
 				    "Cannot use operator '" +
 				    Lexer::Token(0, op).toString(context) +
 				    "' with nullable value: " + left->getClassName(in_data) +
-				    " + " + right->getClassName(in_data));
+				    " " + Lexer::Token(0, op).toString(context) + " " +
+				    right->getClassName(in_data));
 			}
 			break;
 		}
 		case Lexer::TokenType::EQEQ: {
 			if (left->kind == NodeType::CLASS_ACCESS ||
 			    right->kind == NodeType::CLASS_ACCESS) {
-				throwError("Expected value if use operator '" +
+				throwError("Expected value operand when using operator '" +
 				           Lexer::Token(0, op).toString(context) + "'");
 			}
 			classId = Autolang::DefaultClass::boolClassId;
@@ -384,7 +392,7 @@ void BinaryNode::optimize(in_func) {
 		case Lexer::TokenType::NOTEQ: {
 			if (left->kind == NodeType::CLASS_ACCESS ||
 			    right->kind == NodeType::CLASS_ACCESS) {
-				throwError("Expected value if use operator '" +
+				throwError("Expected value operand when using operator '" +
 				           Lexer::Token(0, op).toString(context) + "'");
 			}
 			classId = Autolang::DefaultClass::boolClassId;
@@ -405,7 +413,7 @@ void BinaryNode::optimize(in_func) {
 		case Lexer::TokenType::EQEQEQ: {
 			if (left->kind == NodeType::CLASS_ACCESS ||
 			    right->kind == NodeType::CLASS_ACCESS) {
-				throwError("Expected value if use operator '" +
+				throwError("Expected value operand when using operator '" +
 				           Lexer::Token(0, op).toString(context) + "'");
 			}
 			classId = DefaultClass::boolClassId;
@@ -414,7 +422,7 @@ void BinaryNode::optimize(in_func) {
 		default: {
 			if (left->kind == NodeType::CLASS_ACCESS ||
 			    right->kind == NodeType::CLASS_ACCESS) {
-				throwError("Expected value if use operator '" +
+				throwError("Expected value operand when using operator '" +
 				           Lexer::Token(0, op).toString(context) + "'");
 			}
 			if (left->isNullable() || right->isNullable())
@@ -422,7 +430,8 @@ void BinaryNode::optimize(in_func) {
 				    "Cannot use operator '" +
 				    Lexer::Token(0, op).toString(context) +
 				    "' with nullable value: " + left->getClassName(in_data) +
-				    " + " + right->getClassName(in_data));
+				    " " + Lexer::Token(0, op).toString(context) + " " +
+				    right->getClassName(in_data));
 			break;
 		}
 	}
@@ -451,9 +460,15 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 	switch (left->kind) {
 		case NodeType::VAR: {
 			auto leftNode = static_cast<VarNode *>(left);
+			if (leftNode->isForceNonNull) {
+				return false;
+			}
 			switch (right->kind) {
 				case NodeType::VAR: {
 					auto rightNode = static_cast<VarNode *>(right);
+					if (rightNode->isForceNonNull) {
+						return false;
+					}
 					if (leftNode->declaration->isGlobal) {
 						bytecodes.emplace_back(rightNode->declaration->isGlobal
 						                           ? Opcode::GLOBAL_CAL_GLOBAL
@@ -483,6 +498,14 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 				}
 				case NodeType::GET_PROP: {
 					auto rightNode = static_cast<GetPropNode *>(right);
+					if (rightNode->isForceNonNull ||
+					    rightNode->caller->kind != NodeType::VAR ||
+					    rightNode->accessNullable ||
+					    rightNode->declaration->isLateInit ||
+					    static_cast<VarNode *>(rightNode->caller)
+					        ->isForceNonNull) {
+						return false;
+					}
 					if (rightNode->isStatic) {
 						rightNode->caller->putBytecodesIfMustBeCalled(
 						    in_data, bytecodes);
@@ -493,10 +516,6 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 						put_opcode_u32(bytecodes, leftNode->declaration->id);
 						put_opcode_u32(bytecodes, rightNode->declaration->id);
 						return true;
-					}
-					if (rightNode->caller->kind != NodeType::VAR ||
-					    rightNode->accessNullable) {
-						return false;
 					}
 					auto caller = static_cast<VarNode *>(rightNode->caller);
 					if (leftNode->declaration->isGlobal) {
@@ -530,6 +549,9 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 			switch (right->kind) {
 				case NodeType::VAR: {
 					auto rightNode = static_cast<VarNode *>(right);
+					if (rightNode->isForceNonNull) {
+						return false;
+					}
 					bytecodes.emplace_back(rightNode->declaration->isGlobal
 					                           ? Opcode::CONST_CAL_GLOBAL
 					                           : Opcode::CONST_CAL_LOCAL);
@@ -540,6 +562,14 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 				}
 				case NodeType::GET_PROP: {
 					auto rightNode = static_cast<GetPropNode *>(right);
+					if (rightNode->isForceNonNull ||
+					    rightNode->caller->kind != NodeType::VAR ||
+					    rightNode->accessNullable ||
+					    rightNode->declaration->isLateInit ||
+					    static_cast<VarNode *>(rightNode->caller)
+					        ->isForceNonNull) {
+						return false;
+					}
 					if (rightNode->isStatic) {
 						rightNode->caller->putBytecodesIfMustBeCalled(
 						    in_data, bytecodes);
@@ -548,10 +578,6 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 						put_opcode_u32(bytecodes, leftNode->id);
 						put_opcode_u32(bytecodes, rightNode->declaration->id);
 						return true;
-					}
-					if (rightNode->caller->kind != NodeType::VAR ||
-					    rightNode->accessNullable) {
-						return false;
 					}
 					auto caller = static_cast<VarNode *>(rightNode->caller);
 					bytecodes.emplace_back(
@@ -571,12 +597,22 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 		}
 		case NodeType::GET_PROP: {
 			auto leftNode = static_cast<GetPropNode *>(left);
+			if (leftNode->declaration->isLateInit || leftNode->accessNullable ||
+			    leftNode->isForceNonNull ||
+			    (leftNode->caller->isNullableNode() &&
+			     static_cast<NullableNode *>(leftNode->caller)
+			         ->isForceNonNull)) {
+				return false;
+			}
 			if (leftNode->isStatic) {
 				leftNode->caller->putBytecodesIfMustBeCalled(in_data,
 				                                             bytecodes);
 				switch (right->kind) {
 					case NodeType::VAR: {
 						auto rightNode = static_cast<VarNode *>(right);
+						if (rightNode->isForceNonNull) {
+							return false;
+						}
 						bytecodes.emplace_back(rightNode->declaration->isGlobal
 						                           ? Opcode::GLOBAL_CAL_GLOBAL
 						                           : Opcode::GLOBAL_CAL_LOCAL);
@@ -595,6 +631,14 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 					}
 					case NodeType::GET_PROP: {
 						auto rightNode = static_cast<GetPropNode *>(right);
+						if (rightNode->isForceNonNull ||
+						    rightNode->caller->kind != NodeType::VAR ||
+						    rightNode->accessNullable ||
+						    rightNode->declaration->isLateInit ||
+						    static_cast<VarNode *>(rightNode->caller)
+						        ->isForceNonNull) {
+							return false;
+						}
 						if (rightNode->isStatic) {
 							rightNode->caller->putBytecodesIfMustBeCalled(
 							    in_data, bytecodes);
@@ -605,10 +649,6 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 							put_opcode_u32(bytecodes,
 							               rightNode->declaration->id);
 							return true;
-						}
-						if (rightNode->caller->kind != NodeType::VAR ||
-						    rightNode->accessNullable) {
-							return false;
 						}
 						auto caller = static_cast<VarNode *>(rightNode->caller);
 						bytecodes.emplace_back(
@@ -626,14 +666,16 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 				}
 				return false;
 			}
-			if (leftNode->caller->kind != NodeType::VAR ||
-			    leftNode->accessNullable) {
+			if (leftNode->caller->kind != NodeType::VAR) {
 				return false;
 			}
 			auto leftCaller = static_cast<VarNode *>(leftNode->caller);
 			switch (right->kind) {
 				case NodeType::VAR: {
 					auto rightNode = static_cast<VarNode *>(right);
+					if (rightNode->isForceNonNull) {
+						return false;
+					}
 					if (leftCaller->declaration->isGlobal) {
 						bytecodes.emplace_back(
 						    rightNode->declaration->isGlobal
@@ -669,6 +711,13 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 				}
 				case NodeType::GET_PROP: {
 					auto rightNode = static_cast<GetPropNode *>(right);
+					if (rightNode->isForceNonNull ||
+					    rightNode->caller->kind != NodeType::VAR ||
+					    rightNode->declaration->isLateInit ||
+					    static_cast<VarNode *>(rightNode->caller)
+					        ->isForceNonNull) {
+						return false;
+					}
 					if (rightNode->isStatic) {
 						rightNode->caller->putBytecodesIfMustBeCalled(
 						    in_data, bytecodes);
@@ -681,9 +730,6 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 						put_opcode_u32(bytecodes, leftNode->declaration->id);
 						put_opcode_u32(bytecodes, rightNode->declaration->id);
 						return true;
-					}
-					if (rightNode->caller->kind != NodeType::VAR) {
-						return false;
 					}
 					auto caller = static_cast<VarNode *>(rightNode->caller);
 					if (leftCaller->declaration->isGlobal) {
@@ -721,6 +767,7 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 }
 
 void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	loadOpcodeLine(in_data, bytecodes);
 	optimized = putOptimizedBytecode(in_data, bytecodes, op, left, right);
 	if (optimized) {
 		return;
@@ -790,7 +837,8 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					return;
 				}
 				default: {
-					throwError("In condition keywords doesn't support now");
+					throwError("Operator 'in' is currently only supported for "
+					           "Range types");
 				}
 			}
 		}

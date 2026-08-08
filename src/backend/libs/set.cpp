@@ -17,12 +17,14 @@ template <typename SetType, bool ReleaseKey>
 static void destroySet(ANotifier &notifier, void *unorderedSetData) {
 	auto unorderedSetData_ = static_cast<AUnorderedSet *>(unorderedSetData);
 	auto set = static_cast<SetType *>(unorderedSetData_->data);
+	size_t setSize = set->size();
 
 	if constexpr (ReleaseKey) {
 		for (auto &key : *set) {
 			notifier.release(key);
 		}
 	}
+	notifier.addManagedMemory(-static_cast<int64_t>(setSize * 32));
 
 	delete set;
 	delete unorderedSetData_;
@@ -73,7 +75,9 @@ AObject *add(NativeFuncInData) {
 				return nullptr;
 			}
 			auto set = static_cast<IntHashSet *>(unorderedSetData->data);
-			set->insert(element->i);
+			if (set->insert(element->i).second) {
+				notifier.addManagedMemory(32);
+			}
 			break;
 		}
 
@@ -83,7 +87,9 @@ AObject *add(NativeFuncInData) {
 				return nullptr;
 			}
 			auto set = static_cast<FloatHashSet *>(unorderedSetData->data);
-			set->insert(element->f);
+			if (set->insert(element->f).second) {
+				notifier.addManagedMemory(32);
+			}
 			break;
 		}
 
@@ -97,6 +103,7 @@ AObject *add(NativeFuncInData) {
 			if (it == set->end()) {
 				element->retain();
 				set->insert(element);
+				notifier.addManagedMemory(32);
 			}
 			break;
 		}
@@ -107,6 +114,7 @@ AObject *add(NativeFuncInData) {
 			if (it == set->end()) {
 				element->retain();
 				set->insert(element);
+				notifier.addManagedMemory(32);
 			}
 		}
 	}
@@ -165,16 +173,20 @@ AObject *remove(NativeFuncInData) {
 		case DefaultClass::intClassId: {
 			auto set = static_cast<IntHashSet *>(unorderedSetData->data);
 			auto it = set->find(element->i);
-			if (it != set->end())
+			if (it != set->end()) {
 				set->erase(it);
+				notifier.addManagedMemory(-32);
+			}
 			break;
 		}
 
 		case DefaultClass::floatClassId: {
 			auto set = static_cast<FloatHashSet *>(unorderedSetData->data);
 			auto it = set->find(element->f);
-			if (it != set->end())
+			if (it != set->end()) {
 				set->erase(it);
+				notifier.addManagedMemory(-32);
+			}
 			break;
 		}
 
@@ -184,6 +196,7 @@ AObject *remove(NativeFuncInData) {
 			if (it != set->end()) {
 				notifier.release(*it);
 				set->erase(it);
+				notifier.addManagedMemory(-32);
 			}
 			break;
 		}
@@ -194,6 +207,7 @@ AObject *remove(NativeFuncInData) {
 			if (it != set->end()) {
 				notifier.release(*it);
 				set->erase(it);
+				notifier.addManagedMemory(-32);
 			}
 		}
 	}
@@ -470,27 +484,37 @@ AObject *clear(NativeFuncInData) {
 
 	switch (unorderedSetData->type) {
 		case DefaultClass::intClassId: {
-			static_cast<IntHashSet *>(unorderedSetData->data)->clear();
+			auto set = static_cast<IntHashSet *>(unorderedSetData->data);
+			size_t setSize = set->size();
+			set->clear();
+			notifier.addManagedMemory(-static_cast<int64_t>(setSize * 32));
 			break;
 		}
 		case DefaultClass::floatClassId: {
-			static_cast<FloatHashSet *>(unorderedSetData->data)->clear();
+			auto set = static_cast<FloatHashSet *>(unorderedSetData->data);
+			size_t setSize = set->size();
+			set->clear();
+			notifier.addManagedMemory(-static_cast<int64_t>(setSize * 32));
 			break;
 		}
 		case DefaultClass::stringClassId: {
 			auto set = static_cast<StringHashSet *>(unorderedSetData->data);
+			size_t setSize = set->size();
 			for (auto &key : *set) {
 				notifier.release(key);
 			}
 			set->clear();
+			notifier.addManagedMemory(-static_cast<int64_t>(setSize * 32));
 			break;
 		}
 		default: {
 			auto set = static_cast<ObjectHashSet *>(unorderedSetData->data);
+			size_t setSize = set->size();
 			for (auto &key : *set) {
 				notifier.release(key);
 			}
 			set->clear();
+			notifier.addManagedMemory(-static_cast<int64_t>(setSize * 32));
 		}
 	}
 

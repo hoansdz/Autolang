@@ -91,9 +91,9 @@ void FunctionAccessNode::optimize(in_func) {
 	}
 
 	if (*classDeclaration->classId != DefaultClass::functionClassId) {
-		throwError("Expected Function but " +
+		throwError("Expected Function type, but '" +
 		           compile.classes[*classDeclaration->classId]->getName(compile) +
-		           " found");
+		           "' found");
 	}
 
 	{
@@ -121,7 +121,7 @@ void FunctionAccessNode::optimize(in_func) {
 					}
 				}
 				if (matchFuncId) {
-					throwError("Ambiguous call " + func->getName(compile));
+					throwError("Ambiguous function call: overload conflict for '" + func->getName(compile) + "'");
 				}
 				matchFuncId = funcId;
 			nextFunc:;
@@ -130,8 +130,8 @@ void FunctionAccessNode::optimize(in_func) {
 
 		if (!matchFuncId) {
 			throwError(
-			    "Cannot find function name: " + context.lexerString[nameId] +
-			    " has arguments " + classDeclaration->getName(in_data));
+			    "Cannot find function '" + context.lexerString[nameId] +
+			    "' matching signature: " + classDeclaration->getName(in_data));
 		}
 
 		funcId = *matchFuncId;
@@ -143,8 +143,8 @@ matched:;
 	if (!(func->functionFlags & FunctionFlags::FUNC_IS_STATIC)) {
 		if (!caller) {
 			throwError(
-			    "Expected static function but found non static function: " +
-			    compile.functions[*funcId]->getName(compile));
+			    "Expected static function but found non-static function: '" +
+			    compile.functions[*funcId]->getName(compile) + "'");
 		}
 		object = caller;
 		return;

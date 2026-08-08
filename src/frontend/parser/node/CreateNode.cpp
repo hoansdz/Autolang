@@ -6,6 +6,7 @@
 #include "shared/ClassFlags.hpp"
 #include "shared/DefaultFunction.hpp"
 #include "shared/Type.hpp"
+#include "frontend/ACompiler.hpp"
 #include <functional>
 
 namespace Autolang {
@@ -17,26 +18,26 @@ void DeclarationNode::optimize(in_func) {
 	{
 		auto it = context.globalFunction.find(baseName);
 		if (it != context.globalFunction.end()) {
-			throwError("Cannot declare variable with the same name as function "
-			           "name: " +
-			           name);
+			throwError(
+			    "Cannot declare variable with the same name as function: '" +
+			    name + "'");
 		}
 	}
 	if (contextCallClassId) {
 		auto classInfo = context.classInfo[*contextCallClassId];
 		auto it = classInfo->allFunction.find(baseName);
 		if (it != classInfo->allFunction.end()) {
-			throwError("Cannot declare variable with the same name as function "
-			           "name: " +
-			           name);
+			throwError(
+			    "Cannot declare variable with the same name as function: '" +
+			    name + "'");
 		}
 	}
 	{
 		auto it = context.defaultClassMap.find(baseName);
 		if (it != context.defaultClassMap.end()) {
-			throwError("Cannot declare variable with the same name as "
-			           "class name: " +
-			           name);
+			throwError(
+			    "Cannot declare variable with the same name as class: '" +
+			    name + "'");
 		}
 	}
 	if (classDeclaration) {
@@ -50,9 +51,7 @@ void DeclarationNode::optimize(in_func) {
 		auto it = context.defaultClassMap.find(
 		    classDeclaration->baseClassLexerStringId);
 		if (it == context.defaultClassMap.end()) {
-			throwError(
-			    std::string("DeclarationNode: Cannot find class name : ") +
-			    baseClassName);
+			throwError("Cannot find class name: '" + baseClassName + "'");
 		}
 		auto classInfo = context.classInfo[it->second];
 		if (!classInfo->genericData) {
@@ -72,7 +71,7 @@ void DeclarationNode::optimize(in_func) {
 		}
 		// Generics
 		if (!classDeclaration->classId) {
-			throwError("Unresolved class id");
+			throwError("Unresolved class ID for declaration '" + name + "'");
 		}
 		classId = *classDeclaration->classId;
 		// if (classId == DefaultClass::functionClassId) {
@@ -144,7 +143,7 @@ void CreateConstructorNode::pushFunction(in_func) {
 	auto *clazz = compile.classes[classId];
 	auto *classInfo = context.classInfo[classId];
 	funcId = compile.registerFunction<true>(
-	    clazz, context.lexerString[nameId],
+	    mode->path.c_str(), clazz, context.lexerString[nameId],
 	    new ClassId[parameter->parameters.size()]{},
 	    parameter->parameters.size(), classId,
 	    functionFlags | FunctionFlags::FUNC_IS_CONSTRUCTOR);
@@ -209,7 +208,7 @@ void CreateConstructorNode::optimize(in_func) {
 	auto it = hash.find(funcInfo->hash);
 	if (it != hash.end() && compile.functions[it->second]->getName(compile) ==
 	                            func->getName(compile)) {
-		throwError("Redefined function : " + funcInfo->toString(in_data));
+		throwError("Redefined function: " + funcInfo->toString(in_data));
 	}
 	hash[funcInfo->hash] = func->id;
 
@@ -277,8 +276,8 @@ void CreateClassNode::optimize(in_func) {
 		auto it = context.globalFunction.find(nameId);
 		if (it != context.globalFunction.end()) {
 			throwError(
-			    "Cannot declare class with the same name as function name " +
-			    name);
+			    "Cannot declare class with the same name as function: '" +
+			    name + "'");
 		}
 	}
 	auto classInfo = context.classInfo[classId];
@@ -287,9 +286,10 @@ void CreateClassNode::optimize(in_func) {
 		     classInfo->genericData->genericDeclarations) {
 			if (context.defaultClassMap.find(genericDeclaration->nameId) !=
 			    context.defaultClassMap.end()) {
-				throwError("Cannot declare generics type with the same name as "
-				           "class name " +
-				           context.lexerString[genericDeclaration->nameId]);
+				throwError("Cannot declare generic type parameter with the "
+				           "same name as class: '" +
+				           context.lexerString[genericDeclaration->nameId] +
+				           "'");
 			}
 		}
 	}
@@ -300,8 +300,8 @@ void CreateClassNode::optimize(in_func) {
 		}
 		// std::cerr<<"B "<<name<<"\n";
 		if (!superDeclaration->classId) {
-			throwError("Unresolved class name " +
-			           superDeclaration->getName(in_data));
+			throwError("Unresolved superclass name: '" +
+			           superDeclaration->getName(in_data) + "'");
 		}
 		auto clazz = compile.classes[classId];
 		clazz->parentId = *superDeclaration->classId;
@@ -321,8 +321,9 @@ void CreateClassNode::loadSuper(in_func) {
 		}
 
 		if (superClass->classFlags & ClassFlags::CLASS_NO_EXTENDS) {
-			throwError("@no_extends is already applied to " +
-			           superClass->getName(compile));
+			throwError("Cannot inherit from class '" +
+			           superClass->getName(compile) +
+			           "' because it is marked @no_extends");
 		}
 
 		loadedSuper = true;
@@ -338,7 +339,8 @@ void CreateClassNode::loadSuper(in_func) {
 		}
 
 		if (superClass->inheritance.get(classId)) {
-			throwError("Cyclic inheritance is not allowed.");
+			throwError("Cyclic inheritance detected for class '" +
+			           compile.classes[classId]->getName(compile) + "'");
 		}
 
 		auto memberToFind = HashMap<std::string_view, DeclarationNode *>();
@@ -410,9 +412,9 @@ void CreateClassNode::loadSuper(in_func) {
 					      FunctionFlags::FUNC_IS_VIRTUAL)) {
 						if (superFunc->functionFlags &
 						    FunctionFlags::FUNC_NO_OVERRIDE) {
-							throwError("Function " +
+							throwError("Cannot override function " +
 							           superFuncInfo->toString(in_data) +
-							           " is marked @no_override");
+							           " because it is marked @no_override");
 						}
 						ClassId parentId = clazz->parentId;
 						while (true) {

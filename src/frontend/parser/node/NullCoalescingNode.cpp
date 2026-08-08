@@ -58,13 +58,14 @@ void NullCoalescingNode::optimize(in_func) {
 	}
 	classId = left->classId;
 	if (left->classId != right->classId) {
-		throwError("Left and right must same type");
+		throwError("Left and right operands of null coalescing operator (??) must be of the same type");
 	}
 	nullable = right->isNullable();
 }
 
 void NullCoalescingNode::putBytecodes(in_func,
                                       std::vector<uint8_t> &bytecodes) {
+										loadOpcodeLine(in_data, bytecodes);
 	if (!left) {
 		right->putBytecodes(in_data, bytecodes);
 		return;

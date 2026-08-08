@@ -1,7 +1,6 @@
 #ifndef COMPILED_PROGRAM_HPP
 #define COMPILED_PROGRAM_HPP
 
-#include "third_party/ankerl/unordered_dense.h"
 #include "shared/AClass.hpp"
 #include "shared/AObject.hpp"
 #include "shared/AString.hpp"
@@ -11,6 +10,7 @@
 #include "shared/ObjectManager.hpp"
 #include "shared/StackAllocator.hpp"
 #include "shared/StringArena.hpp"
+#include "third_party/ankerl/unordered_dense.h"
 #include <cstdint>
 #include <tuple>
 #include <vector>
@@ -26,6 +26,21 @@ struct PairHash {
 	}
 };
 
+struct OpcodeLine {
+	uint32_t line;
+	uint32_t opcodeIndex;
+	OpcodeLine(uint32_t line, uint32_t opcodeIndex)
+	    : line(line), opcodeIndex(opcodeIndex) {}
+};
+
+struct MainOpcodeLine {
+	uint32_t line;
+	uint32_t opcodeIndex;
+	const char *path;
+	MainOpcodeLine(uint32_t line, uint32_t opcodeIndex, const char *path)
+	    : line(line), opcodeIndex(opcodeIndex), path(path) {}
+};
+
 struct CompiledProgram {
 	// Use when finished resize vector
 	Function *main;
@@ -36,6 +51,8 @@ struct CompiledProgram {
 	std::vector<uint32_t> allGenericType;
 	std::vector<uint32_t> allMemberId;
 	std::vector<uint32_t> allCatchPosition;
+	std::vector<OpcodeLine> allOpcodeLines;
+	std::vector<MainOpcodeLine> allMainFunctionOpcodeLines;
 	std::vector<bool> allMemberNullable;
 	std::vector<bool> allGenericTypeNullable;
 	StringArena stringArena;
@@ -51,12 +68,12 @@ struct CompiledProgram {
 	void destroy();
 	template <bool isConstructor = false>
 	FunctionId registerFunction( // Return value
-	    AClass *clazz, std::string name, ClassId *args, uint32_t argSize,
-	    ClassId returnId, uint32_t functionFlags);
+	    const char *path, AClass *clazz, std::string name, ClassId *args,
+	    uint32_t argSize, ClassId returnId, uint32_t functionFlags);
 	inline FunctionId registerFunction( // No return value
-	    AClass *clazz, std::string name, ClassId *args, uint32_t argSize,
-	    uint32_t functionFlags) {
-		return registerFunction(clazz, std::move(name), args, argSize,
+	    const char *path, AClass *clazz, std::string name, ClassId *args,
+	    uint32_t argSize, uint32_t functionFlags) {
+		return registerFunction(path, clazz, std::move(name), args, argSize,
 		                        Autolang::DefaultClass::voidClassId,
 		                        functionFlags);
 	}
@@ -65,7 +82,7 @@ struct CompiledProgram {
 	Offset registerConstPool(
 	    HashMap<AString *, uint32_t, AString::Hash, AString::Equal> &map,
 	    AString *value);
-	Offset registerEnumConstPool(ClassId classId); //Enum
+	Offset registerEnumConstPool(ClassId classId); // Enum
 	template <typename T>
 	Offset registerConstPool(HashMap<T, uint32_t> &map, T value);
 	~CompiledProgram();

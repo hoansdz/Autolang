@@ -18,7 +18,7 @@ void CreateSetNode::optimize(in_func) {
 		classId = *classDeclaration->classId;
 	}
 	if (classId == DefaultClass::nullClassId) {
-		throwError("Type mismatch in set initialization");
+		throwError("Cannot infer element type for Set initialization");
 	}
 	auto clazz = compile.classes[classId];
 	auto classInfo = context.classInfo[classId];
@@ -63,7 +63,7 @@ void CreateSetNode::optimize(in_func) {
 					continue;
 				}
 				// std::cerr << compile.classes[classId]->getName(compile) << "\n";
-				throwError("Value in Set must non null");
+				throwError("Elements in Set must be non-null");
 			}
 		}
 		if (valueMustBeClassId == DefaultClass::anyClassId) {

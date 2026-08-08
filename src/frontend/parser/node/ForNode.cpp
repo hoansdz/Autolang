@@ -36,7 +36,7 @@ void ForNode::optimize(in_func) {
 					break;
 				}
 				default: {
-					throwError("Detach value must be Int");
+					throwError("Loop control variable for range must be of type Int");
 				}
 			}
 			auto rangeNode = static_cast<RangeNode *>(data);
@@ -51,7 +51,7 @@ void ForNode::optimize(in_func) {
 					break;
 				}
 				default: {
-					throwError("From value must be Int");
+					throwError("Range start value must be of type Int");
 				}
 			}
 			rangeNode->to->optimize(in_data);
@@ -60,7 +60,7 @@ void ForNode::optimize(in_func) {
 					break;
 				}
 				default: {
-					throwError("To value must be Int");
+					throwError("Range end value must be of type Int");
 				}
 			}
 			if (rangeNode->to->kind == NodeType::CONST_VAL) {
@@ -70,14 +70,14 @@ void ForNode::optimize(in_func) {
 			break;
 		}
 		case NodeType::CLASS_ACCESS: {
-			throwError("Expected value");
+			throwError("Expected iterable value in 'for' loop");
 		}
 		default: {
 			data->optimize(in_data);
 			auto classInfo = context.classInfo[data->classId];
 			if (classInfo->genericTypeId.empty()) {
-				throwError("Cannot loop in " +
-				           compile.classes[data->classId]->getName(compile));
+				throwError("Cannot iterate over type '" +
+				           compile.classes[data->classId]->getName(compile) + "'");
 			}
 			auto clazz = compile.classes[data->classId];
 			auto baseClassId = clazz->genericBaseClassId;
@@ -103,7 +103,7 @@ void ForNode::optimize(in_func) {
 								if (!detach->isNullable() &&
 								    classInfo->genericTypeId[0]->nullable) {
 									throwError(
-									    "Cannot detach non nullable variable");
+									    "Cannot assign nullable element to non-nullable variable");
 								}
 								break;
 							}
@@ -120,7 +120,7 @@ void ForNode::optimize(in_func) {
 					break;
 				}
 				default: {
-					throwError("Cannot loop in " + clazz->getName(compile));
+					throwError("Cannot iterate over type '" + clazz->getName(compile) + "'");
 				}
 			}
 			break;
@@ -229,6 +229,7 @@ bool ForNode::putOptimizedRangeBytecode(in_func,
 }
 
 void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	loadOpcodeLine(in_data, bytecodes);
 	BytecodePos jumpIfFalseByte;
 	std::optional<BytecodePos> setupJumpIfFalse;
 	switch (data->kind) {
@@ -283,7 +284,7 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			auto clazz = compile.classes[data->classId];
 			auto classInfo = context.classInfo[data->classId];
 			if (classInfo->genericTypeId.empty()) {
-				throwError("Cannot loop in " + clazz->getName(compile));
+				throwError("Cannot iterate over type '" + clazz->getName(compile) + "'");
 			}
 			auto baseClassId = clazz->genericBaseClassId;
 			switch (baseClassId) {
@@ -315,7 +316,7 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					break;
 				}
 				default: {
-					throwError("Cannot loop in " + clazz->getName(compile));
+					throwError("Cannot iterate over type '" + clazz->getName(compile) + "'");
 				}
 			}
 			break;

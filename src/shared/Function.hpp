@@ -13,8 +13,10 @@
 namespace Autolang {
 
 struct Function {
+	const char* path;
 	StringArenaOffset nameStringOffset;
 	uint32_t argSize;
+	uint32_t opcodeIndex;
 	ClassId returnId;
 	uint32_t functionFlags;
 	uint32_t maxDeclaration;

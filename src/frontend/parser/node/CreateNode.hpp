@@ -22,6 +22,7 @@ struct DeclarationNode : HasClassIdNode {
 	bool nullable;
 	bool mustInferenceNullable = false;
 	bool loaded = false;
+	bool isLateInit = false;
 	DeclarationNode(uint32_t line, std::optional<ClassId> contextCallClassId,
 	                LexerStringId baseName, std::string name,
 	                ClassDeclaration *classDeclaration, bool isVal,

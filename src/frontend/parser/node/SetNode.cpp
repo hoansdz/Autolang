@@ -180,11 +180,11 @@ void SetNode::optimize(in_func) {
 	}
 
 	if (justDetachStatic && !value->isStaticValue()) {
-		throwError("Value must be static");
+		throwError("Assigned value must be a static value");
 	}
 
 	if (value->classId == DefaultClass::voidClassId) {
-		throwError("Cannot detach void value");
+		throwError("Cannot assign expression of type 'Void'");
 	}
 
 	if (value->isNullable() && op != Lexer::TokenType::EQUAL) {
@@ -207,7 +207,7 @@ void SetNode::optimize(in_func) {
 				if (detachNode->declaration->classId ==
 				    Autolang::DefaultClass::nullClassId) {
 					if (value->classId == Autolang::DefaultClass::nullClassId) {
-						throwError("Ambigous inference member class id");
+						throwError("Ambiguous type inference for member variable");
 					}
 					detachNode->declaration->classId = value->classId;
 					if (value->classId == DefaultClass::functionClassId) {
@@ -363,9 +363,9 @@ void SetNode::optimize(in_func) {
 				if (!detach->isNullable() && node->nullable) {
 					std::string detachName;
 					detachName = detachNode->declaration->name;
-					throwError("Cannot detach nullable variable " +
+					throwError("Cannot assign nullable variable '" +
 					           node->declaration->name +
-					           " to non null variable " + detachName);
+					           "' to non-null variable '" + detachName + "'");
 				}
 				// if (detachNode->isVal && node->isVal) {
 				// 	node->cloneable = false;
@@ -379,10 +379,10 @@ void SetNode::optimize(in_func) {
 					detachName =
 					    static_cast<AccessNode *>(detach)->declaration->name;
 					throwError(
-					    "Cannot detach nullable value " +
+					    "Cannot assign nullable return value of '" +
 					    context.lexerString[static_cast<CallNode *>(value)
 					                            ->nameId] +
-					    " to non null variable " + detachName);
+					    "' to non-null variable '" + detachName + "'");
 				}
 				break;
 			}
@@ -398,11 +398,10 @@ void SetNode::optimize(in_func) {
 			           "' with nullable value");
 		}
 	} else if (value->isNullable()) {
-		throwError("Cannot detach '" +
-		           compile.classes[detach->classId]->getName(compile) +
-		           "' with '" +
+		throwError("Cannot assign nullable type '" +
 		           compile.classes[value->classId]->getName(compile) +
-		           "?' (Nullable value)");
+		           "?' to non-null variable of type '" +
+		           compile.classes[detach->classId]->getName(compile) + "'");
 	}
 
 	if (detach->classId == value->classId) {
@@ -476,7 +475,7 @@ void SetNode::optimize(in_func) {
 					value->optimize(in_data);
 					return;
 				default:
-					throwError("What happen");
+					throwError("Invalid cast target type");
 			}
 		} catch (const ParserError &err) {
 			throwError("Cannot cast " +
@@ -510,7 +509,11 @@ void SetNode::optimize(in_func) {
 			           (value->isNullable() ? "?" : "") + "'");
 		}
 		default:
-			throwError(",Wtf");
+			throwError("Type mismatch: expected '" +
+			           compile.classes[detach->classId]->getName(compile) +
+			           "' but found '" +
+			           compile.classes[value->classId]->getName(compile) +
+			           (value->isNullable() ? "?" : "") + "'");
 	}
 }
 
@@ -525,6 +528,7 @@ void SetNode::optimize(in_func) {
 	}
 
 void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	loadOpcodeLine(in_data, bytecodes);
 	if (BinaryNode::putOptimizedBytecode(in_data, bytecodes, op, detach,
 	                                     value)) {
 		return;

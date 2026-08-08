@@ -9,11 +9,11 @@ namespace Autolang {
 template <bool addToGlobalScope> void CreateFuncNode::pushFunction(in_func) {
 	AClass *clazz =
 	    contextCallClassId ? compile.classes[*contextCallClassId] : nullptr;
-	id = compile.registerFunction(clazz, context.lexerString[nameId],
-	                              new ClassId[parameter->parameters.size()]{},
-	                              parameter->parameters.size(),
-	                              Autolang::DefaultClass::voidClassId,
-	                              functionFlags);
+	id = compile.registerFunction(
+	    mode->path.c_str(), clazz, context.lexerString[nameId],
+	    new ClassId[parameter->parameters.size()]{},
+	    parameter->parameters.size(), Autolang::DefaultClass::voidClassId,
+	    functionFlags);
 	// Function can be overrided, it will be recreated in override phase
 	if (clazz) {
 		if (!(clazz->classFlags & ClassFlags::CLASS_HAS_PARENT)) {
@@ -45,7 +45,7 @@ void CreateFuncNode::pushNativeFunction(in_func, ANativeFunctionData *native) {
 	AClass *clazz =
 	    contextCallClassId ? compile.classes[*contextCallClassId] : nullptr;
 	id = compile.registerFunction(
-	    clazz, context.lexerString[nameId],
+	    mode->path.c_str(), clazz, context.lexerString[nameId],
 	    new ClassId[parameter->parameters.size()]{},
 	    parameter->parameters.size(), Autolang::DefaultClass::voidClassId,
 	    functionFlags | FunctionFlags::FUNC_IS_NATIVE);
@@ -81,7 +81,8 @@ ExprNode *CreateFuncNode::copy(in_func) {
 	LexerStringId newNameId = nameId;
 	if (nameId == lexerId__CLASS__) {
 		if (!context.currentClassId) {
-			throwError("Cannot find __CLASS__");
+			throwError("Cannot resolve '__CLASS__' outside of class "
+			           "declaration context");
 		}
 		newNameId =
 		    context.lexerStringMap[compile.classes[*context.currentClassId]
@@ -119,7 +120,7 @@ void CreateFuncNode::optimize(in_func) {
 			auto it = hash.find(funcInfo->hash);
 			if (it != hash.end() && compile.functions[it->second]->getName(
 			                            compile) == func->getName(compile)) {
-				throwError("Redefined function : " +
+				throwError("Redefined function: " +
 				           funcInfo->toString(in_data));
 			}
 			hash[funcInfo->hash] = func->id;
@@ -128,7 +129,7 @@ void CreateFuncNode::optimize(in_func) {
 			auto it = hash.find(funcInfo->hash);
 			if (it != hash.end() && compile.functions[it->second]->getName(
 			                            compile) == func->getName(compile)) {
-				throwError("Redefined function : " +
+				throwError("Redefined function: " +
 				           funcInfo->toString(in_data));
 			}
 			// std::cerr<<"Created "<<name<<" hash "<<funcInfo->hash<<"\n";

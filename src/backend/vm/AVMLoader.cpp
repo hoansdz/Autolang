@@ -101,6 +101,34 @@ void AVM::restart() {
 	//           << "Restart time : " << duration.count() << " ms" << '\n';
 }
 
+std::pair<uint32_t, const char *> AVM::searchMainLine(Function *func,
+                                                      uint32_t opcodeIndex) {
+	int i = 1;
+	while (i < data.allMainFunctionOpcodeLines.size() &&
+	       data.allMainFunctionOpcodeLines[i].opcodeIndex < opcodeIndex) {
+		// std::cerr << data.allMainFunctionOpcodeLines[i].opcodeIndex << " "
+		//           << data.allMainFunctionOpcodeLines[i].path << ":"
+		//           << data.allMainFunctionOpcodeLines[i].line << "\n";
+		++i;
+	}
+
+	return {data.allMainFunctionOpcodeLines[i - 1].line,
+	        data.allMainFunctionOpcodeLines[i - 1].path};
+}
+
+uint32_t AVM::searchLine(Function *func, uint32_t opcodeIndex) {
+	// int left = func->opcodeIndex;
+	// int right = 0;
+	int i = func->opcodeIndex + 1;
+	while (i < data.allOpcodeLines.size() &&
+	       data.allOpcodeLines[i].opcodeIndex < opcodeIndex &&
+	       data.allOpcodeLines[i].opcodeIndex >=
+	           data.allOpcodeLines[i - 1].opcodeIndex) {
+		++i;
+	}
+	return data.allOpcodeLines[i - 1].line;
+}
+
 AVM::~AVM() {
 	delete notifier;
 	delete[] tempAllocateArea;

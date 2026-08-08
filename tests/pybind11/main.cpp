@@ -99,6 +99,14 @@ class CompilerWrapper {
 
     uint32_t getLimitOpcodeCount() { return compiler.getLimitOpcodeCount(); }
 
+    void setMaxManagedMemory(size_t limit) {
+        compiler.setMaxManagedMemory(limit);
+    }
+
+    size_t getMaxManagedMemory() { return compiler.getMaxManagedMemory(); }
+
+    size_t getCurrentManagedMemory() { return compiler.getCurrentManagedMemory(); }
+
     void clearDomainRules() {
 #ifndef NO_INCLUDE_LIBS_HTTP
         pendingDomainRules.clear();
@@ -296,6 +304,10 @@ PYBIND11_MODULE(autolang, m) {
         .def("setLimitOpcodeCount", &CompilerWrapper::setLimitOpcodeCount,
              py::arg("count"))
         .def("getLimitOpcodeCount", &CompilerWrapper::getLimitOpcodeCount)
+        .def("setMaxManagedMemory", &CompilerWrapper::setMaxManagedMemory,
+             py::arg("limit"))
+        .def("getMaxManagedMemory", &CompilerWrapper::getMaxManagedMemory)
+        .def("getCurrentManagedMemory", &CompilerWrapper::getCurrentManagedMemory)
         .def("clearDomainRules", &CompilerWrapper::clearDomainRules)
         .def("addDomainRule", &CompilerWrapper::addDomainRule,
              py::arg("type"), py::arg("value"))

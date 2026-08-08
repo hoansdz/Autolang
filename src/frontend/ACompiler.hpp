@@ -166,6 +166,10 @@ class ACompiler {
 	uint32_t getLimitOpcodeCount();
 #endif
 
+	void setMaxManagedMemory(size_t limit);
+	size_t getMaxManagedMemory();
+	size_t getCurrentManagedMemory();
+
 #ifndef NO_INCLUDE_LIBS_HTTP
 	void setAllowedDomainsRules(const std::vector<AllowRule> &rules);
 #endif

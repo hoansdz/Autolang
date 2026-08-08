@@ -137,10 +137,15 @@ void CreateClosureNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	auto lastMustReturnValueNode = context.mustReturnValueNode;
 	context.mustReturnValueNode = this;
 	auto lastCurrentBytecodePos = context.currentBytecodePos;
+	auto lastCurrentAllOpcodeLine = context.currentAllOpcodeLine;
 	context.currentBytecodePos = 0;
+	context.currentOpcodeIndex = 0;
+	context.currentAllOpcodeLine = &currentOpcodeLine;
+	context.currentFunctionId = func->id;
 	funcInfo->body.putBytecodes(in_data, currentBytecodes);
 	context.currentBytecodePos = lastCurrentBytecodePos;
 	context.mustReturnValueNode = lastMustReturnValueNode;
+	context.currentAllOpcodeLine = lastCurrentAllOpcodeLine;
 	for (int i = 0; i < funcInfo->parameter->parameters.size(); ++i) {
 		auto declaration = funcInfo->parameter->parameters[i];
 		declaration->id = listOffset[i];
@@ -158,13 +163,13 @@ void CreateClosureNode::rewrite(in_func, uint8_t *bytecodes) {
 
 void CreateClosureNode::inferFrom(in_func, ClassDeclaration *from) {
 	if (from->classId != DefaultClass::functionClassId) {
-		throwError("Cannot cast Function to " + from->getName(in_data) + "");
+		throwError("Cannot cast Function to '" + from->getName(in_data) + "'");
 	}
 	// if (canCast(classDeclaration))
 	if (classDeclaration->inputClassId.size() != from->inputClassId.size()) {
 		throwError("Closure expects " +
 		           std::to_string(classDeclaration->inputClassId.size() - 1) +
-		           " type argument but " +
+		           " parameter(s) but " +
 		           std::to_string(from->inputClassId.size() - 1) +
 		           " were given");
 	}

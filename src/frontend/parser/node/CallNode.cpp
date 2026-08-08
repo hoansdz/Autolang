@@ -135,7 +135,7 @@ void CallNode::optimize(in_func) {
 		caller->optimize(in_data);
 		if (caller->isNullable()) {
 			if (!accessNullable) {
-				throwError("You can't use '.' with nullable valueb, you must "
+				throwError("You can't use '.' with nullable value, you must "
 				           "use '?.'");
 			}
 		} else {
@@ -259,7 +259,7 @@ void CallNode::optimize(in_func) {
 	// }
 
 	if (count == 0)
-		throwError(std::string("Cannot find function name : ") + funcName);
+		throwError("Cannot find function name: '" + funcName + "'");
 	bool ambitiousCall = false;
 	// uint8_t foundIndex;
 	bool found = false;
@@ -513,9 +513,8 @@ void CallNode::optimize(in_func) {
 	}
 
 	if (first.errorNonNullIfMatchCount) {
-		throwError(std::string(
-		               "Cannot input null in non null arguments of function ") +
-		           funcName);
+		throwError("Cannot pass null to non-null parameter in function '" +
+		           funcName + "'");
 	}
 	if (!(func->functionFlags & FunctionFlags::FUNC_PUBLIC) &&
 	    (!contextCallClassId || *contextCallClassId != funcInfo->clazz->id))
@@ -556,7 +555,8 @@ void CallNode::optimize(in_func) {
 	if (caller && caller->kind == NodeType::CLASS_ACCESS &&
 	    !(func->functionFlags & FunctionFlags::FUNC_IS_STATIC) &&
 	    !(func->functionFlags & FunctionFlags::FUNC_IS_CONSTRUCTOR))
-		throwError(func->getName(compile) + " is not static function");
+		throwError("Function '" + func->getName(compile) +
+		           "' is not a static function");
 }
 
 void CallNode::matchFunction(in_func, ClassDeclaration *detach,
@@ -617,7 +617,7 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 		           " were given");
 	}
 	if (justFindStatic) {
-		throwError("Just find static");
+		throwError("Cannot call non-static function from static context");
 	}
 	int j = 0;
 	for (; j < arguments.size(); ++j) {
@@ -830,7 +830,6 @@ bool CallNode::match(in_func, MatchOverload &match,
 							goto finished;
 						}
 					} else {
-						
 					}
 				}
 				match.score += 2;
@@ -913,6 +912,7 @@ bool CallNode::match(in_func, MatchOverload &match,
 }
 
 void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	loadOpcodeLine(in_data, bytecodes);
 	if (funcObject) {
 		for (auto argument : arguments) {
 			argument->putBytecodes(in_data, bytecodes);
@@ -991,6 +991,9 @@ void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		}
 		put_opcode_u32(bytecodes, funcId);
 	}
+	if (isForceNonNull) {
+		bytecodes.push_back(Opcode::CHECK_FORCE_NON_NULL);
+	}
 	// put_opcode_u32(bytecodes, func->args.size);
 	// std::cerr<<funcId<<'\n';
 }
@@ -1024,6 +1027,7 @@ ExprNode *CallNode::copy(in_func) {
 	    std::move(newArguments), justFindStatic, nullable, accessNullable);
 	newNode->classId = classId;
 	newNode->classDeclaration = classDeclaration;
+	newNode->isForceNonNull = isForceNonNull;
 	if (funcObject) {
 		newNode->funcObject =
 		    static_cast<HasClassIdNode *>(funcObject->copy(in_data));

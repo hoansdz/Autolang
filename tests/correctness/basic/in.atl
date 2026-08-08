@@ -45,7 +45,7 @@ fun testInExpression() {
 	assert("banana" in words, __FILE__, __LINE__)
 	assert(!("grape" in words), __FILE__, __LINE__)
 
-	println("Passed ${__FUNC__}")
+	println("Passed ${__FUNC__}")	
 }
 
 testInExpression()

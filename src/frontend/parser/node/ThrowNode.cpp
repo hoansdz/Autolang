@@ -15,22 +15,23 @@ void ThrowNode::optimize(in_func) {
 	value->optimize(in_data);
 	switch (value->kind) {
 		case NodeType::CLASS_ACCESS:
-			throwError("The thing being throw must be value");
+			throwError("Expression in throw statement must produce a value");
 		default: {
 			if (value->isNullable()) {
-				throwError("The thing being throw must be non nullable");
+				throwError("Cannot throw nullable expression");
 			}
 			auto valueClass = compile.classes[value->classId];
 			if (!(value->classId == DefaultClass::exceptionClassId ||
 			      valueClass->inheritance.get(
 			          DefaultClass::exceptionClassId))) {
-				throwError("The thing being throw must be a exception");
+				throwError("Thrown expression must be an Exception");
 			}
 		}
 	}
 }
 
 void ThrowNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
+	loadOpcodeLine(in_data, bytecodes);
 	value->putBytecodes(in_data, bytecodes);
 	bytecodes.emplace_back(Opcode::THROW_EXCEPTION);
 }

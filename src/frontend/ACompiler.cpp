@@ -354,6 +354,9 @@ bool ACompiler::compileAndRun(const char *path, const char *data,
 
 bool ACompiler::compile(const char *path, LibraryConfig config,
                         const ANativeMap &nativeFuncMap) {
+	if (hasError()) {
+		refresh();
+	}
 	loadMainSource(path, config, nativeFuncMap);
 	if (hasError()) {
 		return false;
@@ -414,7 +417,7 @@ void ACompiler::generateBytecodes() {
 	// std::cerr<<"\n";
 
 	// auto startParserTime = std::chrono::high_resolution_clock::now();
-
+	context.currentAllOpcodeLine = &compile.allOpcodeLines;
 	context.currentTokenPos = 0;
 	size_t &i = context.currentTokenPos;
 	while (i < context.tokens.size()) {
@@ -619,9 +622,12 @@ void ACompiler::generateBytecodes() {
 				auto func =
 				    compile.functions[classInfo->primaryConstructor->funcId];
 				context.currentBytecodePos = compile.allBytecodes.size();
+				context.currentOpcodeIndex = compile.allOpcodeLines.size();
 				func->bytecodes.offset = context.currentBytecodePos;
+				func->opcodeIndex = context.currentOpcodeIndex;
 
 				node->body.resolve(in_data);
+				context.currentFunctionId = func->id;
 				node->body.putBytecodes(in_data, compile.allBytecodes);
 				node->body.rewrite(in_data, compile.allBytecodes.data() +
 				                                context.currentBytecodePos);
@@ -640,11 +646,14 @@ void ACompiler::generateBytecodes() {
 				for (auto &constructor : classInfo->secondaryConstructor) {
 					auto func = compile.functions[constructor->funcId];
 					context.currentBytecodePos = compile.allBytecodes.size();
+					context.currentOpcodeIndex = compile.allOpcodeLines.size();
 					func->bytecodes.offset = context.currentBytecodePos;
+					func->opcodeIndex = context.currentOpcodeIndex;
 
 					// Put initial bytecodes, example val a = 5 => SetNode a
 					// and value 5
 					//  node->body.optimize(in_data);
+					context.currentFunctionId = func->id;
 					node->body.resolve(in_data);
 					node->body.putBytecodes(in_data, compile.allBytecodes);
 					node->body.rewrite(in_data, compile.allBytecodes.data() +
@@ -665,9 +674,14 @@ void ACompiler::generateBytecodes() {
 		}
 
 		std::vector<uint8_t> mainFunctionBytecodes;
+		std::vector<OpcodeLine> mainOpcodeLine;
+
+		context.currentAllOpcodeLine = &mainOpcodeLine;
 
 		printDebug("Start put bytecodes static nodes");
 		context.currentBytecodePos = 0;
+		context.currentOpcodeIndex = 0;
+		context.currentFunctionId = context.mainFunctionId;
 		for (auto &node : context.staticNode) {
 			node->putBytecodes(in_data, mainFunctionBytecodes);
 			node->rewrite(in_data, mainFunctionBytecodes.data());
@@ -693,10 +707,12 @@ void ACompiler::generateBytecodes() {
 		printDebug("Start optimize bytecodes in main");
 		auto mainFunc = context.getMainFunction(in_data);
 		auto mainFuncInfo = context.getMainFunctionInfo(in_data);
+		mainFunc->path = mainSource->path.c_str();
 		for (auto *&node : mainFuncInfo->body.nodes) {
 			ParserContext::mode = node->mode;
 			node = node->resolve(in_data);
 		}
+		context.currentAllOpcodeLine = &compile.allOpcodeLines;
 		mainFuncInfo->body.optimize(in_data);
 		printDebug("Start put bytecodes in functions");
 		for (int i = 0; i < sizeNewFunctions; ++i) {
@@ -726,7 +742,10 @@ void ACompiler::generateBytecodes() {
 				funcInfo->body.optimize(in_data);
 			}
 			context.currentBytecodePos = compile.allBytecodes.size();
+			context.currentOpcodeIndex = compile.allOpcodeLines.size();
 			func->bytecodes.offset = context.currentBytecodePos;
+			func->opcodeIndex = context.currentOpcodeIndex;
+			context.currentFunctionId = func->id;
 			funcInfo->body.putBytecodes(in_data, compile.allBytecodes);
 			funcInfo->body.rewrite(in_data, compile.allBytecodes.data() +
 			                                    context.currentBytecodePos);
@@ -736,27 +755,33 @@ void ACompiler::generateBytecodes() {
 
 		printDebug("Start put bytecodes in main");
 		context.currentBytecodePos = compile.allBytecodes.size();
+		context.currentOpcodeIndex = compile.allOpcodeLines.size();
 		mainFunc->bytecodes.offset = context.currentBytecodePos;
 		compile.allBytecodes.insert(compile.allBytecodes.end(),
 		                            mainFunctionBytecodes.begin(),
 		                            mainFunctionBytecodes.end());
+		compile.allOpcodeLines.insert(compile.allOpcodeLines.end(),
+		                              mainOpcodeLine.begin(),
+		                              mainOpcodeLine.end());
+		context.currentFunctionId = context.mainFunctionId;
 		mainFuncInfo->body.putBytecodes(in_data, compile.allBytecodes);
 		mainFuncInfo->body.rewrite(in_data, compile.allBytecodes.data() +
 		                                        context.currentBytecodePos);
 		mainFunc->bytecodes.size =
 		    compile.allBytecodes.size() - mainFunc->bytecodes.offset;
-		if (mainFunc->bytecodes.size == 0) {
-			--mainFunc->bytecodes.offset;
-		}
 
 		printDebug("Start put closure's bytecode on vector allBytecodes");
 		for (auto closure : context.allClosureNode) {
 			auto func = compile.functions[*closure->funcId];
 			func->bytecodes.offset = compile.allBytecodes.size();
+			func->opcodeIndex = compile.allOpcodeLines.size();
 			func->bytecodes.size = closure->currentBytecodes.size();
 			compile.allBytecodes.insert(compile.allBytecodes.end(),
 			                            closure->currentBytecodes.begin(),
 			                            closure->currentBytecodes.end());
+			compile.allOpcodeLines.insert(compile.allOpcodeLines.end(),
+			                              closure->currentOpcodeLine.begin(),
+			                              closure->currentOpcodeLine.end());
 		}
 
 		printDebug("Put member data to classes");
@@ -942,6 +967,7 @@ void ACompiler::setFileBasePath(const std::string &path) {
 
 void ACompiler::refresh() {
 	parserContext.refresh(vm.data);
+	freeData(vm.data, parserContext);
 	if (mainSource) {
 		mainSource->lexerContext.refresh();
 		mainSource = nullptr;
@@ -957,11 +983,12 @@ void ACompiler::refresh() {
 	// Autolang::DefaultClass::init(*this);
 	// Autolang::DefaultFunction::init(*this);
 	vm.data.mainFunctionId = vm.data.registerFunction(
-	    nullptr, ".main", nullptr, 0,
+	    "", nullptr, ".main", nullptr, 0,
 	    static_cast<uint32_t>(FunctionFlags::FUNC_IS_STATIC));
 	parserContext.functionInfo.push_back(
 	    parserContext.functionInfoAllocator.push());
 	state = CompilerState::CT_READY;
+	vm.isFatalException = false;
 	if (vm.globalVariables) {
 		delete[] vm.globalVariables;
 		vm.globalVariables = nullptr;
@@ -982,7 +1009,7 @@ ACompiler::ACompiler(ACompilerConfig config) {
 	vm.data.constPool.push_back(DefaultClass::falseObject);
 
 	vm.data.mainFunctionId = vm.data.registerFunction(
-	    nullptr, ".main", nullptr, 0,
+	    "", nullptr, ".main", nullptr, 0,
 	    static_cast<uint32_t>(FunctionFlags::FUNC_IS_STATIC));
 	parserContext.functionInfo.push_back(
 	    parserContext.functionInfoAllocator.push());
@@ -1034,7 +1061,7 @@ ACompiler::ACompiler(ACompilerConfig config) {
 ACompiler::~ACompiler() {
 	auto &context = parserContext;
 	auto &compile = vm.data;
-	// freeData(in_data);
+	freeData(in_data);
 	parserContext.refresh(vm.data);
 	if (mainSource) {
 		mainSource->lexerContext.refresh();
@@ -1049,6 +1076,16 @@ ACompiler::~ACompiler() {
 	if (exceptionMessage) {
 		delete[] exceptionMessage;
 	}
+}
+
+void ACompiler::setMaxManagedMemory(size_t limit) {
+	vm.setMaxManagedMemory(limit);
+}
+
+size_t ACompiler::getMaxManagedMemory() { return vm.getMaxManagedMemory(); }
+
+size_t ACompiler::getCurrentManagedMemory() {
+	return vm.getCurrentManagedMemory();
 }
 
 } // namespace Autolang

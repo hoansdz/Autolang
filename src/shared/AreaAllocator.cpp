@@ -28,6 +28,8 @@ template <size_t size> void AreaAllocator<size>::destroy(ANotifier& notifier) {
 	freeSlot = nullptr;
 	head = nullptr;
 	countObject = 0;
+	currentManagedMemory = 0;
+	changedMemory = false;
 }
 
 }

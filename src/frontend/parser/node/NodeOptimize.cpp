@@ -80,7 +80,7 @@ ExprNode *UnknowNode::resolve(in_func) {
 			}
 		}
 	}
-	throwError("Cannot find variable name: " + context.lexerString[nameId]);
+	throwError("Cannot find variable or symbol '" + context.lexerString[nameId] + "'");
 }
 
 ExprNode *UnknowNode::copy(in_func) {
@@ -113,7 +113,7 @@ ExprNode *UnknowNode::copy(in_func) {
 }
 
 void UnknowNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	throwError("Unknown node can't putbytecodes");
+	throwError("Cannot generate bytecode for unresolved 'UnknownNode'");
 }
 
 ExprNode *WhileNode::resolve(in_func) {
@@ -175,7 +175,7 @@ void ReturnNode::optimize(in_func) {
 	// std::cerr<<"Loading "<<func->getName(compile)<<"\n";
 	if (value) {
 		if (func->returnId == DefaultClass::voidClassId && throwErrIfVoid) {
-			throwError("Cannot return value, function return Void");
+			throwError("Cannot return a value from function returning Void");
 		}
 		switch (value->kind) {
 			case NodeType::CREATE_SET: {
@@ -323,12 +323,10 @@ void ReturnNode::optimize(in_func) {
 		}
 		if (!(func->functionFlags & FunctionFlags::FUNC_RETURN_NULLABLE)) {
 			if (value->classId == Autolang::DefaultClass::nullClassId) {
-				throwError("Cannot return null because functions returns "
-				           "non null value");
+				throwError("Cannot return null because function return type is non-nullable");
 			}
 			if (value->isNullable()) {
-				throwError("Cannot return nullable variable because functions "
-				           "returns non null value");
+				throwError("Cannot return nullable variable because function return type is non-nullable");
 			}
 		} else if (value->classId == Autolang::DefaultClass::nullClassId) {
 			return;
@@ -353,7 +351,7 @@ void ReturnNode::optimize(in_func) {
 		           compile.classes[func->returnId]->getName(compile));
 	}
 	if (func->returnId != Autolang::DefaultClass::voidClassId) {
-		throwError("Must return value");
+		throwError("Function with non-Void return type must return a value");
 	}
 }
 

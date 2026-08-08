@@ -19,6 +19,7 @@ inline AObject *parse(NativeFuncInData) {
 
     try {
         auto parsed = new nlohmann::json(nlohmann::json::parse(text));
+        notifier.addManagedMemory(128);
         auto newObj = notifier.createObject(classId);
         newObj->json = parsed;
         return newObj;
@@ -31,6 +32,7 @@ inline AObject *parse(NativeFuncInData) {
 inline AObject *empty_object(NativeFuncInData) {
     constexpr ClassId classId = DefaultClass::jsonClassId;
     auto parsed = new nlohmann::json(nlohmann::json::object());
+    notifier.addManagedMemory(128);
     auto newObj = notifier.createObject(classId);
     newObj->json = parsed;
     return newObj;
@@ -39,6 +41,7 @@ inline AObject *empty_object(NativeFuncInData) {
 inline AObject *empty_array(NativeFuncInData) {
     constexpr ClassId classId = DefaultClass::jsonClassId;
     auto parsed = new nlohmann::json(nlohmann::json::array());
+    notifier.addManagedMemory(128);
     auto newObj = notifier.createObject(classId);
     newObj->json = parsed;
     return newObj;
@@ -48,6 +51,7 @@ inline AObject *from_string(NativeFuncInData) {
     constexpr ClassId classId = DefaultClass::jsonClassId;
     const std::string &val = args[0]->str->data;
     auto parsed = new nlohmann::json(val);
+    notifier.addManagedMemory(128);
     auto newObj = notifier.createObject(classId);
     newObj->json = parsed;
     return newObj;

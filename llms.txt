@@ -1,0 +1,42 @@
+# AutoLangC
+
+> AutoLangC is a high-performance C++17 scripting engine, Bytecode Virtual Machine, and AST Compiler with seamless Python 3 (pybind11) interop and native libcurl integration.
+
+## Key Features
+- **C++17 Core**: Modern C++ Virtual Machine and Compiler with strict typing, generic classes (Map, Set, Array), and JSON support.
+- **TypeScript/Node.js Integration**: `autolang-compiler` npm package allowing JS/TS hosts to register native libraries via `registerBuiltInLibrary()`, wrap native JS objects with `@js_object`, and bind instance methods (`this`).
+- **Python Integration**: Bidirectional data/function casting between Python and AutoLangC via `pybind11` (`PYFunction.hpp`). Non-static Python callbacks take `self` as the first argument to bind caller instance context.
+- **Native libcurl**: Built-in HTTP static integration (`CURL_STATICLIB`).
+- **Memory Management**: Reference counting and arena-based heap management for high throughput.
+
+## Repository Layout
+- `src/frontend/`: AST, Compiler, Parser (`ACompiler.hpp`, `ACompiler.cpp`).
+- `src/backend/vm/`: Bytecode Execution Engine & Memory Arena (`AVirtualMachine.hpp`, `ANotifier.hpp`).
+- `src/shared/`: Core types (`AObject.hpp`, `Type.hpp`, `ClassFlags.hpp`), Python bindings (`PYFunction.hpp`).
+- `src/backend/libs/`: Built-in standard libraries (`map.hpp`, `set.hpp`).
+- `tests/`: Unit tests and main executable runner (`tests/main.cpp`).
+- `examples/`: Embeddable code samples for C++ and Python interop.
+
+## Fast TypeScript Embedding Snippet
+```typescript
+import { ACompiler, AutolangNativeFunc, LibraryConfig } from 'autolang-compiler';
+
+const compiler = await ACompiler.create();
+
+compiler.registerBuiltInLibrary(
+    "my/utils",
+    `
+        @native("greet")
+        fun greet(name: String): String
+    `,
+    { autoImport: true },
+    { greet: (name) => `Hello, ${name}!` }
+);
+
+await compiler.compileAndRun("main.atl", `println(greet("World"))`);
+```
+
+
+## Build Instructions
+- CMake 3.20+ with C++17 compiler (GCC/Clang/MSVC).
+- Command: `cmake -B build -S . && cmake --build build`

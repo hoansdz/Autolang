@@ -8,6 +8,7 @@
 #include "shared/DefaultFunction.hpp"
 #include "shared/DefaultOperator.hpp"
 #include <algorithm>
+#include <limits>
 #include <string>
 
 namespace Autolang {
@@ -17,21 +18,49 @@ namespace array {
 
 AObject *add(NativeFuncInData) {
 	auto obj = args[0];
-	args[1]->retain();
 
-	if (obj->member->size == 0) {
+	if (obj->member->size == 0 && obj->member->maxSize == 0) {
+		int64_t delta = static_cast<int64_t>(1 * sizeof(AObject *));
+		if (notifier.getCurrentManagedMemory() + delta >
+		    notifier.getMaxManagedMemory()) {
+			notifier.throwMemoryLimitExceeded(
+			    notifier.getCurrentManagedMemory() + delta);
+			return nullptr;
+		}
+		args[1]->retain();
 		obj->member->reallocate(1);
 		obj->member->data[0] = args[1];
 		obj->member->size = 1;
 		obj->member->maxSize = 1;
+		notifier.addManagedMemory(delta);
 		return nullptr;
 	}
 
 	if (obj->member->size == obj->member->maxSize) {
-		size_t newMax =
-		    (obj->member->maxSize == 0) ? 1 : obj->member->maxSize * 2;
+		uint64_t oldMax = obj->member->maxSize;
+		constexpr uint64_t maxCapacity = std::numeric_limits<uint32_t>::max();
+		uint64_t newMax = (oldMax == 0) ? 1 : oldMax * 2;
+		if (newMax > maxCapacity) {
+			newMax = maxCapacity;
+		}
+		if (newMax == oldMax) {
+			notifier.throwException("Array.add: maximum capacity exceeded3");
+			return nullptr;
+		}
+		int64_t delta =
+		    static_cast<int64_t>((newMax - oldMax) * sizeof(AObject *));
+		if (notifier.getCurrentManagedMemory() + delta >
+		    notifier.getMaxManagedMemory()) {
+			notifier.throwMemoryLimitExceeded(
+			    notifier.getCurrentManagedMemory() + delta);
+			return nullptr;
+		}
+		args[1]->retain();
 		obj->member->reallocate(newMax);
 		obj->member->maxSize = static_cast<int64_t>(newMax);
+		notifier.addManagedMemory(delta);
+	} else {
+		args[1]->retain();
 	}
 
 	obj->member->data[obj->member->size++] = args[1];
@@ -64,11 +93,14 @@ AObject *remove(NativeFuncInData) {
 
 	if (obj->member->maxSize > 1 &&
 	    obj->member->size <= obj->member->maxSize / 4) {
-		size_t newMax = obj->member->maxSize / 2;
+		size_t oldMax = obj->member->maxSize;
+		size_t newMax = oldMax / 2;
 		if (newMax < 1)
 			newMax = 1;
 		obj->member->reallocate(newMax);
 		obj->member->maxSize = static_cast<int64_t>(newMax);
+		notifier.addManagedMemory(
+		    static_cast<int64_t>((newMax - oldMax) * sizeof(AObject *)));
 	}
 
 	return nullptr;
@@ -77,10 +109,34 @@ AObject *remove(NativeFuncInData) {
 AObject *reserve(NativeFuncInData) {
 	auto obj = args[0];
 	int64_t capacity = args[1]->i;
+	const int64_t maxCapacity =
+	    static_cast<int64_t>(std::numeric_limits<uint32_t>::max());
+
+	if (capacity < 0) {
+		notifier.throwException("Array.reserve: capacity must be non-negative");
+		return nullptr;
+	}
+
+	if (capacity > maxCapacity) {
+		notifier.throwException(
+		    "Array.reserve: capacity exceeds maximum supported size (" +
+		    std::to_string(maxCapacity) + ")");
+		return nullptr;
+	}
 
 	if (capacity > obj->member->maxSize) {
-		obj->member->reallocate(static_cast<size_t>(capacity));
-		obj->member->maxSize = capacity;
+		uint32_t oldMax = obj->member->maxSize;
+		int64_t delta =
+		    static_cast<int64_t>((capacity - oldMax) * sizeof(AObject *));
+		if (notifier.getCurrentManagedMemory() + delta >
+		    notifier.getMaxManagedMemory()) {
+			notifier.throwMemoryLimitExceeded(
+			    notifier.getCurrentManagedMemory() + delta);
+			return nullptr;
+		}
+		obj->member->reallocate(static_cast<uint32_t>(capacity));
+		obj->member->maxSize = static_cast<int64_t>(capacity);
+		notifier.addManagedMemory(delta);
 	}
 	return nullptr;
 }
@@ -96,10 +152,27 @@ AObject *insert(NativeFuncInData) {
 	}
 
 	if (obj->member->size == obj->member->maxSize) {
-		size_t newMax =
-		    (obj->member->maxSize == 0) ? 1 : obj->member->maxSize * 2;
+		uint64_t oldMax = obj->member->maxSize;
+		constexpr uint64_t maxCapacity = std::numeric_limits<uint32_t>::max();
+		uint64_t newMax = (oldMax == 0) ? 1 : oldMax * 2;
+		if (newMax > maxCapacity) {
+			newMax = maxCapacity;
+		}
+		if (newMax == oldMax) {
+			notifier.throwException("Array.insert: maximum capacity exceeded");
+			return nullptr;
+		}
+		int64_t delta =
+		    static_cast<int64_t>((newMax - oldMax) * sizeof(AObject *));
+		if (notifier.getCurrentManagedMemory() + delta >
+		    notifier.getMaxManagedMemory()) {
+			notifier.throwMemoryLimitExceeded(
+			    notifier.getCurrentManagedMemory() + delta);
+			return nullptr;
+		}
 		obj->member->reallocate(newMax);
 		obj->member->maxSize = static_cast<int64_t>(newMax);
+		notifier.addManagedMemory(delta);
 	}
 
 	for (int64_t i = obj->member->size; i > index; --i) {

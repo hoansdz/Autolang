@@ -18,7 +18,7 @@ void CreateArrayNode::optimize(in_func) {
 		classId = *classDeclaration->classId;
 	}
 	if (classId == DefaultClass::nullClassId) {
-		throwError("Type mismatch in array initialization");
+		throwError("Cannot infer element type for Array initialization");
 	}
 	auto clazz = compile.classes[classId];
 	auto classInfo = context.classInfo[classId];
@@ -51,7 +51,7 @@ void CreateArrayNode::optimize(in_func) {
 				if (genericType->nullable) {
 					continue;
 				}
-				throwError("Value in array must non null");
+				throwError("Elements in Array must be non-null");
 			}
 		}
 		if (valueMustBeClassId == DefaultClass::anyClassId) {

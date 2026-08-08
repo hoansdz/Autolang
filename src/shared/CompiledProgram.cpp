@@ -30,14 +30,16 @@ void CompiledProgram::destroy() {
 	allMemberId.clear();
 	allMemberNullable.clear();
 	allGenericTypeNullable.clear();
+	allOpcodeLines.clear();
+	allMainFunctionOpcodeLines.clear();
 }
 
 void CompiledProgram::refresh() { manager.refresh(); }
 
 template <bool isConstructor>
-FunctionId CompiledProgram::registerFunction(AClass *clazz, std::string name,
-                                             ClassId *args, uint32_t argSize,
-                                             ClassId returnId,
+FunctionId CompiledProgram::registerFunction(const char *path, AClass *clazz,
+                                             std::string name, ClassId *args,
+                                             uint32_t argSize, ClassId returnId,
                                              uint32_t functionFlags) {
 	uint32_t id = functions.size();
 	if (clazz != nullptr) {
@@ -69,6 +71,7 @@ FunctionId CompiledProgram::registerFunction(AClass *clazz, std::string name,
 	}
 	func->args = args;
 	func->argSize = argSize;
+	func->path = path;
 	func->returnId = returnId;
 	func->functionFlags = functionFlags;
 	functions.push_back(func);

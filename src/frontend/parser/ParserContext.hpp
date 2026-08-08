@@ -99,6 +99,7 @@ struct ParserContext {
 	// Declaration new functions by users
 	CreateClosureNode *currentClosureNode = nullptr;
 	std::optional<ClassId> *currentClosureCurrentClassId;
+	std::vector<OpcodeLine> *currentAllOpcodeLine;
 	bool *currentClosureNullable;
 	// bool hasValue = false;
 	bool *currentClosureIsStatic;
@@ -134,6 +135,7 @@ struct ParserContext {
 	uint32_t breakPos = 0;
 	uint32_t currentBytecodePos = 0;
 	size_t currentTokenPos = 0;
+	size_t currentOpcodeIndex = 0;
 	JumpIfNullNode *jumpIfNullNode = nullptr;
 	HasClassIdNode *mustReturnValueNode = nullptr;
 
