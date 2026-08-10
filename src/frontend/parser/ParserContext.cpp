@@ -411,7 +411,11 @@ HasClassIdNode *ParserContext::findDeclaration(in_func, uint32_t line,
 
 	return node;
 isNotStatic:;
-	throw ParserError(line, name + " is not static");
+	throw ParserError(
+	    line,
+	    name +
+	        " is not static\nHint: Non-static members require an instance to "
+	        "be accessed");
 }
 
 DeclarationNode *ParserContext::makeDeclarationNode(
@@ -421,19 +425,23 @@ DeclarationNode *ParserContext::makeDeclarationNode(
 	if (context.currentClosureNode) {
 		if (isGlobal) {
 			throw ParserError(
-			    line, "Error: Static declarations are not allowed inside "
-			          "closures\nNote: Move the declaration to an outer scope");
+			    line,
+			    "Error: Static declarations are not allowed inside "
+			    "closures\nNote: Move the declaration to an outer scope\nHint: "
+			    "Move static/global declarations out of closure body");
 		}
 		if (addToScope) {
 			auto &scope = context.currentClosureNode->scopes.back();
 			auto it = scope.find(baseName);
 			if (it != scope.end()) {
-				throw ParserError(line, "Redefinition of variable '" +
-				                            context.lexerString[baseName] +
-				                            "'. Previous definition here: " +
-				                            it->second->mode->path + ":" +
-				                            std::to_string(it->second->line) +
-				                            "");
+				throw ParserError(
+				    line,
+				    "Redefinition of variable '" + context.lexerString[baseName] +
+				        "'. Previous definition here: " +
+				        it->second->mode->path + ":" +
+				        std::to_string(it->second->line) +
+				        "\nHint: Use a different variable name or remove "
+				        "duplicate declaration");
 			}
 		}
 		DeclarationNode *node = declarationNodePool.push(
@@ -470,7 +478,9 @@ DeclarationNode *ParserContext::makeDeclarationNode(
 			    line,
 			    "Redefinition of variable '" + context.lexerString[baseName] +
 			        "'. Previous definition here: " + it->second->mode->path +
-			        ":" + std::to_string(it->second->line) + "");
+			        ":" + std::to_string(it->second->line) +
+			        "\nHint: Use a different variable name or remove duplicate "
+			        "declaration");
 		}
 	}
 	DeclarationNode *node =

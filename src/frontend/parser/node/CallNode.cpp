@@ -25,7 +25,7 @@ ExprNode *CallNode::resolve(in_func) {
 					throwError("Invalid call: Int expects 1 "
 					           "argument, but " +
 					           std::to_string(arguments.size()) +
-					           " were provided");
+					           " were provided\nHint: Pass exactly one argument to convert to Int (e.g., Int(value)).");
 				}
 				auto result = context.castPool.push(arguments[0],
 				                                    DefaultClass::intClassId);
@@ -37,7 +37,7 @@ ExprNode *CallNode::resolve(in_func) {
 					throwError("Invalid call: Float expects 1 "
 					           "argument, but " +
 					           std::to_string(arguments.size()) +
-					           " were provided");
+					           " were provided\nHint: Pass exactly one argument to convert to Float (e.g., Float(value)).");
 				}
 				auto result = context.castPool.push(arguments[0],
 				                                    DefaultClass::floatClassId);
@@ -49,7 +49,7 @@ ExprNode *CallNode::resolve(in_func) {
 					throwError("Invalid call: Bool expects 1 "
 					           "argument, but " +
 					           std::to_string(arguments.size()) +
-					           " were provided");
+					           " were provided\nHint: Pass exactly one argument to convert to Bool (e.g., Bool(value)).");
 				}
 				auto result = context.castPool.push(arguments[0],
 				                                    DefaultClass::boolClassId);
@@ -61,7 +61,7 @@ ExprNode *CallNode::resolve(in_func) {
 					throwError("Invalid call: getClassId() expects 1 "
 					           "argument, but " +
 					           std::to_string(arguments.size()) +
-					           " were provided");
+					           " were provided\nHint: Pass an object expression to getClassId(obj).");
 				}
 				auto result = context.constValuePool.push(
 				    line, static_cast<int64_t>(arguments[0]->classId));
@@ -99,13 +99,15 @@ void CallNode::optimize(in_func) {
 		switch (argument->kind) {
 			case NodeType::CLASS_ACCESS: {
 				throwError("Cannot input class at parameter " +
-				           std::to_string(i + 1));
+				           std::to_string(i + 1) +
+				           "\nHint: Parameter expects an instance value, not a class type.");
 			}
 			case NodeType::CALL: {
 				argument->optimize(in_data);
 				if (argument->classId == Autolang::DefaultClass::voidClassId) {
 					throwError("Cannot input Void value at parameter " +
-					           std::to_string(i + 1));
+					           std::to_string(i + 1) +
+					           "\nHint: Parameter expects a value-returning expression, not a function that returns Void.");
 				}
 				break;
 			}
@@ -136,7 +138,7 @@ void CallNode::optimize(in_func) {
 		if (caller->isNullable()) {
 			if (!accessNullable) {
 				throwError("You can't use '.' with nullable value, you must "
-				           "use '?.'");
+				           "use '?.'\nHint: Use safe navigation operator '?.' when accessing members of a nullable object.");
 			}
 		} else {
 			if (accessNullable) {
@@ -259,7 +261,7 @@ void CallNode::optimize(in_func) {
 	// }
 
 	if (count == 0)
-		throwError("Cannot find function name: '" + funcName + "'");
+		throwError("Cannot find function name: '" + funcName + "'\nHint: Check function name spelling or ensure the function is defined in scope.");
 	bool ambitiousCall = false;
 	// uint8_t foundIndex;
 	bool found = false;
@@ -334,7 +336,8 @@ void CallNode::optimize(in_func) {
 		                   "'"
 		             : "") +
 		        " has arguments : ") +
-		    currentFuncLog + ") " + (found.empty() ? "" : "\nFound: " + found));
+		    currentFuncLog + ") " + (found.empty() ? "" : "\nFound: " + found) +
+		    "\nHint: Verify argument types and count match one of the available function overloads.");
 	}
 	if (ambitiousCall) {
 		std::string message = "Ambiguous Call : " + funcName;
@@ -350,7 +353,7 @@ void CallNode::optimize(in_func) {
 			}
 		}
 
-		throwError(message);
+		throwError(message + "\nHint: Provide explicit type casts for arguments to disambiguate the function overload.");
 	}
 	funcId = first.id;
 	auto func = compile.functions[funcId];
@@ -499,7 +502,7 @@ void CallNode::optimize(in_func) {
 		throwError(
 		    "Function " + funcName + " expects " +
 		    std::to_string(funcInfo->genericData->genericDeclarations.size()) +
-		    " type argument but 0 were given");
+		    " type argument but 0 were given\nHint: Provide type arguments explicitly (e.g., func<Type>(...)).");
 	}
 
 	if (funcInfo->inferenceNode && !funcInfo->inferenceNode->loaded) {
@@ -514,11 +517,11 @@ void CallNode::optimize(in_func) {
 
 	if (first.errorNonNullIfMatchCount) {
 		throwError("Cannot pass null to non-null parameter in function '" +
-		           funcName + "'");
+		           funcName + "'\nHint: Provide a non-null argument or use '??' fallback operator.");
 	}
 	if (!(func->functionFlags & FunctionFlags::FUNC_PUBLIC) &&
 	    (!contextCallClassId || *contextCallClassId != funcInfo->clazz->id))
-		throwError("Cannot access private function name '" + funcName + "'");
+		throwError("Cannot access private function name '" + funcName + "'\nHint: Mark function as 'public' or call it within its defining class.");
 	// Add this
 	if (!caller && !(func->functionFlags & FunctionFlags::FUNC_IS_STATIC)) {
 		caller = context.varPool.push(
@@ -556,7 +559,7 @@ void CallNode::optimize(in_func) {
 	    !(func->functionFlags & FunctionFlags::FUNC_IS_STATIC) &&
 	    !(func->functionFlags & FunctionFlags::FUNC_IS_CONSTRUCTOR))
 		throwError("Function '" + func->getName(compile) +
-		           "' is not a static function");
+		           "' is not a static function\nHint: Call this function on an instance of the class, or mark the function as 'static'.");
 }
 
 void CallNode::matchFunction(in_func, ClassDeclaration *detach,
@@ -576,13 +579,15 @@ void CallNode::matchFunction(in_func, ClassDeclaration *detach,
 
 				throwError("Type mismatch: expected '" +
 				           detach->getName(in_data) + "' but found '" +
-				           value->getName(in_data));
+				           value->getName(in_data) +
+				           "'\nHint: Ensure closure parameters and return types match the target signature.");
 			}
 		}
 		return;
 	} else {
 		throwError("Type mismatch: expected '" + detach->getName(in_data) +
-		           "' but found '" + value->getName(in_data));
+		           "' but found '" + value->getName(in_data) +
+		           "'\nHint: Ensure closure parameter count matches the target function signature.");
 	}
 }
 
@@ -590,15 +595,15 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 	funcObject->optimize(in_data);
 
 	if (funcObject->classId != DefaultClass::functionClassId) {
-		throwError("Cannot call non-function object");
+		throwError("Cannot call non-function object\nHint: Only instances of Function type or callable objects can be called as functions.");
 	}
 
 	if (!funcObject->classDeclaration) {
-		throwError("Bug: Class not ensure is Function");
+		throwError("Bug: Class not ensure is Function\nHint: Internal compiler error - function object lacks Function class declaration.");
 	}
 
 	if (funcObject->isNullable()) {
-		throwError("Cannot call nullable function object");
+		throwError("Cannot call nullable function object\nHint: Perform a null check or use safe navigation '?.' before calling a nullable function.");
 	}
 
 	auto &inputClass = funcObject->classDeclaration->inputClassId;
@@ -614,10 +619,10 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 		           funcObject->classDeclaration->getName(in_data) +
 		           " expects " + std::to_string(inputClass.size() - 1) +
 		           " argument but " + std::to_string(arguments.size()) +
-		           " were given");
+		           " were given\nHint: Check the number of arguments passed to the function object.");
 	}
 	if (justFindStatic) {
-		throwError("Cannot call non-static function from static context");
+		throwError("Cannot call non-static function from static context\nHint: Instantiate the class first or make the function static.");
 	}
 	int j = 0;
 	for (; j < arguments.size(); ++j) {
@@ -776,7 +781,7 @@ err:;
 	           std::to_string(j) + " expected " +
 	           compile.classes[*inputClass[j + 1]->classId]->getName(compile) +
 	           " but " + compile.classes[argumentClassId]->getName(compile) +
-	           " found");
+	           " found\nHint: Ensure argument type matches the expected parameter type.");
 }
 
 bool CallNode::match(in_func, MatchOverload &match,

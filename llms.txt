@@ -1,42 +1,129 @@
-# AutoLangC
+﻿# Autolang
 
-> AutoLangC is a high-performance C++17 scripting engine, Bytecode Virtual Machine, and AST Compiler with seamless Python 3 (pybind11) interop and native libcurl integration.
+> Autolang is a statically typed scripting language and bytecode virtual machine for safely executing AI-generated code inside a restricted, developer-controlled environment.
+
+## Purpose
+
+Autolang solves a specific problem: letting AI generate executable logic without exposing your full runtime.
+
+Developers register only the functions they want AI to call. Scripts cannot import libraries, access the filesystem, or call network APIs unless explicitly enabled. The VM enforces these limits at runtime.
+
+## When to use Autolang instead of tool calling
+
+Tool calling is a good default. Autolang is useful when:
+
+- you are processing many items in a loop (hundreds or thousands of records)
+- each item requires the same logic applied to different data
+- round-trip API latency and token cost accumulate at scale
+- you want the model to write a full workflow rather than a sequence of API calls
+
+Example: classify 1,000 customers by purchase history. With tool calling this requires 1,000+ round trips. With Autolang the model generates one short script that runs locally against your registered functions.
+
+## Why it helps lightweight models
+
+Static typing and detailed error messages help smaller, cheaper models understand what went wrong and fix their own code. Generic JavaScript or Python stack traces are harder for smaller models to parse. Autolang error messages include the exact line, type information, and a correction hint.
+
+## What Autolang is NOT
+
+- Not a replacement for Python, JavaScript or C++
+- Not a replacement for Docker, KVM or OS-level sandboxing
+- Not suitable for general-purpose long programs
+- Does not have a public package ecosystem (by design - developers bind what they want exposed)
 
 ## Key Features
-- **C++17 Core**: Modern C++ Virtual Machine and Compiler with strict typing, generic classes (Map, Set, Array), and JSON support.
-- **TypeScript/Node.js Integration**: `autolang-compiler` npm package allowing JS/TS hosts to register native libraries via `registerBuiltInLibrary()`, wrap native JS objects with `@js_object`, and bind instance methods (`this`).
-- **Python Integration**: Bidirectional data/function casting between Python and AutoLangC via `pybind11` (`PYFunction.hpp`). Non-static Python callbacks take `self` as the first argument to bind caller instance context.
-- **Native libcurl**: Built-in HTTP static integration (`CURL_STATICLIB`).
-- **Memory Management**: Reference counting and arena-based heap management for high throughput.
+
+- Static type checking (catches hallucinated members and wrong types before execution)
+- Custom bytecode VM (no GC, no JIT)
+- Opcode execution limits
+- Managed memory per execution (~0.5 MB core, ~3.8 MB peak for 1,800-line test)
+- Native JS bindings via npm package utolang-compiler
+- Native C++ bindings
+- @js_object wrapper for exposing complex host objects
+- Per-library permission flags
+- Null safety (?., ??, !)
+- Fast startup: ~10 ms native, ~20 ms Node.js
+
+## Typical use cases
+
+- Internal SME tools: expose getUsers(), getOrders() and let AI classify, filter, summarize
+- Business rule execution: AI generates rules, your backend enforces them
+- Multi-agent pipelines: many short scripts running concurrently with predictable memory
+- Workflow engines: AI writes the workflow, your existing APIs do the work
 
 ## Repository Layout
-- `src/frontend/`: AST, Compiler, Parser (`ACompiler.hpp`, `ACompiler.cpp`).
-- `src/backend/vm/`: Bytecode Execution Engine & Memory Arena (`AVirtualMachine.hpp`, `ANotifier.hpp`).
-- `src/shared/`: Core types (`AObject.hpp`, `Type.hpp`, `ClassFlags.hpp`), Python bindings (`PYFunction.hpp`).
-- `src/backend/libs/`: Built-in standard libraries (`map.hpp`, `set.hpp`).
-- `tests/`: Unit tests and main executable runner (`tests/main.cpp`).
-- `examples/`: Embeddable code samples for C++ and Python interop.
 
-## Fast TypeScript Embedding Snippet
-```typescript
-import { ACompiler, AutolangNativeFunc, LibraryConfig } from 'autolang-compiler';
+- src/frontend/ - Compiler and parser (ACompiler.hpp, ACompiler.cpp, Debugger.cpp)
+- src/backend/vm/ - Bytecode VM and memory arena (AVirtualMachine.hpp, ANotifier.hpp)
+- src/shared/ - Core types (AObject.hpp, Type.hpp)
+- src/backend/libs/ - Built-in standard libraries
+- 	ests/ - Test runner and correctness tests
+- examples/ - Embedding examples for JS and C++
+
+## TypeScript Embedding
+
+`	ypescript
+import { ACompiler } from 'autolang-compiler';
 
 const compiler = await ACompiler.create();
 
 compiler.registerBuiltInLibrary(
-    "my/utils",
-    `
-        @native("greet")
-        fun greet(name: String): String
-    `,
+    company/database,
+    
+        class Product(
+            remaining: Bool
+            price: Int
+        )
+
+        @js_object
+        class Products {
+            @native(get_products)
+            fun getProducts(): Array<Product>
+        }
+    ,
     { autoImport: true },
-    { greet: (name) => `Hello, ${name}!` }
+    {
+        get_products() {
+            return db.query(SELECT * FROM products);
+        }
+    }
 );
 
-await compiler.compileAndRun("main.atl", `println(greet("World"))`);
-```
+await compiler.compileAndRun(main.atl, 
+    var expenseCount = 0
+    var normalCount = 0
+    var cheapCount = 0
 
+    Products.getProducts()
+        .filter {|product| product.remaining}
+        .forEach {|product|
+            when (product.price) {
+                > 3 -> expenseCount += 1
+                == 3 -> normalCount += 1
+                else -> cheapCount += 1
+            }
+        }
+
+    println(Expensive:  + expenseCount)
+    println(Normal:  + normalCount)
+    println(Cheap:  + cheapCount)
+);
+
+console.log(compiler.getOutput());
+`
 
 ## Build Instructions
-- CMake 3.20+ with C++17 compiler (GCC/Clang/MSVC).
-- Command: `cmake -B build -S . && cmake --build build`
+
+C++ native:
+`
+cmake -B build -S . && cmake --build build --config Release
+`
+Requires CMake 3.20+ and a C++17 compiler.
+
+npm:
+`
+npm install autolang-compiler
+`
+
+## Documentation
+
+https://autolang.vercel.app/docs

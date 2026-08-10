@@ -20,7 +20,7 @@ void freeData(in_func) {
 		funcInfo->body.refresh();
 	}
 	size_t sizeNewClasses = context.newClasses.getSize();
-	for (size_t i = 0 ; i < sizeNewClasses; ++i) {
+	for (size_t i = 0; i < sizeNewClasses; ++i) {
 		context.newClasses[i]->body.refresh();
 		context.newClasses[i]->body.nodes.clear();
 	}
@@ -105,7 +105,8 @@ initial:;
 				throw ParserError(context.tokens[i].line,
 				                  "Expected value after '" +
 				                      Lexer::Token(0, op).toString(context) +
-				                      "'");
+				                      "'\nHint: Provide an operand or "
+				                      "expression after unary operator");
 			}
 			return context.unaryNodePool.push(
 			    token->line,
@@ -144,7 +145,8 @@ initial:;
 				throw ParserError(
 				    token->line,
 				    "'" + Lexer::Token(0, token->type).toString(context) +
-				        "' only allowed inside a loop");
+				        "' only allowed inside a loop\nHint: Move 'break' or "
+				        "'continue' inside a 'for' or 'while' loop");
 			return context.skipNodePool.push(token->type, token->line);
 		}
 		case Lexer::TokenType::TRY: {
@@ -189,12 +191,15 @@ initial:;
 			if (context.currentFunctionId != context.mainFunctionId) {
 				throw ParserError(token->line,
 				                  "Error: Function declarations are not "
-				                  "allowed inside another function");
+				                  "allowed inside another function\nHint: Move "
+				                  "function declaration out to top-level or "
+				                  "class scope");
 			}
 			if (context.currentClosureNode) {
 				throw ParserError(token->line,
 				                  "Error: Function declarations are not "
-				                  "allowed inside closure");
+				                  "allowed inside closure\nHint: Move function "
+				                  "declaration out of closure");
 			}
 			auto node = loadFunc(in_data, i);
 			if (!node)
@@ -209,26 +214,34 @@ initial:;
 		}
 		case Lexer::TokenType::CONSTRUCTOR: {
 			if (context.currentFunctionId != context.mainFunctionId) {
-				throw ParserError(token->line,
-				                  "Error: Constructor declarations are not "
-				                  "allowed inside another function");
+				throw ParserError(
+				    token->line,
+				    "Error: Constructor declarations are not "
+				    "allowed inside another function\nHint: "
+				    "Declare constructors directly inside a class");
 			}
 			if (!context.currentClassId) {
-				throw ParserError(token->line,
-				                  "Error: Constructor declarations are not "
-				                  "allowed outside class");
+				throw ParserError(
+				    token->line,
+				    "Error: Constructor declarations are not "
+				    "allowed outside class\nHint: Move constructor "
+				    "inside a class definition");
 			}
 			if (context.currentClosureNode) {
 				throw ParserError(token->line,
 				                  "Error: Constructor declarations are not "
-				                  "allowed inside closure");
+				                  "allowed inside closure\nHint: Declare "
+				                  "constructors directly inside a class body");
 			}
 			loadConstructor(in_data, i);
 			return nullptr;
 		}
 		case Lexer::TokenType::ENUM: {
 			if (context.currentClassId) {
-				throw ParserError(token->line, "Cannot declare enum in class");
+				throw ParserError(token->line,
+				                  "Cannot declare enum in class\nHint: Declare "
+				                  "enums at file/top-level scope, not inside a "
+				                  "class");
 			}
 			loadEnum(in_data, i);
 			return nullptr;
@@ -237,17 +250,20 @@ initial:;
 			if (context.currentClassId) {
 				throw ParserError(token->line,
 				                  "Error: Class declarations are not "
-				                  "allowed inside other class");
+				                  "allowed inside other class\nHint: Move "
+				                  "class declaration to top-level scope");
 			}
 			if (context.currentFunctionId != context.mainFunctionId) {
 				throw ParserError(token->line,
 				                  "Error: Class declarations are not "
-				                  "allowed inside function");
+				                  "allowed inside function\nHint: Move class "
+				                  "declaration to top-level scope");
 			}
 			if (context.currentClosureNode) {
 				throw ParserError(token->line,
 				                  "Error: Class declarations are not "
-				                  "allowed inside closure");
+				                  "allowed inside closure\nHint: Move class "
+				                  "declaration to top-level scope");
 			}
 			auto node = loadClass(in_data, i);
 			return nullptr;
@@ -259,7 +275,8 @@ initial:;
 			if (context.currentFunctionId != context.mainFunctionId) {
 				throw ParserError(token->line,
 				                  "Error: Annotation declaration are not "
-				                  "allowed inside function");
+				                  "allowed inside function\nHint: Place "
+				                  "annotations on top-level or class members");
 			}
 			loadAnnotations(in_data, i);
 			if (!nextToken(&token, context.tokens, i)) {
@@ -270,20 +287,27 @@ initial:;
 		}
 		case Lexer::TokenType::PUBLIC: {
 			if (context.modifierflags & ModifierFlags::MF_PUBLIC)
-				throw ParserError(token->line, "Duplicate modifier 'public'");
+				throw ParserError(
+				    token->line, "Duplicate modifier 'public'\nHint: Use "
+				                 "'public' modifier only once per declaration");
 			if (context.modifierflags & ModifierFlags::MF_PRIVATE)
 				throw ParserError(token->line,
 				                  "Error: Invalid modifier combination: "
-				                  "'public' and 'private'");
+				                  "'public' and 'private'\nHint: Choose either "
+				                  "'public' or 'private', not both");
 			if (context.modifierflags & ModifierFlags::MF_PROTECTED)
-				throw ParserError(token->line,
-				                  "Error: Invalid modifier combination: "
-				                  "'public' and 'protected'");
+				throw ParserError(
+				    token->line,
+				    "Error: Invalid modifier combination: "
+				    "'public' and 'protected'\nHint: Choose either "
+				    "'public' or 'protected', not both");
 			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "Error: 'public' must be followed by a declaration");
+				    "Error: 'public' must be followed by a declaration\nHint: "
+				    "Follow 'public' with a class, function, or variable "
+				    "declaration");
 			}
 			context.modifierflags |= ModifierFlags::MF_PUBLIC;
 			goto initial;
@@ -291,20 +315,26 @@ initial:;
 		case Lexer::TokenType::PRIVATE: {
 			if (context.modifierflags & ModifierFlags::MF_PRIVATE)
 				throw ParserError(token->line,
-				                  "Error: Duplicate modifier 'private'");
+				                  "Error: Duplicate modifier 'private'\nHint: "
+				                  "Use 'private' modifier only once per "
+				                  "declaration");
 			if (context.modifierflags & ModifierFlags::MF_PUBLIC)
 				throw ParserError(token->line,
 				                  "Error: Invalid modifier combination: "
-				                  "'private' and 'public'");
+				                  "'private' and 'public'\nHint: Choose either "
+				                  "'private' or 'public', not both");
 			if (context.modifierflags & ModifierFlags::MF_PROTECTED)
 				throw ParserError(token->line,
 				                  "Error: Invalid modifier combination: "
-				                  "'private' and 'protected'");
+				                  "'private' and 'protected'\nHint: Choose "
+				                  "either 'private' or 'protected', not both");
 			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "Error: 'private' must be followed by a declaration");
+				    "Error: 'private' must be followed by a declaration\nHint: "
+				    "Follow 'private' with a class, function, or variable "
+				    "declaration");
 			}
 			context.modifierflags |= ModifierFlags::MF_PRIVATE;
 			goto initial;
@@ -312,33 +342,45 @@ initial:;
 		case Lexer::TokenType::PROTECTED: {
 			if (context.modifierflags & ModifierFlags::MF_PROTECTED)
 				throw ParserError(token->line,
-				                  "Duplicate modifier 'protected'");
+				                  "Duplicate modifier 'protected'\nHint: Use "
+				                  "'protected' modifier only once per "
+				                  "declaration");
 			if (context.modifierflags & ModifierFlags::MF_PUBLIC)
-				throw ParserError(token->line,
-				                  "Error: Invalid modifier combination: "
-				                  "'protected' and 'public'");
+				throw ParserError(
+				    token->line,
+				    "Error: Invalid modifier combination: "
+				    "'protected' and 'public'\nHint: Choose either "
+				    "'protected' or 'public', not both");
 			if (context.modifierflags & ModifierFlags::MF_PRIVATE)
-				throw ParserError(token->line,
-				                  "Error: Invalid modifier combination: "
-				                  "'protected' and 'private'");
+				throw ParserError(
+				    token->line,
+				    "Error: Invalid modifier combination: "
+				    "'protected' and 'private'\nHint: Choose either "
+				    "'protected' or 'private', not both");
 			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "Error: 'protected' must be followed by a declaration");
+				    "Error: 'protected' must be followed by a "
+				    "declaration\nHint: "
+				    "Follow 'protected' with a class, function, or variable "
+				    "declaration");
 			}
 			context.modifierflags |= ModifierFlags::MF_PROTECTED;
 			goto initial;
 		}
 		case Lexer::TokenType::STATIC: {
 			if (context.modifierflags & ModifierFlags::MF_STATIC)
-				throw ParserError(token->line,
-				                  "Error: Duplicate modifier 'static'");
+				throw ParserError(
+				    token->line,
+				    "Error: Duplicate modifier 'static'\nHint: Use "
+				    "'static' modifier only once per declaration");
 			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "Error: 'static' must be followed by a declaration");
+				    "Error: 'static' must be followed by a declaration\nHint: "
+				    "Follow 'static' with a function or variable declaration");
 			}
 			context.modifierflags |= ModifierFlags::MF_STATIC;
 			goto initial;
@@ -352,25 +394,37 @@ initial:;
 			}
 			if (context.modifierflags & ModifierFlags::MF_LATEINIT)
 				throw ParserError(token->line,
-				                  "Error: Duplicate modifier 'lateinit'");
+				                  "Error: Duplicate modifier 'lateinit'\nHint: "
+				                  "Use 'lateinit' modifier only once per "
+				                  "declaration");
 			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 				--i;
-				throw ParserError(
-				    context.tokens[i].line,
-				    "Error: 'lateinit' must be followed by a declaration");
+				throw ParserError(context.tokens[i].line,
+				                  "Error: 'lateinit' must be followed by a "
+				                  "declaration\nHint: "
+				                  "Follow 'lateinit' with a var declaration");
 			}
 			context.modifierflags |= ModifierFlags::MF_LATEINIT;
 			goto initial;
 		}
+		case Lexer::TokenType::SEMI_COLON: {
+			throw ParserError(
+			    token->line,
+			    "Semicolon ';' is not supported in Autolang\nHint: Remove ';' from your code");
+		}
 		default:
-			throw ParserError(token->line,
-			                  "Unexpected token " + token->toString(context));
+			throw ParserError(
+			    token->line,
+			    "Unexpected token " + token->toString(context) +
+			        "\nHint: Ensure correct syntax or remove unexpected token");
 	}
 	++i;
 	return nullptr;
 err_call_func:;
-	throw ParserError(token->line,
-	                  "Command are not allowed outside a function ");
+	throw ParserError(
+	    token->line,
+	    "Command are not allowed outside a function \nHint: Move statements or "
+	    "expressions inside a function body");
 	// err_call_class:;
 	// 	throw ParserError(token->line, "Command are not allowed outside class
 	// ");
@@ -436,7 +490,10 @@ bool loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i,
 			}
 		}
 	}
-	throw ParserError(firstLine, "Expected } but not found");
+	throw ParserError(
+	    firstLine,
+	    "Expected } but not found\nHint: Close the block with a matching '}' "
+	    "bracket");
 }
 
 HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
@@ -468,7 +525,8 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 			--i;
 			throw ParserError(
 			    context.tokens[i].line,
-			    "Expected expression after operator but not found");
+			    "Expected expression after operator but not found\nHint: "
+			    "Provide a valid right operand expression after operator");
 		}
 		HasClassIdNode *right = loadExpression(in_data, precedence + 1, i);
 		switch (op) {
@@ -517,8 +575,10 @@ std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
 	char openBracket = getOpenBracket(token->type);
 	if (openBracket == '\0')
-		throw ParserError(token->line,
-		                  "Unexpected token " + token->toString(context));
+		throw ParserError(
+		    token->line,
+		    "Unexpected token " + token->toString(context) +
+		        "\nHint: Ensure arguments list opens with a valid bracket '('");
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		throw ParserError(0, "Bug: Lexer did not ensure a closing bracket");
@@ -589,7 +649,10 @@ std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i) {
 			default: {
 				--i;
 				throw ParserError(token->line,
-				                  "Unknown token " + token->toString(context));
+				                  "Unknown token " + token->toString(context) +
+				                      "\nHint: Provide a valid argument "
+				                      "expression or closing "
+				                      "bracket");
 			}
 		}
 	}
@@ -635,12 +698,16 @@ HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
 		case Lexer::TokenType::OR_OR: {
 			switch (canBeNodeType) {
 				case NodeType::CREATE_SET: {
-					throw ParserError(token->line,
-					                  "Expected Set<> but closure found");
+					throw ParserError(
+					    token->line,
+					    "Expected Set<> but closure found\nHint: Do not pass "
+					    "closure parameters inside Set literal");
 				}
 				case NodeType::CREATE_MAP: {
-					throw ParserError(token->line,
-					                  "Expected Map<> but closure found");
+					throw ParserError(
+					    token->line,
+					    "Expected Map<> but closure found\nHint: Do not pass "
+					    "closure parameters inside Map literal");
 				}
 				default:
 					break;
@@ -651,12 +718,16 @@ HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
 		case Lexer::TokenType::OR: {
 			switch (canBeNodeType) {
 				case NodeType::CREATE_SET: {
-					throw ParserError(token->line,
-					                  "Expected Set<> but closure found");
+					throw ParserError(
+					    token->line,
+					    "Expected Set<> but closure found\nHint: Do not pass "
+					    "closure parameters inside Set literal");
 				}
 				case NodeType::CREATE_MAP: {
-					throw ParserError(token->line,
-					                  "Expected Map<> but closure found");
+					throw ParserError(
+					    token->line,
+					    "Expected Map<> but closure found\nHint: Do not pass "
+					    "closure parameters inside Map literal");
 				}
 			}
 			--i;
@@ -672,15 +743,19 @@ HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
 			switch (token->type) {
 				case Lexer::TokenType::COMMA: {
 					if (canBeNodeType == NodeType::CREATE_MAP) {
-						throw ParserError(token->line,
-						                  "Expected Map<> but Set<> found");
+						throw ParserError(
+						    token->line,
+						    "Expected Map<> but Set<> found\nHint: Map "
+						    "elements must use 'key: value' pairs");
 					}
 					return loadSet(in_data, i, firstExpression);
 				}
 				case Lexer::TokenType::COLON: {
 					if (canBeNodeType == NodeType::CREATE_SET) {
-						throw ParserError(token->line,
-						                  "Expected Set<> but Map<> found");
+						throw ParserError(
+						    token->line,
+						    "Expected Set<> but Map<> found\nHint: Set "
+						    "elements must be single values without ':'");
 					}
 					return loadMap(in_data, i, firstExpression);
 				}
@@ -696,8 +771,10 @@ HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
 					    std::vector<HasClassIdNode *>{firstExpression});
 				}
 			}
-			throw ParserError(token->line,
-			                  "Unexpected token " + token->toString(context));
+			throw ParserError(
+			    token->line,
+			    "Unexpected token " + token->toString(context) +
+			        "\nHint: Expected ',' or ':' inside literal structure");
 		}
 	}
 }
@@ -734,8 +811,11 @@ HasClassIdNode *loadSet(in_func, size_t &i, HasClassIdNode *firstExpression) {
 			}
 			default: {
 				--i;
-				throw ParserError(token->line,
-				                  "Unknown token " + token->toString(context));
+				throw ParserError(
+				    token->line,
+				    "Unknown token " + token->toString(context) +
+				        "\nHint: Expected element expression or ',' inside set "
+				        "literal");
 			}
 		}
 	}
@@ -781,7 +861,10 @@ HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode *firstExpression) {
 				if (!nextToken(&token, context.tokens, i) ||
 				    !expect(token, Lexer::TokenType::COLON)) {
 					--i;
-					throw ParserError(context.tokens[i].line, "Expected :");
+					throw ParserError(context.tokens[i].line,
+					                  "Expected :\nHint: Use ':' to separate "
+					                  "key and value in "
+					                  "map entry");
 				}
 				if (!nextToken(&token, context.tokens, i)) {
 					--i;
@@ -795,8 +878,11 @@ HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode *firstExpression) {
 			}
 			default: {
 				--i;
-				throw ParserError(token->line,
-				                  "Unknown token " + token->toString(context));
+				throw ParserError(
+				    token->line,
+				    "Unknown token " + token->toString(context) +
+				        "\nHint: Expected map entry 'key: value' or closing "
+				        "bracket '}'");
 			}
 		}
 	}
@@ -823,16 +909,22 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 		case Lexer::TokenType::VAR:
 		case Lexer::TokenType::VAL: {
 			if (!allowVar)
-				throw ParserError(token->line, token->toString(context) +
-				                                   " can't be allowed here");
+				throw ParserError(
+				    token->line,
+				    token->toString(context) +
+				        " can't be allowed here\nHint: Do not use 'var' or "
+				        "'val' keywords in function parameters unless in "
+				        "constructor");
 		}
 		case Lexer::TokenType::IDENTIFIER: {
 			--i;
 			break;
 		}
 		default:
-			throw ParserError(token->line,
-			                  "Expected parameter name but not found");
+			throw ParserError(
+			    token->line,
+			    "Expected parameter name but not found\nHint: Provide a "
+			    "parameter name identifier");
 	}
 	bool addedDefaultValue = false;
 	while (nextToken(&token, context.tokens, i)) {
@@ -841,18 +933,25 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 			if (!expect(token, Lexer::TokenType::VAR) &&
 			    !expect(token, Lexer::TokenType::VAL)) {
 				--i;
-				throw ParserError(context.tokens[i].line,
-				                  "Expected var or val but not found");
+				throw ParserError(
+				    context.tokens[i].line,
+				    "Expected var or val but not found\nHint: Primary "
+				    "constructor parameters must specify 'var' or 'val'");
 			}
 			isVal = token->type == Lexer::TokenType::VAL;
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
-				throw ParserError(context.tokens[i].line,
-				                  "Expected parameter name but not found");
+				throw ParserError(
+				    context.tokens[i].line,
+				    "Expected parameter name but not found\nHint: Provide an "
+				    "identifier for parameter name after 'var'/'val'");
 			}
 		}
 		if (!expect(token, Lexer::TokenType::IDENTIFIER)) {
-			throw ParserError(token->line, "Expected identifier but not found");
+			throw ParserError(
+			    token->line,
+			    "Expected identifier but not found\nHint: Parameter name "
+			    "must be a valid identifier");
 		}
 		LexerStringId baseName = token->indexData;
 		const std::string &name = context.lexerString[token->indexData];
@@ -860,14 +959,16 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 			--i;
 			throw ParserError(
 			    context.tokens[i].line,
-			    "Expected ':' after parameter name but not found");
+			    "Expected ':' after parameter name but not found\nHint: Add "
+			    "':' after parameter name to declare parameter type");
 		}
 		Autolang::ClassDeclaration *classDeclaration = nullptr;
 		if (!expect(token, Lexer::TokenType::COLON)) {
 			if constexpr (mustHaveColon) {
 				throw ParserError(
 				    token->line,
-				    "Expected ':' after parameter name but not found");
+				    "Expected ':' after parameter name but not found\nHint: "
+				    "Parameter type annotation requires ':'");
 			}
 		} else {
 			classDeclaration =
@@ -891,12 +992,17 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 		parameter->parameters.push_back(node);
 		if (expect(token, Lexer::TokenType::EQUAL)) {
 			if constexpr (!allowDefaultValue) {
-				throw ParserError(token->line, "Unexpected default value");
+				throw ParserError(
+				    token->line,
+				    "Unexpected default value\nHint: Default parameter values "
+				    "are not allowed in this declaration");
 			}
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
-				throw ParserError(context.tokens[i].line,
-				                  "Expected value after '=' but not found");
+				throw ParserError(
+				    context.tokens[i].line,
+				    "Expected value after '=' but not found\nHint: Provide a "
+				    "default value expression after '='");
 			}
 			if (!addedDefaultValue) {
 				addedDefaultValue = true;
@@ -909,9 +1015,11 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 				break;
 			}
 		} else if (addedDefaultValue) {
-			throw ParserError(token->line,
-			                  "Parameter with default value cannot "
-			                  "precede parameter without default value");
+			throw ParserError(
+			    token->line,
+			    "Parameter with default value cannot precede parameter "
+			    "without default value\nHint: Place all parameters with "
+			    "default values at the end of parameter list");
 		}
 		switch (token->type) {
 			using namespace Lexer;
@@ -925,9 +1033,11 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 				break;
 			}
 			default: {
-				throw ParserError(token->line, "Unexpected token '" +
-				                                   token->toString(context) +
-				                                   "'");
+				throw ParserError(
+				    token->line,
+				    "Unexpected token '" + token->toString(context) +
+				        "'\nHint: Expected ',' or closing bracket in parameter "
+				        "list");
 			}
 		}
 	}
@@ -1693,15 +1803,18 @@ ConstValueNode *findConstValueNode(in_func, size_t &i, LexerStringId nameId) {
 void ensureNoKeyword(in_func, size_t &i) {
 	if (!context.modifierflags)
 		return;
-	throw ParserError(context.tokens[i].line,
-	                  "Command doesn't support any keyword");
+	throw ParserError(
+	    context.tokens[i].line,
+	    "Command doesn't support any keyword\nHint: Remove modifiers (public, "
+	    "private, static, etc.) from this command");
 }
 
 void ensureNoAnnotations(in_func, size_t &i) {
 	if (!context.annotationFlags)
 		return;
 	throw ParserError(context.tokens[i].line,
-	                  "Command doesn't support any annotations");
+	                  "Command doesn't support any annotations\nHint: Remove "
+	                  "'@' annotations from this command");
 }
 
 Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t &i) {
@@ -1709,11 +1822,15 @@ Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t &i) {
 	if (!context.modifierflags)
 		return Lexer::TokenType::PUBLIC;
 	if (context.modifierflags & ModifierFlags::MF_STATIC)
-		throw ParserError(context.tokens[i].line,
-		                  "Command doesn't support 'static' keyword");
+		throw ParserError(
+		    context.tokens[i].line,
+		    "Command doesn't support 'static' keyword\nHint: Remove 'static' "
+		    "keyword");
 	if (context.modifierflags & ModifierFlags::MF_LATEINIT)
-		throw ParserError(context.tokens[i].line,
-		                  "Command doesn't support 'lateinit' keyword");
+		throw ParserError(
+		    context.tokens[i].line,
+		    "Command doesn't support 'lateinit' keyword\nHint: Remove "
+		    "'lateinit' keyword");
 	switch (context.modifierflags) {
 		case ModifierFlags::MF_PUBLIC:
 			return Lexer::TokenType::PUBLIC;
@@ -1723,7 +1840,9 @@ Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t &i) {
 			return Lexer::TokenType::PROTECTED;
 		default:
 			throw ParserError(
-			    0, "Bug: Parser did not ensure exactly one modifier");
+			    0, "Bug: Parser did not ensure exactly one modifier\nHint: Use "
+			       "only "
+			       "one access modifier (public, private, or protected)");
 	}
 }
 
@@ -1736,6 +1855,12 @@ void ensureEndline(in_func, size_t &i) {
 			--i;
 			return;
 		}
+		if (token->type == Lexer::TokenType::SEMI_COLON) {
+			--i;
+			throw ParserError(
+			    context.tokens[i].line,
+			    "Semicolon ';' is not supported in Autolang\nHint: Remove ';' from your code");
+		}
 		std::string line = token->toString(context);
 		while (nextTokenSameLine(&token, context.tokens, i, token->line)) {
 			line += " " + token->toString(context);
@@ -1744,7 +1869,8 @@ void ensureEndline(in_func, size_t &i) {
 		--i;
 		throw ParserError(
 		    context.tokens[i].line,
-		    "Multiple commands are not allowed on a single line: " + line);
+		    "Multiple commands are not allowed on a single line: " + line +
+		        "\nHint: Separate commands onto distinct lines");
 	}
 	--i;
 }

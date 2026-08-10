@@ -57,7 +57,9 @@ ClassDeclaration *ClassDeclaration::copy(in_func) {
 		std::cerr << getName(in_data) << "\n";
 		int *a = nullptr;
 		*a = 5;
-		throwError("Cannot copy class declaration because class not exists");
+		throwError(
+		    "Cannot copy class declaration because class not exists\nHint: "
+		    "Ensure target class is declared before copying its declaration");
 	}
 	if (!isGeneric) {
 		return this;
@@ -123,17 +125,21 @@ void ClassDeclaration::load(in_func) {
 					    "' expects " +
 					    std::to_string(
 					        funcInfo->genericData->genericDeclarations.size()) +
-					    " type argument but 0 were given");
+					    " type argument but 0 were given\nHint: Provide "
+					    "required generic type arguments '<...>' for the "
+					    "function");
 				}
 				if (inputClassId.size() !=
 				    funcInfo->genericData->genericDeclarations.size()) {
-					throwError("Function '" +
-					           context.lexerString[baseClassLexerStringId] +
-					           "' expects " +
-					           std::to_string(funcInfo->genericTypeId.size()) +
-					           " type argument but " +
-					           std::to_string(inputClassId.size()) +
-					           " were given");
+					throwError(
+					    "Function '" +
+					    context.lexerString[baseClassLexerStringId] +
+					    "' expects " +
+					    std::to_string(funcInfo->genericTypeId.size()) +
+					    " type argument but " +
+					    std::to_string(inputClassId.size()) +
+					    " were given\nHint: Check number of type arguments "
+					    "passed to the generic function");
 				}
 				return;
 			}
@@ -141,8 +147,11 @@ void ClassDeclaration::load(in_func) {
 		{
 			auto it = context.defaultClassMap.find(baseClassLexerStringId);
 			if (it == context.defaultClassMap.end()) {
-				throwError("Cannot find class name1 '" +
-				           context.lexerString[baseClassLexerStringId] + "'");
+				throwError(
+				    "Cannot find class name1 '" +
+				    context.lexerString[baseClassLexerStringId] +
+				    "'\nHint: Verify that the class name is spelled correctly "
+				    "and defined or imported");
 			}
 			classId = it->second;
 			auto classInfo = context.classInfo[*classId];
@@ -152,23 +161,29 @@ void ClassDeclaration::load(in_func) {
 				    "' expects " +
 				    std::to_string(
 				        classInfo->genericData->genericDeclarations.size()) +
-				    " type argument but 0 were given");
+				    " type argument but 0 were given\nHint: Provide required "
+				    "generic type arguments '<...>' for the class");
 			}
 			if (inputClassId.size() != classInfo->genericTypeId.size()) {
-				throwError("'" + context.lexerString[baseClassLexerStringId] +
-				           "' expects " +
-				           std::to_string(classInfo->genericTypeId.size()) +
-				           " type argument but " +
-				           std::to_string(inputClassId.size()) + " were given");
+				throwError(
+				    "'" + context.lexerString[baseClassLexerStringId] +
+				    "' expects " +
+				    std::to_string(classInfo->genericTypeId.size()) +
+				    " type argument but " +
+				    std::to_string(inputClassId.size()) +
+				    " were given\nHint: Check number of type arguments "
+				    "passed to the generic class");
 			}
 			return;
 		}
 	}
 	{
 		if (isGenericDeclaration) {
-			throwError("Type parameter '" +
-			           context.lexerString[baseClassLexerStringId] +
-			           "' cannot have type arguments");
+			throwError(
+			    "Type parameter '" +
+			    context.lexerString[baseClassLexerStringId] +
+			    "' cannot have type arguments\nHint: Generic type parameters "
+			    "(like T, U) cannot accept further type arguments '<...>'");
 		}
 	}
 
@@ -181,9 +196,10 @@ void ClassDeclaration::load(in_func) {
 				auto func = compile.functions[funcId];
 				auto funcInfo = context.functionInfo[funcId];
 				if (!funcInfo->genericData) {
-					throwError("'" +
-					           context.lexerString[baseClassLexerStringId] +
-					           "' isn't generic function");
+					throwError(
+					    "'" + context.lexerString[baseClassLexerStringId] +
+					    "' isn't generic function\nHint: Do not pass type "
+					    "arguments '<...>' to a non-generic function");
 				}
 				if (inputClassId.size() !=
 				    funcInfo->genericData->genericDeclarations.size()) {
@@ -194,8 +210,11 @@ void ClassDeclaration::load(in_func) {
 					if (!classDeclaration->classId) {
 						classDeclaration->load<changeGenericsClassId>(in_data);
 						if (!classDeclaration->classId) {
-							throwError("Unresolved class " +
-							           classDeclaration->getName(in_data));
+							throwError(
+							    "Unresolved class " +
+							    classDeclaration->getName(in_data) +
+							    "\nHint: Ensure type parameter or class is "
+							    "defined or imported");
 						}
 					} else if (classDeclaration->classId ==
 					           DefaultClass::functionClassId) {
@@ -217,7 +236,9 @@ void ClassDeclaration::load(in_func) {
 				    std::to_string(
 				        funcInfo->genericData->genericDeclarations.size()) +
 				    " type argument but " +
-				    std::to_string(inputClassId.size()) + " were given");
+				    std::to_string(inputClassId.size()) +
+				    " were given\nHint: Match number of type arguments with "
+				    "function generic parameters");
 			}
 		}
 	}
@@ -225,8 +246,10 @@ void ClassDeclaration::load(in_func) {
 	{
 		auto it = context.defaultClassMap.find(baseClassLexerStringId);
 		if (it == context.defaultClassMap.end()) {
-			throwError("Cannot find class name '" +
-			           context.lexerString[baseClassLexerStringId] + "'");
+			throwError(
+			    "Cannot find class name '" +
+			    context.lexerString[baseClassLexerStringId] +
+			    "'\nHint: Ensure target class name is defined or imported");
 		}
 	}
 
@@ -291,11 +314,12 @@ void ClassDeclaration::load(in_func) {
 	auto classInfo = context.classInfo[*classId];
 	if (inputClassId.size() != classInfo->genericTypeId.size()) {
 		// int* x = nullptr; *x = 5;
-		throwError("'" + context.lexerString[baseClassLexerStringId] +
-		           "' expects " +
-		           std::to_string(classInfo->genericTypeId.size()) +
-		           " type argument but " + std::to_string(inputClassId.size()) +
-		           " were given");
+		throwError(
+		    "'" + context.lexerString[baseClassLexerStringId] + "' expects " +
+		    std::to_string(classInfo->genericTypeId.size()) +
+		    " type argument but " + std::to_string(inputClassId.size()) +
+		    " were given\nHint: Match number of type arguments with class "
+		    "generic parameters");
 	}
 }
 

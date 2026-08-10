@@ -207,12 +207,12 @@ void ACompiler::loadMainSource(const char *path, LibraryConfig config,
 		loadBuiltInFunctions();
 	}
 	if (!path || path[0] != '.') {
-		throw std::runtime_error("File must be started by './' or '../' ");
+		throw std::runtime_error("File path must start with './' or '../'\nHint: Specify relative module path starting with './' or '../' (e.g. './my_module.al').");
 	}
 	LibraryData *library = requestImport(nullptr, path);
 	if (!library) {
-		throw std::runtime_error("File " + std::string(path) +
-		                         " doesn't exists");
+		throw std::runtime_error("File '" + std::string(path) +
+		                         "' does not exist\nHint: Check file path spelling and ensure the file exists at specified relative path.");
 	}
 	parserContext.importMap[library->path] = library;
 	library->nativeFuncMap = nativeFuncMap;
@@ -574,11 +574,11 @@ void ACompiler::generateBytecodes() {
 				        conditionClassId)) {
 					inputClass->throwError(
 					    context.lexerString[declaration->nameId] +
-					    " must be extends " +
+					    " must extend '" +
 					    compile.classes[conditionClassId]->getName(compile) +
-					    " but " +
+					    "' but '" +
 					    compile.classes[inputClassId]->getName(compile) +
-					    " found");
+					    "' was found\nHint: Ensure the generic argument class satisfies the type bound by inheriting from the required base class.");
 				}
 			}
 		}
@@ -733,7 +733,7 @@ void ACompiler::generateBytecodes() {
 				    node->line,
 				    "Function " +
 				        context.functionInfo[node->id]->toString(in_data) +
-				        " is marked @override");
+				        " is marked @override but no virtual function was found in superclass\nHint: Check method name and signature, and ensure base class method is marked virtual.");
 			}
 			if (func->functionFlags & FunctionFlags::FUNC_IS_NATIVE)
 				continue;
@@ -988,6 +988,7 @@ void ACompiler::refresh() {
 	parserContext.functionInfo.push_back(
 	    parserContext.functionInfoAllocator.push());
 	state = CompilerState::CT_READY;
+	loadedMainSource = false;
 	vm.isFatalException = false;
 	if (vm.globalVariables) {
 		delete[] vm.globalVariables;

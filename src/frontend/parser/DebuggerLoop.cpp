@@ -14,25 +14,33 @@ WhileNode *loadWhile(in_func, size_t &i) {
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 	    !expect(token, Lexer::TokenType::LPAREN)) {
 		--i;
-		throw ParserError(firstLine,
-		                  "Expected '(' after 'while' in while statement");
+		throw ParserError(
+		    firstLine,
+		    "Expected '(' after 'while' in while statement\nHint: Enclose the "
+		    "while condition in parentheses: while (condition)");
 	}
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 		--i;
-		throw ParserError(firstLine,
-		                  "Expected condition expression in while statement");
+		throw ParserError(
+		    firstLine,
+		    "Expected condition expression in while statement\nHint: Provide a "
+		    "boolean condition expression inside while (...)");
 	}
 	node->condition = loadExpression(in_data, 0, i);
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::RPAREN)) {
 		--i;
-		throw ParserError(context.tokens[i].line,
-		                  "Expected closing ')' after while condition");
+		throw ParserError(
+		    context.tokens[i].line,
+		    "Expected closing ')' after while condition\nHint: Close the while "
+		    "condition with ')'");
 	}
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
-		throw ParserError(context.tokens[i].line,
-		                  "Expected body after while statement");
+		throw ParserError(
+		    context.tokens[i].line,
+		    "Expected body after while statement\nHint: Provide a loop body "
+		    "enclosed in '{ ... }' after while (...)");
 	}
 	loadBody<false>(in_data, node->body.nodes, i);
 	return node;
@@ -45,19 +53,24 @@ ExprNode *loadFor(in_func, size_t &i) {
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 	    !expect(token, Lexer::TokenType::LPAREN)) {
 		--i;
-		throw ParserError(firstLine,
-		                  "Expected '(' after 'for' in for statement");
+		throw ParserError(
+		    firstLine,
+		    "Expected '(' after 'for' in for statement\nHint: Enclose the for "
+		    "loop parameters in parentheses: for (item in list)");
 	}
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 		--i;
-		throw ParserError(firstLine,
-		                  "Expected loop variable name in for statement");
+		throw ParserError(
+		    firstLine,
+		    "Expected loop variable name in for statement\nHint: Declare a loop "
+		    "variable after 'for (', e.g. for (i in ...)");
 	}
 	if (!expect(token, Lexer::TokenType::IDENTIFIER)) {
 		--i;
 		throw ParserError(
 		    context.tokens[i].line,
-		    "Expected identifier as loop variable in for statement");
+		    "Expected identifier as loop variable in for statement\nHint: Loop "
+		    "variable name must be a valid identifier");
 	}
 	auto baseName = token->indexData;
 	const std::string &name = context.lexerString[token->indexData];
@@ -73,14 +86,17 @@ ExprNode *loadFor(in_func, size_t &i) {
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::IN_)) {
 		--i;
-		throw ParserError(context.tokens[i].line,
-		                  "Expected 'in' after loop variable in for statement");
+		throw ParserError(
+		    context.tokens[i].line,
+		    "Expected 'in' after loop variable in for statement\nHint: Use the "
+		    "'in' keyword between loop variable and iterable: for (x in items)");
 	}
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		throw ParserError(
 		    context.tokens[i].line,
-		    "Expected iterable expression after 'in' in for statement");
+		    "Expected iterable expression after 'in' in for statement\nHint: "
+		    "Provide an array, range, or iterable object after 'in'");
 	}
 	HasClassIdNode *data = loadExpression(in_data, 0, i);
 	VarNode *iteratorNode = nullptr;
@@ -98,13 +114,17 @@ ExprNode *loadFor(in_func, size_t &i) {
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::RPAREN)) {
 		--i;
-		throw ParserError(context.tokens[i].line,
-		                  "Expected closing ')' after for condition");
+		throw ParserError(
+		    context.tokens[i].line,
+		    "Expected closing ')' after for condition\nHint: Close the for "
+		    "header with ')' after the iterable expression");
 	}
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
-		throw ParserError(context.tokens[i].line,
-		                  "Expected body after for statement");
+		throw ParserError(
+		    context.tokens[i].line,
+		    "Expected body after for statement\nHint: Provide a loop body "
+		    "enclosed in '{ ... }' after for (...)");
 	}
 	auto node =
 	    context.forPool.push(firstLine, declaration, data, iteratorNode);

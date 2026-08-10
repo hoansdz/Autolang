@@ -80,9 +80,11 @@ ExprNode *UnaryNode::resolve(in_func) {
 				default:
 					break;
 			}
-			throwError("Cannot find operator '" +
-			           Lexer::Token(0, op).toString(context) + "' with class " +
-			           compile.classes[value->classId]->getName(compile));
+			throwError("Cannot find unary operator '" +
+			           Lexer::Token(0, op).toString(context) + "' for type '" +
+			           compile.classes[value->classId]->getName(compile) +
+			           "'\nHint: Unary operator '" + Lexer::Token(0, op).toString(context) +
+			           "' is only supported on compatible numeric or boolean constant types.");
 		}
 		case NodeType::CAST: {
 			switch (op) {
@@ -129,9 +131,11 @@ ExprNode *UnaryNode::resolve(in_func) {
 				default:
 					break;
 			}
-			throwError("Cannot find operator '" +
-			           Lexer::Token(0, op).toString(context) + "' with class " +
-			           compile.classes[value->classId]->getName(compile));
+			throwError("Cannot find unary operator '" +
+			           Lexer::Token(0, op).toString(context) + "' for cast type '" +
+			           compile.classes[value->classId]->getName(compile) +
+			           "'\nHint: Ensure the expression can be evaluated with unary operator '" +
+			           Lexer::Token(0, op).toString(context) + "'.");
 		}
 		default: {
 		}
@@ -147,8 +151,9 @@ void UnaryNode::optimize(in_func) {
 			break;
 		}
 		case NodeType::CLASS_ACCESS: {
-			throwError("Expected value if use operator '" +
-			           Lexer::Token(0, op).toString(context) + "'");
+			throwError("Expected value expression for operator '" +
+			           Lexer::Token(0, op).toString(context) +
+			           "'\nHint: A class reference cannot be used as an operand. Provide an instance or value expression.");
 		}
 		case NodeType::VAR:
 		case NodeType::GET_PROP: {
@@ -161,9 +166,10 @@ void UnaryNode::optimize(in_func) {
 	}
 	value->optimize(in_data);
 	if (value->isNullable()) {
-		throwError("Operator " + Lexer::Token(0, op).toString(context) +
-		           " cannot be applied to operand of type '" +
-		           compile.classes[value->classId]->getName(compile) + "?'");
+		throwError("Operator '" + Lexer::Token(0, op).toString(context) +
+		           "' cannot be applied to nullable operand of type '" +
+		           compile.classes[value->classId]->getName(compile) + "?'\nHint: Unwrap the nullable value using '!' or perform a null check before applying unary operator '" +
+		           Lexer::Token(0, op).toString(context) + "'.");
 	}
 	switch (op) {
 		case Lexer::TokenType::PLUS: {
@@ -179,9 +185,9 @@ void UnaryNode::optimize(in_func) {
 				}
 				default:
 					throwError(
-					    "Cannot cast class " +
+					    "Cannot convert type '" +
 					    compile.classes[value->classId]->getName(compile) +
-					    " to number");
+					    "' to numeric type\nHint: Unary '+' operator requires operand of type Int, Float, or Bool.");
 			}
 		}
 		case Lexer::TokenType::MINUS: {
@@ -197,9 +203,9 @@ void UnaryNode::optimize(in_func) {
 				}
 				default:
 					throwError(
-					    "Cannot cast class " +
+					    "Cannot convert type '" +
 					    compile.classes[value->classId]->getName(compile) +
-					    " to number");
+					    "' to numeric type\nHint: Unary '-' operator requires operand of type Int, Float, or Bool.");
 			}
 		}
 		case Lexer::TokenType::NOT: {
@@ -207,9 +213,9 @@ void UnaryNode::optimize(in_func) {
 				classId = DefaultClass::boolClassId;
 				return;
 			}
-			throwError("Cannot cast class " +
+			throwError("Cannot convert type '" +
 			           compile.classes[value->classId]->getName(compile) +
-			           " to Bool");
+			           "' to Bool\nHint: Logical NOT '!' operator requires a Bool operand.");
 		}
 		default: {
 			classId = value->classId;

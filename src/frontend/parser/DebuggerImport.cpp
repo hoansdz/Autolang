@@ -22,21 +22,32 @@ LibraryData *loadImport(in_func, LibraryData* currentLibrary, std::vector<Lexer:
 	if (!nextTokenSameLine(&token, tokens, i, firstLine) ||
 	    !expect(token, Lexer::TokenType::LPAREN)) {
 		--i;
-		throw ParserError(firstLine, "@import expects an opening '(' bracket");
+		throw ParserError(
+		    firstLine,
+		    "@import expects an opening '(' bracket\nHint: Use "
+		    "'@import(\"file_path\")' format with '(' after @import");
 	}
 	if (!nextTokenSameLine(&token, tokens, i, firstLine) ||
 	    !expect(token, Lexer::TokenType::STRING)) {
-		throw ParserError(firstLine, "@import expects a string value");
+		throw ParserError(
+		    firstLine,
+		    "@import expects a string value\nHint: Provide a string literal inside "
+		    "parentheses, e.g. @import(\"path/to/file\")");
 	}
 	const std::string &path = context.lexerString[token->indexData];
 	if (!nextTokenSameLine(&token, tokens, i, firstLine) ||
 	    !expect(token, Lexer::TokenType::RPAREN)) {
 		--i;
-		throw ParserError(firstLine, "@import expects a constant "
-		                             "string value, not an expression");
+		throw ParserError(
+		    firstLine,
+		    "@import expects a constant string value, not an expression\nHint: "
+		    "Close the import statement with ')' right after the string literal");
 	}
 	if (path.empty()) {
-		throw ParserError(firstLine, "Import path is empty");
+		throw ParserError(
+		    firstLine,
+		    "Import path is empty\nHint: Provide a non-empty file path string inside "
+		    "@import(...)");
 	}
 	// {
 	// 	auto it = context.importMap.find(path);
@@ -46,7 +57,11 @@ LibraryData *loadImport(in_func, LibraryData* currentLibrary, std::vector<Lexer:
 	// }
 	LibraryData *library = compiler.requestImport(currentLibrary, path.c_str());
 	if (!library) {
-		throw ParserError(firstLine, "Cannot find library '" + path + "'");
+		throw ParserError(
+		    firstLine,
+		    "Cannot find library '" + path +
+		        "'\nHint: Verify that the imported file path exists and is "
+		        "accessible");
 	}
 	// context.importMap[path] = library;
 	if (!library->lexerContext.tokens.empty()) {

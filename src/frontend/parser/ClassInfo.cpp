@@ -23,8 +23,11 @@ AccessNode *ClassInfo::findDeclaration(in_func, uint32_t line,
 	if (it != classInfo->memberMap.end()) {
 		auto node = member[it->second];
 		if (isStatic)
-			throw ParserError(line, context.lexerString[nameId] +
-			                            " is non static member");
+			throw ParserError(
+			    line,
+			    context.lexerString[nameId] +
+			        " is non static member\nHint: Non-static members require an "
+			        "object instance to be accessed");
 		return context.getPropPool.push(
 		    line, node, declarationThis->classId,
 		    context.varPool.push(line, declarationThis, false, false), nameId,
@@ -50,7 +53,11 @@ DeclarationNode *ClassInfo::findAllMember(in_func, uint32_t line,
 	if (it != classInfo->memberMap.end()) {
 		auto node = member[it->second];
 		if (isStatic)
-			ParserError(line, context.lexerString[nameId] + " is not static");
+			throw ParserError(
+			    line,
+			    context.lexerString[nameId] +
+			        " is not static\nHint: Non-static members require an "
+			        "object instance to be accessed");
 		return member[it->second];
 	}
 	// }

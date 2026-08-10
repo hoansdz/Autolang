@@ -56,7 +56,8 @@ void BlockNode::loadReturnValueClassId(in_func, uint32_t line,
 	throw ParserError(
 	    line,
 	    "Cannot cast '" + compile.classes[*currentClassId]->getName(compile) +
-	        "' to '" + compile.classes[newClassId]->getName(compile) + "'");
+	        "' to '" + compile.classes[newClassId]->getName(compile) + "'" +
+	        "\nHint: Ensure returned expressions across block branches have compatible types or add an explicit type cast.");
 }
 
 void BlockNode::loadClassNode(in_func, ExprNode *&node,
@@ -166,7 +167,8 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 			    currentClassId != DefaultClass::functionClassId) {
 				n->throwError(
 				    "Cannot cast 'Function' to '" +
-				    compile.classes[*currentClassId]->getName(compile) + "'");
+				    compile.classes[*currentClassId]->getName(compile) + "'" +
+				    "\nHint: A closure expression cannot be assigned or returned as a non-Function type.");
 			}
 			if (newClassDeclaration) {
 				// if (n->mustInfer) {
@@ -177,7 +179,8 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 					n->throwError("Cannot cast '" +
 					              newClassDeclaration->getName(in_data) +
 					              "' to '" +
-					              n->classDeclaration->getName(in_data) + "'");
+					              n->classDeclaration->getName(in_data) + "'" +
+					              "\nHint: Ensure closure parameter and return signatures match the expected Function declaration.");
 				}
 			} else {
 				node->optimize(in_data);
@@ -334,7 +337,8 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 						    compile
 						        .classes[**context.currentClosureCurrentClassId]
 						        ->getName(compile) +
-						    "' to 'Void'");
+						    "' to 'Void'" +
+						    "\nHint: Function with 'Void' return type cannot return a value.");
 					}
 				} else {
 					*context.currentClosureCurrentClassId =
@@ -355,7 +359,8 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 						throwError(
 						    "Cannot cast '" +
 						    compile.classes[*currentClassId]->getName(compile) +
-						    "' to 'Void'");
+						    "' to 'Void'" +
+						    "\nHint: Function with 'Void' return type cannot return a value.");
 					}
 				} else {
 					currentClassId = DefaultClass::voidClassId;
@@ -432,10 +437,10 @@ void BlockNode::loadClassAndOptimize(in_func) {
 				if (!n->mustReturnValue || nullable) {
 					return;
 				}
-				throwError("Expression branch must return a value");
+				throwError("Expression branch must return a value\nHint: All branches of an 'if' expression must evaluate to a value of a compatible type.");
 			}
 			if (!hasValue && n->mustReturnValue) {
-				throwError("Expression branch must return a value");
+				throwError("Expression branch must return a value\nHint: All branches of an 'if' expression must evaluate to a value of a compatible type.");
 			}
 			if (newClassDeclaration) {
 				n->classDeclaration = newClassDeclaration;
@@ -455,7 +460,7 @@ void BlockNode::loadClassAndOptimize(in_func) {
 			    currentClassId == DefaultClass::voidClassId) {
 				if (nullable) {
 					throwError("Cannot infer return type for closure because "
-					           "its body is a null literal");
+					           "its body is a null literal\nHint: Specify an explicit return type or return a typed expression instead of raw 'null'.");
 				}
 				auto classDeclaration =
 				    context.classDeclarationAllocator.push();
@@ -467,7 +472,7 @@ void BlockNode::loadClassAndOptimize(in_func) {
 			}
 
 			if (!hasValue) {
-				throwError("Expression branch must return a value");
+				throwError("Expression branch must return a value\nHint: Closure body must return a value matching the declared function return type.");
 			}
 
 			// Because it return function
@@ -480,7 +485,7 @@ void BlockNode::loadClassAndOptimize(in_func) {
 					throwError("Cannot cast '" +
 					           newClassDeclaration->getName<true>(in_data) +
 					           "' to '" + returnClass->getName<true>(in_data) +
-					           "'");
+					           "'\nHint: Closure return type must match or inherit from the target Function signature.");
 				}
 				n->classDeclaration->inputClassId[0] = newClassDeclaration;
 				return;
@@ -499,7 +504,8 @@ void BlockNode::loadClassAndOptimize(in_func) {
 			if (nullable && !returnClass->nullable) {
 				throwError("Cannot cast '" +
 				           classDeclaration->getName<true>(in_data) + "' to '" +
-				           returnClass->getName<true>(in_data) + "'");
+				           returnClass->getName<true>(in_data) +
+				           "'\nHint: Closure return type must match or inherit from the expected return type.");
 			}
 			n->classDeclaration->inputClassId[0] = classDeclaration;
 			return;
@@ -580,7 +586,7 @@ void BlockNode::addJumpPosition(in_func, BytecodePos pos) {
 		}
 		default:
 			throwError(
-			    "Cannot add jump position to non-branching node in BlockNode");
+			    "Cannot add jump position to non-branching node in BlockNode\nHint: Internal compiler error - jump targets are only supported on conditional or closure nodes.");
 	}
 }
 
@@ -759,7 +765,7 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					}
 					default: {
 						throwError("Unsupported expression node type for block "
-						           "return value");
+						           "return value\nHint: Expression node inside block cannot be evaluated to a return value.");
 					}
 				}
 			} else {

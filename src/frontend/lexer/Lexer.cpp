@@ -19,7 +19,7 @@ bool isEndOfLine(Context &context, uint32_t i) { return i >= context.lineSize; }
 void loadFile(ParserContext *mainContext, LibraryData *library) {
 	std::ifstream file(library->path, std::ios::binary | std::ios::ate);
 	if (!file.is_open()) {
-		throw LexerError(0, "File " + library->path + " doesn't exists");
+		throw LexerError(0, "File " + library->path + " doesn't exists\nHint: Verify file path and ensure source file exists");
 	}
 	library->flags |= LibraryFlags::IS_FILE;
 	std::streamsize size = file.tellg();
@@ -27,7 +27,7 @@ void loadFile(ParserContext *mainContext, LibraryData *library) {
 	library->rawData.resize(size);
 	file.read(library->rawData.data(), size);
 	if (!file) {
-		throw LexerError(0, "An error occurred while reading the file");
+		throw LexerError(0, "An error occurred while reading the file\nHint: Check file permissions and read access");
 	}
 	file.close();
 }
@@ -117,7 +117,7 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 			if (context.bracketStack.empty() ||
 			    context.bracketStack.back() != '(')
 				throw LexerError(context.linePos,
-				                 "Unexpected ')', you must use '(' before");
+				                 "Unexpected ')', you must use '(' before\nHint: Remove extra ')' or add matching '(' before");
 			context.bracketStack.pop_back();
 			context.tokens.emplace_back(context.linePos, TokenType::RPAREN);
 			// ++i;
@@ -127,7 +127,7 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 			if (context.bracketStack.empty() ||
 			    context.bracketStack.back() != '[')
 				throw LexerError(context.linePos,
-				                 "Unexpected ']', you must use '[' before");
+				                 "Unexpected ']', you must use '[' before\nHint: Remove extra ']' or add matching '[' before");
 			context.bracketStack.pop_back();
 			context.tokens.emplace_back(context.linePos, TokenType::RBRACKET);
 			// ++i;
@@ -137,7 +137,7 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 			if (context.bracketStack.empty() ||
 			    context.bracketStack.back() != '{')
 				throw LexerError(context.linePos,
-				                 "Unexpected '{', you must use '}' before");
+				                 "Unexpected '}', you must use '{' before\nHint: Remove extra '}' or add matching '{' before");
 			context.bracketStack.pop_back();
 			context.tokens.emplace_back(context.linePos, TokenType::RBRACE);
 			// ++i;
@@ -188,7 +188,7 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 					goto end;
 				}
 				if (!nextLine(context, context.library->rawData.data(), i)) {
-					throw LexerError(firstLine, std::string("Cannot find */"));
+					throw LexerError(firstLine, std::string("Cannot find */\nHint: Close multi-line comment with '*/'"));
 				}
 				goto start;
 			end:;
@@ -203,7 +203,8 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 	throw LexerError(
 	    context.linePos,
 	    std::string("Unknown character: '") + chr +
-	        "' - ASCII value: " + std::to_string(static_cast<int>(chr)));
+	        "' - ASCII value: " + std::to_string(static_cast<int>(chr)) +
+	        "\nHint: Remove or replace invalid character");
 }
 
 void pushAndEnsureBracket(Context &context, uint32_t &i) {
@@ -233,7 +234,8 @@ start:;
 	if (!nextLine(context, context.library->rawData.data(), i)) {
 		throw LexerError(firstLine, std::string("Expected '") +
 		                                getCloseBracket(chr) +
-		                                "' but not found");
+		                                "' but not found\nHint: Close bracket with '" +
+		                                getCloseBracket(chr) + "'");
 	}
 	goto start;
 }
@@ -245,7 +247,7 @@ TokenType loadOp(Context &context, uint32_t &i) {
 		std::string str = {first};
 		auto it = CAST.find(str);
 		if (it == CAST.end())
-			throw LexerError(context.linePos, "Cannot find operator: " + str);
+			throw LexerError(context.linePos, "Cannot find operator: " + str + "\nHint: Check operator syntax");
 		return it->second;
 	}
 	char second = context.line[i++];
@@ -305,14 +307,14 @@ void pushIdentifier(Context &context, uint32_t &i) {
 			if (context.tokens.empty() ||
 			    context.tokens.back().type != TokenType::AT_SIGN) {
 				throw LexerError(context.linePos,
-				                 "import must have @ in prefix");
+				                 "import must have @ in prefix\nHint: Write '@import' instead of 'import'");
 			}
 			// if (!context.mode->allowImportOtherFile) {
 			// 	throw LexerError(context.linePos, "@import isn't allowed here");
 			// }
 			if (!context.bracketStack.empty()) {
 				throw LexerError(context.linePos,
-				                 "@import is only allowed at file scope");
+				                 "@import is only allowed at file scope\nHint: Move @import statement to the top of the file outside any function or class");
 			}
 			context.importOffset->push_back(context.tokens.size());
 			break;
@@ -367,8 +369,9 @@ std::string loadNumber(Context &context, uint32_t &i) {
 				if (scientific)
 					throw LexerError(context.linePos,
 					                 "Unknown value: " +
-					                     std::string(context.line + context.pos,
-					                                 i - context.pos));
+ 					                     std::string(context.line + context.pos,
+ 					                                 i - context.pos) +
+					                     "\nHint: Format scientific notation as '1e10' or '1.5e-3'");
 				scientific = true;
 				if (isEndOfLine(context, ++i)) {
 					--i;
@@ -390,7 +393,7 @@ std::string loadNumber(Context &context, uint32_t &i) {
 						throw LexerError(context.linePos,
 						                 std::string("Expected digit after ") +
 						                     num + " but '" + chr +
-						                     "' was found");
+						                     "' was found\nHint: Provide a digit after exponent sign");
 					}
 					continue;
 				}
@@ -400,7 +403,7 @@ std::string loadNumber(Context &context, uint32_t &i) {
 				    context.linePos,
 				    std::string("Expected digit after exponent '") + num +
 				        "' but '" + chr + "' was found, did you mean " + num +
-				        "0 ?");
+				        "0 ?\nHint: Add a digit after exponent 'e' or 'E'");
 			}
 			case '_': {
 				hasUnderscore = true;
@@ -415,7 +418,7 @@ std::string loadNumber(Context &context, uint32_t &i) {
 					throw LexerError(
 					    context.linePos,
 					    std::string("Expected digit after ") + num + "_ but '" +
-					        chr + "' was found, did you mean " + num + " ?");
+					        chr + "' was found, did you mean " + num + " ?\nHint: Do not end numeric separator '_' without trailing digits");
 				}
 				continue;
 			}
@@ -424,16 +427,16 @@ std::string loadNumber(Context &context, uint32_t &i) {
 					std::string num = std::string(context.line + context.pos,
 					                              i - context.pos);
 					throw LexerError(context.linePos,
-					                 "Expected integer exponent after " + num +
-					                     ", but '.' was found");
+ 					                 "Expected integer exponent after " + num +
+ 					                     ", but '.' was found\nHint: Scientific exponent must be an integer");
 				}
 				if (hasDot) {
 					std::string num = std::string(context.line + context.pos,
 					                              i - context.pos);
 					throw LexerError(context.linePos,
 					                 "Expected digit after " + num +
-					                     " but '.' was found, did you mean " +
-					                     num + "0 ?");
+ 					                     " but '.' was found, did you mean " +
+ 					                     num + "0 ?\nHint: Remove extra decimal point '.'");
 				}
 				if (isEndOfLine(context, ++i) ||
 				    !std::isdigit(context.line[i])) {
@@ -455,7 +458,7 @@ std::string loadNumber(Context &context, uint32_t &i) {
 			    std::string("Unexpected character '") + chr +
 			        "' after numeric literal: " +
 			        std::string(context.line + context.pos, i - context.pos) +
-			        chr);
+			        chr + "\nHint: Separate number from identifier with space or operator");
 		}
 		break;
 	}
@@ -504,12 +507,12 @@ back:;
 						}
 						throw LexerError(context.linePos,
 						                 std::string("Expected '") + quote +
-						                     "' but not found");
+						                     "' but not found\nHint: Close string literal with '" + quote + "'");
 					}
 					if constexpr (isChar) {
 						throw LexerError(context.linePos,
 						                 "Invalid char literal: interpolation "
-						                 "is not allowed");
+ 						                 "is not allowed\nHint: Char literal '...' cannot contain '${...}' string interpolation");
 						return;
 					}
 					auto linePos = context.linePos;
@@ -528,7 +531,7 @@ back:;
 						    linePos, TokenType::STRING,
 						    pushLexerString(context, std::move(newStr)));
 						context.tokens.emplace_back(linePos,
-						                            TokenType::PLUS);
+ 						                            TokenType::PLUS);
 						context.pos = i;
 						pushIdentifier(context, i);
 						if (context.line[i] == quote) {
@@ -577,7 +580,7 @@ back:;
 						if (isEndOfLine(context, i)) {
 							throw LexerError(linePos,
 							                 std::string("Expected '") + quote +
-							                     "' but not found");
+							                     "' but not found\nHint: Close string literal with '" + quote + "'");
 						}
 						if (context.line[i] == quote) {
 							++i;
@@ -633,7 +636,7 @@ back:;
 							    context.linePos,
 							    "Invalid char literal: expected "
 							    "exactly 1 Unicode code point, got " +
-							        std::to_string(newStr.size()));
+							        std::to_string(newStr.size()) + "\nHint: Char literal must contain exactly one character, use \"...\" for strings");
 						}
 					}
 				}
@@ -685,21 +688,22 @@ back:;
 			default:
 				throw LexerError(context.linePos,
 				                 std::string("Unknown escape sequence '\\") +
-				                     chr + '\'');
+				                     chr + "'\nHint: Use valid escape sequence such as \\n, \\t, \\\\, \\', \\\", \\r, \\0");
 		}
 		isSpecialCase = false;
 	}
 	if constexpr (isRawString) {
 		if (!nextLine(context, ParserContext::mode->rawData.data(), i)) {
 			throw LexerError(context.linePos,
-			                 std::string("Expected '\"\"\"' but not found"));
+			                 std::string("Expected '\"\"\"' but not found\nHint: Close multiline raw string with '\"\"\"'"));
 		}
 		newStr += '\n';
 		goto back;
 	}
 	throw LexerError(context.linePos,
-	                 std::string("Expected '") + quote + "' but not found");
+	                 std::string("Expected '") + quote + "' but not found\nHint: Close string literal with '" + quote + "'");
 }
+
 
 bool isOperator(char chr) {
 	switch (chr) {

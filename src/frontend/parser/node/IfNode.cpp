@@ -46,7 +46,7 @@ void IfNode::optimize(in_func) {
 	if (condition->classId != Autolang::DefaultClass::boolClassId)
 		throwError("Cannot use expression of type '" +
 		           condition->getClassName(in_data) +
-		           "' as a condition, expected 'Bool'");
+		           "' as a condition, expected 'Bool'\nHint: Ensure the condition expression evaluates to a 'Bool' value or explicit boolean comparison.");
 
 	auto lastMustReturnValueNode = context.mustReturnValueNode;
 	bool loadReturnBlock = mustReturnValue || lastMustReturnValueNode;
@@ -85,7 +85,7 @@ void IfNode::optimize(in_func) {
 	if (loadReturnBlock) {
 		if (classId == DefaultClass::nullClassId && nullable) {
 			throwError("Cannot infer return type for 'if' expression because "
-			           "its body is a null literal");
+			           "its body is a null literal\nHint: Explicitly specify the type or ensure the expression body returns a concrete typed value.");
 		}
 		context.mustReturnValueNode = lastMustReturnValueNode;
 	}

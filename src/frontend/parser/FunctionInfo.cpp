@@ -14,7 +14,11 @@ AccessNode *Scopes::findDeclaration(in_func, uint32_t line,
 		if (it == scope.end())
 			continue;
 		if (isStatic && i != 0 && !it->second->isGlobal)
-			throw ParserError(line, it->second->name + " is not static");
+			throw ParserError(
+			    line,
+			    it->second->name +
+			        " is not static\nHint: Non-static local variables cannot be "
+			        "accessed in a static context");
 		return context.varPool.push(line, it->second, false,
 		                            it->second->nullable);
 	}

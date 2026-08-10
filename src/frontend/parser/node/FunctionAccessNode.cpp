@@ -86,14 +86,15 @@ void FunctionAccessNode::optimize(in_func) {
 				}
 			}
 			throwError("Ambiguous reference to: '" +
-			           context.lexerString[nameId] + "'\nFound: " + found);
+			           context.lexerString[nameId] + "'\nFound: " + found +
+			           "\nHint: Multiple functions match this identifier. Explicitly specify function parameter types or refine the type signature.");
 		}
 	}
 
 	if (*classDeclaration->classId != DefaultClass::functionClassId) {
 		throwError("Expected Function type, but '" +
 		           compile.classes[*classDeclaration->classId]->getName(compile) +
-		           "' found");
+		           "' found\nHint: Ensure the expression resolves to a Function type before referencing or invoking it.");
 	}
 
 	{
@@ -121,7 +122,8 @@ void FunctionAccessNode::optimize(in_func) {
 					}
 				}
 				if (matchFuncId) {
-					throwError("Ambiguous function call: overload conflict for '" + func->getName(compile) + "'");
+					throwError("Ambiguous function call: overload conflict for '" + func->getName(compile) +
+					           "'\nHint: Multiple overloaded functions match the targeted signature. Explicitly specify types or cast arguments to resolve conflict.");
 				}
 				matchFuncId = funcId;
 			nextFunc:;
@@ -131,7 +133,8 @@ void FunctionAccessNode::optimize(in_func) {
 		if (!matchFuncId) {
 			throwError(
 			    "Cannot find function '" + context.lexerString[nameId] +
-			    "' matching signature: " + classDeclaration->getName(in_data));
+			    "' matching signature: " + classDeclaration->getName(in_data) +
+			    "\nHint: Verify the function name spelling, argument count, parameter types, and return type against available definitions.");
 		}
 
 		funcId = *matchFuncId;
@@ -144,7 +147,8 @@ matched:;
 		if (!caller) {
 			throwError(
 			    "Expected static function but found non-static function: '" +
-			    compile.functions[*funcId]->getName(compile) + "'");
+			    compile.functions[*funcId]->getName(compile) +
+			    "'\nHint: Non-static functions require an instance caller. Call the function on an instance or mark it as static.");
 		}
 		object = caller;
 		return;

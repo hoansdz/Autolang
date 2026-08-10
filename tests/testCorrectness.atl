@@ -94,6 +94,4 @@
 // val codeB = 'b' // codeB is Int with value 98
 
 // println(codeA + 1 == codeB) // Output: true
-println(32 * 1024 * 1024)
-val x = <Int>[]
-x.reserve(1_000_000)
+1 + 2;

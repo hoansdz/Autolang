@@ -20,7 +20,7 @@ void DeclarationNode::optimize(in_func) {
 		if (it != context.globalFunction.end()) {
 			throwError(
 			    "Cannot declare variable with the same name as function: '" +
-			    name + "'");
+			    name + "'\nHint: Rename the variable or function to avoid name collision.");
 		}
 	}
 	if (contextCallClassId) {
@@ -29,7 +29,7 @@ void DeclarationNode::optimize(in_func) {
 		if (it != classInfo->allFunction.end()) {
 			throwError(
 			    "Cannot declare variable with the same name as function: '" +
-			    name + "'");
+			    name + "'\nHint: Variable names in a class cannot shadow member functions.");
 		}
 	}
 	{
@@ -37,7 +37,7 @@ void DeclarationNode::optimize(in_func) {
 		if (it != context.defaultClassMap.end()) {
 			throwError(
 			    "Cannot declare variable with the same name as class: '" +
-			    name + "'");
+			    name + "'\nHint: Choose a different variable name that does not conflict with existing class names.");
 		}
 	}
 	if (classDeclaration) {
@@ -51,7 +51,7 @@ void DeclarationNode::optimize(in_func) {
 		auto it = context.defaultClassMap.find(
 		    classDeclaration->baseClassLexerStringId);
 		if (it == context.defaultClassMap.end()) {
-			throwError("Cannot find class name: '" + baseClassName + "'");
+			throwError("Cannot find class name: '" + baseClassName + "'\nHint: Ensure the class name is defined and correctly spelled in the current scope.");
 		}
 		auto classInfo = context.classInfo[it->second];
 		if (!classInfo->genericData) {
@@ -67,11 +67,11 @@ void DeclarationNode::optimize(in_func) {
 			               classInfo->genericData->genericDeclarations.size()) +
 			           " type argument but " +
 			           std::to_string(classDeclaration->inputClassId.size()) +
-			           " were given");
+			           " were given\nHint: Pass the correct number of generic type arguments.");
 		}
 		// Generics
 		if (!classDeclaration->classId) {
-			throwError("Unresolved class ID for declaration '" + name + "'");
+			throwError("Unresolved class ID for declaration '" + name + "'\nHint: Internal compiler error - class declaration was not resolved.");
 		}
 		classId = *classDeclaration->classId;
 		// if (classId == DefaultClass::functionClassId) {
@@ -112,7 +112,8 @@ ExprNode *DeclarationNode::copy(in_func) {
 			classDeclaration->load<false>(in_data);
 			if (!classDeclaration->classId) {
 				throwError("Bug: DeclarationNode copy: Unresolved class " +
-				           classDeclaration->getName(in_data));
+				           classDeclaration->getName(in_data) +
+				           "\nHint: Internal compiler error - class declaration was not resolved before copy.");
 			}
 			newNode->classId = *classDeclaration->classId;
 			if (classDeclaration->isGeneric &&
@@ -208,7 +209,8 @@ void CreateConstructorNode::optimize(in_func) {
 	auto it = hash.find(funcInfo->hash);
 	if (it != hash.end() && compile.functions[it->second]->getName(compile) ==
 	                            func->getName(compile)) {
-		throwError("Redefined function: " + funcInfo->toString(in_data));
+		throwError("Redefined function: " + funcInfo->toString(in_data) +
+		           "\nHint: A constructor or function with the same signature already exists in this class.");
 	}
 	hash[funcInfo->hash] = func->id;
 
@@ -216,7 +218,7 @@ void CreateConstructorNode::optimize(in_func) {
 	if (clazz->classFlags & ClassFlags::CLASS_HAS_PARENT) {
 		if (body.nodes.empty()) {
 			throwError(
-			    "super() must be called first in a derived class constructor.");
+			    "super() must be called first in a derived class constructor.\nHint: Call super(...) at the beginning of the constructor body.");
 		}
 		auto *n = body.nodes[0];
 		switch (n->kind) {
@@ -225,7 +227,7 @@ void CreateConstructorNode::optimize(in_func) {
 				if (node->caller || node->nameId != lexerIdsuper) {
 					throwError(
 					    "super() must be called first in a derived class "
-					    "constructor.");
+					    "constructor.\nHint: Ensure super(...) call is the very first statement.");
 				}
 				node->isSuper = true;
 				node->nameId = context.createLexerStringIfNotExists(
@@ -234,7 +236,7 @@ void CreateConstructorNode::optimize(in_func) {
 			}
 			default:
 				throwError("super() must be called first in a derived class "
-				           "constructor.");
+				           "constructor.\nHint: First statement must be a super(...) call.");
 		}
 	}
 
@@ -277,7 +279,7 @@ void CreateClassNode::optimize(in_func) {
 		if (it != context.globalFunction.end()) {
 			throwError(
 			    "Cannot declare class with the same name as function: '" +
-			    name + "'");
+			    name + "'\nHint: Class names cannot collide with global function names.");
 		}
 	}
 	auto classInfo = context.classInfo[classId];
@@ -289,7 +291,7 @@ void CreateClassNode::optimize(in_func) {
 				throwError("Cannot declare generic type parameter with the "
 				           "same name as class: '" +
 				           context.lexerString[genericDeclaration->nameId] +
-				           "'");
+				           "'\nHint: Rename the generic type parameter so it does not conflict with a class name.");
 			}
 		}
 	}
@@ -301,7 +303,7 @@ void CreateClassNode::optimize(in_func) {
 		// std::cerr<<"B "<<name<<"\n";
 		if (!superDeclaration->classId) {
 			throwError("Unresolved superclass name: '" +
-			           superDeclaration->getName(in_data) + "'");
+			           superDeclaration->getName(in_data) + "'\nHint: Check if the base class exists and is imported properly.");
 		}
 		auto clazz = compile.classes[classId];
 		clazz->parentId = *superDeclaration->classId;
@@ -323,7 +325,7 @@ void CreateClassNode::loadSuper(in_func) {
 		if (superClass->classFlags & ClassFlags::CLASS_NO_EXTENDS) {
 			throwError("Cannot inherit from class '" +
 			           superClass->getName(compile) +
-			           "' because it is marked @no_extends");
+			           "' because it is marked @no_extends\nHint: Remove @no_extends from the base class or avoid extending it.");
 		}
 
 		loadedSuper = true;
@@ -333,14 +335,15 @@ void CreateClassNode::loadSuper(in_func) {
 			if (!node) {
 				throwError("Bug: Cannot find create class node " +
 				           compile.classes[superClassId]->getName(compile) +
-				           " " + std::to_string(superClassId));
+				           " " + std::to_string(superClassId) +
+				           "\nHint: Internal compiler error - missing class AST node.");
 			}
 			node->loadSuper(in_data);
 		}
 
 		if (superClass->inheritance.get(classId)) {
 			throwError("Cyclic inheritance detected for class '" +
-			           compile.classes[classId]->getName(compile) + "'");
+			           compile.classes[classId]->getName(compile) + "'\nHint: Break circular dependency in class hierarchy.");
 		}
 
 		auto memberToFind = HashMap<std::string_view, DeclarationNode *>();
@@ -361,7 +364,7 @@ void CreateClassNode::loadSuper(in_func) {
 				throwError("Member '" + declaration->name +
 				           "' is already declared in superclass '" +
 				           superClass->getName(compile) +
-				           "'. Overriding is not supported yet.");
+				           "'. Overriding is not supported yet.\nHint: Rename member variable in child class.");
 			}
 			classInfo->memberMap[declaration->baseName] = declaration->id;
 			clazz->memberMap[declaration->name] = declaration->id;
@@ -414,7 +417,7 @@ void CreateClassNode::loadSuper(in_func) {
 						    FunctionFlags::FUNC_NO_OVERRIDE) {
 							throwError("Cannot override function " +
 							           superFuncInfo->toString(in_data) +
-							           " because it is marked @no_override");
+							           " because it is marked @no_override\nHint: Method in base class is marked @no_override and cannot be redefined.");
 						}
 						ClassId parentId = clazz->parentId;
 						while (true) {

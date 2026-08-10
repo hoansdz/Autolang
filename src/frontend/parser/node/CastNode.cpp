@@ -73,7 +73,8 @@ ExprNode *CastNode::resolve(in_func) {
 	return this;
 errCast:;
 	throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) + " to " +
-	           compile.classes[classId]->getName(compile));
+	           compile.classes[classId]->getName(compile) +
+	           "\nHint: Ensure the expression can be cast to the target type or use safe cast 'as?'.");
 }
 
 void CastNode::optimize(in_func) {
@@ -110,7 +111,8 @@ void CastNode::optimize(in_func) {
 				default: {
 					throwError("Cannot cast " +
 					           compile.classes[value->classId]->getName(compile) + " to " +
-					           compile.classes[classId]->getName(compile));
+					           compile.classes[classId]->getName(compile) +
+					           "\nHint: Only numeric or boolean types can be converted to Float.");
 				}
 			}
 			break;
@@ -121,7 +123,8 @@ void CastNode::optimize(in_func) {
 				case Autolang::DefaultClass::floatClassId: {
 					throwError(
 					    "Type Error: Cannot cast Int/Float to Bool. Use "
-					    "explicit comparison like 'value != 0' instead.");
+					    "explicit comparison like 'value != 0' instead."
+					    "\nHint: Replace direct boolean cast with an explicit comparison expression.");
 				}
 				case Autolang::DefaultClass::boolClassId: {
 					return;
@@ -129,7 +132,8 @@ void CastNode::optimize(in_func) {
 				default: {
 					throwError("Cannot cast " +
 					           compile.classes[value->classId]->getName(compile) + " to " +
-					           compile.classes[classId]->getName(compile));
+					           compile.classes[classId]->getName(compile) +
+					           "\nHint: Only compatible types can be converted to Bool.");
 				}
 			}
 			break;
@@ -141,11 +145,13 @@ void CastNode::optimize(in_func) {
 				return;
 			}
 			throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) +
-			           " to " + compile.classes[classId]->getName(compile));
+			           " to " + compile.classes[classId]->getName(compile) +
+			           "\nHint: Class casting requires an inheritance hierarchy relationship between source and target classes.");
 	}
 errCast:;
 	throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) + " to " +
-	           compile.classes[classId]->getName(compile));
+	           compile.classes[classId]->getName(compile) +
+	           "\nHint: Ensure source type is compatible with target cast type.");
 }
 
 void CastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
@@ -167,7 +173,7 @@ void CastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					return;
 				}
 				default: {
-					throwError("Internal Compiler Error: Unsupported source type for Int cast");
+					throwError("Internal Compiler Error: Unsupported source type for Int cast\nHint: The source expression type cannot be converted to Int.");
 				}
 			}
 		}
@@ -186,7 +192,7 @@ void CastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					return;
 				}
 				default: {
-					throwError("Internal Compiler Error: Unsupported source type for Float cast");
+					throwError("Internal Compiler Error: Unsupported source type for Float cast\nHint: The source expression type cannot be converted to Float.");
 				}
 			}
 		}
@@ -221,7 +227,7 @@ void RuntimeCastNode::optimize(in_func) {
 	}
 	throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) + " to " +
 	           compile.classes[classId]->getName(compile) +
-	           ": no inheritance relationship");
+	           ": no inheritance relationship\nHint: Runtime cast 'as' requires source and target types to share an inheritance relationship.");
 }
 
 void RuntimeCastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {

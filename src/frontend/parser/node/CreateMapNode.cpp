@@ -19,13 +19,13 @@ void CreateMapNode::optimize(in_func) {
 		classId = *classDeclaration->classId;
 	}
 	if (classId == DefaultClass::nullClassId) {
-		throwError("Cannot infer key/value type for Map initialization");
+		throwError("Cannot infer key/value type for Map initialization\nHint: Provide an explicit type annotation or add typed entries to the Map.");
 	}
 	auto clazz = compile.classes[classId];
 	auto classInfo = context.classInfo[classId];
 	if (clazz->genericBaseClassId != DefaultClass::mapClassId) {
 		throwError("Type mismatch, expected Map<> but '" +
-		           compile.classes[classId]->getName(compile) + "' found");
+		           compile.classes[classId]->getName(compile) + "' found\nHint: Ensure target variable type is a Map<K, V> instance.");
 	}
 
 	auto keyMustBeClassId = *classInfo->genericTypeId[0]->classId;
@@ -62,14 +62,15 @@ void CreateMapNode::optimize(in_func) {
 				if (classInfo->genericTypeId[0]->nullable) {
 					goto loadValue;
 				}
-				throwError("Keys in Map must be non-null");
+				throwError("Keys in Map must be non-null\nHint: The Map key type is non-nullable. Use Map<K?, V> to allow null keys.");
 			}
 		}
 		if (keyMustBeClassId == DefaultClass::anyClassId) {
 			goto loadValue;
 		}
 		throwError("Cannot cast " + compile.classes[key->classId]->getName(compile) +
-		           " to " + compile.classes[keyMustBeClassId]->getName(compile));
+		           " to " + compile.classes[keyMustBeClassId]->getName(compile) +
+		           "\nHint: Ensure Map key expression matches the expected key type or provide an explicit conversion.");
 	loadValue:;
 		switch (value->kind) {
 			case NodeType::CREATE_ARRAY: {
@@ -104,14 +105,15 @@ void CreateMapNode::optimize(in_func) {
 				if (classInfo->genericTypeId[1]->nullable) {
 					continue;
 				}
-				throwError("Values in Map must be non-null");
+				throwError("Values in Map must be non-null\nHint: The Map value type is non-nullable. Use Map<K, V?> to allow null values.");
 			}
 		}
 		if (valueMustBeClassId == DefaultClass::anyClassId) {
 			continue;
 		}
 		throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) +
-		           " to " + compile.classes[valueMustBeClassId]->getName(compile));
+		           " to " + compile.classes[valueMustBeClassId]->getName(compile) +
+		           "\nHint: Ensure Map value expression matches the expected value type or provide an explicit conversion.");
 	}
 }
 
@@ -153,7 +155,8 @@ ExprNode *CreateMapNode::copy(in_func) {
 			classDeclaration->load<false>(in_data);
 			if (!classDeclaration->classId) {
 				throwError("Bug: DeclarationNode copy: Unresolved class " +
-				           classDeclaration->getName(in_data));
+				           classDeclaration->getName(in_data) +
+				           "\nHint: Internal compiler error - class declaration was not resolved before copy.");
 			}
 			newNode->classId = *classDeclaration->classId;
 			classDeclaration->classId = std::nullopt;

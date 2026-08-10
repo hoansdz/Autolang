@@ -1,4 +1,4 @@
-#ifndef DEBUGGER_HPP
+	#ifndef DEBUGGER_HPP
 #define DEBUGGER_HPP
 
 #include "frontend/parser/node/CreateFuncNode.hpp"

@@ -23,7 +23,7 @@ void SkipNode::rewrite(in_func, uint8_t *bytecodes) {
 			rewrite_opcode_u32(bytecodes, jumpBytePos, context.breakPos);
 			break;
 		default:
-			throwError("Invalid jump target type for skip node (expected 'continue' or 'break')");
+			throwError("Invalid jump target type for skip node (expected 'continue' or 'break')\nHint: Ensure 'continue' or 'break' statement is placed within a valid loop construct.");
 	}
 }
 

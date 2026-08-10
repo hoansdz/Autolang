@@ -14,8 +14,10 @@ inline void loadEnumBody(in_func, size_t &i, CreateClassNode *node,
 	auto *classInfo = context.getCurrentClassInfo(in_data);
 	while (true) {
 		if (!nextToken(&token, context.tokens, i)) {
-			throw ParserError(firstLine,
-			                  "Bug: Lexer did not ensure a closing bracket");
+			throw ParserError(
+			    firstLine,
+			    "Bug: Lexer did not ensure a closing bracket\nHint: "
+			    "Ensure the enum body is properly enclosed with '}'");
 		}
 	initial:;
 		switch (token->type) {
@@ -40,23 +42,28 @@ inline void loadEnumBody(in_func, size_t &i, CreateClassNode *node,
 				auto it = classInfo->constValue.find(token->indexData);
 				if (it != classInfo->constValue.end()) {
 					throw ParserError(
-					    token->line, "Duplicate value " +
-					                     context.lexerString[token->indexData]);
+					    token->line,
+					    "Duplicate value " + context.lexerString[token->indexData] +
+					        "\nHint: Ensure each enum member name is unique");
 				}
 				Offset id = compile.registerEnumConstPool(node->classId);
 				classInfo->constValue[token->indexData] =
 				    context.constValuePool.push(token->line,
 				                                compile.constPool[id], id);
 				if (!nextToken(&token, context.tokens, i)) {
-					throw ParserError(firstLine,
-					                  "Bug: Lexer did not ensure a closing bracket");
+					throw ParserError(
+					    firstLine,
+					    "Bug: Lexer did not ensure a closing bracket\nHint: "
+					    "Ensure the enum body is properly enclosed with '}'");
 				}
 				switch (token->type) {
 					case Lexer::TokenType::COMMA: {
 						if (!nextToken(&token, context.tokens, i) ||
 						    !expect(token, Lexer::TokenType::IDENTIFIER)) {
 							throw ParserError(
-							    firstLine, "Expected value name but not found");
+							    firstLine,
+							    "Expected value name but not found\nHint: Provide "
+							    "an identifier for the enum member after ','");
 						}
 						goto loadValue;
 					}
@@ -68,10 +75,11 @@ inline void loadEnumBody(in_func, size_t &i, CreateClassNode *node,
 						return;
 					}
 					default: {
-						throw ParserError(token->line,
-						                  "Expected value but '" +
-						                      token->toString(context) +
-						                      "' found");
+						throw ParserError(
+						    token->line,
+						    "Expected value but '" + token->toString(context) +
+						        "' found\nHint: Provide an enum member name or "
+						        "closing bracket '}'");
 					}
 				}
 				break;
@@ -81,9 +89,11 @@ inline void loadEnumBody(in_func, size_t &i, CreateClassNode *node,
 				return;
 			}
 			default: {
-				throw ParserError(token->line, "Expected value but '" +
-				                                   token->toString(context) +
-				                                   "' found");
+				throw ParserError(
+				    token->line,
+				    "Expected value but '" + token->toString(context) +
+				        "' found\nHint: Provide an enum member name or "
+				        "closing bracket '}'");
 			}
 		}
 	}
@@ -103,13 +113,19 @@ void loadEnum(in_func, size_t &i) {
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 	    !expect(token, Lexer::TokenType::IDENTIFIER)) {
 		--i;
-		throw ParserError(firstLine, "Expected name but not found");
+		throw ParserError(
+		    firstLine,
+		    "Expected name but not found\nHint: Provide an identifier for the "
+		    "enum name after 'enum'");
 	}
 	LexerStringId nameId = token->indexData;
 	const std::string &name = context.lexerString[nameId];
 
 	if (context.defaultClassMap.find(nameId) != context.defaultClassMap.end()) {
-		throw ParserError(firstLine, "Class " + name + " already exists");
+		throw ParserError(
+		    firstLine,
+		    "Class " + name +
+		        " already exists\nHint: Use a unique enum/class name");
 	}
 
 	auto node = context.newClasses.push(firstLine, nameId,
@@ -134,20 +150,28 @@ void loadEnum(in_func, size_t &i) {
 		return;
 	}
 	if (expect(token, Lexer::TokenType::LT)) {
-		throw ParserError(firstLine, "Enum doesn't support generics");
+		throw ParserError(
+		    firstLine,
+		    "Enum doesn't support generics\nHint: Remove type parameter "
+		    "declaration '<...>' from enum");
 	} else {
 		context.newDefaultClassesMap[node->classId] = node;
 	}
 
 	if (expect(token, Lexer::TokenType::EXTENDS)) {
-		throw ParserError(firstLine, "Enum doesn't support extends");
+		throw ParserError(
+		    firstLine,
+		    "Enum doesn't support extends\nHint: Enums cannot inherit from "
+		    "other classes; remove 'extends'");
 	}
 	// std::cerr<<"Clazz: "<<clazz->getName(compile)<<" "<<declarationThis->id<<"\n";
 	// Has PrimaryConstructor
 	//  bool hasPrimaryConstructor = false;
 	if (expect(token, Lexer::TokenType::LPAREN)) {
-		throw ParserError(firstLine,
-		                  "Enum doesn't support primary constructor");
+		throw ParserError(
+		    firstLine,
+		    "Enum doesn't support primary constructor\nHint: Remove constructor "
+		    "parameters '(...)' from enum definition");
 	}
 
 	if (expect(token, Lexer::TokenType::LBRACE)) {

@@ -1,6 +1,7 @@
 #ifndef CREATE_FUNC_NODE_CPP
 #define CREATE_FUNC_NODE_CPP
 
+#include "frontend/ACompiler.hpp"
 #include "frontend/parser/node/CreateFuncNode.hpp"
 #include "frontend/parser/ParserContext.hpp"
 

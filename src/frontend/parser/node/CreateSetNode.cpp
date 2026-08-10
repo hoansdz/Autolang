@@ -18,13 +18,13 @@ void CreateSetNode::optimize(in_func) {
 		classId = *classDeclaration->classId;
 	}
 	if (classId == DefaultClass::nullClassId) {
-		throwError("Cannot infer element type for Set initialization");
+		throwError("Cannot infer element type for Set initialization\nHint: Provide an explicit type annotation or add typed elements to the Set.");
 	}
 	auto clazz = compile.classes[classId];
 	auto classInfo = context.classInfo[classId];
 	if (clazz->genericBaseClassId != DefaultClass::setClassId) {
 		throwError("Type mismatch, expected Set<> but '" +
-		           compile.classes[classId]->getName(compile) + "' found");
+		           compile.classes[classId]->getName(compile) + "' found\nHint: Ensure target variable type is a Set<T> instance.");
 	}
 	auto genericType = classInfo->genericTypeId[0];
 	auto valueMustBeClassId = *genericType->classId;
@@ -63,14 +63,15 @@ void CreateSetNode::optimize(in_func) {
 					continue;
 				}
 				// std::cerr << compile.classes[classId]->getName(compile) << "\n";
-				throwError("Elements in Set must be non-null");
+				throwError("Elements in Set must be non-null\nHint: The Set element type is non-nullable. Use Set<T?> to allow null elements.");
 			}
 		}
 		if (valueMustBeClassId == DefaultClass::anyClassId) {
 			continue;
 		}
 		throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) +
-		           " to " + compile.classes[valueMustBeClassId]->getName(compile));
+		           " to " + compile.classes[valueMustBeClassId]->getName(compile) +
+		           "\nHint: Ensure all elements in the Set match the expected element type or provide an explicit conversion.");
 	}
 }
 
@@ -108,7 +109,8 @@ ExprNode *CreateSetNode::copy(in_func) {
 			classDeclaration->load<false>(in_data);
 			if (!classDeclaration->classId) {
 				throwError("Bug: DeclarationNode copy: Unresolved class " +
-				           classDeclaration->getName(in_data));
+				           classDeclaration->getName(in_data) +
+				           "\nHint: Internal compiler error - class declaration was not resolved before copy.");
 			}
 			newNode->classId = *classDeclaration->classId;
 			classDeclaration->classId = std::nullopt;

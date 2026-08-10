@@ -15,16 +15,18 @@ void ThrowNode::optimize(in_func) {
 	value->optimize(in_data);
 	switch (value->kind) {
 		case NodeType::CLASS_ACCESS:
-			throwError("Expression in throw statement must produce a value");
+			throwError("Expression in throw statement must produce a value\nHint: Class reference cannot be thrown directly. Instantiate the exception object (e.g. `throw Exception(...)`).");
 		default: {
 			if (value->isNullable()) {
-				throwError("Cannot throw nullable expression");
+				throwError("Cannot throw nullable expression\nHint: Ensure the expression evaluated in the throw statement is non-nullable or explicitly unwrap it using '!' or null check.");
 			}
 			auto valueClass = compile.classes[value->classId];
 			if (!(value->classId == DefaultClass::exceptionClassId ||
 			      valueClass->inheritance.get(
 			          DefaultClass::exceptionClassId))) {
-				throwError("Thrown expression must be an Exception");
+				throwError("Thrown expression must be an Exception (got '" +
+				           valueClass->getName(compile) +
+				           "')\nHint: Ensure the thrown value inherits from Exception or is an instance of Exception.");
 			}
 		}
 	}

@@ -16,7 +16,9 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	if (it == context.defaultClassMap.end()) {
 		classDeclaration->throwError(
 		    "Bug: Cannot find class " +
-		    context.lexerString[classDeclaration->baseClassLexerStringId]);
+		    context.lexerString[classDeclaration->baseClassLexerStringId] +
+		    "\nHint: Ensure base class for generic instantiation is defined and "
+		    "imported");
 	}
 	ClassId classId = it->second;
 	auto clazz = compile.classes[it->second];
@@ -28,8 +30,10 @@ ClassId loadClassGenerics(in_func, std::string &name,
 		}
 	}
 	if (!classInfo->genericData) {
-		classDeclaration->throwError(clazz->getName(compile) +
-		                             " is not generic");
+		classDeclaration->throwError(
+		    clazz->getName(compile) +
+		    " is not generic\nHint: Do not pass type parameters '<...>' to a non-generic "
+		    "class");
 	}
 	auto baseCreateClassNode = context.findCreateClassNode(clazz->id);
 	LexerStringId newNameId = context.createLexerStringIfNotExists(name);
@@ -96,7 +100,8 @@ ClassId loadClassGenerics(in_func, std::string &name,
 				if (!condition.classDeclaration->classId) {
 					condition.classDeclaration->throwError(
 					    "Unresolved " +
-					    condition.classDeclaration->getName(in_data));
+					    condition.classDeclaration->getName(in_data) +
+					    "\nHint: Ensure type constraint class is defined or imported");
 				}
 			} else if (condition.classDeclaration->classId ==
 			           DefaultClass::functionClassId) {
@@ -126,7 +131,8 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			classDeclaration->load<false, true>(in_data);
 			if (!classDeclaration->classId) {
 				classDeclaration->throwError(
-				    "Unsolved " + classDeclaration->getName(in_data));
+				    "Unsolved " + classDeclaration->getName(in_data) +
+				    "\nHint: Ensure type parameter or class is defined");
 			}
 		}
 		auto name = classDeclaration->getName(in_data);
@@ -135,7 +141,10 @@ ClassId loadClassGenerics(in_func, std::string &name,
 				auto unknowNode = static_cast<UnknowNode *>(node);
 				auto it = context.lexerStringMap.find(name);
 				if (it == context.lexerStringMap.end()) {
-					classDeclaration->throwError("Unsolved " + name);
+					classDeclaration->throwError(
+					    "Unsolved " + name +
+					    "\nHint: Symbol or type name cannot be resolved in "
+					    "current scope");
 				}
 				unknowNode->nameId = it->second;
 				break;
@@ -144,7 +153,9 @@ ClassId loadClassGenerics(in_func, std::string &name,
 				auto callNode = static_cast<CallNode *>(node);
 				auto it = context.lexerStringMap.find(name);
 				if (it == context.lexerStringMap.end()) {
-					classDeclaration->throwError("Unsolved " + name);
+					classDeclaration->throwError(
+					    "Unsolved " + name +
+					    "\nHint: Called symbol or generic type cannot be resolved");
 				}
 				callNode->nameId = it->second;
 				break;
@@ -192,7 +203,8 @@ ClassId loadClassGenerics(in_func, std::string &name,
 				if (!member->classDeclaration->classId) {
 					classDeclaration->throwError(
 					    "Unsolved " +
-					    member->classDeclaration->getName(in_data));
+					    member->classDeclaration->getName(in_data) +
+					    "\nHint: Ensure member variable type is defined or imported");
 				}
 			}
 			member->classId = *member->classDeclaration->classId;
@@ -230,7 +242,8 @@ ClassId loadClassGenerics(in_func, std::string &name,
 				if (!declarationNode->classDeclaration->classId) {
 					classDeclaration->throwError(
 					    "Bug: Cannot find class name " +
-					    declarationNode->classDeclaration->getName(in_data));
+					    declarationNode->classDeclaration->getName(in_data) +
+					    "\nHint: Check variable declaration type in generic class");
 				}
 				// std::cerr << "loaded "
 				//           <<
@@ -261,7 +274,8 @@ ClassId loadClassGenerics(in_func, std::string &name,
 				if (!node->classDeclaration->classId) {
 					classDeclaration->throwError(
 					    "Bug: Cannot find class name " +
-					    node->classDeclaration->getName(in_data));
+					    node->classDeclaration->getName(in_data) +
+					    "\nHint: Check static member type in generic class");
 				}
 				node->optimize(in_data);
 				node->classDeclaration->classId = std::nullopt;
@@ -353,7 +367,8 @@ ClassId loadClassGenerics(in_func, std::string &name,
 				createFuncNode->classDeclaration->load<false>(in_data);
 				if (!createFuncNode->classDeclaration->classId) {
 					classDeclaration->throwError(
-					    "Bug: Cannot resolve return type of generic function");
+					    "Bug: Cannot resolve return type of generic function\nHint: "
+					    "Ensure generic function return type is valid and resolved");
 				}
 				newFunc->returnId = *createFuncNode->classDeclaration->classId;
 				createFuncNode->classDeclaration->classId = std::nullopt;
@@ -397,7 +412,8 @@ void loadFunctionGenerics(in_func, std::string &name,
 	if (it == context.genericFunctionMap.end()) {
 		classDeclaration->throwError(
 		    "Bug: Cannot find function " +
-		    context.lexerString[classDeclaration->baseClassLexerStringId]);
+		    context.lexerString[classDeclaration->baseClassLexerStringId] +
+		    "\nHint: Ensure generic function is defined before instantiation");
 	}
 	{
 		auto it = compile.funcMap.find(name);
@@ -413,8 +429,10 @@ void loadFunctionGenerics(in_func, std::string &name,
 		auto func = compile.functions[funcId];
 		auto funcInfo = context.functionInfo[funcId];
 		if (!funcInfo->genericData) {
-			classDeclaration->throwError(func->getName(compile) +
-			                             " is not generic");
+			classDeclaration->throwError(
+			    func->getName(compile) +
+			    " is not generic\nHint: Do not pass type arguments '<...>' to a non-generic "
+			    "function");
 		}
 		if (classDeclaration->inputClassId.size() !=
 		    funcInfo->genericData->genericDeclarations.size()) {
@@ -479,7 +497,8 @@ void loadFunctionGenerics(in_func, std::string &name,
 					if (!condition.classDeclaration->classId) {
 						condition.classDeclaration->throwError(
 						    "Unresolved " +
-						    condition.classDeclaration->getName(in_data));
+						    condition.classDeclaration->getName(in_data) +
+						    "\nHint: Ensure generic constraint class is defined or imported");
 					}
 				} else if (condition.classDeclaration->classId ==
 				           DefaultClass::functionClassId) {
@@ -520,7 +539,9 @@ void loadFunctionGenerics(in_func, std::string &name,
 					auto unknowNode = static_cast<UnknowNode *>(node);
 					auto it = context.lexerStringMap.find(name);
 					if (it == context.lexerStringMap.end()) {
-						classDeclaration->throwError("Unsolved " + name);
+						classDeclaration->throwError(
+						    "Unsolved " + name +
+						    "\nHint: Symbol or type name cannot be resolved");
 					}
 					unknowNode->nameId = it->second;
 					break;
@@ -529,7 +550,9 @@ void loadFunctionGenerics(in_func, std::string &name,
 					auto callNode = static_cast<CallNode *>(node);
 					auto it = context.lexerStringMap.find(name);
 					if (it == context.lexerStringMap.end()) {
-						classDeclaration->throwError("Unsolved " + name);
+						classDeclaration->throwError(
+						    "Unsolved " + name +
+						    "\nHint: Called symbol or type cannot be resolved");
 					}
 					callNode->nameId = it->second;
 					break;
@@ -567,7 +590,8 @@ void loadFunctionGenerics(in_func, std::string &name,
 				createFuncNode->classDeclaration->load<false>(in_data);
 				if (!createFuncNode->classDeclaration->classId) {
 					classDeclaration->throwError(
-					    "Bug: Cannot resolve return type of generic function");
+					    "Bug: Cannot resolve return type of generic function\nHint: "
+					    "Ensure generic function return type is valid and resolved");
 				}
 				newFunc->returnId = *createFuncNode->classDeclaration->classId;
 				createFuncNode->classDeclaration->classId = std::nullopt;
@@ -608,7 +632,8 @@ void loadFunctionGenerics(in_func, std::string &name,
 					if (!node->classDeclaration->classId) {
 						classDeclaration->throwError(
 						    "Bug: Cannot find class name " +
-						    node->classDeclaration->getName(in_data));
+						    node->classDeclaration->getName(in_data) +
+						    "\nHint: Check static variable type in generic function");
 					}
 					// std::cerr << "loaded "
 					//           <<

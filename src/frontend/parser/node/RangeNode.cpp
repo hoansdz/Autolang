@@ -20,7 +20,7 @@ void RangeNode::optimize(in_func) {
 	if (from->isNullable()) {
 		throwError("Type mismatch: inferred type is " +
 		           compile.classes[from->classId]->getName(compile) +
-		           "? but Int was expected");
+		           "? but Int was expected\nHint: The 'from' bound of range expression (..) cannot be nullable. Ensure the start value is non-null Int or unwrap it using '!'.");
 	}
 	to->optimize(in_data);
 	if (to->kind == NodeType::CONST_VAL) {
@@ -29,7 +29,7 @@ void RangeNode::optimize(in_func) {
 	if (to->isNullable()) {
 		throwError("Type mismatch: inferred type is " +
 		           compile.classes[to->classId]->getName(compile) +
-		           "? but Int was expected");
+		           "? but Int was expected\nHint: The 'to' bound of range expression (..) cannot be nullable. Ensure the end value is non-null Int or unwrap it using '!'.");
 	}
 }
 

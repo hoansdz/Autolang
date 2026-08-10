@@ -36,7 +36,7 @@ void ForNode::optimize(in_func) {
 					break;
 				}
 				default: {
-					throwError("Loop control variable for range must be of type Int");
+					throwError("Loop control variable for range must be of type Int\nHint: Declare loop variable as Int (e.g., for (i: Int in 0..10)).");
 				}
 			}
 			auto rangeNode = static_cast<RangeNode *>(data);
@@ -51,7 +51,7 @@ void ForNode::optimize(in_func) {
 					break;
 				}
 				default: {
-					throwError("Range start value must be of type Int");
+					throwError("Range start value must be of type Int\nHint: Ensure the starting expression of range (start..end) evaluates to an Int.");
 				}
 			}
 			rangeNode->to->optimize(in_data);
@@ -60,7 +60,7 @@ void ForNode::optimize(in_func) {
 					break;
 				}
 				default: {
-					throwError("Range end value must be of type Int");
+					throwError("Range end value must be of type Int\nHint: Ensure the ending expression of range (start..end) evaluates to an Int.");
 				}
 			}
 			if (rangeNode->to->kind == NodeType::CONST_VAL) {
@@ -70,14 +70,14 @@ void ForNode::optimize(in_func) {
 			break;
 		}
 		case NodeType::CLASS_ACCESS: {
-			throwError("Expected iterable value in 'for' loop");
+			throwError("Expected iterable value in 'for' loop\nHint: Use an iterable collection like Array, Set, or Range in the for loop.");
 		}
 		default: {
 			data->optimize(in_data);
 			auto classInfo = context.classInfo[data->classId];
 			if (classInfo->genericTypeId.empty()) {
 				throwError("Cannot iterate over type '" +
-				           compile.classes[data->classId]->getName(compile) + "'");
+				           compile.classes[data->classId]->getName(compile) + "'\nHint: Only Array, Set, and Range types support iteration in for loops.");
 			}
 			auto clazz = compile.classes[data->classId];
 			auto baseClassId = clazz->genericBaseClassId;
@@ -103,7 +103,7 @@ void ForNode::optimize(in_func) {
 								if (!detach->isNullable() &&
 								    classInfo->genericTypeId[0]->nullable) {
 									throwError(
-									    "Cannot assign nullable element to non-nullable variable");
+									    "Cannot assign nullable element to non-nullable variable\nHint: Declare loop variable as nullable (T?) or ensure collection element type is non-nullable.");
 								}
 								break;
 							}
@@ -113,14 +113,14 @@ void ForNode::optimize(in_func) {
 							    "' but '" +
 							    compile.classes[detach->classId]->getName(
 							        compile) +
-							    "' found");
+							    "' found\nHint: Ensure the loop control variable type matches the collection element type.");
 							break;
 						}
 					}
 					break;
 				}
 				default: {
-					throwError("Cannot iterate over type '" + clazz->getName(compile) + "'");
+					throwError("Cannot iterate over type '" + clazz->getName(compile) + "'\nHint: Only Array, Set, and Range types support iteration in for loops.");
 				}
 			}
 			break;
@@ -284,7 +284,7 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			auto clazz = compile.classes[data->classId];
 			auto classInfo = context.classInfo[data->classId];
 			if (classInfo->genericTypeId.empty()) {
-				throwError("Cannot iterate over type '" + clazz->getName(compile) + "'");
+				throwError("Cannot iterate over type '" + clazz->getName(compile) + "'\nHint: Only Array, Set, and Range types support iteration in for loops.");
 			}
 			auto baseClassId = clazz->genericBaseClassId;
 			switch (baseClassId) {
@@ -316,7 +316,7 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					break;
 				}
 				default: {
-					throwError("Cannot iterate over type '" + clazz->getName(compile) + "'");
+					throwError("Cannot iterate over type '" + clazz->getName(compile) + "'\nHint: Only Array, Set, and Range types support iteration in for loops.");
 				}
 			}
 			break;

@@ -37,7 +37,7 @@ inline void throwInvalidCompare(in_func, ConstValueNode *left,
 	                  std::string("Cannot apply operator '") + op +
 	                      "' between '" + compile.classes[left->classId]->getName(compile) +
 	                      "' and '" + compile.classes[right->classId]->getName(compile) +
-	                      "'");
+	                      "'\nHint: Ensure both operands are of compatible types for comparison.");
 }
 
 ConstValueNode *plus(in_func, ConstValueNode *left, ConstValueNode *right) {
@@ -101,7 +101,7 @@ ConstValueNode *plus(in_func, ConstValueNode *left, ConstValueNode *right) {
 		default:
 			break;
 	}
-	throw ParserError(left->line, "Invalid types for operator +");
+	throw ParserError(left->line, "Invalid types for operator + between '" + compile.classes[left->classId]->getName(compile) + "' and '" + compile.classes[right->classId]->getName(compile) + "'\nHint: Operands of '+' must be numeric (Int, Float) or String types.");
 }
 
 ConstValueNode *minus(in_func, ConstValueNode *left, ConstValueNode *right) {
@@ -135,7 +135,7 @@ ConstValueNode *minus(in_func, ConstValueNode *left, ConstValueNode *right) {
 		default:
 			break;
 	}
-	throw ParserError(left->line, "Invalid types for operator -");
+	throw ParserError(left->line, "Invalid types for operator - between '" + compile.classes[left->classId]->getName(compile) + "' and '" + compile.classes[right->classId]->getName(compile) + "'\nHint: Operands of '-' must be numeric types (Int or Float).");
 }
 
 ConstValueNode *mul(in_func, ConstValueNode *left, ConstValueNode *right) {
@@ -169,18 +169,18 @@ ConstValueNode *mul(in_func, ConstValueNode *left, ConstValueNode *right) {
 		default:
 			break;
 	}
-	throw ParserError(left->line, "Invalid types for operator *");
+	throw ParserError(left->line, "Invalid types for operator * between '" + compile.classes[left->classId]->getName(compile) + "' and '" + compile.classes[right->classId]->getName(compile) + "'\nHint: Operands of '*' must be numeric types (Int or Float).");
 }
 
 ConstValueNode *divide(in_func, ConstValueNode *left, ConstValueNode *right) {
 	prepareOperands(in_data, left, right);
 
 	if (right->classId == Autolang::DefaultClass::intClassId && right->i == 0) {
-		throw ParserError(right->line, "Division by zero");
+		throw ParserError(right->line, "Division by zero\nHint: Cannot divide a number by zero. Ensure the divisor expression evaluates to a non-zero value.");
 	}
 	if (right->classId == Autolang::DefaultClass::floatClassId &&
 	    right->f == 0.0) {
-		throw ParserError(right->line, "Division by zero");
+		throw ParserError(right->line, "Division by zero\nHint: Cannot divide a number by zero. Ensure the divisor expression evaluates to a non-zero value.");
 	}
 
 	switch (left->classId) {
@@ -211,16 +211,16 @@ ConstValueNode *divide(in_func, ConstValueNode *left, ConstValueNode *right) {
 		default:
 			break;
 	}
-	throw ParserError(left->line, "Invalid types for operator /");
+	throw ParserError(left->line, "Invalid types for operator / between '" + compile.classes[left->classId]->getName(compile) + "' and '" + compile.classes[right->classId]->getName(compile) + "'\nHint: Operands of '/' must be numeric types (Int or Float).");
 }
 
 ConstValueNode *mod(in_func, ConstValueNode *left, ConstValueNode *right) {
 	if (right->classId == Autolang::DefaultClass::intClassId && right->i == 0) {
-		throw ParserError(right->line, "Modulo by zero");
+		throw ParserError(right->line, "Modulo by zero\nHint: Cannot compute modulo with zero divisor. Ensure the divisor expression evaluates to a non-zero value.");
 	}
 	if (right->classId == Autolang::DefaultClass::floatClassId &&
 	    right->f == 0.0) {
-		throw ParserError(right->line, "Modulo by zero");
+		throw ParserError(right->line, "Modulo by zero\nHint: Cannot compute modulo with zero divisor. Ensure the divisor expression evaluates to a non-zero value.");
 	}
 
 	switch (left->classId) {
@@ -254,7 +254,7 @@ ConstValueNode *mod(in_func, ConstValueNode *left, ConstValueNode *right) {
 		default:
 			break;
 	}
-	throw ParserError(left->line, "Invalid types for operator %");
+	throw ParserError(left->line, "Invalid types for operator % between '" + compile.classes[left->classId]->getName(compile) + "' and '" + compile.classes[right->classId]->getName(compile) + "'\nHint: Operands of '%' must be numeric types (Int or Float).");
 }
 
 ConstValueNode *bitwise_and(in_func, ConstValueNode *left,
@@ -263,7 +263,7 @@ ConstValueNode *bitwise_and(in_func, ConstValueNode *left,
 	    right->classId == Autolang::DefaultClass::intClassId) {
 		return context.constValuePool.push(left->line, left->i & right->i);
 	}
-	throw ParserError(left->line, "Invalid types for operator &");
+	throw ParserError(left->line, "Invalid types for operator & between '" + compile.classes[left->classId]->getName(compile) + "' and '" + compile.classes[right->classId]->getName(compile) + "'\nHint: Operands of bitwise '&' must be integer types (Int).");
 }
 
 ConstValueNode *bitwise_or(in_func, ConstValueNode *left,
@@ -272,7 +272,7 @@ ConstValueNode *bitwise_or(in_func, ConstValueNode *left,
 	    right->classId == Autolang::DefaultClass::intClassId) {
 		return context.constValuePool.push(left->line, left->i | right->i);
 	}
-	throw ParserError(left->line, "Invalid types for operator |");
+	throw ParserError(left->line, "Invalid types for operator | between '" + compile.classes[left->classId]->getName(compile) + "' and '" + compile.classes[right->classId]->getName(compile) + "'\nHint: Operands of bitwise '|' must be integer types (Int).");
 }
 
 ConstValueNode *op_eqeq(in_func, ConstValueNode *left, ConstValueNode *right) {
@@ -325,10 +325,11 @@ ConstValueNode *op_eqeq(in_func, ConstValueNode *left, ConstValueNode *right) {
 		return context.constValuePool.push(left->line, left == right);
 	}
 
-	throw ParserError(left->line, "Invalid types for operator == between " +
+	throw ParserError(left->line, "Invalid types for operator == between '" +
 	                                  compile.classes[left->classId]->getName(compile) +
-	                                  " and " +
-	                                  compile.classes[right->classId]->getName(compile));
+	                                  "' and '" +
+	                                  compile.classes[right->classId]->getName(compile) +
+	                                  "'\nHint: Ensure both operands of '==' have compatible types for comparison.");
 }
 
 ConstValueNode *op_not_eq(in_func, ConstValueNode *left,
@@ -382,7 +383,11 @@ ConstValueNode *op_not_eq(in_func, ConstValueNode *left,
 		return context.constValuePool.push(left->line, left != right);
 	}
 
-	throw ParserError(left->line, "Invalid types for operator !=");
+	throw ParserError(left->line, "Invalid types for operator != between '" +
+	                                  compile.classes[left->classId]->getName(compile) +
+	                                  "' and '" +
+	                                  compile.classes[right->classId]->getName(compile) +
+	                                  "'\nHint: Ensure both operands of '!=' have compatible types for comparison.");
 }
 
 ConstValueNode *op_greater_than(in_func, ConstValueNode *left,
@@ -416,7 +421,7 @@ ConstValueNode *op_greater_than(in_func, ConstValueNode *left,
 		default:
 			break;
 	}
-	throw ParserError(left->line, "Invalid types for operator >");
+	throw ParserError(left->line, "Invalid types for operator > between '" + compile.classes[left->classId]->getName(compile) + "' and '" + compile.classes[right->classId]->getName(compile) + "'\nHint: Operands of '>' must be numeric types (Int or Float).");
 }
 
 ConstValueNode *op_less_than(in_func, ConstValueNode *left,
@@ -450,7 +455,7 @@ ConstValueNode *op_less_than(in_func, ConstValueNode *left,
 		default:
 			break;
 	}
-	throw ParserError(left->line, "Invalid types for operator <");
+	throw ParserError(left->line, "Invalid types for operator < between '" + compile.classes[left->classId]->getName(compile) + "' and '" + compile.classes[right->classId]->getName(compile) + "'\nHint: Operands of '<' must be numeric types (Int or Float).");
 }
 
 ConstValueNode *op_greater_than_eq(in_func, ConstValueNode *left,
@@ -484,7 +489,7 @@ ConstValueNode *op_greater_than_eq(in_func, ConstValueNode *left,
 		default:
 			break;
 	}
-	throw ParserError(left->line, "Invalid types for operator >=");
+	throw ParserError(left->line, "Invalid types for operator >= between '" + compile.classes[left->classId]->getName(compile) + "' and '" + compile.classes[right->classId]->getName(compile) + "'\nHint: Operands of '>=' must be numeric types (Int or Float).");
 }
 
 ConstValueNode *op_less_than_eq(in_func, ConstValueNode *left,
@@ -518,7 +523,7 @@ ConstValueNode *op_less_than_eq(in_func, ConstValueNode *left,
 		default:
 			break;
 	}
-	throw ParserError(left->line, "Invalid types for operator <=");
+	throw ParserError(left->line, "Invalid types for operator <= between '" + compile.classes[left->classId]->getName(compile) + "' and '" + compile.classes[right->classId]->getName(compile) + "'\nHint: Operands of '<=' must be numeric types (Int or Float).");
 }
 
 ConstValueNode *toInt(in_func, ConstValueNode *value) {
@@ -537,7 +542,7 @@ ConstValueNode *toInt(in_func, ConstValueNode *value) {
 		default:
 			break;
 	}
-	throw ParserError(value->line, "Cannot convert to Int");
+	throw ParserError(value->line, "Cannot convert '" + compile.classes[value->classId]->getName(compile) + "' to Int\nHint: Ensure expression evaluates to a numeric type convertible to Int.");
 }
 
 ConstValueNode *toFloat(in_func, ConstValueNode *value) {
@@ -556,7 +561,7 @@ ConstValueNode *toFloat(in_func, ConstValueNode *value) {
 		default:
 			break;
 	}
-	throw ParserError(value->line, "Cannot convert to Float");
+	throw ParserError(value->line, "Cannot convert '" + compile.classes[value->classId]->getName(compile) + "' to Float\nHint: Ensure expression evaluates to a numeric type convertible to Float.");
 }
 
 ConstValueNode *toBool(in_func, ConstValueNode *value) {
@@ -573,7 +578,7 @@ ConstValueNode *toBool(in_func, ConstValueNode *value) {
 		default:
 			break;
 	}
-	throw ParserError(value->line, "Cannot convert to Bool");
+	throw ParserError(value->line, "Cannot convert '" + compile.classes[value->classId]->getName(compile) + "' to Bool\nHint: Ensure expression evaluates to a type convertible to Bool.");
 }
 
 ConstValueNode *toString(in_func, ConstValueNode *value) {
@@ -596,7 +601,7 @@ ConstValueNode *toString(in_func, ConstValueNode *value) {
 		default:
 			break;
 	}
-	throw ParserError(value->line, "Cannot convert to String");
+	throw ParserError(value->line, "Cannot convert '" + compile.classes[value->classId]->getName(compile) + "' to String\nHint: Ensure expression evaluates to a type convertible to String.");
 }
 
 } // namespace Autolang
