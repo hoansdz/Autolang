@@ -5,6 +5,7 @@
 #include "frontend/ACompiler.hpp"
 #include "frontend/parser/ParserContext.hpp"
 #include "shared/ClassFlags.hpp"
+#include <rapidfuzz/fuzz.hpp>
 
 namespace Autolang {
 
@@ -260,39 +261,39 @@ void CallNode::optimize(in_func) {
 	// 	}
 	// }
 
-	if (count == 0)
-		throwError("Cannot find function name: '" + funcName + "'\nHint: Check function name spelling or ensure the function is defined in scope.");
 	bool ambitiousCall = false;
 	// uint8_t foundIndex;
 	bool found = false;
 	MatchOverload first;
-	MatchOverload second;
-	int i = 0;
-	int j = 0;
-	// Find first function
-	for (; j < count; ++j) {
-		if (!match(in_data, first, *funcVec[j], i, mustInferenceGenericType)) {
-			i = 0;
-			continue;
-		}
-		found = true;
-		// foundIndex = j;
-		break;
-	} // Find function
-	for (; j < count; ++j) {
-		std::vector<uint32_t> *vec = funcVec[j];
-		while (match(in_data, second, *vec, i, mustInferenceGenericType)) {
-			if (second.score < first.score)
-				continue;
-			if (second.score == first.score) {
-				ambitiousCall = true;
+	if (count > 0) {
+		MatchOverload second;
+		int i = 0;
+		int j = 0;
+		// Find first function
+		for (; j < count; ++j) {
+			if (!match(in_data, first, *funcVec[j], i, mustInferenceGenericType)) {
+				i = 0;
 				continue;
 			}
+			found = true;
 			// foundIndex = j;
-			ambitiousCall = false;
-			first = second;
+			break;
+		} // Find function
+		for (; j < count; ++j) {
+			std::vector<uint32_t> *vec = funcVec[j];
+			while (match(in_data, second, *vec, i, mustInferenceGenericType)) {
+				if (second.score < first.score)
+					continue;
+				if (second.score == first.score) {
+					ambitiousCall = true;
+					continue;
+				}
+				// foundIndex = j;
+				ambitiousCall = false;
+				first = second;
+			}
+			i = 0;
 		}
-		i = 0;
 	}
 	if (!found) {
 	notFound:;
@@ -306,6 +307,8 @@ void CallNode::optimize(in_func) {
 			currentFuncLog +=
 			    compile.classes[argument->classId]->getName(compile);
 		}
+		currentFuncLog += ")";
+
 		std::string found;
 		bool isFirst1 = true;
 		for (int j = 0; j < count; ++j) {
@@ -327,17 +330,106 @@ void CallNode::optimize(in_func) {
 				found += funcInfo->toString(in_data);
 			}
 		}
-		throwError(
-		    std::string(
-		        "Cannot find function name: " + context.lexerString[nameId] +
-		        (caller
-		             ? " in class '" +
-		                   compile.classes[caller->classId]->getName(compile) +
-		                   "'"
-		             : "") +
-		        " has arguments : ") +
-		    currentFuncLog + ") " + (found.empty() ? "" : "\nFound: " + found) +
-		    "\nHint: Verify argument types and count match one of the available function overloads.");
+
+		std::string targetName = context.lexerString[nameId];
+		std::string bestSuggestion;
+		double bestScore = 0.0;
+		auto checkSuggestion = [&](const std::string &candidate) {
+			double score = rapidfuzz::fuzz::ratio(targetName, candidate);
+			if (score > bestScore && score >= 60.0) {
+				bestScore = score;
+				bestSuggestion = candidate;
+			}
+		};
+
+		if (caller) {
+			auto callerClassInfo = context.classInfo[caller->classId];
+			if (callerClassInfo) {
+				for (const auto &[fNameId, _] : callerClassInfo->allFunction) {
+					checkSuggestion(context.lexerString[fNameId]);
+				}
+				for (auto *decl : callerClassInfo->member) {
+					if (decl)
+						checkSuggestion(decl->name);
+				}
+				for (const auto &pair : callerClassInfo->staticMember) {
+					if (pair.second)
+						checkSuggestion(pair.second->name);
+				}
+			}
+		} else {
+			for (const auto &pair : compile.funcMap) {
+				checkSuggestion(pair.first);
+			}
+			if (contextCallClassId) {
+				auto callerClassInfo = context.classInfo[*contextCallClassId];
+				if (callerClassInfo) {
+					for (const auto &[fNameId, _] : callerClassInfo->allFunction) {
+						checkSuggestion(context.lexerString[fNameId]);
+					}
+					for (auto *decl : callerClassInfo->member) {
+						if (decl)
+							checkSuggestion(decl->name);
+					}
+					for (const auto &pair : callerClassInfo->staticMember) {
+						if (pair.second)
+							checkSuggestion(pair.second->name);
+					}
+				}
+			}
+		}
+
+		std::string errorMsg;
+		if (found.empty()) {
+			if (caller) {
+				errorMsg = "Cannot find function name '" + targetName + "' in class '" +
+				           compile.classes[caller->classId]->getName(compile) + "'";
+			} else {
+				errorMsg = "Cannot find function name '" + targetName + "'";
+			}
+		} else {
+			errorMsg = "Cannot find matching function overload for '" + currentFuncLog + "'";
+			if (caller) {
+				errorMsg += " in class '" + compile.classes[caller->classId]->getName(compile) + "'";
+			}
+		}
+
+		if (!bestSuggestion.empty() && bestSuggestion != targetName) {
+			errorMsg += "\nDid you mean: '" + bestSuggestion + "'?";
+		}
+
+		if (!found.empty()) {
+			errorMsg += "\nAvailable overloads:\n" + found;
+			errorMsg += "\nHint: Verify argument types and count match one of the available function overloads.";
+		} else if (caller) {
+			auto callerClassInfo = context.classInfo[caller->classId];
+			std::string availFuncs;
+			bool hasAvail = false;
+			if (callerClassInfo) {
+				for (const auto &[fNameId, fIds] : callerClassInfo->allFunction) {
+					for (auto fId : fIds) {
+						auto fInfo = context.functionInfo[fId];
+						if (fInfo) {
+							if (hasAvail)
+								availFuncs += "\n";
+							availFuncs += fInfo->toString(in_data);
+							hasAvail = true;
+						}
+					}
+				}
+			}
+			if (hasAvail) {
+				errorMsg += "\nAvailable functions in '" + compile.classes[caller->classId]->getName(compile) + "':\n" + availFuncs;
+			} else {
+				errorMsg += "\n(No functions declared in class '" + compile.classes[caller->classId]->getName(compile) + "')";
+			}
+			errorMsg += "\nHint: Check function name spelling or verify whether it is declared in class '" +
+			            compile.classes[caller->classId]->getName(compile) + "'.";
+		} else {
+			errorMsg += "\nHint: Verify the function name is spelled correctly and declared or imported in current scope.";
+		}
+
+		throwError(errorMsg);
 	}
 	if (ambitiousCall) {
 		std::string message = "Ambiguous Call : " + funcName;
@@ -517,7 +609,7 @@ void CallNode::optimize(in_func) {
 
 	if (first.errorNonNullIfMatchCount) {
 		throwError("Cannot pass null to non-null parameter in function '" +
-		           funcName + "'\nHint: Provide a non-null argument or use '??' fallback operator.");
+		           funcName + "'\nHint: Provide a non-null argument or use '?\?' fallback operator.");
 	}
 	if (!(func->functionFlags & FunctionFlags::FUNC_PUBLIC) &&
 	    (!contextCallClassId || *contextCallClassId != funcInfo->clazz->id))

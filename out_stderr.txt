@@ -1,0 +1,19 @@
+D:\code\AutoLangC\tests\correctness\basic\null_access.atl:24: Warning Left expression will never be used
+D:\code\AutoLangC\tests\correctness\basic\optional_access.atl:37: Warning Access static variables: we recommend call OptionalAccess.a
+Passed testBasicOperator
+Passed testDivideByZero
+Passed testForLoop
+Passed testIfExpression
+Passed testInExpression
+Passed testPrecedence
+Passed testFunction
+Passed testRecursion
+Passed testOverride
+Passed testNullAccess
+Passed testBreakContinue
+Passed testOptionalAccess
+Passed testGenerics
+Passed testStatic
+Passed testMapSugarSyntax
+Passed testEnum
+Passed testWhen

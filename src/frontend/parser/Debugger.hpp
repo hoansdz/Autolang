@@ -76,7 +76,7 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis = true);
 bool nextTokenIfMarkNonNull(in_func, size_t &i);
 void loadAnnotations(in_func, size_t &i);
 template <bool loadedLBrace>
-bool loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i,
+bool loadBody(in_func, SmallVector<ExprNode *, 8> &nodes, size_t &i,
               bool createScope = true);
 IfNode *loadIf(in_func, size_t &i, bool mustReturnValue);
 HasClassIdNode *loadWhen(in_func, size_t &i, bool mustReturnValue);

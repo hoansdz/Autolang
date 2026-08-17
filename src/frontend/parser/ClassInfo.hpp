@@ -7,24 +7,25 @@
 #include "frontend/parser/node/CreateFuncNode.hpp"
 #include "frontend/parser/node/CreateNode.hpp"
 #include "frontend/parser/GenericData.hpp"
+#include "shared/SmallVector.hpp"
 #include <vector>
 
 namespace Autolang {
 
 struct ClassInfo {
 	GenericData *genericData = nullptr;
-	std::vector<DeclarationNode *> allDeclarationNode;
-	std::vector<DeclarationNode *> member;
+	SmallVector<DeclarationNode *, 8> allDeclarationNode;
+	SmallVector<DeclarationNode *, 8> member;
 	HashMap<LexerStringId, MemberOffset> memberMap;
 	HashMap<LexerStringId, DeclarationNode *> staticMember;
 	HashMap<LexerStringId, std::vector<FunctionId>> allFunction;
 	HashMap<LexerStringId, HashMap<HashValue, FunctionId>> func;
 	HashMap<LexerStringId, HashMap<HashValue, FunctionId>> staticFunc;
 	HashMap<LexerStringId, ConstValueNode *> constValue;
-	std::vector<ClassDeclaration *> genericTypeId;
+	SmallVector<ClassDeclaration *, 2> genericTypeId;
 	CreateConstructorNode *primaryConstructor = nullptr;
-	std::vector<CreateConstructorNode *> secondaryConstructor;
-	std::vector<CreateFuncNode *> createFunctionNodes;
+	SmallVector<CreateConstructorNode *, 2> secondaryConstructor;
+	SmallVector<CreateFuncNode *, 8> createFunctionNodes;
 	DeclarationNode *declarationThis = nullptr;
 
 	AccessNode *findDeclaration(in_func, uint32_t line, LexerStringId nameId,

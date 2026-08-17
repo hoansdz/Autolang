@@ -437,7 +437,7 @@ AObject* jsonObjectToAObject(ANotifier& notifier, const nlohmann::json& j_obj, C
 
     auto clazz = notifier.vm->data.classes[classId];
     auto newObj = notifier.createMemberObject(classId, clazz->memberMap.size());
-    ClassId* memberId = &notifier.vm->data.allMemberId[clazz->memberIdOffset];
+    ClassId* memberId = notifier.vm->data.getMemberRef(clazz->memberIdOffset);
     size_t nullableOffset = clazz->memberIdOffset;
 
     for (const auto &[memberName, memberPos] : clazz->memberMap) {

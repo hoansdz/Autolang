@@ -42,6 +42,32 @@ fun testPrecedence() {
 	assert(!false && true, __FILE__, __LINE__)    // (!false) && true = true
 	assert(!false || false, __FILE__, __LINE__)   // (!false) || false = true
 
+	// Range operator precedence with arithmetic and 'in'
+	assert(4 in 1..2 + 3, __FILE__, __LINE__)
+	assert(!(6 in 1..2 + 3), __FILE__, __LINE__)
+	assert(2 in 1 + 1..10 - 2, __FILE__, __LINE__)
+	assert(8 in 1 + 1..10 - 2, __FILE__, __LINE__)
+	assert(!(9 in 1 + 1..10 - 2), __FILE__, __LINE__)
+
+	var rangeSum = 0
+	for (i in 1..2 + 2) {
+		rangeSum = rangeSum + i
+	}
+	assert(rangeSum == 10, __FILE__, __LINE__) // 1 + 2 + 3 + 4 = 10
+
+	// Bitwise operator precedence
+	val bitAnd = 1 + 2 & 3
+	assert(bitAnd == 3, __FILE__, __LINE__) // (1 + 2) & 3 = 3 & 3 = 3
+
+	// Null-coalescing operator precedence
+	val optVal: Int? = null
+	val coalesceRes = optVal ?? 5 + 2
+	assert(coalesceRes == 7, __FILE__, __LINE__)
+
+	// 'is' operator precedence with logical AND
+	val num = 42
+	assert(num is Int && true, __FILE__, __LINE__)
+
 	println("Passed ${__FUNC__}")
 }
 

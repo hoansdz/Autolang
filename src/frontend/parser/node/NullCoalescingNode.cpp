@@ -58,10 +58,10 @@ void NullCoalescingNode::optimize(in_func) {
 	}
 	classId = left->classId;
 	if (left->classId != right->classId) {
-		throwError("Left and right operands of null coalescing operator (??) must be of the same type (got '" +
+		throwError("Left and right operands of null coalescing operator (?\?) must be of the same type (got '" +
 		           compile.classes[left->classId]->getName(compile) + "' and '" +
 		           compile.classes[right->classId]->getName(compile) +
-		           "')\nHint: Ensure both operands of '??' evaluate to compatible types, or explicitly cast one operand to match.");
+		           "')\nHint: Ensure both operands of '?\?' evaluate to compatible types, or explicitly cast one operand to match.");
 	}
 	nullable = right->isNullable();
 }

@@ -431,7 +431,7 @@ err_call_func:;
 }
 
 template <bool loadedLBrace>
-bool loadBody(in_func, std::vector<ExprNode *> &nodes, size_t &i,
+bool loadBody(in_func, SmallVector<ExprNode *, 8> &nodes, size_t &i,
               bool createScope) {
 	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
@@ -1905,7 +1905,7 @@ int getPrecedence(Lexer::TokenType type) {
 	switch (type) {
 		case Lexer::TokenType::DOT_DOT_LT:
 		case Lexer::TokenType::DOT_DOT: {
-			return 15;
+			return 9;
 		}
 		case Lexer::TokenType::PLUS:
 		case Lexer::TokenType::MINUS: {

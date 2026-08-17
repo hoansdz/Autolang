@@ -33,6 +33,7 @@ struct DeclarationNode : HasClassIdNode {
 	      nullable(nullable) {}
 	void optimize(in_func) override;
 	ExprNode *copy(in_func) override;
+	std::string toString(in_func, bool isStatic = false);
 	~DeclarationNode() {}
 };
 
@@ -45,8 +46,8 @@ struct GenericDeclarationCondition {
 struct GenericDeclarationNode : NullableNode {
 	LexerStringId nameId;
 	std::optional<GenericDeclarationCondition> condition;
-	std::vector<ClassDeclaration *> allClassDeclarations;
-	std::vector<CallNode *> allCallNodes;
+	SmallVector<ClassDeclaration *, 4> allClassDeclarations;
+	SmallVector<CallNode *, 4> allCallNodes;
 	GenericDeclarationNode(uint32_t line, LexerStringId nameId)
 	    : NullableNode(NodeType::GENERIC_DECLARATION, 0, false, line),
 	      nameId(nameId) {}

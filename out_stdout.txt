@@ -1,0 +1,2 @@
+RAM used by Autolang instance (Working Set): 4.32812 MB
+RAM used by Autolang instance (Private Bytes): 3.57031 MB

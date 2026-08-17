@@ -64,7 +64,6 @@ struct CompiledProgram {
 	HashMap<std::string, ClassId> classMap;
 	ChunkArena<AObject, 32> constObjectAllocator;
 	std::vector<AObject *> constPool;
-	void refresh();
 	void destroy();
 	template <bool isConstructor = false>
 	FunctionId registerFunction( // Return value
@@ -78,7 +77,9 @@ struct CompiledProgram {
 		                        functionFlags);
 	}
 	ClassId registerClass(std::string name, uint32_t classFlags);
-
+	inline ClassId *getMemberRef(uint32_t index) {
+		return allMemberId.data() + index;
+	}
 	Offset registerConstPool(
 	    HashMap<AString *, uint32_t, AString::Hash, AString::Equal> &map,
 	    AString *value);

@@ -1,0 +1,1368 @@
+
+---
+events:
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineSystem.cmake:212 (message)"
+      - "CMakeLists.txt:6 (project)"
+    message: |
+      The system is: Windows - 10.0.26200 - AMD64
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCompilerId.cmake:468 (find_file)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCompilerId.cmake:506 (CMAKE_DETERMINE_COMPILER_ID_WRITE)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCompilerId.cmake:8 (CMAKE_DETERMINE_COMPILER_ID_BUILD)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCCompiler.cmake:122 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:6 (project)"
+    mode: "file"
+    variable: "src_in"
+    description: "Path to a file."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "CMakeCCompilerId.c.in"
+    candidate_directories:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/"
+    found: "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeCCompilerId.c.in"
+    search_context:
+      ENV{PATH}:
+        - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "D:\\LLVM\\bin"
+        - "D:\\"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\NGOC HOAN\\.local\\bin"
+        - "C:\\Users\\NGOC HOAN\\scoop\\apps\\llvm\\current\\bin"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "D:\\LLVM\\bin"
+        - "D:\\"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\AutoLang"
+        - "D:\\mingw64\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Python\\Python313"
+        - "C:\\Users\\NGOC HOAN\\.bun\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Roaming\\npm"
+        - "D:\\platform-tools"
+        - "D:\\Antigravity\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\NGOC HOAN\\scoop\\shims"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\QNznz\\"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Ollama"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Python\\Python313\\Scripts"
+        - "D:\\Antigravity IDE\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Antigravity IDE\\bin"
+        - "C:\\Users\\NGOC HOAN\\.dotnet\\tools"
+        - "D:\\Ollama"
+        - "D:\\flutter\\bin"
+        - "D:\\flutter\\bin\\cache\\dart-sdk"
+        - "D:\\cursor\\resources\\app\\bin"
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCCompiler.cmake:122 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:6 (project)"
+    message: |
+      Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+      Compiler:  
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      MSBuild version 17.14.40+3e7442088 for .NET Framework
+      Build started 16-Aug-26 3:39:57 PM.
+      
+      Project "D:\\code\\AutoLangC\\__cmake_systeminformation\\CMakeFiles\\4.3.1\\CompilerIdC\\CompilerIdC.vcxproj" on node 1 (default targets).
+      PrepareForBuild:
+        Creating directory "Debug\\".
+        Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+        Creating directory "Debug\\CompilerIdC.tlog\\".
+      InitializeBuildStatus:
+        Creating "Debug\\CompilerIdC.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+        Touching "Debug\\CompilerIdC.tlog\\unsuccessfulbuild".
+      ClCompile:
+        C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /nologo /W0 /WX- /diagnostics:column /Od /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"Debug\\\\" /Fd"Debug\\vc143.pdb" /external:W0 /Gd /TC /FC /errorReport:queue CMakeCCompilerId.c
+        CMakeCCompilerId.c
+      Link:
+        C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:".\\CompilerIdC.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:".\\CompilerIdC.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:".\\CompilerIdC.lib" /MACHINE:X64 Debug\\CMakeCCompilerId.obj
+        CompilerIdC.vcxproj -> D:\\code\\AutoLangC\\__cmake_systeminformation\\CMakeFiles\\4.3.1\\CompilerIdC\\CompilerIdC.exe
+      PostBuildEvent:
+        for %%i in (cl.exe) do @echo CMAKE_C_COMPILER=%%~$PATH:i
+        :VCEnd
+        CMAKE_C_COMPILER=C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe
+      FinalizeBuildStatus:
+        Deleting file "Debug\\CompilerIdC.tlog\\unsuccessfulbuild".
+        Touching "Debug\\CompilerIdC.tlog\\CompilerIdC.lastbuildstate".
+      Done Building Project "D:\\code\\AutoLangC\\__cmake_systeminformation\\CMakeFiles\\4.3.1\\CompilerIdC\\CompilerIdC.vcxproj" (default targets).
+      
+      Build succeeded.
+          0 Warning(s)
+          0 Error(s)
+      
+      Time Elapsed 00:00:01.35
+      
+      
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.exe"
+      
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.vcxproj"
+      
+      The C compiler identification is MSVC, found in:
+        D:/code/AutoLangC/__cmake_systeminformation/CMakeFiles/4.3.1/CompilerIdC/CompilerIdC.exe
+      
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeFindBinUtils.cmake:37 (find_program)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeFindBinUtils.cmake:65 (__resolve_tool_path)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeFindBinUtils.cmake:103 (__resolve_linker_path)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:6 (project)"
+    mode: "program"
+    variable: "_CMAKE_TOOL_WITH_PATH"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "link"
+    candidate_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin/"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/ProgramData/chocolatey/bin/"
+      - "D:/LLVM/bin/"
+      - "D:/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Users/NGOC HOAN/.local/bin/"
+      - "C:/Users/NGOC HOAN/scoop/apps/llvm/current/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/AutoLang/"
+      - "D:/mingw64/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/"
+      - "C:/Users/NGOC HOAN/.bun/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Roaming/npm/"
+      - "D:/platform-tools/"
+      - "D:/Antigravity/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Microsoft VS Code/bin/"
+      - "C:/Users/NGOC HOAN/scoop/shims/"
+      - "C:/Users/NGOC HOAN/AppData/Local/QNznz/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Ollama/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/Scripts/"
+      - "D:/Antigravity IDE/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Antigravity IDE/bin/"
+      - "C:/Users/NGOC HOAN/.dotnet/tools/"
+      - "D:/Ollama/"
+      - "D:/flutter/bin/"
+      - "D:/flutter/bin/cache/dart-sdk/"
+      - "D:/cursor/resources/app/bin/"
+    searched_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.com"
+    found: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.exe"
+    search_context:
+      ENV{PATH}:
+        - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "D:\\LLVM\\bin"
+        - "D:\\"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\NGOC HOAN\\.local\\bin"
+        - "C:\\Users\\NGOC HOAN\\scoop\\apps\\llvm\\current\\bin"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "D:\\LLVM\\bin"
+        - "D:\\"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\AutoLang"
+        - "D:\\mingw64\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Python\\Python313"
+        - "C:\\Users\\NGOC HOAN\\.bun\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Roaming\\npm"
+        - "D:\\platform-tools"
+        - "D:\\Antigravity\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\NGOC HOAN\\scoop\\shims"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\QNznz\\"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Ollama"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Python\\Python313\\Scripts"
+        - "D:\\Antigravity IDE\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Antigravity IDE\\bin"
+        - "C:\\Users\\NGOC HOAN\\.dotnet\\tools"
+        - "D:\\Ollama"
+        - "D:\\flutter\\bin"
+        - "D:\\flutter\\bin\\cache\\dart-sdk"
+        - "D:\\cursor\\resources\\app\\bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeFindBinUtils.cmake:37 (find_program)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeFindBinUtils.cmake:65 (__resolve_tool_path)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeFindBinUtils.cmake:104 (__resolve_linker_path)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:6 (project)"
+    mode: "program"
+    variable: "_CMAKE_TOOL_WITH_PATH"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "lld-link"
+    candidate_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin/"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/ProgramData/chocolatey/bin/"
+      - "D:/LLVM/bin/"
+      - "D:/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Users/NGOC HOAN/.local/bin/"
+      - "C:/Users/NGOC HOAN/scoop/apps/llvm/current/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/AutoLang/"
+      - "D:/mingw64/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/"
+      - "C:/Users/NGOC HOAN/.bun/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Roaming/npm/"
+      - "D:/platform-tools/"
+      - "D:/Antigravity/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Microsoft VS Code/bin/"
+      - "C:/Users/NGOC HOAN/scoop/shims/"
+      - "C:/Users/NGOC HOAN/AppData/Local/QNznz/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Ollama/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/Scripts/"
+      - "D:/Antigravity IDE/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Antigravity IDE/bin/"
+      - "C:/Users/NGOC HOAN/.dotnet/tools/"
+      - "D:/Ollama/"
+      - "D:/flutter/bin/"
+      - "D:/flutter/bin/cache/dart-sdk/"
+      - "D:/cursor/resources/app/bin/"
+    searched_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link.com"
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link.exe"
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link"
+      - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin/lld-link.com"
+      - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin/lld-link.exe"
+      - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin/lld-link"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/lld-link.com"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/lld-link.exe"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/lld-link"
+      - "C:/Windows/System32/lld-link.com"
+      - "C:/Windows/System32/lld-link.exe"
+      - "C:/Windows/System32/lld-link"
+      - "C:/Windows/lld-link.com"
+      - "C:/Windows/lld-link.exe"
+      - "C:/Windows/lld-link"
+      - "C:/Windows/System32/wbem/lld-link.com"
+      - "C:/Windows/System32/wbem/lld-link.exe"
+      - "C:/Windows/System32/wbem/lld-link"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/lld-link.com"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/lld-link.exe"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/lld-link"
+      - "C:/Windows/System32/OpenSSH/lld-link.com"
+      - "C:/Windows/System32/OpenSSH/lld-link.exe"
+      - "C:/Windows/System32/OpenSSH/lld-link"
+      - "C:/Program Files/dotnet/lld-link.com"
+      - "C:/Program Files/dotnet/lld-link.exe"
+      - "C:/Program Files/dotnet/lld-link"
+      - "C:/Program Files/Git/cmd/lld-link.com"
+      - "C:/Program Files/Git/cmd/lld-link.exe"
+      - "C:/Program Files/Git/cmd/lld-link"
+      - "C:/ProgramData/chocolatey/bin/lld-link.com"
+      - "C:/ProgramData/chocolatey/bin/lld-link.exe"
+      - "C:/ProgramData/chocolatey/bin/lld-link"
+      - "D:/LLVM/bin/lld-link.com"
+    found: "D:/LLVM/bin/lld-link.exe"
+    search_context:
+      ENV{PATH}:
+        - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "D:\\LLVM\\bin"
+        - "D:\\"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\NGOC HOAN\\.local\\bin"
+        - "C:\\Users\\NGOC HOAN\\scoop\\apps\\llvm\\current\\bin"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "D:\\LLVM\\bin"
+        - "D:\\"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\AutoLang"
+        - "D:\\mingw64\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Python\\Python313"
+        - "C:\\Users\\NGOC HOAN\\.bun\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Roaming\\npm"
+        - "D:\\platform-tools"
+        - "D:\\Antigravity\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\NGOC HOAN\\scoop\\shims"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\QNznz\\"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Ollama"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Python\\Python313\\Scripts"
+        - "D:\\Antigravity IDE\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Antigravity IDE\\bin"
+        - "C:\\Users\\NGOC HOAN\\.dotnet\\tools"
+        - "D:\\Ollama"
+        - "D:\\flutter\\bin"
+        - "D:\\flutter\\bin\\cache\\dart-sdk"
+        - "D:\\cursor\\resources\\app\\bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeFindBinUtils.cmake:243 (find_program)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:6 (project)"
+    mode: "program"
+    variable: "CMAKE_LINKER"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "link"
+    candidate_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin/"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/ProgramData/chocolatey/bin/"
+      - "D:/LLVM/bin/"
+      - "D:/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Users/NGOC HOAN/.local/bin/"
+      - "C:/Users/NGOC HOAN/scoop/apps/llvm/current/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/AutoLang/"
+      - "D:/mingw64/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/"
+      - "C:/Users/NGOC HOAN/.bun/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Roaming/npm/"
+      - "D:/platform-tools/"
+      - "D:/Antigravity/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Microsoft VS Code/bin/"
+      - "C:/Users/NGOC HOAN/scoop/shims/"
+      - "C:/Users/NGOC HOAN/AppData/Local/QNznz/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Ollama/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/Scripts/"
+      - "D:/Antigravity IDE/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Antigravity IDE/bin/"
+      - "C:/Users/NGOC HOAN/.dotnet/tools/"
+      - "D:/Ollama/"
+      - "D:/flutter/bin/"
+      - "D:/flutter/bin/cache/dart-sdk/"
+      - "D:/cursor/resources/app/bin/"
+    searched_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.com"
+    found: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.exe"
+    search_context:
+      ENV{PATH}:
+        - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "D:\\LLVM\\bin"
+        - "D:\\"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\NGOC HOAN\\.local\\bin"
+        - "C:\\Users\\NGOC HOAN\\scoop\\apps\\llvm\\current\\bin"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "D:\\LLVM\\bin"
+        - "D:\\"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\AutoLang"
+        - "D:\\mingw64\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Python\\Python313"
+        - "C:\\Users\\NGOC HOAN\\.bun\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Roaming\\npm"
+        - "D:\\platform-tools"
+        - "D:\\Antigravity\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\NGOC HOAN\\scoop\\shims"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\QNznz\\"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Ollama"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Python\\Python313\\Scripts"
+        - "D:\\Antigravity IDE\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Antigravity IDE\\bin"
+        - "C:\\Users\\NGOC HOAN\\.dotnet\\tools"
+        - "D:\\Ollama"
+        - "D:\\flutter\\bin"
+        - "D:\\flutter\\bin\\cache\\dart-sdk"
+        - "D:\\cursor\\resources\\app\\bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeFindBinUtils.cmake:243 (find_program)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:6 (project)"
+    mode: "program"
+    variable: "CMAKE_MT"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "mt"
+    candidate_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin/"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/ProgramData/chocolatey/bin/"
+      - "D:/LLVM/bin/"
+      - "D:/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Users/NGOC HOAN/.local/bin/"
+      - "C:/Users/NGOC HOAN/scoop/apps/llvm/current/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/AutoLang/"
+      - "D:/mingw64/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/"
+      - "C:/Users/NGOC HOAN/.bun/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Roaming/npm/"
+      - "D:/platform-tools/"
+      - "D:/Antigravity/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Microsoft VS Code/bin/"
+      - "C:/Users/NGOC HOAN/scoop/shims/"
+      - "C:/Users/NGOC HOAN/AppData/Local/QNznz/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Ollama/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/Scripts/"
+      - "D:/Antigravity IDE/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Antigravity IDE/bin/"
+      - "C:/Users/NGOC HOAN/.dotnet/tools/"
+      - "D:/Ollama/"
+      - "D:/flutter/bin/"
+      - "D:/flutter/bin/cache/dart-sdk/"
+      - "D:/cursor/resources/app/bin/"
+    searched_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/mt.com"
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/mt.exe"
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/mt"
+      - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin/mt.com"
+      - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin/mt.exe"
+      - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin/mt"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/mt.com"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/mt.exe"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/mt"
+      - "C:/Windows/System32/mt.com"
+      - "C:/Windows/System32/mt.exe"
+      - "C:/Windows/System32/mt"
+      - "C:/Windows/mt.com"
+      - "C:/Windows/mt.exe"
+      - "C:/Windows/mt"
+      - "C:/Windows/System32/wbem/mt.com"
+      - "C:/Windows/System32/wbem/mt.exe"
+      - "C:/Windows/System32/wbem/mt"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/mt.com"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/mt.exe"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/mt"
+      - "C:/Windows/System32/OpenSSH/mt.com"
+      - "C:/Windows/System32/OpenSSH/mt.exe"
+      - "C:/Windows/System32/OpenSSH/mt"
+      - "C:/Program Files/dotnet/mt.com"
+      - "C:/Program Files/dotnet/mt.exe"
+      - "C:/Program Files/dotnet/mt"
+      - "C:/Program Files/Git/cmd/mt.com"
+      - "C:/Program Files/Git/cmd/mt.exe"
+      - "C:/Program Files/Git/cmd/mt"
+      - "C:/ProgramData/chocolatey/bin/mt.com"
+      - "C:/ProgramData/chocolatey/bin/mt.exe"
+      - "C:/ProgramData/chocolatey/bin/mt"
+      - "D:/LLVM/bin/mt.com"
+      - "D:/LLVM/bin/mt.exe"
+      - "D:/LLVM/bin/mt"
+      - "D:/mt.com"
+      - "D:/mt.exe"
+      - "D:/mt"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/mt.com"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/mt.exe"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/mt"
+      - "C:/Users/NGOC HOAN/.local/bin/mt.com"
+      - "C:/Users/NGOC HOAN/.local/bin/mt.exe"
+      - "C:/Users/NGOC HOAN/.local/bin/mt"
+      - "C:/Users/NGOC HOAN/scoop/apps/llvm/current/bin/mt.com"
+      - "C:/Users/NGOC HOAN/scoop/apps/llvm/current/bin/mt.exe"
+      - "C:/Users/NGOC HOAN/scoop/apps/llvm/current/bin/mt"
+      - "C:/Users/NGOC HOAN/AppData/Local/AutoLang/mt.com"
+      - "C:/Users/NGOC HOAN/AppData/Local/AutoLang/mt.exe"
+      - "C:/Users/NGOC HOAN/AppData/Local/AutoLang/mt"
+      - "D:/mingw64/bin/mt.com"
+      - "D:/mingw64/bin/mt.exe"
+      - "D:/mingw64/bin/mt"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/mt.com"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/mt.exe"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/mt"
+      - "C:/Users/NGOC HOAN/.bun/bin/mt.com"
+      - "C:/Users/NGOC HOAN/.bun/bin/mt.exe"
+      - "C:/Users/NGOC HOAN/.bun/bin/mt"
+      - "C:/Users/NGOC HOAN/AppData/Roaming/npm/mt.com"
+      - "C:/Users/NGOC HOAN/AppData/Roaming/npm/mt.exe"
+      - "C:/Users/NGOC HOAN/AppData/Roaming/npm/mt"
+      - "D:/platform-tools/mt.com"
+      - "D:/platform-tools/mt.exe"
+      - "D:/platform-tools/mt"
+      - "D:/Antigravity/bin/mt.com"
+      - "D:/Antigravity/bin/mt.exe"
+      - "D:/Antigravity/bin/mt"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Microsoft VS Code/bin/mt.com"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Microsoft VS Code/bin/mt.exe"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Microsoft VS Code/bin/mt"
+      - "C:/Users/NGOC HOAN/scoop/shims/mt.com"
+      - "C:/Users/NGOC HOAN/scoop/shims/mt.exe"
+      - "C:/Users/NGOC HOAN/scoop/shims/mt"
+      - "C:/Users/NGOC HOAN/AppData/Local/QNznz/mt.com"
+      - "C:/Users/NGOC HOAN/AppData/Local/QNznz/mt.exe"
+      - "C:/Users/NGOC HOAN/AppData/Local/QNznz/mt"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Ollama/mt.com"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Ollama/mt.exe"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Ollama/mt"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/Scripts/mt.com"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/Scripts/mt.exe"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/Scripts/mt"
+      - "D:/Antigravity IDE/bin/mt.com"
+      - "D:/Antigravity IDE/bin/mt.exe"
+      - "D:/Antigravity IDE/bin/mt"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Antigravity IDE/bin/mt.com"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Antigravity IDE/bin/mt.exe"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Antigravity IDE/bin/mt"
+      - "C:/Users/NGOC HOAN/.dotnet/tools/mt.com"
+      - "C:/Users/NGOC HOAN/.dotnet/tools/mt.exe"
+      - "C:/Users/NGOC HOAN/.dotnet/tools/mt"
+      - "D:/Ollama/mt.com"
+      - "D:/Ollama/mt.exe"
+      - "D:/Ollama/mt"
+      - "D:/flutter/bin/mt.com"
+      - "D:/flutter/bin/mt.exe"
+      - "D:/flutter/bin/mt"
+      - "D:/flutter/bin/cache/dart-sdk/mt.com"
+      - "D:/flutter/bin/cache/dart-sdk/mt.exe"
+      - "D:/flutter/bin/cache/dart-sdk/mt"
+      - "D:/cursor/resources/app/bin/mt.com"
+      - "D:/cursor/resources/app/bin/mt.exe"
+      - "D:/cursor/resources/app/bin/mt"
+    found: false
+    search_context:
+      ENV{PATH}:
+        - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "D:\\LLVM\\bin"
+        - "D:\\"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\NGOC HOAN\\.local\\bin"
+        - "C:\\Users\\NGOC HOAN\\scoop\\apps\\llvm\\current\\bin"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "D:\\LLVM\\bin"
+        - "D:\\"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\AutoLang"
+        - "D:\\mingw64\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Python\\Python313"
+        - "C:\\Users\\NGOC HOAN\\.bun\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Roaming\\npm"
+        - "D:\\platform-tools"
+        - "D:\\Antigravity\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\NGOC HOAN\\scoop\\shims"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\QNznz\\"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Ollama"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Python\\Python313\\Scripts"
+        - "D:\\Antigravity IDE\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Antigravity IDE\\bin"
+        - "C:\\Users\\NGOC HOAN\\.dotnet\\tools"
+        - "D:\\Ollama"
+        - "D:\\flutter\\bin"
+        - "D:\\flutter\\bin\\cache\\dart-sdk"
+        - "D:\\cursor\\resources\\app\\bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeFindBinUtils.cmake:243 (find_program)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:6 (project)"
+    mode: "program"
+    variable: "CMAKE_AR"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "lib"
+    candidate_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin/"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/ProgramData/chocolatey/bin/"
+      - "D:/LLVM/bin/"
+      - "D:/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Users/NGOC HOAN/.local/bin/"
+      - "C:/Users/NGOC HOAN/scoop/apps/llvm/current/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/AutoLang/"
+      - "D:/mingw64/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/"
+      - "C:/Users/NGOC HOAN/.bun/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Roaming/npm/"
+      - "D:/platform-tools/"
+      - "D:/Antigravity/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Microsoft VS Code/bin/"
+      - "C:/Users/NGOC HOAN/scoop/shims/"
+      - "C:/Users/NGOC HOAN/AppData/Local/QNznz/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Ollama/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/Scripts/"
+      - "D:/Antigravity IDE/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Antigravity IDE/bin/"
+      - "C:/Users/NGOC HOAN/.dotnet/tools/"
+      - "D:/Ollama/"
+      - "D:/flutter/bin/"
+      - "D:/flutter/bin/cache/dart-sdk/"
+      - "D:/cursor/resources/app/bin/"
+    searched_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lib.com"
+    found: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lib.exe"
+    search_context:
+      ENV{PATH}:
+        - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "D:\\LLVM\\bin"
+        - "D:\\"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\NGOC HOAN\\.local\\bin"
+        - "C:\\Users\\NGOC HOAN\\scoop\\apps\\llvm\\current\\bin"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "D:\\LLVM\\bin"
+        - "D:\\"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\AutoLang"
+        - "D:\\mingw64\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Python\\Python313"
+        - "C:\\Users\\NGOC HOAN\\.bun\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Roaming\\npm"
+        - "D:\\platform-tools"
+        - "D:\\Antigravity\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\NGOC HOAN\\scoop\\shims"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\QNznz\\"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Ollama"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Python\\Python313\\Scripts"
+        - "D:\\Antigravity IDE\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Antigravity IDE\\bin"
+        - "C:\\Users\\NGOC HOAN\\.dotnet\\tools"
+        - "D:\\Ollama"
+        - "D:\\flutter\\bin"
+        - "D:\\flutter\\bin\\cache\\dart-sdk"
+        - "D:\\cursor\\resources\\app\\bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCompilerId.cmake:468 (find_file)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCompilerId.cmake:506 (CMAKE_DETERMINE_COMPILER_ID_WRITE)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCompilerId.cmake:8 (CMAKE_DETERMINE_COMPILER_ID_BUILD)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCXXCompiler.cmake:125 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:6 (project)"
+    mode: "file"
+    variable: "src_in"
+    description: "Path to a file."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "CMakeCXXCompilerId.cpp.in"
+    candidate_directories:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/"
+    found: "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeCXXCompilerId.cpp.in"
+    search_context:
+      ENV{PATH}:
+        - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "D:\\LLVM\\bin"
+        - "D:\\"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\NGOC HOAN\\.local\\bin"
+        - "C:\\Users\\NGOC HOAN\\scoop\\apps\\llvm\\current\\bin"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "D:\\LLVM\\bin"
+        - "D:\\"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\AutoLang"
+        - "D:\\mingw64\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Python\\Python313"
+        - "C:\\Users\\NGOC HOAN\\.bun\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Roaming\\npm"
+        - "D:\\platform-tools"
+        - "D:\\Antigravity\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\NGOC HOAN\\scoop\\shims"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\QNznz\\"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Ollama"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Python\\Python313\\Scripts"
+        - "D:\\Antigravity IDE\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Antigravity IDE\\bin"
+        - "C:\\Users\\NGOC HOAN\\.dotnet\\tools"
+        - "D:\\Ollama"
+        - "D:\\flutter\\bin"
+        - "D:\\flutter\\bin\\cache\\dart-sdk"
+        - "D:\\cursor\\resources\\app\\bin"
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCXXCompiler.cmake:125 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:6 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
+      Compiler:  
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      MSBuild version 17.14.40+3e7442088 for .NET Framework
+      Build started 16-Aug-26 3:39:59 PM.
+      
+      Project "D:\\code\\AutoLangC\\__cmake_systeminformation\\CMakeFiles\\4.3.1\\CompilerIdCXX\\CompilerIdCXX.vcxproj" on node 1 (default targets).
+      PrepareForBuild:
+        Creating directory "Debug\\".
+        Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+        Creating directory "Debug\\CompilerIdCXX.tlog\\".
+      InitializeBuildStatus:
+        Creating "Debug\\CompilerIdCXX.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+        Touching "Debug\\CompilerIdCXX.tlog\\unsuccessfulbuild".
+      ClCompile:
+        C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /nologo /W0 /WX- /diagnostics:column /Od /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"Debug\\\\" /Fd"Debug\\vc143.pdb" /external:W0 /Gd /TP /FC /errorReport:queue CMakeCXXCompilerId.cpp
+        CMakeCXXCompilerId.cpp
+      Link:
+        C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:".\\CompilerIdCXX.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:".\\CompilerIdCXX.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:".\\CompilerIdCXX.lib" /MACHINE:X64 Debug\\CMakeCXXCompilerId.obj
+        CompilerIdCXX.vcxproj -> D:\\code\\AutoLangC\\__cmake_systeminformation\\CMakeFiles\\4.3.1\\CompilerIdCXX\\CompilerIdCXX.exe
+      PostBuildEvent:
+        for %%i in (cl.exe) do @echo CMAKE_CXX_COMPILER=%%~$PATH:i
+        :VCEnd
+        CMAKE_CXX_COMPILER=C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe
+      FinalizeBuildStatus:
+        Deleting file "Debug\\CompilerIdCXX.tlog\\unsuccessfulbuild".
+        Touching "Debug\\CompilerIdCXX.tlog\\CompilerIdCXX.lastbuildstate".
+      Done Building Project "D:\\code\\AutoLangC\\__cmake_systeminformation\\CMakeFiles\\4.3.1\\CompilerIdCXX\\CompilerIdCXX.vcxproj" (default targets).
+      
+      Build succeeded.
+          0 Warning(s)
+          0 Error(s)
+      
+      Time Elapsed 00:00:00.89
+      
+      
+      Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
+      
+      Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.vcxproj"
+      
+      The CXX compiler identification is MSVC, found in:
+        D:/code/AutoLangC/__cmake_systeminformation/CMakeFiles/4.3.1/CompilerIdCXX/CompilerIdCXX.exe
+      
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineRCCompiler.cmake:40 (find_program)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/Platform/Windows-MSVC.cmake:592 (enable_language)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/Platform/Windows-MSVC.cmake:565 (__windows_compiler_msvc_enable_rc)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/Platform/Windows-MSVC-C.cmake:5 (__windows_compiler_msvc)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeCInformation.cmake:48 (include)"
+      - "CMakeLists.txt:6 (project)"
+    mode: "program"
+    variable: "CMAKE_RC_COMPILER"
+    description: "RC compiler"
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "rc"
+    candidate_directories:
+      - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin/"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/ProgramData/chocolatey/bin/"
+      - "D:/LLVM/bin/"
+      - "D:/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Users/NGOC HOAN/.local/bin/"
+      - "C:/Users/NGOC HOAN/scoop/apps/llvm/current/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/AutoLang/"
+      - "D:/mingw64/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/"
+      - "C:/Users/NGOC HOAN/.bun/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Roaming/npm/"
+      - "D:/platform-tools/"
+      - "D:/Antigravity/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Microsoft VS Code/bin/"
+      - "C:/Users/NGOC HOAN/scoop/shims/"
+      - "C:/Users/NGOC HOAN/AppData/Local/QNznz/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Ollama/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/Scripts/"
+      - "D:/Antigravity IDE/bin/"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Antigravity IDE/bin/"
+      - "C:/Users/NGOC HOAN/.dotnet/tools/"
+      - "D:/Ollama/"
+      - "D:/flutter/bin/"
+      - "D:/flutter/bin/cache/dart-sdk/"
+      - "D:/cursor/resources/app/bin/"
+      - "C:/Program Files/bin/"
+      - "C:/Program Files/sbin/"
+      - "C:/Program Files/"
+      - "C:/Program Files (x86)/bin/"
+      - "C:/Program Files (x86)/sbin/"
+      - "C:/Program Files (x86)/"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/bin/"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/sbin/"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/"
+      - "C:/Program Files (x86)/DumpInformation/bin/"
+      - "C:/Program Files (x86)/DumpInformation/sbin/"
+      - "C:/Program Files (x86)/DumpInformation/"
+    searched_directories:
+      - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin/rc.com"
+      - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin/rc.exe"
+      - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin/rc"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/rc.com"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/rc.exe"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/rc"
+      - "C:/Windows/System32/rc.com"
+      - "C:/Windows/System32/rc.exe"
+      - "C:/Windows/System32/rc"
+      - "C:/Windows/rc.com"
+      - "C:/Windows/rc.exe"
+      - "C:/Windows/rc"
+      - "C:/Windows/System32/wbem/rc.com"
+      - "C:/Windows/System32/wbem/rc.exe"
+      - "C:/Windows/System32/wbem/rc"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/rc.com"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/rc.exe"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/rc"
+      - "C:/Windows/System32/OpenSSH/rc.com"
+      - "C:/Windows/System32/OpenSSH/rc.exe"
+      - "C:/Windows/System32/OpenSSH/rc"
+      - "C:/Program Files/dotnet/rc.com"
+      - "C:/Program Files/dotnet/rc.exe"
+      - "C:/Program Files/dotnet/rc"
+      - "C:/Program Files/Git/cmd/rc.com"
+      - "C:/Program Files/Git/cmd/rc.exe"
+      - "C:/Program Files/Git/cmd/rc"
+      - "C:/ProgramData/chocolatey/bin/rc.com"
+      - "C:/ProgramData/chocolatey/bin/rc.exe"
+      - "C:/ProgramData/chocolatey/bin/rc"
+      - "D:/LLVM/bin/rc.com"
+      - "D:/LLVM/bin/rc.exe"
+      - "D:/LLVM/bin/rc"
+      - "D:/rc.com"
+      - "D:/rc.exe"
+      - "D:/rc"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/rc.com"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/rc.exe"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/rc"
+      - "C:/Users/NGOC HOAN/.local/bin/rc.com"
+      - "C:/Users/NGOC HOAN/.local/bin/rc.exe"
+      - "C:/Users/NGOC HOAN/.local/bin/rc"
+      - "C:/Users/NGOC HOAN/scoop/apps/llvm/current/bin/rc.com"
+      - "C:/Users/NGOC HOAN/scoop/apps/llvm/current/bin/rc.exe"
+      - "C:/Users/NGOC HOAN/scoop/apps/llvm/current/bin/rc"
+      - "C:/Users/NGOC HOAN/AppData/Local/AutoLang/rc.com"
+      - "C:/Users/NGOC HOAN/AppData/Local/AutoLang/rc.exe"
+      - "C:/Users/NGOC HOAN/AppData/Local/AutoLang/rc"
+      - "D:/mingw64/bin/rc.com"
+      - "D:/mingw64/bin/rc.exe"
+      - "D:/mingw64/bin/rc"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/rc.com"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/rc.exe"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/rc"
+      - "C:/Users/NGOC HOAN/.bun/bin/rc.com"
+      - "C:/Users/NGOC HOAN/.bun/bin/rc.exe"
+      - "C:/Users/NGOC HOAN/.bun/bin/rc"
+      - "C:/Users/NGOC HOAN/AppData/Roaming/npm/rc.com"
+      - "C:/Users/NGOC HOAN/AppData/Roaming/npm/rc.exe"
+      - "C:/Users/NGOC HOAN/AppData/Roaming/npm/rc"
+      - "D:/platform-tools/rc.com"
+      - "D:/platform-tools/rc.exe"
+      - "D:/platform-tools/rc"
+      - "D:/Antigravity/bin/rc.com"
+      - "D:/Antigravity/bin/rc.exe"
+      - "D:/Antigravity/bin/rc"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Microsoft VS Code/bin/rc.com"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Microsoft VS Code/bin/rc.exe"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Microsoft VS Code/bin/rc"
+      - "C:/Users/NGOC HOAN/scoop/shims/rc.com"
+      - "C:/Users/NGOC HOAN/scoop/shims/rc.exe"
+      - "C:/Users/NGOC HOAN/scoop/shims/rc"
+      - "C:/Users/NGOC HOAN/AppData/Local/QNznz/rc.com"
+      - "C:/Users/NGOC HOAN/AppData/Local/QNznz/rc.exe"
+      - "C:/Users/NGOC HOAN/AppData/Local/QNznz/rc"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Ollama/rc.com"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Ollama/rc.exe"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Ollama/rc"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/Scripts/rc.com"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/Scripts/rc.exe"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Python/Python313/Scripts/rc"
+      - "D:/Antigravity IDE/bin/rc.com"
+      - "D:/Antigravity IDE/bin/rc.exe"
+      - "D:/Antigravity IDE/bin/rc"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Antigravity IDE/bin/rc.com"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Antigravity IDE/bin/rc.exe"
+      - "C:/Users/NGOC HOAN/AppData/Local/Programs/Antigravity IDE/bin/rc"
+      - "C:/Users/NGOC HOAN/.dotnet/tools/rc.com"
+      - "C:/Users/NGOC HOAN/.dotnet/tools/rc.exe"
+      - "C:/Users/NGOC HOAN/.dotnet/tools/rc"
+      - "D:/Ollama/rc.com"
+      - "D:/Ollama/rc.exe"
+      - "D:/Ollama/rc"
+      - "D:/flutter/bin/rc.com"
+      - "D:/flutter/bin/rc.exe"
+      - "D:/flutter/bin/rc"
+      - "D:/flutter/bin/cache/dart-sdk/rc.com"
+      - "D:/flutter/bin/cache/dart-sdk/rc.exe"
+      - "D:/flutter/bin/cache/dart-sdk/rc"
+      - "D:/cursor/resources/app/bin/rc.com"
+      - "D:/cursor/resources/app/bin/rc.exe"
+      - "D:/cursor/resources/app/bin/rc"
+      - "C:/Program Files/bin/rc.com"
+      - "C:/Program Files/bin/rc.exe"
+      - "C:/Program Files/bin/rc"
+      - "C:/Program Files/sbin/rc.com"
+      - "C:/Program Files/sbin/rc.exe"
+      - "C:/Program Files/sbin/rc"
+      - "C:/Program Files/rc.com"
+      - "C:/Program Files/rc.exe"
+      - "C:/Program Files/rc"
+      - "C:/Program Files (x86)/bin/rc.com"
+      - "C:/Program Files (x86)/bin/rc.exe"
+      - "C:/Program Files (x86)/bin/rc"
+      - "C:/Program Files (x86)/sbin/rc.com"
+      - "C:/Program Files (x86)/sbin/rc.exe"
+      - "C:/Program Files (x86)/sbin/rc"
+      - "C:/Program Files (x86)/rc.com"
+      - "C:/Program Files (x86)/rc.exe"
+      - "C:/Program Files (x86)/rc"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/bin/rc.com"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/bin/rc.exe"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/bin/rc"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/sbin/rc.com"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/sbin/rc.exe"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/sbin/rc"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/rc.com"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/rc.exe"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/rc"
+      - "C:/Program Files (x86)/DumpInformation/bin/rc.com"
+      - "C:/Program Files (x86)/DumpInformation/bin/rc.exe"
+      - "C:/Program Files (x86)/DumpInformation/bin/rc"
+      - "C:/Program Files (x86)/DumpInformation/sbin/rc.com"
+      - "C:/Program Files (x86)/DumpInformation/sbin/rc.exe"
+      - "C:/Program Files (x86)/DumpInformation/sbin/rc"
+      - "C:/Program Files (x86)/DumpInformation/rc.com"
+      - "C:/Program Files (x86)/DumpInformation/rc.exe"
+      - "C:/Program Files (x86)/DumpInformation/rc"
+    found: false
+    search_context:
+      ENV{PATH}:
+        - "C:/Users/NGOC HOAN/.gemini/antigravity-ide/bin"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "D:\\LLVM\\bin"
+        - "D:\\"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\NGOC HOAN\\.local\\bin"
+        - "C:\\Users\\NGOC HOAN\\scoop\\apps\\llvm\\current\\bin"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "D:\\LLVM\\bin"
+        - "D:\\"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\AutoLang"
+        - "D:\\mingw64\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Python\\Python313"
+        - "C:\\Users\\NGOC HOAN\\.bun\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Roaming\\npm"
+        - "D:\\platform-tools"
+        - "D:\\Antigravity\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\NGOC HOAN\\scoop\\shims"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\QNznz\\"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Ollama"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Python\\Python313\\Scripts"
+        - "D:\\Antigravity IDE\\bin"
+        - "C:\\Users\\NGOC HOAN\\AppData\\Local\\Programs\\Antigravity IDE\\bin"
+        - "C:\\Users\\NGOC HOAN\\.dotnet\\tools"
+        - "D:\\Ollama"
+        - "D:\\flutter\\bin"
+        - "D:\\flutter\\bin\\cache\\dart-sdk"
+        - "D:\\cursor\\resources\\app\\bin"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/DumpInformation"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Users/NGOC HOAN/scoop/apps/cmake/current"
+        - "C:/Program Files (x86)/DumpInformation"
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCompilerABI.cmake:83 (try_compile)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:6 (project)"
+    checks:
+      - "Detecting C compiler ABI info"
+    directories:
+      source: "D:/code/AutoLangC/__cmake_systeminformation/CMakeFiles/CMakeScratch/TryCompile-vgjjro"
+      binary: "D:/code/AutoLangC/__cmake_systeminformation/CMakeFiles/CMakeScratch/TryCompile-vgjjro"
+    cmakeVariables:
+      CMAKE_CXX_STDLIB_MODULES_JSON: ""
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
+      CMAKE_C_FLAGS_DEBUG: "/Ob0 /Od"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_C_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/code/AutoLangC/__cmake_systeminformation/CMakeFiles/CMakeScratch/TryCompile-vgjjro'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_8d5a8.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.40+3e7442088 for .NET Framework
+        Build started 16-Aug-26 3:40:01 PM.
+        
+        Project "D:\\code\\AutoLangC\\__cmake_systeminformation\\CMakeFiles\\CMakeScratch\\TryCompile-vgjjro\\cmTC_8d5a8.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "D:\\code\\AutoLangC\\__cmake_systeminformation\\CMakeFiles\\CMakeScratch\\TryCompile-vgjjro\\Debug\\".
+          Creating directory "cmTC_8d5a8.dir\\Debug\\cmTC_8d5a8.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_8d5a8.dir\\Debug\\cmTC_8d5a8.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_8d5a8.dir\\Debug\\cmTC_8d5a8.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_8d5a8.dir\\Debug\\\\" /Fd"cmTC_8d5a8.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\NGOC HOAN\\scoop\\apps\\cmake\\current\\share\\cmake-4.3\\Modules\\CMakeCCompilerABI.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35227 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_8d5a8.dir\\Debug\\\\" /Fd"cmTC_8d5a8.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\NGOC HOAN\\scoop\\apps\\cmake\\current\\share\\cmake-4.3\\Modules\\CMakeCCompilerABI.c"
+          CMakeCCompilerABI.c
+        Link:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\code\\AutoLangC\\__cmake_systeminformation\\CMakeFiles\\CMakeScratch\\TryCompile-vgjjro\\Debug\\cmTC_8d5a8.exe" /INCREMENTAL /ILK:"cmTC_8d5a8.dir\\Debug\\cmTC_8d5a8.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/code/AutoLangC/__cmake_systeminformation/CMakeFiles/CMakeScratch/TryCompile-vgjjro/Debug/cmTC_8d5a8.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/code/AutoLangC/__cmake_systeminformation/CMakeFiles/CMakeScratch/TryCompile-vgjjro/Debug/cmTC_8d5a8.lib" /MACHINE:X64 cmTC_8d5a8.dir\\Debug\\CMakeCCompilerABI.obj
+          cmTC_8d5a8.vcxproj -> D:\\code\\AutoLangC\\__cmake_systeminformation\\CMakeFiles\\CMakeScratch\\TryCompile-vgjjro\\Debug\\cmTC_8d5a8.exe
+        FinalizeBuildStatus:
+          Deleting file "cmTC_8d5a8.dir\\Debug\\cmTC_8d5a8.tlog\\unsuccessfulbuild".
+          Touching "cmTC_8d5a8.dir\\Debug\\cmTC_8d5a8.tlog\\cmTC_8d5a8.lastbuildstate".
+        Done Building Project "D:\\code\\AutoLangC\\__cmake_systeminformation\\CMakeFiles\\CMakeScratch\\TryCompile-vgjjro\\cmTC_8d5a8.vcxproj" (default targets).
+        
+        Build succeeded.
+            0 Warning(s)
+            0 Error(s)
+        
+        Time Elapsed 00:00:00.58
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCompilerABI.cmake:253 (message)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:6 (project)"
+    message: |
+      Parsed C implicit link information:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|link\\.exe|lld-link(\\.exe)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|"|[0-9]+>[ 	-]*Build:[ 	0-9]+ ms[ 	]*)?[ 	]*(([^"]*[/\\])?(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|link\\.exe|lld-link(\\.exe)?))("|,| |$)]
+        linker tool for 'C': C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/HostX64/x64/link.exe
+        implicit libs: []
+        implicit objs: []
+        implicit dirs: []
+        implicit fwks: []
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/Internal/CMakeDetermineLinkerId.cmake:38 (message)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCompilerABI.cmake:299 (cmake_determine_linker_id)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:6 (project)"
+    message: |
+      Running the C compiler's linker: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/HostX64/x64/link.exe" "-v"
+      Microsoft (R) Incremental Linker Version 14.44.35227.0
+      Copyright (C) Microsoft Corporation.  All rights reserved.
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCompilerABI.cmake:83 (try_compile)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:6 (project)"
+    checks:
+      - "Detecting CXX compiler ABI info"
+    directories:
+      source: "D:/code/AutoLangC/__cmake_systeminformation/CMakeFiles/CMakeScratch/TryCompile-rp8jsq"
+      binary: "D:/code/AutoLangC/__cmake_systeminformation/CMakeFiles/CMakeScratch/TryCompile-rp8jsq"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /EHsc"
+      CMAKE_CXX_FLAGS_DEBUG: "/Ob0 /Od"
+      CMAKE_CXX_SCAN_FOR_MODULES: "OFF"
+      CMAKE_CXX_STDLIB_MODULES_JSON: ""
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_CXX_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/code/AutoLangC/__cmake_systeminformation/CMakeFiles/CMakeScratch/TryCompile-rp8jsq'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_7b1e1.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.40+3e7442088 for .NET Framework
+        Build started 16-Aug-26 3:40:03 PM.
+        
+        Project "D:\\code\\AutoLangC\\__cmake_systeminformation\\CMakeFiles\\CMakeScratch\\TryCompile-rp8jsq\\cmTC_7b1e1.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "D:\\code\\AutoLangC\\__cmake_systeminformation\\CMakeFiles\\CMakeScratch\\TryCompile-rp8jsq\\Debug\\".
+          Creating directory "cmTC_7b1e1.dir\\Debug\\cmTC_7b1e1.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_7b1e1.dir\\Debug\\cmTC_7b1e1.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_7b1e1.dir\\Debug\\cmTC_7b1e1.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_7b1e1.dir\\Debug\\\\" /Fd"cmTC_7b1e1.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Users\\NGOC HOAN\\scoop\\apps\\cmake\\current\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35227 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_7b1e1.dir\\Debug\\\\" /Fd"cmTC_7b1e1.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Users\\NGOC HOAN\\scoop\\apps\\cmake\\current\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
+          CMakeCXXCompilerABI.cpp
+        Link:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\code\\AutoLangC\\__cmake_systeminformation\\CMakeFiles\\CMakeScratch\\TryCompile-rp8jsq\\Debug\\cmTC_7b1e1.exe" /INCREMENTAL /ILK:"cmTC_7b1e1.dir\\Debug\\cmTC_7b1e1.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/code/AutoLangC/__cmake_systeminformation/CMakeFiles/CMakeScratch/TryCompile-rp8jsq/Debug/cmTC_7b1e1.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/code/AutoLangC/__cmake_systeminformation/CMakeFiles/CMakeScratch/TryCompile-rp8jsq/Debug/cmTC_7b1e1.lib" /MACHINE:X64 cmTC_7b1e1.dir\\Debug\\CMakeCXXCompilerABI.obj
+          cmTC_7b1e1.vcxproj -> D:\\code\\AutoLangC\\__cmake_systeminformation\\CMakeFiles\\CMakeScratch\\TryCompile-rp8jsq\\Debug\\cmTC_7b1e1.exe
+        FinalizeBuildStatus:
+          Deleting file "cmTC_7b1e1.dir\\Debug\\cmTC_7b1e1.tlog\\unsuccessfulbuild".
+          Touching "cmTC_7b1e1.dir\\Debug\\cmTC_7b1e1.tlog\\cmTC_7b1e1.lastbuildstate".
+        Done Building Project "D:\\code\\AutoLangC\\__cmake_systeminformation\\CMakeFiles\\CMakeScratch\\TryCompile-rp8jsq\\cmTC_7b1e1.vcxproj" (default targets).
+        
+        Build succeeded.
+            0 Warning(s)
+            0 Error(s)
+        
+        Time Elapsed 00:00:00.81
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCompilerABI.cmake:253 (message)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:6 (project)"
+    message: |
+      Parsed CXX implicit link information:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|link\\.exe|lld-link(\\.exe)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|"|[0-9]+>[ 	-]*Build:[ 	0-9]+ ms[ 	]*)?[ 	]*(([^"]*[/\\])?(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|link\\.exe|lld-link(\\.exe)?))("|,| |$)]
+        linker tool for 'CXX': C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/HostX64/x64/link.exe
+        implicit libs: []
+        implicit objs: []
+        implicit dirs: []
+        implicit fwks: []
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/Internal/CMakeDetermineLinkerId.cmake:38 (message)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeDetermineCompilerABI.cmake:299 (cmake_determine_linker_id)"
+      - "C:/Users/NGOC HOAN/scoop/apps/cmake/current/share/cmake-4.3/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:6 (project)"
+    message: |
+      Running the CXX compiler's linker: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/HostX64/x64/link.exe" "-v"
+      Microsoft (R) Incremental Linker Version 14.44.35227.0
+      Copyright (C) Microsoft Corporation.  All rights reserved.
+...

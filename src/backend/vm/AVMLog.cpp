@@ -64,7 +64,7 @@ std::string AClass::getName(CompiledProgram &data) {
 }
 
 void AClass::log(CompiledProgram &data) {
-	ClassId *memberId = &data.allMemberId[memberIdOffset];
+	ClassId *memberId = &data.allMemberId.data()[memberIdOffset];
 	std::cerr << "[" << id << "]: Class " << getName(data)
 	          << (parentId ? std::string(" extends ") +
 	                             data.classes[parentId]->getName(data)

@@ -19,8 +19,8 @@ struct FunctionInfo {
 	BlockNode body;
 	ReturnNode *inferenceNode = nullptr;
 	Parameter *parameter;
-	ClassDeclaration *returnClass;
-	std::vector<ClassDeclaration *> genericTypeId;
+	ClassDeclaration *returnClass = nullptr;
+	SmallVector<ClassDeclaration *, 2> genericTypeId;
 	HashMap<DeclarationNode *, DeclarationNode *> reflectDeclarationMap;
 	Offset virtualPosition;
 	uint32_t id;

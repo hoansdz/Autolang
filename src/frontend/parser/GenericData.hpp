@@ -10,12 +10,12 @@ struct GenericData {
 	HashMap<DeclarationOffset, DeclarationOffset>
 	    newPositionOfStaticDeclaration;
 	HashMap<ClassDeclaration *, ExprNode *> mustRenameNodes;
-	std::vector<GenericDeclarationNode *> genericDeclarations;
-	std::vector<std::pair<DeclarationNode *, HasClassIdNode *>>
+	SmallVector<GenericDeclarationNode *, 2> genericDeclarations;
+	SmallVector<std::pair<DeclarationNode *, HasClassIdNode *>, 4>
 	    staticDeclaration;
 	HashMap<LexerStringId, Offset> genericDeclarationMap;
 	HashMap<DeclarationNode *, DeclarationNode *> reflectDeclarationMap;
-	std::vector<DeclarationNode *> allDeclaration;
+	SmallVector<DeclarationNode *, 4> allDeclaration;
 	inline GenericDeclarationNode *findDeclaration(LexerStringId nameId) {
 		auto it = genericDeclarationMap.find(nameId);
 		if (it == genericDeclarationMap.end()) {

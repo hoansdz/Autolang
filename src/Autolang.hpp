@@ -24,11 +24,11 @@
 #if defined(__GNUC__) || defined(__clang__)
 #define AUTOLANG_USE_COMPUTED_GOTO_
 #endif
-// #ifdef AUTOLANG_USE_COMPUTED_GOTO
-// #include "backend/vm/AVM_run_computed_goto.cpp"
-// #else
+#ifdef AUTOLANG_USE_COMPUTED_GOTO
+#include "backend/vm/AVM_run_computed_goto.cpp"
+#else
 #include "backend/vm/AVM_run_switch.cpp"
-// #endif
+#endif
 #include "backend/vm/AVMLoader.cpp"
 #include "backend/vm/AVMLog.cpp"
 #include "frontend/ACompiler.cpp"

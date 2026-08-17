@@ -3,6 +3,7 @@
 
 #include "frontend/parser/ClassDeclaration.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include <rapidfuzz/fuzz.hpp>
 
 namespace Autolang {
 
@@ -147,11 +148,35 @@ void ClassDeclaration::load(in_func) {
 		{
 			auto it = context.defaultClassMap.find(baseClassLexerStringId);
 			if (it == context.defaultClassMap.end()) {
-				throwError(
-				    "Cannot find class name1 '" +
-				    context.lexerString[baseClassLexerStringId] +
-				    "'\nHint: Verify that the class name is spelled correctly "
-				    "and defined or imported");
+				std::string targetName =
+				    context.lexerString[baseClassLexerStringId];
+				std::string bestSuggestion;
+				double bestScore = 0.0;
+				auto checkSuggestion = [&](const std::string &candidate) {
+					double score =
+					    rapidfuzz::fuzz::ratio(targetName, candidate);
+					if (score > bestScore && score >= 60.0) {
+						bestScore = score;
+						bestSuggestion = candidate;
+					}
+				};
+				for (const auto &pair : context.defaultClassMap) {
+					checkSuggestion(context.lexerString[pair.first]);
+				}
+				for (const auto &clazz : compile.classes) {
+					if (clazz) {
+						checkSuggestion(clazz->getName(compile));
+					}
+				}
+
+				std::string errorMsg =
+				    "Cannot find class name '" + targetName + "'";
+				if (!bestSuggestion.empty() && bestSuggestion != targetName) {
+					errorMsg += "\nDid you mean: '" + bestSuggestion + "'?";
+				}
+				errorMsg += "\nHint: Verify that the class name is spelled "
+				            "correctly and defined or imported.";
+				throwError(errorMsg);
 			}
 			classId = it->second;
 			auto classInfo = context.classInfo[*classId];
@@ -246,10 +271,34 @@ void ClassDeclaration::load(in_func) {
 	{
 		auto it = context.defaultClassMap.find(baseClassLexerStringId);
 		if (it == context.defaultClassMap.end()) {
-			throwError(
-			    "Cannot find class name '" +
-			    context.lexerString[baseClassLexerStringId] +
-			    "'\nHint: Ensure target class name is defined or imported");
+			std::string targetName =
+			    context.lexerString[baseClassLexerStringId];
+			std::string bestSuggestion;
+			double bestScore = 0.0;
+			auto checkSuggestion = [&](const std::string &candidate) {
+				double score = rapidfuzz::fuzz::ratio(targetName, candidate);
+				if (score > bestScore && score >= 60.0) {
+					bestScore = score;
+					bestSuggestion = candidate;
+				}
+			};
+			for (const auto &pair : context.defaultClassMap) {
+				checkSuggestion(context.lexerString[pair.first]);
+			}
+			for (const auto &clazz : compile.classes) {
+				if (clazz) {
+					checkSuggestion(clazz->getName(compile));
+				}
+			}
+
+			std::string errorMsg =
+			    "Cannot find class name '" + targetName + "'";
+			if (!bestSuggestion.empty() && bestSuggestion != targetName) {
+				errorMsg += "\nDid you mean: '" + bestSuggestion + "'?";
+			}
+			errorMsg +=
+			    "\nHint: Ensure target class name is defined or imported.";
+			throwError(errorMsg);
 		}
 	}
 

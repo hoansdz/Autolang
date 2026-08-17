@@ -32,9 +32,8 @@ void CompiledProgram::destroy() {
 	allGenericTypeNullable.clear();
 	allOpcodeLines.clear();
 	allMainFunctionOpcodeLines.clear();
+	stringArena.reset();
 }
-
-void CompiledProgram::refresh() { manager.refresh(); }
 
 template <bool isConstructor>
 FunctionId CompiledProgram::registerFunction(const char *path, AClass *clazz,

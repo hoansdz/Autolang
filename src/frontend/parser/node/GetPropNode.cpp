@@ -4,6 +4,8 @@
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
 #include "shared/ClassFlags.hpp"
+#include "shared/Type.hpp"
+#include <rapidfuzz/fuzz.hpp>
 
 namespace Autolang {
 
@@ -197,9 +199,84 @@ void GetPropNode::optimize(in_func) {
 	if (it == clazz->memberMap.end()) {
 		// Find static member
 		auto it_ = classInfo->staticMember.find(nameId);
-		if (it_ == classInfo->staticMember.end())
-			throwError("Cannot find member name '" + name + "' in class " +
-			           clazz->getName(compile));
+		if (it_ == classInfo->staticMember.end()) {
+			std::string foundMembers;
+			bool hasMember = false;
+			for (auto *decl : classInfo->member) {
+				if (decl) {
+					if (hasMember) {
+						foundMembers += "\n";
+					}
+					foundMembers += decl->toString(in_data, false);
+					hasMember = true;
+				}
+			}
+			for (const auto &pair : classInfo->staticMember) {
+				if (pair.second) {
+					if (hasMember) {
+						foundMembers += "\n";
+					}
+					foundMembers += pair.second->toString(in_data, true);
+					hasMember = true;
+				}
+			}
+			std::string foundFunctions;
+			bool hasFunction = false;
+			for (const auto &[_, funcVec] : classInfo->allFunction) {
+				for (FunctionId funcId : funcVec) {
+					auto funcInfo = context.functionInfo[funcId];
+					if (hasFunction) {
+						foundFunctions += "\n";
+					}
+					foundFunctions += funcInfo->toString(in_data);
+					hasFunction = true;
+				}
+			}
+			std::string bestSuggestion;
+			double bestScore = 0.0;
+			auto checkSuggestion = [&](const std::string &candidate) {
+				double score = rapidfuzz::fuzz::ratio(name, candidate);
+				if (score > bestScore && score >= 60.0) {
+					bestScore = score;
+					bestSuggestion = candidate;
+				}
+			};
+			for (auto *decl : classInfo->member) {
+				if (decl) {
+					checkSuggestion(decl->name);
+				}
+			}
+			for (const auto &pair : classInfo->staticMember) {
+				if (pair.second) {
+					checkSuggestion(pair.second->name);
+				}
+			}
+			for (const auto &[funcNameId, _] : classInfo->allFunction) {
+				checkSuggestion(context.lexerString[funcNameId]);
+			}
+
+			std::string errorMsg = "Cannot find member name '" + name +
+			                       "' in class '" + clazz->getName(compile) +
+			                       "'";
+			if (!bestSuggestion.empty()) {
+				errorMsg += "\nDid you mean: '" + bestSuggestion + "'?";
+			}
+			if (hasMember) {
+				errorMsg += "\nAvailable members in '" +
+				            clazz->getName(compile) + "':\n" + foundMembers;
+			} else {
+				errorMsg += "\n(No members declared in class '" +
+				            clazz->getName(compile) + "')";
+			}
+			if (hasFunction) {
+				errorMsg += "\nAvailable functions in '" +
+				            clazz->getName(compile) + "':\n" + foundFunctions;
+			}
+			errorMsg += "\nHint: Check member name spelling or verify whether "
+			            "it is declared in class '" +
+			            clazz->getName(compile) + "'.";
+			throwError(errorMsg);
+		}
 		declaration = it_->second;
 		if (declaration->accessModifier != Lexer::TokenType::PUBLIC &&
 		    (!contextCallClassId || *contextCallClassId != clazz->id)) {

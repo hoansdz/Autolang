@@ -6,6 +6,7 @@
 #include "frontend/parser/ParserContext.hpp"
 #include "shared/ClassFlags.hpp"
 #include <memory>
+#include <rapidfuzz/fuzz.hpp>
 
 namespace Autolang {
 
@@ -14,11 +15,35 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	auto it =
 	    context.defaultClassMap.find(classDeclaration->baseClassLexerStringId);
 	if (it == context.defaultClassMap.end()) {
-		classDeclaration->throwError(
-		    "Bug: Cannot find class " +
-		    context.lexerString[classDeclaration->baseClassLexerStringId] +
-		    "\nHint: Ensure base class for generic instantiation is defined and "
-		    "imported");
+		std::string targetName =
+		    context.lexerString[classDeclaration->baseClassLexerStringId];
+		std::string bestSuggestion;
+		double bestScore = 0.0;
+		auto checkSuggestion = [&](const std::string &candidate) {
+			double score = rapidfuzz::fuzz::ratio(targetName, candidate);
+			if (score > bestScore && score >= 60.0) {
+				bestScore = score;
+				bestSuggestion = candidate;
+			}
+		};
+		for (const auto &pair : context.defaultClassMap) {
+			checkSuggestion(context.lexerString[pair.first]);
+		}
+		for (const auto &clazz : compile.classes) {
+			if (clazz) {
+				checkSuggestion(clazz->getName(compile));
+			}
+		}
+
+		std::string errorMsg =
+		    "Cannot find class name '" + targetName + "'";
+		if (!bestSuggestion.empty() && bestSuggestion != targetName) {
+			errorMsg += "\nDid you mean: '" + bestSuggestion + "'?";
+		}
+		errorMsg +=
+		    "\nHint: Ensure base class for generic instantiation is defined "
+		    "and imported.";
+		classDeclaration->throwError(errorMsg);
 	}
 	ClassId classId = it->second;
 	auto clazz = compile.classes[it->second];

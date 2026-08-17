@@ -6,6 +6,7 @@
 #include "frontend/parser/ClassDeclaration.hpp"
 #include "frontend/parser/Parameter.hpp"
 #include "frontend/parser/node/OptimizeNode.hpp"
+#include "shared/SmallVector.hpp"
 #include "shared/CompiledProgram.hpp"
 #include "shared/DefaultClass.hpp"
 #include "shared/Type.hpp"
@@ -138,7 +139,7 @@ struct SkipNode : ExprNode {
 };
 
 struct BlockNode : ExprNode {
-	std::vector<ExprNode *> nodes;
+	SmallVector<ExprNode *, 8> nodes;
 	bool hasValue = false;
 	bool autoCastToFloat = false;
 	BlockNode(uint32_t line) : ExprNode(NodeType::BLOCK, line) {}
@@ -508,7 +509,7 @@ struct IfNode : NullableNode {
 	BlockNode *ifFalse = nullptr;
 	bool mustReturnValue = false;
 	bool isStatic = false;
-	std::vector<BytecodePos> jumpPosition;
+	SmallVector<BytecodePos, 4> jumpPosition;
 	IfNode(uint32_t line, bool mustReturnValue)
 	    : NullableNode(NodeType::IF, DefaultClass::nullClassId, false, line),
 	      ifTrue(line), mustReturnValue(mustReturnValue) {}
@@ -617,7 +618,7 @@ struct FunctionAccessNode : HasClassIdNode {
 	HasClassIdNode *caller;
 	HasClassIdNode *object;
 	std::vector<FunctionId> *funcs[2];
-	std::vector<BytecodePos> jumpPosition;
+	SmallVector<BytecodePos, 4> jumpPosition;
 	std::optional<FunctionId> funcId;
 	FunctionAccessNode(uint32_t line, HasClassIdNode *caller,
 	                   LexerStringId nameId, uint32_t count,
@@ -638,8 +639,8 @@ struct FunctionAccessNode : HasClassIdNode {
 };
 
 struct CreateClosureNode : HasClassIdNode {
-	std::vector<HasClassIdNode *> objects;
-	std::vector<DeclarationNode *> newDeclaration;
+	SmallVector<HasClassIdNode *, 4> objects;
+	SmallVector<DeclarationNode *, 4> newDeclaration;
 	std::vector<uint8_t> currentBytecodes;
 	std::vector<OpcodeLine> currentOpcodeLine;
 	Parameter *parameter;
@@ -690,7 +691,7 @@ struct CallNode : NullableNode {
 	HasClassIdNode *funcObject;
 	uint32_t tokenIndex;
 	LexerStringId nameId;
-	std::vector<HasClassIdNode *> arguments;
+	SmallVector<HasClassIdNode *, 4> arguments;
 	ClassDeclaration *inputGenericArguments;
 	FunctionId funcId;
 	BytecodePos jumpIfNullPos;
@@ -785,7 +786,7 @@ struct RangeNode : HasClassIdNode {
 };
 
 struct CreateArrayNode : HasClassIdNode {
-	std::vector<HasClassIdNode *> values;
+	SmallVector<HasClassIdNode *, 4> values;
 	CreateArrayNode(uint32_t line, ClassDeclaration *classDeclaration,
 	                std::vector<HasClassIdNode *> values)
 	    : HasClassIdNode(NodeType::CREATE_ARRAY, DefaultClass::nullClassId,
@@ -800,7 +801,7 @@ struct CreateArrayNode : HasClassIdNode {
 };
 
 struct CreateSetNode : HasClassIdNode {
-	std::vector<HasClassIdNode *> values;
+	SmallVector<HasClassIdNode *, 4> values;
 	CreateSetNode(uint32_t line, ClassDeclaration *classDeclaration,
 	              std::vector<HasClassIdNode *> values)
 	    : HasClassIdNode(NodeType::CREATE_SET, DefaultClass::nullClassId, line,
@@ -815,7 +816,7 @@ struct CreateSetNode : HasClassIdNode {
 };
 
 struct CreateMapNode : HasClassIdNode {
-	std::vector<std::pair<HasClassIdNode *, HasClassIdNode *>> values;
+	SmallVector<std::pair<HasClassIdNode *, HasClassIdNode *>, 4> values;
 	CreateMapNode(
 	    uint32_t line, ClassDeclaration *classDeclaration,
 	    std::vector<std::pair<HasClassIdNode *, HasClassIdNode *>> values)

@@ -1,6 +1,73 @@
 #ifndef AVM_RUN_SWITCH_CPP
 #define AVM_RUN_SWITCH_CPP
 
+/*
+ * =============================================================================
+ * COMPUTED GOTO IMPLEMENTATION — ANALYSIS & KNOWN ISSUES
+ * =============================================================================
+ *
+ * ARCHITECTURE:
+ *   Thay vì vòng lặp while+switch, mỗi opcode là một label `do_OPCODE` và
+ *   kết thúc bằng DISPATCH() = `goto *dispatchTable[bytecodes[ip++]]`.
+ *   dispatchTable là static array[256] of void*, khởi tạo một lần.
+ *
+ * KHÁC BIỆT QUAN TRỌNG VỚI switch version:
+ *   1. Biến `bytecodes`, `size`, `currentFunction` là LOCAL VARIABLE của resume(),
+ *      chỉ được cập nhật tại label `resumeCallFrame:`.
+ *   2. `ip` là MACRO = `currentCallFrame->i`, nên thay đổi theo callframe hiện tại.
+ *   3. callFunction template (AVM.cpp:116) return false sau khi push callframe mới
+ *      và set i=0, KHÔNG gọi resume() recursively. Sau đó `goto resumeCallFrame`
+ *      trong dispatch handler sẽ update bytecodes/size từ callframe mới.
+ *   4. callFunctionObject (AVM.cpp:256) đối với non-native function cuối cùng cũng
+ *      gọi callFunction(CallFrame*, uint32_t) (AVM.cpp:336) → resume() đệ quy.
+ *      Đây là điểm KHÁC với CALL_FUNCTION template.
+ *
+ * KNOWN BUG — ACCESS VIOLATION (0xC0000005) SAU testWhen:
+ *   - Crash xảy ra khi chạy testFunctional (functional.atl), test dùng closure
+ *     và FunctionObject (CREATE_FUNCTION_OBJECT + CALL_FUNCTION_OBJECT).
+ *   - Exit code: -1073741819 = 0xC0000005 = Windows Access Violation.
+ *   - Suspect: `callFunctionObject` path. Khi closure được gọi qua
+ *     CALL_FUNCTION_OBJECT, `callFunctionObject` gọi `callFunction(CallFrame*, uint32_t)`
+ *     (AVM.cpp:336) → resume() đệ quy. Inner resume() chạy với `topCallFrame` riêng.
+ *     Sau khi inner resume() kết thúc (doneReturnFunction: pop frame, return),
+ *     outer resume() tiếp tục DISPATCH(). Nhưng sau đó outer resume() cũng có
+ *     thể gặp `doneReturnFunction` với `callFrames.getSize() == topCallFrame`
+ *     không đúng nếu frame count bị lệch do inner resume đã pop.
+ *
+ *   - Nghi vấn cụ thể: `do_RETURN_LOCAL` và `doneReturnFunction` trong outer
+ *     resume() sẽ check `callFrames.getSize() == topCallFrame`. Sau khi inner
+ *     resume() ran và popped its frame, outer `topCallFrame` vẫn là giá trị
+ *     ban đầu. Điều này có thể khiến outer resume() set state=HALTED sớm khi
+ *     nó không nên làm vậy, hoặc làm lệch frame stack.
+ *
+ *   - Cách debug tiếp: Thêm print statement vào `doneReturnFunction` để xem
+ *     `callFrames.getSize()` và `topCallFrame` tại thời điểm crash.
+ *     Hoặc test riêng lẻ file functional.atl để isolate.
+ *
+ *   - Fix tiềm năng: Sau khi `callFunctionObject` return true, cần update lại
+ *     `bytecodes`, `size`, `currentFunction` từ `currentCallFrame` hiện tại
+ *     (giống như `goto resumeCallFrame` làm). Hoặc chuyển `callFunctionObject`
+ *     path để KHÔNG gọi resume() đệ quy mà return false để main loop handle.
+ *
+ * EXCEPTION HANDLING:
+ *   Đã được đồng bộ với switch: dùng `data.allCatchPosition` + `catchPositionIndex`
+ *   thay vì `currentCallFrame->catchPosition` (vector per-frame cũ).
+ *
+ * OPCODE ĐÃ THÊM (so với phiên bản gốc của file này):
+ *   - CHECK_FORCE_NON_NULL
+ *   - LOCAL_LOAD_LATEINIT_MEMBER
+ *   - GLOBAL_LOAD_LATEINIT_MEMBER
+ *   - LOAD_LATEINIT_MEMBER
+ *   - IS opcode: dùng notifier->instanceof() thay vì inline check
+ *   - ADD_TRY_BLOCK/REMOVE_TRY: dùng data.allCatchPosition
+ *   - doneReturnFunction: cleanup allCatchPosition
+ *
+ * CALL_NATIVE_FUNCTION:
+ *   callNativeFunction không tồn tại (đã bị xóa/comment trong switch).
+ *   do_CALL_NATIVE_FUNCTION và do_CALL_VOID_NATIVE_FUNCTION → goto do_ILLEGAL.
+ * =============================================================================
+ */
+
 #define ip (currentCallFrame->i)
 
 #include "backend/libs/array.hpp"
@@ -200,7 +267,14 @@ void AVM::resume() {
 	size_t size = 0;
 resumeCallFrame:;
 	if (currentCallFrame->exception) {
-		if (currentCallFrame->catchPosition.empty()) {
+		if (isFatalException) {
+			while (data.allCatchPosition.size() >
+			       currentCallFrame->catchPositionIndex) {
+				data.allCatchPosition.pop_back();
+			}
+		}
+		if (data.allCatchPosition.size() <=
+		    currentCallFrame->catchPositionIndex) {
 			// std::cerr << currentCallFrame->fromStackAllocator << " & "
 			//           << stackAllocator.getTop() << "\n";
 			stackAllocator.clear(
@@ -237,8 +311,8 @@ resumeCallFrame:;
 		} else {
 			// std::cerr << "First size " <<
 			// currentCallFrame->catchPosition.size() << "\n";
-			currentCallFrame->i = currentCallFrame->catchPosition.back();
-			currentCallFrame->catchPosition.pop_back();
+			currentCallFrame->i = data.allCatchPosition.back();
+			data.allCatchPosition.pop_back();
 			// std::cerr << "Second size " <<
 			// currentCallFrame->catchPosition.size() << "\n"; std::cerr <<
 			// "Goto " << currentCallFrame->i << "\n";
@@ -294,6 +368,8 @@ resumeCallFrame:;
 			dispatchTable[Autolang::Opcode::POP] = &&do_POP;
 			dispatchTable[Autolang::Opcode::POP_NO_RELEASE] =
 			    &&do_POP_NO_RELEASE;
+			dispatchTable[Autolang::Opcode::CHECK_FORCE_NON_NULL] =
+			    &&do_CHECK_FORCE_NON_NULL;
 			dispatchTable[Autolang::Opcode::NOT] = &&do_NOT;
 			dispatchTable[Autolang::Opcode::NEGATIVE] = &&do_NEGATIVE;
 			dispatchTable[Autolang::Opcode::RETURN_LOCAL] = &&do_RETURN_LOCAL;
@@ -314,11 +390,17 @@ resumeCallFrame:;
 			    &&do_LOCAL_LOAD_MEMBER;
 			dispatchTable[Autolang::Opcode::GLOBAL_LOAD_MEMBER] =
 			    &&do_GLOBAL_LOAD_MEMBER;
+			dispatchTable[Autolang::Opcode::LOCAL_LOAD_LATEINIT_MEMBER] =
+			    &&do_LOCAL_LOAD_LATEINIT_MEMBER;
+			dispatchTable[Autolang::Opcode::GLOBAL_LOAD_LATEINIT_MEMBER] =
+			    &&do_GLOBAL_LOAD_LATEINIT_MEMBER;
 			dispatchTable[Autolang::Opcode::GLOBAL_LOAD_MEMBER_AND_STORE] =
 			    &&do_GLOBAL_LOAD_MEMBER_AND_STORE;
 			dispatchTable[Autolang::Opcode::LOCAL_LOAD_MEMBER_AND_STORE] =
 			    &&do_LOCAL_LOAD_MEMBER_AND_STORE;
 			dispatchTable[Autolang::Opcode::LOAD_MEMBER] = &&do_LOAD_MEMBER;
+			dispatchTable[Autolang::Opcode::LOAD_LATEINIT_MEMBER] =
+			    &&do_LOAD_LATEINIT_MEMBER;
 			dispatchTable[Autolang::Opcode::LOAD_MEMBER_IF_NNULL_OR_JUMP] =
 			    &&do_LOAD_MEMBER_IF_NNULL_OR_JUMP;
 			dispatchTable[Autolang::Opcode::LOAD_MEMBER_CAN_RET_NULL_OR_JUMP] =
@@ -573,24 +655,16 @@ resumeCallFrame:;
 		DISPATCH();
 	}
 
-	do_CALL_NATIVE_FUNCTION: {
-		if (!callNativeFunction<true>(currentCallFrame, currentFunction,
-		                              bytecodes, ip)) {
-			goto resumeCallFrame;
-		}
-		DISPATCH();
-	}
-
-	do_CALL_VOID_NATIVE_FUNCTION: {
-		if (!callNativeFunction<false>(currentCallFrame, currentFunction,
-		                               bytecodes, ip)) {
-			goto resumeCallFrame;
-		}
-		// if (state == VMState::WAITING) {
-		// 	return;
-		// }
-		DISPATCH();
-	}
+	// do_CALL_NATIVE_FUNCTION: {
+	// 	if (!callNativeFunction<true>(currentCallFrame, currentFunction,
+	// 	                              bytecodes, ip)) {
+	// 		goto resumeCallFrame;
+	// 	}
+	// 	DISPATCH();
+	// }
+	do_CALL_NATIVE_FUNCTION:
+	do_CALL_VOID_NATIVE_FUNCTION:
+		goto do_ILLEGAL;
 
 	do_CALL_VTABLE_FUNCTION: {
 		if (!callFunction<true, true, false>(currentCallFrame, currentFunction,
@@ -907,6 +981,16 @@ resumeCallFrame:;
 		DISPATCH();
 	}
 
+	do_CHECK_FORCE_NON_NULL: {
+		auto obj = stack.top();
+		if (obj == DefaultClass::nullObject) {
+			notifier->throwException(
+			    "Cannot unwrap null value with '!' operator");
+			goto resumeCallFrame;
+		}
+		DISPATCH();
+	}
+
 	do_RETURN_LOCAL: {
 		while (stack.getSize() > currentCallFrame->startStackCount) {
 			auto obj = stack.pop();
@@ -1048,6 +1132,56 @@ resumeCallFrame:;
 		DISPATCH();
 	}
 
+	do_LOCAL_LOAD_LATEINIT_MEMBER: {
+		uint32_t pos = get_u32(bytecodes, ip);
+		AObject *obj = stackAllocator[pos];
+		uint32_t memberIndex = get_u32(bytecodes, ip);
+		AObject *member = obj->member->data[memberIndex];
+		if (member) {
+			member->retain();
+			stack.push(member);
+			DISPATCH();
+		}
+		{
+			auto clazz = data.classes[obj->type];
+			std::string className = notifier->getClassName(obj->type);
+			for (auto &[name, index] : clazz->memberMap) {
+				if (index != memberIndex)
+					continue;
+				notifier->throwException("Member '" + name +
+				                         "' at class '" + className +
+				                         "' is uninitialized ");
+				goto resumeCallFrame;
+			}
+		}
+		DISPATCH();
+	}
+
+	do_GLOBAL_LOAD_LATEINIT_MEMBER: {
+		uint32_t pos = get_u32(bytecodes, ip);
+		AObject *obj = globalVariables[pos];
+		uint32_t memberIndex = get_u32(bytecodes, ip);
+		AObject *member = obj->member->data[memberIndex];
+		if (member) {
+			member->retain();
+			stack.push(member);
+			DISPATCH();
+		}
+		{
+			auto clazz = data.classes[obj->type];
+			std::string className = notifier->getClassName(obj->type);
+			for (auto &[name, index] : clazz->memberMap) {
+				if (index != memberIndex)
+					continue;
+				notifier->throwException("Member '" + name +
+				                         "' at class '" + className +
+				                         "' is uninitialized ");
+				goto resumeCallFrame;
+			}
+		}
+		DISPATCH();
+	}
+
 	do_GLOBAL_LOAD_MEMBER_AND_STORE: {
 		uint32_t pos = get_u32(bytecodes, ip);
 		AObject *obj = globalVariables[pos];
@@ -1070,6 +1204,32 @@ resumeCallFrame:;
 		stack.top() = (*parent->member)[get_u32(bytecodes, ip)];
 		stack.top()->retain();
 		data.manager.release(parent);
+		DISPATCH();
+	}
+
+	do_LOAD_LATEINIT_MEMBER: {
+		AObject *parent = stack.top();
+		uint32_t memberIndex = get_u32(bytecodes, ip);
+		AObject *member = parent->member->data[memberIndex];
+		if (member) {
+			stack.top() = member;
+			member->retain();
+			data.manager.release(parent);
+			DISPATCH();
+		}
+		{
+			auto clazz = data.classes[parent->type];
+			std::string className = notifier->getClassName(parent->type);
+			for (auto &[name, index] : clazz->memberMap) {
+				if (index != memberIndex)
+					continue;
+				data.manager.release(parent);
+				notifier->throwException("Member '" + name +
+				                         "' at class '" + className +
+				                         "' is uninitialized ");
+				goto resumeCallFrame;
+			}
+		}
 		DISPATCH();
 	}
 
@@ -1278,8 +1438,7 @@ resumeCallFrame:;
 		auto obj = stack.pop();
 		uint32_t classId = get_u32(bytecodes, ip);
 		stack.push(data.manager.createBoolObject(
-		    obj->type == classId ||
-		    data.classes[obj->type]->inheritance.get(classId)));
+		    notifier->instanceof(obj, classId)));
 		// stack.top()->retain();
 		data.manager.release(obj);
 		DISPATCH();
@@ -1307,8 +1466,8 @@ resumeCallFrame:;
 			DISPATCH();
 		}
 		notifier->throwException("Cannot cast '" +
-		                         notifier->getClassName(obj->type) + "' to " +
-		                         notifier.getClassName(classId));
+		                         notifier->getClassName(obj->type) + "' to '" +
+		                         notifier->getClassName(classId) + "'");
 		data.manager.release(stack.pop());
 		goto resumeCallFrame;
 	}
@@ -1331,20 +1490,22 @@ resumeCallFrame:;
 	}
 
 	do_ADD_TRY_BLOCK: {
-		currentCallFrame->catchPosition.push_back(get_u32(bytecodes, ip));
+		data.allCatchPosition.push_back(get_u32(bytecodes, ip));
 		DISPATCH();
 	}
 
 	do_REMOVE_TRY_AND_JUMP: {
-		assert(!currentCallFrame->catchPosition.empty());
-		currentCallFrame->catchPosition.pop_back();
+		assert(data.allCatchPosition.size() >
+		       currentCallFrame->catchPositionIndex);
+		data.allCatchPosition.pop_back();
 		ip = get_u32(bytecodes, ip);
 		DISPATCH();
 	}
 
 	do_REMOVE_TRY: {
-		assert(!currentCallFrame->catchPosition.empty());
-		currentCallFrame->catchPosition.pop_back();
+		assert(data.allCatchPosition.size() >
+		       currentCallFrame->catchPositionIndex);
+		data.allCatchPosition.pop_back();
 		DISPATCH();
 	}
 
@@ -1958,6 +2119,10 @@ resumeCallFrame:;
 			data.manager.release(obj);
 		}
 	doneReturnFunction:;
+		while (data.allCatchPosition.size() >
+		       currentCallFrame->catchPositionIndex) {
+			data.allCatchPosition.pop_back();
+		}
 		stackAllocator.clear(data.manager, currentCallFrame->fromStackAllocator,
 		                     stackAllocator.getTop() +
 		                         currentCallFrame->func->maxDeclaration - 1);

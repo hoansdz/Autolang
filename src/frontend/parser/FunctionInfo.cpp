@@ -3,6 +3,7 @@
 
 #include "FunctionInfo.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "shared/FunctionFlags.hpp"
 
 namespace Autolang {
 
@@ -14,11 +15,10 @@ AccessNode *Scopes::findDeclaration(in_func, uint32_t line,
 		if (it == scope.end())
 			continue;
 		if (isStatic && i != 0 && !it->second->isGlobal)
-			throw ParserError(
-			    line,
-			    it->second->name +
-			        " is not static\nHint: Non-static local variables cannot be "
-			        "accessed in a static context");
+			throw ParserError(line, it->second->name +
+			                            " is not static\nHint: Non-static "
+			                            "local variables cannot be "
+			                            "accessed in a static context");
 		return context.varPool.push(line, it->second, false,
 		                            it->second->nullable);
 	}
@@ -47,8 +47,7 @@ int64_t FunctionInfo::loadHash(Function *func) {
 std::string FunctionInfo::toString(in_func) {
 	auto func = compile.functions[id];
 	bool isFirst = true;
-	std::string result =
-	    "[" + std::to_string(id) + "] " + func->getName(compile) + ": (";
+	std::string result = "  " + func->getName(compile) + ": (";
 	for (auto declaration : parameter->parameters) {
 		if (isFirst) {
 			isFirst = false;

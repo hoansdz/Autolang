@@ -360,7 +360,7 @@ inline AObject *pyObjectToAObject(ANotifier &notifier, const py::object &pyObj,
 
 	auto clazz = notifier.vm->data.classes[classId];
 	auto newObj = notifier.createMemberObject(classId, clazz->memberMap.size());
-	ClassId *memberId = &notifier.vm->data.allMemberId[clazz->memberIdOffset];
+	ClassId *memberId = &notifier.vm->data.getMemberRef(clazz->memberIdOffset);
 	size_t nullableOffset = clazz->memberIdOffset;
 
 	bool isDict = py::isinstance<py::dict>(pyObj);
