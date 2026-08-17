@@ -9,28 +9,23 @@ on:
 
 jobs:
   build:
-    name: Build
+    name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        include:
-          - os: ubuntu-latest
-            generator: "Unix Makefiles"
-            cmake_args: "-DCMAKE_BUILD_TYPE=Release"
-          - os: windows-latest
-            generator: "Visual Studio 17 2022"
-            cmake_args: "-A x64 -DCMAKE_BUILD_TYPE=Release"
-          - os: macos-latest
-            generator: "Unix Makefiles"
-            cmake_args: "-DCMAKE_BUILD_TYPE=Release"
+
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Configure project
-        run: cmake -S . -B build -G "${{ matrix.generator }}" ${{ matrix.cmake_args }}
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build project
         run: cmake --build build --config Release
