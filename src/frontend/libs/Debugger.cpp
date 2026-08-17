@@ -27,9 +27,19 @@ void init(ACompiler &compiler) {
 	         {"to_string", &DefaultFunction::to_string},
 	         {"string_size", &DefaultFunction::get_string_size}}));
 }
-AObject *getClassName(NativeFuncInData) {}
+AObject *getClassName(NativeFuncInData) {
+	if (argSize > 0 && args[0]) {
+		return notifier.createString(AString::from(notifier.getClassName(args[0]->type)));
+	}
+	return nullptr;
+}
 
-AObject *getClassId(NativeFuncInData) {}
+AObject *getClassId(NativeFuncInData) {
+	if (argSize > 0 && args[0]) {
+		return notifier.createInt(static_cast<int64_t>(args[0]->type));
+	}
+	return nullptr;
+}
 } // namespace Debugger
 } // namespace Libs
 } // namespace Autolang
