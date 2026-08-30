@@ -1,4 +1,4 @@
-#ifndef LIBS_SET_CPP
+﻿#ifndef LIBS_SET_CPP
 #define LIBS_SET_CPP
 
 #include "set.hpp"
@@ -30,7 +30,7 @@ static void destroySet(ANotifier &notifier, void *unorderedSetData) {
 	delete unorderedSetData_;
 }
 
-inline AObject *constructor(ANotifier &notifier, ClassId classId,
+AObject *constructor(ANotifier &notifier, ClassId classId,
                             ClassId keyId) {
 	switch (keyId) {
 		case DefaultClass::intClassId: {
@@ -521,7 +521,7 @@ AObject *clear(NativeFuncInData) {
 	return nullptr;
 }
 
-inline std::string to_string(ANotifier &notifier, AObject *obj) {
+std::string to_string(ANotifier &notifier, AObject *obj) {
 	auto unorderedSetData = static_cast<AUnorderedSet *>(obj->data->data);
 	std::string str = "{";
 	switch (unorderedSetData->type) {

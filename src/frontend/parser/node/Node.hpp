@@ -97,7 +97,7 @@ struct ExprNode {
 	uint32_t line;
 	NodeType kind;
 	ExprNode(NodeType kind, uint32_t line = 0);
-	[[noreturn]] inline void throwError(std::string message);
+	[[noreturn]] void throwError(std::string message);
 	void warning(in_func, std::string message);
 	static inline void deleteNode(ExprNode *node) {};
 	void loadOpcodeLine(in_func, std::vector<uint8_t> &bytecodes);

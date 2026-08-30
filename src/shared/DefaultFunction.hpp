@@ -1,4 +1,4 @@
-#ifndef DEFAULT_FUNCTION_HPP
+﻿#ifndef DEFAULT_FUNCTION_HPP
 #define DEFAULT_FUNCTION_HPP
 
 #include "backend/libs/array.hpp"
@@ -34,7 +34,7 @@ inline AObject *str_get(NativeFuncInData);
 inline AObject *str_set(NativeFuncInData);
 inline AObject *str_char_at(NativeFuncInData);
 
-AObject *assert_(NativeFuncInData) {
+inline AObject *assert_(NativeFuncInData) {
 	auto condition = args[0];
 	if (condition->b) {
 		return nullptr;
@@ -44,7 +44,7 @@ AObject *assert_(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *data_constructor(NativeFuncInData) {
+inline AObject *data_constructor(NativeFuncInData) {
 	AObject *obj = args[0];
 	for (size_t i = 1; i < argSize; ++i) {
 		AObject **last = &obj->member->data[i - 1];
@@ -54,7 +54,7 @@ AObject *data_constructor(NativeFuncInData) {
 	return nullptr;
 }
 
-std::string to_string(ANotifier &notifier, AObject *obj, std::string space) {
+inline std::string to_string(ANotifier &notifier, AObject *obj, std::string space) {
 	if (!obj) {
 		return "c_nullptr";
 	}
@@ -131,17 +131,17 @@ inline AObject *print(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *println(NativeFuncInData) {
+inline AObject *println(NativeFuncInData) {
 	AObject *obj = args[0];
 	std::cerr << to_string(notifier, obj) << "\n";
 	return nullptr;
 }
 
-AObject *get_refcount(NativeFuncInData) {
+inline AObject *get_refcount(NativeFuncInData) {
 	return notifier.createInt(static_cast<int64_t>(args[0]->refCount - 1));
 }
 
-AObject *to_int(NativeFuncInData) {
+inline AObject *to_int(NativeFuncInData) {
 	auto obj = args[0];
 	switch (obj->type) {
 		case Autolang::DefaultClass::intClassId:
@@ -162,7 +162,7 @@ AObject *to_int(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *to_float(NativeFuncInData) {
+inline AObject *to_float(NativeFuncInData) {
 	auto obj = args[0];
 	switch (obj->type) {
 		case Autolang::DefaultClass::intClassId:
@@ -184,7 +184,7 @@ AObject *to_float(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *to_string(NativeFuncInData) {
+inline AObject *to_string(NativeFuncInData) {
 	auto obj = args[0];
 	switch (obj->type) {
 		case Autolang::DefaultClass::intClassId:
@@ -201,7 +201,7 @@ AObject *to_string(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *str_trim(NativeFuncInData) {
+inline AObject *str_trim(NativeFuncInData) {
 	const std::string &s = args[0]->str->data;
 	size_t start = s.find_first_not_of(" \n\r\t");
 	if (start == std::string::npos) {
@@ -211,7 +211,7 @@ AObject *str_trim(NativeFuncInData) {
 	return notifier.createString(s.substr(start, end - start + 1));
 }
 
-AObject *string_constructor(NativeFuncInData) {
+inline AObject *string_constructor(NativeFuncInData) {
 	switch (argSize) {
 		case 0: {
 			char *newStr = new char[1];
@@ -254,7 +254,7 @@ AObject *string_constructor(NativeFuncInData) {
 	}
 }
 
-AObject *str_get(NativeFuncInData) {
+inline AObject *str_get(NativeFuncInData) {
 	AString *str = args[0]->str;
 	int64_t pos = args[1]->i;
 
@@ -402,7 +402,7 @@ inline AObject *str_replace(NativeFuncInData) {
 // 	return notifier.createString(AString::from(str->data[pos]));
 // }
 
-AObject *str_char_at(NativeFuncInData) {
+inline AObject *str_char_at(NativeFuncInData) {
 	AString *str = args[0]->str;
 	int64_t pos = args[1]->i;
 
@@ -424,7 +424,7 @@ AObject *str_char_at(NativeFuncInData) {
 	return notifier.createInt(str->data[pos]);
 }
 
-AObject *str_contains(NativeFuncInData) {
+inline AObject *str_contains(NativeFuncInData) {
 	AString *str = args[0]->str;
 	AString *sub = args[1]->str;
 
@@ -435,7 +435,7 @@ AObject *str_contains(NativeFuncInData) {
 	return found ? DefaultClass::trueObject : DefaultClass::falseObject;
 }
 
-AObject *str_index_of(NativeFuncInData) {
+inline AObject *str_index_of(NativeFuncInData) {
 	AString *str = args[0]->str;
 	AString *sub = args[1]->str;
 
@@ -449,15 +449,15 @@ AObject *str_index_of(NativeFuncInData) {
 	return notifier.createInt(static_cast<int64_t>(pos));
 }
 
-AObject *str_is_empty(NativeFuncInData) {
+inline AObject *str_is_empty(NativeFuncInData) {
 	AString *str = args[0]->str;
 	return notifier.createBool(str->size == 0);
 }
 
-AObject *str_split(NativeFuncInData) {
+inline AObject *str_split(NativeFuncInData) {
 	std::string full(args[0]->str->data, args[0]->str->size);
 	std::string delim(args[1]->str->data, args[1]->str->size);
-	ClassId classId = args[2]->i;
+	ClassId classId = notifier.callFrame->func->returnId;
 
 	AObject *arrayObj = notifier.createArray(classId);
 
@@ -482,7 +482,7 @@ AObject *str_split(NativeFuncInData) {
 	return arrayObj;
 }
 
-AObject *str_substr(NativeFuncInData) {
+inline AObject *str_substr(NativeFuncInData) {
 	AString *str = args[0]->str;
 	int64_t len = str->size;
 
@@ -530,11 +530,11 @@ AObject *str_substr(NativeFuncInData) {
 	return notifier.createString(new AString(newStr, length));
 }
 
-AObject *get_string_size(NativeFuncInData) {
+inline AObject *get_string_size(NativeFuncInData) {
 	return notifier.createInt(static_cast<int64_t>(args[0]->str->size));
 }
 
-AObject *input_str(NativeFuncInData) {
+inline AObject *input_str(NativeFuncInData) {
 #ifdef __EMSCRIPTEN__
 
 #else

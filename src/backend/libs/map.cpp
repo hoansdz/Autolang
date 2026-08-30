@@ -1,4 +1,4 @@
-#ifndef LIBS_MAP_CPP
+﻿#ifndef LIBS_MAP_CPP
 #define LIBS_MAP_CPP
 
 #include "map.hpp"
@@ -19,17 +19,17 @@ static void destroyMap(ANotifier &notifier, void *hashMapData) {
 	auto hashMapData_ = static_cast<AHashMap *>(hashMapData);
 	auto map = static_cast<MapType *>(hashMapData_->data);
 	size_t mapSize = map->size();
-	for (auto &pair : *map) {
+	for (auto &[key, value] : *map) {
 		if constexpr (ReleaseKey)
-			notifier.release(pair.first);
-		notifier.release(pair.second);
+			notifier.release(key);
+		notifier.release(value);
 	}
 	notifier.addManagedMemory(-static_cast<int64_t>(mapSize * 32));
 	delete map;
 	delete hashMapData_;
 }
 
-inline AObject *constructor(ANotifier &notifier, ClassId classId,
+AObject *constructor(ANotifier &notifier, ClassId classId,
                             ClassId keyId) {
 	switch (keyId) {
 		case DefaultClass::intClassId: {
@@ -55,7 +55,7 @@ inline AObject *constructor(ANotifier &notifier, ClassId classId,
 	}
 }
 
-inline AObject *constructor(NativeFuncInData) {
+AObject *constructor(NativeFuncInData) {
 	ClassId classId = args[0]->i;
 	ClassId keyId = args[1]->i;
 	auto obj = constructor(notifier, classId, keyId);
@@ -63,7 +63,7 @@ inline AObject *constructor(NativeFuncInData) {
 	return obj;
 }
 
-inline AObject *is_empty(NativeFuncInData) {
+AObject *is_empty(NativeFuncInData) {
 	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
 	bool empty = false;
 
@@ -84,7 +84,7 @@ inline AObject *is_empty(NativeFuncInData) {
 	return notifier.createBool(empty);
 }
 
-inline AObject *contains_key(NativeFuncInData) {
+AObject *contains_key(NativeFuncInData) {
 	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
 	AObject *key = args[1];
 	bool found = false;
@@ -120,7 +120,7 @@ inline AObject *contains_key(NativeFuncInData) {
 	return notifier.createBool(found);
 }
 
-inline AObject *for_each(NativeFuncInData) {
+AObject *for_each(NativeFuncInData) {
 	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
 	auto funcObject = args[1];
 
@@ -167,9 +167,10 @@ inline AObject *for_each(NativeFuncInData) {
 	return nullptr;
 }
 
-inline AObject *keys(NativeFuncInData) {
+AObject *keys(NativeFuncInData) {
 	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
-	auto newArr = notifier.createArray(args[1]->i);
+	auto classId = notifier.callFrame->func->returnId;
+	auto newArr = notifier.createArray(classId);
 
 	switch (hashMapData->type) {
 		case DefaultClass::intClassId: {
@@ -204,9 +205,10 @@ inline AObject *keys(NativeFuncInData) {
 	return newArr;
 }
 
-inline AObject *values(NativeFuncInData) {
+AObject *values(NativeFuncInData) {
 	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
-	auto newArr = notifier.createArray(args[1]->i);
+	auto classId = notifier.callFrame->func->returnId;
+	auto newArr = notifier.createArray(classId);
 
 	switch (hashMapData->type) {
 		case DefaultClass::intClassId: {
@@ -237,7 +239,7 @@ inline AObject *values(NativeFuncInData) {
 	return newArr;
 }
 
-inline AObject *remove(NativeFuncInData) {
+AObject *remove(NativeFuncInData) {
 	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
 
 	switch (hashMapData->type) {
@@ -295,7 +297,7 @@ inline AObject *remove(NativeFuncInData) {
 	return nullptr;
 }
 
-inline AObject *size(NativeFuncInData) {
+AObject *size(NativeFuncInData) {
 	AHashMap *hashMapData = static_cast<AHashMap *>(args[0]->data->data);
 	switch (hashMapData->type) {
 		case DefaultClass::intClassId: {
@@ -317,7 +319,7 @@ inline AObject *size(NativeFuncInData) {
 	}
 }
 
-inline AObject *get(NativeFuncInData) {
+AObject *get(NativeFuncInData) {
 	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
 
 	switch (hashMapData->type) {
@@ -408,7 +410,7 @@ inline AObject *get(NativeFuncInData) {
 	}
 }
 
-inline AObject *get_or_default(NativeFuncInData) {
+AObject *get_or_default(NativeFuncInData) {
 	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
 
 	switch (hashMapData->type) {
@@ -482,7 +484,7 @@ inline AObject *get_or_default(NativeFuncInData) {
 	}
 }
 
-inline AObject *set(NativeFuncInData) {
+AObject *set(NativeFuncInData) {
 	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
 
 	AObject *key = args[1];
@@ -574,7 +576,7 @@ inline AObject *set(NativeFuncInData) {
 	return nullptr;
 }
 
-inline AObject *clear(NativeFuncInData) {
+AObject *clear(NativeFuncInData) {
 	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
 
 	switch (hashMapData->type) {

@@ -44,7 +44,7 @@ struct ClassDeclaration {
 	bool isSame(ClassDeclaration *classDeclaration);
 	bool isMatch(ClassDeclaration *classDeclaration);
 	ClassDeclaration();
-	[[noreturn]] inline void throwError(std::string message);
+	[[noreturn]] void throwError(std::string message);
 };
 
 } // namespace Autolang

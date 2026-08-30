@@ -1,4 +1,4 @@
-#ifndef DEFAULT_OPERATOR_HPP
+﻿#ifndef DEFAULT_OPERATOR_HPP
 #define DEFAULT_OPERATOR_HPP
 
 #include "backend/vm/ANotifier.hpp"
@@ -38,7 +38,7 @@ inline AObject *op_eq_pointer(NativeFuncInData);
 inline AObject *op_not_eq_pointer(NativeFuncInData);
 inline bool op_eqeq(AObject *obj1, AObject *obj2);
 
-AObject *plus(NativeFuncInData) {
+inline AObject *plus(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 	switch (obj1->type) {
@@ -115,7 +115,7 @@ AObject *plus(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *minus(NativeFuncInData) {
+inline AObject *minus(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 	switch (obj1->type) {
@@ -168,7 +168,7 @@ AObject *minus(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *mul(NativeFuncInData) {
+inline AObject *mul(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 	switch (obj1->type) {
@@ -221,7 +221,7 @@ AObject *mul(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *divide(NativeFuncInData) {
+inline AObject *divide(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 	switch (obj1->type) {
@@ -304,7 +304,7 @@ divideByZero:;
 	return nullptr;
 }
 
-AObject *op_eqeq(NativeFuncInData) {
+inline AObject *op_eqeq(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 	switch (obj1->type) {
@@ -359,7 +359,7 @@ AObject *op_eqeq(NativeFuncInData) {
 	return notifier.createBool(obj1 == obj2);
 }
 
-bool op_eqeq(AObject *obj1, AObject *obj2) {
+inline bool op_eqeq(AObject *obj1, AObject *obj2) {
 	switch (obj1->type) {
 		case Autolang::DefaultClass::intClassId: {
 			switch (obj2->type) {
@@ -413,7 +413,7 @@ bool op_eqeq(AObject *obj1, AObject *obj2) {
 	return obj1 == obj2;
 }
 
-AObject *op_not_eq(NativeFuncInData) {
+inline AObject *op_not_eq(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 	switch (obj1->type) {
@@ -468,7 +468,7 @@ AObject *op_not_eq(NativeFuncInData) {
 	return notifier.createBool(obj1 != obj2);
 }
 
-AObject *op_less_than(NativeFuncInData) {
+inline AObject *op_less_than(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 	switch (obj1->type) {
@@ -521,7 +521,7 @@ AObject *op_less_than(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *op_greater_than(NativeFuncInData) {
+inline AObject *op_greater_than(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 	switch (obj1->type) {
@@ -574,7 +574,7 @@ AObject *op_greater_than(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *op_less_than_eq(NativeFuncInData) {
+inline AObject *op_less_than_eq(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 	switch (obj1->type) {
@@ -627,7 +627,7 @@ AObject *op_less_than_eq(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *op_greater_than_eq(NativeFuncInData) {
+inline AObject *op_greater_than_eq(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 	switch (obj1->type) {
@@ -680,7 +680,7 @@ AObject *op_greater_than_eq(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *mod(NativeFuncInData) {
+inline AObject *mod(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 	switch (obj1->type) {
@@ -763,7 +763,7 @@ divideByZero:;
 	return nullptr;
 }
 
-AObject *bitwise_and(NativeFuncInData) {
+inline AObject *bitwise_and(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 	switch (obj1->type) {
@@ -786,7 +786,7 @@ AObject *bitwise_and(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *bitwise_or(NativeFuncInData) {
+inline AObject *bitwise_or(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 	switch (obj1->type) {
@@ -809,7 +809,7 @@ AObject *bitwise_or(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *op_and_and(NativeFuncInData) {
+inline AObject *op_and_and(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 
@@ -825,7 +825,7 @@ AObject *op_and_and(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *op_or_or(NativeFuncInData) {
+inline AObject *op_or_or(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 
@@ -841,15 +841,15 @@ AObject *op_or_or(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *op_eq_pointer(NativeFuncInData) {
+inline AObject *op_eq_pointer(NativeFuncInData) {
 	return notifier.createBool(args[0] == args[1]);
 }
 
-AObject *op_not_eq_pointer(NativeFuncInData) {
+inline AObject *op_not_eq_pointer(NativeFuncInData) {
 	return notifier.createBool(args[0] != args[1]);
 }
 
-AObject *plus_eq(NativeFuncInData) {
+inline AObject *plus_eq(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 	switch (obj1->type) {
@@ -895,7 +895,7 @@ AObject *plus_eq(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *minus_eq(NativeFuncInData) {
+inline AObject *minus_eq(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 	switch (obj1->type) {
@@ -941,7 +941,7 @@ AObject *minus_eq(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *mul_eq(NativeFuncInData) {
+inline AObject *mul_eq(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 	switch (obj1->type) {
@@ -987,7 +987,7 @@ AObject *mul_eq(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *divide_eq(NativeFuncInData) {
+inline AObject *divide_eq(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
 	switch (obj1->type) {
@@ -1049,7 +1049,7 @@ divideByZero:;
 	return nullptr;
 }
 
-AObject *plus_plus(NativeFuncInData) {
+inline AObject *plus_plus(NativeFuncInData) {
 	auto obj = args[0];
 	switch (obj->type) {
 		case Autolang::DefaultClass::intClassId:
@@ -1067,7 +1067,7 @@ AObject *plus_plus(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *minus_minus(NativeFuncInData) {
+inline AObject *minus_minus(NativeFuncInData) {
 	auto obj = args[0];
 	switch (obj->type) {
 		case Autolang::DefaultClass::intClassId:
@@ -1085,7 +1085,7 @@ AObject *minus_minus(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *negative(NativeFuncInData) {
+inline AObject *negative(NativeFuncInData) {
 	auto obj = args[0];
 	switch (obj->type) {
 		case Autolang::DefaultClass::intClassId:
@@ -1103,7 +1103,7 @@ AObject *negative(NativeFuncInData) {
 	return nullptr;
 }
 
-AObject *op_not(NativeFuncInData) {
+inline AObject *op_not(NativeFuncInData) {
 	auto obj = args[0];
 	if (obj->type == Autolang::DefaultClass::boolClassId) {
 		return notifier.createBool(!obj->b);

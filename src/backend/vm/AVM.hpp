@@ -45,7 +45,7 @@ class ANotifier;
 class AVM {
   public:
 	ANotifier *notifier;
-	inline uint32_t get_u32(uint8_t *code, uint32_t &ip);
+	uint32_t get_u32(uint8_t *code, uint32_t &ip);
 	void log(Function *currentFunction);
 
 	Stack<AObject *, MAX_STACK_OBJECT> stack;
@@ -67,11 +67,11 @@ class AVM {
 	std::regex *allowedFilePathsRegex = nullptr;
 	std::string fileBasePath = "";
 #endif
-	inline AObject *getConstObject(uint32_t id);
+	AObject *getConstObject(uint32_t id);
 
-	inline void initGlobalVariables();
+	void initGlobalVariables();
 	AObject **globalVariables = nullptr;
-	inline void setGlobalVariables(uint32_t i, AObject *object);
+	void setGlobalVariables(uint32_t i, AObject *object);
 	void restart();
 	uint32_t searchLine(Function *func, uint32_t opcodeIndex);
 	std::pair<uint32_t, const char *> searchMainLine(Function *func,
@@ -105,11 +105,11 @@ class AVM {
 	// inline bool callNativeFunction(CallFrame *&currentCallFrame,
 	//                                Function *currentFunction,
 	//                                uint8_t *bytecodes, uint32_t &i);
-	inline bool callFunctionObject(AObject *obj);
-	inline bool callFunction(Function *currentFunction);
-	inline bool callFunction(CallFrame *currentCallFrame,
+	bool callFunctionObject(AObject *obj);
+	bool callFunction(Function *currentFunction);
+	bool callFunction(CallFrame *currentCallFrame,
 	                         uint32_t argumentCount);
-	inline void resume();
+	void resume();
 	void run();
 	void input(AObject *inputData);
 

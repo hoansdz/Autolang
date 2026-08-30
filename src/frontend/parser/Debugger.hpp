@@ -41,8 +41,8 @@ ClassId loadClassGenerics(in_func, std::string &name,
                           ClassDeclaration *classDeclaration);
 void loadFunctionGenerics(in_func, std::string &name,
                           ClassDeclaration *classDeclaration);
-inline void ensureNoKeyword(in_func, size_t &i);
-inline void ensureNoAnnotations(in_func, size_t &i);
+void ensureNoKeyword(in_func, size_t &i);
+void ensureNoAnnotations(in_func, size_t &i);
 Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t &i);
 void ensureEndline(in_func, size_t &i);
 ExprNode *loadLine(in_func, size_t &i);
@@ -67,6 +67,7 @@ HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
                                         NodeType canBeNodeType);
 HasClassIdNode *loadSet(in_func, size_t &i, HasClassIdNode *firstExpression);
 HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode *firstExpression);
+void loadTypealias(in_func, size_t &i);
 HasClassIdNode *parsePrimary(in_func, size_t &i);
 HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i);
 void loadEnum(in_func, size_t &i);

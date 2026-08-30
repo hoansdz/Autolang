@@ -1,4 +1,4 @@
-#ifndef LIB_JSON_CPP
+﻿#ifndef LIB_JSON_CPP
 #define LIB_JSON_CPP
 
 #include "json.hpp"
@@ -13,7 +13,7 @@ class ACompiler;
 namespace Libs {
 namespace json {
 
-inline AObject *parse(NativeFuncInData) {
+AObject *parse(NativeFuncInData) {
     constexpr ClassId classId = DefaultClass::jsonClassId;
     const std::string &text = args[0]->str->data;
 
@@ -29,7 +29,7 @@ inline AObject *parse(NativeFuncInData) {
     }
 }
 
-inline AObject *empty_object(NativeFuncInData) {
+AObject *empty_object(NativeFuncInData) {
     constexpr ClassId classId = DefaultClass::jsonClassId;
     auto parsed = new nlohmann::json(nlohmann::json::object());
     notifier.addManagedMemory(128);
@@ -38,7 +38,7 @@ inline AObject *empty_object(NativeFuncInData) {
     return newObj;
 }
 
-inline AObject *empty_array(NativeFuncInData) {
+AObject *empty_array(NativeFuncInData) {
     constexpr ClassId classId = DefaultClass::jsonClassId;
     auto parsed = new nlohmann::json(nlohmann::json::array());
     notifier.addManagedMemory(128);
@@ -47,7 +47,7 @@ inline AObject *empty_array(NativeFuncInData) {
     return newObj;
 }
 
-inline AObject *from_string(NativeFuncInData) {
+AObject *from_string(NativeFuncInData) {
     constexpr ClassId classId = DefaultClass::jsonClassId;
     const std::string &val = args[0]->str->data;
     auto parsed = new nlohmann::json(val);
@@ -57,7 +57,7 @@ inline AObject *from_string(NativeFuncInData) {
     return newObj;
 }
 
-inline AObject *from_int(NativeFuncInData) {
+AObject *from_int(NativeFuncInData) {
     constexpr ClassId classId = DefaultClass::jsonClassId;
     int64_t val = args[0]->i;
     auto parsed = new nlohmann::json(val);
@@ -66,7 +66,7 @@ inline AObject *from_int(NativeFuncInData) {
     return newObj;
 }
 
-inline AObject *from_float(NativeFuncInData) {
+AObject *from_float(NativeFuncInData) {
     constexpr ClassId classId = DefaultClass::jsonClassId;
     double val = args[0]->f;
     auto parsed = new nlohmann::json(val);
@@ -75,7 +75,7 @@ inline AObject *from_float(NativeFuncInData) {
     return newObj;
 }
 
-inline AObject *from_bool(NativeFuncInData) {
+AObject *from_bool(NativeFuncInData) {
     constexpr ClassId classId = DefaultClass::jsonClassId;
     bool val = args[0]->b;
     auto parsed = new nlohmann::json(val);
@@ -84,7 +84,7 @@ inline AObject *from_bool(NativeFuncInData) {
     return newObj;
 }
 
-inline AObject *stringify(NativeFuncInData) {
+AObject *stringify(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     int64_t indent = static_cast<int>(args[1]->i);
 
@@ -92,42 +92,42 @@ inline AObject *stringify(NativeFuncInData) {
     return notifier.createString(result);
 }
 
-inline AObject *is_object(NativeFuncInData) {
+AObject *is_object(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     return notifier.createBool(j_ptr->is_object());
 }
 
-inline AObject *is_array(NativeFuncInData) {
+AObject *is_array(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     return notifier.createBool(j_ptr->is_array());
 }
 
-inline AObject *is_string(NativeFuncInData) {
+AObject *is_string(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     return notifier.createBool(j_ptr->is_string());
 }
 
-inline AObject *is_number(NativeFuncInData) {
+AObject *is_number(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     return notifier.createBool(j_ptr->is_number());
 }
 
-inline AObject *is_bool(NativeFuncInData) {
+AObject *is_bool(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     return notifier.createBool(j_ptr->is_boolean());
 }
 
-inline AObject *is_null(NativeFuncInData) {
+AObject *is_null(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     return notifier.createBool(j_ptr->is_null());
 }
 
-inline AObject *get_size(NativeFuncInData) {
+AObject *get_size(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     return notifier.createInt(static_cast<int64_t>(j_ptr->size()));
 }
 
-inline AObject *has_key(NativeFuncInData) {
+AObject *has_key(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     const std::string &key = args[1]->str->data;
 
@@ -137,7 +137,7 @@ inline AObject *has_key(NativeFuncInData) {
     return notifier.createBool(j_ptr->contains(key));
 }
 
-inline AObject *get_field(NativeFuncInData) {
+AObject *get_field(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     const std::string &key = args[1]->str->data;
 
@@ -156,7 +156,7 @@ inline AObject *get_field(NativeFuncInData) {
     return newObj;
 }
 
-inline AObject *set_field(NativeFuncInData) {
+AObject *set_field(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     const std::string &key = args[1]->str->data;
     auto val_ptr = args[2]->json;
@@ -170,7 +170,7 @@ inline AObject *set_field(NativeFuncInData) {
     return nullptr;
 }
 
-inline AObject *get_index(NativeFuncInData) {
+AObject *get_index(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     size_t index = static_cast<size_t>(args[1]->i);
 
@@ -189,7 +189,7 @@ inline AObject *get_index(NativeFuncInData) {
     return newObj;
 }
 
-inline AObject *add_element(NativeFuncInData) {
+AObject *add_element(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     auto val_ptr = args[1]->json;
 
@@ -202,7 +202,7 @@ inline AObject *add_element(NativeFuncInData) {
     return nullptr;
 }
 
-inline AObject *as_string(NativeFuncInData) {
+AObject *as_string(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     if (!j_ptr->is_string()) {
         notifier.throwException("JSON value is not a String");
@@ -211,7 +211,7 @@ inline AObject *as_string(NativeFuncInData) {
     return notifier.createString(j_ptr->get<std::string>());
 }
 
-inline AObject *as_int(NativeFuncInData) {
+AObject *as_int(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     if (!j_ptr->is_number_integer()) {
         notifier.throwException("JSON value is not an Integer");
@@ -220,7 +220,7 @@ inline AObject *as_int(NativeFuncInData) {
     return notifier.createInt(j_ptr->get<int64_t>());
 }
 
-inline AObject *as_float(NativeFuncInData) {
+AObject *as_float(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     if (!j_ptr->is_number()) {
         notifier.throwException("JSON value is not a Number");
@@ -229,7 +229,7 @@ inline AObject *as_float(NativeFuncInData) {
     return notifier.createFloat(j_ptr->get<double>());
 }
 
-inline AObject *as_bool(NativeFuncInData) {
+AObject *as_bool(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     if (!j_ptr->is_boolean()) {
         notifier.throwException("JSON value is not a Boolean");
@@ -238,7 +238,7 @@ inline AObject *as_bool(NativeFuncInData) {
     return notifier.createBool(j_ptr->get<bool>());
 }
 
-inline AObject *to_int_array(NativeFuncInData) {
+AObject *to_int_array(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     ClassId arrayClassId = notifier.callFrame->func->returnId;
 
@@ -263,7 +263,7 @@ inline AObject *to_int_array(NativeFuncInData) {
     return newArr;
 }
 
-inline AObject *to_float_array(NativeFuncInData) {
+AObject *to_float_array(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     ClassId arrayClassId = notifier.callFrame->func->returnId;
 
@@ -288,7 +288,7 @@ inline AObject *to_float_array(NativeFuncInData) {
     return newArr;
 }
 
-inline AObject *to_bool_array(NativeFuncInData) {
+AObject *to_bool_array(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     ClassId arrayClassId = notifier.callFrame->func->returnId;
 
@@ -313,7 +313,7 @@ inline AObject *to_bool_array(NativeFuncInData) {
     return newArr;
 }
 
-inline AObject *to_string_array(NativeFuncInData) {
+AObject *to_string_array(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     ClassId arrayClassId = notifier.callFrame->func->returnId;
 
@@ -338,7 +338,7 @@ inline AObject *to_string_array(NativeFuncInData) {
     return newArr;
 }
 
-inline AObject *to_json_array(NativeFuncInData) {
+AObject *to_json_array(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     ClassId arrayClassId = notifier.callFrame->func->returnId;
 
@@ -479,13 +479,13 @@ AObject* jsonArrayToAObject(ANotifier& notifier, const nlohmann::json& j_arr, Cl
     return newArr;
 }
 
-inline AObject *json_to_class(NativeFuncInData) {
+AObject *json_to_class(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     ClassId classId = notifier.callFrame->func->returnId;
     return jsonObjectToAObject(notifier, *j_ptr, classId);
 }
 
-inline AObject *to_array_class(NativeFuncInData) {
+AObject *to_array_class(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     ClassId arrayClassId = notifier.callFrame->func->returnId;
     auto arrayClass = notifier.vm->data.classes[arrayClassId];
@@ -496,12 +496,12 @@ inline AObject *to_array_class(NativeFuncInData) {
     return jsonArrayToAObject(notifier, *j_ptr, arrayClassId, elemClassId, elemNullable);
 }
 
-inline AObject *to_string(NativeFuncInData) {
+AObject *to_string(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     return notifier.createString(j_ptr->dump(-1));
 }
 
-inline AObject *remove_field(NativeFuncInData) {
+AObject *remove_field(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     const std::string &key = args[1]->str->data;
 
@@ -514,7 +514,7 @@ inline AObject *remove_field(NativeFuncInData) {
     return notifier.createBool(isRemoved);
 }
 
-inline AObject *remove_at(NativeFuncInData) {
+AObject *remove_at(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     size_t index = static_cast<size_t>(args[1]->i);
 
@@ -532,13 +532,13 @@ inline AObject *remove_at(NativeFuncInData) {
     return notifier.createBool(true);
 }
 
-inline AObject *clear(NativeFuncInData) {
+AObject *clear(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     j_ptr->clear();
     return nullptr;
 }
 
-inline AObject *keys(NativeFuncInData) {
+AObject *keys(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     ClassId arrayClassId = notifier.callFrame->func->returnId;
 
@@ -554,7 +554,7 @@ inline AObject *keys(NativeFuncInData) {
     return newArr;
 }
 
-inline AObject *null_value(NativeFuncInData) {
+AObject *null_value(NativeFuncInData) {
     constexpr ClassId classId = DefaultClass::jsonClassId;
     auto parsed = new nlohmann::json(nullptr);
     auto newObj = notifier.createObject(classId);
@@ -562,17 +562,17 @@ inline AObject *null_value(NativeFuncInData) {
     return newObj;
 }
 
-inline AObject *is_int(NativeFuncInData) {
+AObject *is_int(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     return notifier.createBool(j_ptr->is_number_integer());
 }
 
-inline AObject *is_float(NativeFuncInData) {
+AObject *is_float(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     return notifier.createBool(j_ptr->is_number_float());
 }
 
-inline AObject *clone(NativeFuncInData) {
+AObject *clone(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     auto j_copy = new nlohmann::json(*j_ptr); 
     auto newObj = notifier.createObject(args[0]->type);
@@ -585,6 +585,12 @@ void init(ACompiler &compiler) {
         "std/json", R"###(
     @native("json_parse")
     static fun Json.parse(text: String): Json
+
+    @native("json_parse")
+    static fun Json.fromJson(text: String): Json
+
+    @native("json_parse")
+    static fun Json.decode(text: String): Json
 
     @native("json_empty_object")
     static fun Json.emptyObject(): Json
@@ -607,6 +613,15 @@ void init(ACompiler &compiler) {
     @native("json_stringify")
     fun Json.stringify(indent: Int = -1): String
 
+    @native("json_stringify")
+    fun Json.toJson(indent: Int = -1): String
+
+    @native("json_stringify")
+    fun Json.encode(indent: Int = -1): String
+
+    @native("json_stringify")
+    fun Json.dump(indent: Int = -1): String
+
     @native("json_is_object") fun Json.isObject(): Bool
     @native("json_is_array") fun Json.isArray(): Bool
     @native("json_is_string") fun Json.isString(): Bool
@@ -615,20 +630,50 @@ void init(ACompiler &compiler) {
     @native("json_is_null") fun Json.isNull(): Bool
 
     @native("json_get_size") fun Json.getSize(): Int
+    @native("json_get_size") fun Json.size(): Int
+    @native("json_get_size") fun Json.length(): Int
+    @native("json_get_size") fun Json.count(): Int
 
     @native("json_has_key") fun Json.has(key: String): Bool
+    @native("json_has_key") fun Json.hasKey(key: String): Bool
+    @native("json_has_key") fun Json.containsKey(key: String): Bool
+    @native("json_has_key") fun Json.contains(key: String): Bool
     
     @native("json_get_field")
     fun Json.get(key: String): Json
 
+    @native("json_get_field")
+    fun Json.field(key: String): Json
+
+    @native("json_get_field")
+    fun Json.getField(key: String): Json
+
+    @native("json_get_field")
+    fun Json.prop(key: String): Json
+
     @native("json_set_field") 
     fun Json.set(key: String, value: Json)
+
+    @native("json_set_field") 
+    fun Json.put(key: String, value: Json)
+
+    @native("json_set_field") 
+    fun Json.setField(key: String, value: Json)
 
     @native("json_get_index") 
     fun Json.getAt(index: Int): Json
 
+    @native("json_get_index") 
+    fun Json.at(index: Int): Json
+
     @native("json_add_element") 
     fun Json.add(value: Json)
+
+    @native("json_add_element") 
+    fun Json.append(value: Json)
+
+    @native("json_add_element") 
+    fun Json.push(value: Json)
 
     @native("json_as_string") fun Json.asString(): String
     @native("json_as_int") fun Json.asInt(): Int
@@ -664,6 +709,15 @@ void init(ACompiler &compiler) {
 
     @native("json_remove_field") 
     fun Json.remove(key: String): Bool
+
+    @native("json_remove_field") 
+    fun Json.delete(key: String): Bool
+
+    @native("json_remove_field") 
+    fun Json.erase(key: String): Bool
+
+    @native("json_remove_field") 
+    fun Json.removeField(key: String): Bool
     
     @native("json_remove_at") 
     fun Json.removeAt(index: Int): Bool
@@ -671,14 +725,26 @@ void init(ACompiler &compiler) {
     @native("json_clear") 
     fun Json.clear()
 
+    @native("json_clear") 
+    fun Json.reset()
+
     @native("json_keys")
     fun Json.keys(): Array<String>
+
+    @native("json_keys")
+    fun Json.keySet(): Array<String>
+
+    @native("json_keys")
+    fun Json.allKeys(): Array<String>
 
     @native("json_is_int") fun Json.isInt(): Bool
     @native("json_is_float") fun Json.isFloat(): Bool
 
     @native("json_clone")
     fun Json.clone(): Json
+
+    @native("json_clone")
+    fun Json.copy(): Json
         )###",
         LibraryConfig(),
         ANativeMap({

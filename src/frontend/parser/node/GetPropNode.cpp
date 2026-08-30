@@ -211,12 +211,13 @@ void GetPropNode::optimize(in_func) {
 					hasMember = true;
 				}
 			}
-			for (const auto &pair : classInfo->staticMember) {
-				if (pair.second) {
+			for (const auto [nameId, declarationNode] :
+			     classInfo->staticMember) {
+				if (declarationNode) {
 					if (hasMember) {
 						foundMembers += "\n";
 					}
-					foundMembers += pair.second->toString(in_data, true);
+					foundMembers += declarationNode->toString(in_data, true);
 					hasMember = true;
 				}
 			}
@@ -246,9 +247,10 @@ void GetPropNode::optimize(in_func) {
 					checkSuggestion(decl->name);
 				}
 			}
-			for (const auto &pair : classInfo->staticMember) {
-				if (pair.second) {
-					checkSuggestion(pair.second->name);
+			for (const auto [nameId, declarationNode] :
+			     classInfo->staticMember) {
+				if (declarationNode) {
+					checkSuggestion(declarationNode->name);
 				}
 			}
 			for (const auto &[funcNameId, _] : classInfo->allFunction) {

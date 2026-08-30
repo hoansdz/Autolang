@@ -1,4 +1,4 @@
-#ifndef LIBS_BYTES_CPP
+﻿#ifndef LIBS_BYTES_CPP
 #define LIBS_BYTES_CPP
 
 #include "backend/vm/ANotifier.hpp"
@@ -14,7 +14,7 @@ namespace Autolang {
 namespace Libs {
 namespace bytes {
 
-inline AObject *alloc_bytes(NativeFuncInData) {
+AObject *alloc_bytes(NativeFuncInData) {
 	int64_t size = args[0]->i;
 	if (size < 0) {
 		notifier.throwException("Bytes size cannot be negative");
@@ -23,7 +23,7 @@ inline AObject *alloc_bytes(NativeFuncInData) {
 	return notifier.createBytes(size);
 }
 
-inline AObject *from_string(NativeFuncInData) {
+AObject *from_string(NativeFuncInData) {
 	const std::string &str = args[0]->str->data;
 	AObject *obj = notifier.createBytes(str.size());
 	if (str.size() > 0) {
@@ -33,7 +33,7 @@ inline AObject *from_string(NativeFuncInData) {
 	return obj;
 }
 
-inline AObject *append(NativeFuncInData) {
+AObject *append(NativeFuncInData) {
 	ABytes *b = args[0]->bytes;
 	uint8_t value = static_cast<uint8_t>(args[1]->i);
 
@@ -51,15 +51,15 @@ inline AObject *append(NativeFuncInData) {
 	return nullptr;
 }
 
-inline AObject *size(NativeFuncInData) {
+AObject *size(NativeFuncInData) {
 	return notifier.createInt(args[0]->bytes->size);
 }
 
-inline AObject *is_empty(NativeFuncInData) {
+AObject *is_empty(NativeFuncInData) {
 	return notifier.createBool(args[0]->bytes->size == 0);
 }
 
-inline AObject *get(NativeFuncInData) {
+AObject *get(NativeFuncInData) {
 	ABytes *b = args[0]->bytes;
 	int64_t index = args[1]->i;
 
@@ -71,7 +71,7 @@ inline AObject *get(NativeFuncInData) {
 	return notifier.createInt(b->data[index]);
 }
 
-inline AObject *set(NativeFuncInData) {
+AObject *set(NativeFuncInData) {
 	ABytes *b = args[0]->bytes;
 	int64_t index = args[1]->i;
 	uint8_t value = static_cast<uint8_t>(args[2]->i);
@@ -85,12 +85,12 @@ inline AObject *set(NativeFuncInData) {
 	return nullptr;
 }
 
-inline AObject *clear(NativeFuncInData) {
+AObject *clear(NativeFuncInData) {
 	args[0]->bytes->size = 0;
 	return nullptr;
 }
 
-inline AObject *slice(NativeFuncInData) {
+AObject *slice(NativeFuncInData) {
 	ABytes *b = args[0]->bytes;
 	int64_t from = args[1]->i;
 	int64_t to = args[2]->i;
@@ -114,7 +114,7 @@ inline AObject *slice(NativeFuncInData) {
 	return newObj;
 }
 
-inline AObject *copy_from(NativeFuncInData) {
+AObject *copy_from(NativeFuncInData) {
 	ABytes *dest = args[0]->bytes;
 	ABytes *src = args[1]->bytes;
 	int64_t destOffset = args[2]->i;
@@ -135,7 +135,7 @@ inline AObject *copy_from(NativeFuncInData) {
 	return nullptr;
 }
 
-inline AObject *equals(NativeFuncInData) {
+AObject *equals(NativeFuncInData) {
 	ABytes *b1 = args[0]->bytes;
 	ABytes *b2 = args[1]->bytes;
 
@@ -148,7 +148,7 @@ inline AObject *equals(NativeFuncInData) {
 	return notifier.createBool(std::memcmp(b1->data, b2->data, b1->size) == 0);
 }
 
-inline AObject *to_string(NativeFuncInData) {
+AObject *to_string(NativeFuncInData) {
 	ABytes *b = args[0]->bytes;
 
 	if (b->size == 0) {
@@ -167,7 +167,7 @@ inline AObject *to_string(NativeFuncInData) {
 	return notifier.createString(str);
 }
 
-inline AObject *to_utf8_string(NativeFuncInData) {
+AObject *to_utf8_string(NativeFuncInData) {
 	ABytes *b = args[0]->bytes;
 	if (b->size == 0) {
 		return notifier.createString("");
@@ -176,7 +176,7 @@ inline AObject *to_utf8_string(NativeFuncInData) {
 	    std::string(reinterpret_cast<char *>(b->data), b->size));
 }
 
-inline AObject *to_hex(NativeFuncInData) {
+AObject *to_hex(NativeFuncInData) {
 	ABytes *b = args[0]->bytes;
 	if (b->size == 0) {
 		return notifier.createString("");
@@ -192,7 +192,7 @@ inline AObject *to_hex(NativeFuncInData) {
 	return notifier.createString(hex);
 }
 
-inline AObject *ext_string_to_bytes(NativeFuncInData) {
+AObject *ext_string_to_bytes(NativeFuncInData) {
 	const std::string &str = args[0]->str->data;
 	AObject *obj = notifier.createBytes(str.size());
 	if (str.size() > 0) {
@@ -202,7 +202,7 @@ inline AObject *ext_string_to_bytes(NativeFuncInData) {
 	return obj;
 }
 
-inline AObject *ext_string_from_bytes(NativeFuncInData) {
+AObject *ext_string_from_bytes(NativeFuncInData) {
 	ABytes *b = args[0]->bytes;
 	if (b->size == 0) {
 		return notifier.createString("");
@@ -211,7 +211,7 @@ inline AObject *ext_string_from_bytes(NativeFuncInData) {
 	    std::string(reinterpret_cast<char *>(b->data), b->size));
 }
 
-inline AObject *ext_int_to_bytes(NativeFuncInData) {
+AObject *ext_int_to_bytes(NativeFuncInData) {
 	int64_t val = args[0]->i;
 	AObject *obj = notifier.createBytes(8);
 	obj->bytes->size = 8;
@@ -221,7 +221,7 @@ inline AObject *ext_int_to_bytes(NativeFuncInData) {
 	return obj;
 }
 
-inline AObject *fill(NativeFuncInData) {
+AObject *fill(NativeFuncInData) {
 	ABytes *b = args[0]->bytes;
 	uint8_t value = static_cast<uint8_t>(args[1]->i);
 	if (b->size > 0) {
@@ -230,7 +230,7 @@ inline AObject *fill(NativeFuncInData) {
 	return nullptr;
 }
 
-inline AObject *index_of(NativeFuncInData) {
+AObject *index_of(NativeFuncInData) {
 	ABytes *b = args[0]->bytes;
 	uint8_t value = static_cast<uint8_t>(args[1]->i);
 	int64_t fromIndex = args[2]->i;
@@ -247,7 +247,7 @@ inline AObject *index_of(NativeFuncInData) {
 	return notifier.createInt(-1);
 }
 
-inline AObject *read_int64_le(NativeFuncInData) {
+AObject *read_int64_le(NativeFuncInData) {
 	ABytes *b = args[0]->bytes;
 	int64_t offset = args[1]->i;
 
@@ -263,7 +263,7 @@ inline AObject *read_int64_le(NativeFuncInData) {
 	return notifier.createInt(result);
 }
 
-inline AObject *write_int64_le(NativeFuncInData) {
+AObject *write_int64_le(NativeFuncInData) {
 	ABytes *b = args[0]->bytes;
 	int64_t offset = args[1]->i;
 	int64_t value = args[2]->i;
@@ -279,7 +279,7 @@ inline AObject *write_int64_le(NativeFuncInData) {
 	return nullptr;
 }
 
-inline AObject *read_float_le(NativeFuncInData) {
+AObject *read_float_le(NativeFuncInData) {
 	ABytes *b = args[0]->bytes;
 	int64_t offset = args[1]->i;
 
@@ -298,7 +298,7 @@ inline AObject *read_float_le(NativeFuncInData) {
 	return notifier.createFloat(result);
 }
 
-inline AObject *to_base64(NativeFuncInData) {
+AObject *to_base64(NativeFuncInData) {
 	ABytes *b = args[0]->bytes;
 	if (b->size == 0)
 		return notifier.createString("");
@@ -341,7 +341,7 @@ inline AObject *to_base64(NativeFuncInData) {
 	return notifier.createString(ret);
 }
 
-inline AObject *read_int32_be(NativeFuncInData) {
+AObject *read_int32_be(NativeFuncInData) {
 	ABytes *b = args[0]->bytes;
 	int64_t offset = args[1]->i;
 
@@ -355,7 +355,7 @@ inline AObject *read_int32_be(NativeFuncInData) {
 	return notifier.createInt(result);
 }
 
-inline AObject *write_int32_be(NativeFuncInData) {
+AObject *write_int32_be(NativeFuncInData) {
 	ABytes *b = args[0]->bytes;
 	int64_t offset = args[1]->i;
 	int64_t value = args[2]->i;
@@ -372,7 +372,7 @@ inline AObject *write_int32_be(NativeFuncInData) {
 	return nullptr;
 }
 
-inline AObject *xor_with(NativeFuncInData) {
+AObject *xor_with(NativeFuncInData) {
 	ABytes *dest = args[0]->bytes;
 	ABytes *src = args[1]->bytes;
 	int64_t length = args[2]->i;
@@ -400,26 +400,68 @@ static fun Bytes.fromString(str: String): Bytes
 @native("bytes_append")
 fun Bytes.append(value: Int)
 
+@native("bytes_append")
+fun Bytes.add(value: Int)
+
+@native("bytes_append")
+fun Bytes.push(value: Int)
+
+@native("bytes_append")
+fun Bytes.push_back(value: Int)
+
 @native("bytes_size")
 fun Bytes.size(): Int
+
+@native("bytes_size")
+fun Bytes.length(): Int
+
+@native("bytes_size")
+fun Bytes.len(): Int
+
+
 
 @native("bytes_is_empty")
 fun Bytes.isEmpty(): Bool
 
+@native("bytes_is_empty")
+fun Bytes.empty(): Bool
+
+@native("bytes_is_empty")
+fun Bytes.is_empty(): Bool
+
 @native("bytes_get")
 fun Bytes.get(index: Int): Int
+
+@native("bytes_get")
+fun Bytes.at(index: Int): Int
+
+@native("bytes_get")
+fun Bytes.readByte(index: Int): Int
 
 @native("bytes_set")
 fun Bytes.set(index: Int, value: Int)
 
+@native("bytes_set")
+fun Bytes.put(index: Int, value: Int)
+
+@native("bytes_set")
+fun Bytes.writeByte(index: Int, value: Int)
+
 @native("bytes_clear")
 fun Bytes.clear()
+
+
 
 @native("bytes_slice")
 fun Bytes.slice(from: Int, to: Int): Bytes
 
+@native("bytes_slice")
+fun Bytes.subArray(from: Int, to: Int): Bytes
+
+
+
 @native("bytes_copy_from")
-fun Bytes.copyFrom(src: Bytes, destOffset: Int, srcOffset: Int, length: Int)
+fun Bytes.copyFrom(src: Bytes, destOffset: Int, srcOffset: Int, lenBytes: Int)
 
 @native("bytes_equals")
 fun Bytes.equals(other: Bytes): Bytes
@@ -458,7 +500,7 @@ fun Bytes.readInt32BE(offset: Int): Int
 fun Bytes.writeInt32BE(offset: Int, value: Int)
 
 @native("bytes_xor_with")
-fun Bytes.xorWith(other: Bytes, length: Int)
+fun Bytes.xorWith(other: Bytes, lenBytes: Int)
 
 @native("bytes_ext_string_to_bytes")
 fun String.toBytes(): Bytes

@@ -1,4 +1,3 @@
-﻿#define AUTOLANG_LIMIT_OPCODE
 // #define NO_INCLUDE_LIBS_HTTP
 #include <Autolang.hpp>
 #include <chrono>
@@ -9,8 +8,8 @@
 #include <iostream>
 
 #ifdef _WIN32
-#include <psapi.h>
 #include <windows.h>
+#include <psapi.h>
 
 struct MemoryInfo {
 	SIZE_T workingSet;
@@ -140,7 +139,7 @@ int main(int argc, char *argv[]) {
 	auto processStart = std::chrono::high_resolution_clock::now();
 
 	bool isBenchmark = false;
-	const char* scriptPath = "./tests/testCorrectness.atl";
+	const char* scriptPath = "./tests/b.atl";
 
 	for (int i = 1; i < argc; ++i) {
 		std::string arg = argv[i];

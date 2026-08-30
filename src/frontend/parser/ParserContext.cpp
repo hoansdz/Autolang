@@ -247,11 +247,16 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	newClasses.refresh();
 	newDefaultClassesMap.clear();
 	newGenericClassesMap.clear();
+	typealiasMap.clear();
 
 	hasError = false;
 	canBreakContinue = false;
 	justFindStatic = false;
 	isInGeneric = false;
+
+	typealiasDepth = 0;
+	typealiasTraceIndex = 0;
+	typealiasStackTrace.clear();
 
 	closureCount = 0;
 	continuePos = 0;
@@ -284,6 +289,7 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	returnPool.destroy();
 	setValuePool.destroy();
 
+	typealiasPool.destroy();
 	throwPool.destroy();
 	binaryNodePool.destroy();
 	castPool.destroy();

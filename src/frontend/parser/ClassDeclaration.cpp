@@ -2,7 +2,11 @@
 #define CLASS_DECLARATION_CPP
 
 #include "frontend/parser/ClassDeclaration.hpp"
+#include "ParserContext.hpp"
+#include "frontend/ACompiler.hpp"
+#include "frontend/parser/FunctionInfo.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "shared/CompiledProgram.hpp"
 #include <rapidfuzz/fuzz.hpp>
 
 namespace Autolang {
@@ -148,6 +152,67 @@ void ClassDeclaration::load(in_func) {
 		{
 			auto it = context.defaultClassMap.find(baseClassLexerStringId);
 			if (it == context.defaultClassMap.end()) {
+				auto typealias =
+				    context.typealiasMap.find(baseClassLexerStringId);
+				if (typealias != context.typealiasMap.end()) {
+					switch (typealias->second->state) {
+						case TypealiasState::TAS_UNVISITED: {
+							typealias->second->state = TAS_VISITING;
+							++context.typealiasDepth;
+							if (!typealias->second->classDeclaration->classId) {
+								typealias->second->classDeclaration->load<true>(
+								    in_data);
+							}
+							if (context.typealiasTraceIndex) {
+								if (--context.typealiasTraceIndex) {
+									context.typealiasStackTrace
+									    [context.typealiasTraceIndex] =
+									    baseClassLexerStringId;
+									return;
+								} else {
+									context.typealiasStackTrace[0] =
+									    baseClassLexerStringId;
+									std::string errorMsg =
+									    "Circular typealias detected: ";
+									bool first = true;
+									for (auto nameId :
+									     context.typealiasStackTrace) {
+										if (!first)
+											errorMsg += " -> ";
+										errorMsg += context.lexerString[nameId];
+										first = false;
+									}
+									context.typealiasDepth = 0;
+									throwError(errorMsg);
+								}
+							} else {
+								--context.typealiasDepth;
+								typealias->second->state = TAS_VISITED;
+							}
+							break;
+						}
+						case TypealiasState::TAS_VISITING: {
+							context.typealiasTraceIndex =
+							    context.typealiasDepth++;
+							context.typealiasStackTrace.resize(
+							    context.typealiasDepth);
+							context.typealiasStackTrace
+							    [context.typealiasTraceIndex] =
+							    baseClassLexerStringId;
+							return;
+						}
+					}
+					auto *classDeclaration =
+					    typealias->second->classDeclaration->copy(in_data);
+					classId = classDeclaration->classId;
+					baseClassLexerStringId =
+					    classDeclaration->baseClassLexerStringId;
+					inputClassId = classDeclaration->inputClassId;
+					if (classDeclaration->nullable) {
+						nullable = true;
+					}
+					return;
+				}
 				std::string targetName =
 				    context.lexerString[baseClassLexerStringId];
 				std::string bestSuggestion;
@@ -160,8 +225,8 @@ void ClassDeclaration::load(in_func) {
 						bestSuggestion = candidate;
 					}
 				};
-				for (const auto &pair : context.defaultClassMap) {
-					checkSuggestion(context.lexerString[pair.first]);
+				for (const auto [name, classId] : context.defaultClassMap) {
+					checkSuggestion(context.lexerString[name]);
 				}
 				for (const auto &clazz : compile.classes) {
 					if (clazz) {
@@ -190,14 +255,13 @@ void ClassDeclaration::load(in_func) {
 				    "generic type arguments '<...>' for the class");
 			}
 			if (inputClassId.size() != classInfo->genericTypeId.size()) {
-				throwError(
-				    "'" + context.lexerString[baseClassLexerStringId] +
-				    "' expects " +
-				    std::to_string(classInfo->genericTypeId.size()) +
-				    " type argument but " +
-				    std::to_string(inputClassId.size()) +
-				    " were given\nHint: Check number of type arguments "
-				    "passed to the generic class");
+				throwError("'" + context.lexerString[baseClassLexerStringId] +
+				           "' expects " +
+				           std::to_string(classInfo->genericTypeId.size()) +
+				           " type argument but " +
+				           std::to_string(inputClassId.size()) +
+				           " were given\nHint: Check number of type arguments "
+				           "passed to the generic class");
 			}
 			return;
 		}
@@ -437,6 +501,14 @@ template <bool addNullable> std::string ClassDeclaration::getName(in_func) {
 	}
 	return name;
 }
+
+template void ClassDeclaration::load<false, false>(in_func);
+template void ClassDeclaration::load<true, false>(in_func);
+template void ClassDeclaration::load<false, true>(in_func);
+template void ClassDeclaration::load<true, true>(in_func);
+
+template std::string ClassDeclaration::getName<false>(in_func);
+template std::string ClassDeclaration::getName<true>(in_func);
 
 } // namespace Autolang
 

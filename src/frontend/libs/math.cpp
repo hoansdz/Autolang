@@ -1,4 +1,4 @@
-#ifndef LIB_MATH_CPP
+﻿#ifndef LIB_MATH_CPP
 #define LIB_MATH_CPP
 
 #include "math.hpp"
@@ -377,12 +377,18 @@ class Math {
 	@native("abs") static fun abs(value: Int): Int
 	@native("abs") static fun abs(value: Float): Float
 
+
 	@native("pow") static fun pow(base: Float, exp_: Float): Float
 	@native("pow") static fun pow(base: Int, exp_: Int): Int
+
+
 	@native("sqrt") static fun sqrt(value: Float): Float
 	@native("sqrt") static fun sqrt(value: Int): Float
+
+
 	@native("exp") static fun exp(value: Float): Float
 	@native("log") static fun log(value: Float): Float
+
 
 	@native("sin") static fun sin(value: Float): Float
 	@native("sin") static fun sin(value: Int): Float
@@ -394,12 +400,16 @@ class Math {
 	@native("fmod") static fun fmod(num1: Float, num2: Float): Float
 	@native("min") static fun min(a: Int, b: Int): Int
 	@native("min") static fun min(a: Float, b: Float): Float
+
+
 	@native("max") static fun max(a: Int, b: Int): Int
 	@native("max") static fun max(a: Float, b: Float): Float
+
 
 	@native("random") static fun random(): Float
 	@native("random") static fun random(minValue: Int, maxValue: Int): Int
 	@native("random") static fun random(minValue: Float, maxValue: Float): Float
+
 }
     )###",
 	                                LibraryConfig(), std::move(nativeMap));

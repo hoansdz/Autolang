@@ -1,0 +1,35 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "common",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_C_COMPILER": "D:/mingw64/bin/gcc.exe",
+        "CMAKE_CXX_COMPILER": "D:/mingw64/bin/g++.exe"
+      }
+    },
+    {
+      "name": "default",
+      "inherits": "common",
+      "displayName": "Default (Ninja + MinGW)",
+      "description": "Ninja with MinGW"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default",
+      "displayName": "Build Default"
+    }
+  ]
+}

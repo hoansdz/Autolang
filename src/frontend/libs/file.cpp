@@ -1,4 +1,4 @@
-#ifndef LIB_FILE_CPP
+﻿#ifndef LIB_FILE_CPP
 #define LIB_FILE_CPP
 
 #include "file.hpp"
@@ -72,7 +72,7 @@ static std::string resolveFilePath(const std::string &rawPath, ANotifier &notifi
 	return rawPath;
 }
 
-inline AObject *constructor(NativeFuncInData) {
+AObject *constructor(NativeFuncInData) {
 	ClassId classId = args[0]->i;
 	const std::string &rawPath = args[1]->str->data;
 	std::string path = resolveFilePath(rawPath, notifier);
@@ -130,7 +130,7 @@ inline AObject *constructor(NativeFuncInData) {
 	return notifier.createNativeData(classId, handle, destroyFile);
 }
 
-inline AObject *read_text(NativeFuncInData) {
+AObject *read_text(NativeFuncInData) {
 	if (!notifier.vm->allowFileRead) {
 		notifier.throwException("SecurityError: File read operation is not allowed.");
 		return nullptr;
@@ -155,7 +155,7 @@ inline AObject *read_text(NativeFuncInData) {
 	return notifier.createString(buffer);
 }
 
-inline AObject *for_each_line(NativeFuncInData) {
+AObject *for_each_line(NativeFuncInData) {
 	if (!notifier.vm->allowFileRead) {
 		notifier.throwException("SecurityError: File read operation is not allowed.");
 		return nullptr;
@@ -202,7 +202,7 @@ inline AObject *for_each_line(NativeFuncInData) {
 	return nullptr;
 }
 
-inline AObject *write(NativeFuncInData) {
+AObject *write(NativeFuncInData) {
 	if (!notifier.vm->allowFileWrite) {
 		notifier.throwException("SecurityError: File write operation is not allowed.");
 		return nullptr;
@@ -220,7 +220,7 @@ inline AObject *write(NativeFuncInData) {
 	return nullptr;
 }
 
-inline AObject *seek(NativeFuncInData) {
+AObject *seek(NativeFuncInData) {
 	auto handle = static_cast<AFileHandle *>(args[0]->data->data);
 	if (!handle->fp)
 		return nullptr;
@@ -230,7 +230,7 @@ inline AObject *seek(NativeFuncInData) {
 	return nullptr;
 }
 
-inline AObject *close(NativeFuncInData) {
+AObject *close(NativeFuncInData) {
 	auto handle = static_cast<AFileHandle *>(args[0]->data->data);
 	if (handle->fp) {
 		fclose(handle->fp);
@@ -239,7 +239,7 @@ inline AObject *close(NativeFuncInData) {
 	return nullptr;
 }
 
-inline AObject *exists(NativeFuncInData) {
+AObject *exists(NativeFuncInData) {
 	if (!notifier.vm->allowFileRead) {
 		notifier.throwException("SecurityError: File read operation is not allowed.");
 		return nullptr;
@@ -255,7 +255,7 @@ inline AObject *exists(NativeFuncInData) {
 	return notifier.createBool(result);
 }
 
-inline AObject *delete_file(NativeFuncInData) {
+AObject *delete_file(NativeFuncInData) {
 	if (!notifier.vm->allowFileWrite || !notifier.vm->allowFileDelete) {
 		notifier.throwException("SecurityError: File delete operation is not allowed.");
 		return nullptr;
@@ -270,7 +270,7 @@ inline AObject *delete_file(NativeFuncInData) {
 	return notifier.createBool(success);
 }
 
-inline AObject *get_parent(NativeFuncInData) {
+AObject *get_parent(NativeFuncInData) {
 	const std::string &rawPath = args[0]->str->data;
 	std::string path = resolveFilePath(rawPath, notifier);
 	size_t sep_pos = path.find_last_of("/\\");
@@ -284,7 +284,7 @@ inline AObject *get_parent(NativeFuncInData) {
 	return notifier.createString(path.substr(0, sep_pos));
 }
 
-inline AObject *get_absolute_path(NativeFuncInData) {
+AObject *get_absolute_path(NativeFuncInData) {
 	if (!notifier.vm->allowFileRead) {
 		notifier.throwException("SecurityError: File read operation is not allowed.");
 		return nullptr;
@@ -305,7 +305,7 @@ inline AObject *get_absolute_path(NativeFuncInData) {
 	return notifier.createString(absPath);
 }
 
-inline AObject *is_directory(NativeFuncInData) {
+AObject *is_directory(NativeFuncInData) {
 	if (!notifier.vm->allowFileRead) {
 		notifier.throwException("SecurityError: File read operation is not allowed.");
 		return nullptr;
@@ -326,7 +326,7 @@ inline AObject *is_directory(NativeFuncInData) {
 	return notifier.createBool(result);
 }
 
-inline AObject *is_file(NativeFuncInData) {
+AObject *is_file(NativeFuncInData) {
 	if (!notifier.vm->allowFileRead) {
 		notifier.throwException("SecurityError: File read operation is not allowed.");
 		return nullptr;
@@ -347,7 +347,7 @@ inline AObject *is_file(NativeFuncInData) {
 	return notifier.createBool(result);
 }
 
-inline AObject *get_all_files(NativeFuncInData) {
+AObject *get_all_files(NativeFuncInData) {
 	if (!notifier.vm->allowFileRead) {
 		notifier.throwException("SecurityError: File read operation is not allowed.");
 		return nullptr;
@@ -388,7 +388,7 @@ inline AObject *get_all_files(NativeFuncInData) {
 	return newArr;
 }
 
-inline AObject *get_name(NativeFuncInData) {
+AObject *get_name(NativeFuncInData) {
 	const std::string &rawPath = args[0]->str->data;
 	std::string path = resolveFilePath(rawPath, notifier);
 	size_t sep_pos = path.find_last_of("/\\");
@@ -401,7 +401,7 @@ inline AObject *get_name(NativeFuncInData) {
 	return notifier.createString(path.substr(sep_pos + 1));
 }
 
-inline AObject *get_size(NativeFuncInData) {
+AObject *get_size(NativeFuncInData) {
 	if (!notifier.vm->allowFileRead) {
 		notifier.throwException("SecurityError: File read operation is not allowed.");
 		return nullptr;
@@ -423,7 +423,7 @@ inline AObject *get_size(NativeFuncInData) {
 	return nullptr;
 }
 
-inline AObject *get_extension(NativeFuncInData) {
+AObject *get_extension(NativeFuncInData) {
 	const std::string &rawPath = args[0]->str->data;
 	std::string path = resolveFilePath(rawPath, notifier);
 	size_t dot_pos = path.find_last_of('.');
@@ -440,7 +440,7 @@ inline AObject *get_extension(NativeFuncInData) {
 	return notifier.createString(path.substr(dot_pos));
 }
 
-inline AObject *get_last_modified(NativeFuncInData) {
+AObject *get_last_modified(NativeFuncInData) {
 	if (!notifier.vm->allowFileRead) {
 		notifier.throwException("SecurityError: File read operation is not allowed.");
 		return nullptr;

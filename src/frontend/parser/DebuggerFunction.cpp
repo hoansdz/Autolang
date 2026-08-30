@@ -739,6 +739,9 @@ ReturnNode *loadReturn(in_func, size_t &i) {
 	                               loadExpression(in_data, 0, i));
 }
 
+template CreateClosureNode *loadClosure<false>(in_func, size_t &i);
+template CreateClosureNode *loadClosure<true>(in_func, size_t &i);
+
 } // namespace Autolang
 
 #endif

@@ -1,4 +1,4 @@
-#ifndef LIBS_LIST_CPP
+﻿#ifndef LIBS_LIST_CPP
 #define LIBS_LIST_CPP
 
 #include "array.hpp"
@@ -430,7 +430,7 @@ AObject *clear(NativeFuncInData) {
 	return nullptr;
 }
 
-inline std::string to_string(ANotifier &notifier, AObject *obj) {
+std::string to_string(ANotifier &notifier, AObject *obj) {
 	if (obj->member->size == 0) {
 		return "[]";
 	}
@@ -453,3 +453,4 @@ AObject *to_string(NativeFuncInData) {
 } // namespace Autolang
 
 #endif
+

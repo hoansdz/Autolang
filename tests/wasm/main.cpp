@@ -177,10 +177,10 @@ class CompilerWrapper {
 	bool compileAndRun(std::string path, std::string data) {
 		std::streambuf *old = std::cerr.rdbuf(buffer.rdbuf());
 		try {
-			compiler.compileAndRun(path.c_str(), data.c_str(),
-			                       mainSourceConfig);
+			bool result = compiler.compileAndRun(
+			    path.c_str(), data.c_str(), mainSourceConfig);
 			std::cerr.rdbuf(old);
-			return true;
+			return result;
 		} catch (const std::exception &e) {
 			std::cerr << e.what() << "\n";
 		}
@@ -213,10 +213,8 @@ class CompilerWrapper {
 		try {
 			compiler.run();
 		} catch (const std::exception &e) {
-			compiler.refresh();
 			return false;
 		}
-		compiler.refresh();
 		return true;
 	}
 

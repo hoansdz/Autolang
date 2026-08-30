@@ -1,4 +1,4 @@
-#ifndef LIBS_VM_CPP
+﻿#ifndef LIBS_VM_CPP
 #define LIBS_VM_CPP
 
 #include "frontend/ACompiler.hpp"
@@ -36,3 +36,4 @@ class VM {
 } // namespace Autolang
 
 #endif
+

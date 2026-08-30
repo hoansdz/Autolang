@@ -113,6 +113,7 @@ class ACompiler {
 	CompilerState state;
 	bool loadedMainSource = false;
 	bool loadedBuiltIn = false;
+	bool shouldRefresh = false;
 
 	const char* exceptionMessage = nullptr;
 

@@ -1,4 +1,4 @@
-#ifndef LIB_HTTP_CPP
+﻿#ifndef LIB_HTTP_CPP
 #define LIB_HTTP_CPP
 
 #include "backend/libs/map.hpp"
@@ -126,7 +126,7 @@ static void on_fetch_error(emscripten_fetch_t *fetch) {
 }
 #endif
 
-inline AObject *get(NativeFuncInData) {
+AObject *get(NativeFuncInData) {
 	const char *req_url = args[0]->str->data;
 	long timeout_ms = static_cast<long>(args[1]->i);
 	ClassId resClassId = args[2]->i;
@@ -228,7 +228,7 @@ inline AObject *get(NativeFuncInData) {
 	return resObj;
 }
 
-inline AObject *post(NativeFuncInData) {
+AObject *post(NativeFuncInData) {
 	const char *req_url = args[0]->str->data;
 	const std::string &body = args[1]->str->data;
 	long timeout_ms = static_cast<long>(args[2]->i);
@@ -337,7 +337,7 @@ inline AObject *post(NativeFuncInData) {
 	return resObj;
 }
 
-inline AObject *http_delete(NativeFuncInData) {
+AObject *http_delete(NativeFuncInData) {
 	const char *req_url = args[0]->str->data;
 	long timeout_ms = static_cast<long>(args[1]->i);
 	ClassId resClassId = args[2]->i;
@@ -440,7 +440,7 @@ inline AObject *http_delete(NativeFuncInData) {
 	return resObj;
 }
 
-inline AObject *get_all(NativeFuncInData) {
+AObject *get_all(NativeFuncInData) {
 	AObject *arrayObj = args[0];
 	ClassId arrayClassId = args[1]->i;
 	long timeout_ms = static_cast<long>(args[2]->i);

@@ -1,0 +1,262 @@
+// ============================================================
+// Typealias Correctness Tests
+// ============================================================
+
+// 1. Basic typealias for primitive types
+typealias D = Float
+typealias I = Int
+typealias S = String
+typealias B = Bool
+
+typealias TEST1 = TEST2
+typealias TEST2 = TEST3
+typealias TEST3 = TEST1
+
+// 2. Typealias for user-defined classes
+class Person(val name: String, val age: Int) {
+	fun greet(): String = "Hi, I'm ${name}"
+}
+
+typealias Human = Person
+
+// 3. Typealias for generic types
+typealias IntList = Array<Int>
+typealias StringSet = Set<String>
+typealias ScoreMap = Map<String, Float>
+
+// 4. Typealias for nullable types
+typealias NullableInt = Int?
+
+// 5. Typealias for generic class with type parameters
+class Box<T>(val value: T)
+typealias IntBox = Box<Int>
+typealias StringBox = Box<String>
+
+// 6. Typealias chaining (alias of alias)
+typealias E = D  // D = Float
+
+// 7. Typealias for function types
+typealias IntToString = (Int) -> String
+typealias BinaryOp = (Int, Int) -> Int
+
+// 8. Typealias with inheritance
+class Animal() {
+	fun sound(): String = "..."
+}
+class Dog extends Animal {
+	constructor() { super() }
+	@override fun sound(): String = "Woof"
+}
+typealias Pet = Animal
+
+// 9. Multiple typealiases in same file
+typealias Coordinate = Array<Float>
+typealias Point = Array<Float>
+
+// ============================================================
+// Helper functions and classes (top-level)
+// ============================================================
+
+fun greetHuman(h: Human): String = h.greet()
+fun createHuman(): Human = Person("Bob", 25)
+fun createBox(): IntBox = Box<Int>(42)
+fun getPetSound(p: Pet): String = p.sound()
+
+class Config {
+	static val defaultName: S = "Default"
+	static fun createDefault(): S = defaultName
+}
+
+// ============================================================
+// Test Functions
+// ============================================================
+
+fun testTypealiasPrimitive() {
+	// Basic primitive typealias
+	val d: D = 3.14
+	assert(d is D, __FILE__, __LINE__)
+	assert(d is Float, __FILE__, __LINE__)
+	assert(d == 3.14, __FILE__, __LINE__)
+	assert(d.toString().contains("."), __FILE__, __LINE__)
+
+	val i: I = 42
+	assert(i is I, __FILE__, __LINE__)
+	assert(i is Int, __FILE__, __LINE__)
+	assert(i == 42, __FILE__, __LINE__)
+
+	val s: S = "Hello"
+	assert(s is S, __FILE__, __LINE__)
+	assert(s is String, __FILE__, __LINE__)
+	assert(s == "Hello", __FILE__, __LINE__)
+
+	val b: B = true
+	assert(b is B, __FILE__, __LINE__)
+	assert(b is Bool, __FILE__, __LINE__)
+	assert(b == true, __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+fun testTypealiasUserClass() {
+	val human: Human = Person("Alice", 30)
+	assert(human is Human, __FILE__, __LINE__)
+	assert(human is Person, __FILE__, __LINE__)
+	assert(human.name == "Alice", __FILE__, __LINE__)
+	assert(human.age == 30, __FILE__, __LINE__)
+	assert(human.greet() == "Hi, I'm Alice", __FILE__, __LINE__)
+
+	// Typealias in function parameter
+	assert(greetHuman(human) == "Hi, I'm Alice", __FILE__, __LINE__)
+
+	// Typealias in function return type
+	val bob = createHuman()
+	assert(bob.name == "Bob", __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+fun testTypealiasGeneric() {
+	// Array typealias
+	val list: IntList = [1, 2, 3]
+	assert(list is IntList, __FILE__, __LINE__)
+	assert(list is Array<Int>, __FILE__, __LINE__)
+	assert(list.size() == 3, __FILE__, __LINE__)
+	assert(list.get(0) == 1, __FILE__, __LINE__)
+	list.add(4)
+	assert(list.size() == 4, __FILE__, __LINE__)
+
+	// Set typealias
+	val set: StringSet = {"a", "b", "c"}
+	assert(set is StringSet, __FILE__, __LINE__)
+	assert(set is Set<String>, __FILE__, __LINE__)
+	assert(set.contains("a"), __FILE__, __LINE__)
+	assert(!set.contains("z"), __FILE__, __LINE__)
+
+	// Map typealias
+	val scores: ScoreMap = {"Alice": 95.5, "Bob": 87.0}
+	assert(scores is ScoreMap, __FILE__, __LINE__)
+	assert(scores is Map<String, Float>, __FILE__, __LINE__)
+	assert(scores.get("Alice") == 95.5, __FILE__, __LINE__)
+	assert(scores.get("Bob") == 87.0, __FILE__, __LINE__)
+
+	// Collection with auto-cast via typealias
+	val floatList: IntList = [1, 2, 3]
+	assert(floatList.get(0) == 1, __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+fun testTypealiasNullable() {
+	// Hiện chỉ test biến nullable thông thường
+	val a: NullableInt = null
+	assert(a == null, __FILE__, __LINE__)
+
+	val b: Int? = 5
+	assert(b != null, __FILE__, __LINE__)
+	assert(b! == 5, __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+fun testTypealiasGenericClass() {
+	val intBox: IntBox = Box<Int>(100)
+	assert(intBox is IntBox, __FILE__, __LINE__)
+	assert(intBox is Box<Int>, __FILE__, __LINE__)
+	assert(intBox.value == 100, __FILE__, __LINE__)
+
+	val strBox: StringBox = Box<String>("Hello")
+	assert(strBox.value == "Hello", __FILE__, __LINE__)
+
+	// Generic class with typealias in function
+	val box = createBox()
+	assert(box.value == 42, __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+fun testTypealiasChaining() {
+	// E = D = Float
+	val e: E = 2.718
+	assert(e is E, __FILE__, __LINE__)
+	assert(e is D, __FILE__, __LINE__)
+	assert(e is Float, __FILE__, __LINE__)
+	assert(e == 2.718, __FILE__, __LINE__)
+	assert(e.toString().contains("."), __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+fun testTypealiasWithInheritance() {
+	val pet: Pet = Dog()
+	assert(pet is Pet, __FILE__, __LINE__)
+	assert(pet is Animal, __FILE__, __LINE__)
+	assert(pet.sound() == "Woof", __FILE__, __LINE__)
+
+	// Upcast through typealias
+	assert(getPetSound(Dog()) == "Woof", __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+fun testTypealiasInExpression() {
+	// Typealias in variable declaration with inference
+	val a = 3.14
+	val d: D = a
+	assert(d == 3.14, __FILE__, __LINE__)
+
+	// Arithmetic with typealias
+	val result: D = 1.5 + 2.5
+	assert(result == 4.0, __FILE__, __LINE__)
+
+	// Typealias in when expression
+	val x: I = 5
+	val description = when (x) {
+		1 -> "one"
+		5 -> "five"
+		else -> "other"
+	}
+	assert(description == "five", __FILE__, __LINE__)
+
+	// Typealias in if expression
+	val y: I = 10
+	val bigger = if (y > 5) y else 0
+	assert(bigger == 10, __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+fun testTypealiasWithStatic() {
+	assert(Config.defaultName == "Default", __FILE__, __LINE__)
+	assert(Config.createDefault() == "Default", __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+fun testTypealiasMultiple() {
+	val coord: Coordinate = [1.0, 2.0, 3.0]
+	val point: Point = [4.0, 5.0]
+
+	assert(coord is Coordinate, __FILE__, __LINE__)
+	assert(point is Point, __FILE__, __LINE__)
+	assert(coord is Array<Float>, __FILE__, __LINE__)
+	assert(point is Array<Float>, __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
+
+// ============================================================
+// Run all typealias tests
+// ============================================================
+
+testTypealiasPrimitive()
+testTypealiasUserClass()
+testTypealiasGeneric()
+testTypealiasNullable()
+testTypealiasGenericClass()
+testTypealiasChaining()
+testTypealiasWithInheritance()
+testTypealiasInExpression()
+testTypealiasWithStatic()
+testTypealiasMultiple()
+
+println("All typealias tests passed!")

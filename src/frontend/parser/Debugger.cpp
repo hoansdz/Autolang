@@ -385,6 +385,10 @@ initial:;
 			context.modifierflags |= ModifierFlags::MF_STATIC;
 			goto initial;
 		}
+		case Lexer::TokenType::TYPEALIAS: {
+			loadTypealias(in_data, i);
+			return nullptr;
+		}
 		case Lexer::TokenType::LATEINIT: {
 			if (!(context.mode->flags & LibraryFlags::ALLOW_LATEINIT_KEYWORD)) {
 				throw ParserError(
@@ -1969,6 +1973,14 @@ foundFlag:
 	           : context.constValuePool.push(
 	                 token->line, static_cast<double>(std::stod(data)));
 }
+
+template Parameter *loadListDeclaration<Lexer::TokenType::RPAREN, true, true>(in_func, size_t &i, bool allowVar);
+template Parameter *loadListDeclaration<Autolang::Lexer::OR, false, false>(in_func, size_t &i, bool allowVar);
+template std::vector<HasClassIdNode *> loadListArgument<false>(in_func, size_t &i);
+template std::vector<HasClassIdNode *> loadListArgument<true>(in_func, size_t &i);
+
+template bool loadBody<false>(in_func, SmallVector<ExprNode *, 8> &nodes, size_t &i, bool createScope);
+template bool loadBody<true>(in_func, SmallVector<ExprNode *, 8> &nodes, size_t &i, bool createScope);
 
 } // namespace Autolang
 

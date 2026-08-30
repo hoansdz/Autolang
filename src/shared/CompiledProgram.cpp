@@ -163,6 +163,18 @@ CompiledProgram::~CompiledProgram() {
 	constObjectAllocator.destroy();
 }
 
+template FunctionId CompiledProgram::registerFunction<false>(const char *path, AClass *clazz,
+                                                             std::string name, ClassId *args,
+                                                             uint32_t argSize, ClassId returnId,
+                                                             uint32_t functionFlags);
+template FunctionId CompiledProgram::registerFunction<true>(const char *path, AClass *clazz,
+                                                            std::string name, ClassId *args,
+                                                            uint32_t argSize, ClassId returnId,
+                                                            uint32_t functionFlags);
+
+template Offset CompiledProgram::registerConstPool<int64_t>(HashMap<int64_t, uint32_t> &map, int64_t value);
+template Offset CompiledProgram::registerConstPool<double>(HashMap<double, uint32_t> &map, double value);
+
 } // namespace Autolang
 
 #endif

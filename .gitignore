@@ -1,9 +1,52 @@
+# Build artifacts and CMake
+build*/
 build/
-.vscode
-.VSCodeCounter
-.cache
-.continue
-.dist
-.clang-format
-.CMakeLists.txt
-.cache/clangd/index/
+wheelhouse/
+bin/
+out/
+dist/
+__cmake_systeminformation/
+SystemInformation.in
+CMakeUserPresets.json
+compile_commands.json
+
+# Compiled binaries and objects
+*.obj
+*.o
+*.lib
+*.a
+*.dll
+*.so
+*.dylib
+*.exe
+*.pdb
+*.ilk
+
+# IDE & Editor caches
+.vscode/
+.vs/
+.idea/
+.VSCodeCounter/
+.continue/
+.cache/
+
+# Python & Packaging
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+*.egg-info/
+
+# Node.js
+node_modules/
+
+# Temporary test files
+tests/b.atl
+tests/tmp*.atl
+test_*.atl
+
+# Logs and temporary files
+*.log
+*.tmp
+out*.txt
+err*.txt

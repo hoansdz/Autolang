@@ -25,6 +25,19 @@ enum ModifierFlags : uint32_t {
 	MF_LATEINIT = 1u << 4,
 };
 
+enum TypealiasState : uint8_t {
+	TAS_VISITED = 1u << 0,
+	TAS_VISITING = 1u << 1,
+	TAS_UNVISITED = 1u << 2,
+};
+
+struct TypealiasData {
+	ClassDeclaration *classDeclaration;
+	TypealiasState state;
+	TypealiasData(ClassDeclaration *classDeclaration, TypealiasState state)
+	    : classDeclaration(classDeclaration), state(state) {}
+};
+
 enum AnnotationFlags : uint32_t {
 	AN_OVERRIDE = 1u << 0,
 	AN_NO_OVERRIDE = 1u << 1,
@@ -119,8 +132,10 @@ struct ParserContext {
 	NonReallocatePool<CreateClassNode> newClasses;
 	HashMap<LexerStringId, ClassId> defaultClassMap;
 
-	HashMap<uint32_t, CreateClassNode *> newDefaultClassesMap;
-	HashMap<uint32_t, CreateClassNode *> newGenericClassesMap;
+	HashMap<LexerStringId, TypealiasData *> typealiasMap;
+
+	HashMap<ClassId, CreateClassNode *> newDefaultClassesMap;
+	HashMap<ClassId, CreateClassNode *> newGenericClassesMap;
 	ChunkArena<ClassDeclaration, 64> classDeclarationAllocator;
 	std::vector<ClassDeclaration *> allClassDeclarations;
 
@@ -152,7 +167,13 @@ struct ParserContext {
 	std::vector<Parameter *> defaultValueParameter;
 	std::vector<CreateClosureNode *> allClosureNode;
 
+	//Typealias stack trace
+	uint32_t typealiasDepth = 0;
+	uint32_t typealiasTraceIndex = 0;
+	std::vector<LexerStringId> typealiasStackTrace;
+
 	NonReallocatePool<DeclarationNode> declarationNodePool;
+	ChunkArena<TypealiasData, 8> typealiasPool;
 	ChunkArena<Parameter, 64> parameterPool;
 	ChunkArena<ReturnNode, 64> returnPool;
 	ChunkArena<SetNode, 128> setValuePool;

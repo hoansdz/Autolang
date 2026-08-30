@@ -1,4 +1,4 @@
-#ifndef LIBS_TIME_CPP
+﻿#ifndef LIBS_TIME_CPP
 #define LIBS_TIME_CPP
 
 #include "frontend/ACompiler.hpp"
@@ -12,7 +12,7 @@ class ACompiler;
 namespace Libs {
 namespace time {
 
-inline AObject *now(NativeFuncInData) {
+AObject *now(NativeFuncInData) {
 	auto now = std::chrono::system_clock::now();
 	auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
 	              now.time_since_epoch())
@@ -21,7 +21,7 @@ inline AObject *now(NativeFuncInData) {
 	return notifier.createInt(ms);
 }
 
-inline AObject *format(NativeFuncInData) {
+AObject *format(NativeFuncInData) {
 
 	int64_t ms = args[0]->i;
 

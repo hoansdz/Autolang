@@ -139,6 +139,9 @@ void CreateFuncNode::optimize(in_func) {
 	}
 }
 
+template void CreateFuncNode::pushFunction<false>(in_func);
+template void CreateFuncNode::pushFunction<true>(in_func);
+
 } // namespace Autolang
 
 #endif

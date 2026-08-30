@@ -17,6 +17,14 @@ ExprNode *UnknowNode::resolve(in_func) {
 		}
 	}
 
+	{
+		auto it = context.typealiasMap.find(nameId);
+		if (it != context.typealiasMap.end()) {
+			auto result = context.classAccessPool.push(line, *(it->second->classDeclaration->classId));
+			return result;
+		}
+	}
+
 	if (contextCallClassId) {
 		auto *clazz = compile.classes[*contextCallClassId];
 		auto *classInfo = context.classInfo[*contextCallClassId];

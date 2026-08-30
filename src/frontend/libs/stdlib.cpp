@@ -1,4 +1,4 @@
-#ifndef LIBS_STDLIB_CPP
+﻿#ifndef LIBS_STDLIB_CPP
 #define LIBS_STDLIB_CPP
 
 #include "backend/libs/array.hpp"
@@ -56,17 +56,46 @@ class String {
 	@native("string_size")
 	fun size(): Int
 
+	@native("string_size")
+	fun length(): Int
+
+
+
 	@native("str_is_empty")
 	fun isEmpty(): Bool
+
+	@native("str_is_empty")
+	fun empty(): Bool
+
+	@native("str_is_empty")
+	fun is_empty(): Bool
+
+
 
 	@native("str_to_int")
 	fun toInt(): Int
 
+	@native("str_to_int")
+	fun parseInt(): Int
+
+
+
 	@native("str_to_float")
 	fun toFloat(): Float
 
+	@native("str_to_float")
+	fun parseFloat(): Float
+
+	@native("str_to_float")
+	fun toDouble(): Float
+
+
+
 	@native("str_get")
 	fun get(position: Int): String
+
+	@native("str_get")
+	fun at(position: Int): String
 
 	// @native("str_set")
 	// fun set(position: Int, chr: Int)
@@ -81,37 +110,98 @@ class String {
 	fun substr(from: Int): String
 
 	@native("str_substr")
-	fun substr(from: Int, length: Int): String
+	fun substring(from: Int): String
+
+	@native("str_substr")
+	fun slice(from: Int): String
+
+	@native("str_substr")
+	fun substr(from: Int, subLength: Int): String
+
+	@native("str_substr")
+	fun substring(from: Int, subLength: Int): String
+
+	@native("str_substr")
+	fun slice(from: Int, subLength: Int): String
+
+
 
 	@native("str_trim")
 	fun trim(): String
 
+	@native("str_trim")
+	fun strip(): String
+
+
+
 	@native("str_contains")
 	fun contains(sub: String): Bool
+
+	@native("str_contains")
+	fun includes(sub: String): Bool
+
+
 
 	@native("str_index_of")
 	fun indexOf(sub: String): Int
 
+	@native("str_index_of")
+	fun find(sub: String): Int
+
+
+
 	@native("str_split")
-	fun split(delimiter: String, classId: Int = getClassId(Array<String>)): Array<String>
+	fun split(delimiter: String): Array<String>
+
+
 
 	@native("str_replace")
 	fun replace(old: String, new: String): String
 
+	@native("str_replace")
+	fun replaceAll(old: String, new: String): String
+
+
+
 	@native("str_starts_with")
     fun startsWith(prefix: String): Bool
+
+
 
     @native("str_ends_with")
     fun endsWith(suffix: String): Bool
 
+
+
     @native("str_last_index_of")
     fun lastIndexOf(sub: String): Int
+
+    @native("str_last_index_of")
+    fun rfind(sub: String): Int
+
+
 
     @native("str_to_lower")
     fun toLowerCase(): String
 
+    @native("str_to_lower")
+    fun toLower(): String
+
+    @native("str_to_lower")
+    fun lower(): String
+
+
+
     @native("str_to_upper")
     fun toUpperCase(): String
+
+    @native("str_to_upper")
+    fun toUpper(): String
+
+    @native("str_to_upper")
+    fun upper(): String
+
+
 }
 
 @no_constructor
@@ -158,53 +248,131 @@ class Array<T> {
 	@native("arr_add")
 	fun add(value: T)
 
+	@native("arr_add")
+	fun append(value: T)
+
+	@native("arr_add")
+	fun push(value: T)
+
+	@native("arr_add")
+	fun push_back(value: T)
+
 	@native("arr_remove")
 	fun remove(index: Int)
+
+	@native("arr_remove")
+	fun removeAt(index: Int)
+
+	@native("arr_remove")
+	fun erase(index: Int)
+
+
 
 	@native("arr_size")
 	fun size(): Int
 
+	@native("arr_size")
+	fun length(): Int
+
+
+
+	@native("arr_size")
+	fun len(): Int
+
 	@native("arr_is_empty")
 	fun isEmpty(): Bool
+
+	@native("arr_is_empty")
+	fun empty(): Bool
+
+	@native("arr_is_empty")
+	fun is_empty(): Bool
 
 	@native("arr_get")
 	fun get(index: Int): T
 
+	@native("arr_get")
+	fun at(index: Int): T
+
+
+
 	@native("arr_set")
 	fun set(index: Int, value: T)
+
+
 
 	@native("arr_clear")
 	fun clear()
 
+
+
 	@native("arr_contains")
 	fun contains(value: T): Bool
+
+	@native("arr_contains")
+	fun includes(value: T): Bool
+
+
 
 	@native("arr_for_each")
 	fun forEach(fn: (T) -> Void)
 
+
+
 	@native("arr_for_each_with_index")
 	fun forEach(fn: (T, Int) -> Void)
+
+	@native("arr_for_each_with_index")
+	fun forEachIndexed(fn: (T, Int) -> Void)
 
 	@native("arr_filter")
 	fun filter(fn: (T) -> Bool): Array<T>
 
+	@native("arr_filter")
+	fun where(fn: (T) -> Bool): Array<T>
+
+
+
 	@native("arr_sort")
 	fun sort(comparator: (T, T) -> Int)
+
+
 
 	@native("arr_slice")
 	fun slice(from: Int, to: Int): Array<T>
 
+	@native("arr_slice")
+	fun subList(from: Int, to: Int): Array<T>
+
+
+
 	@native("arr_index_of")
 	fun indexOf(value: T): Int
+
+	@native("arr_index_of")
+	fun findIndex(value: T): Int
+
+	@native("arr_index_of")
+	fun find(value: T): Int
 
 	@native("arr_reserve")
 	fun reserve(capacity: Int)
 
+	@native("arr_reserve")
+	fun ensureCapacity(capacity: Int)
+
 	@native("arr_pop")
 	fun pop(): T?
 
+
+
+	@native("arr_pop")
+	fun pop_back(): T?
+
 	@native("arr_insert")
 	fun insert(index: Int, value: T)
+
+
 
 	@native("arr_to_string")
 	fun toString(): String
@@ -218,35 +386,79 @@ class Set<T> {
 	@native("set_add")
 	fun add(value: T)
 
+	@native("set_add")
+	fun insert(value: T)
+
+
+
 	@native("set_remove")
 	fun remove(value: T)
+
+	@native("set_remove")
+	fun delete(value: T)
+
+	@native("set_remove")
+	fun erase(value: T)
+
+	@native("set_remove")
+	fun discard(value: T)
 
 	@native("set_size")
 	fun size(): Int
 
+
+
+	@native("set_size")
+	fun len(): Int
+
 	@native("set_contains")
 	fun contains(value: T): Bool
+
+	@native("set_contains")
+	fun has(value: T): Bool
+
+
 
 	@native("set_clear")
 	fun clear()
 
+
+
 	@native("set_is_empty")
     fun isEmpty(): Bool
+
+	@native("set_is_empty")
+    fun empty(): Bool
+
+	@native("set_is_empty")
+    fun is_empty(): Bool
 
     @native("set_for_each")
     fun forEach(fn: (T) -> Void)
 
+
+
     @native("set_to_array")
     fun toArray(): Array<T>
+
+    @native("set_to_array")
+    fun toList(): Array<T>
 
 	@native("set_union")
     fun union(other: Set<T>): Set<T>
 
+
+
     @native("set_intersect")
     fun intersect(other: Set<T>): Set<T>
 
+    @native("set_intersect")
+    fun intersection(other: Set<T>): Set<T>
+
     @native("set_difference")
     fun difference(other: Set<T>): Set<T>
+
+
 	
 	@native("set_to_string")
 	fun toString(): String
@@ -260,35 +472,79 @@ class Map<K, V> {
 	@native("map_get")
 	fun get(key: K): V?
 
+
+
 	@native("map_get_or_default")
 	fun getOrDefault(key: K, defaultValue: V): V
+
+
 	
 	@native("map_set")
 	fun set(key: K, value: V)
 
+	@native("map_set")
+	fun put(key: K, value: V)
+
+
+
+	@native("map_set")
+	fun setItem(key: K, value: V)
+
 	@native("map_is_empty")
     fun isEmpty(): Bool
+
+	@native("map_is_empty")
+    fun empty(): Bool
+
+	@native("map_is_empty")
+    fun is_empty(): Bool
 
     @native("map_contains_key")
     fun containsKey(key: K): Bool
 
+
+
 	@native("map_size")
 	fun size(): Int
+
+
+
+	@native("map_size")
+	fun len(): Int
 
 	@native("map_for_each")
     fun forEach(fn: (K, V) -> Void)
 
+
+
 	@native("map_keys")
-    fun keys(classId: Int = getClassId(Array<K>)): Array<K>
+    fun keys(): Array<K>
+
+	@native("map_keys")
+    fun keySet(): Array<K>
+
+
 
 	@native("map_values")
-    fun values(classId: Int = getClassId(Array<V>)): Array<V>
+    fun values(): Array<V>
+
+
 
 	@native("map_remove")
 	fun remove(key: K)
 
+	@native("map_remove")
+	fun delete(key: K)
+
+	@native("map_remove")
+	fun erase(key: K)
+
+
+
 	@native("map_clear")
 	fun clear()
+
+
 
 	@native("map_to_string")
 	fun toString(): String

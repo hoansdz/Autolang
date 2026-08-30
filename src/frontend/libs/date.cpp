@@ -1,4 +1,4 @@
-#ifndef LIB_DATE_CPP
+﻿#ifndef LIB_DATE_CPP
 #define LIB_DATE_CPP
 
 #include "date.hpp"
@@ -47,13 +47,13 @@ inline int64_t getCurrentTimeMs() {
 	    .count();
 }
 
-inline AObject *constructor_now(NativeFuncInData) {
+AObject *constructor_now(NativeFuncInData) {
 	ClassId classId = args[0]->i;
 	auto handle = new ADateHandle{getCurrentTimeMs()};
 	return notifier.createNativeData(classId, handle, destroyDate);
 }
 
-inline AObject *constructor_ts(NativeFuncInData) {
+AObject *constructor_ts(NativeFuncInData) {
 	int64_t ts = args[0]->i;
 	ClassId classId = args[1]->i;
 	auto handle = new ADateHandle{ts};
@@ -72,37 +72,37 @@ inline AObject *constructor_ts(NativeFuncInData) {
 		return nullptr;                                                        \
 	}
 
-inline AObject *get_year(NativeFuncInData) {
+AObject *get_year(NativeFuncInData) {
 	GET_VALID_TM_OR_RETURN_NULL(args[0]->data->data, tm);
 	return notifier.createInt(tm.tm_year + 1900);
 }
 
-inline AObject *get_month(NativeFuncInData) {
+AObject *get_month(NativeFuncInData) {
 	GET_VALID_TM_OR_RETURN_NULL(args[0]->data->data, tm);
 	return notifier.createInt(tm.tm_mon + 1);
 }
 
-inline AObject *get_day(NativeFuncInData) {
+AObject *get_day(NativeFuncInData) {
 	GET_VALID_TM_OR_RETURN_NULL(args[0]->data->data, tm);
 	return notifier.createInt(tm.tm_mday);
 }
 
-inline AObject *get_hours(NativeFuncInData) {
+AObject *get_hours(NativeFuncInData) {
 	GET_VALID_TM_OR_RETURN_NULL(args[0]->data->data, tm);
 	return notifier.createInt(tm.tm_hour);
 }
 
-inline AObject *get_minutes(NativeFuncInData) {
+AObject *get_minutes(NativeFuncInData) {
 	GET_VALID_TM_OR_RETURN_NULL(args[0]->data->data, tm);
 	return notifier.createInt(tm.tm_min);
 }
 
-inline AObject *get_seconds(NativeFuncInData) {
+AObject *get_seconds(NativeFuncInData) {
 	GET_VALID_TM_OR_RETURN_NULL(args[0]->data->data, tm);
 	return notifier.createInt(tm.tm_sec);
 }
 
-inline AObject *get_time(NativeFuncInData) {
+AObject *get_time(NativeFuncInData) {
 	auto handle = static_cast<ADateHandle *>(args[0]->data->data);
 	if (!handle) {
 		notifier.throwException("Date instance is null or uninitialized");
@@ -111,7 +111,7 @@ inline AObject *get_time(NativeFuncInData) {
 	return notifier.createInt(handle->timestamp_ms);
 }
 
-inline AObject *format(NativeFuncInData) {
+AObject *format(NativeFuncInData) {
 	GET_VALID_TM_OR_RETURN_NULL(args[0]->data->data, tm);
 	const std::string &pattern = args[1]->str->data;
 
@@ -126,11 +126,11 @@ inline AObject *format(NativeFuncInData) {
 	return notifier.createString(ss.str());
 }
 
-inline AObject *current_time_millis(NativeFuncInData) {
+AObject *current_time_millis(NativeFuncInData) {
 	return notifier.createInt(getCurrentTimeMs());
 }
 
-inline AObject *add_days(NativeFuncInData) {
+AObject *add_days(NativeFuncInData) {
 	auto handle = static_cast<ADateHandle *>(args[0]->data->data);
 	if (!handle) {
 		notifier.throwException("Date instance is null");
@@ -141,7 +141,7 @@ inline AObject *add_days(NativeFuncInData) {
 	return args[0];
 }
 
-inline AObject *add_hours(NativeFuncInData) {
+AObject *add_hours(NativeFuncInData) {
 	auto handle = static_cast<ADateHandle *>(args[0]->data->data);
 	if (!handle) {
 		notifier.throwException("Date instance is null");
@@ -152,7 +152,7 @@ inline AObject *add_hours(NativeFuncInData) {
 	return args[0];
 }
 
-inline AObject *add_minutes(NativeFuncInData) {
+AObject *add_minutes(NativeFuncInData) {
 	auto handle = static_cast<ADateHandle *>(args[0]->data->data);
 	if (!handle) {
 		notifier.throwException("Date instance is null");
@@ -163,7 +163,7 @@ inline AObject *add_minutes(NativeFuncInData) {
 	return args[0];
 }
 
-inline AObject *add_seconds(NativeFuncInData) {
+AObject *add_seconds(NativeFuncInData) {
 	auto handle = static_cast<ADateHandle *>(args[0]->data->data);
 	if (!handle) {
 		notifier.throwException("Date instance is null");
@@ -174,7 +174,7 @@ inline AObject *add_seconds(NativeFuncInData) {
 	return args[0];
 }
 
-inline AObject *is_leap_year(NativeFuncInData) {
+AObject *is_leap_year(NativeFuncInData) {
 	GET_VALID_TM_OR_RETURN_NULL(args[0]->data->data, tm);
 	int year = tm.tm_year + 1900;
 
@@ -198,29 +198,71 @@ class Date {
     @native("date_get_year")
     fun getYear(): Int
 
+    @native("date_get_year")
+    fun year(): Int
+
     @native("date_get_month")
     fun getMonth(): Int
+
+    @native("date_get_month")
+    fun month(): Int
 
     @native("date_get_day")
     fun getDay(): Int
 
+    @native("date_get_day")
+    fun day(): Int
+
     @native("date_get_hours")
     fun getHours(): Int
+
+    @native("date_get_hours")
+    fun hours(): Int
+
+    @native("date_get_hours")
+    fun hour(): Int
 
     @native("date_get_minutes")
     fun getMinutes(): Int
 
+    @native("date_get_minutes")
+    fun minutes(): Int
+
+    @native("date_get_minutes")
+    fun minute(): Int
+
     @native("date_get_seconds")
     fun getSeconds(): Int
 
+    @native("date_get_seconds")
+    fun seconds(): Int
+
+    @native("date_get_seconds")
+    fun second(): Int
+
     @native("date_get_time")
     fun getTime(): Int
+
+    @native("date_get_time")
+    fun timestamp(): Int
+
+    @native("date_get_time")
+    fun time(): Int
+
+    @native("date_get_time")
+    fun toEpochMilli(): Int
     
     @native("date_format")
     fun format(pattern: String): String
 
     @native("date_current_time_millis")
     static fun currentTimeMillis(): Int
+
+    @native("date_current_time_millis")
+    static fun nowMillis(): Int
+
+    @native("date_current_time_millis")
+    static fun nowMs(): Int
 
     @native("date_add_days")
     fun addDays(days: Int): Date
@@ -236,6 +278,9 @@ class Date {
 
     @native("date_is_leap_year")
     fun isLeapYear(): Bool
+
+    @native("date_is_leap_year")
+    fun leapYear(): Bool
 }
     )###",
 	    LibraryConfig(),

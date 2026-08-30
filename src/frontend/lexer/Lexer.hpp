@@ -134,6 +134,7 @@ enum TokenType : uint8_t {
 	CONST,
 	WHEN,
 	MINUS_GT,
+	TYPEALIAS,
 
 	// ===== Special =====
 	NON_NULL,
@@ -185,6 +186,7 @@ static const HashMap<std::string, TokenType> CAST = {
     {"enum", TokenType::ENUM},
     {"const", TokenType::CONST},
     {"when", TokenType::WHEN},
+	{"typealias", TokenType::TYPEALIAS},
 
     {"/*", TokenType::START_COMMENT},
     {"&", TokenType::AND},
@@ -195,6 +197,7 @@ static const HashMap<std::string, TokenType> CAST = {
     {"?", TokenType::QMARK},
     {"?.", TokenType::QMARK_DOT},
     {"??", TokenType::QMARK_QMARK},
+	{"?:", TokenType::QMARK_QMARK},
     {"!", TokenType::EXMARK},
     {".", TokenType::DOT},
     {"..", TokenType::DOT_DOT},

@@ -324,15 +324,13 @@ void ACompiler::loadMainSource(LibraryData *library) {
 bool ACompiler::compileAndRun(const char *path, LibraryConfig config,
                               const ANativeMap &nativeFuncMap) {
 	try {
-		if (compile(path, config, nativeFuncMap)) {
-			run();
-		}
-		refresh();
+		if (!compile(path, config, nativeFuncMap))
+			return false;
+		run();
 		return true;
 	} catch (const std::exception &e) {
 		std::cerr << e.what() << "\n";
 	}
-	refresh();
 	return false;
 }
 
@@ -340,23 +338,22 @@ bool ACompiler::compileAndRun(const char *path, const char *data,
                               LibraryConfig config,
                               const ANativeMap &nativeFuncMap) {
 	try {
-		if (compile(path, data, config, nativeFuncMap)) {
-			run();
-		}
-		refresh();
+		if (!compile(path, data, config, nativeFuncMap))
+			return false;
+		run();
 		return true;
 	} catch (const std::exception &e) {
 		std::cerr << e.what() << "\n";
 	}
-	refresh();
 	return false;
 }
 
 bool ACompiler::compile(const char *path, LibraryConfig config,
                         const ANativeMap &nativeFuncMap) {
-	if (hasError()) {
+	if (shouldRefresh || hasError()) {
 		refresh();
 	}
+	shouldRefresh = true;
 	loadMainSource(path, config, nativeFuncMap);
 	if (hasError()) {
 		return false;
@@ -370,6 +367,10 @@ bool ACompiler::compile(const char *path, LibraryConfig config,
 
 bool ACompiler::compile(const char *path, const char *data,
                         LibraryConfig config, const ANativeMap &nativeFuncMap) {
+	if (shouldRefresh || hasError()) {
+		refresh();
+	}
+	shouldRefresh = true;
 	loadMainSource(path, data, config, nativeFuncMap);
 	if (hasError()) {
 		return false;
@@ -989,6 +990,7 @@ void ACompiler::refresh() {
 	    parserContext.functionInfoAllocator.push());
 	state = CompilerState::CT_READY;
 	loadedMainSource = false;
+	shouldRefresh = false;
 	vm.isFatalException = false;
 	if (vm.globalVariables) {
 		delete[] vm.globalVariables;

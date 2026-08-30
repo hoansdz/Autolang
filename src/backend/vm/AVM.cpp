@@ -306,7 +306,7 @@ bool AVM::callFunctionObject(AObject *obj) {
 	return callFunction(currentCallFrame, argumentCount);
 }
 
-inline bool AVM::callFunction(Function *currentFunction) {
+bool AVM::callFunction(Function *currentFunction) {
 	if (callFrames.getSize() == callFrames.getMaxSize()) {
 		notifier->throwFatalException(
 		    "Runtime Error: Stack Overflow.\nDetails: "
@@ -468,5 +468,11 @@ uint32_t AVM::get_u32(uint8_t *code, uint32_t &ip) {
 }
 
 } // namespace Autolang
+
+#ifdef AUTOLANG_USE_COMPUTED_GOTO
+#include "backend/vm/AVM_run_computed_goto.cpp"
+#else
+#include "backend/vm/AVM_run_switch.cpp"
+#endif
 
 #endif

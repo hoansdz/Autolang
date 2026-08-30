@@ -1,4 +1,4 @@
-#ifndef LIB_REGEX_CPP
+﻿#ifndef LIB_REGEX_CPP
 #define LIB_REGEX_CPP
 
 #include "regex.hpp"
@@ -25,7 +25,7 @@ static void destroyRegex(ANotifier &notifier, void *regexData) {
 	}
 }
 
-inline AObject *constructor(NativeFuncInData) {
+AObject *constructor(NativeFuncInData) {
 	ClassId classId = args[0]->i;
 	const std::string &pattern = args[1]->str->data;
 
@@ -49,7 +49,7 @@ inline AObject *constructor(NativeFuncInData) {
 	}                                                                          \
 	std::regex &re_var = handle->re;
 
-inline AObject *is_match(NativeFuncInData) {
+AObject *is_match(NativeFuncInData) {
 	GET_VALID_REGEX_OR_RETURN_NULL(args[0]->data->data, re);
 	const std::string &text = args[1]->str->data;
 
@@ -57,7 +57,7 @@ inline AObject *is_match(NativeFuncInData) {
 	return notifier.createBool(result);
 }
 
-inline AObject *find_all(NativeFuncInData) {
+AObject *find_all(NativeFuncInData) {
 	GET_VALID_REGEX_OR_RETURN_NULL(args[0]->data->data, re);
 	const std::string &text = args[1]->str->data;
 	ClassId arrayClassId = args[2]->i;
@@ -75,7 +75,7 @@ inline AObject *find_all(NativeFuncInData) {
 	return newArr;
 }
 
-inline AObject *replace(NativeFuncInData) {
+AObject *replace(NativeFuncInData) {
 	GET_VALID_REGEX_OR_RETURN_NULL(args[0]->data->data, re);
 	const std::string &text = args[1]->str->data;
 	const std::string &replacement = args[2]->str->data;
@@ -106,11 +106,35 @@ class Regex {
     @native("regex_is_match")
     fun isMatch(text: String): Bool
 
+    @native("regex_is_match")
+    fun test(text: String): Bool
+
+    @native("regex_is_match")
+    fun matches(text: String): Bool
+
+    @native("regex_is_match")
+    fun match(text: String): Bool
+
     @native("regex_find_all")
     fun findAll(text: String, arrayClassId: Int = getClassId(Array<String>)): Array<String>
 
+    @native("regex_find_all")
+    fun matchAll(text: String, arrayClassId: Int = getClassId(Array<String>)): Array<String>
+
+    @native("regex_find_all")
+    fun search(text: String, arrayClassId: Int = getClassId(Array<String>)): Array<String>
+
+    @native("regex_find_all")
+    fun findAllMatches(text: String, arrayClassId: Int = getClassId(Array<String>)): Array<String>
+
     @native("regex_replace")
     fun replace(text: String, replacement: String): String
+
+    @native("regex_replace")
+    fun replaceAll(text: String, replacement: String): String
+
+    @native("regex_replace")
+    fun sub(text: String, replacement: String): String
 }
     )###",
 	                                LibraryConfig(), std::move(nativeMap));

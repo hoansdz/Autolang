@@ -32,6 +32,8 @@ template <size_t size> void AreaAllocator<size>::destroy(ANotifier& notifier) {
 	changedMemory = false;
 }
 
+template void AreaAllocator<128>::destroy(ANotifier& notifier);
+
 }
 
 #endif
