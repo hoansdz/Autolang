@@ -108,9 +108,9 @@ struct ACompilerConfig {
 
 class ACompiler {
   public:
-	LibraryData *mainSource;
+	LibraryData *mainSource = nullptr;
 	ParserContext parserContext;
-	CompilerState state;
+	CompilerState state = CompilerState::CT_READY;
 	bool loadedMainSource = false;
 	bool loadedBuiltIn = false;
 	bool shouldRefresh = false;
