@@ -19,20 +19,23 @@ option(FETCHCONTENT_UPDATES_DISCONNECTED
        "Bỏ qua kiểm tra cập nhật dependency (bật sau lần tải đầu)" ON)
 
 # --- libcurl (static) ---
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-set(BUILD_CURL_EXE    OFF CACHE BOOL "" FORCE)
-set(BUILD_TESTING     OFF CACHE BOOL "" FORCE)
-set(ENABLE_CURL_MANUAL OFF CACHE BOOL "" FORCE)
-set(BUILD_LIBCURL_DOCS OFF CACHE BOOL "" FORCE)
-set(CURL_DISABLE_LDAP  ON CACHE BOOL "" FORCE)
-set(CURL_DISABLE_LDAPS ON CACHE BOOL "" FORCE)
-set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE)
+if(NOT EMSCRIPTEN)
+  set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+  set(BUILD_CURL_EXE    OFF CACHE BOOL "" FORCE)
+  set(BUILD_TESTING     OFF CACHE BOOL "" FORCE)
+  set(ENABLE_CURL_MANUAL OFF CACHE BOOL "" FORCE)
+  set(BUILD_LIBCURL_DOCS OFF CACHE BOOL "" FORCE)
+  set(CURL_DISABLE_LDAP  ON CACHE BOOL "" FORCE)
+  set(CURL_DISABLE_LDAPS ON CACHE BOOL "" FORCE)
+  set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE)
 
-FetchContent_Declare(curl
-  GIT_REPOSITORY https://github.com/curl/curl.git
-  GIT_TAG        curl-8_8_0
-  GIT_SHALLOW    ON
-)
+  FetchContent_Declare(curl
+    GIT_REPOSITORY https://github.com/curl/curl.git
+    GIT_TAG        curl-8_8_0
+    GIT_SHALLOW    ON
+  )
+  FetchContent_MakeAvailable(curl)
+endif()
 
 # --- rapidfuzz ---
 FetchContent_Declare(rapidfuzz
@@ -41,7 +44,7 @@ FetchContent_Declare(rapidfuzz
   GIT_SHALLOW    ON
 )
 
-FetchContent_MakeAvailable(curl rapidfuzz)
+FetchContent_MakeAvailable(rapidfuzz)
 
 # -------------------------------------------------------------------
 # 2. AUTOLANG STATIC LIBRARY
@@ -54,24 +57,54 @@ add_library(autolang_lib STATIC ${SRC})
 target_include_directories(autolang_lib PUBLIC src)
 
 target_compile_definitions(autolang_lib PUBLIC
-  CURL_STATICLIB
   NOMINMAX
   _CRT_SECURE_NO_WARNINGS
   AUTOLANG_LIMIT_OPCODE
 )
 
-target_link_libraries(autolang_lib PUBLIC libcurl rapidfuzz)
+if(NOT EMSCRIPTEN)
+  target_compile_definitions(autolang_lib PUBLIC CURL_STATICLIB)
+  target_link_libraries(autolang_lib PUBLIC libcurl)
+endif()
+
+target_link_libraries(autolang_lib PUBLIC rapidfuzz)
 
 # -------------------------------------------------------------------
-# 3. AUTOLANG EXECUTABLE + CONVENIENCE TARGETS
+# 3. TARGETS
 # -------------------------------------------------------------------
-add_executable(autolang "tests/main.cpp")
-target_compile_definitions(autolang PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
-target_link_libraries(autolang PRIVATE autolang_lib)
+if(EMSCRIPTEN)
+  add_executable(autolang_wasm "tests/wasm/main.cpp")
+  target_link_libraries(autolang_wasm PRIVATE autolang_lib)
 
-# "cmake --build build --target run" để build và chạy ngay
-add_custom_target(run
-  COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR} $<TARGET_FILE:autolang>
-  DEPENDS autolang
-  USES_TERMINAL
-)
+  set_target_properties(autolang_wasm PROPERTIES
+    OUTPUT_NAME "autolang"
+    SUFFIX ".js"
+    RUNTIME_OUTPUT_DIRECTORY "D:/code/AutoLangNpm/bin"
+  )
+
+  target_link_options(autolang_wasm PRIVATE
+    "-O2"
+    "-gsource-map"
+    "-fexceptions"
+    "--bind"
+    "-sASSERTIONS=1"
+    "-sALLOW_MEMORY_GROWTH=1"
+    "-sINITIAL_MEMORY=10MB"
+    "-sASYNCIFY"
+    "-sFETCH=1"
+    "-sMODULARIZE=1"
+    "-sEXPORT_NAME=AutoLangModule"
+    "-sENVIRONMENT=web,node"
+  )
+else()
+  add_executable(autolang "tests/main.cpp")
+  target_compile_definitions(autolang PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
+  target_link_libraries(autolang PRIVATE autolang_lib)
+
+  # "cmake --build build --target run" để build và chạy ngay
+  add_custom_target(run
+    COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR} $<TARGET_FILE:autolang>
+    DEPENDS autolang
+    USES_TERMINAL
+  )
+endif()
