@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
 	auto processStart = std::chrono::high_resolution_clock::now();
 
 	bool isBenchmark = false;
-	const char* scriptPath = "./tests/b.atl";
+	const char* scriptPath = "./testCorrectness.atl";
 
 	for (int i = 1; i < argc; ++i) {
 		std::string arg = argv[i];

@@ -29,11 +29,5 @@ jobs:
       - name: Build project
         run: cmake --build build --config Debug
 
-      - name: Run tests (macOS with LLDB backtrace)
-        if: runner.os == 'macOS'
-        run: |
-          lldb --batch -o "run" -o "bt all" -o "quit" -- ./build/autolang
-
-      - name: Run tests (Linux / Windows)
-        if: runner.os != 'macOS'
+      - name: Run tests
         run: cmake --build build --config Debug --target run
