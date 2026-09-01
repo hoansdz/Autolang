@@ -19,32 +19,81 @@ void DeclarationNode::optimize(in_func) {
 	{
 		auto it = context.globalFunction.find(baseName);
 		if (it != context.globalFunction.end()) {
+			std::string hint =
+			    "Rename the variable or function to avoid name collision.";
+			if (!it->second.empty()) {
+				FunctionId prevFuncId = it->second.front();
+				auto prevFunc = compile.functions[prevFuncId];
+				auto prevFuncInfo = context.functionInfo[prevFuncId];
+				std::string prevPath = (prevFunc && prevFunc->path)
+				                           ? prevFunc->path
+				                           : "unknown";
+				hint =
+				    "Previously defined at " + prevPath + ":" +
+				    std::to_string(prevFuncInfo ? prevFuncInfo->line : 0) +
+				    ". " + hint;
+			}
 			throwError(
 			    "Cannot declare variable with the same name as function: '" +
-			    name +
-			    "'\nHint: Rename the variable or function to avoid name "
-			    "collision.");
+			    name + "'\nHint: " + hint);
 		}
 	}
-	if (contextCallClassId) {
-		auto classInfo = context.classInfo[*contextCallClassId];
-		auto it = classInfo->allFunction.find(baseName);
-		if (it != classInfo->allFunction.end()) {
-			throwError(
-			    "Cannot declare variable with the same name as function: '" +
-			    name +
-			    "'\nHint: Variable names in a class cannot shadow member "
-			    "functions.");
-		}
-	}
+	// if (contextCallClassId) {
+	// 	auto classInfo = context.classInfo[*contextCallClassId];
+	// 	auto it = classInfo->allFunction.find(baseName);
+	// 	if (it != classInfo->allFunction.end()) {
+	// 		std::string hint =
+	// 		    "Variable names in a class cannot shadow member functions.";
+	// 		if (!it->second.empty()) {
+	// 			FunctionId prevFuncId = it->second.front();
+	// 			auto prevFunc = compile.functions[prevFuncId];
+	// 			auto prevFuncInfo = context.functionInfo[prevFuncId];
+	// 			std::string prevPath = (prevFunc && prevFunc->path)
+	// 			                           ? prevFunc->path
+	// 			                           : "unknown";
+	// 			hint =
+	// 			    "Previously defined at " + prevPath + ":" +
+	// 			    std::to_string(prevFuncInfo ? prevFuncInfo->line : 0) +
+	// 			    ". " + hint;
+	// 		}
+	// 		throwError(
+	// 		    "Cannot declare variable with the same name as function: '" +
+	// 		    name + "'\nHint: " + hint);
+	// 	}
+	// }
 	{
 		auto it = context.defaultClassMap.find(baseName);
 		if (it != context.defaultClassMap.end()) {
+			std::string hint =
+			    "Choose a different variable name that does not conflict with existing class names.";
+			if (it->second < context.classInfo.size()) {
+				auto prevClassInfo = context.classInfo[it->second];
+				if (prevClassInfo && prevClassInfo->mode) {
+					hint = "Previously defined at " +
+					       prevClassInfo->mode->path + ":" +
+					       std::to_string(prevClassInfo->line) + ". " + hint;
+				}
+			}
 			throwError(
 			    "Cannot declare variable with the same name as class: '" +
-			    name +
-			    "'\nHint: Choose a different variable name that does not "
-			    "conflict with existing class names.");
+			    name + "'\nHint: " + hint);
+		}
+	}
+	{
+		auto it = context.typealiasMap.find(baseName);
+		if (it != context.typealiasMap.end()) {
+			std::string hint =
+			    "Choose a different variable name that does not conflict with existing typealias names.";
+			if (it->second && it->second->classDeclaration &&
+			    it->second->classDeclaration->mode) {
+				hint = "Previously defined at " +
+				       it->second->classDeclaration->mode->path + ":" +
+				       std::to_string(it->second->classDeclaration->line) +
+				       ". " + hint;
+			}
+			throwError(
+			    "Cannot declare variable with the same name as typealias: '" +
+			    name + "'\nHint: " + hint);
 		}
 	}
 	if (classDeclaration) {
@@ -76,11 +125,13 @@ void DeclarationNode::optimize(in_func) {
 				}
 			}
 
-			std::string errorMsg = "Cannot find class name: '" + baseClassName + "'";
+			std::string errorMsg =
+			    "Cannot find class name: '" + baseClassName + "'";
 			if (!bestSuggestion.empty() && bestSuggestion != baseClassName) {
 				errorMsg += "\nDid you mean: '" + bestSuggestion + "'?";
 			}
-			errorMsg += "\nHint: Ensure the class name is defined and correctly spelled in the current scope.";
+			errorMsg += "\nHint: Ensure the class name is defined and "
+			            "correctly spelled in the current scope.";
 			throwError(errorMsg);
 		}
 		auto classInfo = context.classInfo[it->second];
@@ -215,6 +266,7 @@ void CreateConstructorNode::pushFunction(in_func) {
 	auto func = compile.functions[funcId];
 	auto funcInfo = context.functionInfo[funcId];
 	funcInfo->clazz = clazz;
+	funcInfo->line = line;
 	func->maxDeclaration = parameter->parameters.size();
 	funcInfo->declaration = parameter->parameters.size();
 	funcInfo->parameter = parameter;
@@ -266,8 +318,14 @@ void CreateConstructorNode::optimize(in_func) {
 	auto it = hash.find(funcInfo->hash);
 	if (it != hash.end() && compile.functions[it->second]->getName(compile) ==
 	                            func->getName(compile)) {
+		auto previousFunc = compile.functions[it->second];
+		auto previousFuncInfo = context.functionInfo[it->second];
+		std::string prevPath =
+		    (previousFunc && previousFunc->path) ? previousFunc->path : "unknown";
 		throwError("Redefined function: " + funcInfo->toString(in_data) +
-		           "\nHint: A constructor or function with the same signature "
+		           "\nHint: Previously defined at " + prevPath + ":" +
+		           std::to_string(previousFuncInfo ? previousFuncInfo->line : 0) +
+		           ". A constructor or function with the same signature "
 		           "already exists in this class.");
 	}
 	hash[funcInfo->hash] = func->id;
@@ -313,6 +371,8 @@ void CreateClassNode::pushClass(in_func) {
 	auto clazz = compile.classes[classId];
 	auto classInfo = context.classInfoAllocator.push();
 	context.classInfo.push_back(classInfo);
+	classInfo->mode = mode;
+	classInfo->line = line;
 	clazz->memberIdOffset = compile.allMemberId.size();
 	clazz->parentId = 0;
 	// if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
@@ -335,16 +395,6 @@ void CreateClassNode::pushClass(in_func) {
 
 void CreateClassNode::optimize(in_func) {
 	const auto &name = context.lexerString[nameId];
-	{
-		auto it = context.globalFunction.find(nameId);
-		if (it != context.globalFunction.end()) {
-			throwError(
-			    "Cannot declare class with the same name as function: '" +
-			    name +
-			    "'\nHint: Class names cannot collide with global function "
-			    "names.");
-		}
-	}
 	auto classInfo = context.classInfo[classId];
 	if (classInfo->genericData) {
 		for (auto genericDeclaration :
@@ -356,6 +406,29 @@ void CreateClassNode::optimize(in_func) {
 				           context.lexerString[genericDeclaration->nameId] +
 				           "'\nHint: Rename the generic type parameter so it "
 				           "does not conflict with a class name.");
+			}
+		}
+	} else {
+		{ // Function cannot have generics name as Func<T>
+			auto it = context.globalFunction.find(nameId);
+			if (it != context.globalFunction.end()) {
+				std::string hint =
+				    "Class names cannot collide with global function names.";
+				if (!it->second.empty()) {
+					FunctionId prevFuncId = it->second.front();
+					auto prevFunc = compile.functions[prevFuncId];
+					auto prevFuncInfo = context.functionInfo[prevFuncId];
+					std::string prevPath = (prevFunc && prevFunc->path)
+					                           ? prevFunc->path
+					                           : "unknown";
+					hint =
+					    "Previously defined at " + prevPath + ":" +
+					    std::to_string(prevFuncInfo ? prevFuncInfo->line : 0) +
+					    ". " + hint;
+				}
+				throwError(
+				    "Cannot declare class with the same name as function: '" +
+				    name + "'\nHint: " + hint);
 			}
 		}
 	}

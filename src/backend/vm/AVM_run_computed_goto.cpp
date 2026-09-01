@@ -237,7 +237,8 @@ void AVM::resume() {
 	    /*  8 */ DefaultFunction::divide,    // /
 	    /*  9 */ DefaultFunction::divide_eq, // /=
 
-	    /* 10 */ DefaultFunction::mod, // %
+	    /* 10 */ DefaultFunction::mod,    // %
+	    /* 11 */ DefaultFunction::mod_eq, // %=
 
 	    /* 11 */ DefaultFunction::bitwise_and, // &
 	    /* 12 */ DefaultFunction::bitwise_or,  // |

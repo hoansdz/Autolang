@@ -41,6 +41,34 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerString.emplace_back("this");
 	lexerString.emplace_back("Function");
 	lexerString.emplace_back("toString");
+	lexerString.emplace_back("unaryPlus");
+	lexerString.emplace_back("unaryMinus");
+	lexerString.emplace_back("not");
+	lexerString.emplace_back("inc");
+	lexerString.emplace_back("dec");
+	lexerString.emplace_back("plus");
+	lexerString.emplace_back("minus");
+	lexerString.emplace_back("times");
+	lexerString.emplace_back("div");
+	lexerString.emplace_back("rem");
+	lexerString.emplace_back("rangeTo");
+	lexerString.emplace_back("rangeUntil");
+	lexerString.emplace_back("plusAssign");
+	lexerString.emplace_back("minusAssign");
+	lexerString.emplace_back("timesAssign");
+	lexerString.emplace_back("divAssign");
+	lexerString.emplace_back("remAssign");
+	lexerString.emplace_back("equals");
+	lexerString.emplace_back("compareTo");
+	lexerString.emplace_back("iterator");
+	lexerString.emplace_back("hasNext");
+	lexerString.emplace_back("next");
+	lexerString.emplace_back("getValue");
+	lexerString.emplace_back("setValue");
+	lexerString.emplace_back("provideDelegate");
+	lexerString.emplace_back("and");
+	lexerString.emplace_back("or");
+	lexerString.emplace_back("xor");
 
 	lexerStringMap["super"] = lexerIdsuper;
 	lexerStringMap["Int"] = lexerIdInt;
@@ -48,6 +76,7 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerStringMap["Bool"] = lexerIdBool;
 	lexerStringMap["Null"] = lexerIdNull;
 	lexerStringMap["Void"] = lexerIdVoid;
+	lexerStringMap["Unit"] = lexerIdVoid;
 	lexerStringMap["Function"] = lexerIdFunction;
 	lexerStringMap["null"] = lexerIdnull;
 	lexerStringMap["true"] = lexerIdtrue;
@@ -66,6 +95,34 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerStringMap["contains"] = lexerIdcontains;
 	lexerStringMap["this"] = lexerIdthis;
 	lexerStringMap["toString"] = lexerIdtoString;
+	lexerStringMap["unaryPlus"] = lexerIdunaryPlus;
+	lexerStringMap["unaryMinus"] = lexerIdunaryMinus;
+	lexerStringMap["not"] = lexerIdnot;
+	lexerStringMap["inc"] = lexerIdinc;
+	lexerStringMap["dec"] = lexerIddec;
+	lexerStringMap["plus"] = lexerIdplus;
+	lexerStringMap["minus"] = lexerIdminus;
+	lexerStringMap["times"] = lexerIdtimes;
+	lexerStringMap["div"] = lexerIddiv;
+	lexerStringMap["rem"] = lexerIdrem;
+	lexerStringMap["rangeTo"] = lexerIdrangeTo;
+	lexerStringMap["rangeUntil"] = lexerIdrangeUntil;
+	lexerStringMap["plusAssign"] = lexerIdplusAssign;
+	lexerStringMap["minusAssign"] = lexerIdminusAssign;
+	lexerStringMap["timesAssign"] = lexerIdtimesAssign;
+	lexerStringMap["divAssign"] = lexerIddivAssign;
+	lexerStringMap["remAssign"] = lexerIdremAssign;
+	lexerStringMap["equals"] = lexerIdequals;
+	lexerStringMap["compareTo"] = lexerIdcompareTo;
+	lexerStringMap["iterator"] = lexerIditerator;
+	lexerStringMap["hasNext"] = lexerIdhasNext;
+	lexerStringMap["next"] = lexerIdnext;
+	lexerStringMap["getValue"] = lexerIdgetValue;
+	lexerStringMap["setValue"] = lexerIdsetValue;
+	lexerStringMap["provideDelegate"] = lexerIdprovideDelegate;
+	lexerStringMap["and"] = lexerIdand;
+	lexerStringMap["or"] = lexerIdor;
+	lexerStringMap["xor"] = lexerIdxor;
 
 	constValue[lexerIdnull] = &constValues[0];
 	constValue[lexerIdtrue] = &constValues[1];
@@ -202,7 +259,7 @@ void ParserContext::init(CompiledProgram &compile) {
 	                 {Lexer::TokenType::MINUS_EQUAL, OP_MINUS_EQ},
 	                 {Lexer::TokenType::STAR_EQUAL, OP_MUL_EQ},
 	                 {Lexer::TokenType::SLASH_EQUAL, OP_DIV_EQ},
-	                 //  {Lexer::TokenType::PERCENT_EQUAL, OP_MOD_EQ},
+	                 {Lexer::TokenType::PERCENT_EQUAL, OP_MOD_EQ},
 
 	                 {Lexer::TokenType::AND, OP_BIT_AND},
 	                 {Lexer::TokenType::OR, OP_BIT_OR},
@@ -289,6 +346,7 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	returnPool.destroy();
 	setValuePool.destroy();
 
+	genericDeclarationNodePool.destroy();
 	typealiasPool.destroy();
 	throwPool.destroy();
 	binaryNodePool.destroy();

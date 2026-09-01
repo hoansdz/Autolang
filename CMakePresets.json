@@ -10,26 +10,53 @@
       "name": "common",
       "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "build",
+      "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "CMAKE_C_COMPILER": "D:/mingw64/bin/gcc.exe",
         "CMAKE_CXX_COMPILER": "D:/mingw64/bin/g++.exe"
       }
     },
     {
-      "name": "default",
+      "name": "debug",
       "inherits": "common",
-      "displayName": "Default (Ninja + MinGW)",
-      "description": "Ninja with MinGW"
+      "displayName": "Debug (Ninja + MinGW)",
+      "description": "Debug build with Ninja and MinGW",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "release",
+      "inherits": "common",
+      "displayName": "Release (Ninja + MinGW)",
+      "description": "Optimized release build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "default",
+      "inherits": "debug",
+      "displayName": "Default",
+      "description": "Alias for debug preset"
     }
   ],
   "buildPresets": [
     {
+      "name": "debug",
+      "configurePreset": "debug",
+      "displayName": "Build Debug"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "displayName": "Build Release"
+    },
+    {
       "name": "default",
       "configurePreset": "default",
-      "displayName": "Build Default"
+      "displayName": "Build Default (Debug)"
     }
   ]
 }

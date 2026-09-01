@@ -15,12 +15,12 @@ struct AUnorderedSet {
 
 struct ObjStringHashable {
 	inline size_t operator()(const AObject *s) const {
-		size_t h = 1469598103934665603ULL;
+		uint64_t h = 14695981039346656037ULL;
 		for (size_t i = 0; i < s->str->size; ++i) {
 			h ^= (unsigned char)s->str->data[i];
 			h *= 1099511628211ULL;
 		}
-		return h;
+		return static_cast<size_t>(h);
 	}
 };
 

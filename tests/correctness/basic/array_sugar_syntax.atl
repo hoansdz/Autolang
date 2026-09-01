@@ -46,4 +46,35 @@ fun testCallableEquivalenceAndMixing() {
     println("Passed ${__FUNC__}")
 }
 
+fun sumArray(items: Int[]): Int {
+    var sum = 0
+    for (x in items) {
+        sum += x
+    }
+    return sum
+}
+
+fun create2D(): Int[][] {
+    return [[1, 2], [3, 4]]
+}
+
+fun testArrayBracketTypeDeclaration() {
+    val arr: Int[] = [10, 20, 30]
+    assert(arr is Array<Int>, __FILE__, __LINE__)
+    assert(arr.length() == 3, __FILE__, __LINE__)
+    assert(sumArray(arr) == 60, __FILE__, __LINE__)
+
+    val matrix: Int[][] = create2D()
+    assert(matrix is Array<Array<Int>>, __FILE__, __LINE__)
+    assert(matrix[0][0] == 1, __FILE__, __LINE__)
+    assert(matrix[1][1] == 4, __FILE__, __LINE__)
+
+    val strArr: String[] = ["hello", "autolang"]
+    assert(strArr is Array<String>, __FILE__, __LINE__)
+    assert(strArr[1] == "autolang", __FILE__, __LINE__)
+
+    println("Passed ${__FUNC__}")
+}
+
 testCallableEquivalenceAndMixing()
+testArrayBracketTypeDeclaration()

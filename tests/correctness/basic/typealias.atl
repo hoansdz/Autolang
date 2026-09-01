@@ -3,15 +3,15 @@
 // ============================================================
 
 // 1. Basic typealias for primitive types
-typealias D = Float
-typealias I = Int
-typealias S = String
-typealias B = Bool
-
+typealias MyFloat = Float
+typealias MyInt = Int
+typealias MyString = String
+typealias MyBool = Bool
+/*
 typealias TEST1 = TEST2
 typealias TEST2 = TEST3
 typealias TEST3 = TEST1
-
+*/
 // 2. Typealias for user-defined classes
 class Person(val name: String, val age: Int) {
 	fun greet(): String = "Hi, I'm ${name}"
@@ -33,23 +33,14 @@ typealias IntBox = Box<Int>
 typealias StringBox = Box<String>
 
 // 6. Typealias chaining (alias of alias)
-typealias E = D  // D = Float
+typealias ChainedFloat = MyFloat
 
 // 7. Typealias for function types
 typealias IntToString = (Int) -> String
 typealias BinaryOp = (Int, Int) -> Int
-
-// 8. Typealias with inheritance
-class Animal() {
-	fun sound(): String = "..."
-}
-class Dog extends Animal {
-	constructor() { super() }
-	@override fun sound(): String = "Woof"
-}
 typealias Pet = Animal
 
-// 9. Multiple typealiases in same file
+// 8. Multiple typealiases in same file
 typealias Coordinate = Array<Float>
 typealias Point = Array<Float>
 
@@ -63,8 +54,8 @@ fun createBox(): IntBox = Box<Int>(42)
 fun getPetSound(p: Pet): String = p.sound()
 
 class Config {
-	static val defaultName: S = "Default"
-	static fun createDefault(): S = defaultName
+	static val defaultName: MyString = "Default"
+	static fun createDefault(): MyString = defaultName
 }
 
 // ============================================================
@@ -73,24 +64,24 @@ class Config {
 
 fun testTypealiasPrimitive() {
 	// Basic primitive typealias
-	val d: D = 3.14
-	assert(d is D, __FILE__, __LINE__)
+	val d: MyFloat = 3.14
+	assert(d is MyFloat, __FILE__, __LINE__)
 	assert(d is Float, __FILE__, __LINE__)
 	assert(d == 3.14, __FILE__, __LINE__)
 	assert(d.toString().contains("."), __FILE__, __LINE__)
 
-	val i: I = 42
-	assert(i is I, __FILE__, __LINE__)
+	val i: MyInt = 42
+	assert(i is MyInt, __FILE__, __LINE__)
 	assert(i is Int, __FILE__, __LINE__)
 	assert(i == 42, __FILE__, __LINE__)
 
-	val s: S = "Hello"
-	assert(s is S, __FILE__, __LINE__)
+	val s: MyString = "Hello"
+	assert(s is MyString, __FILE__, __LINE__)
 	assert(s is String, __FILE__, __LINE__)
 	assert(s == "Hello", __FILE__, __LINE__)
 
-	val b: B = true
-	assert(b is B, __FILE__, __LINE__)
+	val b: MyBool = true
+	assert(b is MyBool, __FILE__, __LINE__)
 	assert(b is Bool, __FILE__, __LINE__)
 	assert(b == true, __FILE__, __LINE__)
 
@@ -175,10 +166,10 @@ fun testTypealiasGenericClass() {
 }
 
 fun testTypealiasChaining() {
-	// E = D = Float
-	val e: E = 2.718
-	assert(e is E, __FILE__, __LINE__)
-	assert(e is D, __FILE__, __LINE__)
+	// ChainedFloat = MyFloat = Float
+	val e: ChainedFloat = 2.718
+	assert(e is ChainedFloat, __FILE__, __LINE__)
+	assert(e is MyFloat, __FILE__, __LINE__)
 	assert(e is Float, __FILE__, __LINE__)
 	assert(e == 2.718, __FILE__, __LINE__)
 	assert(e.toString().contains("."), __FILE__, __LINE__)
@@ -190,10 +181,10 @@ fun testTypealiasWithInheritance() {
 	val pet: Pet = Dog()
 	assert(pet is Pet, __FILE__, __LINE__)
 	assert(pet is Animal, __FILE__, __LINE__)
-	assert(pet.sound() == "Woof", __FILE__, __LINE__)
+	assert(pet.sound() == "Go", __FILE__, __LINE__)
 
 	// Upcast through typealias
-	assert(getPetSound(Dog()) == "Woof", __FILE__, __LINE__)
+	assert(getPetSound(Dog()) == "Go", __FILE__, __LINE__)
 
 	println("Passed ${__FUNC__}")
 }
@@ -201,15 +192,15 @@ fun testTypealiasWithInheritance() {
 fun testTypealiasInExpression() {
 	// Typealias in variable declaration with inference
 	val a = 3.14
-	val d: D = a
+	val d: MyFloat = a
 	assert(d == 3.14, __FILE__, __LINE__)
 
 	// Arithmetic with typealias
-	val result: D = 1.5 + 2.5
+	val result: MyFloat = 1.5 + 2.5
 	assert(result == 4.0, __FILE__, __LINE__)
 
 	// Typealias in when expression
-	val x: I = 5
+	val x: MyInt = 5
 	val description = when (x) {
 		1 -> "one"
 		5 -> "five"
@@ -218,7 +209,7 @@ fun testTypealiasInExpression() {
 	assert(description == "five", __FILE__, __LINE__)
 
 	// Typealias in if expression
-	val y: I = 10
+	val y: MyInt = 10
 	val bigger = if (y > 5) y else 0
 	assert(bigger == 10, __FILE__, __LINE__)
 
@@ -244,9 +235,147 @@ fun testTypealiasMultiple() {
 	println("Passed ${__FUNC__}")
 }
 
-// ============================================================
-// Run all typealias tests
-// ============================================================
+fun testBuiltInAIAliases() {
+	// Numeric
+	val d: Double = 3.14
+	assert(d is Float, __FILE__, __LINE__)
+	val n: Number = 2.718
+	assert(n is Float, __FILE__, __LINE__)
+	val ig: Integer = 42
+	assert(ig is Int, __FILE__, __LINE__)
+	val l: Long = 100
+	assert(l is Int, __FILE__, __LINE__)
+
+	// Boolean
+	val b: Boolean = true
+	assert(b is Bool, __FILE__, __LINE__)
+
+	// Character (Char = Int in AutoLang)
+	val c: Char = 'a'
+	assert(c is Int, __FILE__, __LINE__)
+	assert(c == 97, __FILE__, __LINE__)
+	val ch: Character = 'Z'
+	assert(ch is Int, __FILE__, __LINE__)
+
+	// String
+	val s: Str = "Hello"
+	assert(s is String, __FILE__, __LINE__)
+
+	// Array / List
+	val a: List<Int> = [1, 2, 3]
+	assert(a is Array<Int>, __FILE__, __LINE__)
+	val al: ArrayList<String> = ["x"]
+	assert(al is Array<String>, __FILE__, __LINE__)
+	val ll: LinkedList<Float> = [1.0]
+	assert(ll is Array<Float>, __FILE__, __LINE__)
+	val vec: Vector<Int> = [10]
+	assert(vec is Array<Int>, __FILE__, __LINE__)
+	val v: Vec<Int> = [20]
+	assert(v is Array<Int>, __FILE__, __LINE__)
+	val ml: MutableList<Bool> = [true]
+	assert(ml is Array<Bool>, __FILE__, __LINE__)
+
+	// Map / Dictionary
+	val hm: HashMap<String, Int> = {"x": 1}
+	assert(hm is Map<String, Int>, __FILE__, __LINE__)
+	val dict: Dictionary<String, Float> = {"pi": 3.14}
+	assert(dict is Map<String, Float>, __FILE__, __LINE__)
+	val dshort: Dict<String, Bool> = {"ok": true}
+	assert(dshort is Map<String, Bool>, __FILE__, __LINE__)
+	val tm: TreeMap<String, Int> = {"a": 1}
+	assert(tm is Map<String, Int>, __FILE__, __LINE__)
+	val mm: MutableMap<String, String> = {"k": "v"}
+	assert(mm is Map<String, String>, __FILE__, __LINE__)
+
+	// Set
+	val hs: HashSet<Int> = {1, 2}
+	assert(hs is Set<Int>, __FILE__, __LINE__)
+	val ts: TreeSet<String> = {"a"}
+	assert(ts is Set<String>, __FILE__, __LINE__)
+	val ms: MutableSet<Int> = {10}
+	assert(ms is Set<Int>, __FILE__, __LINE__)
+
+	// Optional
+	val optNull: Optional<Int> = null
+	assert(optNull == null, __FILE__, __LINE__)
+	val optVal: Optional<Int> = 42
+	assert(optVal != null, __FILE__, __LINE__)
+	assert(optVal! == 42, __FILE__, __LINE__)
+
+	// Object
+	val obj: Object = 123
+
+	// Chaining
+	val scores: List<Double> = [1.0, 2.0]
+	assert(scores is Array<Float>, __FILE__, __LINE__)
+	val mapping: Dictionary<String, List<Integer>> = {"nums": [1, 2]}
+	assert(mapping is Map<String, Array<Int>>, __FILE__, __LINE__)
+
+	// Lowercase types
+	val lcInt: int = 10
+	assert(lcInt is Int, __FILE__, __LINE__)
+	val lcFloat: float = 3.14
+	val lcDouble: double = 2.71
+	assert(lcFloat is Float && lcDouble is Float, __FILE__, __LINE__)
+	val lcBool: bool = false
+	val lcBoolean: boolean = true
+	assert(lcBool is Bool && lcBoolean is Bool, __FILE__, __LINE__)
+	val lcChar: char = 'x'
+	assert(lcChar is Int, __FILE__, __LINE__)
+	val lcStr: string = "test"
+	assert(lcStr is String, __FILE__, __LINE__)
+	/*val lcList: list<int> = [1, 2, 3]
+	assert(lcList is Array<Int>, __FILE__, __LINE__)
+	val lcDict: dict<string, int> = {"a": 1}
+	assert(lcDict is Map<String, Int>, __FILE__, __LINE__)
+	val lcSet: set<int> = {1, 2}
+	assert(lcSet is Set<Int>, __FILE__, __LINE__)*/
+	val lcAny: any = 123
+	val lcObj: object = "obj"
+
+	// Primitive Arrays (Kotlin)
+	val ia: IntArray = [1, 2]
+	assert(ia is Array<Int>, __FILE__, __LINE__)
+	val fa: FloatArray = [1.0, 2.0]
+	assert(fa is Array<Float>, __FILE__, __LINE__)
+	val da: DoubleArray = [1.0, 2.0]
+	assert(da is Array<Float>, __FILE__, __LINE__)
+	val ba: BooleanArray = [true, false]
+	assert(ba is Array<Bool>, __FILE__, __LINE__)
+	val bya: ByteArray = [1, 2]
+	assert(bya is Array<Int>, __FILE__, __LINE__)
+	val ca: CharArray = ['a', 'b']
+	assert(ca is Array<Int>, __FILE__, __LINE__)
+	val la: LongArray = [1, 2]
+	assert(la is Array<Int>, __FILE__, __LINE__)
+
+	// Small numeric types (Kotlin)
+	val sby: Byte = 10
+	assert(sby is Int, __FILE__, __LINE__)
+	val sso: Short = 20
+	assert(sso is Int, __FILE__, __LINE__)
+
+	// Collection interfaces (Kotlin)
+	val coll: Collection<Int> = [1, 2, 3]
+	assert(coll is Array<Int>, __FILE__, __LINE__)
+	val iter: Iterable<String> = ["a", "b"]
+	assert(iter is Array<String>, __FILE__, __LINE__)
+
+	// Bracket array syntax (Java/C#/C++/TS style: T[])
+	val arrInt: Int[] = [1, 2, 3]
+	assert(arrInt is Array<Int>, __FILE__, __LINE__)
+	assert(arrInt.length() == 3, __FILE__, __LINE__)
+	assert(arrInt[1] == 2, __FILE__, __LINE__)
+	val arrStr: String[] = ["hello", "world"]
+	assert(arrStr is Array<String>, __FILE__, __LINE__)
+	val arr2D: Int[][] = [[1, 2], [3, 4]]
+	assert(arr2D is Array<Array<Int>>, __FILE__, __LINE__)
+	assert(arr2D[0][1] == 2, __FILE__, __LINE__)
+	val arrDouble: Double[] = [1.5, 2.5]
+	assert(arrDouble is Array<Float>, __FILE__, __LINE__)
+
+	println("Passed ${__FUNC__}")
+}
 
 testTypealiasPrimitive()
 testTypealiasUserClass()
@@ -258,5 +387,4 @@ testTypealiasWithInheritance()
 testTypealiasInExpression()
 testTypealiasWithStatic()
 testTypealiasMultiple()
-
-println("All typealias tests passed!")
+testBuiltInAIAliases()

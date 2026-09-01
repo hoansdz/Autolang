@@ -82,9 +82,6 @@ FunctionId CompiledProgram::registerFunction(const char *path, AClass *clazz,
 }
 
 ClassId CompiledProgram::registerClass(std::string name, uint32_t classFlags) {
-	auto it = classMap.find(name);
-	if (it != classMap.end())
-		throw std::runtime_error("Class " + name + " already exists");
 	ClassId id = classes.size();
 	AClass *clazz = classAllocator.push();
 	// std::cerr << "Created class name: " << name << " " << id << "\n";

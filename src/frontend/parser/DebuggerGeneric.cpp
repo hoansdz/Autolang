@@ -1,11 +1,8 @@
 #ifndef DEBUGGER_GENERIC_CPP
 #define DEBUGGER_GENERIC_CPP
 
-#include "frontend/ACompiler.hpp"
 #include "frontend/parser/Debugger.hpp"
 #include "frontend/parser/ParserContext.hpp"
-#include "shared/ClassFlags.hpp"
-#include <memory>
 #include <rapidfuzz/fuzz.hpp>
 
 namespace Autolang {

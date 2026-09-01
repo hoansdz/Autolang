@@ -234,34 +234,45 @@ void GetPropNode::optimize(in_func) {
 				}
 			}
 			std::string bestSuggestion;
+			bool isFunctionSuggestion = false;
 			double bestScore = 0.0;
-			auto checkSuggestion = [&](const std::string &candidate) {
+			auto checkSuggestion = [&](const std::string &candidate,
+			                           bool isFunc = false) {
 				double score = rapidfuzz::fuzz::ratio(name, candidate);
 				if (score > bestScore && score >= 60.0) {
 					bestScore = score;
 					bestSuggestion = candidate;
+					isFunctionSuggestion = isFunc;
 				}
 			};
 			for (auto *decl : classInfo->member) {
 				if (decl) {
-					checkSuggestion(decl->name);
+					checkSuggestion(decl->name, false);
 				}
 			}
 			for (const auto [nameId, declarationNode] :
 			     classInfo->staticMember) {
 				if (declarationNode) {
-					checkSuggestion(declarationNode->name);
+					checkSuggestion(declarationNode->name, false);
 				}
 			}
 			for (const auto &[funcNameId, _] : classInfo->allFunction) {
-				checkSuggestion(context.lexerString[funcNameId]);
+				checkSuggestion(context.lexerString[funcNameId], true);
 			}
 
 			std::string errorMsg = "Cannot find member name '" + name +
 			                       "' in class '" + clazz->getName(compile) +
 			                       "'";
-			if (!bestSuggestion.empty()) {
-				errorMsg += "\nDid you mean: '" + bestSuggestion + "'?";
+			if (classInfo->allFunction.find(nameId) !=
+			    classInfo->allFunction.end()) {
+				errorMsg += "\nDid you mean function: '" + name + "()' ?";
+			} else if (!bestSuggestion.empty() && bestSuggestion != name) {
+				if (isFunctionSuggestion) {
+					errorMsg += "\nDid you mean function: '" + bestSuggestion +
+					            "()' ?";
+				} else {
+					errorMsg += "\nDid you mean: '" + bestSuggestion + "'?";
+				}
 			}
 			if (hasMember) {
 				errorMsg += "\nAvailable members in '" +
@@ -370,7 +381,8 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			case NodeType::VAR: {
 				auto varNode = static_cast<VarNode *>(caller);
 				if (!isStore) {
-					if (varNode->isNullable() || varNode->isForceNonNull) {
+					if (varNode->isNullable() || varNode->isForceNonNull ||
+					    isGetPointer) {
 						break;
 					}
 					if (declaration->isLateInit) {
@@ -428,9 +440,12 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			put_opcode_u32(bytecodes, 0);
 		} else {
 			if (declaration->isLateInit) {
-				bytecodes.emplace_back(Opcode::LOAD_LATEINIT_MEMBER);
+				bytecodes.emplace_back(isGetPointer
+				                           ? Opcode::GET_POINTER_LATEINIT_MEMBER
+				                           : Opcode::LOAD_LATEINIT_MEMBER);
 			} else {
-				bytecodes.emplace_back(Opcode::LOAD_MEMBER);
+				bytecodes.emplace_back(isGetPointer ? Opcode::GET_POINTER_MEMBER
+				                                    : Opcode::LOAD_MEMBER);
 			}
 			put_opcode_u32(bytecodes, id);
 			if (isForceNonNull) {
@@ -454,7 +469,11 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		bytecodes.emplace_back(Opcode::STORE_GLOBAL);
 		put_opcode_u32(bytecodes, id);
 	} else {
-		bytecodes.emplace_back(Opcode::LOAD_GLOBAL);
+		if (isGetPointer) {
+			bytecodes.emplace_back(Opcode::GET_POINTER_GLOBAL);
+		} else {
+			bytecodes.emplace_back(Opcode::LOAD_GLOBAL);
+		}
 		put_opcode_u32(bytecodes, id);
 		if (isForceNonNull) {
 			bytecodes.emplace_back(Opcode::CHECK_FORCE_NON_NULL);

@@ -191,29 +191,25 @@ struct AObjectHashable {
 	inline size_t operator()(const AObject *obj) const {
 		switch (obj->type) {
 			case Autolang::DefaultClass::intClassId: {
-				return obj->i;
+				return static_cast<size_t>(obj->i ^ (obj->i >> 32));
 			}
 			case Autolang::DefaultClass::floatClassId: {
-				uint32_t bits;
+				uint64_t bits;
 				std::memcpy(&bits, &obj->f, sizeof(bits));
-
-				size_t h = bits;
-
-				h ^= h >> 16;
-				h *= 0x7feb352d;
-				h ^= h >> 15;
-				h *= 0x846ca68b;
-				h ^= h >> 16;
-
-				return h;
+				bits ^= bits >> 30;
+				bits *= 0xbf58476d1ce4e5b9ULL;
+				bits ^= bits >> 27;
+				bits *= 0x94d049bb133111ebULL;
+				bits ^= bits >> 31;
+				return static_cast<size_t>(bits);
 			}
 			case Autolang::DefaultClass::stringClassId: {
-				size_t h = 1469598103934665603ULL;
+				uint64_t h = 14695981039346656037ULL;
 				for (size_t i = 0; i < obj->str->size; ++i) {
 					h ^= (unsigned char)obj->str->data[i];
 					h *= 1099511628211ULL;
 				}
-				return h;
+				return static_cast<size_t>(h);
 			}
 			case Autolang::DefaultClass::functionClassId: {
 				return size_t(obj->function);

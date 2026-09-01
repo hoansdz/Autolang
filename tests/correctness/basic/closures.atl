@@ -31,8 +31,9 @@ class TestClosureClass extends TestParentClosureClass {
     fun createMethodClosure(base: Int): (Int) -> Int {
         val factor1: Float = 1
 		static val factor2: Int = 1
+		val factor3: Bool = false
         return {|y|
-			Int(n * (factor1 + factor2)) + base + y
+			Int(n * (factor1 + factor2) + factor3) + base + y 
 		}
     }
 }

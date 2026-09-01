@@ -6,9 +6,9 @@
 #include "frontend/parser/ClassDeclaration.hpp"
 #include "frontend/parser/Parameter.hpp"
 #include "frontend/parser/node/OptimizeNode.hpp"
-#include "shared/SmallVector.hpp"
 #include "shared/CompiledProgram.hpp"
 #include "shared/DefaultClass.hpp"
+#include "shared/SmallVector.hpp"
 #include "shared/Type.hpp"
 #include <exception>
 #include <iostream>
@@ -274,12 +274,14 @@ struct AccessNode : NullableNode {
 	DeclarationNode *declaration;
 	bool isStore;
 	bool isVal;
-	bool cloneable = true;
+	bool cloneable;
+	bool isGetPointer;
 	AccessNode(NodeType kind, uint32_t line, DeclarationNode *declaration,
 	           bool nullable, ClassId classId = 0, bool isVal = false,
 	           bool isStore = false)
 	    : NullableNode(kind, classId, nullable, line), declaration(declaration),
-	      isStore(isStore), isVal(isVal) {}
+	      isStore(isStore), isVal(isVal), cloneable(true), isGetPointer(false) {
+	}
 };
 
 //"7e5", 72, 1.6, 1e5, ...
@@ -365,8 +367,11 @@ struct ReturnNode : ExprNode {
 struct UnaryNode : HasClassIdNode {
 	HasClassIdNode *value;
 	Lexer::TokenType op;
-	UnaryNode(uint32_t line, Lexer::TokenType op, HasClassIdNode *value)
-	    : HasClassIdNode(NodeType::UNARY, 0, line), value(value), op(op) {}
+	bool isLeft;
+	UnaryNode(uint32_t line, Lexer::TokenType op, HasClassIdNode *value,
+	          bool isLeft = true)
+	    : HasClassIdNode(NodeType::UNARY, 0, line), value(value), op(op),
+	      isLeft(isLeft) {}
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;
 	template <Opcode normal, Opcode local, Opcode global, Opcode local_member,
@@ -430,7 +435,8 @@ struct BinaryNode : HasClassIdNode {
 struct CastNode : NullableNode { // #
 	HasClassIdNode *value;
 	CastNode(HasClassIdNode *value, ClassId classId)
-	    : NullableNode(NodeType::CAST, classId, false, value->line),
+	    : NullableNode(NodeType::CAST, classId, value->isNullable(),
+	                   value->line),
 	      value(value) {}
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;

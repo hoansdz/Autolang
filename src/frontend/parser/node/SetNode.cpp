@@ -3,6 +3,7 @@
 
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "shared/DefaultClass.hpp"
 
 namespace Autolang {
 
@@ -15,7 +16,9 @@ ExprNode *SetNode::resolve(in_func) {
 			return this;
 		if (op != Lexer::TokenType::EQUAL) {
 			throwError("Cannot perform read-modify-write operation on index "
-			           "access. Use direct assignment instead\nHint: Index access operations (like `arr[i] += val`) must be performed using direct assignment (`arr[i] = ...`).");
+			           "access. Use direct assignment instead\nHint: Index "
+			           "access operations (like `arr[i] += val`) must be "
+			           "performed using direct assignment (`arr[i] = ...`).");
 		}
 		result->nameId = lexerIdset;
 		result->arguments.push_back(value);
@@ -41,11 +44,16 @@ void SetNode::optimize(in_func) {
 						if (clazz->genericBaseClassId !=
 						    DefaultClass::arrayClassId) {
 							if (detach->classId == DefaultClass::nullClassId) {
-								throwError("Cannot infer type for initializer. Autolang requires explicit type parameters for collection sugar.\nHint: Declare explicitly, for example: `<Type>[]`.");
+								throwError("Cannot infer type for initializer. "
+								           "Autolang requires explicit type "
+								           "parameters for collection "
+								           "sugar.\nHint: Declare explicitly, "
+								           "for example: `<Type>[]`.");
 							}
 							throwError("Type mismatch: Expected Array<> but '" +
 							           detach->getClassName(in_data) +
-							           "' found\nHint: Target assignment variable must be of type Array<T>.");
+							           "' found\nHint: Target assignment "
+							           "variable must be of type Array<T>.");
 						}
 						createArrayNode->classId = detach->classId;
 					}
@@ -70,11 +78,17 @@ void SetNode::optimize(in_func) {
 								if (detach->classId ==
 								    DefaultClass::nullClassId) {
 									throwError(
-									    "Cannot infer type for initializer. Autolang requires explicit type parameters for collection sugar.\nHint: Declare explicitly, for example: `<Type>{}`.");
+									    "Cannot infer type for initializer. "
+									    "Autolang requires explicit type "
+									    "parameters for collection "
+									    "sugar.\nHint: Declare explicitly, for "
+									    "example: `<Type>{}`.");
 								}
-								throwError("Type mismatch: Expected " +
-								           detach->getClassName(in_data) +
-								           " but Set<> found\nHint: Ensure assignment target matches Set<T> type.");
+								throwError(
+								    "Type mismatch: Expected " +
+								    detach->getClassName(in_data) +
+								    " but Set<> found\nHint: Ensure assignment "
+								    "target matches Set<T> type.");
 							}
 						} else {
 							createSetNode->classId = detach->classId;
@@ -89,11 +103,17 @@ void SetNode::optimize(in_func) {
 						if (clazz->genericBaseClassId !=
 						    DefaultClass::mapClassId) {
 							if (detach->classId == DefaultClass::nullClassId) {
-								throwError("Cannot infer type for initializer. Autolang requires explicit type parameters for collection sugar.\nHint: Declare explicitly, for example: `<KeyClass, ValueClass>{}`.");
+								throwError(
+								    "Cannot infer type for initializer. "
+								    "Autolang requires explicit type "
+								    "parameters for collection sugar.\nHint: "
+								    "Declare explicitly, for example: "
+								    "`<KeyClass, ValueClass>{}`.");
 							}
 							throwError("Type mismatch: Expected Map<> but '" +
 							           detach->getClassName(in_data) +
-							           "' found\nHint: Target assignment variable must be of type Map<K, V>.");
+							           "' found\nHint: Target assignment "
+							           "variable must be of type Map<K, V>.");
 						}
 						createMapNode->classId = detach->classId;
 					}
@@ -155,7 +175,9 @@ void SetNode::optimize(in_func) {
 				throwError("Cannot find member name '" +
 				           context.lexerString[valueNode->nameId] +
 				           "' in class " + clazz->getName(compile) +
-				           "\nHint: Verify member name spelling and accessibility in class " + clazz->getName(compile) + ".");
+				           "\nHint: Verify member name spelling and "
+				           "accessibility in class " +
+				           clazz->getName(compile) + ".");
 			}
 			std::vector<FunctionId> *funcs[1];
 			funcs[0] = &it->second;
@@ -172,17 +194,22 @@ void SetNode::optimize(in_func) {
 	}
 
 	if (justDetachStatic && !value->isStaticValue()) {
-		throwError("Assigned value must be a static value\nHint: Static property assignment requires a static value expression.");
+		throwError("Assigned value must be a static value\nHint: Static "
+		           "property assignment requires a static value expression.");
 	}
 
 	if (value->classId == DefaultClass::voidClassId) {
-		throwError("Cannot assign expression of type 'Void'\nHint: Expressions returning Void do not produce a value and cannot be assigned to variables.");
+		throwError("Cannot assign expression of type 'Void'\nHint: Expressions "
+		           "returning Void do not produce a value and cannot be "
+		           "assigned to variables.");
 	}
 
 	if (value->isNullable() && op != Lexer::TokenType::EQUAL) {
 		throwError("Cannot use operator '" +
 		           Lexer::Token(0, op).toString(context) +
-		           "' with nullable variables\nHint: Compound assignment operators cannot be used on nullable values. Unwrap the value with '!' or perform a null check.");
+		           "' with nullable variables\nHint: Compound assignment "
+		           "operators cannot be used on nullable values. Unwrap the "
+		           "value with '!' or perform a null check.");
 	}
 
 	classId = value->classId;
@@ -199,7 +226,10 @@ void SetNode::optimize(in_func) {
 				if (detachNode->declaration->classId ==
 				    Autolang::DefaultClass::nullClassId) {
 					if (value->classId == Autolang::DefaultClass::nullClassId) {
-						throwError("Ambiguous type inference for member variable\nHint: Provide an explicit type annotation when declaring member variable initialized with null.");
+						throwError("Ambiguous type inference for member "
+						           "variable\nHint: Provide an explicit type "
+						           "annotation when declaring member variable "
+						           "initialized with null.");
 					}
 					detachNode->declaration->classId = value->classId;
 					if (value->classId == DefaultClass::functionClassId) {
@@ -231,7 +261,8 @@ void SetNode::optimize(in_func) {
 				    compile.classes[detachNode->caller->classId]->getName(
 				        compile) +
 				    "." + context.lexerString[detachNode->nameId] +
-				    " because it's val\nHint: Properties declared with 'val' are immutable and cannot be reassigned.");
+				    " because it's val\nHint: Properties declared with 'val' "
+				    "are immutable and cannot be reassigned.");
 			}
 			// Nullable
 			if (value->classId == Autolang::DefaultClass::nullClassId) {
@@ -241,13 +272,18 @@ void SetNode::optimize(in_func) {
 					    " cannot detach null value, you must declare " +
 					    compile.classes[detachNode->declaration->classId]
 					        ->getName(compile) +
-					    "? to can detach null\nHint: Declare member variable as nullable type (" + compile.classes[detachNode->declaration->classId]->getName(compile) + "?) to allow null assignment.");
+					    "? to can detach null\nHint: Declare member variable "
+					    "as nullable type (" +
+					    compile.classes[detachNode->declaration->classId]
+					        ->getName(compile) +
+					    "?) to allow null assignment.");
 				}
 				if (op != Lexer::TokenType::EQUAL) {
 					throwError(detachNode->declaration->name +
 					           " cannot use operator " +
 					           Lexer::Token(0, op).toString(context) +
-					           " with null value\nHint: Compound assignment cannot be used when assigned value is null.");
+					           " with null value\nHint: Compound assignment "
+					           "cannot be used when assigned value is null.");
 				}
 				return;
 			}
@@ -315,20 +351,26 @@ void SetNode::optimize(in_func) {
 					    " cannot detach null value, you must declare " +
 					    compile.classes[node->declaration->classId]->getName(
 					        compile) +
-					    "? to can detach null\nHint: Declare variable as nullable type (" + compile.classes[node->declaration->classId]->getName(compile) + "?) to allow null assignment.");
+					    "? to can detach null\nHint: Declare variable as "
+					    "nullable type (" +
+					    compile.classes[node->declaration->classId]->getName(
+					        compile) +
+					    "?) to allow null assignment.");
 				}
 				if (op != Lexer::TokenType::EQUAL) {
 					throwError(node->declaration->name +
 					           " cannot use operator " +
 					           Lexer::Token(0, op).toString(context) +
-					           " with null value\nHint: Compound assignment cannot be used when assigned value is null.");
+					           " with null value\nHint: Compound assignment "
+					           "cannot be used when assigned value is null.");
 				}
 				return;
 			}
 			break;
 		}
 		default: {
-			throwError("Invalid assignment target\nHint: Assignment target must be a variable, property, or index expression.");
+			throwError("Invalid assignment target\nHint: Assignment target "
+			           "must be a variable, property, or index expression.");
 		}
 	}
 
@@ -357,7 +399,9 @@ void SetNode::optimize(in_func) {
 					detachName = detachNode->declaration->name;
 					throwError("Cannot assign nullable variable '" +
 					           node->declaration->name +
-					           "' to non-null variable '" + detachName + "'\nHint: Use non-null assertion ('!') or check nullability before assignment.");
+					           "' to non-null variable '" + detachName +
+					           "'\nHint: Use non-null assertion ('!') or check "
+					           "nullability before assignment.");
 				}
 				// if (detachNode->isVal && node->isVal) {
 				// 	node->cloneable = false;
@@ -374,7 +418,10 @@ void SetNode::optimize(in_func) {
 					    "Cannot assign nullable return value of '" +
 					    context.lexerString[static_cast<CallNode *>(value)
 					                            ->nameId] +
-					    "' to non-null variable '" + detachName + "'\nHint: Function return type is nullable. Unwrap return value with '!' or declare variable as nullable.");
+					    "' to non-null variable '" + detachName +
+					    "'\nHint: Function return type is nullable. Unwrap "
+					    "return value with '!' or declare variable as "
+					    "nullable.");
 				}
 				break;
 			}
@@ -385,15 +432,19 @@ void SetNode::optimize(in_func) {
 
 	if (detach->isNullable()) {
 		if (op != Lexer::TokenType::EQUAL) {
-			throwError("Cannot use operator '" +
-			           Lexer::Token(0, op).toString(context) +
-			           "' with nullable value\nHint: Cannot use compound assignment operators on nullable target without prior null check.");
+			throwError(
+			    "Cannot use operator '" +
+			    Lexer::Token(0, op).toString(context) +
+			    "' with nullable value\nHint: Cannot use compound assignment "
+			    "operators on nullable target without prior null check.");
 		}
 	} else if (value->isNullable()) {
 		throwError("Cannot assign nullable type '" +
 		           compile.classes[value->classId]->getName(compile) +
 		           "?' to non-null variable of type '" +
-		           compile.classes[detach->classId]->getName(compile) + "'\nHint: Target variable is non-nullable. Unwrap assigned value using '!' or declare target as nullable.");
+		           compile.classes[detach->classId]->getName(compile) +
+		           "'\nHint: Target variable is non-nullable. Unwrap assigned "
+		           "value using '!' or declare target as nullable.");
 	}
 
 	if (detach->classId == value->classId) {
@@ -409,12 +460,13 @@ void SetNode::optimize(in_func) {
 						return;
 					break;
 			}
-			throwError("Cannot use " + Lexer::Token(0, op).toString(context) +
-			           " operator with " +
-			           compile.classes[detach->classId]->getName(compile) +
-			           " and " +
-			           compile.classes[value->classId]->getName(compile) +
-			           "\nHint: Operator '" + Lexer::Token(0, op).toString(context) + "' is not supported for these operand types.");
+			throwError(
+			    "Cannot use " + Lexer::Token(0, op).toString(context) +
+			    " operator with " +
+			    compile.classes[detach->classId]->getName(compile) + " and " +
+			    compile.classes[value->classId]->getName(compile) +
+			    "\nHint: Operator '" + Lexer::Token(0, op).toString(context) +
+			    "' is not supported for these operand types.");
 		} else {
 			if (detach->classId == DefaultClass::functionClassId &&
 			    detach->classDeclaration != value->classDeclaration) {
@@ -429,7 +481,8 @@ void SetNode::optimize(in_func) {
 							    detach->classDeclaration->getName(in_data) +
 							    "' but found '" +
 							    value->classDeclaration->getName(in_data) +
-							    "'\nHint: Function signatures do not match parameter types.");
+							    "'\nHint: Function signatures do not match "
+							    "parameter types.");
 						}
 					}
 					return;
@@ -438,50 +491,65 @@ void SetNode::optimize(in_func) {
 					           detach->classDeclaration->getName(in_data) +
 					           "' but found '" +
 					           value->classDeclaration->getName(in_data) +
-					           "'\nHint: Function signature argument count or return type mismatch.");
+					           "'\nHint: Function signature argument count or "
+					           "return type mismatch.");
 				}
 			}
 		}
 		return;
 	}
-	if ((detach->classId == Autolang::DefaultClass::intClassId ||
-	     detach->classId == Autolang::DefaultClass::floatClassId) &&
-	    (value->classId == Autolang::DefaultClass::intClassId ||
-	     value->classId == Autolang::DefaultClass::floatClassId)) {
-		if (detach->classId == Autolang::DefaultClass::intClassId &&
-		    value->classId == Autolang::DefaultClass::floatClassId) {
-			throwError("Cannot cast 'Float' to 'Int'\nHint: Implicit truncation from Float to Int is disallowed. Convert explicitly.");
+	switch (detach->classId) {
+		case Autolang::DefaultClass::intClassId: {
+			switch (value->classId) {
+				case Autolang::DefaultClass::floatClassId: {
+					throwError(
+					    "Cannot cast 'Float' to 'Int'\nHint: Implicit "
+					    "truncation from "
+					    "Float to Int is disallowed. Convert explicitly.");
+					break;
+				}
+				case Autolang::DefaultClass::boolClassId: {
+					if (value->kind == Autolang::NodeType::CONST_VAL) {
+						value = toInt(in_data,
+						              static_cast<ConstValueNode *>(value));
+						value->optimize(in_data);
+						return;
+					} else {
+						value = context.castPool.push(
+						    value, Autolang::DefaultClass::intClassId);
+						return;
+					}
+					break;
+				}
+				default:
+					break;
+			}
+			break;
 		}
-		if (value->kind != NodeType::CONST_VAL) {
-			value = context.castPool.push(value, detach->classId);
-			return;
-		}
-		// Optimize
-		try {
-			switch (detach->classId) {
-				case Autolang::DefaultClass::intClassId:
-					value =
-					    toInt(in_data, static_cast<ConstValueNode *>(value));
-					value->optimize(in_data);
-					return;
-				case Autolang::DefaultClass::floatClassId:
+		case Autolang::DefaultClass::floatClassId: {
+			if (value->classId == Autolang::DefaultClass::floatClassId) {
+				return;
+			}
+			if (value->classId == Autolang::DefaultClass::intClassId ||
+			    value->classId == Autolang::DefaultClass::boolClassId) {
+				if (value->kind == Autolang::NodeType::CONST_VAL) {
 					value =
 					    toFloat(in_data, static_cast<ConstValueNode *>(value));
 					value->optimize(in_data);
 					return;
-				default:
-					throwError("Invalid cast target type\nHint: Target type is invalid for primitive constant casting.");
+				} else {
+					value = context.castPool.push(
+					    value, Autolang::DefaultClass::floatClassId);
+					return;
+				}
 			}
-		} catch (const ParserError &err) {
-			throwError("Cannot cast " +
-			           compile.classes[value->classId]->getName(compile) +
-			           " to " +
-			           compile.classes[detach->classId]->getName(compile) +
-			           "\nHint: No valid type conversion exists between these types.");
+			break;
 		}
-	}
-	if (detach->classId == DefaultClass::anyClassId) {
-		return;
+		case Autolang::DefaultClass::anyClassId: {
+			return;
+		}
+		default:
+			break;
 	}
 	if (detach->isNullable() && value->classId == DefaultClass::nullClassId) {
 		return;
@@ -494,10 +562,11 @@ void SetNode::optimize(in_func) {
 		case NodeType::GET_PROP:
 		default:
 			throwError("Type mismatch: expected '" +
-			           compile.classes[detach->classId]->getName(compile) +
-			           "' but found '" +
-			           compile.classes[value->classId]->getName(compile) +
-			           (value->isNullable() ? "?" : "") + "'\nHint: Assigned expression type does not match target variable/property type.");
+			           detach->getClassName(in_data) + "' but found '" +
+			           value->getClassName(in_data) +
+			           (value->isNullable() ? "?" : "") +
+			           "'\nHint: Assigned expression type does not match "
+			           "target variable/property type.");
 	}
 }
 
@@ -511,17 +580,45 @@ void SetNode::optimize(in_func) {
 		return;                                                                \
 	}
 
+#define operator_equal_case(type, op)                                          \
+	case Lexer::TokenType::type: {                                             \
+		auto _node = static_cast<AccessNode *>(detach);                        \
+		_node->isStore = false;                                                \
+		_node->putBytecodes(in_data, bytecodes);                               \
+		value->putBytecodes(in_data, bytecodes);                               \
+		bytecodes.emplace_back(Opcode::op);                                    \
+		return;                                                                \
+	}
+
 void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	loadOpcodeLine(in_data, bytecodes);
+	if (op == Lexer::TokenType::PLUS_EQUAL &&
+	    detach->classId == DefaultClass::stringClassId) {
+		switch (detach->kind) {
+			case NodeType::GET_PROP: {
+				auto n = static_cast<GetPropNode *>(detach);
+				n->isGetPointer = true;
+				break;
+			}
+			case NodeType::VAR: {
+				auto n = static_cast<VarNode *>(detach);
+				n->isGetPointer = true;
+				break;
+			}
+			default: {
+				throwError("Invalid String operation");
+			}
+		}
+	}
 	if (BinaryNode::putOptimizedBytecode(in_data, bytecodes, op, detach,
 	                                     value)) {
 		return;
 	}
 	switch (op) {
 		operator_plus_case(PLUS_EQUAL, PLUS_EQUAL);
-		operator_plus_case(MINUS_EQUAL, MINUS_EQUAL);
-		operator_plus_case(STAR_EQUAL, MUL_EQUAL);
-		operator_plus_case(SLASH_EQUAL, DIVIDE_EQUAL);
+		operator_equal_case(MINUS_EQUAL, MINUS_EQUAL);
+		operator_equal_case(STAR_EQUAL, MUL_EQUAL);
+		operator_equal_case(SLASH_EQUAL, DIVIDE_EQUAL);
 		default: {
 			break;
 			// throwError("Unexpected op "+ Lexer::Token(0,

@@ -19,9 +19,9 @@ void AVM::log() {
 	}
 	std::cerr << "-------------------" << "\n";
 	std::cerr << "Function: " << data.functions.size() << " elements" << "\n";
-	for (auto &func : data.functions) {
-		std::cerr << func->toString(data) << std::endl;
-	}
+	// for (auto &func : data.functions) {
+	// 	std::cerr << func->toString(data) << std::endl;
+	// }
 	/*uint32_t totalSize = bytecodes.size() - context.currentBytecodePos +
 	    sizeof(AVM) +
 	    data.functions.size() * sizeof(Function) +
@@ -291,6 +291,10 @@ void AVM::log(Function *currentFunction) {
 				// "\n";
 				break;
 			}
+				PRINT_BYTECODE_1_uint32(GET_POINTER_LOCAL);
+				PRINT_BYTECODE_1_uint32(GET_POINTER_GLOBAL);
+				PRINT_BYTECODE_1_uint32(GET_POINTER_MEMBER);
+				PRINT_BYTECODE_1_uint32(GET_POINTER_LATEINIT_MEMBER);
 				PRINT_BYTECODE_1_uint32(RETURN_LOCAL);
 				PRINT_BYTECODE_1_uint32(RETURN_CONST);
 				PRINT_BYTECODE_1_uint32(RETURN_GLOBAL);
@@ -582,18 +586,17 @@ void AVM::log(Function *currentFunction) {
 				std::cerr << "JUMP_IF_NON_NULL	 " << get_u32(bytecodes, i)
 				          << "\n";
 				break;
-			case Autolang::Opcode::PLUS_PLUS_GLOBAL:
-				std::cerr << "PLUS_PLUS_GLOBAL	 " << get_u32(bytecodes, i)
-				          << "\n";
-				break;
-			case Autolang::Opcode::PLUS_PLUS_LOCAL:
-				std::cerr << "PLUS_PLUS_LOCAL	 " << get_u32(bytecodes, i)
-				          << "\n";
-				break;
+				PRINT_BYTECODE_1_uint32(PLUS_PLUS_GLOBAL);
+				PRINT_BYTECODE_1_uint32(PLUS_PLUS_LOCAL);
+				BYTECODE_PRINT_SINGLE(PLUS_PLUS_VALUE);
+				BYTECODE_PRINT_SINGLE(MINUS_MINUS_VALUE);
+				BYTECODE_PRINT_SINGLE(VALUE_PLUS_PLUS);
+				BYTECODE_PRINT_SINGLE(VALUE_MINUS_MINUS);
+				BYTECODE_PRINT_SINGLE(FAST_PLUS_PLUS);
+
 				BYTECODE_PRINT_SINGLE(TO_INT)
 				BYTECODE_PRINT_SINGLE(TO_FLOAT)
 				BYTECODE_PRINT_SINGLE(TO_STRING)
-				BYTECODE_PRINT_SINGLE(PLUS_PLUS)
 				BYTECODE_PRINT_SINGLE(MINUS_MINUS)
 			case Autolang::Opcode::AND_AND:
 				std::cerr << "AND	 " << "\n";

@@ -61,12 +61,40 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 	}
 	LexerStringId nameId = token->indexData;
 	const std::string &name = context.lexerString[nameId];
-
-	if (context.defaultClassMap.find(nameId) != context.defaultClassMap.end()) {
-		throw ParserError(firstLine,
-		                  "Class " + name +
-		                      " already exists\nHint: Choose a unique class "
-		                      "name or remove duplicate declaration");
+	{
+		auto it = context.defaultClassMap.find(nameId);
+		if (it != context.defaultClassMap.end()) {
+			std::string hint =
+			    "Choose a unique class name or remove duplicate declaration";
+			if (it->second < context.classInfo.size()) {
+				auto prevClassInfo = context.classInfo[it->second];
+				if (prevClassInfo && prevClassInfo->mode) {
+					hint = "Previously defined at " +
+					       prevClassInfo->mode->path + ":" +
+					       std::to_string(prevClassInfo->line) + ". " + hint;
+				}
+			}
+			throw ParserError(firstLine, "Class " + name +
+			                                 " already exists\nHint: " + hint);
+		}
+	}
+	{
+		auto it = context.typealiasMap.find(nameId);
+		if (it != context.typealiasMap.end()) {
+			std::string hint =
+			    "Class names cannot collide with typealias names.";
+			if (it->second && it->second->classDeclaration &&
+			    it->second->classDeclaration->mode) {
+				hint = "Previously defined at " +
+				       it->second->classDeclaration->mode->path + ":" +
+				       std::to_string(it->second->classDeclaration->line) +
+				       ". " + hint;
+			}
+			throw ParserError(
+			    firstLine,
+			    "Cannot declare class with the same name as typealias: '" +
+			        name + "'\nHint: " + hint);
+		}
 	}
 
 	auto node = context.newClasses.push(firstLine, nameId,
@@ -127,8 +155,8 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 				}
 				Offset id = classInfo->genericData->genericDeclarations.size();
 				context.isInGeneric = true;
-				auto declarationData =
-				    new GenericDeclarationNode(firstLine, token->indexData);
+				auto declarationData = context.genericDeclarationNodePool.push(
+				    firstLine, token->indexData);
 				// declarationData->classDeclaration.baseClassLexerStringId =
 				// nameId;
 				// declarationData->classDeclaration.isGenericDeclaration =

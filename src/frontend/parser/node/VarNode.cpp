@@ -8,7 +8,8 @@ namespace Autolang {
 
 void VarNode::optimize(in_func) {
 	// std::cerr << "loaded " << declaration->getName(compile) << " "
-	//           << compile.classes[declaration->classId]->getName(compile) << "\n";
+	//           << compile.classes[declaration->classId]->getName(compile) <<
+	//           "\n";
 	classId = declaration->classId;
 	isVal = declaration->isVal;
 	classDeclaration = declaration->classDeclaration;
@@ -56,9 +57,16 @@ void VarNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		                                             : Opcode::STORE_LOCAL);
 		put_opcode_u32(bytecodes, declaration->id);
 	} else {
-		bytecodes.emplace_back(declaration->isGlobal ? Opcode::LOAD_GLOBAL
-		                                             : Opcode::LOAD_LOCAL);
-		put_opcode_u32(bytecodes, declaration->id);
+		if (isGetPointer) {
+			bytecodes.emplace_back(declaration->isGlobal
+			                           ? Opcode::GET_POINTER_GLOBAL
+			                           : Opcode::GET_POINTER_LOCAL);
+			put_opcode_u32(bytecodes, declaration->id);
+		} else {
+			bytecodes.emplace_back(declaration->isGlobal ? Opcode::LOAD_GLOBAL
+			                                             : Opcode::LOAD_LOCAL);
+			put_opcode_u32(bytecodes, declaration->id);
+		}
 		if (isForceNonNull) {
 			bytecodes.push_back(Opcode::CHECK_FORCE_NON_NULL);
 		}

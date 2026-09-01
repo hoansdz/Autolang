@@ -23,11 +23,6 @@ struct GenericData {
 		}
 		return genericDeclarations[it->second];
 	}
-	~GenericData() {
-		for (auto declaration : genericDeclarations) {
-			delete declaration;
-		}
-	}
 };
 
 } // namespace Autolang

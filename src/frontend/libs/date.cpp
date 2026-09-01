@@ -48,14 +48,14 @@ inline int64_t getCurrentTimeMs() {
 }
 
 AObject *constructor_now(NativeFuncInData) {
-	ClassId classId = args[0]->i;
+	ClassId classId = notifier.callFrame->func->returnId;
 	auto handle = new ADateHandle{getCurrentTimeMs()};
 	return notifier.createNativeData(classId, handle, destroyDate);
 }
 
 AObject *constructor_ts(NativeFuncInData) {
 	int64_t ts = args[0]->i;
-	ClassId classId = args[1]->i;
+	ClassId classId = notifier.callFrame->func->returnId;
 	auto handle = new ADateHandle{ts};
 	return notifier.createNativeData(classId, handle, destroyDate);
 }
@@ -190,10 +190,10 @@ void init(ACompiler &compiler) {
 class Date {
     
     @native("date_constructor_now")
-    static fun now(classId: Int = getClassId(Date)): Date
+    static fun now(): Date
 
     @native("date_constructor_ts")
-    static fun fromTimestamp(timestamp: Int, classId: Int = getClassId(Date)): Date
+    static fun fromTimestamp(timestamp: Int): Date
 
     @native("date_get_year")
     fun getYear(): Int

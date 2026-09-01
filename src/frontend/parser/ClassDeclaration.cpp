@@ -89,6 +89,152 @@ ClassDeclaration *ClassDeclaration::copy(in_func) {
 }
 
 template <bool changeGenericsClassId, bool canBeFunction>
+void ClassDeclaration::onLoadTypealias(in_func, TypealiasData *typealias) {
+	if (typealias->genericData) {
+		if (typealias->genericData->genericDeclarations.size() !=
+		    inputClassId.size()) {
+			throwError(
+			    "Typealias " + context.lexerString[baseClassLexerStringId] +
+			    " expects " +
+			    std::to_string(
+			        typealias->genericData->genericDeclarations.size()) +
+			    " type argument but " + std::to_string(inputClassId.size()) +
+			    " were given\nHint: Check number of type "
+			    "arguments "
+			    "passed to the generic typealias");
+		}
+	} else {
+		if (inputClassId.size()) {
+			throwError("Typealias " +
+			           context.lexerString[baseClassLexerStringId] +
+			           " expects no type argument but " +
+			           std::to_string(inputClassId.size()) +
+			           " were given\nHint: "
+			           "Remove type arguments from typealias");
+		}
+	}
+	switch (typealias->state) {
+		case TypealiasState::TAS_UNVISITED: {
+			typealias->state = TAS_VISITING;
+			++context.typealiasDepth;
+			// if (!typealias->classDeclaration->classId) {
+			if (typealias->genericData) {
+				for (size_t i = 0; i < inputClassId.size(); ++i) {
+					auto &genericDeclaration =
+					    typealias->genericData->genericDeclarations[i];
+					auto *inputClass = inputClassId[i];
+					ClassId inputClassId = *inputClass->classId;
+					// Change generics type
+					genericDeclaration->classId = inputClassId;
+					genericDeclaration->nullable = inputClass->nullable;
+					ClassDeclaration *newClassDeclaration;
+					if (inputClass->isGeneric) {
+						newClassDeclaration =
+						    context.classDeclarationAllocator.push();
+						newClassDeclaration->classId = inputClassId;
+						newClassDeclaration->nullable = inputClass->nullable;
+						newClassDeclaration->line = genericDeclaration->line;
+						if (inputClassId == DefaultClass::functionClassId) {
+							newClassDeclaration->inputClassId.reserve(
+							    inputClass->inputClassId.size());
+							for (auto classDeclaration :
+							     inputClass->inputClassId) {
+								newClassDeclaration->inputClassId.push_back(
+								    classDeclaration->copy(in_data));
+							}
+						}
+					} else {
+						newClassDeclaration = inputClass;
+					}
+
+					if (genericDeclaration->condition) {
+						auto &condition = *genericDeclaration->condition;
+						// if (condition.condition ==
+						// GenericDeclarationCondition::MUST_EXTENDS) {
+						if (!condition.classDeclaration->classId) {
+							condition.classDeclaration->load<true>(in_data);
+							if (!condition.classDeclaration->classId) {
+								condition.classDeclaration->throwError(
+								    "Unresolved " +
+								    condition.classDeclaration->getName(
+								        in_data) +
+								    "\nHint: Ensure type constraint class "
+								    "is defined or imported");
+							}
+						} else if (condition.classDeclaration->classId ==
+						           DefaultClass::functionClassId) {
+							condition.classDeclaration->load<true>(in_data);
+						}
+						context.checkValidateExtends[genericDeclaration]
+						    .push_back(newClassDeclaration);
+						// }
+					}
+					for (auto *classDeclaration :
+					     genericDeclaration->allClassDeclarations) {
+						classDeclaration->classId = inputClassId;
+						classDeclaration->inputClassId =
+						    newClassDeclaration->inputClassId;
+						if (classDeclaration->mustInference) {
+							classDeclaration->nullable = inputClass->nullable;
+							// classDeclaration->mustInference = false;
+						}
+						classDeclaration->baseClassLexerStringId =
+						    inputClass->baseClassLexerStringId;
+					}
+				}
+			}
+			typealias->classDeclaration->load<true>(in_data);
+			// }
+			if (context.typealiasTraceIndex) {
+				if (--context.typealiasTraceIndex) {
+					context.typealiasStackTrace[context.typealiasTraceIndex] =
+					    baseClassLexerStringId;
+					typealias->state = TAS_UNVISITED;
+					return;
+				} else {
+					context.typealiasStackTrace[0] = baseClassLexerStringId;
+					std::string errorMsg = "Circular typealias detected: ";
+					bool first = true;
+					for (auto nameId : context.typealiasStackTrace) {
+						if (!first)
+							errorMsg += " -> ";
+						errorMsg += context.lexerString[nameId];
+						first = false;
+					}
+					context.typealiasDepth = 0;
+					typealias->state = TAS_UNVISITED;
+					throwError(errorMsg);
+				}
+			} else {
+				--context.typealiasDepth;
+				typealias->state = TAS_VISITED;
+			}
+			break;
+		}
+		case TypealiasState::TAS_VISITING: {
+			context.typealiasTraceIndex = context.typealiasDepth++;
+			context.typealiasStackTrace.resize(context.typealiasDepth);
+			context.typealiasStackTrace[context.typealiasTraceIndex] =
+			    baseClassLexerStringId;
+			return;
+		}
+		default:
+			break;
+	}
+	auto *classDeclaration = typealias->classDeclaration->copy(in_data);
+	classId = classDeclaration->classId;
+	baseClassLexerStringId = classDeclaration->baseClassLexerStringId;
+	inputClassId = classDeclaration->inputClassId;
+	if (classDeclaration->nullable) {
+		nullable = true;
+	}
+	if (typealias->genericData || classDeclaration->isGeneric) {
+		typealias->state = TAS_UNVISITED;
+		typealias->classDeclaration->classId = std::nullopt;
+	}
+}
+
+template <bool changeGenericsClassId, bool canBeFunction>
 void ClassDeclaration::load(in_func) {
 	if (classId) {
 		if (classId == DefaultClass::functionClassId) {
@@ -152,65 +298,12 @@ void ClassDeclaration::load(in_func) {
 		{
 			auto it = context.defaultClassMap.find(baseClassLexerStringId);
 			if (it == context.defaultClassMap.end()) {
-				auto typealias =
+				auto typealiasResult =
 				    context.typealiasMap.find(baseClassLexerStringId);
-				if (typealias != context.typealiasMap.end()) {
-					switch (typealias->second->state) {
-						case TypealiasState::TAS_UNVISITED: {
-							typealias->second->state = TAS_VISITING;
-							++context.typealiasDepth;
-							if (!typealias->second->classDeclaration->classId) {
-								typealias->second->classDeclaration->load<true>(
-								    in_data);
-							}
-							if (context.typealiasTraceIndex) {
-								if (--context.typealiasTraceIndex) {
-									context.typealiasStackTrace
-									    [context.typealiasTraceIndex] =
-									    baseClassLexerStringId;
-									return;
-								} else {
-									context.typealiasStackTrace[0] =
-									    baseClassLexerStringId;
-									std::string errorMsg =
-									    "Circular typealias detected: ";
-									bool first = true;
-									for (auto nameId :
-									     context.typealiasStackTrace) {
-										if (!first)
-											errorMsg += " -> ";
-										errorMsg += context.lexerString[nameId];
-										first = false;
-									}
-									context.typealiasDepth = 0;
-									throwError(errorMsg);
-								}
-							} else {
-								--context.typealiasDepth;
-								typealias->second->state = TAS_VISITED;
-							}
-							break;
-						}
-						case TypealiasState::TAS_VISITING: {
-							context.typealiasTraceIndex =
-							    context.typealiasDepth++;
-							context.typealiasStackTrace.resize(
-							    context.typealiasDepth);
-							context.typealiasStackTrace
-							    [context.typealiasTraceIndex] =
-							    baseClassLexerStringId;
-							return;
-						}
-					}
-					auto *classDeclaration =
-					    typealias->second->classDeclaration->copy(in_data);
-					classId = classDeclaration->classId;
-					baseClassLexerStringId =
-					    classDeclaration->baseClassLexerStringId;
-					inputClassId = classDeclaration->inputClassId;
-					if (classDeclaration->nullable) {
-						nullable = true;
-					}
+				if (typealiasResult != context.typealiasMap.end()) {
+					auto typealias = typealiasResult->second;
+					onLoadTypealias<changeGenericsClassId, canBeFunction>(
+					    in_data, typealias);
 					return;
 				}
 				std::string targetName =
@@ -251,7 +344,8 @@ void ClassDeclaration::load(in_func) {
 				    "' expects " +
 				    std::to_string(
 				        classInfo->genericData->genericDeclarations.size()) +
-				    " type argument but 0 were given\nHint: Provide required "
+				    " type argument but 0 were given\nHint: Provide "
+				    "required "
 				    "generic type arguments '<...>' for the class");
 			}
 			if (inputClassId.size() != classInfo->genericTypeId.size()) {
@@ -271,7 +365,8 @@ void ClassDeclaration::load(in_func) {
 			throwError(
 			    "Type parameter '" +
 			    context.lexerString[baseClassLexerStringId] +
-			    "' cannot have type arguments\nHint: Generic type parameters "
+			    "' cannot have type arguments\nHint: Generic type "
+			    "parameters "
 			    "(like T, U) cannot accept further type arguments '<...>'");
 		}
 	}
@@ -326,15 +421,24 @@ void ClassDeclaration::load(in_func) {
 				        funcInfo->genericData->genericDeclarations.size()) +
 				    " type argument but " +
 				    std::to_string(inputClassId.size()) +
-				    " were given\nHint: Match number of type arguments with "
+				    " were given\nHint: Match number of type arguments "
+				    "with "
 				    "function generic parameters");
 			}
 		}
 	}
 
+	TypealiasData *typealias = nullptr;
+
 	{
 		auto it = context.defaultClassMap.find(baseClassLexerStringId);
 		if (it == context.defaultClassMap.end()) {
+			auto typealiasResult =
+			    context.typealiasMap.find(baseClassLexerStringId);
+			if (typealiasResult != context.typealiasMap.end()) {
+				typealias = typealiasResult->second;
+				goto continueLoad;
+			}
 			std::string targetName =
 			    context.lexerString[baseClassLexerStringId];
 			std::string bestSuggestion;
@@ -365,6 +469,8 @@ void ClassDeclaration::load(in_func) {
 			throwError(errorMsg);
 		}
 	}
+
+	continueLoad:;
 
 	std::string name;
 	if constexpr (!changeGenericsClassId) {
@@ -414,6 +520,10 @@ void ClassDeclaration::load(in_func) {
 		if (!mustInfer)
 			return;
 		name = getName(in_data);
+	}
+	if (typealias) {
+		onLoadTypealias<changeGenericsClassId, canBeFunction>(in_data, typealias);
+		return;
 	}
 	{
 		auto it = compile.classMap.find(name);

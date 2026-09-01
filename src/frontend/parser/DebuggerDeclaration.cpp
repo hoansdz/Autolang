@@ -17,7 +17,6 @@
 #include "frontend/ACompiler.hpp"
 #include "frontend/parser/Debugger.hpp"
 #include "frontend/parser/ParserContext.hpp"
-#include "shared/ClassFlags.hpp"
 #include "shared/Utils.hpp"
 
 namespace Autolang {
@@ -36,8 +35,10 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 	if (isStatic) {
 		if (!context.currentClassId &&
 		    context.currentFunctionId == context.mainFunctionId) {
-			throw ParserError(token->line,
-			                  "Static cannot be declared in file scope\nHint: Use 'static' modifier only within class member declarations");
+			throw ParserError(
+			    token->line,
+			    "Static cannot be declared in file scope\nHint: Use 'static' "
+			    "modifier only within class member declarations");
 		}
 		isGlobal = true;
 		context.modifierflags &= ~ModifierFlags::MF_STATIC;
@@ -49,7 +50,8 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 			throw ParserError(
 			    firstLine,
 			    "Error: Modifier 'lateinit' is not allowed on local variables. "
-			    "Initialize the variable directly instead.\nHint: Remove 'lateinit' or move variable to class/file scope");
+			    "Initialize the variable directly instead.\nHint: Remove "
+			    "'lateinit' or move variable to class/file scope");
 		}
 		context.modifierflags &= ~ModifierFlags::MF_LATEINIT;
 	}
@@ -60,7 +62,8 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 	    !expect(token, Lexer::TokenType::IDENTIFIER)) {
 		--i;
 		throw ParserError(context.tokens[i].line,
-		                  "Expected name but not found\nHint: Provide a valid variable name identifier");
+		                  "Expected name but not found\nHint: Provide a valid "
+		                  "variable name identifier");
 	}
 	{
 		std::string message =
@@ -80,7 +83,8 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 			throw ParserError(
 			    token->line,
 			    "@js_object class is already under automatic memory"
-			    " management, it can't have any member\nHint: Remove member variables from @js_object class");
+			    " management, it can't have any member\nHint: Remove member "
+			    "variables from @js_object class");
 		}
 #endif
 		if (isMapExist(context.getCurrentClass(in_data)->memberMap, name) ||
@@ -95,28 +99,35 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 	bool sugarSyntax = false;
 	if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
 		--i;
-		throw ParserError(firstLine, "Expected class name but not found\nHint: Provide a type or variable initial value");
+		throw ParserError(firstLine,
+		                  "Expected class name but not found\nHint: Provide a "
+		                  "type or variable initial value");
 	}
 	if (expect(token, Lexer::TokenType::QMARK)) {
 		sugarSyntax = true;
 		// Class name
 		if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
 			--i;
-			throw ParserError(firstLine, "Expected class name but not found\nHint: Provide type after '?' in sugar syntax");
+			throw ParserError(firstLine,
+			                  "Expected class name but not found\nHint: "
+			                  "Provide type after '?' in sugar syntax");
 		}
 	} else if (expect(token, Lexer::TokenType::EXMARK)) {
 		if (!(context.mode->flags & LibraryFlags::ALLOW_NON_NULL_ASSERTION)) {
 			throw ParserError(
 			    token->line,
 			    "Non-null assertion operator '!' is disabled (enable "
-			    "'allowNonNullAssertion' option to use it)\nHint: Enable 'allowNonNullAssertion' in compiler settings");
+			    "'allowNonNullAssertion' option to use it)\nHint: Enable "
+			    "'allowNonNullAssertion' in compiler settings");
 		}
 		sugarSyntax = true;
 		nullable = false;
 		// Class name
 		if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
 			--i;
-			throw ParserError(firstLine, "Expected class name but not found\nHint: Provide type after '!' in sugar syntax");
+			throw ParserError(firstLine,
+			                  "Expected class name but not found\nHint: "
+			                  "Provide type after '!' in sugar syntax");
 		}
 	}
 	HasClassIdNode *value = nullptr;
@@ -136,7 +147,9 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 			        classDeclaration->getName(in_data) + "'; use '" +
 			        (isVal ? "val " : "var ") + name + ": " +
 			        classDeclaration->getName(in_data) +
-			        (nullable ? "?" : "!") + "' instead\nHint: Use either 'val a? = 1' or 'val a: Int? = 1'");
+			        (nullable ? "?" : "!") +
+			        "' instead\nHint: Use either 'val a? = 1' or 'val a: Int? "
+			        "= 1'");
 		}
 		nullable = classDeclaration->nullable;
 		if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
@@ -168,8 +181,10 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 	if (expect(token, Lexer::TokenType::EQUAL)) {
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
-			throw ParserError(context.tokens[i].line,
-			                  "Expected expression after '=' but not found\nHint: Provide initial value expression after '='");
+			throw ParserError(
+			    context.tokens[i].line,
+			    "Expected expression after '=' but not found\nHint: Provide "
+			    "initial value expression after '='");
 		}
 		bool lastJustFindStatic = context.justFindStatic;
 		context.justFindStatic = isStatic;
@@ -264,8 +279,10 @@ createNode:;
 		} else {
 			auto it = funcInfo->scopes.back().find(baseName);
 			if (it != funcInfo->scopes.back().end())
-				throw ParserError(token->line, context.lexerString[baseName] +
-				                                   " already exists\nHint: Rename variable to avoid scope collision");
+				throw ParserError(token->line,
+				                  context.lexerString[baseName] +
+				                      " already exists\nHint: Rename variable "
+				                      "to avoid scope collision");
 			funcInfo->scopes.back()[baseName] = node;
 			if (funcInfo->genericData) {
 				funcInfo->genericData->staticDeclaration.push_back(
@@ -309,7 +326,7 @@ createNode:;
 		    context.getPropPool.push(
 		        firstLine, node, context.currentClassId,
 		        context.varPool.push(firstLine, classInfo->declarationThis,
- 		                             false, false),
+		                             false, false),
 		        node->baseName, true, true, false),
 		    value, false);
 		return setNode;
@@ -333,8 +350,9 @@ std::vector<ClassDeclaration *> loadListClassDeclaration(in_func, size_t &i,
 	Lexer::Token *token;
 	if (!nextTokenSameLine(&token, context.tokens, i, line)) {
 		--i;
-		throw ParserError(context.tokens[i].line,
-		                  "Expected class name but not found\nHint: Provide class type name");
+		throw ParserError(
+		    context.tokens[i].line,
+		    "Expected class name but not found\nHint: Provide class type name");
 	}
 	std::vector<ClassDeclaration *> listClassDeclaration;
 	if (expect(token, Lexer::TokenType::RPAREN)) {
@@ -357,8 +375,10 @@ std::vector<ClassDeclaration *> loadListClassDeclaration(in_func, size_t &i,
 		listClassDeclaration.push_back(classDeclaration);
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
-			throw ParserError(context.tokens[i].line,
-			                  "Expected '>' after class name but not found\nHint: Close generic type argument list with '>'");
+			throw ParserError(
+			    context.tokens[i].line,
+			    "Expected '>' after class name but not found\nHint: Close "
+			    "generic type argument list with '>'");
 		}
 		switch (token->type) {
 			case Lexer::TokenType::COMMA: {
@@ -369,7 +389,8 @@ std::vector<ClassDeclaration *> loadListClassDeclaration(in_func, size_t &i,
 			}
 			default: {
 				throw ParserError(
-				    line, "Expected '>' after class name but not found\nHint: Close generic type argument list with '>'");
+				    line, "Expected '>' after class name but not found\nHint: "
+				          "Close generic type argument list with '>'");
 			}
 		}
 	}
@@ -380,8 +401,9 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 	Lexer::Token *token;
 	if (!nextTokenSameLine(&token, context.tokens, i, line)) {
 		--i;
-		throw ParserError(context.tokens[i].line,
-		                  "Expected class name but not found\nHint: Provide class type name");
+		throw ParserError(
+		    context.tokens[i].line,
+		    "Expected class name but not found\nHint: Provide class type name");
 	}
 	ClassDeclaration *result = nullptr;
 	bool expectFunction = false;
@@ -415,19 +437,22 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 			switch (token->indexData) {
 				case lexerIdFunction: {
 					throw ParserError(
-					    token->line,
-					    "Function cannot be used as a type for declaration\nHint: Use explicit function type syntax like '(Int) -> String'");
+					    token->line, "Function cannot be used as a type for "
+					                 "declaration\nHint: Use explicit function "
+					                 "type syntax like '(Int) -> String'");
 				}
 				case lexerIdNull: {
 					throw ParserError(
 					    token->line,
-					    "Null cannot be used as a type for declaration\nHint: Use 'Type?' to declare a nullable type");
+					    "Null cannot be used as a type for declaration\nHint: "
+					    "Use 'Type?' to declare a nullable type");
 				}
 				case lexerIdVoid: {
 					if (!allowReturnVoid) {
-						throw ParserError(
-						    token->line,
-						    "Void cannot be used as a type for declaration\nHint: 'Void' can only be used as a function return type");
+						throw ParserError(token->line,
+						                  "Void cannot be used as a type for "
+						                  "declaration\nHint: 'Void' can only "
+						                  "be used as a function return type");
 					}
 					break;
 				}
@@ -436,6 +461,29 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 			    expect(token, Lexer::TokenType::GT)) {
 				--i;
 				return result;
+			}
+			while (expect(token, Lexer::TokenType::LBRACKET)) {
+				uint32_t firstLine = token->line;
+				if (!nextTokenSameLine(&token, context.tokens, i, line) ||
+				    !expect(token, Lexer::TokenType::RBRACKET)) {
+					--i;
+					throw ParserError(token->line, "Expected ']' after '['");
+				}
+				auto classDeclaration =
+				    context.classDeclarationAllocator.push();
+				classDeclaration->baseClassLexerStringId = lexerIdArray;
+				classDeclaration->inputClassId =
+				    std::vector<ClassDeclaration *>{result};
+				classDeclaration->line = firstLine;
+				classDeclaration->isGeneric = result->isGeneric;
+				result = classDeclaration;
+				if (!result->isGeneric) {
+					context.allClassDeclarations.push_back(result);
+				}
+				if (!nextTokenSameLine(&token, context.tokens, i, line)) {
+					--i;
+					return result;
+				}
 			}
 			if (expect(token, Lexer::TokenType::LT)) {
 				loadListGenericDeclarationType(
@@ -476,8 +524,12 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 			break;
 		}
 		case Lexer::TokenType::GT: {
-			throw ParserError(token->line, "Generic must have a type argument\nHint: Provide type arguments inside '<...>'");
+			throw ParserError(token->line,
+			                  "Generic must have a type argument\nHint: "
+			                  "Provide type arguments inside '<...>'");
 		}
+		default:
+			break;
 	}
 // auto currentFuncInfo = context.getCurrentFunctionInfo(in_data);
 loadSpecialClass:;
@@ -527,6 +579,8 @@ loadSpecialClass:;
 			}
 			goto loadSpecialClass;
 		}
+		default:
+			break;
 	}
 	--i;
 	return result;
@@ -546,8 +600,10 @@ void loadListGenericDeclarationType(in_func, size_t &i, uint32_t line,
 		inputVecs.push_back(classDeclaration);
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
-			throw ParserError(context.tokens[i].line,
-			                  "Expected '>' after class name but not found\nHint: Close generic parameter list with '>'");
+			throw ParserError(
+			    context.tokens[i].line,
+			    "Expected '>' after class name but not found\nHint: Close "
+			    "generic parameter list with '>'");
 		}
 		switch (token->type) {
 			case Lexer::TokenType::COMMA: {
@@ -558,7 +614,8 @@ void loadListGenericDeclarationType(in_func, size_t &i, uint32_t line,
 			}
 			default: {
 				throw ParserError(
-				    line, "Expected '>' after class name but not found\nHint: Close generic parameter list with '>'");
+				    line, "Expected '>' after class name but not found\nHint: "
+				          "Close generic parameter list with '>'");
 			}
 		}
 	}
@@ -566,4 +623,4 @@ void loadListGenericDeclarationType(in_func, size_t &i, uint32_t line,
 
 } // namespace Autolang
 
-#endif
+#endif

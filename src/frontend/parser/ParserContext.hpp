@@ -1,7 +1,6 @@
 #ifndef PARSER_CONTEXT_HPP
 #define PARSER_CONTEXT_HPP
 
-#include "backend/vm/AVM.hpp"
 #include "frontend/parser/ClassDeclaration.hpp"
 #include "frontend/parser/ClassInfo.hpp"
 #include "frontend/parser/FunctionEvent.hpp"
@@ -11,8 +10,6 @@
 #include "frontend/parser/node/CreateNode.hpp"
 #include "frontend/structure/NonReallocatePool.hpp"
 #include "shared/ChunkArena.hpp"
-#include "shared/ClassFlags.hpp"
-#include <set>
 #include <vector>
 
 namespace Autolang {
@@ -31,11 +28,16 @@ enum TypealiasState : uint8_t {
 	TAS_UNVISITED = 1u << 2,
 };
 
+struct GenericData;
+
 struct TypealiasData {
 	ClassDeclaration *classDeclaration;
+	GenericData *genericData;
 	TypealiasState state;
-	TypealiasData(ClassDeclaration *classDeclaration, TypealiasState state)
-	    : classDeclaration(classDeclaration), state(state) {}
+	TypealiasData(ClassDeclaration *classDeclaration, TypealiasState state,
+	              GenericData *genericData = nullptr)
+	    : classDeclaration(classDeclaration), genericData(genericData),
+	      state(state) {}
 };
 
 enum AnnotationFlags : uint32_t {
@@ -72,13 +74,41 @@ constexpr LexerStringId lexerIdgetClassId = 13;
 constexpr LexerStringId lexerIdArray = 14;
 constexpr LexerStringId lexerIdSet = 15;
 constexpr LexerStringId lexerIdMap = 16;
-constexpr LexerStringId lexerIdLRBRACKET = 17;
-constexpr LexerStringId lexerIdget = 18;
-constexpr LexerStringId lexerIdset = 19;
-constexpr LexerStringId lexerIdcontains = 20;
+constexpr LexerStringId lexerIdLRBRACKET = 17; // []
+constexpr LexerStringId lexerIdget = 18;       // a[i], a[i, j]
+constexpr LexerStringId lexerIdset = 19;       // a[i] = b, a[i, j] = b
+constexpr LexerStringId lexerIdcontains = 20;  // in, !in
 constexpr LexerStringId lexerIdthis = 21;
 constexpr LexerStringId lexerIdFunction = 22;
-constexpr LexerStringId lexerIdtoString = 23;
+constexpr LexerStringId lexerIdtoString = 23;    // toString()
+constexpr LexerStringId lexerIdunaryPlus = 24;   // +a
+constexpr LexerStringId lexerIdunaryMinus = 25;  // -a
+constexpr LexerStringId lexerIdnot = 26;         // !a
+constexpr LexerStringId lexerIdinc = 27;         // ++a, a++
+constexpr LexerStringId lexerIddec = 28;         // --a, a--
+constexpr LexerStringId lexerIdplus = 29;        // a + b
+constexpr LexerStringId lexerIdminus = 30;       // a - b
+constexpr LexerStringId lexerIdtimes = 31;       // a * b
+constexpr LexerStringId lexerIddiv = 32;         // a / b
+constexpr LexerStringId lexerIdrem = 33;         // a % b
+constexpr LexerStringId lexerIdrangeTo = 34;     // a..b
+constexpr LexerStringId lexerIdrangeUntil = 35;  // a..<b
+constexpr LexerStringId lexerIdplusAssign = 36;  // a += b
+constexpr LexerStringId lexerIdminusAssign = 37; // a -= b
+constexpr LexerStringId lexerIdtimesAssign = 38; // a *= b
+constexpr LexerStringId lexerIddivAssign = 39;   // a /= b
+constexpr LexerStringId lexerIdremAssign = 40;   // a %= b
+constexpr LexerStringId lexerIdequals = 41;      // a == b, a != b
+constexpr LexerStringId lexerIdcompareTo = 42;   // a < b, a > b, a <= b, a >= b
+constexpr LexerStringId lexerIditerator = 43;    // for (x in a) -> a.iterator()
+constexpr LexerStringId lexerIdhasNext = 44;     // iterator.hasNext()
+constexpr LexerStringId lexerIdnext = 45;        // iterator.next()
+constexpr LexerStringId lexerIdgetValue = 46;    // by delegate get
+constexpr LexerStringId lexerIdsetValue = 47;    // by delegate set
+constexpr LexerStringId lexerIdprovideDelegate = 48; // provideDelegate
+constexpr LexerStringId lexerIdand = 49;             // a and b
+constexpr LexerStringId lexerIdor = 50;              // a or b
+constexpr LexerStringId lexerIdxor = 51;             // a xor b
 
 using GenericCaller = ClassDeclaration;
 
@@ -167,12 +197,13 @@ struct ParserContext {
 	std::vector<Parameter *> defaultValueParameter;
 	std::vector<CreateClosureNode *> allClosureNode;
 
-	//Typealias stack trace
+	// Typealias stack trace
 	uint32_t typealiasDepth = 0;
 	uint32_t typealiasTraceIndex = 0;
 	std::vector<LexerStringId> typealiasStackTrace;
 
 	NonReallocatePool<DeclarationNode> declarationNodePool;
+	ChunkArena<GenericDeclarationNode, 16> genericDeclarationNodePool;
 	ChunkArena<TypealiasData, 8> typealiasPool;
 	ChunkArena<Parameter, 64> parameterPool;
 	ChunkArena<ReturnNode, 64> returnPool;

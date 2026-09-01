@@ -258,8 +258,8 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 
 				Offset id =
 				    context.preloadGenericData->genericDeclarations.size();
-				auto declarationData =
-				    new GenericDeclarationNode(firstLine, token->indexData);
+				auto declarationData = context.genericDeclarationNodePool.push(
+				    firstLine, token->indexData);
 				context.preloadGenericData->genericDeclarations.push_back(
 				    declarationData);
 				context.preloadGenericData

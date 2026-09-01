@@ -26,6 +26,7 @@ struct FunctionInfo {
 	uint32_t id;
 	uint32_t declaration; // Count declaration
 	uint32_t tokenIndex;
+	uint32_t line;
 	int64_t hash;
 	FunctionInfo() : body(0), declaration(0) {}
 	int64_t loadHash(Function *func);

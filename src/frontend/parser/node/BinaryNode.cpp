@@ -77,7 +77,8 @@ ExprNode *BinaryNode::leftOpRight(in_func, ConstValueNode *l,
 			              compile.classes[l->classId]->getName(compile) +
 			              " and " +
 			              compile.classes[r->classId]->getName(compile) +
-			              "\nHint: Both operands must have compatible types for constant folding.");
+			              "\nHint: Both operands must have compatible types "
+			              "for constant folding.");
 		}
 		case Lexer::TokenType::AND_AND:
 			return context.constValuePool.push(line, l->obj->b && r->obj->b);
@@ -90,7 +91,8 @@ ExprNode *BinaryNode::leftOpRight(in_func, ConstValueNode *l,
 			              compile.classes[l->classId]->getName(compile) +
 			              " and " +
 			              compile.classes[r->classId]->getName(compile) +
-			              "\nHint: Both operands must have compatible types for constant folding.");
+			              "\nHint: Both operands must have compatible types "
+			              "for constant folding.");
 	}
 }
 
@@ -102,12 +104,16 @@ ExprNode *BinaryNode::resolve(in_func) {
 			switch (right->kind) {
 				case NodeType::RANGE: {
 					if (left->kind == NodeType::CLASS_ACCESS) {
-						throwError("Expected value but class name found\nHint: The left operand of 'in' must be a value or variable, not a class type.");
+						throwError("Expected value but class name found\nHint: "
+						           "The left operand of 'in' must be a value "
+						           "or variable, not a class type.");
 					}
 					break;
 				}
 				case NodeType::CLASS_ACCESS: {
-					throwError("Expected value but class name found\nHint: The right operand of 'in' with Range must be a value or range expression, not a class type.");
+					throwError("Expected value but class name found\nHint: The "
+					           "right operand of 'in' with Range must be a "
+					           "value or range expression, not a class type.");
 				}
 				default: {
 					auto *result = context.callNodePool.push(
@@ -125,10 +131,14 @@ ExprNode *BinaryNode::resolve(in_func) {
 		case Lexer::TokenType::SAFE_CAST:
 		case Lexer::TokenType::UNSAFE_CAST: {
 			if (left->kind == CLASS_ACCESS) {
-				throwError("Left operand of 'as' must be a value\nHint: Provide an instance or expression on the left side of 'as' (e.g. value as Type).");
+				throwError("Left operand of 'as' must be a value\nHint: "
+				           "Provide an instance or expression on the left side "
+				           "of 'as' (e.g. value as Type).");
 			}
 			if (right->kind != CLASS_ACCESS) {
-				throwError("Right operand of 'as' must be a class name\nHint: Provide a valid class name on the right side of 'as' (e.g. value as Type).");
+				throwError("Right operand of 'as' must be a class name\nHint: "
+				           "Provide a valid class name on the right side of "
+				           "'as' (e.g. value as Type).");
 			}
 			auto result = context.runtimeCastPool.push(
 			    left, right->classId, op == Lexer::TokenType::SAFE_CAST);
@@ -200,10 +210,14 @@ void BinaryNode::optimize(in_func) {
 	switch (op) {
 		case Lexer::TokenType::IS: {
 			if (left->kind == CLASS_ACCESS) {
-				throwError("Left operand of 'is' must be a value\nHint: Provide an instance or variable on the left side of 'is' (e.g. obj is ClassName).");
+				throwError("Left operand of 'is' must be a value\nHint: "
+				           "Provide an instance or variable on the left side "
+				           "of 'is' (e.g. obj is ClassName).");
 			}
 			if (right->kind != CLASS_ACCESS) {
-				throwError("Right operand of 'is' must be a class name\nHint: Provide a valid class name on the right side of 'is' (e.g. obj is ClassName).");
+				throwError("Right operand of 'is' must be a class name\nHint: "
+				           "Provide a valid class name on the right side of "
+				           "'is' (e.g. obj is ClassName).");
 			}
 			classId = DefaultClass::boolClassId;
 			return;
@@ -216,12 +230,15 @@ void BinaryNode::optimize(in_func) {
 				    "' with nullable value: " + left->getClassName(in_data) +
 				    " " + Lexer::Token(0, op).toString(context) + " " +
 				    right->getClassName(in_data) +
-				    "\nHint: Ensure both operands are non-nullable using '!!' or check for null before using 'in'.");
+				    "\nHint: Ensure both operands are non-nullable using '!!' "
+				    "or check for null before using 'in'.");
 			}
 			if (right->kind == NodeType::RANGE &&
 			    left->classId != DefaultClass::intClassId) {
 				throwError("Type mismatch: expected 'Int' but '" +
-				           left->getClassName(in_data) + "' found\nHint: Range membership checks require an integer index value on the left side.");
+				           left->getClassName(in_data) +
+				           "' found\nHint: Range membership checks require an "
+				           "integer index value on the left side.");
 			}
 
 			classId = DefaultClass::boolClassId;
@@ -232,7 +249,8 @@ void BinaryNode::optimize(in_func) {
 			    right->kind == NodeType::CLASS_ACCESS) {
 				throwError("Expected value operand when using operator '" +
 				           Lexer::Token(0, op).toString(context) +
-				           "'\nHint: Operator '+' requires value operands, not class names.");
+				           "'\nHint: Operator '+' requires value operands, not "
+				           "class names.");
 			}
 
 			switch (left->classId) {
@@ -341,7 +359,8 @@ void BinaryNode::optimize(in_func) {
 				    "' with nullable value: " + left->getClassName(in_data) +
 				    " " + Lexer::Token(0, op).toString(context) + " " +
 				    right->getClassName(in_data) +
-				    "\nHint: Perform a null check or unwrap nullable value with '!!' before adding.");
+				    "\nHint: Perform a null check or unwrap nullable value "
+				    "with '!!' before adding.");
 			}
 			break;
 		}
@@ -352,7 +371,8 @@ void BinaryNode::optimize(in_func) {
 			    right->kind == NodeType::CLASS_ACCESS) {
 				throwError("Expected value operand when using operator '" +
 				           Lexer::Token(0, op).toString(context) +
-				           "'\nHint: Arithmetic operators require value operands, not class names.");
+				           "'\nHint: Arithmetic operators require value "
+				           "operands, not class names.");
 			}
 			if (left->classId == Autolang::DefaultClass::boolClassId) {
 				left = context.castPool.push(
@@ -372,7 +392,8 @@ void BinaryNode::optimize(in_func) {
 				    "' with nullable value: " + left->getClassName(in_data) +
 				    " " + Lexer::Token(0, op).toString(context) + " " +
 				    right->getClassName(in_data) +
-				    "\nHint: Perform a null check or unwrap nullable value with '!!' before arithmetic operations.");
+				    "\nHint: Perform a null check or unwrap nullable value "
+				    "with '!!' before arithmetic operations.");
 			}
 			break;
 		}
@@ -381,7 +402,8 @@ void BinaryNode::optimize(in_func) {
 			    right->kind == NodeType::CLASS_ACCESS) {
 				throwError("Expected value operand when using operator '" +
 				           Lexer::Token(0, op).toString(context) +
-				           "'\nHint: Equality operator '==' requires value operands, not class names.");
+				           "'\nHint: Equality operator '==' requires value "
+				           "operands, not class names.");
 			}
 			classId = Autolang::DefaultClass::boolClassId;
 			if (left->classId == Autolang::DefaultClass::nullClassId ||
@@ -402,7 +424,8 @@ void BinaryNode::optimize(in_func) {
 			    right->kind == NodeType::CLASS_ACCESS) {
 				throwError("Expected value operand when using operator '" +
 				           Lexer::Token(0, op).toString(context) +
-				           "'\nHint: Inequality operator '!=' requires value operands, not class names.");
+				           "'\nHint: Inequality operator '!=' requires value "
+				           "operands, not class names.");
 			}
 			classId = Autolang::DefaultClass::boolClassId;
 			if (left->classId == Autolang::DefaultClass::nullClassId ||
@@ -424,7 +447,8 @@ void BinaryNode::optimize(in_func) {
 			    right->kind == NodeType::CLASS_ACCESS) {
 				throwError("Expected value operand when using operator '" +
 				           Lexer::Token(0, op).toString(context) +
-				           "'\nHint: Identity comparison operator requires value operands, not class names.");
+				           "'\nHint: Identity comparison operator requires "
+				           "value operands, not class names.");
 			}
 			classId = DefaultClass::boolClassId;
 			return;
@@ -434,7 +458,8 @@ void BinaryNode::optimize(in_func) {
 			    right->kind == NodeType::CLASS_ACCESS) {
 				throwError("Expected value operand when using operator '" +
 				           Lexer::Token(0, op).toString(context) +
-				           "'\nHint: Binary operators require value operands, not class names.");
+				           "'\nHint: Binary operators require value operands, "
+				           "not class names.");
 			}
 			if (left->isNullable() || right->isNullable())
 				throwError(
@@ -443,7 +468,8 @@ void BinaryNode::optimize(in_func) {
 				    "' with nullable value: " + left->getClassName(in_data) +
 				    " " + Lexer::Token(0, op).toString(context) + " " +
 				    right->getClassName(in_data) +
-				    "\nHint: Ensure operands are non-null before performing binary operations.");
+				    "\nHint: Ensure operands are non-null before performing "
+				    "binary operations.");
 			break;
 		}
 	}
@@ -455,7 +481,8 @@ void BinaryNode::optimize(in_func) {
 	           compile.classes[left->classId]->getName(compile) + " and " +
 	           compile.classes[right->classId]->getName(compile) +
 	           "\nHint: Ensure both operand types support operator '" +
-	           Lexer::Token(0, op).toString(context) + "' or provide a valid type conversion.");
+	           Lexer::Token(0, op).toString(context) +
+	           "' or provide a valid type conversion.");
 }
 
 bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
@@ -474,7 +501,7 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 	switch (left->kind) {
 		case NodeType::VAR: {
 			auto leftNode = static_cast<VarNode *>(left);
-			if (leftNode->isForceNonNull) {
+			if (leftNode->isForceNonNull || leftNode->isGetPointer) {
 				return false;
 			}
 			switch (right->kind) {
@@ -612,7 +639,7 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 		case NodeType::GET_PROP: {
 			auto leftNode = static_cast<GetPropNode *>(left);
 			if (leftNode->declaration->isLateInit || leftNode->accessNullable ||
-			    leftNode->isForceNonNull ||
+			    leftNode->isForceNonNull || leftNode->isGetPointer ||
 			    (leftNode->caller->isNullableNode() &&
 			     static_cast<NullableNode *>(leftNode->caller)
 			         ->isForceNonNull)) {
@@ -806,7 +833,9 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				           compile.classes[left->classId]->getName(compile) +
 				           "' and '" +
 				           compile.classes[right->classId]->getName(compile) +
-				           "'\nHint: Cannot perform this operation directly with 'null'. Use identity comparison (=== or !==) or null-coalescing (?:).");
+				           "'\nHint: Cannot perform this operation directly "
+				           "with 'null'. Use identity comparison (=== or !==) "
+				           "or null-coalescing (?:).");
 			}
 		}
 		return;
@@ -852,7 +881,8 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				}
 				default: {
 					throwError("Operator 'in' is currently only supported for "
-					           "Range types\nHint: Check if the right operand is a valid range (e.g. start..end).");
+					           "Range types\nHint: Check if the right operand "
+					           "is a valid range (e.g. start..end).");
 				}
 			}
 		}
@@ -963,7 +993,8 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			// std::cerr<<this<<'\n';
 			throwError(std::string("Cannot find operator '") +
 			           Lexer::Token(0, op).toString(context) +
-			           "'\nHint: The binary operator is unsupported or missing bytecode implementation.");
+			           "'\nHint: The binary operator is unsupported or missing "
+			           "bytecode implementation.");
 	}
 }
 

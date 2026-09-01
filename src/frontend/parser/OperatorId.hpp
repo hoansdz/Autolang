@@ -19,6 +19,7 @@ enum OperatorId : uint8_t {
     OP_DIV_EQ,           // /=
 
     OP_MOD,              // %
+    OP_MOD_EQ,           // %=
 
     OP_BIT_AND,          // &
     OP_BIT_OR,           // |

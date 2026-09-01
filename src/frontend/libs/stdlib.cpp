@@ -1,4 +1,4 @@
-﻿#ifndef LIBS_STDLIB_CPP
+#ifndef LIBS_STDLIB_CPP
 #define LIBS_STDLIB_CPP
 
 #include "backend/libs/array.hpp"
@@ -266,15 +266,11 @@ class Array<T> {
 	@native("arr_remove")
 	fun erase(index: Int)
 
-
-
 	@native("arr_size")
 	fun size(): Int
 
 	@native("arr_size")
 	fun length(): Int
-
-
 
 	@native("arr_size")
 	fun len(): Int
@@ -312,12 +308,8 @@ class Array<T> {
 	@native("arr_contains")
 	fun includes(value: T): Bool
 
-
-
 	@native("arr_for_each")
 	fun forEach(fn: (T) -> Void)
-
-
 
 	@native("arr_for_each_with_index")
 	fun forEach(fn: (T, Int) -> Void)
@@ -571,6 +563,87 @@ fun assert(condition: Bool, fileName: String, line: Int)
 // @wait_input
 // @native("input")
 // fun input(): String
+
+// AI Error Absorption Typealiases
+// Absorb common type naming mistakes from other languages (Java, C#, Python, Kotlin, C++, Rust, Swift, TypeScript)
+
+// Numeric types
+typealias Double = Float
+typealias Number = Float
+typealias Integer = Int
+typealias Long = Int
+
+// Boolean
+typealias Boolean = Bool
+
+// Character (AutoLang converts 'c' to Int via ASCII code)
+typealias Char = Int
+typealias Character = Int
+
+// String aliases
+typealias Str = String
+
+// Array/List aliases
+typealias List<T> = Array<T>
+typealias ArrayList<T> = Array<T>
+typealias LinkedList<T> = Array<T>
+typealias Vector<T> = Array<T>
+typealias Vec<T> = Array<T>
+typealias MutableList<T> = Array<T>
+
+// Map/Dictionary aliases
+typealias HashMap<K, V> = Map<K, V>
+typealias Dictionary<K, V> = Map<K, V>
+typealias Dict<K, V> = Map<K, V>
+typealias TreeMap<K, V> = Map<K, V>
+typealias MutableMap<K, V> = Map<K, V>
+
+// Set aliases
+typealias HashSet<T> = Set<T>
+typealias TreeSet<T> = Set<T>
+typealias MutableSet<T> = Set<T>
+
+// Nullable
+typealias Optional<T> = T?
+
+// Special types
+typealias Object = Any
+typealias JSON = Json
+
+// Lowercase primitive and common types (C++, C#, TS, Python)
+typealias int = Int
+typealias float = Float
+typealias double = Float
+typealias bool = Bool
+typealias boolean = Bool
+typealias char = Int
+typealias string = String
+typealias any = Any
+typealias object = Any
+typealias void = Void
+/*typealias list<T> = Array<T>
+typealias dict<K, V> = Map<K, V>
+typealias set<T> = Set<T>*/
+
+// Primitive Arrays (Kotlin)
+typealias IntArray = Array<Int>
+typealias FloatArray = Array<Float>
+typealias DoubleArray = Array<Float>
+typealias BooleanArray = Array<Bool>
+typealias ByteArray = Array<Int>
+typealias CharArray = Array<Int>
+typealias LongArray = Array<Int>
+
+// Small numeric types (Kotlin)
+typealias Byte = Int
+typealias Short = Int
+
+// Collection interfaces (Kotlin)
+typealias Collection<T> = Array<T>
+typealias Iterable<T> = Array<T>
+
+// Special types (Kotlin)
+typealias Nothing = Void
 	)###",
 	    LibraryConfig(true),
 	    ANativeMap(

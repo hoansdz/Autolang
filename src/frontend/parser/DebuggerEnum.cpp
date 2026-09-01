@@ -121,11 +121,19 @@ void loadEnum(in_func, size_t &i) {
 	LexerStringId nameId = token->indexData;
 	const std::string &name = context.lexerString[nameId];
 
-	if (context.defaultClassMap.find(nameId) != context.defaultClassMap.end()) {
+	auto it = context.defaultClassMap.find(nameId);
+	if (it != context.defaultClassMap.end()) {
+		std::string hint = "Use a unique enum/class name";
+		if (it->second < context.classInfo.size()) {
+			auto prevClassInfo = context.classInfo[it->second];
+			if (prevClassInfo && prevClassInfo->mode) {
+				hint = "Previously defined at " + prevClassInfo->mode->path +
+				       ":" + std::to_string(prevClassInfo->line) + ". " + hint;
+			}
+		}
 		throw ParserError(
 		    firstLine,
-		    "Class " + name +
-		        " already exists\nHint: Use a unique enum/class name");
+		    "Class " + name + " already exists\nHint: " + hint);
 	}
 
 	auto node = context.newClasses.push(firstLine, nameId,

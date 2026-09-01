@@ -265,7 +265,7 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			} else {
 				// compare
 				detach->putBytecodes(in_data, bytecodes);
-				bytecodes.emplace_back(Opcode::PLUS_PLUS);
+				bytecodes.emplace_back(Opcode::FAST_PLUS_PLUS);
 				rangeNode->to->putBytecodes(in_data, bytecodes);
 				bytecodes.emplace_back(rangeNode->lessThan
 				                           ? Opcode::LESS_THAN

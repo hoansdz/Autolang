@@ -152,6 +152,21 @@ namespace Autolang {
 		break;                                                                 \
 	}
 
+void throwLateInitException(ANotifier *notifier, AObject *obj,
+                            uint32_t memberIndex) {
+	auto clazz = notifier->vm->data.classes[obj->type];
+	std::string className = notifier->getClassName(obj->type);
+	for (auto &[name, index] : clazz->memberMap) {
+		if (index != memberIndex)
+			continue;
+		notifier->throwException("Member '" + name + "' at class '" +
+		                         className + "' is uninitialized ");
+		return;
+	}
+	notifier->throwException("Member " + std::to_string(memberIndex) +
+	                         " is uninitialized in class " + className);
+}
+
 void AVM::resume() {
 	static ANativeFunction operatorTable[] = {
 
@@ -167,7 +182,8 @@ void AVM::resume() {
 	    /*  8 */ DefaultFunction::divide,    // /
 	    /*  9 */ DefaultFunction::divide_eq, // /=
 
-	    /* 10 */ DefaultFunction::mod, // %
+	    /* 10 */ DefaultFunction::mod,    // %
+	    /* 11 */ DefaultFunction::mod_eq, // %=
 
 	    /* 11 */ DefaultFunction::bitwise_and, // &
 	    /* 12 */ DefaultFunction::bitwise_or,  // |
@@ -790,17 +806,8 @@ resumeCallFrame:;
 						stack.push(member);
 						break;
 					}
-					auto clazz = data.classes[obj->type];
-					std::string className = notifier->getClassName(obj->type);
-					for (auto &[name, index] : clazz->memberMap) {
-						if (index != memberIndex)
-							continue;
-						notifier->throwException("Member '" + name +
-						                         "' at class '" + className +
-						                         "' is uninitialized ");
-						goto resumeCallFrame;
-					}
-					break;
+					throwLateInitException(notifier, obj, memberIndex);
+					goto resumeCallFrame;
 				}
 				case Autolang::Opcode::GLOBAL_LOAD_LATEINIT_MEMBER: {
 					uint32_t pos = get_u32(bytecodes, i);
@@ -812,17 +819,8 @@ resumeCallFrame:;
 						stack.push(member);
 						break;
 					}
-					auto clazz = data.classes[obj->type];
-					std::string className = notifier->getClassName(obj->type);
-					for (auto &[name, index] : clazz->memberMap) {
-						if (index != memberIndex)
-							continue;
-						notifier->throwException("Member '" + name +
-						                         "' at class '" + className +
-						                         "' is uninitialized ");
-						goto resumeCallFrame;
-					}
-					break;
+					throwLateInitException(notifier, obj, memberIndex);
+					goto resumeCallFrame;
 				}
 				case Autolang::Opcode::GLOBAL_LOAD_MEMBER_AND_STORE: {
 					uint32_t pos = get_u32(bytecodes, i);
@@ -856,27 +854,23 @@ resumeCallFrame:;
 						data.manager.release(parent);
 						break;
 					}
-					auto clazz = data.classes[parent->type];
-					std::string className =
-					    notifier->getClassName(parent->type);
-					for (auto &[name, index] : clazz->memberMap) {
-						if (index != memberIndex)
-							continue;
-						data.manager.release(parent);
-						notifier->throwException("Member '" + name +
-						                         "' at class '" + className +
-						                         "' is uninitialized ");
-						goto resumeCallFrame;
-					}
-					break;
+					throwLateInitException(notifier, parent, memberIndex);
+					goto resumeCallFrame;
 				}
 				case Autolang::Opcode::LOAD_MEMBER_IF_NNULL_OR_JUMP: {
 					AObject *obj = stack.top();
 					if (obj != Autolang::DefaultClass::nullObject) {
-						stack.top() = (*obj->member)[get_u32(bytecodes, i)];
-						stack.top()->retain();
-						i += 4;
-						data.manager.release(obj);
+						auto memberIndex = get_u32(bytecodes, i);
+						AObject *member = obj->member->data[memberIndex];
+						if (member) {
+							stack.top() = member;
+							member->retain();
+							i += 4;
+							data.manager.release(obj);
+						} else {
+							throwLateInitException(notifier, obj, memberIndex);
+							goto resumeCallFrame;
+						}
 					} else {
 						stack.pop();
 						i += 4;
@@ -887,10 +881,17 @@ resumeCallFrame:;
 				case Autolang::Opcode::LOAD_MEMBER_CAN_RET_NULL_OR_JUMP: {
 					AObject *obj = stack.top();
 					if (obj != Autolang::DefaultClass::nullObject) {
-						stack.top() = (*obj->member)[get_u32(bytecodes, i)];
-						stack.top()->retain();
-						i += 4;
-						data.manager.release(obj);
+						auto memberIndex = get_u32(bytecodes, i);
+						AObject *member = obj->member->data[memberIndex];
+						if (member) {
+							stack.top() = member;
+							member->retain();
+							i += 4;
+							data.manager.release(obj);
+						} else {
+							throwLateInitException(notifier, obj, memberIndex);
+							goto resumeCallFrame;
+						}
 					} else {
 						i += 4;
 						i = get_u32(bytecodes, i);
@@ -1167,10 +1168,96 @@ resumeCallFrame:;
 						goto resumeCallFrame;
 					break;
 				}
-				case Autolang::Opcode::PLUS_PLUS: {
-					// if (!operate<Autolang::DefaultFunction::plus_plus, 1>())
-					// 	goto resumeCallFrame;
+				case Autolang::Opcode::FAST_PLUS_PLUS: {
 					++stack.top()->i;
+					break;
+				}
+				case Autolang::Opcode::PLUS_PLUS_VALUE: {
+					auto obj = stack.top();
+					switch (obj->type) {
+						case DefaultClass::intClassId: {
+							++obj->i;
+							break;
+						}
+						case DefaultClass::floatClassId: {
+							++obj->f;
+							break;
+						}
+						default: {
+							notifier->throwException(
+							    "Cannot ++ for " +
+							    notifier->getClassName(obj->type));
+							goto resumeCallFrame;
+						}
+					}
+					break;
+				}
+				case Autolang::Opcode::MINUS_MINUS_VALUE: {
+					auto obj = stack.top();
+					switch (obj->type) {
+						case DefaultClass::intClassId: {
+							--obj->i;
+							break;
+						}
+						case DefaultClass::floatClassId: {
+							--obj->f;
+							break;
+						}
+						default: {
+							notifier->throwException(
+							    "Cannot -- for " +
+							    notifier->getClassName(obj->type));
+							goto resumeCallFrame;
+						}
+					}
+					break;
+				}
+				case Autolang::Opcode::VALUE_PLUS_PLUS: {
+					auto obj = stack.top();
+					switch (obj->type) {
+						case DefaultClass::intClassId: {
+							auto newObj = notifier->createInt(obj->i++);
+							notifier->release(obj);
+							stack.top() = newObj;
+							break;
+						}
+						case DefaultClass::floatClassId: {
+							auto newObj = notifier->createFloat(obj->f++);
+							notifier->release(obj);
+							stack.top() = newObj;
+							break;
+						}
+						default: {
+							notifier->throwException(
+							    "Cannot ++ for " +
+							    notifier->getClassName(obj->type));
+							goto resumeCallFrame;
+						}
+					}
+					break;
+				}
+				case Autolang::Opcode::VALUE_MINUS_MINUS: {
+					auto obj = stack.top();
+					switch (obj->type) {
+						case DefaultClass::intClassId: {
+							auto newObj = notifier->createInt(obj->i--);
+							notifier->release(obj);
+							stack.top() = newObj;
+							break;
+						}
+						case DefaultClass::floatClassId: {
+							auto newObj = notifier->createFloat(obj->f--);
+							notifier->release(obj);
+							stack.top() = newObj;
+							break;
+						}
+						default: {
+							notifier->throwException(
+							    "Cannot -- for " +
+							    notifier->getClassName(obj->type));
+							goto resumeCallFrame;
+						}
+					}
 					break;
 				}
 				case Autolang::Opcode::PLUS_PLUS_GLOBAL: {
@@ -1365,6 +1452,37 @@ resumeCallFrame:;
 					if (!operate<Autolang::DefaultFunction::divide, 2>())
 						goto resumeCallFrame;
 					break;
+				}
+				case Autolang::Opcode::GET_POINTER_LOCAL: {
+					pointerVariable = &stackAllocator[get_u32(bytecodes, i)];
+					stack.push(*pointerVariable);
+					(*pointerVariable)->retain();
+					break;
+				}
+				case Autolang::Opcode::GET_POINTER_GLOBAL: {
+					pointerVariable = &globalVariables[get_u32(bytecodes, i)];
+					stack.push(*pointerVariable);
+					(*pointerVariable)->retain();
+					break;
+				}
+				case Autolang::Opcode::GET_POINTER_MEMBER: {
+					auto obj = stack.pop();
+					pointerVariable = &obj->member->data[get_u32(bytecodes, i)];
+					stack.push(*pointerVariable);
+					(*pointerVariable)->retain();
+					break;
+				}
+				case Autolang::Opcode::GET_POINTER_LATEINIT_MEMBER: {
+					auto obj = stack.pop();
+					uint32_t memberIndex = get_u32(bytecodes, i);
+					pointerVariable = &obj->member->data[memberIndex];
+					if (*pointerVariable) {
+						stack.push(*pointerVariable);
+						(*pointerVariable)->retain();
+						break;
+					}
+					throwLateInitException(notifier, obj, memberIndex);
+					goto resumeCallFrame;
 				}
 				case Autolang::Opcode::PLUS_EQUAL: {
 					if (!operate<Autolang::DefaultFunction::plus_eq, 2,

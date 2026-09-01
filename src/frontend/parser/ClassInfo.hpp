@@ -13,6 +13,8 @@
 namespace Autolang {
 
 struct ClassInfo {
+	LibraryData *mode;
+	uint32_t line;
 	GenericData *genericData = nullptr;
 	SmallVector<DeclarationNode *, 8> allDeclarationNode;
 	SmallVector<DeclarationNode *, 8> member;

@@ -4,6 +4,7 @@
 #include "frontend/ACompiler.hpp"
 #include "frontend/parser/node/CreateFuncNode.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "shared/ClassFlags.hpp"
 
 namespace Autolang {
 
@@ -31,6 +32,7 @@ template <bool addToGlobalScope> void CreateFuncNode::pushFunction(in_func) {
 	auto funcInfo = context.functionInfo[id];
 	funcInfo->clazz = clazz;
 	funcInfo->id = id;
+	funcInfo->line = line;
 	func->maxDeclaration = parameter->parameters.size();
 	funcInfo->declaration = parameter->parameters.size();
 	funcInfo->parameter = parameter;
@@ -67,6 +69,7 @@ void CreateFuncNode::pushNativeFunction(in_func, ANativeFunctionData *native) {
 	func->native = native;
 	funcInfo->clazz = clazz;
 	funcInfo->id = id;
+	funcInfo->line = line;
 	func->maxDeclaration = parameter->parameters.size();
 	funcInfo->declaration = parameter->parameters.size();
 	funcInfo->parameter = parameter;
@@ -121,8 +124,13 @@ void CreateFuncNode::optimize(in_func) {
 			auto it = hash.find(funcInfo->hash);
 			if (it != hash.end() && compile.functions[it->second]->getName(
 			                            compile) == func->getName(compile)) {
+				auto previousFunc = compile.functions[it->second];
+				auto previousFuncInfo = context.functionInfo[it->second];
+				std::string prevPath = previousFunc->path ? previousFunc->path : "unknown";
 				throwError("Redefined function: " +
-				           funcInfo->toString(in_data));
+				           funcInfo->toString(in_data) +
+				           "\nHint: Previously defined at " + prevPath + ":" + std::to_string(previousFuncInfo->line) + 
+				           ". Ensure the function signature is unique or remove the duplicate definition");
 			}
 			hash[funcInfo->hash] = func->id;
 		} else {
@@ -130,8 +138,13 @@ void CreateFuncNode::optimize(in_func) {
 			auto it = hash.find(funcInfo->hash);
 			if (it != hash.end() && compile.functions[it->second]->getName(
 			                            compile) == func->getName(compile)) {
+				auto previousFunc = compile.functions[it->second];
+				auto previousFuncInfo = context.functionInfo[it->second];
+				std::string prevPath = previousFunc->path ? previousFunc->path : "unknown";
 				throwError("Redefined function: " +
-				           funcInfo->toString(in_data));
+				           funcInfo->toString(in_data) +
+				           "\nHint: Previously defined at " + prevPath + ":" + std::to_string(previousFuncInfo->line) + 
+				           ". Ensure the function signature is unique or remove the duplicate definition");
 			}
 			// std::cerr<<"Created "<<name<<" hash "<<funcInfo->hash<<"\n";
 			hash[funcInfo->hash] = func->id;
