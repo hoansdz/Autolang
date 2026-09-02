@@ -1,4 +1,4 @@
-﻿#ifndef LIB_JSON_CPP
+#ifndef LIB_JSON_CPP
 #define LIB_JSON_CPP
 
 #include "json.hpp"
@@ -699,10 +699,10 @@ void init(ACompiler &compiler) {
     fun Json.toString(): String
 
     @native("json_to_class")
-    fun jsonToClass<T>(json: Json): T
+    fun <T> jsonToClass(json: Json): T
 
     @native("json_to_array_class")
-    fun jsonToArrayClass<T>(json: Json): Array<T>
+    fun <T> jsonToArrayClass(json: Json): Array<T>
 
     @native("json_null_value")
     static fun Json.nullValue(): Json

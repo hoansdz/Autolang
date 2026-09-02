@@ -86,7 +86,8 @@ void loadAnnotations(in_func, size_t &i) {
 				    "@native expects a string value\nHint: Provide a string "
 				    "literal inside parentheses, e.g. @native(\"name\")");
 			}
-			context.annotationMetadata[AnnotationFlags::AN_NATIVE] = *token;
+			context.annotationMetadata[AnnotationMetadataIndex::AMI_NATIVE] =
+			    *token;
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 			    !expect(token, Lexer::TokenType::RPAREN)) {
 				--i;

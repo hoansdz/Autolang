@@ -10,6 +10,7 @@
 #include "frontend/parser/node/CreateNode.hpp"
 #include "frontend/structure/NonReallocatePool.hpp"
 #include "shared/ChunkArena.hpp"
+#include <array>
 #include <vector>
 
 namespace Autolang {
@@ -38,6 +39,11 @@ struct TypealiasData {
 	              GenericData *genericData = nullptr)
 	    : classDeclaration(classDeclaration), genericData(genericData),
 	      state(state) {}
+};
+
+enum AnnotationMetadataIndex : uint8_t {
+	AMI_NATIVE = 0,
+	AMI_COUNT
 };
 
 enum AnnotationFlags : uint32_t {
@@ -138,7 +144,7 @@ struct ParserContext {
 	// Anotations
 	uint32_t annotationFlags = 0;
 	uint32_t closureCount = 0;
-	HashMap<AnnotationFlags, Lexer::Token> annotationMetadata;
+	std::array<Lexer::Token, AMI_COUNT> annotationMetadata;
 	// Declaration new functions by users
 	CreateClosureNode *currentClosureNode = nullptr;
 	std::optional<ClassId> *currentClosureCurrentClassId;

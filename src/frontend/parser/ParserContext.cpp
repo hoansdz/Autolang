@@ -128,7 +128,6 @@ void ParserContext::init(CompiledProgram &compile) {
 	constValue[lexerIdtrue] = &constValues[1];
 	constValue[lexerIdfalse] = &constValues[2];
 
-	annotationMetadata.reserve(8);
 	closureScopes.reserve(4);
 
 	{

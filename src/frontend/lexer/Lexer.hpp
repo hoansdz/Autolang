@@ -145,6 +145,8 @@ enum TokenType : uint8_t {
 static const HashMap<std::string, TokenType> CAST = {
     {"var", TokenType::VAR},
     {"val", TokenType::VAL},
+	{"let", TokenType::VAL},
+	{"const", TokenType::VAL},
     {"not", TokenType::NOT},
     {"while", TokenType::WHILE},
     {"if", TokenType::IF},
@@ -223,6 +225,7 @@ static const HashMap<std::string, TokenType> CAST = {
     {">=", TokenType::GTE},
     {"<=", TokenType::LTE},
     {"->", TokenType::MINUS_GT},
+	{"=>", TokenType::MINUS_GT},
 };
 
 struct Token {
