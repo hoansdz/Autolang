@@ -1,0 +1,2 @@
+typealias CollidingType = Int
+val CollidingType: Int = 10

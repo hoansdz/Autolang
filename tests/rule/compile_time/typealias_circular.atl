@@ -1,0 +1,2 @@
+typealias LoopA = LoopB
+typealias LoopB = LoopA

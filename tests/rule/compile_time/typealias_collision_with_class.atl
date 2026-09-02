@@ -1,0 +1,2 @@
+class ExistingClass {}
+typealias ExistingClass = Int

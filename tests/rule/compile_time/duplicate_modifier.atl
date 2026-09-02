@@ -1,0 +1,3 @@
+class TestModifiers {
+	public public val x: Int = 10
+}

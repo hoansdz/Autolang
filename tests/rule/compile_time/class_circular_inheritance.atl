@@ -1,0 +1,2 @@
+class BaseAlpha extends BaseBeta {}
+class BaseBeta extends BaseAlpha {}

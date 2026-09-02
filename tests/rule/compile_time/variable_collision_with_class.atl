@@ -1,0 +1,2 @@
+class CollidingClass {}
+val CollidingClass: Int = 10

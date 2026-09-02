@@ -1,0 +1,4 @@
+class DuplicateMethods {
+	fun sampleFunc(a: Int): Int = a
+	fun sampleFunc(a: Int): Int = a + 1
+}

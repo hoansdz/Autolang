@@ -198,6 +198,15 @@ class ACompiler {
 	inline bool hasError() {
 		return state == Autolang::CompilerState::CT_ERROR;
 	}
+	inline bool hasException() {
+		if (vm.callFrames.getSize() == 0) {
+			if (vm.callFrames.objects[0].exception) {
+				return true;
+			}
+			return false;
+		}
+		return false;
+	}
 };
 
 } // namespace Autolang
