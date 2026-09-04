@@ -1,0 +1,2 @@
+fun <T> duplicateGenericFunc(x: T): T = x
+fun <T> duplicateGenericFunc(x: T): T = x

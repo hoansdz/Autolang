@@ -1,0 +1,2 @@
+val duplicateVar: Int = 1
+val duplicateVar: Int = 2

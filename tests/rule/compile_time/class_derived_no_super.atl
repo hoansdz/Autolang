@@ -1,0 +1,6 @@
+class BaseEntity {}
+class DerivedEntity extends BaseEntity {
+	constructor() {
+		val x = 10
+	}
+}

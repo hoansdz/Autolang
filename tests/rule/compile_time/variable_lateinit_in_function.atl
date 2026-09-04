@@ -1,0 +1,3 @@
+fun testLateinitLocal(): Void {
+	lateinit val x: String
+}

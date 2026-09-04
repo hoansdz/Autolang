@@ -1,4 +1,4 @@
-class NullAccessTest(val value: Int) {
+class NullAccessTest(var value: Int) {
 	fun plus(value: Int) {
 		this.value += value
 	}

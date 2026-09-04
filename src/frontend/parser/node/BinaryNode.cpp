@@ -100,20 +100,23 @@ ExprNode *BinaryNode::resolve(in_func) {
 	left = static_cast<HasClassIdNode *>(left->resolve(in_data));
 	right = static_cast<HasClassIdNode *>(right->resolve(in_data));
 	switch (op) {
-		case Lexer::TokenType::IN_: {
+		case Lexer::TokenType::IN_:
+		case Lexer::TokenType::NOT_IN: {
 			switch (right->kind) {
 				case NodeType::RANGE: {
 					if (left->kind == NodeType::CLASS_ACCESS) {
 						throwError("Expected value but class name found\nHint: "
-						           "The left operand of 'in' must be a value "
-						           "or variable, not a class type.");
+						           "The left operand of '" +
+						           Lexer::Token(0, op).toString(context) +
+						           "' must be a value or variable, not a class type.");
 					}
 					break;
 				}
 				case NodeType::CLASS_ACCESS: {
 					throwError("Expected value but class name found\nHint: The "
-					           "right operand of 'in' with Range must be a "
-					           "value or range expression, not a class type.");
+					           "right operand of '" +
+					           Lexer::Token(0, op).toString(context) +
+					           "' with Range must be a value or range expression, not a class type.");
 				}
 				default: {
 					auto *result = context.callNodePool.push(
@@ -122,6 +125,10 @@ ExprNode *BinaryNode::resolve(in_func) {
 					    context.justFindStatic, true, false);
 					left = nullptr;
 					right = nullptr;
+					if (op == Lexer::TokenType::NOT_IN) {
+						return context.unaryNodePool.push(
+						    line, Lexer::TokenType::NOT, result, true);
+					}
 					return result;
 				}
 			}
@@ -208,21 +215,29 @@ void BinaryNode::optimize(in_func) {
 			break;
 	}
 	switch (op) {
-		case Lexer::TokenType::IS: {
+		case Lexer::TokenType::IS:
+		case Lexer::TokenType::NOT_IS: {
 			if (left->kind == CLASS_ACCESS) {
-				throwError("Left operand of 'is' must be a value\nHint: "
-				           "Provide an instance or variable on the left side "
-				           "of 'is' (e.g. obj is ClassName).");
+				throwError("Left operand of '" +
+				           Lexer::Token(0, op).toString(context) +
+				           "' must be a value\nHint: Provide an instance or "
+				           "variable on the left side of '" +
+				           Lexer::Token(0, op).toString(context) + "' (e.g. obj " +
+				           Lexer::Token(0, op).toString(context) + " ClassName).");
 			}
 			if (right->kind != CLASS_ACCESS) {
-				throwError("Right operand of 'is' must be a class name\nHint: "
-				           "Provide a valid class name on the right side of "
-				           "'is' (e.g. obj is ClassName).");
+				throwError("Right operand of '" +
+				           Lexer::Token(0, op).toString(context) +
+				           "' must be a class name\nHint: Provide a valid class "
+				           "name on the right side of '" +
+				           Lexer::Token(0, op).toString(context) + "' (e.g. obj " +
+				           Lexer::Token(0, op).toString(context) + " ClassName).");
 			}
 			classId = DefaultClass::boolClassId;
 			return;
 		}
-		case Lexer::TokenType::IN_: {
+		case Lexer::TokenType::IN_:
+		case Lexer::TokenType::NOT_IN: {
 			if (left->isNullable() || right->isNullable()) {
 				throwError(
 				    "Cannot use operator '" +
@@ -231,7 +246,8 @@ void BinaryNode::optimize(in_func) {
 				    " " + Lexer::Token(0, op).toString(context) + " " +
 				    right->getClassName(in_data) +
 				    "\nHint: Ensure both operands are non-nullable using '!!' "
-				    "or check for null before using 'in'.");
+				    "or check for null before using '" +
+				    Lexer::Token(0, op).toString(context) + "'.");
 			}
 			if (right->kind == NodeType::RANGE &&
 			    left->classId != DefaultClass::intClassId) {
@@ -491,6 +507,12 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 	if (op == Lexer::TokenType::IS) {
 		left->putBytecodes(in_data, bytecodes);
 		bytecodes.emplace_back(Opcode::IS);
+		put_opcode_u32(bytecodes, right->classId);
+		return true;
+	}
+	if (op == Lexer::TokenType::NOT_IS) {
+		left->putBytecodes(in_data, bytecodes);
+		bytecodes.emplace_back(Opcode::NOT_IS);
 		put_opcode_u32(bytecodes, right->classId);
 		return true;
 	}
@@ -881,6 +903,21 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				}
 				default: {
 					throwError("Operator 'in' is currently only supported for "
+					           "Range types\nHint: Check if the right operand "
+					           "is a valid range (e.g. start..end).");
+				}
+			}
+		}
+		case Lexer::TokenType::NOT_IN: {
+			switch (right->kind) {
+				case NodeType::RANGE: {
+					bytecodes.emplace_back(Opcode::NOT_IN_RANGE);
+					bytecodes.emplace_back(
+					    static_cast<RangeNode *>(right)->lessThan);
+					return;
+				}
+				default: {
+					throwError("Operator '!in' is currently only supported for "
 					           "Range types\nHint: Check if the right operand "
 					           "is a valid range (e.g. start..end).");
 				}

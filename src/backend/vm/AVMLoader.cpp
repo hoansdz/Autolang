@@ -17,7 +17,8 @@ AVM::AVM(bool allowDebug)
 	data.allGenericTypeNullable.reserve(32);
 	data.allMemberId.reserve(16);
 	data.allMemberNullable.reserve(16);
-	data.allCatchPosition.reserve(16);
+	data.allHandlers.reserve(16);
+	data.allFinallyStates.reserve(16);
 }
 
 void AVM::start() {

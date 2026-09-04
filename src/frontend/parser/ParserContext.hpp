@@ -10,6 +10,7 @@
 #include "frontend/parser/node/CreateNode.hpp"
 #include "frontend/structure/NonReallocatePool.hpp"
 #include "shared/ChunkArena.hpp"
+#include <array>
 #include <vector>
 
 namespace Autolang {
@@ -40,6 +41,11 @@ struct TypealiasData {
 	      state(state) {}
 };
 
+enum AnnotationMetadataIndex : uint8_t {
+	AMI_NATIVE = 0,
+	AMI_COUNT
+};
+
 enum AnnotationFlags : uint32_t {
 	AN_OVERRIDE = 1u << 0,
 	AN_NO_OVERRIDE = 1u << 1,
@@ -53,6 +59,7 @@ enum AnnotationFlags : uint32_t {
 #elif __PYBIND11__
 	AN_PY_OBJECT = 1u << 7,
 #endif
+	AN_OPERATOR = 1u << 8,
 };
 
 struct LibraryData;
@@ -81,6 +88,7 @@ constexpr LexerStringId lexerIdcontains = 20;  // in, !in
 constexpr LexerStringId lexerIdthis = 21;
 constexpr LexerStringId lexerIdFunction = 22;
 constexpr LexerStringId lexerIdtoString = 23;    // toString()
+/*
 constexpr LexerStringId lexerIdunaryPlus = 24;   // +a
 constexpr LexerStringId lexerIdunaryMinus = 25;  // -a
 constexpr LexerStringId lexerIdnot = 26;         // !a
@@ -109,6 +117,7 @@ constexpr LexerStringId lexerIdprovideDelegate = 48; // provideDelegate
 constexpr LexerStringId lexerIdand = 49;             // a and b
 constexpr LexerStringId lexerIdor = 50;              // a or b
 constexpr LexerStringId lexerIdxor = 51;             // a xor b
+*/
 
 using GenericCaller = ClassDeclaration;
 
@@ -138,7 +147,7 @@ struct ParserContext {
 	// Anotations
 	uint32_t annotationFlags = 0;
 	uint32_t closureCount = 0;
-	HashMap<AnnotationFlags, Lexer::Token> annotationMetadata;
+	std::array<Lexer::Token, AMI_COUNT> annotationMetadata;
 	// Declaration new functions by users
 	CreateClosureNode *currentClosureNode = nullptr;
 	std::optional<ClassId> *currentClosureCurrentClassId;

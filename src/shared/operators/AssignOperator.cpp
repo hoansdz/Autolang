@@ -47,8 +47,9 @@ AObject *plus_eq(NativeFuncInData) {
 			switch (obj2->type) {
 				case Autolang::DefaultClass::stringClassId: {
 					auto oldObj = obj1;
-					(*notifier.vm->pointerVariable) = 
-					    notifier.createString((*obj1->str) + obj2->str);
+					auto newStrObj = notifier.createString((*obj1->str) + obj2->str);
+					newStrObj->retain();
+					(*notifier.vm->pointerVariable) = newStrObj;
 					notifier.release(oldObj);
 					return nullptr;
 				}

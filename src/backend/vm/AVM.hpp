@@ -36,7 +36,7 @@ struct CallFrame {
 	uint32_t i;
 	uint32_t fromStackAllocator;
 	uint32_t startStackCount;
-	uint32_t catchPositionIndex;
+	uint32_t handlerIndex;
 	AObject *exception;
 };
 

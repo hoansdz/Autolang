@@ -1,0 +1,9 @@
+class BaseEntity {
+	val id: Int = 1
+}
+class DerivedEntity extends BaseEntity {
+	constructor() {
+		super()
+	}
+	val id: Int = 2
+}

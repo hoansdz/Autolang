@@ -109,6 +109,7 @@ enum TokenType : uint8_t {
 	STATIC,
 	TRY,
 	CATCH,
+	FINALLY,
 	THROW,
 	EXTENDS,
 	NATIVE,
@@ -126,6 +127,8 @@ enum TokenType : uint8_t {
 	END_IMPORT,
 	WAIT_INPUT,
 	IS,
+	NOT_IS,
+	NOT_IN,
 	SAFE_CAST,
 	UNSAFE_CAST,
 	LATEINIT,
@@ -135,6 +138,7 @@ enum TokenType : uint8_t {
 	WHEN,
 	MINUS_GT,
 	TYPEALIAS,
+	OPERATOR,
 
 	// ===== Special =====
 	NON_NULL,
@@ -145,6 +149,8 @@ enum TokenType : uint8_t {
 static const HashMap<std::string, TokenType> CAST = {
     {"var", TokenType::VAR},
     {"val", TokenType::VAL},
+	{"let", TokenType::VAL},
+	{"const", TokenType::VAL},
     {"not", TokenType::NOT},
     {"while", TokenType::WHILE},
     {"if", TokenType::IF},
@@ -159,6 +165,7 @@ static const HashMap<std::string, TokenType> CAST = {
     {"break", TokenType::BREAK},
     {"try", TokenType::TRY},
     {"catch", TokenType::CATCH},
+    {"finally", TokenType::FINALLY},
     {"throw", TokenType::THROW},
     {"class", TokenType::CLASS},
     {"static", TokenType::STATIC},
@@ -180,6 +187,8 @@ static const HashMap<std::string, TokenType> CAST = {
     {"native_data", TokenType::NATIVE_DATA},
     {"import", TokenType::IMPORT},
     {"is", TokenType::IS},
+    {"!is", TokenType::NOT_IS},
+    {"!in", TokenType::NOT_IN},
     {"as", TokenType::UNSAFE_CAST},
     {"wait_input", TokenType::WAIT_INPUT},
     {"lateinit", TokenType::LATEINIT},
@@ -187,6 +196,7 @@ static const HashMap<std::string, TokenType> CAST = {
     {"const", TokenType::CONST},
     {"when", TokenType::WHEN},
 	{"typealias", TokenType::TYPEALIAS},
+	{"operator", TokenType::OPERATOR},
 
     {"/*", TokenType::START_COMMENT},
     {"&", TokenType::AND},
@@ -223,6 +233,7 @@ static const HashMap<std::string, TokenType> CAST = {
     {">=", TokenType::GTE},
     {"<=", TokenType::LTE},
     {"->", TokenType::MINUS_GT},
+	{"=>", TokenType::MINUS_GT},
 };
 
 struct Token {

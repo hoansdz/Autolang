@@ -1,0 +1,4 @@
+fun testValReassignLocal(): Void {
+	val x = 10
+	x = 20
+}

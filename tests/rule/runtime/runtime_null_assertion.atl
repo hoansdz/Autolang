@@ -1,0 +1,6 @@
+class NullBox(val num: Int)
+fun testNullAssertion(): Void {
+	val item: NullBox? = null
+	val x = item!.num
+}
+testNullAssertion()

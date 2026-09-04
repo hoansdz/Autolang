@@ -1,0 +1,5 @@
+class InvalidContainsOp {
+	@operator fun contains(): Bool {
+		return true
+	}
+}

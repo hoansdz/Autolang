@@ -102,6 +102,7 @@ int getPrecedence(Lexer::TokenType type) {
 		case Lexer::TokenType::SAFE_CAST:
 		case Lexer::TokenType::UNSAFE_CAST:
 		case Lexer::TokenType::IS:
+		case Lexer::TokenType::NOT_IS:
 		case Lexer::TokenType::EQEQ:
 		case Lexer::TokenType::NOTEQ:
 		case Lexer::TokenType::EQEQEQ:
@@ -112,7 +113,8 @@ int getPrecedence(Lexer::TokenType type) {
 		case Lexer::TokenType::GT: {
 			return 7;
 		}
-		case Lexer::TokenType::IN_: {
+		case Lexer::TokenType::IN_:
+		case Lexer::TokenType::NOT_IN: {
 			return 5;
 		}
 		case Lexer::TokenType::OR_OR:

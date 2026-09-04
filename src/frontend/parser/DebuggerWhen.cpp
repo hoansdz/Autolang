@@ -12,11 +12,13 @@ HasClassIdNode *loadWhenExpression(in_func, size_t &i, HasClassIdNode *value) {
 	uint32_t tokenIndex = i;
 	switch (token->type) {
 		case Lexer::TokenType::IN_:
-		case Lexer::TokenType::IS: {
+		case Lexer::TokenType::NOT_IN:
+		case Lexer::TokenType::IS:
+		case Lexer::TokenType::NOT_IS: {
 			if (!value) {
 				throw ParserError(
 				    firstLine,
-				    "Cannot use 'is', 'in' because 'when' has no value\nHint: Provide "
+				    "Cannot use 'is', '!is', 'in', '!in' because 'when' has no value\nHint: Provide "
 				    "a target expression in when header: when (x) { ... }");
 			}
 			auto op = token->type;

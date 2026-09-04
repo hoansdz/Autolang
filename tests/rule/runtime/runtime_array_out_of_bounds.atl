@@ -1,0 +1,5 @@
+fun testRuntimeArrayBounds(): Void {
+	val arr = <Int>[1, 2, 3]
+	val elem = arr[10]
+}
+testRuntimeArrayBounds()

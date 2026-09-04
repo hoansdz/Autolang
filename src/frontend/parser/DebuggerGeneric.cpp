@@ -7,6 +7,85 @@
 
 namespace Autolang {
 
+GenericData *loadGenericParameters(in_func, size_t &i) {
+	Lexer::Token *token = nullptr;
+	uint32_t firstLine = context.tokens[i].line;
+	GenericData *genericData = context.genericDataPool.push();
+	context.isInGeneric = true;
+	while (true) {
+		if (!nextToken(&token, context.tokens, i) ||
+		    !expect(token, Lexer::TokenType::IDENTIFIER)) {
+			--i;
+			throw ParserError(
+			    context.tokens[i].line,
+			    "Expected class name but not found\nHint: Provide "
+			    "generic type parameter name, e.g. '<T>'");
+		}
+		auto &genericDeclarationName = context.lexerString[token->indexData];
+		if (genericData->findDeclaration(token->indexData)) {
+			throw ParserError(
+			    firstLine,
+			    "Redefined " + genericDeclarationName +
+			        "\nHint: Use unique generic type parameter names");
+		}
+		Offset id = genericData->genericDeclarations.size();
+		auto declarationData = context.genericDeclarationNodePool.push(
+		    firstLine, token->indexData);
+		genericData->genericDeclarations.push_back(declarationData);
+		genericData->genericDeclarationMap[token->indexData] = id;
+		if (!nextToken(&token, context.tokens, i)) {
+			--i;
+			throw ParserError(
+			    context.tokens[i].line,
+			    "Expected '>' after class name but not found\nHint: "
+			    "Close generic parameter list with '>'");
+		}
+		switch (token->type) {
+			case Lexer::TokenType::COLON:
+			case Lexer::TokenType::EXTENDS: {
+				auto classDeclaration =
+				    loadClassDeclaration(in_data, i, token->line, false);
+				if (!nextToken(&token, context.tokens, i)) {
+					throw ParserError(
+					    firstLine, "Expected '>' after class name but "
+					               "not found\nHint: Close generic "
+					               "parameter list with '>'");
+				}
+				declarationData->condition =
+				    GenericDeclarationCondition{classDeclaration};
+				switch (token->type) {
+					case Lexer::TokenType::COMMA: {
+						break;
+					}
+					case Lexer::TokenType::GT: {
+						return genericData;
+					}
+					default: {
+						throw ParserError(
+						    firstLine,
+						    "Expected '>' after class "
+						    "name but not found\nHint: Close generic "
+						    "parameter list with '>'");
+					}
+				}
+				break;
+			}
+			case Lexer::TokenType::COMMA: {
+				break;
+			}
+			case Lexer::TokenType::GT: {
+				return genericData;
+			}
+			default: {
+				throw ParserError(firstLine,
+				                  "Expected '>' after class name but "
+				                  "not found\nHint: Close generic "
+				                  "parameter list with '>'");
+			}
+		}
+	}
+}
+
 ClassId loadClassGenerics(in_func, std::string &name,
                           ClassDeclaration *classDeclaration) {
 	auto it =

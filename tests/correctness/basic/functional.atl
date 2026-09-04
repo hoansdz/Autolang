@@ -32,7 +32,7 @@ fun testFunctionalEmptyParams(): Int {
 
 fun testFunctionalInput(value: Int) = "OK"
 
-fun testFunctional<T, R>() {
+fun <T, R> testFunctional() {
 
 	val a: Float -> Int = testFunctionalSquare
 	val b = a

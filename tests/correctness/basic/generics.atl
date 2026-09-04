@@ -21,8 +21,17 @@ class GenericTest<T extends GAnimal>() {
 	fun sound() = value.sound()
 }
 
+class GenericTestColon<T: GAnimal>() {
+	val value: T = T()
+	fun sound() = value.sound()
+}
+
+fun <T: GAnimal> testGenericFunctionColon(item: T): String {
+	return item.sound()
+}
+
 class GWrapper<T>() {
-	val value: T?
+	var value: T?
 	fun get(): T? = value
 }
 
@@ -47,12 +56,16 @@ class GTestGet<Parent, Child> {
 	//Not support generic function in class now
 }
 
-fun testGenericFunctionWithStatic<T>(value: T): T {
+fun <T> testGenericFunctionWithStatic(value: T): T {
 	static var v: T?
 	if (v == null) {
 		v = value
 	}
 	return v!
+}
+
+fun <T> testKotlinStyleGeneric(x: T): T {
+	return x
 }
 
 fun testGenerics() {
@@ -73,6 +86,13 @@ fun testGenerics() {
 	assert(testGenericFunctionWithStatic<Int>(5) == 5, __FILE__, __LINE__)
 	assert(testGenericFunctionWithStatic<String>("Hello") == "Hello", __FILE__, __LINE__)
 	assert(testGenericFunctionWithStatic<Int>(7) == 5, __FILE__, __LINE__)
+	assert(testKotlinStyleGeneric<Int>(100) == 100, __FILE__, __LINE__)
+	assert(testKotlinStyleGeneric<String>("KotlinStyle") == "KotlinStyle", __FILE__, __LINE__)
+	val fColon1 = GenericTestColon<GAnimal>()
+	assert(fColon1 is GenericTestColon<GAnimal> && fColon1.sound() == "Nothing", __FILE__, __LINE__)
+	val fColon2 = GenericTestColon<GDog>()
+	assert(fColon2 is GenericTestColon<GDog> && fColon2.sound() == "Go", __FILE__, __LINE__)
+	assert(testGenericFunctionColon<GCat>(GCat()) == "Meow", __FILE__, __LINE__)
 	println("Passed ${__FUNC__}")
 }
 

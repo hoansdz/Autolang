@@ -8,6 +8,65 @@
 
 namespace Autolang {
 
+static void checkGenericFunctionDuplicate(in_func, CreateFuncNode *node,
+                                          LexerStringId nameId, uint32_t line) {
+	auto it = context.genericFunctionMap.find(nameId);
+	if (it == context.genericFunctionMap.end())
+		return;
+	auto currentFuncInfo = context.functionInfo[node->id];
+	if (!currentFuncInfo || !context.preloadGenericData)
+		return;
+	size_t genericCount =
+	    context.preloadGenericData->genericDeclarations.size();
+	size_t paramCount = node->parameter->parameters.size();
+
+	for (auto existingNode : it->second) {
+		auto existingFuncInfo = context.functionInfo[existingNode->id];
+		if (!existingFuncInfo || !existingFuncInfo->genericData)
+			continue;
+		if (existingFuncInfo->genericData->genericDeclarations.size() !=
+		    genericCount)
+			continue;
+		if (existingNode->parameter->parameters.size() != paramCount)
+			continue;
+
+		bool match = true;
+		for (size_t p = 0; p < paramCount; ++p) {
+			auto p1 = node->parameter->parameters[p];
+			auto p2 = existingNode->parameter->parameters[p];
+			if (p1->nullable != p2->nullable) {
+				match = false;
+				break;
+			}
+			if (p1->classDeclaration && p2->classDeclaration) {
+				if (p1->classDeclaration->baseClassLexerStringId !=
+				    p2->classDeclaration->baseClassLexerStringId) {
+					match = false;
+					break;
+				}
+			} else if (p1->classDeclaration != p2->classDeclaration) {
+				match = false;
+				break;
+			} else if (p1->classId != p2->classId) {
+				match = false;
+				break;
+			}
+		}
+
+		if (match) {
+			std::string prevPath =
+			    existingNode->mode ? existingNode->mode->path : "unknown";
+			throw ParserError(
+			    line,
+			    "Redefined function: " + currentFuncInfo->toString(in_data) +
+			        "\nHint: Previously defined at " + prevPath + ":" +
+			        std::to_string(existingFuncInfo->line) +
+			        ". Ensure the function signature is unique or remove the "
+			        "duplicate definition");
+		}
+	}
+}
+
 CreateFuncNode *loadFunc(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
@@ -39,6 +98,9 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 	if (context.annotationFlags & AnnotationFlags::AN_NO_OVERRIDE) {
 		functionFlags |= FunctionFlags::FUNC_NO_OVERRIDE;
 	}
+	if (context.annotationFlags & AnnotationFlags::AN_OPERATOR) {
+		functionFlags |= FunctionFlags::FUNC_IS_OPERATOR;
+	}
 	if (context.annotationFlags & AnnotationFlags::AN_WAIT_INPUT) {
 		throw ParserError(firstLine,
 		                  "@wait_input is currently not supported\nHint: "
@@ -66,9 +128,34 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		default:
 			break;
 	}
-	// Name
-	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
-	    !expect(token, Lexer::TokenType::IDENTIFIER)) {
+	// Generic parameters (Kotlin-style: fun <T> foo()) or Name
+	context.preloadGenericData = nullptr;
+	if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
+		--i;
+		throw ParserError(
+		    firstLine,
+		    "Expected name after 'fun' but not found\nHint: Provide a valid "
+		    "identifier for function name, e.g. 'fun foo()'");
+	}
+	if (expect(token, Lexer::TokenType::LT)) {
+		if (context.currentClassId) {
+			throw ParserError(token->line,
+			                  "Generic functions inside a class are "
+			                  "not supported yet\nHint: Remove generic "
+			                  "type parameters from class member function");
+		}
+		functionFlags |= FunctionFlags::FUNC_SKIP_LOAD;
+		context.preloadGenericData = loadGenericParameters(in_data, i);
+		context.isInGeneric = false;
+		if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
+			--i;
+			throw ParserError(
+			    firstLine,
+			    "Expected function name after generic parameters\nHint: "
+			    "Provide a function name, e.g. 'fun <T> foo()'");
+		}
+	}
+	if (!expect(token, Lexer::TokenType::IDENTIFIER)) {
 		--i;
 		throw ParserError(
 		    firstLine,
@@ -223,113 +310,32 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		}
 	}
 
-	context.preloadGenericData = nullptr;
-
-	switch (token->type) {
-		case Lexer::TokenType::LT: {
-			if (context.currentClassId) {
-				throw ParserError(token->line,
-				                  "Generic functions inside a class are "
-				                  "not supported yet\nHint: Remove generic "
-				                  "type parameters from class member function");
-			}
-			functionFlags |= FunctionFlags::FUNC_SKIP_LOAD;
-			context.isInGeneric = false;
-			context.preloadGenericData = context.genericDataPool.push();
-			while (true) {
-				if (!nextToken(&token, context.tokens, i) ||
-				    !expect(token, Lexer::TokenType::IDENTIFIER)) {
-					--i;
-					throw ParserError(
-					    context.tokens[i].line,
-					    "Expected class name but not found\nHint: Provide "
-					    "generic parameter type name, e.g. '<T>'");
-				}
-				auto &genericDeclarationName =
-				    context.lexerString[token->indexData];
-
-				if (context.preloadGenericData->findDeclaration(
-				        token->indexData)) {
-					throw ParserError(
-					    firstLine,
-					    "Redefined " + genericDeclarationName +
-					        "\nHint: Use unique generic type parameter names");
-				}
-
-				Offset id =
-				    context.preloadGenericData->genericDeclarations.size();
-				auto declarationData = context.genericDeclarationNodePool.push(
-				    firstLine, token->indexData);
-				context.preloadGenericData->genericDeclarations.push_back(
-				    declarationData);
-				context.preloadGenericData
-				    ->genericDeclarationMap[token->indexData] = id;
-				if (!nextToken(&token, context.tokens, i)) {
-					--i;
-					throw ParserError(
-					    context.tokens[i].line,
-					    "Expected '>' after class name but not found\nHint: "
-					    "Close generic parameter list with '>'");
-				}
-				switch (token->type) {
-					// case Lexer::TokenType::IS:
-					case Lexer::TokenType::EXTENDS: {
-						// auto condition =
-						//     (token->type == Lexer::TokenType::EXTENDS)
-						//         ?
-						//         GenericDeclarationCondition::MUST_EXTENDS
-						//         : GenericDeclarationCondition::MUST_IS;
-						auto classDeclaration = loadClassDeclaration(
-						    in_data, i, token->line, false);
-						if (!nextToken(&token, context.tokens, i)) {
-							throw ParserError(
-							    firstLine, "Expected '>' after class "
-							               "name but not found\nHint: Close "
-							               "generic parameter list with '>'");
-						}
-						declarationData->condition =
-						    GenericDeclarationCondition{classDeclaration};
-						switch (token->type) {
-							case Lexer::TokenType::COMMA: {
-								break;
-							}
-							case Lexer::TokenType::GT: {
-								goto finishedGenerics;
-							}
-							default: {
-								throw ParserError(
-								    firstLine,
-								    "Expected '>' after class "
-								    "name but not found\nHint: Close generic "
-								    "parameter list with '>'");
-							}
-						}
-						break;
-					}
-					case Lexer::TokenType::COMMA: {
-						break;
-					}
-					case Lexer::TokenType::GT: {
-						goto finishedGenerics;
-					}
-					default: {
-						throw ParserError(firstLine,
-						                  "Expected '>' after class name but "
-						                  "not found\nHint: Close generic "
-						                  "parameter list with '>'");
-					}
-				}
-			}
-		finishedGenerics:;
-			if (!nextToken(&token, context.tokens, i)) {
-				--i;
-				throw ParserError(context.tokens[i].line,
-				                  "Generics class must have body\nHint: "
-				                  "Provide function body or implementation");
-			}
+	if (functionFlags & FunctionFlags::FUNC_IS_OPERATOR) {
+		if (nameId != lexerIdget && nameId != lexerIdset && nameId != lexerIdcontains) {
+			throw ParserError(
+			    firstLine,
+			    "'" + context.lexerString[nameId] +
+			        "' is not a supported operator function name\nHint: Supported operator "
+			        "function names are 'get', 'set', 'contains'");
 		}
-		default:
-			break;
+	}
+
+	if (!context.preloadGenericData && expect(token, Lexer::TokenType::LT)) {
+		if (context.currentClassId) {
+			throw ParserError(token->line,
+			                  "Generic functions inside a class are "
+			                  "not supported yet\nHint: Remove generic "
+			                  "type parameters from class member function");
+		}
+		functionFlags |= FunctionFlags::FUNC_SKIP_LOAD;
+		context.preloadGenericData = loadGenericParameters(in_data, i);
+		context.isInGeneric = false;
+		if (!nextToken(&token, context.tokens, i)) {
+			--i;
+			throw ParserError(context.tokens[i].line,
+			                  "Generics function must have body\nHint: "
+			                  "Provide function body or implementation");
+		}
 	}
 
 	// Arguments
@@ -341,6 +347,27 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		                      "enclosed in '(' and ')'");
 	}
 	auto parameter = loadListDeclaration(in_data, i);
+	if (functionFlags & FunctionFlags::FUNC_IS_OPERATOR) {
+		size_t paramCount = parameter->parameters.size();
+		if (nameId == lexerIdget && paramCount < 1) {
+			throw ParserError(
+			    firstLine,
+			    "Operator 'get' requires at least 1 parameter\nHint: "
+			    "Define 'get' with at least 1 index parameter, e.g. '@operator fun get(index: Int)'");
+		}
+		if (nameId == lexerIdset && paramCount < 2) {
+			throw ParserError(
+			    firstLine,
+			    "Operator 'set' requires at least 2 parameters\nHint: "
+			    "Define 'set' with index and value parameters, e.g. '@operator fun set(index: Int, value: T)'");
+		}
+		if (nameId == lexerIdcontains && paramCount != 1) {
+			throw ParserError(
+			    firstLine,
+			    "Operator 'contains' requires exactly 1 parameter\nHint: "
+			    "Define 'contains' with 1 parameter, e.g. '@operator fun contains(item: T): Bool'");
+		}
+	}
 	if (!parameter->parameterDefaultValues.empty() &&
 	    !context.preloadGenericData) {
 		if (context.currentClassId) {
@@ -418,6 +445,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			auto func = compile.functions[node->id];
 			auto funcInfo = context.functionInfo[node->id];
 			if (context.preloadGenericData) {
+				checkGenericFunctionDuplicate(in_data, node, nameId, firstLine);
 				context.genericFunctionMap[nameId].push_back(node);
 				funcInfo->genericData = context.preloadGenericData;
 			}
@@ -480,7 +508,8 @@ createFunc:;
 	    firstLine, tokenIndex, context.currentClassId, nameId, classDeclaration,
 	    parameter, functionFlags);
 	if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
-		auto &token = context.annotationMetadata[AnnotationFlags::AN_NATIVE];
+		auto &token =
+		    context.annotationMetadata[AnnotationMetadataIndex::AMI_NATIVE];
 		const auto &name = context.lexerString[token.indexData];
 		auto it = context.mode->nativeFuncMap.find(name);
 		if (it == context.mode->nativeFuncMap.end()) {
@@ -496,6 +525,7 @@ createFunc:;
 			func->returnId = DefaultClass::voidClassId;
 		}
 		if (context.preloadGenericData) {
+			checkGenericFunctionDuplicate(in_data, node, nameId, firstLine);
 			context.genericFunctionMap[nameId].push_back(node);
 			funcInfo->genericData = context.preloadGenericData;
 			context.preloadGenericData = nullptr;
@@ -523,6 +553,7 @@ createFunc:;
 		func->returnId = DefaultClass::voidClassId;
 	}
 	if (context.preloadGenericData) {
+		checkGenericFunctionDuplicate(in_data, node, nameId, firstLine);
 		context.genericFunctionMap[nameId].push_back(node);
 		funcInfo->genericData = context.preloadGenericData;
 	}
@@ -546,9 +577,35 @@ createFunc:;
 			context.isInGeneric = false;
 		if (finished && classDeclaration &&
 		    classDeclaration->baseClassLexerStringId != lexerIdVoid) {
+			auto checkHasReturn = [](auto &self, ExprNode *exprNode) -> bool {
+				if (!exprNode)
+					return false;
+				if (exprNode->kind == NodeType::RET)
+					return true;
+				if (exprNode->kind == NodeType::TRY_CATCH) {
+					auto tc = static_cast<TryCatchNode *>(exprNode);
+					for (auto child : tc->body.nodes) {
+						if (self(self, child))
+							return true;
+					}
+					if (tc->hasCatch) {
+						for (auto child : tc->catchBody.nodes) {
+							if (self(self, child))
+								return true;
+						}
+					}
+					if (tc->hasFinally) {
+						for (auto child : tc->finallyBody.nodes) {
+							if (self(self, child))
+								return true;
+						}
+					}
+				}
+				return false;
+			};
 			bool hasReturn = false;
 			for (size_t i = funcInfo->body.nodes.size(); i-- > 0;) {
-				if (funcInfo->body.nodes[i]->kind == NodeType::RET) {
+				if (checkHasReturn(checkHasReturn, funcInfo->body.nodes[i])) {
 					hasReturn = true;
 					break;
 				}

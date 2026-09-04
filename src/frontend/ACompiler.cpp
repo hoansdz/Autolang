@@ -40,12 +40,8 @@ LibraryData *ACompiler::requestImport(LibraryData *currentLibrary,
 	}
 
 #ifdef __EMSCRIPTEN__
-	if (path[0] == '.')
-		return nullptr;
 	return nullptr;
 #else
-	if (path[0] != '.')
-		return nullptr;
 	std::filesystem::path input = path;
 	std::filesystem::path currentPath;
 	if (currentLibrary && (currentLibrary->flags & LibraryFlags::IS_FILE)) {
@@ -55,7 +51,17 @@ LibraryData *ACompiler::requestImport(LibraryData *currentLibrary,
 	}
 	std::filesystem::path resolved = (currentPath / input).lexically_normal();
 	if (!std::filesystem::exists(resolved)) {
-		return nullptr;
+		if (mainSource && (mainSource->flags & LibraryFlags::IS_FILE)) {
+			std::filesystem::path mainPath = std::filesystem::path(mainSource->path).parent_path();
+			std::filesystem::path mainResolved = (mainPath / input).lexically_normal();
+			if (std::filesystem::exists(mainResolved)) {
+				resolved = mainResolved;
+			} else {
+				return nullptr;
+			}
+		} else {
+			return nullptr;
+		}
 	}
 	std::string libPath = resolved.string();
 	// std::cerr << libPath << "\n";
@@ -206,8 +212,8 @@ void ACompiler::loadMainSource(const char *path, LibraryConfig config,
 	if (!loadedBuiltIn) {
 		loadBuiltInFunctions();
 	}
-	if (!path || path[0] != '.') {
-		throw std::runtime_error("File path must start with './' or '../'\nHint: Specify relative module path starting with './' or '../' (e.g. './my_module.al').");
+	if (!path || !path[0]) {
+		throw std::runtime_error("File path cannot be empty.");
 	}
 	LibraryData *library = requestImport(nullptr, path);
 	if (!library) {

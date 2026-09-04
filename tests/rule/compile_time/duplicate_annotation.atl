@@ -1,0 +1,3 @@
+@override
+@override
+fun testAnnotation(): Void {}

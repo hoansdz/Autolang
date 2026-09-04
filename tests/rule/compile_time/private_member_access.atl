@@ -1,0 +1,7 @@
+class SecretBox {
+	private val secret: Int = 42
+}
+fun testPrivate(): Void {
+	val box = SecretBox()
+	val s = box.secret
+}

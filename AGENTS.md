@@ -6,7 +6,7 @@ This document guides AI Coding Agents (Cursor, Copilot, Antigravity, Claude Code
 - **Language Standard**: C++17 (`set(CMAKE_CXX_STANDARD 17)` required).
 - **Core Architecture**:
   - `ACompiler`: Parses source text into AST and emits VM bytecode instructions.
-  - `AVirtualMachine`: Stack-based execution engine with register frame support.
+  - `AVM`: Stack-based execution engine with register frame support.
   - `ANotifier`: Handles VM exceptions, memory allocations, and Python interop runtime state.
   - `AObject`: Unified tagged union representing primitive types (`int64_t`, `double`, `std::string`, `bool`), generic objects (Array, Map, Set), and Python PyObject references.
 - **Dependencies**: `pybind11` (Python interop), `libcurl` (HTTP requests, fetched via CMake `FetchContent`), `nlohmann_json` (JSON parsing).

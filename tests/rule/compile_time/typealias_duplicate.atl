@@ -1,0 +1,2 @@
+typealias CustomType = Int
+typealias CustomType = String

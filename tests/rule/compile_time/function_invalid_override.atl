@@ -1,0 +1,5 @@
+class ParentEntity {}
+class ChildEntity extends ParentEntity {
+	@override
+	fun nonExistentMethod(): Void {}
+}

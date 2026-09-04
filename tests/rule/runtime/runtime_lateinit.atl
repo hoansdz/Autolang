@@ -1,0 +1,8 @@
+class LateinitBox {
+	lateinit val text: String
+}
+fun testLateinit(): Void {
+	val box = LateinitBox()
+	val s = box.text
+}
+testLateinit()

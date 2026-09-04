@@ -269,15 +269,23 @@ void AVM::resume() {
 resumeCallFrame:;
 	if (currentCallFrame->exception) {
 		if (isFatalException) {
-			while (data.allCatchPosition.size() >
-			       currentCallFrame->catchPositionIndex) {
-				data.allCatchPosition.pop_back();
+			while (data.allHandlers.size() >
+			       currentCallFrame->handlerIndex) {
+				data.allHandlers.pop_back();
 			}
 		}
-		if (data.allCatchPosition.size() <=
-		    currentCallFrame->catchPositionIndex) {
-			// std::cerr << currentCallFrame->fromStackAllocator << " & "
-			//           << stackAllocator.getTop() << "\n";
+		if (data.allHandlers.size() > currentCallFrame->handlerIndex) {
+			auto handler = data.allHandlers.back();
+			data.allHandlers.pop_back();
+			if (handler.type == HandlerEntry::CATCH) {
+				currentCallFrame->i = handler.targetPos;
+			} else {
+				data.allFinallyStates.push_back(
+				    {FinallyState::EXCEPTION, currentCallFrame->exception});
+				currentCallFrame->exception = nullptr;
+				currentCallFrame->i = handler.targetPos;
+			}
+		} else {
 			stackAllocator.clear(
 			    data.manager, currentCallFrame->fromStackAllocator,
 			    currentCallFrame->fromStackAllocator +
@@ -300,23 +308,11 @@ resumeCallFrame:;
 				return;
 			}
 			callFrames.pop();
-			// std::cerr<<"from
-			// "<<currentCallFrame->func->getName(compile)<<"\n";
 			auto oldCallFrame = callFrames.top();
 			oldCallFrame->exception = currentCallFrame->exception;
 			currentCallFrame = oldCallFrame;
 			stackAllocator.freeTo(currentCallFrame->fromStackAllocator);
-			// std::cerr<<"from " << currentCallFrame->fromStackAllocator <<
-			// "\n";
 			goto resumeCallFrame;
-		} else {
-			// std::cerr << "First size " <<
-			// currentCallFrame->catchPosition.size() << "\n";
-			currentCallFrame->i = data.allCatchPosition.back();
-			data.allCatchPosition.pop_back();
-			// std::cerr << "Second size " <<
-			// currentCallFrame->catchPosition.size() << "\n"; std::cerr <<
-			// "Goto " << currentCallFrame->i << "\n";
 		}
 	}
 	currentFunction = currentCallFrame->func;
@@ -363,6 +359,13 @@ resumeCallFrame:;
 			dispatchTable[Autolang::Opcode::FOR_LIST] = &&do_FOR_LIST;
 			dispatchTable[Autolang::Opcode::FOR_SET] = &&do_FOR_SET;
 			dispatchTable[Autolang::Opcode::IN_RANGE] = &&do_IN_RANGE;
+			dispatchTable[Autolang::Opcode::NOT_IN_RANGE] = &&do_NOT_IN_RANGE;
+			dispatchTable[Autolang::Opcode::ADD_FINALLY_BLOCK] =
+			    &&do_ADD_FINALLY_BLOCK;
+			dispatchTable[Autolang::Opcode::REMOVE_FINALLY] =
+			    &&do_REMOVE_FINALLY;
+			dispatchTable[Autolang::Opcode::END_FINALLY] =
+			    &&do_END_FINALLY;
 			dispatchTable[Autolang::Opcode::LOAD_CONST] = &&do_LOAD_CONST;
 			dispatchTable[Autolang::Opcode::LOAD_CONST_PRIMARY] =
 			    &&do_LOAD_CONST_PRIMARY;
@@ -429,6 +432,7 @@ resumeCallFrame:;
 			dispatchTable[Autolang::Opcode::JUMP_IF_NON_NULL] =
 			    &&do_JUMP_IF_NON_NULL;
 			dispatchTable[Autolang::Opcode::IS] = &&do_IS;
+			dispatchTable[Autolang::Opcode::NOT_IS] = &&do_NOT_IS;
 			dispatchTable[Autolang::Opcode::SAFE_CAST] = &&do_SAFE_CAST;
 			dispatchTable[Autolang::Opcode::UNSAFE_CAST] = &&do_UNSAFE_CAST;
 			dispatchTable[Autolang::Opcode::WAIT_INPUT] = &&do_WAIT_INPUT;
@@ -953,6 +957,24 @@ resumeCallFrame:;
 		DISPATCH();
 	}
 
+	do_NOT_IN_RANGE: {
+		auto obj2 = stack.pop();
+		auto obj1 = stack.pop();
+		auto obj = stack.pop();
+		bool isLessThan = bytecodes[ip++];
+		if (isLessThan) {
+			stack.push(
+			    notifier->createBool(!(obj->i >= obj1->i && obj->i < obj2->i)));
+		} else {
+			stack.push(
+			    notifier->createBool(!(obj->i >= obj1->i && obj->i <= obj2->i)));
+		}
+		data.manager.release(obj);
+		data.manager.release(obj1);
+		data.manager.release(obj2);
+		DISPATCH();
+	}
+
 	do_LOAD_CONST: {
 		stack.push(getConstObject(get_u32(bytecodes, ip)));
 		// std::cerr<<stack.top()<<" created\n";
@@ -1445,6 +1467,16 @@ resumeCallFrame:;
 		DISPATCH();
 	}
 
+	do_NOT_IS: {
+		auto obj = stack.pop();
+		uint32_t classId = get_u32(bytecodes, ip);
+		stack.push(data.manager.createBoolObject(
+		    !notifier->instanceof(obj, classId)));
+		// stack.top()->retain();
+		data.manager.release(obj);
+		DISPATCH();
+	}
+
 	do_SAFE_CAST: {
 		auto obj = stack.top();
 		uint32_t classId = get_u32(bytecodes, ip);
@@ -1491,23 +1523,56 @@ resumeCallFrame:;
 	}
 
 	do_ADD_TRY_BLOCK: {
-		data.allCatchPosition.push_back(get_u32(bytecodes, ip));
+		data.allHandlers.push_back(
+		    {HandlerEntry::CATCH, get_u32(bytecodes, ip)});
 		DISPATCH();
 	}
 
 	do_REMOVE_TRY_AND_JUMP: {
-		assert(data.allCatchPosition.size() >
-		       currentCallFrame->catchPositionIndex);
-		data.allCatchPosition.pop_back();
+		assert(data.allHandlers.size() >
+		       currentCallFrame->handlerIndex);
+		data.allHandlers.pop_back();
 		ip = get_u32(bytecodes, ip);
 		DISPATCH();
 	}
 
 	do_REMOVE_TRY: {
-		assert(data.allCatchPosition.size() >
-		       currentCallFrame->catchPositionIndex);
-		data.allCatchPosition.pop_back();
+		assert(data.allHandlers.size() >
+		       currentCallFrame->handlerIndex);
+		data.allHandlers.pop_back();
 		DISPATCH();
+	}
+
+	do_ADD_FINALLY_BLOCK: {
+		data.allHandlers.push_back(
+		    {HandlerEntry::FINALLY, get_u32(bytecodes, ip)});
+		DISPATCH();
+	}
+
+	do_REMOVE_FINALLY: {
+		assert(data.allHandlers.size() >
+		       currentCallFrame->handlerIndex);
+		data.allHandlers.pop_back();
+		data.allFinallyStates.push_back({FinallyState::NORMAL, nullptr});
+		DISPATCH();
+	}
+
+	do_END_FINALLY: {
+		assert(!data.allFinallyStates.empty());
+		auto finState = data.allFinallyStates.back();
+		data.allFinallyStates.pop_back();
+		switch (finState.reason) {
+			case FinallyState::NORMAL:
+				DISPATCH();
+			case FinallyState::RETURN_VALUE:
+				stack.push(finState.savedObj);
+				goto doneReturnFunction;
+			case FinallyState::RETURN_VOID:
+				goto doneReturnFunction;
+			case FinallyState::EXCEPTION:
+				currentCallFrame->exception = finState.savedObj;
+				goto resumeCallFrame;
+		}
 	}
 
 	do_CLONE: {
@@ -2120,9 +2185,21 @@ resumeCallFrame:;
 			data.manager.release(obj);
 		}
 	doneReturnFunction:;
-		while (data.allCatchPosition.size() >
-		       currentCallFrame->catchPositionIndex) {
-			data.allCatchPosition.pop_back();
+		while (data.allHandlers.size() > currentCallFrame->handlerIndex) {
+			auto handler = data.allHandlers.back();
+			data.allHandlers.pop_back();
+			if (handler.type == HandlerEntry::FINALLY) {
+				if (stack.getSize() > currentCallFrame->startStackCount) {
+					auto retVal = stack.pop();
+					data.allFinallyStates.push_back(
+					    {FinallyState::RETURN_VALUE, retVal});
+				} else {
+					data.allFinallyStates.push_back(
+					    {FinallyState::RETURN_VOID, nullptr});
+				}
+				currentCallFrame->i = handler.targetPos;
+				goto resumeCallFrame;
+			}
 		}
 		stackAllocator.clear(data.manager, currentCallFrame->fromStackAllocator,
 		                     stackAllocator.getTop() +

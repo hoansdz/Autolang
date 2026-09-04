@@ -1,0 +1,4 @@
+fun testThrowNullable(): Void {
+	val e: Exception? = null
+	throw e
+}

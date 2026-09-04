@@ -20,7 +20,8 @@ enum FunctionFlags : uint32_t {
 	FUNC_WAIT_INPUT = 1u << 11,
 	FUNC_HAS_BODY = 1u << 12,
 	FUNC_SKIP_LOAD = 1u << 13,
-	FUNC_UNUSABLE = 1u << 14
+	FUNC_UNUSABLE = 1u << 14,
+	FUNC_IS_OPERATOR = 1u << 15
 };
 
 }

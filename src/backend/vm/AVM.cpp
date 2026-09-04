@@ -22,7 +22,7 @@ void AVM::run() {
 	mainCallFrame->exception = nullptr;
 	mainCallFrame->startStackCount = 0;
 	mainCallFrame->i = 0;
-	mainCallFrame->catchPositionIndex = 0;
+	mainCallFrame->handlerIndex = 0;
 #ifdef AUTOLANG_LIMIT_OPCODE
 	currentLimitOpcodeCount = limitOpcodeCount;
 #endif
@@ -127,7 +127,7 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 	    stackAllocator.getTop() + currentFunction->maxDeclaration;
 	currentCallFrame->exception = nullptr;
 	currentCallFrame->startStackCount = stack.getSize();
-	currentCallFrame->catchPositionIndex = data.allCatchPosition.size();
+	currentCallFrame->handlerIndex = data.allHandlers.size();
 	stackAllocator.setTop(currentCallFrame->fromStackAllocator);
 	uint32_t argumentCount;
 	if constexpr (loadVirtual) {
@@ -271,7 +271,7 @@ bool AVM::callFunctionObject(AObject *obj) {
 	currentCallFrame->exception = nullptr;
 	currentCallFrame->func = funcObj->function;
 	currentCallFrame->startStackCount = stack.getSize();
-	currentCallFrame->catchPositionIndex = data.allCatchPosition.size();
+	currentCallFrame->handlerIndex = data.allHandlers.size();
 	stackAllocator.setTop(fromStackAllocator);
 
 	if (funcObj->function->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
@@ -320,7 +320,7 @@ bool AVM::callFunction(Function *currentFunction) {
 	currentCallFrame->exception = nullptr;
 	currentCallFrame->func = currentFunction;
 	currentCallFrame->startStackCount = stack.getSize();
-	currentCallFrame->catchPositionIndex = data.allCatchPosition.size();
+	currentCallFrame->handlerIndex = data.allHandlers.size();
 	stackAllocator.setTop(currentCallFrame->fromStackAllocator);
 	uint32_t argumentCount = currentFunction->argSize;
 

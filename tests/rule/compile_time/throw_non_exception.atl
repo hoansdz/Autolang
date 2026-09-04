@@ -1,0 +1,3 @@
+fun testThrowNonException(): Void {
+	throw 123
+}

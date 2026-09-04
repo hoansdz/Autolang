@@ -1,0 +1,16 @@
+class Animal {}
+class Dog extends Animal {
+	constructor() {
+		super()
+	}
+}
+class Cat extends Animal {
+	constructor() {
+		super()
+	}
+}
+fun testRuntimeCast(): Void {
+	val a: Animal = Dog()
+	val c = a as Cat
+}
+testRuntimeCast()

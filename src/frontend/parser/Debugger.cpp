@@ -387,6 +387,38 @@ initial:;
 			context.modifierflags |= ModifierFlags::MF_STATIC;
 			goto initial;
 		}
+		case Lexer::TokenType::OVERRIDE: {
+			if (context.currentFunctionId != context.mainFunctionId) {
+				throw ParserError(token->line,
+				                  "Error: 'override' is not allowed inside a function"
+				                  "\nHint: Place 'override' on top-level or class member functions");
+			}
+			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
+				--i;
+				throw ParserError(
+				    context.tokens[i].line,
+				    "Error: 'override' must be followed by a function declaration\nHint: "
+				    "Follow 'override' with a function, e.g. 'override fun foo()'");
+			}
+			context.annotationFlags |= AnnotationFlags::AN_OVERRIDE;
+			goto initial;
+		}
+		case Lexer::TokenType::OPERATOR: {
+			if (context.currentFunctionId != context.mainFunctionId) {
+				throw ParserError(token->line,
+				                  "Error: 'operator' is not allowed inside a function"
+				                  "\nHint: Place 'operator' on top-level or class member functions");
+			}
+			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
+				--i;
+				throw ParserError(
+				    context.tokens[i].line,
+				    "Error: 'operator' must be followed by a function declaration\nHint: "
+				    "Follow 'operator' with a function, e.g. 'operator fun get(index: Int)'");
+			}
+			context.annotationFlags |= AnnotationFlags::AN_OPERATOR;
+			goto initial;
+		}
 		case Lexer::TokenType::TYPEALIAS: {
 			loadTypealias(in_data, i);
 			return nullptr;

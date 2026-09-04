@@ -34,11 +34,12 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 		int precedence = getPrecedence(token->type);
 		if (precedence == -1 || precedence < minPrecedence)
 			break;
-		// if (firstLine != token->line) {
-		// 	--i;
-		// 	return left;
-		// }
 		Lexer::TokenType op = token->type;
+		if (firstLine != token->line &&
+		    (op == Lexer::TokenType::IS || op == Lexer::TokenType::NOT_IS ||
+		     op == Lexer::TokenType::IN_ || op == Lexer::TokenType::NOT_IN)) {
+			break;
+		}
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
 			throw ParserError(

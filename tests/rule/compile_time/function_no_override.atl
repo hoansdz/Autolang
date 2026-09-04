@@ -1,0 +1,7 @@
+class ProtectedParent {
+	@no_override
+	fun lockedMethod(): Void {}
+}
+class ProtectedChild extends ProtectedParent {
+	fun lockedMethod(): Void {}
+}

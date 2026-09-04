@@ -1,0 +1,3 @@
+class BoundBaseColon {}
+class BoundBoxColon<T: BoundBaseColon>() {}
+val b = BoundBoxColon<Int>()

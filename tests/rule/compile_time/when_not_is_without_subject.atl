@@ -1,0 +1,4 @@
+fun testWhen(): Int = when {
+	!is Int -> 1
+	else -> 0
+}

@@ -22,12 +22,6 @@ void loadAnnotations(in_func, size_t &i) {
 	}
 	switch (token->type) {
 		case Lexer::TokenType::OVERRIDE: {
-			if (context.annotationFlags & AnnotationFlags::AN_OVERRIDE) {
-				throw ParserError(firstLine,
-				                  "Duplicate annotation @override\nHint: Use "
-				                  "@override only once before a function "
-				                  "declaration, e.g. @override fun foo() { }");
-			}
 			context.annotationFlags |= AnnotationFlags::AN_OVERRIDE;
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
@@ -40,12 +34,6 @@ void loadAnnotations(in_func, size_t &i) {
 			break;
 		}
 		case Lexer::TokenType::NO_OVERRIDE: {
-			if (context.annotationFlags & AnnotationFlags::AN_NO_OVERRIDE) {
-				throw ParserError(
-				    firstLine, "Duplicate annotation @no_override\nHint: Use "
-				               "@no_override only once before a function "
-				               "declaration, e.g. @no_override fun foo() { }");
-			}
 			context.annotationFlags |= AnnotationFlags::AN_NO_OVERRIDE;
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
@@ -63,13 +51,6 @@ void loadAnnotations(in_func, size_t &i) {
 			                  "Remove @wait_input annotation");
 		}
 		case Lexer::TokenType::NATIVE: {
-			if (context.annotationFlags & AnnotationFlags::AN_NATIVE) {
-				throw ParserError(
-				    firstLine,
-				    "Duplicate annotation @native\nHint: Use @native only once "
-				    "before a function declaration, e.g. @native(\"name\") fun "
-				    "foo() { }");
-			}
 			context.annotationFlags |= AnnotationFlags::AN_NATIVE;
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 			    !expect(token, Lexer::TokenType::LPAREN)) {
@@ -86,7 +67,8 @@ void loadAnnotations(in_func, size_t &i) {
 				    "@native expects a string value\nHint: Provide a string "
 				    "literal inside parentheses, e.g. @native(\"name\")");
 			}
-			context.annotationMetadata[AnnotationFlags::AN_NATIVE] = *token;
+			context.annotationMetadata[AnnotationMetadataIndex::AMI_NATIVE] =
+			    *token;
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 			    !expect(token, Lexer::TokenType::RPAREN)) {
 				--i;
@@ -106,12 +88,6 @@ void loadAnnotations(in_func, size_t &i) {
 			break;
 		}
 		case Lexer::TokenType::NO_CONSTRUCTOR: {
-			if (context.annotationFlags & AnnotationFlags::AN_NO_CONSTRUCTOR) {
-				throw ParserError(
-				    firstLine, "Duplicate annotation @no_constructor\nHint: "
-				               "Use @no_constructor only once before a class "
-				               "declaration, e.g. @no_constructor class A { }");
-			}
 			context.annotationFlags |= AnnotationFlags::AN_NO_CONSTRUCTOR;
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
@@ -124,12 +100,6 @@ void loadAnnotations(in_func, size_t &i) {
 			break;
 		}
 		case Lexer::TokenType::NO_EXTENDS: {
-			if (context.annotationFlags & AnnotationFlags::AN_NO_EXTENDS) {
-				throw ParserError(firstLine,
-				                  "Duplicate annotation @no_extends\nHint: Use "
-				                  "@no_extends only once before a class "
-				                  "declaration, e.g. @no_extends class A { }");
-			}
 			context.annotationFlags |= AnnotationFlags::AN_NO_EXTENDS;
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
@@ -142,12 +112,6 @@ void loadAnnotations(in_func, size_t &i) {
 			break;
 		}
 		case Lexer::TokenType::NATIVE_DATA: {
-			if (context.annotationFlags & AnnotationFlags::AN_NATIVE_DATA) {
-				throw ParserError(firstLine,
-				                  "Duplicate annotation @native_data\nHint: "
-				                  "Use @native_data only once before a native "
-				                  "class, e.g. @native_data class A { }");
-			}
 			context.annotationFlags |= AnnotationFlags::AN_NATIVE_DATA;
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
@@ -161,12 +125,6 @@ void loadAnnotations(in_func, size_t &i) {
 		}
 #ifdef __EMSCRIPTEN__
 		case Lexer::TokenType::JS_OBJECT: {
-			if (context.annotationFlags & AnnotationFlags::AN_JS_OBJECT) {
-				throw ParserError(firstLine,
-				                  "Duplicate annotation @js_object\nHint: Use "
-				                  "@js_object only once before a class "
-				                  "declaration, e.g. @js_object class A { }");
-			}
 			context.annotationFlags |= AnnotationFlags::AN_JS_OBJECT;
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
@@ -180,12 +138,6 @@ void loadAnnotations(in_func, size_t &i) {
 		}
 #elif __PYBIND11__
 		case Lexer::TokenType::PY_OBJECT: {
-			if (context.annotationFlags & AnnotationFlags::AN_PY_OBJECT) {
-				throw ParserError(firstLine,
-				                  "Duplicate annotation @py_object\nHint: Use "
-				                  "@py_object only once before a class "
-				                  "declaration, e.g. @py_object class A { }");
-			}
 			context.annotationFlags |= AnnotationFlags::AN_PY_OBJECT;
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
@@ -259,6 +211,18 @@ void loadAnnotations(in_func, size_t &i) {
 			// 	std::cerr << token.toString(context) << " ";
 			// }
 			// std::cerr << "\n";
+			break;
+		}
+		case Lexer::TokenType::OPERATOR: {
+			context.annotationFlags |= AnnotationFlags::AN_OPERATOR;
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(
+				    context.tokens[i].line,
+				    "@operator must be followed by a function\nHint: "
+				    "Correct syntax is '@operator fun get(index: Int)'");
+			}
+			--i;
 			break;
 		}
 		default: {

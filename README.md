@@ -1,474 +1,304 @@
-﻿# Autolang
+# Autolang
 
-> A statically typed scripting language and virtual machine for safely executing AI-generated code.
+> An orchestration language designed from the ground up for AI to write correctly the first time — with strict host-governed capabilities.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Documentation](https://img.shields.io/badge/docs-online-blue)](https://autolang.vercel.app/docs)
 
-Autolang is designed for one specific problem:
-
-> **Allow AI to generate executable code without exposing your entire runtime.**
-
-Instead of letting an LLM execute Python or JavaScript directly, you expose only the functions you choose. AI writes the workflow, while your existing backend performs the actual work.
-
 ---
 
-## Why not just use tool calling?
+## Contents
 
-Tool calling works well for simple, sequential tasks. But consider a case where you need to classify 1,000 customers by purchase history, segment them into tiers, and apply different discount rules to each group.
-
-With tool calling, the model makes one API call per customer, waits for the result, reasons again, then calls the next. That is 1,000+ round trips - each one adds latency and token cost.
-
-With Autolang, the model generates a short script once. The script runs locally against your registered functions. No round trips. No repeated reasoning.
-
-`
-Tool calling                    Autolang
------------                     --------
-LLM -> call tool                LLM -> generate script once
-     -> wait                         -> compile
-     -> reason                       -> run locally
-     -> call tool
-     -> wait                    Done. Result returned immediately.
-     -> reason
-     -> ...
-`
-
-Autolang is a good fit when:
-
-- you are processing many items (hundreds or thousands)
-- each item follows the same logic but with different data
-- round-trip API cost and latency adds up
-- you want to avoid repeated LLM reasoning for the same task
+- [Why Autolang?](#why-autolang)
+- [How it works](#how-it-works)
+- [Quickstart](#quickstart)
+- [Real-world Workflow](#real-world-workflow)
+- [Why not tool calling?](#why-not-tool-calling)
+- [When to use (and when not to)](#when-to-use)
+- [Security & Resource Governance](#security--resource-governance)
+- [Performance](#performance)
+- [Documentation](#documentation)
+- [Roadmap](#roadmap)
+- [Sponsors](#sponsors)
+- [License](#license)
 
 ---
 
 ## Why Autolang?
 
-Modern LLMs are increasingly capable of generating code.
+Modern LLMs generate code effectively, but executing generated code safely in production remains a major engineering bottleneck.
 
-The challenge is not code generation - it is execution.
+Prompting AI to write dynamic languages like Python or JavaScript introduces runtime ambiguities, unrestricted imports, and unpredictable memory overhead. Conversely, forcing models into unfamiliar domain-specific languages causes syntax failures and hallucinated keywords.
 
-Running AI-generated Python or JavaScript means exposing a large runtime with unrestricted APIs, dynamic imports, filesystem access, networking, and unpredictable memory usage. Even with Docker or MicroVMs, every agent still carries the cost of a full runtime.
+Autolang is an orchestration language designed from the ground up for AI to write valid code on the first attempt (maximizing Pass@1), while executing strictly within host-governed capability boundaries.
 
-Autolang approaches the problem differently.
+Instead of sandboxing an entire operating system, Autolang enforces boundaries at the language runtime layer. It replaces the general-purpose runtime that would otherwise execute inside host isolation layers, built on two core pillars:
 
-Instead of sandboxing an operating system, it sandboxes the language itself.
-
-Scripts can only call APIs that you explicitly register.
-
-`
-AI
- |
-Autolang Compiler
- |
-Type Checking
- |
-Bytecode
- |
-Autolang VM
- |
-Registered JS / C++ Functions
-`
-
-This makes execution predictable, lightweight and suitable for large numbers of concurrent AI agents.
+- **Surface Match with Kotlin:** Autolang adopts proven syntax conventions from Kotlin (`val`, `var`, `if/else`, `when`, `?.`, `arrayOf()`). Pre-trained models already possess extensive neural pathways for Kotlin, allowing them to generate syntactically valid code on the first attempt without specialized prompting.
+- **Intentional Scope:** Autolang deliberately omits complex architectural constructs such as interfaces, sealed classes, reflection, and coroutines. Architectural code is for human engineering teams maintaining large systems over years, not for short-lived AI orchestration scripts. By keeping the language surface intentionally minimal, Autolang eliminates failure modes, prevents over-engineering, and ensures the model focuses strictly on capability orchestration.
 
 ---
 
-## Designed for lightweight models
+## How it works
 
-Cheaper and faster models make more mistakes. Autolang is designed to help them recover.
+Autolang enforces a three-layer defense pipeline between untrusted code and the host application:
 
-- **Static typing** catches type errors before execution
-- **Detailed stack traces** tell the model exactly what went wrong and where
-- **Friendly error messages with hints** make it easier for smaller models to understand and fix their own code
-- **Restricted API surface** means the model can only call what you expose, reducing the chance of hallucinating nonexistent functions
+```text
+AI-generated script
+        │
+        ▼
+  ┌─────────────────┐
+  │  Autolang       │  LAYER 1: Syntax normalization + static type checking
+  │  Compiler       │  (absorbs syntax drift, catches type and symbol errors)
+  └─────────────────┘
+        │
+        ▼
+  ┌─────────────────┐
+  │  Bytecode       │
+  └─────────────────┘
+        │
+        ▼
+  ┌─────────────────┐
+  │  Autolang VM    │  LAYER 3: Opcode budget + managed memory quota
+  └─────────────────┘
+        │
+        ▼
+  ┌─────────────────┐
+  │  Host           │  LAYER 2: Capability allowlist (default deny)
+  │  Capabilities   │  (AI can only invoke explicitly registered functions)
+  └─────────────────┘
+```
 
-This matters more as you scale down model size. A model that cannot understand a generic JavaScript stack trace can still fix its Autolang code when the error message explicitly tells it what to correct.
-
----
-
-## Features
-
-- Static type checking
-- Custom bytecode virtual machine
-- No GC
-- No JIT
-- Opcode execution limits
-- Null safety
-- Native JS bindings
-- Native C++ bindings
-- @js_object interoperability
-- Per-library language restrictions
-- Compile-time diagnostics
-- Fast startup
-- Small memory footprint
-
----
-
-## When should you use it?
-
-Autolang is a good fit if:
-
-- your application lets AI generate code
-- you need to control what AI can access
-- your backend already exists
-- scripts are short and executed frequently
-- startup latency matters
-- memory usage matters
-
-Typical examples:
-
-- AI Agents
-- Internal automation
-- Workflow engines
-- Business rule execution
-- Embedded scripting
-- Multi-agent systems
-- Customer segmentation and classification
-- Internal SME tools that let AI operate on your existing data
+1. **Compiler Layer:** Static type checking and compile-time syntax normalization catch errors prior to execution.
+2. **Capability Layer:** Strict default-deny policy. Scripts cannot access system resources, network sockets, or unregistered functions.
+3. **VM Layer:** Strict deterministic execution bounded by instruction limits and managed memory quotas.
 
 ---
 
-## When should you NOT use it?
+## Quickstart
 
-Autolang is **not** intended to replace Python, JavaScript or C++.
+### Installation
 
-It does not replace Docker or KVM for OS-level isolation.
+Via npm:
 
-It is probably not the right choice if:
+```bash
+npm install autolang-compiler
+```
 
-- you need a general-purpose language
-- your programs are thousands of lines long
-- you require unrestricted OS access
-- your application does not execute AI-generated code
+Via native C++ build:
+
+```bash
+clang++ tests/main.cpp -O2 -std=c++17
+```
+
+### Basic Usage
+
+Register a capability in the host application and execute a script:
+
+```javascript
+import { ACompiler } from "autolang-compiler";
+
+const compiler = new ACompiler();
+
+// Expose a host capability
+compiler.registerBuiltInLibrary("system/notification", `
+    @native("notify")
+    fun notify(recipient: String, message: String): Bool
+`, {}, {
+    notify(recipient, message) {
+        console.log(`Sending notice to ${recipient}: ${message}`);
+        return true;
+    }
+});
+
+// Execute untrusted orchestration logic
+await compiler.compileAndRun("workflow.atl", `
+    @import("system/notification")
+
+    val success = notify("Operations", "Batch task completed")
+    println(success)
+`);
+```
+
+The script cannot call unexposed host APIs or access runtime environments outside registered capabilities.
+
+---
+
+## Real-world Workflow
+
+AI orchestrates business capabilities rather than interacting directly with infrastructure or data storage.
+
+Expose a host service capability:
+
+```javascript
+compiler.registerBuiltInLibrary(
+    "services/inventory",
+    `
+        class Product(
+            inStock: Bool,
+            price: Int
+        )
+
+        @js_object
+        class InventoryService {
+            @native("get_products")
+            fun getProducts(): Array<Product>
+        }
+    `,
+    { autoImport: true },
+    {
+        get_products() {
+            return backendInventoryService.listCurrentItems();
+        }
+    }
+);
+
+await compiler.compileAndRun("classify.atl", `
+    var premiumCount = 0
+    var standardCount = 0
+
+    InventoryService.getProducts()
+        .filter {|item| item.inStock}
+        .forEach {|item|
+            when (item.price) {
+                > 100 -> premiumCount += 1
+                else  -> standardCount += 1
+            }
+        }
+
+    println("Premium items: " + premiumCount)
+    println("Standard items: " + standardCount)
+`);
+```
+
+The generated script operates strictly through `InventoryService.getProducts()`. It has no access to underlying databases, connection pools, or adjacent system services.
+
+---
+
+## Why not tool calling?
+
+Tool calling functions well for single, isolated operations. When an agent must evaluate hundreds of items, segment records, or run multi-step computations, tool calling incurs significant overhead.
+
+```text
+Tool calling                    Autolang
+-----------                     --------
+LLM -> call tool                LLM -> generate orchestration script
+     -> wait                         -> compile
+     -> reason                       -> execute inside VM against capabilities
+     -> call tool
+     -> wait                    Done. Deterministic local execution.
+     -> reason
+```
+
+With tool calling, every step requires an API round-trip, model inference time, and accumulated context tokens. 
+
+With Autolang, the model writes the orchestration logic once. Execution completes deterministically inside the local VM against host capabilities.
+
+Autolang is optimal when:
+
+- Processing batches of items through repetitive business rules
+- Network latency and token consumption per round-trip are prohibitive
+- Operations require deterministic conditional logic rather than repeated LLM deliberation
+
+---
+
+## When to use
+
+### Use Autolang when:
+
+- Applications execute AI-generated logic and require strict security boundaries.
+- Backend services already exist in TypeScript, Go, or Python.
+- Execution requires low startup latency (~10ms cold start) and minimal memory footprints.
+- Bounded execution (instruction and memory budgets) is necessary to prevent runaway compute.
+
+### Do NOT use Autolang when:
+
+- You need a general-purpose programming language (use TypeScript or Python).
+- Scripts require direct, unrestricted operating system access.
+- Codebases require deep inheritance trees and complex architectural hierarchies.
+- Applications do not execute untrusted AI-generated code.
+
+Autolang standard library is intentionally minimal. Orchestration scripts focus on coordinating host capabilities rather than pulling external third-party dependencies.
+
+---
+
+## Security & Resource Governance
+
+Autolang operates under a default-deny architecture. All generated code is treated as untrusted.
+
+- **Capability Allowlist:** Access is restricted to explicitly registered `@native` and `@js_object` declarations.
+- **Instruction Budget:** The VM terminates scripts that exceed a pre-configured opcode threshold, preventing infinite loops.
+- **Managed Memory Quotas:** Reference counting and hot-restart arenas clear allocations immediately upon completion. Host-owned objects remain outside VM memory accounting.
+- **Language Restrictions:** No raw pointers, reflection, or dynamic code evaluation (`eval`).
+
+### Defense-in-Depth
+
+Autolang provides language-level isolation that complements, rather than replaces, containerization (Docker, KVM, Firecracker):
+
+- **Autolang Layer:** Restricts capability boundaries, enforces type safety, and constrains instruction/memory consumption.
+- **Container Layer:** Enforces hardware isolation, filesystem virtualization, and network namespace boundaries.
 
 ---
 
 ## Performance
 
-Measured on:
-
-- Windows 11
-- Intel Core i5 12th Gen
-- 16GB RAM
+Measured on Windows 11 (Intel Core i5 12th Gen, 16GB RAM):
 
 | Metric | Result |
-|---------|--------|
+|---|---|
 | Native cold start | ~10 ms |
 | Node.js cold start | ~20 ms |
 | Warm execution | ~1-2 ms |
-| Core runtime | ~0.5 MB (0 script line) |
-| Full stdlib | ~0.61 MB (0 script line) |
-| 1,800-line test peak | ~3.8 MB |
-
-Autolang optimizes total execution time:
-
-`
-Compile
-      +
-Execute
-      =
-Fast response
-`
-
-This is especially useful for AI-generated scripts, which are usually short and executed many times.
-
----
-
-## Installation
-
-### npm
-
-`Bash
-npm install autolang-compiler
-`
-
-### Native
-
-`Bash
-clang++ tests/main.cpp -O2 -std=c++17
-`
-
-Requires a C++17 compiler.
-
----
-
-## Quick Example
-
-Register a native function:
-
-`	s
-compiler.registerBuiltInLibrary(example, 
-    @native(hello)
-    fun hello(name: String): String
-, {}, {
-    hello(name) {
-        return Hello  + name;
-    }
-});
-`
-
-Run a script:
-
-`kotlin
-@import(example)
-
-println(hello(Autolang))
-`
-
-Output:
-
-`
-Hello Autolang
-`
-
-The script cannot access anything except the APIs you registered.
-
----
-
-## Real-world Example: Customer Classification
-
-Suppose you have an internal product that needs to classify customers by purchase behavior. You expose a single database function and let AI generate the classification logic.
-
-`	s
-compiler.registerBuiltInLibrary(
-    company/database,
-    
-        class Product(
-            remaining: Bool
-            price: Int
-        )
-
-        @js_object
-        class Products {
-            @native(get_products)
-            fun getProducts(): Array<Product>
-        }
-    ,
-    { autoImport: true },
-    {
-        get_products() {
-            return db.query(SELECT * FROM products);
-        }
-    }
-);
-
-await compiler.compileAndRun(classify.atl, 
-    var expenseCount = 0
-    var normalCount = 0
-    var cheapCount = 0
-
-    Products.getProducts()
-        .filter {|product| product.remaining}
-        .forEach {|product|
-            when (product.price) {
-                > 3 -> expenseCount += 1
-                == 3 -> normalCount += 1
-                else -> cheapCount += 1
-            }
-        }
-
-    println(Expensive:  + expenseCount)
-    println(Normal:  + normalCount)
-    println(Cheap:  + cheapCount)
-);
-`
-
-The model only sees Products.getProducts(). It cannot query your database directly, access other tables, or call anything outside the registered API.
-
----
-
-## AI Agent Example
-
-Instead of asking an LLM to repeatedly call tools:
-
-`
-LLM -> Tool -> LLM -> Tool -> LLM
-`
-
-Autolang allows the model to generate an entire workflow once:
-
-`
-LLM -> Autolang Script -> VM -> Registered APIs
-`
-
-This reduces:
-
-- latency
-- token usage
-- repeated reasoning
-- unnecessary API round trips
-
-while keeping execution inside a restricted environment.
-
----
-
-## Language
-
-Autolang uses a Kotlin-inspired syntax designed to be easy for both developers and LLMs.
-
-### Variables
-
-`kotlin
-val name = Autolang
-var count = 10
-`
-
-### Null safety
-
-`kotlin
-var user: User?
-
-println(user?.name ?? Unknown)
-`
-
-### Collections
-
-`kotlin
-val numbers = <Int>[1, 2, 3, 4]
-
-val even = numbers.filter {|v| v % 2 == 0 }
-`
-
-### Classes
-
-`kotlin
-class Animal {
-    fun sound() = ...
-}
-
-class Cat extends Animal {
-    @override
-    fun sound() = Meow
-}
-`
-
-More examples are available in the documentation.
-
----
-
-## Native Bindings
-
-Autolang does not replace your backend.
-
-Instead, it allows you to expose existing functions to AI through native bindings.
-
-`kotlin
-@native(read_user)
-fun readUser(id: Int): User
-`
-
-The implementation remains inside your application.
-
-Scripts can only call the functions you explicitly register.
-
----
-
-## JS Object Interoperability
-
-Complex JavaScript objects can be wrapped using @js_object.
-
-This allows AI-generated scripts to use fluent APIs while the actual object remains entirely on the host side.
-
-`kotlin
-@js_object
-class QueryBuilder {
-
-    @native(where)
-    fun where(field: String, value: String): QueryBuilder
-
-    @native(execute)
-    fun execute(): Array<Order>
-
-}
-`
-
-Example:
-
-`kotlin
-Database.createQuery()
-    .where(status, completed)
-    .execute()
-`
-
-This makes existing ORMs and query builders accessible without exposing JavaScript itself.
-
----
-
-## Memory Model
-
-Autolang uses:
-
-- Reference Counting
-- Hot Restart
-
-Instead of relying on a garbage collector, memory is reset after each script execution, providing predictable execution costs and consistent latency.
-
----
-
-## Security Model
-
-Autolang assumes AI-generated code is untrusted.
-
-Security is enforced before and during execution.
-
-Built-in protections include:
-
-- Static type checking
-- Restricted language features
-- Opcode execution limits
-- Managed memory limits
-- Registered APIs only
-- Disabled filesystem by default
-- Disabled networking by default
-- Domain allowlists
-- File path allowlists
-- Per-library permissions
-
-Autolang is a language-level sandbox.
-
-It complements - but does not replace - OS-level isolation when stronger security guarantees are required.
+| Core runtime memory | ~0.5 MB |
+| Peak memory (1,800-line test) | ~3.8 MB |
 
 ---
 
 ## Documentation
 
-Documentation includes:
+Full documentation, API guides, and language specifications are available at [autolang.vercel.app/docs](https://autolang.vercel.app/docs):
 
-- [Getting Started](https://autolang.vercel.app/docs)
-- Language Guide
-- Standard Library
-- AI Integration
-- Native Bindings
-- Security
-- Examples
-- API Reference
-- Live Playground
-
-[https://autolang.vercel.app/docs](https://autolang.vercel.app/docs)
+- [Getting Started](https://autolang.vercel.app/docs/introduction)
+- [Architecture & Virtual Machine](https://autolang.vercel.app/docs/architecture)
+- [Security Model](https://autolang.vercel.app/docs/security-model)
+- [Host Integration Guide](https://autolang.vercel.app/docs/integration-npm)
+- [Language Reference & Syntax](https://autolang.vercel.app/docs/language-guide/syntax)
+- [Prompting & AI Reference](https://autolang.vercel.app/docs/ai-reference)
+- [Frequently Asked Questions (FAQ)](https://autolang.vercel.app/docs/faq)
+- [Interactive Playground](https://autolang.vercel.app/docs/editor)
 
 ---
 
 ## Roadmap
 
-Current development focuses on:
-
-- Better error messages
-- Additional standard library modules
-- Performance optimizations
+- **Auto-Schema Export:** Generate standardized capability schemas directly from host declarations for LLM context prompts.
+- **Lazy Load Generics:** Support flexible collection initialization while preserving static type validation.
+- **Compile-Time Syntax Normalization:** Expanded compiler absorption for common cross-language syntax variations.
+- **Structured Compiler Diagnostics:** Actionable error feedback formatted for autonomous agent self-correction.
+- **Core Utility Modules:** Standardized data manipulation and string formatting helpers.
 
 ---
 
 ## Contributing
 
-Contributions are welcome.
+Contributions are welcome. Please open an issue or submit a pull request on GitHub. Ensure proposals align with the project design principles outlined in the documentation.
 
-If you discover a bug or have an idea for improving Autolang, feel free to open an issue or submit a pull request.
+---
 
-Please read the documentation before contributing to understand the project architecture and design philosophy.
+## Sponsors
+
+Autolang is sponsored by:
+
+<p align="left">
+  <a href="https://adagroup.com.vn/" target="_blank" rel="noopener noreferrer">
+    <img src="assets/sponsor-logo.jpg" alt="ADA GROUP" height="48" />
+  </a>
+</p>
+
+Special thanks to **[ADA GROUP](https://adagroup.com.vn/)** for supporting project development.
 
 ---
 
 ## License
 
-MIT License c 2026 Autolang Project
+MIT License (c) 2026 Autolang Project

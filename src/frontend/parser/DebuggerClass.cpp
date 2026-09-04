@@ -30,6 +30,11 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 		                  "@no_override is only supported on functions\nHint: "
 		                  "Remove @no_override from class declaration");
 	}
+	if (context.annotationFlags & AnnotationFlags::AN_OPERATOR) {
+		throw ParserError(firstLine,
+		                  "@operator is only supported on functions\nHint: "
+		                  "Remove @operator from class declaration");
+	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_CONSTRUCTOR) {
 		classFlags |= ClassFlags::CLASS_NO_CONSTRUCTOR;
 	}
@@ -134,93 +139,8 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 			return node;
 		}
 		if (expect(token, Lexer::TokenType::LT)) {
-			classInfo->genericData = context.genericDataPool.push();
+			classInfo->genericData = loadGenericParameters(in_data, i);
 			context.newGenericClassesMap[node->classId] = node;
-			while (true) {
-				if (!nextToken(&token, context.tokens, i) ||
-				    !expect(token, Lexer::TokenType::IDENTIFIER)) {
-					--i;
-					throw ParserError(
-					    context.tokens[i].line,
-					    "Expected class name but not found\nHint: Provide "
-					    "generic type parameter name, e.g. '<T>'");
-				}
-				auto &genericDeclarationName =
-				    context.lexerString[token->indexData];
-				if (classInfo->findGenericDeclaration(token->indexData)) {
-					throw ParserError(
-					    firstLine,
-					    "Redefined " + genericDeclarationName +
-					        "\nHint: Use unique generic type parameter names");
-				}
-				Offset id = classInfo->genericData->genericDeclarations.size();
-				context.isInGeneric = true;
-				auto declarationData = context.genericDeclarationNodePool.push(
-				    firstLine, token->indexData);
-				// declarationData->classDeclaration.baseClassLexerStringId =
-				// nameId;
-				// declarationData->classDeclaration.isGenericDeclaration =
-				// true; declarationData->classDeclaration.line = token->line;
-				classInfo->genericData->genericDeclarations.push_back(
-				    declarationData);
-				classInfo->genericData
-				    ->genericDeclarationMap[token->indexData] = id;
-				if (!nextToken(&token, context.tokens, i)) {
-					--i;
-					throw ParserError(
-					    context.tokens[i].line,
-					    "Expected '>' after class name but not found\nHint: "
-					    "Close generic parameter list with '>'");
-				}
-				switch (token->type) {
-					// case Lexer::TokenType::IS:
-					case Lexer::TokenType::EXTENDS: {
-						// auto condition =
-						//     (token->type == Lexer::TokenType::EXTENDS)
-						//         ? GenericDeclarationCondition::MUST_EXTENDS
-						//         : GenericDeclarationCondition::MUST_IS;
-						auto classDeclaration = loadClassDeclaration(
-						    in_data, i, token->line, false);
-						if (!nextToken(&token, context.tokens, i)) {
-							throw ParserError(
-							    firstLine, "Expected '>' after class name but "
-							               "not found\nHint: Close generic "
-							               "parameter list with '>'");
-						}
-						declarationData->condition =
-						    GenericDeclarationCondition{classDeclaration};
-						switch (token->type) {
-							case Lexer::TokenType::COMMA: {
-								break;
-							}
-							case Lexer::TokenType::GT: {
-								goto finishedGenerics;
-							}
-							default: {
-								throw ParserError(
-								    firstLine,
-								    "Expected '>' after class "
-								    "name but not found\nHint: Close generic "
-								    "parameter list with '>'");
-							}
-						}
-						break;
-					}
-					case Lexer::TokenType::COMMA: {
-						break;
-					}
-					case Lexer::TokenType::GT: {
-						goto finishedGenerics;
-					}
-					default: {
-						throw ParserError(firstLine,
-						                  "Expected '>' after class name but "
-						                  "not found\nHint: Close generic "
-						                  "parameter list with '>'");
-					}
-				}
-			}
-		finishedGenerics:;
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
 				throw ParserError(context.tokens[i].line,
@@ -510,7 +430,8 @@ void loadConstructor(in_func, size_t &i) {
 	//     .push_back(constructor->funcId);
 
 	if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
-		auto &token = context.annotationMetadata[AnnotationFlags::AN_NATIVE];
+		auto &token =
+		    context.annotationMetadata[AnnotationMetadataIndex::AMI_NATIVE];
 		const auto &name = context.lexerString[token.indexData];
 
 		auto it = context.mode->nativeFuncMap.find(name);

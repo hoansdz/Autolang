@@ -255,6 +255,10 @@ void AVM::log(Function *currentFunction) {
 				std::cerr << "IN_RANGE	 " << (bytecodes[i++] ? "LT" : "LTE")
 				          << "\n";
 				break;
+			case Autolang::Opcode::NOT_IN_RANGE:
+				std::cerr << "NOT_IN_RANGE	 " << (bytecodes[i++] ? "LT" : "LTE")
+				          << "\n";
+				break;
 			case Autolang::Opcode::LOAD_CONST: {
 				auto obj = data.constPool[get_u32(bytecodes, i)];
 				std::cerr << "LOAD_CONST	 "
@@ -264,6 +268,9 @@ void AVM::log(Function *currentFunction) {
 			}
 			case Autolang::Opcode::IS:
 				std::cerr << "IS	 " << get_u32(bytecodes, i) << "\n";
+				break;
+			case Autolang::Opcode::NOT_IS:
+				std::cerr << "NOT_IS	 " << get_u32(bytecodes, i) << "\n";
 				break;
 			case Autolang::Opcode::SAFE_CAST:
 				std::cerr << "SAFE_CAST	 "
@@ -642,6 +649,9 @@ void AVM::log(Function *currentFunction) {
 				BYTECODE_PRINT_SINGLE(INT_TO_FLOAT)
 				BYTECODE_PRINT_SINGLE(BOOL_TO_INT)
 				BYTECODE_PRINT_SINGLE(BOOL_TO_FLOAT)
+				PRINT_BYTECODE_1_uint32(ADD_FINALLY_BLOCK);
+				BYTECODE_PRINT_SINGLE(REMOVE_FINALLY)
+				BYTECODE_PRINT_SINGLE(END_FINALLY)
 			default:
 				throw std::runtime_error("Bytecode not defined " +
 				                         std::to_string(b));

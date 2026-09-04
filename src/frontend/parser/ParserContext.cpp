@@ -41,6 +41,7 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerString.emplace_back("this");
 	lexerString.emplace_back("Function");
 	lexerString.emplace_back("toString");
+	/*
 	lexerString.emplace_back("unaryPlus");
 	lexerString.emplace_back("unaryMinus");
 	lexerString.emplace_back("not");
@@ -69,6 +70,7 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerString.emplace_back("and");
 	lexerString.emplace_back("or");
 	lexerString.emplace_back("xor");
+	*/
 
 	lexerStringMap["super"] = lexerIdsuper;
 	lexerStringMap["Int"] = lexerIdInt;
@@ -95,6 +97,7 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerStringMap["contains"] = lexerIdcontains;
 	lexerStringMap["this"] = lexerIdthis;
 	lexerStringMap["toString"] = lexerIdtoString;
+	/*
 	lexerStringMap["unaryPlus"] = lexerIdunaryPlus;
 	lexerStringMap["unaryMinus"] = lexerIdunaryMinus;
 	lexerStringMap["not"] = lexerIdnot;
@@ -123,12 +126,12 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerStringMap["and"] = lexerIdand;
 	lexerStringMap["or"] = lexerIdor;
 	lexerStringMap["xor"] = lexerIdxor;
+	*/
 
 	constValue[lexerIdnull] = &constValues[0];
 	constValue[lexerIdtrue] = &constValues[1];
 	constValue[lexerIdfalse] = &constValues[2];
 
-	annotationMetadata.reserve(8);
 	closureScopes.reserve(4);
 
 	{

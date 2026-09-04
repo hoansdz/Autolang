@@ -1,0 +1,8 @@
+class BoundBase {}
+class BoundDerived extends BoundBase {
+	constructor() {
+		super()
+	}
+}
+class BoundBox<T extends BoundBase>() {}
+val b = BoundBox<Int>()

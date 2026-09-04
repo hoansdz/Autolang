@@ -108,9 +108,9 @@ struct ACompilerConfig {
 
 class ACompiler {
   public:
-	LibraryData *mainSource;
+	LibraryData *mainSource = nullptr;
 	ParserContext parserContext;
-	CompilerState state;
+	CompilerState state = CompilerState::CT_READY;
 	bool loadedMainSource = false;
 	bool loadedBuiltIn = false;
 	bool shouldRefresh = false;
@@ -197,6 +197,15 @@ class ACompiler {
 	}
 	inline bool hasError() {
 		return state == Autolang::CompilerState::CT_ERROR;
+	}
+	inline bool hasException() {
+		if (vm.callFrames.getSize() == 0) {
+			if (vm.callFrames.objects[0].exception) {
+				return true;
+			}
+			return false;
+		}
+		return false;
 	}
 };
 

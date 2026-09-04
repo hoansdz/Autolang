@@ -41,6 +41,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
                           ClassDeclaration *classDeclaration);
 void loadFunctionGenerics(in_func, std::string &name,
                           ClassDeclaration *classDeclaration);
+GenericData *loadGenericParameters(in_func, size_t &i);
 void ensureNoKeyword(in_func, size_t &i);
 void ensureNoAnnotations(in_func, size_t &i);
 Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t &i);

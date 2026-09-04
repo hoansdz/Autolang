@@ -1,0 +1,3 @@
+class InvalidSetOp {
+	@operator fun set(index: Int): Void {}
+}
