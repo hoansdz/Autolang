@@ -1,4 +1,4 @@
-﻿# Autolang
+# Autolang
 
 > An orchestration language designed from the ground up for AI to write correctly the first time — with strict host-governed capabilities.
 
@@ -291,7 +291,7 @@ Autolang is sponsored by:
 
 <p align="left">
   <a href="https://adagroup.com.vn/" target="_blank" rel="noopener noreferrer">
-    <img src="public/images/sponsor-logo.jpg" alt="ADA GROUP" height="48" />
+    <img src="assets/sponsor-logo.jpg" alt="ADA GROUP" height="48" />
   </a>
 </p>
 
