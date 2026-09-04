@@ -1,0 +1,2 @@
+class DuplicateGenericClass<T> {}
+class DuplicateGenericClass<T> {}

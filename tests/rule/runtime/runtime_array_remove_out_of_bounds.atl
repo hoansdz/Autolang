@@ -1,0 +1,5 @@
+fun testArrayRemove(): Void {
+	val arr = <Int>[1, 2, 3]
+	arr.remove(10)
+}
+testArrayRemove()

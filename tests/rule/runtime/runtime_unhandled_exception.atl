@@ -1,0 +1,4 @@
+fun testUnhandled(): Void {
+	throw Exception("Unhandled runtime error")
+}
+testUnhandled()

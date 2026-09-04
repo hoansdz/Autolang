@@ -257,6 +257,27 @@ bool runCorrectnessTest(Autolang::ACompiler &compiler, const char *scriptPath) {
 int main(int argc, char *argv[]) {
 	auto processStart = std::chrono::high_resolution_clock::now();
 
+	// Đặt thành true để chạy riêng một script độc lập
+	bool runSingleCustomScript = false;
+	const char *customScriptPath = "tests/test.atl";
+
+	if (runSingleCustomScript) {
+		Autolang::ACompiler customCompiler;
+		customCompiler.setLimitOpcodeCount(1000000);
+		customCompiler.setMaxManagedMemory(1024 * 1024);
+		try {
+			if (!customCompiler.compile(customScriptPath, Autolang::LibraryConfig(false, true, true))) {
+				std::cerr << "Compilation failed: " << customScriptPath << '\n';
+				return 1;
+			}
+			customCompiler.run();
+		} catch (const std::exception &e) {
+			std::cerr << "Error: " << e.what() << '\n';
+			return 1;
+		}
+		return 0;
+	}
+
 	bool isBenchmark = false;
 	const char* scriptPath = "tests/testCorrectness.atl";
 

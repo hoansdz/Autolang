@@ -1,0 +1,3 @@
+class ValMemberBox(val num: Int)
+val box = ValMemberBox(10)
+box.num = 20

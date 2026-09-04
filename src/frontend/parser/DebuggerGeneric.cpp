@@ -41,6 +41,7 @@ GenericData *loadGenericParameters(in_func, size_t &i) {
 			    "Close generic parameter list with '>'");
 		}
 		switch (token->type) {
+			case Lexer::TokenType::COLON:
 			case Lexer::TokenType::EXTENDS: {
 				auto classDeclaration =
 				    loadClassDeclaration(in_data, i, token->line, false);

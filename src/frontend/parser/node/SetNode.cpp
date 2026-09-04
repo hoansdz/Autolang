@@ -219,43 +219,19 @@ void SetNode::optimize(in_func) {
 			auto detachNode = static_cast<GetPropNode *>(detach);
 			detachNode->isStore = true;
 			detachNode->cloneable = false;
-			if (detach->classId != Autolang::DefaultClass::nullClassId) {
-				break;
-			}
-			if (detachNode->classId == Autolang::DefaultClass::nullClassId) {
-				if (detachNode->declaration->classId ==
-				    Autolang::DefaultClass::nullClassId) {
-					if (value->classId == Autolang::DefaultClass::nullClassId) {
-						throwError("Ambiguous type inference for member "
-						           "variable\nHint: Provide an explicit type "
-						           "annotation when declaring member variable "
-						           "initialized with null.");
+			bool isAllowedConstructorInit = false;
+			if (context.currentFunctionId < compile.functions.size()) {
+				auto currentFunc = compile.functions[context.currentFunctionId];
+				if (currentFunc->functionFlags & FunctionFlags::FUNC_IS_CONSTRUCTOR) {
+					if (detachNode->caller && detachNode->caller->kind == NodeType::VAR) {
+						auto varCaller = static_cast<VarNode *>(detachNode->caller);
+						if (varCaller->declaration && varCaller->declaration->baseName == lexerIdthis) {
+							isAllowedConstructorInit = true;
+						}
 					}
-					detachNode->declaration->classId = value->classId;
-					if (value->classId == DefaultClass::functionClassId) {
-						detachNode->declaration->classDeclaration =
-						    value->classDeclaration;
-					}
-					// Marked non null won't run example val a! = 1
-					if (detachNode->declaration->mustInferenceNullable) {
-						detachNode->declaration->nullable = value->isNullable();
-						detachNode->nullable =
-						    detachNode->declaration->nullable;
-					}
-					// printDebug(std::string("SetNode: Declaration ") +
-					// node->declaration->getName(compile) + " is " +
-					// compile.classes[value->classId]->getName(compile));
-				}
-				detach->classId = value->classId;
-				if (value->classId == DefaultClass::functionClassId) {
-					detach->classDeclaration = value->classDeclaration;
 				}
 			}
-			// if (detachNode->declaration->accessModifier ==
-			// Lexer::TokenType::PRIVATE) { 	if (detachNode->classId !=
-			// detachNode->declaration->classId)
-			// }
-			if (detachNode->isVal) {
+			if (detachNode->isVal && !isAllowedConstructorInit) {
 				throwError(
 				    "Cannot change " +
 				    compile.classes[detachNode->caller->classId]->getName(
@@ -264,6 +240,41 @@ void SetNode::optimize(in_func) {
 				    " because it's val\nHint: Properties declared with 'val' "
 				    "are immutable and cannot be reassigned.");
 			}
+			if (detach->classId == Autolang::DefaultClass::nullClassId) {
+				if (detachNode->classId == Autolang::DefaultClass::nullClassId) {
+					if (detachNode->declaration->classId ==
+					    Autolang::DefaultClass::nullClassId) {
+						if (value->classId == Autolang::DefaultClass::nullClassId) {
+							throwError("Ambiguous type inference for member "
+							           "variable\nHint: Provide an explicit type "
+							           "annotation when declaring member variable "
+							           "initialized with null.");
+						}
+						detachNode->declaration->classId = value->classId;
+						if (value->classId == DefaultClass::functionClassId) {
+							detachNode->declaration->classDeclaration =
+							    value->classDeclaration;
+						}
+						// Marked non null won't run example val a! = 1
+						if (detachNode->declaration->mustInferenceNullable) {
+							detachNode->declaration->nullable = value->isNullable();
+							detachNode->nullable =
+							    detachNode->declaration->nullable;
+						}
+						// printDebug(std::string("SetNode: Declaration ") +
+						// node->declaration->getName(compile) + " is " +
+						// compile.classes[value->classId]->getName(compile));
+					}
+					detach->classId = value->classId;
+					if (value->classId == DefaultClass::functionClassId) {
+						detach->classDeclaration = value->classDeclaration;
+					}
+				}
+			}
+			// if (detachNode->declaration->accessModifier ==
+			// Lexer::TokenType::PRIVATE) { 	if (detachNode->classId !=
+			// detachNode->declaration->classId)
+			// }
 			// Nullable
 			if (value->classId == Autolang::DefaultClass::nullClassId) {
 				if (!detachNode->declaration->nullable) {

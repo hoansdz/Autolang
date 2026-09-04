@@ -73,10 +73,10 @@ static std::string resolveFilePath(const std::string &rawPath, ANotifier &notifi
 }
 
 AObject *constructor(NativeFuncInData) {
-	ClassId classId = args[0]->i;
-	const std::string &rawPath = args[1]->str->data;
+	ClassId classId = notifier.callFrame->func->returnId;
+	const std::string &rawPath = args[0]->str->data;
 	std::string path = resolveFilePath(rawPath, notifier);
-	int64_t modeInt = args[2]->i;
+	int64_t modeInt = args[1]->i;
 
 	if (!checkFilePathSecurity(path, notifier)) {
 		notifier.throwException("SecurityError: File path is not allowed.");
@@ -358,7 +358,7 @@ AObject *get_all_files(NativeFuncInData) {
 		notifier.throwException("SecurityError: File path is not allowed.");
 		return nullptr;
 	}
-	ClassId arrayClassId = args[1]->i;
+	ClassId arrayClassId = notifier.callFrame->func->returnId;
 
 	auto newArr = notifier.createArray(arrayClassId);
 	std::error_code ec;
@@ -498,9 +498,9 @@ enum FileMode {
 class File {
     
     @native("file_constructor")
-    private static fun __CLASS__(classId: Int, path: String, modeId: Int): File
+    private static fun File(path: String, modeId: Int): File
 
-    static fun __CLASS__(path: String, mode: FileMode): File = File(getClassId(File), path, mode.getId())
+    static fun File(path: String, mode: FileMode): File = File(path, mode.getId())
 
     @native("file_read_text")
     fun readText(): String
@@ -536,7 +536,7 @@ class File {
     static fun isFile(path: String): Bool
     
     @native("file_get_all_files")
-    static fun getAllFiles(dirPath: String, arrayClassId: Int = getClassId(Array<String>)): Array<String>
+    static fun getAllFiles(dirPath: String): Array<String>
 
     @native("file_get_name")
     static fun getName(path: String): String

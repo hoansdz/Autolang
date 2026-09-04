@@ -1,0 +1,6 @@
+@operator
+class InvalidClassOpTest {
+	fun get(i: Int): Int {
+		return 1
+	}
+}

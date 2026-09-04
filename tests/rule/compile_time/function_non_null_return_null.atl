@@ -1,0 +1,3 @@
+fun getNonNull(): Int {
+	return null
+}

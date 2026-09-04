@@ -297,6 +297,22 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 			}
 			break;
 		}
+		case NodeType::TRY_CATCH: {
+			auto *tc = static_cast<TryCatchNode *>(node);
+			tc->optimize(in_data);
+			if (tc->body.hasValue || (tc->hasCatch && tc->catchBody.hasValue) ||
+			    (tc->hasFinally && tc->finallyBody.hasValue)) {
+				hasValue = true;
+			}
+			if (context.currentClosureNode && context.currentClosureNode->funcId) {
+				auto func = compile.functions[*context.currentClosureNode->funcId];
+				if (func->returnId != DefaultClass::nullClassId &&
+				    func->returnId != DefaultClass::voidClassId) {
+					currentClassId = func->returnId;
+				}
+			}
+			break;
+		}
 		case NodeType::RET: {
 			auto n = static_cast<ReturnNode *>(node);
 

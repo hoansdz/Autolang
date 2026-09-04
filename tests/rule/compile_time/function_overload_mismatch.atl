@@ -1,0 +1,4 @@
+fun targetFunc(a: Int, b: String): Void {}
+fun testMismatch(): Void {
+	targetFunc(10, 20)
+}

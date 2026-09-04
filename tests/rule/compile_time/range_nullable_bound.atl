@@ -1,0 +1,4 @@
+fun testRangeNullable(): Void {
+	val start: Int? = null
+	val r = start..10
+}

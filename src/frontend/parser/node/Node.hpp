@@ -745,11 +745,15 @@ struct CallNode : NullableNode {
 };
 
 struct TryCatchNode : ExprNode {
-	DeclarationNode *exceptionDeclaration;
+	DeclarationNode *exceptionDeclaration = nullptr;
 	BlockNode body;
 	BlockNode catchBody;
+	BlockNode finallyBody;
+	bool hasCatch = false;
+	bool hasFinally = false;
 	TryCatchNode(uint32_t line)
-	    : ExprNode(NodeType::TRY_CATCH, line), body(line), catchBody(line) {}
+	    : ExprNode(NodeType::TRY_CATCH, line), body(line), catchBody(line),
+	      finallyBody(line) {}
 	ExprNode *resolve(in_func) override;
 	void optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;

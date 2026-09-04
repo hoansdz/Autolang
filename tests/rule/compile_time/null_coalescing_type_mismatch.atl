@@ -1,0 +1,4 @@
+fun testNullCoalescingMismatch(): Void {
+	val a: Int? = null
+	val b = a ?? "text"
+}

@@ -1,0 +1,353 @@
+fun testFinallyBasic() {
+	var step = 0
+	try {
+		step = 1
+	} catch (e) {
+		step = -1
+	} finally {
+		step = 2
+	}
+	assert(step == 2, __FILE__, __LINE__)
+
+	var step2 = 0
+	try {
+		step2 = 10
+	} finally {
+		step2 = 20
+	}
+	assert(step2 == 20, __FILE__, __LINE__)
+
+	println("Passed testFinallyBasic")
+}
+
+fun testFinallyWithException() {
+	// 1. Exception caught by catch, then finally runs
+	var order = ""
+	try {
+		order += "1"
+		throw Exception("err1")
+		order += "X"
+	} catch (e) {
+		order += "2"
+	} finally {
+		order += "3"
+	}
+	assert(order == "123", __FILE__, __LINE__)
+
+	// 2. Exception in try without catch: finally runs, then exception propagates
+	var order2 = ""
+	try {
+		try {
+			order2 += "A"
+			throw Exception("uncaught")
+			order2 += "X"
+		} finally {
+			order2 += "B"
+		}
+	} catch (e) {
+		order2 += "C"
+	}
+	assert(order2 == "ABC", __FILE__, __LINE__)
+
+	// 3. Exception in catch: finally runs, then outer catch catches error from inner catch
+	var order3 = ""
+	try {
+		try {
+			order3 += "try"
+			throw Exception("first")
+		} catch (e) {
+			order3 += "catch"
+			throw Exception("second")
+		} finally {
+			order3 += "finally"
+		}
+	} catch (e) {
+		order3 += "outerCatch"
+	}
+	assert(order3 == "trycatchfinallyouterCatch", __FILE__, __LINE__)
+
+	println("Passed testFinallyWithException")
+}
+
+var globalFinallyTracker = ""
+
+fun helperReturnInTry(): Int {
+	try {
+		globalFinallyTracker = "try"
+		return 100
+	} finally {
+		globalFinallyTracker += "_finally"
+	}
+}
+
+fun helperReturnInCatch(): Int {
+	try {
+		throw Exception("fail")
+	} catch (e) {
+		globalFinallyTracker = "catch"
+		return 200
+	} finally {
+		globalFinallyTracker += "_finally"
+	}
+}
+
+fun helperReturnInFinallyOverrides(): Int {
+	try {
+		return 10
+	} finally {
+		return 20
+	}
+}
+
+fun testFinallyWithReturn() {
+	globalFinallyTracker = ""
+	val val1 = helperReturnInTry()
+	assert(val1 == 100, __FILE__, __LINE__)
+	assert(globalFinallyTracker == "try_finally", __FILE__, __LINE__)
+
+	globalFinallyTracker = ""
+	val val2 = helperReturnInCatch()
+	assert(val2 == 200, __FILE__, __LINE__)
+	assert(globalFinallyTracker == "catch_finally", __FILE__, __LINE__)
+
+	val val3 = helperReturnInFinallyOverrides()
+	assert(val3 == 20, __FILE__, __LINE__)
+
+	println("Passed testFinallyWithReturn")
+}
+
+fun helperNestedFinally(): Int {
+	try {
+		try {
+			globalFinallyTracker += "innerTry"
+			return 42
+		} finally {
+			globalFinallyTracker += "->innerFinally"
+		}
+	} finally {
+		globalFinallyTracker += "->outerFinally"
+	}
+}
+
+fun testFinallyNested() {
+	globalFinallyTracker = ""
+	val res = helperNestedFinally()
+	assert(res == 42, __FILE__, __LINE__)
+	assert(globalFinallyTracker == "innerTry->innerFinally->outerFinally", __FILE__, __LINE__)
+
+	println("Passed testFinallyNested")
+}
+
+var recursionUnwindCount = 0
+fun recursiveFinally(depth: Int) {
+	try {
+		if (depth > 0) {
+			recursiveFinally(depth - 1)
+		} else {
+			throw Exception("maxDepth")
+		}
+	} finally {
+		recursionUnwindCount += 1
+	}
+}
+
+fun testFinallyWithClosuresAndStress() {
+	// 1. Closure executing try-finally and throwing exception out to caller try-catch-finally
+	val closureLog = <String>[]
+	val closureWithFinally = {||
+		try {
+			closureLog.add("closureTry")
+			throw Exception("closureErr")
+		} finally {
+			closureLog.add("closureFinally")
+		}
+	}
+
+	try {
+		closureLog.add("callerTry")
+		closureWithFinally()
+		closureLog.add("never")
+	} catch (e) {
+		closureLog.add("callerCatch(" + e.message + ")")
+	} finally {
+		closureLog.add("callerFinally")
+	}
+	assert(closureLog.length() == 5, __FILE__, __LINE__)
+	assert(closureLog[0] == "callerTry", __FILE__, __LINE__)
+	assert(closureLog[1] == "closureTry", __FILE__, __LINE__)
+	assert(closureLog[2] == "closureFinally", __FILE__, __LINE__)
+	assert(closureLog[3] == "callerCatch(closureErr)", __FILE__, __LINE__)
+	assert(closureLog[4] == "callerFinally", __FILE__, __LINE__)
+
+	// 1b. Closure returning a value from inside try with finally
+	val returnClosureLog = <String>[]
+	val closureWithReturn = {||
+		var res = 0
+		try {
+			returnClosureLog.add("tryReturn")
+			res = 99
+		} finally {
+			returnClosureLog.add("finallyReturn")
+		}
+		res
+	}
+	val returnedVal = closureWithReturn()
+	assert(returnedVal == 99, __FILE__, __LINE__)
+	assert(returnClosureLog.length() == 2, __FILE__, __LINE__)
+	assert(returnClosureLog[0] == "tryReturn", __FILE__, __LINE__)
+	assert(returnClosureLog[1] == "finallyReturn", __FILE__, __LINE__)
+
+	// 2. Closure mutating captured reference in catch and finally
+	val box = <Int>[10]
+	val mutatingClosure = {||
+		try {
+			throw Exception("mutate")
+		} catch (e) {
+			box.add(box.get(0) + 5)
+		} finally {
+			box.add(box.get(1) * 2)
+		}
+	}
+	mutatingClosure()
+	assert(box.size() == 3, __FILE__, __LINE__)
+	assert(box.get(1) == 15, __FILE__, __LINE__)
+	assert(box.get(2) == 30, __FILE__, __LINE__)
+
+	// 3. Higher-order function passing closure, executed inside try-finally
+	val hofLog = <String>[]
+	val runner = {|action: () -> Void|
+		try {
+			hofLog.add("runnerTry")
+			action()
+		} finally {
+			hofLog.add("runnerFinally")
+		}
+	}
+	try {
+		runner({||
+			try {
+				hofLog.add("actionTry")
+				throw Exception("actionFail")
+			} finally {
+				hofLog.add("actionFinally")
+			}
+		})
+	} catch (e) {
+		hofLog.add("topCatch")
+	}
+	assert(hofLog.length() == 5, __FILE__, __LINE__)
+	assert(hofLog[0] == "runnerTry", __FILE__, __LINE__)
+	assert(hofLog[1] == "actionTry", __FILE__, __LINE__)
+	assert(hofLog[2] == "actionFinally", __FILE__, __LINE__)
+	assert(hofLog[3] == "runnerFinally", __FILE__, __LINE__)
+	assert(hofLog[4] == "topCatch", __FILE__, __LINE__)
+
+	// 4. Nested closures: inner closure throws, outer closure catches and rethrows in finally
+	val nestLog = <String>[]
+	val outerClosure = {||
+		try {
+			val innerClosure = {||
+				try {
+					nestLog.add("innerTry")
+					throw Exception("innerErr")
+				} finally {
+					nestLog.add("innerFinally")
+				}
+			}
+			innerClosure()
+		} catch (e) {
+			nestLog.add("outerCatch")
+			throw Exception("outerRethrow")
+		} finally {
+			nestLog.add("outerFinally")
+		}
+	}
+
+	try {
+		outerClosure()
+	} catch (e) {
+		nestLog.add("callerCatch(" + e.message + ")")
+	}
+	assert(nestLog.length() == 5, __FILE__, __LINE__)
+	assert(nestLog[0] == "innerTry", __FILE__, __LINE__)
+	assert(nestLog[1] == "innerFinally", __FILE__, __LINE__)
+	assert(nestLog[2] == "outerCatch", __FILE__, __LINE__)
+	assert(nestLog[3] == "outerFinally", __FILE__, __LINE__)
+	assert(nestLog[4] == "callerCatch(outerRethrow)", __FILE__, __LINE__)
+
+	// 5. Deep recursion (depth 50) with try-finally unwinding stack and handlers
+	recursionUnwindCount = 0
+	try {
+		recursiveFinally(50)
+	} catch (e) {
+		assert(e.message == "maxDepth", __FILE__, __LINE__)
+	}
+	assert(recursionUnwindCount == 51, __FILE__, __LINE__)
+
+	// 6. Exception thrown inside finally replacing in-flight exception
+	var caughtMsg = ""
+	try {
+		try {
+			throw Exception("originalError")
+		} finally {
+			throw Exception("finallyError")
+		}
+	} catch (e) {
+		caughtMsg = e.message
+	}
+	assert(caughtMsg == "finallyError", __FILE__, __LINE__)
+
+	// 7. Triple-nested try-finally all unwinding and throwing
+	val multiFinallyLog = <String>[]
+	try {
+		try {
+			try {
+				multiFinallyLog.add("try1")
+				throw Exception("err1")
+			} finally {
+				multiFinallyLog.add("finally1")
+			}
+		} finally {
+			multiFinallyLog.add("finally2")
+		}
+	} catch (e) {
+		multiFinallyLog.add("catch:" + e.message)
+	} finally {
+		multiFinallyLog.add("finally3")
+	}
+	assert(multiFinallyLog.length() == 5, __FILE__, __LINE__)
+	assert(multiFinallyLog[0] == "try1", __FILE__, __LINE__)
+	assert(multiFinallyLog[1] == "finally1", __FILE__, __LINE__)
+	assert(multiFinallyLog[2] == "finally2", __FILE__, __LINE__)
+	assert(multiFinallyLog[3] == "catch:err1", __FILE__, __LINE__)
+	assert(multiFinallyLog[4] == "finally3", __FILE__, __LINE__)
+
+	// 8. Loop stress test with 1000 iterations: closure + try-catch-finally + heap allocations
+	val stressCounter = <Int>[0]
+	for (idx in 0..1000) {
+		val stressClosure = {||
+			try {
+				if (idx % 2 == 0) {
+					throw Exception("even")
+				}
+				stressCounter.add(1)
+			} catch (e) {
+				stressCounter.add(2)
+			} finally {
+				stressCounter.add(3)
+			}
+		}
+		stressClosure()
+	}
+	// 1 initial + 1001 iterations * 2 elements added = 2003 elements
+	assert(stressCounter.size() == 2003, __FILE__, __LINE__)
+
+	println("Passed testFinallyWithClosuresAndStress")
+}
+
+testFinallyBasic()
+testFinallyWithException()
+testFinallyWithReturn()
+testFinallyNested()
+testFinallyWithClosuresAndStress()
+

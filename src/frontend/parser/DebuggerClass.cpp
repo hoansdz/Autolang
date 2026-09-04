@@ -30,6 +30,11 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 		                  "@no_override is only supported on functions\nHint: "
 		                  "Remove @no_override from class declaration");
 	}
+	if (context.annotationFlags & AnnotationFlags::AN_OPERATOR) {
+		throw ParserError(firstLine,
+		                  "@operator is only supported on functions\nHint: "
+		                  "Remove @operator from class declaration");
+	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_CONSTRUCTOR) {
 		classFlags |= ClassFlags::CLASS_NO_CONSTRUCTOR;
 	}

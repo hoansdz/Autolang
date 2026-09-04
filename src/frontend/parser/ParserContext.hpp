@@ -59,6 +59,7 @@ enum AnnotationFlags : uint32_t {
 #elif __PYBIND11__
 	AN_PY_OBJECT = 1u << 7,
 #endif
+	AN_OPERATOR = 1u << 8,
 };
 
 struct LibraryData;
@@ -87,6 +88,7 @@ constexpr LexerStringId lexerIdcontains = 20;  // in, !in
 constexpr LexerStringId lexerIdthis = 21;
 constexpr LexerStringId lexerIdFunction = 22;
 constexpr LexerStringId lexerIdtoString = 23;    // toString()
+/*
 constexpr LexerStringId lexerIdunaryPlus = 24;   // +a
 constexpr LexerStringId lexerIdunaryMinus = 25;  // -a
 constexpr LexerStringId lexerIdnot = 26;         // !a
@@ -115,6 +117,7 @@ constexpr LexerStringId lexerIdprovideDelegate = 48; // provideDelegate
 constexpr LexerStringId lexerIdand = 49;             // a and b
 constexpr LexerStringId lexerIdor = 50;              // a or b
 constexpr LexerStringId lexerIdxor = 51;             // a xor b
+*/
 
 using GenericCaller = ClassDeclaration;
 

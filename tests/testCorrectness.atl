@@ -27,6 +27,9 @@
 @import("./correctness/basic/autocast.atl")
 @import("./correctness/basic/exception.atl")
 @import("./correctness/basic/typealias.atl")
+@import("./correctness/basic/operator_overloading.atl")
+@import("./correctness/basic/not_is_not_in.atl")
+@import("./correctness/basic/finally.atl")
 
 
 @import("./correctness/stdlib/array.atl")

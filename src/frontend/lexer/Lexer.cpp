@@ -242,6 +242,18 @@ start:;
 
 TokenType loadOp(Context &context, uint32_t &i) {
 	char first = context.line[i++];
+	if (first == '!' && !isEndOfLine(context, i)) {
+		if (context.line[i] == 'i' && !isEndOfLine(context, i + 1)) {
+			if (context.line[i + 1] == 's' && (isEndOfLine(context, i + 2) || (!std::isalnum((unsigned char)context.line[i + 2]) && context.line[i + 2] != '_'))) {
+				i += 2;
+				return TokenType::NOT_IS;
+			}
+			if (context.line[i + 1] == 'n' && (isEndOfLine(context, i + 2) || (!std::isalnum((unsigned char)context.line[i + 2]) && context.line[i + 2] != '_'))) {
+				i += 2;
+				return TokenType::NOT_IN;
+			}
+		}
+	}
 	if (isEndOfLine(context, i) || !isOperator(context.line[i])) {
 	loadFirst:;
 		std::string str = {first};

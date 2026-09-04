@@ -41,6 +41,18 @@ struct MainOpcodeLine {
 	    : line(line), opcodeIndex(opcodeIndex), path(path) {}
 };
 
+struct HandlerEntry {
+	enum Type : uint8_t { CATCH, FINALLY };
+	Type type;
+	uint32_t targetPos;
+};
+
+struct FinallyState {
+	enum Reason : uint8_t { NORMAL, RETURN_VALUE, RETURN_VOID, EXCEPTION };
+	Reason reason = NORMAL;
+	AObject *savedObj = nullptr;
+};
+
 struct CompiledProgram {
 	// Use when finished resize vector
 	Function *main;
@@ -50,7 +62,8 @@ struct CompiledProgram {
 	std::vector<uint8_t> allBytecodes;
 	std::vector<uint32_t> allGenericType;
 	std::vector<uint32_t> allMemberId;
-	std::vector<uint32_t> allCatchPosition;
+	std::vector<HandlerEntry> allHandlers;
+	std::vector<FinallyState> allFinallyStates;
 	std::vector<OpcodeLine> allOpcodeLines;
 	std::vector<MainOpcodeLine> allMainFunctionOpcodeLines;
 	std::vector<bool> allMemberNullable;
