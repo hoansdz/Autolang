@@ -2,6 +2,7 @@
 #define SET_NODE_CPP
 
 #include "Node.hpp"
+#include "frontend/parser/ImplicitConversion.hpp"
 #include "frontend/parser/ParserContext.hpp"
 #include "shared/DefaultClass.hpp"
 
@@ -29,9 +30,9 @@ ExprNode *SetNode::resolve(in_func) {
 	return this;
 }
 
-void SetNode::optimize(in_func) {
+ExprNode *SetNode::optimize(in_func) {
 	// Detach has nullClassId because it was not evaluated
-	detach->optimize(in_data);
+	detach = static_cast<HasClassIdNode *>(detach->optimize(in_data));
 
 	switch (value->classId) {
 		case DefaultClass::nullClassId: {
@@ -43,12 +44,21 @@ void SetNode::optimize(in_func) {
 						auto clazz = compile.classes[detach->classId];
 						if (clazz->genericBaseClassId !=
 						    DefaultClass::arrayClassId) {
+							if (canImplicitConvert(in_data, detach->classId, value)) {
+								auto converted = tryImplicitConversion(in_data, detach->classId, value, line);
+								if (converted) {
+									value = converted;
+									break;
+								}
+							}
 							if (detach->classId == DefaultClass::nullClassId) {
-								throwError("Cannot infer type for initializer. "
-								           "Autolang requires explicit type "
-								           "parameters for collection "
-								           "sugar.\nHint: Declare explicitly, "
-								           "for example: `<Type>[]`.");
+								// throwError("Cannot infer type for
+								// initializer. "
+								//            "Autolang requires explicit type "
+								//            "parameters for collection "
+								//            "sugar.\nHint: Declare explicitly,
+								//            " "for example: `<Type>[]`.");
+								break;
 							}
 							throwError("Type mismatch: Expected Array<> but '" +
 							           detach->getClassName(in_data) +
@@ -75,14 +85,16 @@ void SetNode::optimize(in_func) {
 								value = newValue;
 								newValue->classId = detach->classId;
 							} else {
+								if (canImplicitConvert(in_data, detach->classId, value)) {
+									auto converted = tryImplicitConversion(in_data, detach->classId, value, line);
+									if (converted) {
+										value = converted;
+										break;
+									}
+								}
 								if (detach->classId ==
 								    DefaultClass::nullClassId) {
-									throwError(
-									    "Cannot infer type for initializer. "
-									    "Autolang requires explicit type "
-									    "parameters for collection "
-									    "sugar.\nHint: Declare explicitly, for "
-									    "example: `<Type>{}`.");
+									break;
 								}
 								throwError(
 								    "Type mismatch: Expected " +
@@ -102,13 +114,15 @@ void SetNode::optimize(in_func) {
 						auto clazz = compile.classes[detach->classId];
 						if (clazz->genericBaseClassId !=
 						    DefaultClass::mapClassId) {
+							if (canImplicitConvert(in_data, detach->classId, value)) {
+								auto converted = tryImplicitConversion(in_data, detach->classId, value, line);
+								if (converted) {
+									value = converted;
+									break;
+								}
+							}
 							if (detach->classId == DefaultClass::nullClassId) {
-								throwError(
-								    "Cannot infer type for initializer. "
-								    "Autolang requires explicit type "
-								    "parameters for collection sugar.\nHint: "
-								    "Declare explicitly, for example: "
-								    "`<KeyClass, ValueClass>{}`.");
+								break;
 							}
 							throwError("Type mismatch: Expected Map<> but '" +
 							           detach->getClassName(in_data) +
@@ -163,35 +177,7 @@ void SetNode::optimize(in_func) {
 		}
 	}
 
-	if (detach->classId == DefaultClass::functionClassId &&
-	    value->kind == NodeType::GET_PROP) {
-		auto valueNode = static_cast<GetPropNode *>(value);
-		if (valueNode->optimizeSkipIfNotFoundMember(in_data)) {
-			// Skiped
-			auto callClassInfo = context.classInfo[valueNode->caller->classId];
-			auto it = callClassInfo->allFunction.find(valueNode->nameId);
-			if (it == callClassInfo->allFunction.end()) {
-				auto clazz = compile.classes[valueNode->caller->classId];
-				throwError("Cannot find member name '" +
-				           context.lexerString[valueNode->nameId] +
-				           "' in class " + clazz->getName(compile) +
-				           "\nHint: Verify member name spelling and "
-				           "accessibility in class " +
-				           clazz->getName(compile) + ".");
-			}
-			std::vector<FunctionId> *funcs[1];
-			funcs[0] = &it->second;
-			auto caller = valueNode->caller->isStaticValue()
-			                  ? nullptr
-			                  : valueNode->caller;
-			value = context.functionAccessPool.push(
-			    valueNode->line, caller, valueNode->nameId, 1, nullptr, funcs);
-			value->classDeclaration = detach->classDeclaration;
-			value->optimize(in_data);
-		}
-	} else {
-		value->optimize(in_data);
-	}
+	value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 
 	if (justDetachStatic && !value->isStaticValue()) {
 		throwError("Assigned value must be a static value\nHint: Static "
@@ -222,10 +208,14 @@ void SetNode::optimize(in_func) {
 			bool isAllowedConstructorInit = false;
 			if (context.currentFunctionId < compile.functions.size()) {
 				auto currentFunc = compile.functions[context.currentFunctionId];
-				if (currentFunc->functionFlags & FunctionFlags::FUNC_IS_CONSTRUCTOR) {
-					if (detachNode->caller && detachNode->caller->kind == NodeType::VAR) {
-						auto varCaller = static_cast<VarNode *>(detachNode->caller);
-						if (varCaller->declaration && varCaller->declaration->baseName == lexerIdthis) {
+				if (currentFunc->functionFlags &
+				    FunctionFlags::FUNC_IS_CONSTRUCTOR) {
+					if (detachNode->caller &&
+					    detachNode->caller->kind == NodeType::VAR) {
+						auto varCaller =
+						    static_cast<VarNode *>(detachNode->caller);
+						if (varCaller->declaration &&
+						    varCaller->declaration->baseName == lexerIdthis) {
 							isAllowedConstructorInit = true;
 						}
 					}
@@ -241,14 +231,23 @@ void SetNode::optimize(in_func) {
 				    "are immutable and cannot be reassigned.");
 			}
 			if (detach->classId == Autolang::DefaultClass::nullClassId) {
-				if (detachNode->classId == Autolang::DefaultClass::nullClassId) {
+				if (detachNode->classId ==
+				    Autolang::DefaultClass::nullClassId) {
+					if (detachNode->declaration->classDeclaration) {
+						detachNode->declaration->classDeclaration->template load<true>(in_data);
+						if (detachNode->declaration->classDeclaration->classId) {
+							detachNode->declaration->classId = *detachNode->declaration->classDeclaration->classId;
+						}
+					}
 					if (detachNode->declaration->classId ==
 					    Autolang::DefaultClass::nullClassId) {
-						if (value->classId == Autolang::DefaultClass::nullClassId) {
-							throwError("Ambiguous type inference for member "
-							           "variable\nHint: Provide an explicit type "
-							           "annotation when declaring member variable "
-							           "initialized with null.");
+						if (value->classId ==
+						    Autolang::DefaultClass::nullClassId) {
+							throwError(
+							    "Ambiguous type inference for member "
+							    "variable\nHint: Provide an explicit type "
+							    "annotation when declaring member variable "
+							    "initialized with null.");
 						}
 						detachNode->declaration->classId = value->classId;
 						if (value->classId == DefaultClass::functionClassId) {
@@ -257,17 +256,25 @@ void SetNode::optimize(in_func) {
 						}
 						// Marked non null won't run example val a! = 1
 						if (detachNode->declaration->mustInferenceNullable) {
-							detachNode->declaration->nullable = value->isNullable();
+							detachNode->declaration->nullable =
+							    value->isNullable();
 							detachNode->nullable =
 							    detachNode->declaration->nullable;
 						}
-						// printDebug(std::string("SetNode: Declaration ") +
-						// node->declaration->getName(compile) + " is " +
-						// compile.classes[value->classId]->getName(compile));
-					}
-					detach->classId = value->classId;
-					if (value->classId == DefaultClass::functionClassId) {
-						detach->classDeclaration = value->classDeclaration;
+						detach->classId = value->classId;
+						if (value->classId == DefaultClass::functionClassId) {
+							detach->classDeclaration = value->classDeclaration;
+						}
+					} else {
+						detach->classId = detachNode->declaration->classId;
+						if (op == Lexer::TokenType::EQUAL &&
+						    value->classId != detach->classId &&
+						    !compile.classes[value->classId]->inheritance.get(detach->classId)) {
+							auto converted = tryImplicitConversion(in_data, detach->classId, value, line);
+							if (converted) {
+								value = converted;
+							}
+						}
 					}
 				}
 			}
@@ -296,14 +303,16 @@ void SetNode::optimize(in_func) {
 					           " with null value\nHint: Compound assignment "
 					           "cannot be used when assigned value is null.");
 				}
-				return;
+				return this;
 			}
 			auto clazz = compile.classes[detachNode->caller->classId];
 			// clazz->memberId[detach->declaration->id] = value->classId;
-			detachNode->declaration->classId = value->classId;
-			if (value->classId == DefaultClass::functionClassId) {
-				detachNode->declaration->classDeclaration =
-				    value->classDeclaration;
+			if (detachNode->declaration->classId == Autolang::DefaultClass::nullClassId) {
+				detachNode->declaration->classId = value->classId;
+				if (value->classId == DefaultClass::functionClassId) {
+					detachNode->declaration->classDeclaration =
+					    value->classDeclaration;
+				}
 			}
 			break;
 		}
@@ -375,7 +384,7 @@ void SetNode::optimize(in_func) {
 					           " with null value\nHint: Compound assignment "
 					           "cannot be used when assigned value is null.");
 				}
-				return;
+				return this;
 			}
 			break;
 		}
@@ -463,12 +472,12 @@ void SetNode::optimize(in_func) {
 			switch (detach->classId) {
 				case Autolang::DefaultClass::intClassId:
 				case Autolang::DefaultClass::floatClassId:
-					return;
+					return this;
 				default:
 					if (detach->classId ==
 					        Autolang::DefaultClass::stringClassId &&
 					    op == Lexer::TokenType::PLUS_EQUAL)
-						return;
+						return this;
 					break;
 			}
 			throwError(
@@ -496,7 +505,7 @@ void SetNode::optimize(in_func) {
 							    "parameter types.");
 						}
 					}
-					return;
+					return this;
 				} else {
 					throwError("Type mismatch: expected '" +
 					           detach->classDeclaration->getName(in_data) +
@@ -507,7 +516,7 @@ void SetNode::optimize(in_func) {
 				}
 			}
 		}
-		return;
+		return this;
 	}
 	switch (detach->classId) {
 		case Autolang::DefaultClass::intClassId: {
@@ -523,12 +532,12 @@ void SetNode::optimize(in_func) {
 					if (value->kind == Autolang::NodeType::CONST_VAL) {
 						value = toInt(in_data,
 						              static_cast<ConstValueNode *>(value));
-						value->optimize(in_data);
-						return;
+						value = static_cast<HasClassIdNode *>(value->optimize(in_data));
+						return this;
 					} else {
 						value = context.castPool.push(
 						    value, Autolang::DefaultClass::intClassId);
-						return;
+						return this;
 					}
 					break;
 				}
@@ -539,39 +548,46 @@ void SetNode::optimize(in_func) {
 		}
 		case Autolang::DefaultClass::floatClassId: {
 			if (value->classId == Autolang::DefaultClass::floatClassId) {
-				return;
+				return this;
 			}
 			if (value->classId == Autolang::DefaultClass::intClassId ||
 			    value->classId == Autolang::DefaultClass::boolClassId) {
 				if (value->kind == Autolang::NodeType::CONST_VAL) {
 					value =
 					    toFloat(in_data, static_cast<ConstValueNode *>(value));
-					value->optimize(in_data);
-					return;
+					value = static_cast<HasClassIdNode *>(value->optimize(in_data));
+					return this;
 				} else {
 					value = context.castPool.push(
 					    value, Autolang::DefaultClass::floatClassId);
-					return;
+					return this;
 				}
 			}
 			break;
 		}
 		case Autolang::DefaultClass::anyClassId: {
-			return;
+			return this;
 		}
 		default:
 			break;
 	}
 	if (detach->isNullable() && value->classId == DefaultClass::nullClassId) {
-		return;
+		return this;
 	}
 	if (compile.classes[value->classId]->inheritance.get(detach->classId)) {
-		return;
+		return this;
 	}
 	switch (detach->kind) {
 		case NodeType::VAR:
 		case NodeType::GET_PROP:
 		default:
+			if (op == Lexer::TokenType::EQUAL) {
+				auto converted = tryImplicitConversion(in_data, detach->classId, value, line);
+				if (converted) {
+					value = converted;
+					return this;
+				}
+			}
 			throwError("Type mismatch: expected '" +
 			           detach->getClassName(in_data) + "' but found '" +
 			           value->getClassName(in_data) +
@@ -579,6 +595,7 @@ void SetNode::optimize(in_func) {
 			           "'\nHint: Assigned expression type does not match "
 			           "target variable/property type.");
 	}
+	return this;
 }
 
 #define operator_plus_case(type, op)                                           \

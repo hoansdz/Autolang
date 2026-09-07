@@ -6,23 +6,24 @@
 
 namespace Autolang {
 
-void ConstValueNode::optimize(in_func) {
+ExprNode *ConstValueNode::optimize(in_func) {
 	if (id != UINT32_MAX)
-		return;
+		return this;
 	switch (classId) {
 		case Autolang::DefaultClass::intClassId:
 			id = compile.registerConstPool<int64_t>(context.constIntMap, i);
-			return;
+			return this;
 		case Autolang::DefaultClass::floatClassId:
 			id = compile.registerConstPool<double>(context.constFloatMap, f);
-			return;
+			return this;
 		case Autolang::DefaultClass::stringClassId:
 			id = compile.registerConstPool(context.constStringMap,
 			                               AString::from(*str));
-			return;
+			return this;
 		default:
 			break;
 	}
+	return this;
 }
 
 ExprNode *ConstValueNode::copy(in_func) { return this; }

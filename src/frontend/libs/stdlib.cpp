@@ -559,6 +559,8 @@ fun println(value: Any? = "")
 @native("get_refcount")
 fun getRefCount(value: Any?): Int
 @native("assert")
+fun assert(condition: Bool, message: String = "Assertion failed")
+@native("assert")
 fun assert(condition: Bool, fileName: String, line: Int)
 // @wait_input
 // @native("input")

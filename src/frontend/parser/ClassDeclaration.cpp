@@ -152,7 +152,7 @@ void ClassDeclaration::onLoadTypealias(in_func, TypealiasData *typealias) {
 						// if (condition.condition ==
 						// GenericDeclarationCondition::MUST_EXTENDS) {
 						if (!condition.classDeclaration->classId) {
-							condition.classDeclaration->load<true>(in_data);
+							condition.classDeclaration->template load<true>(in_data);
 							if (!condition.classDeclaration->classId) {
 								condition.classDeclaration->throwError(
 								    "Unresolved " +
@@ -163,7 +163,7 @@ void ClassDeclaration::onLoadTypealias(in_func, TypealiasData *typealias) {
 							}
 						} else if (condition.classDeclaration->classId ==
 						           DefaultClass::functionClassId) {
-							condition.classDeclaration->load<true>(in_data);
+							condition.classDeclaration->template load<true>(in_data);
 						}
 						context.checkValidateExtends[genericDeclaration]
 						    .push_back(newClassDeclaration);
@@ -183,7 +183,7 @@ void ClassDeclaration::onLoadTypealias(in_func, TypealiasData *typealias) {
 					}
 				}
 			}
-			typealias->classDeclaration->load<true>(in_data);
+			typealias->classDeclaration->template load<true>(in_data);
 			// }
 			if (context.typealiasTraceIndex) {
 				if (--context.typealiasTraceIndex) {
@@ -234,7 +234,7 @@ void ClassDeclaration::onLoadTypealias(in_func, TypealiasData *typealias) {
 	}
 }
 
-template <bool changeGenericsClassId, bool canBeFunction>
+template <bool changeGenericsClassId, bool canBeFunction, bool isLazy>
 void ClassDeclaration::load(in_func) {
 	if (classId) {
 		if (classId == DefaultClass::functionClassId) {
@@ -243,15 +243,15 @@ void ClassDeclaration::load(in_func) {
 				if (classDeclaration->classId) {
 					if (classDeclaration->classId ==
 					    DefaultClass::functionClassId) {
-						classDeclaration->load<changeGenericsClassId>(in_data);
+						classDeclaration->template load<changeGenericsClassId>(in_data);
 						continue;
 					}
 				} else {
 					if (classDeclaration->isGeneric) {
-						classDeclaration->load<false>(in_data);
+						classDeclaration->template load<false>(in_data);
 						classDeclaration->classId = std::nullopt;
 					} else {
-						classDeclaration->load<true>(in_data);
+						classDeclaration->template load<true>(in_data);
 					}
 					continue;
 				}
@@ -392,7 +392,7 @@ void ClassDeclaration::load(in_func) {
 				for (size_t i = 0; i < inputClassId.size(); ++i) {
 					auto *classDeclaration = inputClassId[i];
 					if (!classDeclaration->classId) {
-						classDeclaration->load<changeGenericsClassId>(in_data);
+						classDeclaration->template load<changeGenericsClassId>(in_data);
 						if (!classDeclaration->classId) {
 							throwError(
 							    "Unresolved class " +
@@ -402,7 +402,7 @@ void ClassDeclaration::load(in_func) {
 						}
 					} else if (classDeclaration->classId ==
 					           DefaultClass::functionClassId) {
-						classDeclaration->load<changeGenericsClassId>(in_data);
+						classDeclaration->template load<changeGenericsClassId>(in_data);
 					}
 				}
 				std::string name = getName(in_data);
@@ -480,18 +480,18 @@ void ClassDeclaration::load(in_func) {
 			auto *classDeclaration = inputClassId[i];
 			if (!classDeclaration->classId) {
 				if (classDeclaration->isGeneric) {
-					classDeclaration->load<changeGenericsClassId>(in_data);
+					classDeclaration->template load<changeGenericsClassId>(in_data);
 					marked[i] = true;
 					mustInfer = false;
 				} else {
-					classDeclaration->load<true>(in_data);
+					classDeclaration->template load<true>(in_data);
 				}
 			} else if (classDeclaration->classId ==
 			           DefaultClass::functionClassId) {
 				if (classDeclaration->isGeneric) {
-					classDeclaration->load<changeGenericsClassId>(in_data);
+					classDeclaration->template load<changeGenericsClassId>(in_data);
 				} else {
-					classDeclaration->load<true>(in_data);
+					classDeclaration->template load<true>(in_data);
 				}
 			}
 		}
@@ -508,13 +508,13 @@ void ClassDeclaration::load(in_func) {
 		for (size_t i = 0; i < inputClassId.size(); ++i) {
 			auto *classDeclaration = inputClassId[i];
 			if (!classDeclaration->classId) {
-				classDeclaration->load<true>(in_data);
+				classDeclaration->template load<true>(in_data);
 				if (!classDeclaration->classId) {
 					mustInfer = false;
 				}
 			} else if (classDeclaration->classId ==
 			           DefaultClass::functionClassId) {
-				classDeclaration->load<true>(in_data);
+				classDeclaration->template load<true>(in_data);
 			}
 		}
 		if (!mustInfer)
@@ -533,7 +533,7 @@ void ClassDeclaration::load(in_func) {
 		}
 	}
 	// context.genericClassMustBeLoaded[baseClassLexerStringId].push_back(this);
-	classId = loadClassGenerics(in_data, name, this);
+	classId = Autolang::loadClassGenerics<isLazy>(in_data, name, this);
 	auto classInfo = context.classInfo[*classId];
 	if (inputClassId.size() != classInfo->genericTypeId.size()) {
 		// int* x = nullptr; *x = 5;
@@ -616,6 +616,10 @@ template void ClassDeclaration::load<false, false>(in_func);
 template void ClassDeclaration::load<true, false>(in_func);
 template void ClassDeclaration::load<false, true>(in_func);
 template void ClassDeclaration::load<true, true>(in_func);
+template void ClassDeclaration::load<false, false, true>(in_func);
+template void ClassDeclaration::load<true, false, true>(in_func);
+template void ClassDeclaration::load<false, true, true>(in_func);
+template void ClassDeclaration::load<true, true, true>(in_func);
 
 template std::string ClassDeclaration::getName<false>(in_func);
 template std::string ClassDeclaration::getName<true>(in_func);

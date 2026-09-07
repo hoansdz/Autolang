@@ -1,10 +1,10 @@
 @import("std/http")
 
 fun checkResponse(res: HttpResponse) {
-    assert(res.status >= 100 && res.status < 600, __FILE__, __LINE__)
-    assert(res.url != "", __FILE__, __LINE__)
-    assert(res.headers.size() >= 0, __FILE__, __LINE__)
-    assert(res.body.size() >= 0, __FILE__, __LINE__)
+    assert(res.status >= 100 && res.status < 600)
+    assert(res.url != "")
+    assert(res.headers.size() >= 0)
+    assert(res.body.size() >= 0)
 }
 
 fun testHttpFeatures() {
@@ -16,7 +16,7 @@ fun testHttpFeatures() {
         println("Http.get ok: ${res.ok}, status: ${res.status}, url: ${res.url}, body size: ${res.body.size()}")
     } catch (e) {
         val errStr = e.message
-        assert(errStr.indexOf("SecurityError") == -1, __FILE__, __LINE__)
+        assert(errStr.indexOf("SecurityError") == -1)
         println("Http.get bypassed security but failed with network/other error: ${errStr}")
     }
 
@@ -26,7 +26,7 @@ fun testHttpFeatures() {
         println("Http.post ok: ${res.ok}, status: ${res.status}, url: ${res.url}, body size: ${res.body.size()}")
     } catch (e) {
         val errStr = e.message
-        assert(errStr.indexOf("SecurityError") == -1, __FILE__, __LINE__)
+        assert(errStr.indexOf("SecurityError") == -1)
         println("Http.post bypassed security but failed with network/other error: ${errStr}")
     }
 
@@ -36,19 +36,19 @@ fun testHttpFeatures() {
         println("Http.delete ok: ${res.ok}, status: ${res.status}, url: ${res.url}, body size: ${res.body.size()}")
     } catch (e) {
         val errStr = e.message
-        assert(errStr.indexOf("SecurityError") == -1, __FILE__, __LINE__)
+        assert(errStr.indexOf("SecurityError") == -1)
         println("Http.delete bypassed security but failed with network/other error: ${errStr}")
     }
 
     try {
         val urls = <String>["https://example.com", "https://httpbin.org/get"]
         val responses = Http.getAll(urls, 2000)
-        assert(responses.size() == urls.size(), __FILE__, __LINE__)
+        assert(responses.size() == urls.size())
         checkResponse(responses.get(0))
         println("Http.getAll success, count: ${responses.size()}")
     } catch (e) {
         val errStr = e.message
-        assert(errStr.indexOf("SecurityError") == -1, __FILE__, __LINE__)
+        assert(errStr.indexOf("SecurityError") == -1)
         println("Http.getAll bypassed security but failed with network/other error: ${errStr}")
     }
 

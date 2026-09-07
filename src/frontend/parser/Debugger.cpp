@@ -205,8 +205,7 @@ initial:;
 			}
 			auto node = loadFunc(in_data, i);
 			if (!node)
-				throw ParserError(
-				    0, "Internal error: loadFunc returned null unexpectedly");
+				return nullptr;
 			if (context.currentClassId) {
 				auto classInfo = context.getCurrentClassInfo(in_data);
 				classInfo->createFunctionNodes.push_back(
@@ -417,6 +416,22 @@ initial:;
 				    "Follow 'operator' with a function, e.g. 'operator fun get(index: Int)'");
 			}
 			context.annotationFlags |= AnnotationFlags::AN_OPERATOR;
+			goto initial;
+		}
+		case Lexer::TokenType::IMPLICIT: {
+			if (context.currentFunctionId != context.mainFunctionId) {
+				throw ParserError(token->line,
+				                  "Error: 'implicit' is not allowed inside a function"
+				                  "\nHint: Place 'implicit' on constructor or method declaration");
+			}
+			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
+				--i;
+				throw ParserError(
+				    context.tokens[i].line,
+				    "Error: 'implicit' must be followed by a constructor or function declaration\nHint: "
+				    "Follow 'implicit' with a constructor, e.g. 'implicit constructor(m: Map)'");
+			}
+			context.annotationFlags |= AnnotationFlags::AN_IMPLICIT;
 			goto initial;
 		}
 		case Lexer::TokenType::TYPEALIAS: {

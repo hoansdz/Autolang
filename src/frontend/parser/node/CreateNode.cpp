@@ -12,9 +12,9 @@
 
 namespace Autolang {
 
-void DeclarationNode::optimize(in_func) {
+ExprNode *DeclarationNode::optimize(in_func) {
 	if (loaded) {
-		return;
+		return this;
 	}
 	{
 		auto it = context.globalFunction.find(baseName);
@@ -99,7 +99,7 @@ void DeclarationNode::optimize(in_func) {
 	if (classDeclaration) {
 		// Doesn't changed
 		if (classDeclaration->isGenerics(in_data)) {
-			return;
+			return this;
 		}
 		loaded = true;
 		auto &baseClassName =
@@ -138,7 +138,7 @@ void DeclarationNode::optimize(in_func) {
 		if (!classInfo->genericData) {
 			classId = it->second;
 			nullable = classDeclaration->nullable;
-			return;
+			return this;
 		}
 		if (classInfo->genericData->genericDeclarations.size() !=
 		        classDeclaration->inputClassId.size() &&
@@ -161,10 +161,11 @@ void DeclarationNode::optimize(in_func) {
 		// if (classId == DefaultClass::functionClassId) {
 		nullable = classDeclaration->nullable;
 		// }
-		return;
+		return this;
 	}
 	// printDebug("DeclarationNode: " + name + " is " +
 	//            compile.classes[classId]->getName(compile));
+	return this;
 }
 
 ExprNode *DeclarationNode::copy(in_func) {
@@ -193,7 +194,7 @@ ExprNode *DeclarationNode::copy(in_func) {
 
 	if (classDeclaration) {
 		if (!classDeclaration->classId) {
-			classDeclaration->load<false>(in_data);
+			classDeclaration->template load<false>(in_data);
 			if (!classDeclaration->classId) {
 				throwError("Bug: DeclarationNode copy: Unresolved class " +
 				           classDeclaration->getName(in_data) +
@@ -206,7 +207,7 @@ ExprNode *DeclarationNode::copy(in_func) {
 				classDeclaration->classId = std::nullopt;
 			}
 		} else if (classDeclaration->classId == DefaultClass::functionClassId) {
-			classDeclaration->load<false>(in_data);
+			classDeclaration->template load<false>(in_data);
 			newNode->classId = *classDeclaration->classId;
 			if (classDeclaration->isGeneric) {
 				newNode->classDeclaration = classDeclaration->copy(in_data);
@@ -296,7 +297,11 @@ ExprNode *CreateConstructorNode::copy(in_func) {
 	return constructor;
 }
 
-void CreateConstructorNode::optimize(in_func) {
+ExprNode *CreateConstructorNode::optimize(in_func) {
+	if (optimized) {
+		return this;
+	}
+	optimized = true;
 	const auto &name = context.lexerString[nameId];
 	auto func = compile.functions[funcId];
 	auto funcInfo = context.functionInfo[funcId];
@@ -363,6 +368,7 @@ void CreateConstructorNode::optimize(in_func) {
 	auto thisNode =
 	    context.varPool.push(line, classInfo->declarationThis, false, false);
 	body.nodes.push_back(context.returnPool.push(line, funcId, thisNode));
+	return this;
 }
 
 void CreateClassNode::pushClass(in_func) {
@@ -393,7 +399,11 @@ void CreateClassNode::pushClass(in_func) {
 	//           << "\n";
 }
 
-void CreateClassNode::optimize(in_func) {
+ExprNode *CreateClassNode::optimize(in_func) {
+	if (optimized) {
+		return this;
+	}
+	optimized = true;
 	const auto &name = context.lexerString[nameId];
 	auto classInfo = context.classInfo[classId];
 	if (classInfo->genericData) {
@@ -435,7 +445,7 @@ void CreateClassNode::optimize(in_func) {
 	if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
 		if (classInfo->genericData) {
 			// std::cerr<<"A "<<name<<"\n";
-			return;
+			return this;
 		}
 		// std::cerr<<"B "<<name<<"\n";
 		if (!superDeclaration->classId) {
@@ -447,6 +457,7 @@ void CreateClassNode::optimize(in_func) {
 		auto clazz = compile.classes[classId];
 		clazz->parentId = *superDeclaration->classId;
 	}
+	return this;
 }
 
 void CreateClassNode::loadSuper(in_func) {

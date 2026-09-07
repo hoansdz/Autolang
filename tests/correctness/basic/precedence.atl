@@ -1,72 +1,72 @@
 fun testPrecedence() {
 	// Multiplication before addition
 	val a = 1 + 2 * 3
-	assert(a == 7, __FILE__, __LINE__)
+	assert(a == 7)
 
 	// Parentheses override precedence
 	val b = (1 + 2) * 3
-	assert(b == 9, __FILE__, __LINE__)
+	assert(b == 9)
 
 	// Left-associativity of subtraction
 	val c = 10 - 3 - 2
-	assert(c == 5, __FILE__, __LINE__)
+	assert(c == 5)
 
 	// Left-associativity of division
 	val d = 100 / 10 / 2
-	assert(d == 5, __FILE__, __LINE__)
+	assert(d == 5)
 
 	// Complex expression
 	val e = 1+2*3-4/5+6*7-8/9+10*11-12/13+14
-	assert(e == 173, __FILE__, __LINE__)
+	assert(e == 173)
 
 	// Unary minus precedence
-	assert(-2 + 3 == 1, __FILE__, __LINE__)
-	assert(-(2 + 3) == -5, __FILE__, __LINE__)
-	assert(-2 * 3 == -6, __FILE__, __LINE__)
-	assert(-2 * -3 == 6, __FILE__, __LINE__)
+	assert(-2 + 3 == 1)
+	assert(-(2 + 3) == -5)
+	assert(-2 * 3 == -6)
+	assert(-2 * -3 == 6)
 
 	// Modulo precedence (same level as * and /)
-	assert(10 + 7 % 3 == 11, __FILE__, __LINE__)  // 10 + (7%3) = 10 + 1 = 11
-	assert(10 * 7 % 3 == 1, __FILE__, __LINE__)   // (10*7) % 3 = 70%3 = 1
+	assert(10 + 7 % 3 == 11)  // 10 + (7%3) = 10 + 1 = 11
+	assert(10 * 7 % 3 == 1)   // (10*7) % 3 = 70%3 = 1
 
 	// Comparison vs arithmetic: arithmetic binds tighter
-	assert(1 + 2 == 3, __FILE__, __LINE__)
-	assert(1 + 2 > 2, __FILE__, __LINE__)
-	assert(2 * 3 >= 5 + 1, __FILE__, __LINE__)
+	assert(1 + 2 == 3)
+	assert(1 + 2 > 2)
+	assert(2 * 3 >= 5 + 1)
 
 	// Logical operators: && binds tighter than ||
-	assert(false || true && true, __FILE__, __LINE__)   // false || (true && true) = true
-	assert(!(true && false || false), __FILE__, __LINE__) // !((true&&false)||false) = !(false) = true
+	assert(false || true && true)   // false || (true && true) = true
+	assert(!(true && false || false)) // !((true&&false)||false) = !(false) = true
 
 	// NOT binds tightest among logical
-	assert(!false && true, __FILE__, __LINE__)    // (!false) && true = true
-	assert(!false || false, __FILE__, __LINE__)   // (!false) || false = true
+	assert(!false && true)    // (!false) && true = true
+	assert(!false || false)   // (!false) || false = true
 
 	// Range operator precedence with arithmetic and 'in'
-	assert(4 in 1..2 + 3, __FILE__, __LINE__)
-	assert(!(6 in 1..2 + 3), __FILE__, __LINE__)
-	assert(2 in 1 + 1..10 - 2, __FILE__, __LINE__)
-	assert(8 in 1 + 1..10 - 2, __FILE__, __LINE__)
-	assert(!(9 in 1 + 1..10 - 2), __FILE__, __LINE__)
+	assert(4 in 1..2 + 3)
+	assert(!(6 in 1..2 + 3))
+	assert(2 in 1 + 1..10 - 2)
+	assert(8 in 1 + 1..10 - 2)
+	assert(!(9 in 1 + 1..10 - 2))
 
 	var rangeSum = 0
 	for (i in 1..2 + 2) {
 		rangeSum = rangeSum + i
 	}
-	assert(rangeSum == 10, __FILE__, __LINE__) // 1 + 2 + 3 + 4 = 10
+	assert(rangeSum == 10) // 1 + 2 + 3 + 4 = 10
 
 	// Bitwise operator precedence
 	val bitAnd = 1 + 2 & 3
-	assert(bitAnd == 3, __FILE__, __LINE__) // (1 + 2) & 3 = 3 & 3 = 3
+	assert(bitAnd == 3) // (1 + 2) & 3 = 3 & 3 = 3
 
 	// Null-coalescing operator precedence
 	val optVal: Int? = null
 	val coalesceRes = optVal ?? 5 + 2
-	assert(coalesceRes == 7, __FILE__, __LINE__)
+	assert(coalesceRes == 7)
 
 	// 'is' operator precedence with logical AND
 	val num = 42
-	assert(num is Int && true, __FILE__, __LINE__)
+	assert(num is Int && true)
 
 	println("Passed ${__FUNC__}")
 }

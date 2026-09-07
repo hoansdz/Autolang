@@ -22,21 +22,21 @@ fun testExceptionFeatures() {
 	try {
 		throwCustomException("My Custom Message")
 	} catch (e) {
-		assert(e is CustomException, __FILE__, __LINE__)
-		assert(e.message == "My Custom Message", __FILE__, __LINE__)
+		assert(e is CustomException)
+		assert(e.message == "My Custom Message")
 		caughtCustom = true
 	}
-	assert(caughtCustom, __FILE__, __LINE__)
+	assert(caughtCustom)
 
 	// 2. Exception Propagation
 	var caughtPropagated = false
 	try {
 		exceptionFuncB()
 	} catch (e) {
-		assert(e.message == "Error from C", __FILE__, __LINE__)
+		assert(e.message == "Error from C")
 		caughtPropagated = true
 	}
-	assert(caughtPropagated, __FILE__, __LINE__)
+	assert(caughtPropagated)
 
 	// 3. Nested Try-Catch
 	var nestedInnerCaught = false
@@ -45,16 +45,35 @@ fun testExceptionFeatures() {
 		try {
 			throwCustomException("Inner Error")
 		} catch (e) {
-			assert(e is CustomException, __FILE__, __LINE__)
-			assert(e.message == "Inner Error", __FILE__, __LINE__)
+			assert(e is CustomException)
+			assert(e.message == "Inner Error")
 			nestedInnerCaught = true
 			throw Exception("Outer Error")
 		}
 	} catch (e) {
-		assert(e.message == "Outer Error", __FILE__, __LINE__)
+		assert(e.message == "Outer Error")
 		nestedOuterCaught = true
 	}
-	assert(nestedInnerCaught && nestedOuterCaught, __FILE__, __LINE__)
+	assert(nestedInnerCaught && nestedOuterCaught)
+
+	// 4. Assert with default message and custom message
+	var caughtAssertDefault = false
+	try {
+		assert(false)
+	} catch (e) {
+		assert(e.message == "Assertion failed")
+		caughtAssertDefault = true
+	}
+	assert(caughtAssertDefault)
+
+	var caughtAssertCustom = false
+	try {
+		assert(false, "Custom assert failure message")
+	} catch (e) {
+		assert(e.message == "Custom assert failure message")
+		caughtAssertCustom = true
+	}
+	assert(caughtAssertCustom)
 
 	println("Passed ${__FUNC__}")
 }

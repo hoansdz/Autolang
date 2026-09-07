@@ -52,8 +52,10 @@ LibraryData *ACompiler::requestImport(LibraryData *currentLibrary,
 	std::filesystem::path resolved = (currentPath / input).lexically_normal();
 	if (!std::filesystem::exists(resolved)) {
 		if (mainSource && (mainSource->flags & LibraryFlags::IS_FILE)) {
-			std::filesystem::path mainPath = std::filesystem::path(mainSource->path).parent_path();
-			std::filesystem::path mainResolved = (mainPath / input).lexically_normal();
+			std::filesystem::path mainPath =
+			    std::filesystem::path(mainSource->path).parent_path();
+			std::filesystem::path mainResolved =
+			    (mainPath / input).lexically_normal();
 			if (std::filesystem::exists(mainResolved)) {
 				resolved = mainResolved;
 			} else {
@@ -217,8 +219,10 @@ void ACompiler::loadMainSource(const char *path, LibraryConfig config,
 	}
 	LibraryData *library = requestImport(nullptr, path);
 	if (!library) {
-		throw std::runtime_error("File '" + std::string(path) +
-		                         "' does not exist\nHint: Check file path spelling and ensure the file exists at specified relative path.");
+		throw std::runtime_error(
+		    "File '" + std::string(path) +
+		    "' does not exist\nHint: Check file path spelling and ensure the "
+		    "file exists at specified relative path.");
 	}
 	parserContext.importMap[library->path] = library;
 	library->nativeFuncMap = nativeFuncMap;
@@ -501,13 +505,13 @@ void ACompiler::generateBytecodes() {
 
 		printDebug("Load all generic call");
 		for (auto *declaration : context.genericCallers) {
-			declaration->load<true, true>(in_data);
+			declaration->template load<true, true>(in_data);
 		}
 
 		printDebug("Load all class declarations");
 		// Load class declaration (generics as T won't have class id)
 		for (auto *declaration : context.allClassDeclarations) {
-			declaration->load<true>(in_data);
+			declaration->template load<true>(in_data);
 		}
 
 		printDebug("Start optimize classes");
@@ -534,11 +538,9 @@ void ACompiler::generateBytecodes() {
 			if (classInfo->genericData)
 				continue;
 			if (classInfo->primaryConstructor) {
-				classInfo->primaryConstructor->resolve(in_data);
 				classInfo->primaryConstructor->optimize(in_data);
 			} else {
 				for (auto *constructor : classInfo->secondaryConstructor) {
-					constructor->resolve(in_data);
 					constructor->optimize(in_data);
 				}
 			}
@@ -548,8 +550,9 @@ void ACompiler::generateBytecodes() {
 		for (int i = 0; i < sizeNewFunctions; ++i) {
 			auto *createFunctionNode = context.newFunctions[i];
 			auto funcInfo = context.functionInfo[createFunctionNode->id];
-			if (createFunctionNode->functionFlags &
-			    FunctionFlags::FUNC_SKIP_LOAD) {
+			if ((createFunctionNode->functionFlags &
+			     FunctionFlags::FUNC_SKIP_LOAD) ||
+			    createFunctionNode->optimized) {
 				continue;
 			}
 			if (createFunctionNode->contextCallClassId) {
@@ -576,16 +579,18 @@ void ACompiler::generateBytecodes() {
 			    *(*declaration->condition).classDeclaration->classId;
 			for (auto *inputClass : vec) {
 				ClassId inputClassId = *inputClass->classId;
-				if (conditionClassId != inputClassId &&
-				    !compile.classes[inputClassId]->inheritance.get(
-				        conditionClassId)) {
-					inputClass->throwError(
-					    context.lexerString[declaration->nameId] +
-					    " must extend '" +
-					    compile.classes[conditionClassId]->getName(compile) +
-					    "' but '" +
-					    compile.classes[inputClassId]->getName(compile) +
-					    "' was found\nHint: Ensure the generic argument class satisfies the type bound by inheriting from the required base class.");
+				if (!compile.classes[inputClassId]->inheritance.get(
+				        conditionClassId) &&
+				    inputClassId != conditionClassId) {
+					throw ParserError(
+					    declaration->line,
+					    "Type constraint violation: generic argument '" +
+					        compile.classes[inputClassId]->getName(compile) +
+					        "' does not extend required base class '" +
+					        compile.classes[conditionClassId]->getName(
+					            compile) +
+					        "'\nHint: Generic argument type must implement or "
+					        "inherit the constraint type.");
 				}
 			}
 		}
@@ -595,7 +600,8 @@ void ACompiler::generateBytecodes() {
 			for (auto &parameter : parameters->parameterDefaultValues) {
 				parameter =
 				    static_cast<HasClassIdNode *>(parameter->resolve(in_data));
-				parameter->optimize(in_data);
+				parameter =
+				    static_cast<HasClassIdNode *>(parameter->optimize(in_data));
 			}
 		}
 
@@ -613,7 +619,7 @@ void ACompiler::generateBytecodes() {
 		for (auto &node : context.staticNode) {
 			ParserContext::mode = node->mode;
 			node = node->resolve(in_data);
-			node->optimize(in_data);
+			node = node->optimize(in_data);
 		}
 
 		printDebug("Start put bytecodes constructor");
@@ -740,7 +746,10 @@ void ACompiler::generateBytecodes() {
 				    node->line,
 				    "Function " +
 				        context.functionInfo[node->id]->toString(in_data) +
-				        " is marked @override but no virtual function was found in superclass\nHint: Check method name and signature, and ensure base class method is marked virtual.");
+				        " is marked @override but no virtual function was "
+				        "found in superclass\nHint: Check method name and "
+				        "signature, and ensure base class method is marked "
+				        "virtual.");
 			}
 			if (func->functionFlags & FunctionFlags::FUNC_IS_NATIVE)
 				continue;

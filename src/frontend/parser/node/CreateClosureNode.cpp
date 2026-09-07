@@ -13,7 +13,7 @@ ExprNode *CreateClosureNode::resolve(in_func) {
 	return this;
 }
 
-void CreateClosureNode::optimize(in_func) {
+ExprNode *CreateClosureNode::optimize(in_func) {
 	std::string name = "Closure@" + std::to_string(context.closureCount++);
 	LexerStringId nameId = context.createLexerStringIfNotExists(name);
 	CreateFuncNode *node = context.newFunctions.push(
@@ -65,8 +65,8 @@ void CreateClosureNode::optimize(in_func) {
 		++declarationCount;
 	}
 	funcInfo->declaration = declarationCount;
-	for (auto obj : objects) {
-		obj->optimize(in_data);
+	for (auto &obj : objects) {
+		obj = static_cast<HasClassIdNode *>(obj->optimize(in_data));
 	}
 	auto lastMustReturnValueNode = context.mustReturnValueNode;
 	context.mustReturnValueNode = this;
@@ -88,6 +88,7 @@ void CreateClosureNode::optimize(in_func) {
 	}
 	// std::cerr<<funcId<<"\n";
 	// std::cerr << classDeclaration->getName(in_data) << "\n";
+	return this;
 }
 
 void CreateClosureNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
@@ -225,7 +226,7 @@ ExprNode *CreateClosureNode::copy(in_func) {
 	auto *newNode =
 	    context.createClosurePool.push(line, parameter->copy(in_data));
 	if (!classDeclaration->classId) {
-		classDeclaration->load<true>(in_data);
+		classDeclaration->template load<true>(in_data);
 		if (!classDeclaration->classId) {
 			throwError("Bug: Unresolved class " +
 			           classDeclaration->getName(in_data) +

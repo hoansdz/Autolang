@@ -164,7 +164,7 @@ ExprNode *UnaryNode::resolve(in_func) {
 	return this;
 }
 
-void UnaryNode::optimize(in_func) {
+ExprNode *UnaryNode::optimize(in_func) {
 	switch (value->kind) {
 		case NodeType::CONST_VAL: {
 			static_cast<ConstValueNode *>(value)->isLoadPrimary =
@@ -186,7 +186,7 @@ void UnaryNode::optimize(in_func) {
 			break;
 		}
 	}
-	value->optimize(in_data);
+	value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 	if (value->isNullable()) {
 		throwError("Operator '" + Lexer::Token(0, op).toString(context) +
 		           "' cannot be applied to nullable operand of type '" +
@@ -201,11 +201,11 @@ void UnaryNode::optimize(in_func) {
 				case DefaultClass::intClassId:
 				case DefaultClass::boolClassId: {
 					classId = DefaultClass::intClassId;
-					return;
+					return this;
 				}
 				case DefaultClass::floatClassId: {
 					classId = DefaultClass::floatClassId;
-					return;
+					return this;
 				}
 				default:
 					throwError(
@@ -220,11 +220,11 @@ void UnaryNode::optimize(in_func) {
 				case DefaultClass::intClassId:
 				case DefaultClass::boolClassId: {
 					classId = DefaultClass::intClassId;
-					return;
+					return this;
 				}
 				case DefaultClass::floatClassId: {
 					classId = DefaultClass::floatClassId;
-					return;
+					return this;
 				}
 				default:
 					throwError(
@@ -237,7 +237,7 @@ void UnaryNode::optimize(in_func) {
 		case Lexer::TokenType::NOT: {
 			if (value->classId == DefaultClass::boolClassId) {
 				classId = DefaultClass::boolClassId;
-				return;
+				return this;
 			}
 			throwError("Cannot convert type '" +
 			           compile.classes[value->classId]->getName(compile) +
@@ -248,11 +248,11 @@ void UnaryNode::optimize(in_func) {
 			switch (value->classId) {
 				case DefaultClass::intClassId: {
 					classId = DefaultClass::intClassId;
-					return;
+					return this;
 				}
 				case DefaultClass::floatClassId: {
 					classId = DefaultClass::floatClassId;
-					return;
+					return this;
 				}
 				default:
 					throwError("Operator '++' cannot be applied to type '" +
@@ -265,11 +265,11 @@ void UnaryNode::optimize(in_func) {
 			switch (value->classId) {
 				case DefaultClass::intClassId: {
 					classId = DefaultClass::intClassId;
-					return;
+					return this;
 				}
 				case DefaultClass::floatClassId: {
 					classId = DefaultClass::floatClassId;
-					return;
+					return this;
 				}
 				default:
 					throwError("Operator '--' cannot be applied to type '" +
@@ -280,9 +280,10 @@ void UnaryNode::optimize(in_func) {
 		}
 		default: {
 			classId = value->classId;
-			return;
+			return this;
 		}
 	}
+	return this;
 }
 
 ExprNode *UnaryNode::copy(in_func) {

@@ -22,8 +22,8 @@ ExprNode *ForNode::resolve(in_func) {
 	return this;
 }
 
-void ForNode::optimize(in_func) {
-	detach->optimize(in_data);
+ExprNode *ForNode::optimize(in_func) {
+	detach = static_cast<VarNode *>(detach->optimize(in_data));
 	switch (data->kind) {
 		case NodeType::RANGE: {
 			switch (detach->classId) {
@@ -40,8 +40,9 @@ void ForNode::optimize(in_func) {
 				}
 			}
 			auto rangeNode = static_cast<RangeNode *>(data);
-			rangeNode->optimize(in_data);
-			rangeNode->from->optimize(in_data);
+			data = static_cast<HasClassIdNode *>(rangeNode->optimize(in_data));
+			rangeNode = static_cast<RangeNode *>(data);
+			rangeNode->from = static_cast<HasClassIdNode *>(rangeNode->from->optimize(in_data));
 			if (rangeNode->from->kind == NodeType::CONST_VAL) {
 				static_cast<ConstValueNode *>(rangeNode->from)->isLoadPrimary =
 				    false;
@@ -54,7 +55,7 @@ void ForNode::optimize(in_func) {
 					throwError("Range start value must be of type Int\nHint: Ensure the starting expression of range (start..end) evaluates to an Int.");
 				}
 			}
-			rangeNode->to->optimize(in_data);
+			rangeNode->to = static_cast<HasClassIdNode *>(rangeNode->to->optimize(in_data));
 			switch (rangeNode->to->classId) {
 				case Autolang::DefaultClass::intClassId: {
 					break;
@@ -73,7 +74,7 @@ void ForNode::optimize(in_func) {
 			throwError("Expected iterable value in 'for' loop\nHint: Use an iterable collection like Array, Set, or Range in the for loop.");
 		}
 		default: {
-			data->optimize(in_data);
+			data = static_cast<HasClassIdNode *>(data->optimize(in_data));
 			auto classInfo = context.classInfo[data->classId];
 			if (classInfo->genericTypeId.empty()) {
 				throwError("Cannot iterate over type '" +
@@ -127,6 +128,7 @@ void ForNode::optimize(in_func) {
 		}
 	}
 	body.optimize(in_data);
+	return this;
 }
 
 ExprNode *ForNode::copy(in_func) {

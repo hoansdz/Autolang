@@ -27,8 +27,8 @@ class Cat extends Animal {
 fun testOverride() {
 	val cat: Animal = Cat()
 	val dog: Animal = Dog()
-	assert(cat.sound() == "Meow", __FILE__, __LINE__)
-	assert(dog.sound() == "Go", __FILE__, __LINE__)
+	assert(cat.sound() == "Meow")
+	assert(dog.sound() == "Go")
 	println("Passed ${__FUNC__}")
 }
 

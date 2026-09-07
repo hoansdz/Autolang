@@ -3,6 +3,7 @@
 
 #include "Node.hpp"
 #include "frontend/ACompiler.hpp"
+#include "frontend/parser/ImplicitConversion.hpp"
 #include "frontend/parser/ParserContext.hpp"
 #include "shared/ClassFlags.hpp"
 #include <rapidfuzz/fuzz.hpp>
@@ -83,12 +84,140 @@ ExprNode *CallNode::resolve(in_func) {
 				// 	throwError("Invalid call: " + context.lexerString[nameId] +
 				// 	           " is magic const ");
 				// }
+			case lexerIdarrayOf:
+			case lexerIdlistOf:
+			case lexerIdmutableListOf:
+			case lexerIdarrayListOf:
+			case lexerIdintArrayOf:
+			case lexerIdfloatArrayOf:
+			case lexerIddoubleArrayOf:
+			case lexerIdbooleanArrayOf:
+			case lexerIdstringArrayOf:
+			case lexerIdlongArrayOf:
+			case lexerIdbyteArrayOf: {
+				if (funcObject)
+					break;
+				std::vector<HasClassIdNode *> vals;
+				vals.reserve(arguments.size());
+				for (auto *arg : arguments) {
+					vals.push_back(arg);
+				}
+				auto arrayNode = context.createArrayPool.push(
+				    line, nullptr, std::move(vals));
+				arguments.clear();
+				return arrayNode->resolve(in_data);
+			}
+			case lexerIdemptyArray:
+			case lexerIdemptyList: {
+				if (funcObject)
+					break;
+				if (!arguments.empty()) {
+					throwError("Invalid call: " + context.lexerString[nameId] +
+					           " expects 0 arguments, but " +
+					           std::to_string(arguments.size()) +
+					           " were provided\nHint: " +
+					           context.lexerString[nameId] +
+					           "() takes no arguments.");
+				}
+				auto arrayNode = context.createArrayPool.push(
+				    line, nullptr, std::vector<HasClassIdNode *>());
+				return arrayNode->resolve(in_data);
+			}
+			case lexerIdsetOf:
+			case lexerIdmutableSetOf:
+			case lexerIdhashSetOf:
+			case lexerIdlinkedSetOf: {
+				if (funcObject)
+					break;
+				std::vector<HasClassIdNode *> vals;
+				vals.reserve(arguments.size());
+				for (auto *arg : arguments) {
+					vals.push_back(arg);
+				}
+				auto setNode =
+				    context.createSetPool.push(line, nullptr, std::move(vals));
+				arguments.clear();
+				return setNode->resolve(in_data);
+			}
+			case lexerIdemptySet: {
+				if (funcObject)
+					break;
+				if (!arguments.empty()) {
+					throwError(
+					    "Invalid call: emptySet expects 0 arguments, but " +
+					    std::to_string(arguments.size()) +
+					    " were provided\nHint: emptySet() takes no arguments.");
+				}
+				auto setNode = context.createSetPool.push(
+				    line, nullptr, std::vector<HasClassIdNode *>());
+				return setNode->resolve(in_data);
+			}
+			case lexerIdemptyMap: {
+				if (funcObject)
+					break;
+				if (!arguments.empty()) {
+					throwError(
+					    "Invalid call: emptyMap expects 0 arguments, but " +
+					    std::to_string(arguments.size()) +
+					    " were provided\nHint: emptyMap() takes no arguments.");
+				}
+				auto mapNode = context.createMapPool.push(
+				    line, nullptr,
+				    std::vector<
+				        std::pair<HasClassIdNode *, HasClassIdNode *>>());
+				return mapNode->resolve(in_data);
+			}
+			case lexerIdmapOf:
+			case lexerIdmutableMapOf:
+			case lexerIdhashMapOf:
+			case lexerIdlinkedMapOf: {
+				if (funcObject)
+					break;
+				if (arguments.empty()) {
+					auto mapNode = context.createMapPool.push(
+					    line, nullptr,
+					    std::vector<
+					        std::pair<HasClassIdNode *, HasClassIdNode *>>());
+					return mapNode->resolve(in_data);
+				}
+				if (arguments.size() == 1 &&
+				    arguments[0]->kind == NodeType::CREATE_MAP) {
+					auto res = arguments[0];
+					arguments.clear();
+					return res;
+				}
+				if (arguments.size() % 2 == 0) {
+					std::vector<std::pair<HasClassIdNode *, HasClassIdNode *>>
+					    entries;
+					entries.reserve(arguments.size() / 2);
+					for (size_t k = 0; k < arguments.size(); k += 2) {
+						entries.emplace_back(arguments[k], arguments[k + 1]);
+					}
+					auto mapNode = context.createMapPool.push(
+					    line, nullptr, std::move(entries));
+					arguments.clear();
+					return mapNode->resolve(in_data);
+				}
+				throwError(
+				    "Invalid call: " + context.lexerString[nameId] +
+				    " expects an even number of arguments (key, value pairs) or "
+				    "a single Map, but " +
+				    std::to_string(arguments.size()) +
+				    " arguments were provided\nHint: Pass key-value pairs "
+				    "(e.g., " +
+				    context.lexerString[nameId] +
+				    "(k1, v1, k2, v2)) or a map literal.");
+			}
 		}
 	}
 	return this;
 }
 
-void CallNode::optimize(in_func) {
+ExprNode *CallNode::optimize(in_func) {
+	if (optimized) {
+		return this;
+	}
+	optimized = true;
 	AClass *clazz =
 	    contextCallClassId ? compile.classes[*contextCallClassId] : nullptr;
 	std::string funcName;
@@ -112,7 +241,8 @@ void CallNode::optimize(in_func) {
 				           "class type.");
 			}
 			case NodeType::CALL: {
-				argument->optimize(in_data);
+				argument = static_cast<HasClassIdNode *>(argument->optimize(in_data));
+				arguments[i] = argument;
 				if (argument->classId == Autolang::DefaultClass::voidClassId) {
 					throwError("Cannot input Void value at parameter " +
 					           std::to_string(i + 1) +
@@ -125,7 +255,8 @@ void CallNode::optimize(in_func) {
 			case NodeType::CREATE_MAP:
 			case NodeType::CREATE_SET: {
 				if (argument->classDeclaration) {
-					argument->optimize(in_data);
+					argument = static_cast<HasClassIdNode *>(argument->optimize(in_data));
+					arguments[i] = argument;
 				} else {
 					mustInferenceGenericType = true;
 				}
@@ -136,7 +267,8 @@ void CallNode::optimize(in_func) {
 				break;
 			}
 			default: {
-				argument->optimize(in_data);
+				argument = static_cast<HasClassIdNode *>(argument->optimize(in_data));
+				arguments[i] = argument;
 				break;
 			}
 		}
@@ -144,7 +276,7 @@ void CallNode::optimize(in_func) {
 
 	if (caller) {
 		// Caller.funcName() => Class.funcName()
-		caller->optimize(in_data);
+		caller = static_cast<HasClassIdNode *>(caller->optimize(in_data));
 		if (caller->isNullable()) {
 			if (!accessNullable) {
 				throwError("You can't use '.' with nullable value, you must "
@@ -186,6 +318,13 @@ void CallNode::optimize(in_func) {
 				auto member = callerClassInfo->findAllMember(
 				    in_data, line, nameId, justFindStatic);
 				if (member) {
+					if (arguments.empty() &&
+					    member->classId != DefaultClass::functionClassId) {
+						auto getPropNode = context.getPropPool.push(
+						    line, member, contextCallClassId, caller, nameId,
+						    false, nullable, accessNullable);
+						return getPropNode->optimize(in_data);
+					}
 					funcObject = context.getPropPool.push(
 					    line, member, caller->classId,
 					    context.varPool.push(line,
@@ -193,7 +332,7 @@ void CallNode::optimize(in_func) {
 					                         false, false),
 					    nameId, true, true, false);
 					matchFunction(in_data, mustInferenceGenericType);
-					return;
+					return this;
 				}
 			}
 			funcName = name;
@@ -210,7 +349,7 @@ void CallNode::optimize(in_func) {
 		// Check if constructor
 		if (funcObject) {
 			matchFunction(in_data, mustInferenceGenericType);
-			return;
+			return this;
 		}
 
 		{
@@ -252,13 +391,31 @@ void CallNode::optimize(in_func) {
 			auto member =
 			    classInfo->findAllMember(in_data, line, nameId, justFindStatic);
 			if (member) {
+				if (arguments.empty() &&
+				    member->classId != DefaultClass::functionClassId) {
+					if (member->isGlobal) {
+						auto classAccess = context.classAccessPool.push(
+						    line, *contextCallClassId);
+						auto getPropNode = context.getPropPool.push(
+						    line, member, contextCallClassId, classAccess,
+						    nameId, false, nullable, false);
+						return getPropNode->optimize(in_data);
+					} else {
+						auto thisVar = context.varPool.push(
+						    line, classInfo->declarationThis, false, false);
+						auto getPropNode = context.getPropPool.push(
+						    line, member, contextCallClassId, thisVar, nameId,
+						    false, nullable, false);
+						return getPropNode->optimize(in_data);
+					}
+				}
 				funcObject = context.getPropPool.push(
 				    line, member, contextCallClassId,
 				    context.varPool.push(line, classInfo->declarationThis,
 				                         false, false),
 				    nameId, true, true, false);
 				matchFunction(in_data, mustInferenceGenericType);
-				return;
+				return this;
 			}
 		}
 	}
@@ -563,6 +720,12 @@ void CallNode::optimize(in_func) {
 						case NodeType::CREATE_ARRAY: {
 							if (genericBaseClassId !=
 							    DefaultClass::arrayClassId) {
+								auto converted = tryImplicitConversion(in_data, funcExpectClassId, argument, line);
+								if (converted) {
+									argument = converted;
+									first.errorNonNullIfMatchCount--;
+									break;
+								}
 								goto notFound;
 							}
 							argument->classId = funcExpectClassId;
@@ -573,6 +736,12 @@ void CallNode::optimize(in_func) {
 						case NodeType::CREATE_MAP: {
 							if (genericBaseClassId !=
 							    DefaultClass::mapClassId) {
+								auto converted = tryImplicitConversion(in_data, funcExpectClassId, argument, line);
+								if (converted) {
+									argument = converted;
+									first.errorNonNullIfMatchCount--;
+									break;
+								}
 								goto notFound;
 							}
 							argument->classId = funcExpectClassId;
@@ -591,6 +760,12 @@ void CallNode::optimize(in_func) {
 									        std::pair<HasClassIdNode *,
 									                  HasClassIdNode *>>{});
 								} else {
+									auto converted = tryImplicitConversion(in_data, funcExpectClassId, argument, line);
+									if (converted) {
+										argument = converted;
+										first.errorNonNullIfMatchCount--;
+										break;
+									}
 									goto notFound;
 								}
 							}
@@ -616,6 +791,13 @@ void CallNode::optimize(in_func) {
 				default:
 					break;
 			}
+			if (argument->classId != funcExpectClassId &&
+			    !compile.classes[argument->classId]->inheritance.get(funcExpectClassId)) {
+				auto converted = tryImplicitConversion(in_data, funcExpectClassId, argument, line);
+				if (converted) {
+					argument = converted;
+				}
+			}
 		}
 	}
 
@@ -629,10 +811,11 @@ void CallNode::optimize(in_func) {
 
 	if (funcInfo->inferenceNode && !funcInfo->inferenceNode->loaded) {
 		funcInfo->inferenceNode->resolve(in_data);
-		funcInfo->inferenceNode->optimize(in_data);
+		funcInfo->inferenceNode =
+		    static_cast<ReturnNode *>(funcInfo->inferenceNode->optimize(in_data));
 		funcInfo->inferenceNode->loaded = true;
 	}
-
+	
 	if (nullable) {
 		nullable = func->functionFlags & FunctionFlags::FUNC_RETURN_NULLABLE;
 	}
@@ -653,7 +836,7 @@ void CallNode::optimize(in_func) {
 		caller = context.varPool.push(
 		    line, context.classInfo[callerCanCallId]->declarationThis, false,
 		    false);
-		caller->optimize(in_data);
+		caller = static_cast<HasClassIdNode *>(caller->optimize(in_data));
 	}
 	if ((func->functionFlags & FunctionFlags::FUNC_IS_STATIC) && caller) {
 		switch (caller->kind) {
@@ -687,11 +870,12 @@ void CallNode::optimize(in_func) {
 		throwError("Function '" + func->getName(compile) +
 		           "' is not a static function\nHint: Call this function on an "
 		           "instance of the class, or mark the function as 'static'.");
+	return this;
 }
 
 void CallNode::matchFunction(in_func, ClassDeclaration *detach,
                              ClassDeclaration *value) {
-	detach->load<true>(in_data);
+	detach->template load<true>(in_data);
 	size_t size = detach->inputClassId.size();
 	if (size == detach->inputClassId.size()) {
 		for (int i = 0; i < size; ++i) {
@@ -721,7 +905,7 @@ void CallNode::matchFunction(in_func, ClassDeclaration *detach,
 }
 
 void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
-	funcObject->optimize(in_data);
+	funcObject = static_cast<HasClassIdNode *>(funcObject->optimize(in_data));
 
 	if (funcObject->classId != DefaultClass::functionClassId) {
 		throwError(
@@ -785,14 +969,14 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 				switch (argument->kind) {
 					case NodeType::FUNCTION_ACCESS: {
 						argument->classDeclaration = inputClass[j + 1];
-						argument->optimize(in_data);
+						argument = static_cast<HasClassIdNode *>(argument->optimize(in_data));
 						break;
 					}
 					case NodeType::CREATE_CLOSURE: {
 						auto node = static_cast<CreateClosureNode *>(argument);
 						// if (node->mustInfer) {
 						node->inferFrom(in_data, funcExpectClass);
-						argument->optimize(in_data);
+						argument = static_cast<HasClassIdNode *>(argument->optimize(in_data));
 						// 	break;
 						// }
 						// argument->optimize(in_data);
@@ -825,35 +1009,51 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 						case NodeType::CREATE_ARRAY: {
 							if (genericBaseClassId !=
 							    DefaultClass::arrayClassId) {
+								auto converted = tryImplicitConversion(in_data, funcExpectClassId, argument, line);
+								if (converted) {
+									argument = converted;
+									break;
+								}
 								goto err;
 							}
 							argument->classId = funcExpectClassId;
-							argument->optimize(in_data);
+							argument = static_cast<HasClassIdNode *>(argument->optimize(in_data));
 							break;
 						}
 						case NodeType::CREATE_MAP: {
 							if (genericBaseClassId !=
 							    DefaultClass::mapClassId) {
+								auto converted = tryImplicitConversion(in_data, funcExpectClassId, argument, line);
+								if (converted) {
+									argument = converted;
+									break;
+								}
 								goto err;
 							}
 							argument->classId = funcExpectClassId;
-							argument->optimize(in_data);
+							argument = static_cast<HasClassIdNode *>(argument->optimize(in_data));
 							break;
 						}
 						case NodeType::CREATE_SET: {
 							if (genericBaseClassId !=
 							    DefaultClass::setClassId) {
-								if (genericBaseClassId !=
+								if (genericBaseClassId ==
 								    DefaultClass::mapClassId) {
+									argument = context.createMapPool.push(
+									    argument->line, nullptr,
+									    std::vector<std::pair<HasClassIdNode *,
+									                          HasClassIdNode *>>{});
+								} else {
+									auto converted = tryImplicitConversion(in_data, funcExpectClassId, argument, line);
+									if (converted) {
+										argument = converted;
+										break;
+									}
 									goto err;
 								}
-								argument = context.createMapPool.push(
-								    argument->line, nullptr,
-								    std::vector<std::pair<HasClassIdNode *,
-								                          HasClassIdNode *>>{});
 							}
 							argument->classId = funcExpectClassId;
-							argument->optimize(in_data);
+							argument = static_cast<HasClassIdNode *>(argument->optimize(in_data));
 							break;
 						}
 						case NodeType::WHEN:
@@ -861,7 +1061,7 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 							auto n = static_cast<NullableNode *>(argument);
 							argument->classId = funcExpectClassId;
 							n->nullable = funcExpectClass->nullable;
-							argument->optimize(in_data);
+							argument = static_cast<HasClassIdNode *>(argument->optimize(in_data));
 							break;
 						}
 						default:
@@ -877,7 +1077,7 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 					    context.castPool
 					        .push(argument, DefaultClass::floatClassId)
 					        ->resolve(in_data));
-					argument->optimize(in_data);
+					argument = static_cast<HasClassIdNode *>(argument->optimize(in_data));
 					continue;
 				}
 				break;
@@ -994,6 +1194,9 @@ bool CallNode::match(in_func, MatchOverload &match,
 							case NodeType::CREATE_ARRAY: {
 								if (genericBaseClassId !=
 								    DefaultClass::arrayClassId) {
+									if (canImplicitConvert(in_data, funcExpectClassId, argument)) {
+										break;
+									}
 									goto finished;
 								}
 								break;
@@ -1001,6 +1204,9 @@ bool CallNode::match(in_func, MatchOverload &match,
 							case NodeType::CREATE_MAP: {
 								if (genericBaseClassId !=
 								    DefaultClass::mapClassId) {
+									if (canImplicitConvert(in_data, funcExpectClassId, argument)) {
+										break;
+									}
 									goto finished;
 								}
 								break;
@@ -1010,6 +1216,9 @@ bool CallNode::match(in_func, MatchOverload &match,
 								    DefaultClass::setClassId) {
 									if (genericBaseClassId ==
 									    DefaultClass::mapClassId) {
+										break;
+									}
+									if (canImplicitConvert(in_data, funcExpectClassId, argument)) {
 										break;
 									}
 									goto finished;
@@ -1042,6 +1251,10 @@ bool CallNode::match(in_func, MatchOverload &match,
 					}
 					break;
 				}
+			}
+			if (canImplicitConvert(in_data, funcExpectClassId, arguments[j])) {
+				++match.score;
+				continue;
 			}
 			goto finished;
 		}

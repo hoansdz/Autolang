@@ -31,7 +31,7 @@ struct DeclarationNode : HasClassIdNode {
 	      contextCallClassId(contextCallClassId), baseName(baseName),
 	      name(std::move(name)), isGlobal(isGlobal), isVal(isVal),
 	      nullable(nullable) {}
-	void optimize(in_func) override;
+	ExprNode *optimize(in_func) override;
 	ExprNode *copy(in_func) override;
 	std::string toString(in_func, bool isStatic = false);
 	~DeclarationNode() {}
@@ -61,15 +61,17 @@ struct CreateConstructorNode : HasClassIdNode {
 	Parameter *parameter;
 	uint32_t functionFlags;
 	bool isPrimary;
+	bool optimized;
 	CreateConstructorNode(uint32_t line, ClassId classId, LexerStringId nameId,
 	                      Parameter *parameter, bool isPrimary,
 	                      uint32_t functionFlags)
 	    : HasClassIdNode(NodeType::CREATE_CONSTRUCTOR, 0, line),
 	      classId(classId), nameId(nameId), body(line), parameter(parameter),
-	      functionFlags(functionFlags), isPrimary(isPrimary) {}
+	      functionFlags(functionFlags), isPrimary(isPrimary), optimized(false) {
+	}
 	void pushFunction(in_func);
 	ExprNode *copy(in_func) override;
-	void optimize(in_func) override;
+	ExprNode *optimize(in_func) override;
 	//~CreateConstructorNode(){}
 };
 
@@ -80,11 +82,13 @@ struct CreateClassNode : HasClassIdNode {
 	uint32_t classFlags;
 	BlockNode body;
 	bool loadedSuper = false;
+	bool optimized;
 	CreateClassNode(uint32_t line, LexerStringId nameId, uint32_t classFlags)
 	    : HasClassIdNode(NodeType::CREATE_CLASS, 0, line), body(line),
-	      nameId(nameId), superDeclaration(nullptr), classFlags(classFlags) {}
+	      nameId(nameId), superDeclaration(nullptr), classFlags(classFlags),
+	      optimized(false) {}
 	void pushClass(in_func);
-	void optimize(in_func) override;
+	ExprNode *optimize(in_func) override;
 	void loadSuper(in_func);
 	~CreateClassNode() {}
 };

@@ -149,6 +149,11 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 			return true;
 		}
 		case ':': {
+			if (!isEndOfLine(context, i + 1) && context.line[i + 1] == ':') {
+				context.tokens.emplace_back(context.linePos, TokenType::COLON_COLON);
+				i += 2;
+				return true;
+			}
 			context.tokens.emplace_back(context.linePos, TokenType::COLON);
 			++i;
 			return true;
@@ -783,6 +788,8 @@ std::string Token::toString(ParserContext &context) {
 			return ";";
 		case TokenType::COLON:
 			return ":";
+		case TokenType::COLON_COLON:
+			return "::";
 		case TokenType::EQUAL:
 			return "=";
 		case TokenType::LPAREN:

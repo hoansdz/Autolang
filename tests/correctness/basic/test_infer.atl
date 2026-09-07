@@ -19,12 +19,12 @@ fun testInferValue<T>() {
 	val testInferObject3 = {|value: Map<Float, Int>| 3}
 	val testInferObject4: ((T) -> String) -> Float = {|value: (T) -> String| 4}
 
-	assert(testInferObject1([]) == 1, __FILE__, __LINE__)
-	assert(testInferObject2({}) == 2, __FILE__, __LINE__)
-	assert(testInferObject3({}) == 3, __FILE__, __LINE__)
+	assert(testInferObject1([]) == 1)
+	assert(testInferObject2({}) == 2)
+	assert(testInferObject3({}) == 3)
 	assert(testInferObject4({|value|
 		"Done"
-	}) == 4, __FILE__, __LINE__)
+	}) == 4)
 
 	println("Passed ${__FUNC__}")
 }

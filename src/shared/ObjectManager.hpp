@@ -71,10 +71,13 @@ class ObjectManager {
 		if (intObjects.index == 0) {
 			AObject *obj = areaAllocator.getObject();
 			obj->type = Autolang::DefaultClass::intClassId;
+			obj->flags = 0;
 			obj->i = i;
 			return obj;
 		}
 		auto obj = intObjects.objects[--intObjects.index];
+		obj->type = Autolang::DefaultClass::intClassId;
+		obj->flags = 0;
 		obj->i = i;
 		return obj;
 	}
@@ -82,10 +85,13 @@ class ObjectManager {
 		if (floatObjects.index == 0) {
 			AObject *obj = areaAllocator.getObject();
 			obj->type = Autolang::DefaultClass::floatClassId;
+			obj->flags = 0;
 			obj->f = f;
 			return obj;
 		}
 		auto obj = floatObjects.objects[--floatObjects.index];
+		obj->type = Autolang::DefaultClass::floatClassId;
+		obj->flags = 0;
 		obj->f = f;
 		return obj;
 	}
@@ -195,13 +201,31 @@ class ObjectManager {
 			obj->flags = AObject::Flags::OBJ_IS_FREE;
 			return;
 		}
+		if (obj->flags & AObject::Flags::OBJ_IS_ARRAY) {
+			if (obj->array) {
+				if (obj->array->key != Autolang::DefaultClass::intClassId &&
+				    obj->array->key != Autolang::DefaultClass::floatClassId) {
+					for (uint32_t i = 0; i < obj->array->size; ++i) {
+						auto *mem = obj->array->objData[i];
+						if (!mem)
+							continue;
+						release(mem);
+					}
+				}
+				delete obj->array;
+			}
+			obj->flags = AObject::Flags::OBJ_IS_FREE;
+			return;
+		}
 		for (uint32_t i = 0; i < obj->member->size; ++i) {
 			auto *mem = (*obj->member)[i];
 			if (!mem)
 				continue;
 			release(mem);
 		}
-		areaAllocator.addManagedMemory(-static_cast<int64_t>(sizeof(NormalArray<AObject *>) + obj->member->maxSize * sizeof(AObject *)));
+		areaAllocator.addManagedMemory(-static_cast<int64_t>(
+		    sizeof(NormalArray<AObject *>) +
+		    obj->member->size * sizeof(AObject *)));
 		delete obj->member;
 		obj->flags = AObject::Flags::OBJ_IS_FREE;
 	}
@@ -209,7 +233,8 @@ class ObjectManager {
   public:
 	ObjectManager() {}
 	inline void release(AObject *obj) {
-		if (obj->flags & AObject::Flags::OBJ_IS_CONST)
+		if (!obj || (obj->flags & AObject::Flags::OBJ_IS_CONST) ||
+		    (obj->flags & AObject::Flags::OBJ_IS_FREE))
 			return;
 		if (obj->refCount > 1) {
 			--obj->refCount;
@@ -221,6 +246,9 @@ class ObjectManager {
 		add(obj);
 	}
 	inline void tryRelease(AObject *obj) {
+		if (!obj || (obj->flags & AObject::Flags::OBJ_IS_CONST) ||
+		    (obj->flags & AObject::Flags::OBJ_IS_FREE))
+			return;
 		if (obj->refCount != 0)
 			return;
 		freeObjectData(obj);

@@ -1,0 +1,416 @@
+class ImplicitJson {
+	var data: Map<String, Any> = {}
+
+	implicit constructor(m: Map<String, Any>) {
+		this.data = m
+	}
+}
+
+class ImplicitIntList {
+	var items: Array<Int> = []
+
+	implicit constructor(arr: Array<Int>) {
+		this.items = arr
+	}
+
+	operator fun get(index: Int): Int {
+		return this.items[index]
+	}
+}
+
+class ImplicitStringWrapper {
+	var valStr: String = ""
+
+	implicit constructor(s: String) {
+		this.valStr = s
+	}
+}
+
+class ImplicitIntWrapper {
+	var value: Int = 0
+
+	@implicit constructor(v: Int) {
+		this.value = v
+	}
+}
+
+class ImplicitEmptyHolder {
+	var initialized: Bool = false
+
+	implicit constructor() {
+		this.initialized = true
+	}
+}
+
+class MultiImplicit {
+	var tag: String = ""
+
+	implicit constructor(i: Int) {
+		this.tag = "int"
+	}
+
+	implicit constructor(s: String) {
+		this.tag = "str"
+	}
+
+	implicit constructor(f: Float) {
+		this.tag = "float"
+	}
+}
+
+class WithDefaults {
+	var a: Int = 0
+	var b: String = ""
+
+	implicit constructor(a: Int, b: String = "default") {
+		this.a = a
+		this.b = b
+	}
+}
+
+class Service {
+	constructor() {}
+
+	fun process(j: ImplicitJson): Int {
+		return j.data.size()
+	}
+}
+
+implicit class ImplicitPrimary(val message: String) {
+	fun getMsg(): String = this.message
+}
+
+class FuncNamedCtor {
+	var x: Int = 0
+	var y: String = ""
+
+	fun FuncNamedCtor(x: Int, y: String) {
+		this.x = x
+		this.y = y
+	}
+}
+
+class FuncNamedImplicitCtor {
+	var payload: String = ""
+
+	implicit fun FuncNamedImplicitCtor(p: String) {
+		this.payload = p
+	}
+}
+
+class FuncNamedWithReturnType {
+	var num: Int = 0
+
+	implicit fun FuncNamedWithReturnType(n: Int): FuncNamedWithReturnType {
+		this.num = n
+	}
+}
+
+fun helperTakeFuncImplicit(obj: FuncNamedImplicitCtor): String {
+	return obj.payload
+}
+
+fun helperTakeJson(j: ImplicitJson): Int {
+	return j.data.size()
+}
+
+fun helperReturnWrapper(): ImplicitStringWrapper {
+	return "returned implicitly"
+}
+
+class GeoPoint {
+	var lat: Float = 0.0
+	var lng: Float = 0.0
+
+	implicit constructor(coords: Array<Float>) {
+		if (coords.length() >= 2) {
+			this.lat = coords[0]
+			this.lng = coords[1]
+		}
+	}
+}
+
+class AddressInfo {
+	var street: String = ""
+	var city: String = ""
+	var point: GeoPoint = [0.0, 0.0]
+
+	implicit constructor(m: Map<String, Any>) {
+		if (m.containsKey("street")) {
+			this.street = (m.get("street") as String)
+		}
+		if (m.containsKey("city")) {
+			this.city = (m.get("city") as String)
+		}
+	}
+
+	constructor(street: String, city: String, point: GeoPoint) {
+		this.street = street
+		this.city = city
+		this.point = point
+	}
+}
+
+class PersonProfile {
+	var name: String = ""
+	var address: AddressInfo = {}
+	var age: ImplicitIntWrapper = 0
+	var note: ImplicitStringWrapper = ""
+	var scores: ImplicitIntList = []
+	var extra: ImplicitJson = {}
+
+	constructor(name: String, address: AddressInfo, age: ImplicitIntWrapper, note: ImplicitStringWrapper, scores: ImplicitIntList, extra: ImplicitJson) {
+		this.name = name
+		this.address = address
+		this.age = age
+		this.note = note
+		this.scores = scores
+		this.extra = extra
+	}
+}
+
+class Department {
+	var name: String = ""
+	lateinit var manager: PersonProfile
+	var config: ImplicitJson = {}
+
+	constructor(name: String, manager: PersonProfile, config: ImplicitJson) {
+		this.name = name
+		this.manager = manager
+		this.config = config
+	}
+}
+
+fun evalNestedDepartment(dept: Department): String {
+	return dept.name + "/" + dept.manager.name + "/" + dept.manager.address.city
+}
+
+fun processNestedChain(p: PersonProfile): Int {
+	return p.age.value + p.scores.items.size() + p.extra.data.size()
+}
+
+fun makeImplicitJson(key: String, value: Any): ImplicitJson {
+	return {key: value}
+}
+
+fun wrapChainMessage(msg: String): ImplicitStringWrapper {
+	return msg
+}
+
+fun consumeWrapper(w: ImplicitStringWrapper): String {
+	return w.valStr
+}
+
+fun helperTakeIntList(list: ImplicitIntList): Int {
+	return list.items.size()
+}
+
+fun testImplicitConstructor() {
+	// 1. Variable initialization with empty and populated Map
+	val j1: ImplicitJson = {}
+	assert(j1.data.size() == 0)
+
+	val j2: ImplicitJson = {"name": "AutoLang", "count": 42}
+	assert(j2.data.size() == 2)
+	assert((j2.data.get("name") as String) == "AutoLang")
+	assert((j2.data.get("count") as Int) == 42)
+
+	// 2. Variable reassignment
+	var j3: ImplicitJson = {}
+	j3 = {"updated": 99}
+	assert(j3.data.size() == 1)
+	assert((j3.data.get("updated") as Int) == 99)
+
+	// 3. Array implicit conversion
+	val l1: ImplicitIntList = []
+	assert(l1.items.size() == 0)
+
+	val l2: ImplicitIntList = [10, 20, 30]
+	val l2Items = l2.items
+	assert(l2Items.size() == 3)
+	assert(l2Items[0] == 10)
+	assert(l2Items[1] == 20)
+	assert(l2Items[2] == 30)
+
+	// 4. String primitive implicit conversion
+	val sw: ImplicitStringWrapper = "hello AutoLang"
+	assert(sw.valStr == "hello AutoLang")
+
+	// 5. Int primitive implicit conversion with @implicit
+	val iw: ImplicitIntWrapper = 12345
+	assert(iw.value == 12345)
+
+	// 6. Implicit conversion as function parameter
+	assert(helperTakeJson({}) == 0)
+	assert(helperTakeJson({"k1": 1, "k2": 2, "k3": 3}) == 3)
+	assert(helperTakeIntList([]) == 0)
+	assert(helperTakeIntList([1, 2]) == 2)
+
+	// 7. Implicit conversion in member method parameter
+	val svc = Service()
+	assert(svc.process({}) == 0)
+	assert(svc.process({"x": 1, "y": 2}) == 2)
+
+	// 8. Implicit conversion in return statement
+	val ret = helperReturnWrapper()
+	assert(ret.valStr == "returned implicitly")
+
+	// 9. 0-argument implicit constructor
+	val eh: ImplicitEmptyHolder = {}
+	assert(eh.initialized == true)
+
+	// 10. Multiple implicit constructors on single class
+	val mi1: MultiImplicit = 100
+	assert(mi1.tag == "int")
+	val mi2: MultiImplicit = "test"
+	assert(mi2.tag == "str")
+	val mi3: MultiImplicit = 3.14
+	assert(mi3.tag == "float")
+
+	// 11. Implicit constructor with default arguments
+	val wd: WithDefaults = 999
+	assert(wd.a == 999)
+	assert(wd.b == "default")
+
+	// 12. Primary constructor with implicit
+	val p1: ImplicitPrimary = "hello primary"
+	assert(p1.getMsg() == "hello primary")
+
+	// 13. Function with class name as regular constructor
+	val fnc = FuncNamedCtor(42, "hello fn constructor")
+	assert(fnc.x == 42)
+	assert(fnc.y == "hello fn constructor")
+
+	// 14. Function with class name as implicit constructor
+	val fni: FuncNamedImplicitCtor = "converted from fun"
+	assert(fni.payload == "converted from fun")
+	assert(helperTakeFuncImplicit("param implicit via fun") == "param implicit via fun")
+
+	// 15. Function with class name as implicit constructor and explicit return type
+	val fnr: FuncNamedWithReturnType = 8888
+	assert(fnr.num == 8888)
+
+	// 16. Deeply nested JSON map and array hierarchy
+	val deepJson: ImplicitJson = {
+		"system": <String, Any>{
+			"env": "production",
+			"database": <String, Any>{
+				"host": "db.internal",
+				"ports": [5432, 5433],
+				"replicas": <String, Any>{
+					"primary": "db-1",
+					"secondary": ["db-2", "db-3"]
+				}
+			}
+		},
+		"tags": ["core", "infra", "secure"],
+		"version": 3
+	}
+	assert(deepJson.data.size() == 3)
+	assert((deepJson.data.get("version") as Int) == 3)
+	val sys = deepJson.data.get("system") as Map<String, Any>
+	assert((sys.get("env") as String) == "production")
+	val db = sys.get("database") as Map<String, Any>
+	assert((db.get("host") as String) == "db.internal")
+	val ports = db.get("ports") as Array<Int>
+	assert(ports.size() == 2)
+	assert(ports[0] == 5432)
+	val replicas = db.get("replicas") as Map<String, Any>
+	assert((replicas.get("primary") as String) == "db-1")
+	val secondaries = replicas.get("secondary") as Array<String>
+	assert(secondaries.size() == 2)
+	assert(secondaries[1] == "db-3")
+
+	// 17. Multi-level nested object instantiation with multi-arg implicit conversions
+	val mgr = PersonProfile(
+		"Alice",
+		AddressInfo("123 Main St", "Hanoi", [21.0285, 105.8542]),
+		32,
+		"Engineering Manager",
+		[90, 95, 98, 100],
+		{"github": "alice-dev", "clearance": "level-5"}
+	)
+	assert(mgr.name == "Alice")
+	assert(mgr.address.street == "123 Main St")
+	assert(mgr.address.city == "Hanoi")
+	assert(mgr.address.point.lat == 21.0285)
+	assert(mgr.address.point.lng == 105.8542)
+	assert(mgr.age.value == 32)
+	assert(mgr.note.valStr == "Engineering Manager")
+	val mgrScores = mgr.scores.items
+	assert(mgrScores.size() == 4)
+	assert(mgrScores[3] == 100)
+	assert(mgr.extra.data.size() == 2)
+	assert((mgr.extra.data.get("github") as String) == "alice-dev")
+
+	// 18. Multi-level nested department container & evaluate function
+	val dept = Department(
+		"Core Platform",
+		mgr,
+		<String, Any>{
+			"tier": 1,
+			"metadata": <String, Any>{
+				"cloud": "gcp",
+				"regions": ["asia-southeast1", "us-central1"]
+			}
+		}
+	)
+	assert(dept.name == "Core Platform")
+	assert(dept.manager.name == "Alice")
+	assert(evalNestedDepartment(dept) == "Core Platform/Alice/Hanoi")
+	assert(processNestedChain(dept.manager) == 32 + 4 + 2)
+
+	// 19. Inline nested expressions passing multiple implicit arguments
+	val inlineDeptSummary = evalNestedDepartment(
+		Department(
+			"R&D",
+			PersonProfile(
+				"Bob",
+				AddressInfo("456 Innovation Rd", "DaNang", [16.0544, 108.2022]),
+				28,
+				"AI Lead",
+				[100, 100],
+				{"framework": "AutoLang"}
+			),
+			{"budget": 500000}
+		)
+	)
+	assert(inlineDeptSummary == "R&D/Bob/DaNang")
+
+	// 20. Deep member property reassignment using implicit conversion
+	dept.manager.address.point = [10.8231, 106.6297]
+	assert(dept.manager.address.point.lat == 10.8231)
+	assert(dept.manager.address.point.lng == 106.6297)
+
+	dept.manager.age = 33
+	assert(dept.manager.age.value == 33)
+
+	dept.manager.note = "Director of Engineering"
+	assert(dept.manager.note.valStr == "Director of Engineering")
+
+	dept.manager.scores = [100, 100, 100]
+	assert(dept.manager.scores.items.size() == 3)
+
+	dept.config = <String, Any>{"tier": 2, "updated": true}
+	assert(dept.config.data.size() == 2)
+	assert((dept.config.data.get("updated") as Bool) == true)
+
+	// 21. Default and empty nested holders
+	val emptyMgr = PersonProfile("Ghost", {}, 0, "", [], {})
+	assert(emptyMgr.address.street == "")
+	assert(emptyMgr.address.city == "")
+	assert(emptyMgr.age.value == 0)
+	assert(emptyMgr.note.valStr == "")
+	assert(emptyMgr.scores.items.size() == 0)
+	assert(emptyMgr.extra.data.size() == 0)
+
+	// 22. Return implicit and pass into function accepting implicit
+	val chainJson = makeImplicitJson("status", "ok")
+	assert(chainJson.data.size() == 1)
+	assert((chainJson.data.get("status") as String) == "ok")
+	assert(consumeWrapper(wrapChainMessage("chained implicit")) == "chained implicit")
+
+	println("Passed ${__FUNC__}")
+}
+
+testImplicitConstructor()

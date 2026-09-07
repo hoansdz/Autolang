@@ -60,6 +60,7 @@ enum AnnotationFlags : uint32_t {
 	AN_PY_OBJECT = 1u << 7,
 #endif
 	AN_OPERATOR = 1u << 8,
+	AN_IMPLICIT = 1u << 9,
 };
 
 struct LibraryData;
@@ -88,6 +89,30 @@ constexpr LexerStringId lexerIdcontains = 20;  // in, !in
 constexpr LexerStringId lexerIdthis = 21;
 constexpr LexerStringId lexerIdFunction = 22;
 constexpr LexerStringId lexerIdtoString = 23;    // toString()
+
+constexpr LexerStringId lexerIdarrayOf = 24;
+constexpr LexerStringId lexerIdlistOf = 25;
+constexpr LexerStringId lexerIdmutableListOf = 26;
+constexpr LexerStringId lexerIdarrayListOf = 27;
+constexpr LexerStringId lexerIdemptyArray = 28;
+constexpr LexerStringId lexerIdemptyList = 29;
+constexpr LexerStringId lexerIdintArrayOf = 30;
+constexpr LexerStringId lexerIdfloatArrayOf = 31;
+constexpr LexerStringId lexerIddoubleArrayOf = 32;
+constexpr LexerStringId lexerIdbooleanArrayOf = 33;
+constexpr LexerStringId lexerIdstringArrayOf = 34;
+constexpr LexerStringId lexerIdlongArrayOf = 35;
+constexpr LexerStringId lexerIdbyteArrayOf = 36;
+constexpr LexerStringId lexerIdsetOf = 37;
+constexpr LexerStringId lexerIdmutableSetOf = 38;
+constexpr LexerStringId lexerIdhashSetOf = 39;
+constexpr LexerStringId lexerIdlinkedSetOf = 40;
+constexpr LexerStringId lexerIdemptySet = 41;
+constexpr LexerStringId lexerIdmapOf = 42;
+constexpr LexerStringId lexerIdmutableMapOf = 43;
+constexpr LexerStringId lexerIdhashMapOf = 44;
+constexpr LexerStringId lexerIdlinkedMapOf = 45;
+constexpr LexerStringId lexerIdemptyMap = 46;
 /*
 constexpr LexerStringId lexerIdunaryPlus = 24;   // +a
 constexpr LexerStringId lexerIdunaryMinus = 25;  // -a

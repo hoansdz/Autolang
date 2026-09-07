@@ -81,6 +81,7 @@ enum TokenType : uint8_t {
 	DOT_DOT_LT,
 	SEMICOLON,
 	COLON,
+	COLON_COLON,
 	QMARK, //   Dấu hỏi chấm
 	QMARK_QMARK,
 	EXMARK,  //   Dấu chấm than
@@ -139,6 +140,7 @@ enum TokenType : uint8_t {
 	MINUS_GT,
 	TYPEALIAS,
 	OPERATOR,
+	IMPLICIT,
 
 	// ===== Special =====
 	NON_NULL,
@@ -197,6 +199,7 @@ static const HashMap<std::string, TokenType> CAST = {
     {"when", TokenType::WHEN},
 	{"typealias", TokenType::TYPEALIAS},
 	{"operator", TokenType::OPERATOR},
+	{"implicit", TokenType::IMPLICIT},
 
     {"/*", TokenType::START_COMMENT},
     {"&", TokenType::AND},

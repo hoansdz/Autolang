@@ -6,14 +6,12 @@
 #include <cstring>
 #include <memory>
 
-
 template <typename T> struct NormalArray {
 	T *data;
 	uint32_t size;
-	uint32_t maxSize;
 
 	explicit NormalArray(uint32_t initialCapacity)
-	    : data(new T[initialCapacity]{}), size(initialCapacity), maxSize(initialCapacity) {}
+	    : data(new T[initialCapacity]{}), size(initialCapacity) {}
 
 	NormalArray(const NormalArray &) = delete;
 	NormalArray &operator=(const NormalArray &) = delete;
@@ -28,16 +26,6 @@ template <typename T> struct NormalArray {
 	inline const T &operator[](uint32_t idx) const {
 		assert(idx < size);
 		return data[idx];
-	}
-
-	inline void reallocate(uint32_t newCapacity) {
-
-		T *newData = new T[newCapacity]{};
-		std::copy(data, data + size, newData);
-
-		delete[] data;
-		data = newData;
-		maxSize = newCapacity;
 	}
 };
 

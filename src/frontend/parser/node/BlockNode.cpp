@@ -66,9 +66,9 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
                               ClassDeclaration *&newClassDeclaration) {
 	switch (node->kind) {
 		case NodeType::CALL: {
-			node->optimize(in_data);
+			node = node->optimize(in_data);
 
-			auto *n = static_cast<CallNode *>(node);
+			auto *n = static_cast<HasClassIdNode *>(node);
 			if (n->classId == DefaultClass::voidClassId)
 				break;
 			if (!hasValue) {
@@ -82,7 +82,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 						    context.castPool
 						        .push(n, DefaultClass::floatClassId)
 						        ->resolve(in_data));
-						node->optimize(in_data);
+						node = node->optimize(in_data);
 					}
 					break;
 				}
@@ -105,12 +105,14 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 				hasValue = true;
 			}
 			if (!currentClassId) {
-				n->optimize(in_data);
+				node = n->optimize(in_data);
+				n = static_cast<HasClassIdNode *>(node);
 				currentClassId = n->classId;
 				break;
 			}
 			if (n->classDeclaration) {
-				n->optimize(in_data);
+				node = n->optimize(in_data);
+				n = static_cast<HasClassIdNode *>(node);
 				loadReturnValueClassId(in_data, line, currentClassId,
 				                       n->classId);
 				break;
@@ -125,10 +127,12 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 					n = static_cast<HasClassIdNode *>(node);
 				}
 				n->classId = *currentClassId;
-				n->optimize(in_data);
+				node = n->optimize(in_data);
+				n = static_cast<HasClassIdNode *>(node);
 				break;
 			}
-			n->optimize(in_data);
+			node = n->optimize(in_data);
+			n = static_cast<HasClassIdNode *>(node);
 			loadReturnValueClassId(in_data, line, currentClassId, n->classId);
 			break;
 		}
@@ -139,22 +143,26 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 				hasValue = true;
 			}
 			if (!currentClassId) {
-				n->optimize(in_data);
+				node = n->optimize(in_data);
+				n = static_cast<HasClassIdNode *>(node);
 				currentClassId = n->classId;
 				break;
 			}
 			if (n->classDeclaration) {
-				n->optimize(in_data);
+				node = n->optimize(in_data);
+				n = static_cast<HasClassIdNode *>(node);
 				loadReturnValueClassId(in_data, line, currentClassId,
 				                       n->classId);
 				break;
 			}
 			if (n->classId == DefaultClass::nullClassId) {
 				n->classId = *currentClassId;
-				n->optimize(in_data);
+				node = n->optimize(in_data);
+				n = static_cast<HasClassIdNode *>(node);
 				return;
 			}
-			n->optimize(in_data);
+			node = n->optimize(in_data);
+			n = static_cast<HasClassIdNode *>(node);
 			loadReturnValueClassId(in_data, line, currentClassId, n->classId);
 			break;
 		}
@@ -174,7 +182,8 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 				// if (n->mustInfer) {
 				n->inferFrom(in_data, newClassDeclaration);
 				// }
-				node->optimize(in_data);
+				node = node->optimize(in_data);
+				n = static_cast<CreateClosureNode *>(node);
 				if (!newClassDeclaration->isSame(n->classDeclaration)) {
 					n->throwError("Cannot cast '" +
 					              newClassDeclaration->getName(in_data) +
@@ -183,7 +192,8 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 					              "\nHint: Ensure closure parameter and return signatures match the expected Function declaration.");
 				}
 			} else {
-				node->optimize(in_data);
+				node = node->optimize(in_data);
+				n = static_cast<CreateClosureNode *>(node);
 				newClassDeclaration = n->classDeclaration;
 				currentClassId = DefaultClass::functionClassId;
 			}
@@ -207,7 +217,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 			if (!hasValue) {
 				hasValue = true;
 			}
-			node->optimize(in_data);
+			node = node->optimize(in_data);
 			auto n = static_cast<HasClassIdNode *>(node);
 			if (n->isNullable()) {
 				if (!nullable) {
@@ -225,7 +235,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 						    context.castPool
 						        .push(n, DefaultClass::floatClassId)
 						        ->resolve(in_data));
-						node->optimize(in_data);
+						node = node->optimize(in_data);
 					}
 					break;
 				}
@@ -240,9 +250,8 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 			break;
 		}
 		case NodeType::WHEN: {
+			node = node->optimize(in_data);
 			auto *n = static_cast<WhenNode *>(node);
-			// n->mustReturnValue = true;
-			node->optimize(in_data);
 
 			if (n->classId == DefaultClass::nullClassId) {
 				break;
@@ -269,9 +278,8 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 			break;
 		}
 		case NodeType::IF: {
+			node = node->optimize(in_data);
 			auto *n = static_cast<IfNode *>(node);
-			// n->mustReturnValue = true;
-			node->optimize(in_data);
 
 			if (n->classId == DefaultClass::nullClassId) {
 				break;
@@ -299,7 +307,8 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 		}
 		case NodeType::TRY_CATCH: {
 			auto *tc = static_cast<TryCatchNode *>(node);
-			tc->optimize(in_data);
+			node = tc->optimize(in_data);
+			tc = static_cast<TryCatchNode *>(node);
 			if (tc->body.hasValue || (tc->hasCatch && tc->catchBody.hasValue) ||
 			    (tc->hasFinally && tc->finallyBody.hasValue)) {
 				hasValue = true;
@@ -317,7 +326,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 			auto n = static_cast<ReturnNode *>(node);
 
 			if (!context.currentClosureNode) {
-				node->optimize(in_data);
+				node = node->optimize(in_data);
 				break;
 			}
 
@@ -332,7 +341,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 						    context.castPool
 						        .push(n->value, DefaultClass::floatClassId)
 						        ->resolve(in_data));
-						n->optimize(in_data);
+						node = n->optimize(in_data);
 						break;
 					}
 					auto value = static_cast<ExprNode *>(n->value);
@@ -344,7 +353,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 					node = value;
 					break;
 				}
-				n->optimize(in_data);
+				node = n->optimize(in_data);
 				if (*context.currentClosureCurrentClassId) {
 					if (*context.currentClosureCurrentClassId !=
 					    DefaultClass::voidClassId) {
@@ -368,7 +377,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 			}
 
 			if (!n->value) {
-				node->optimize(in_data);
+				node = node->optimize(in_data);
 
 				if (currentClassId) {
 					if (currentClassId != DefaultClass::voidClassId) {
@@ -390,7 +399,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 			break;
 		}
 		default: {
-			node->optimize(in_data);
+			node = node->optimize(in_data);
 			break;
 		}
 	}
@@ -531,13 +540,14 @@ void BlockNode::loadClassAndOptimize(in_func) {
 	}
 }
 
-void BlockNode::optimize(in_func) {
+ExprNode *BlockNode::optimize(in_func) {
 	if (context.mustReturnValueNode) {
 		loadClassAndOptimize(in_data);
-		return;
+		return this;
 	}
-	for (auto *node : nodes) {
-		node->optimize(in_data);
+	for (size_t i = 0; i < nodes.size(); ++i) {
+		nodes[i] = nodes[i]->optimize(in_data);
+		auto *node = nodes[i];
 		if (!hasValue) {
 			switch (node->kind) {
 				case NodeType::VAR:
@@ -586,6 +596,7 @@ void BlockNode::optimize(in_func) {
 			}
 		}
 	}
+	return this;
 }
 
 void BlockNode::addJumpPosition(in_func, BytecodePos pos) {

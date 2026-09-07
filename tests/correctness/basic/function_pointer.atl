@@ -1,0 +1,73 @@
+fun addNumbers(a: Int, b: Int): Int {
+	return a + b
+}
+
+fun multiplyNumbers(a: Int, b: Int): Int {
+	return a * b
+}
+
+class MathHelper {
+	static fun square(x: Int): Int {
+		return x * x
+	}
+}
+
+class Counter {
+	var count = 0
+	fun increment(by: Int): Int {
+		count += by
+		return count
+	}
+	fun get(): Int {
+		return count
+	}
+}
+
+class Transformer {
+	var multiplier: Int = 1
+	constructor(multiplier: Int) {
+		this.multiplier = multiplier
+	}
+	fun transform(x: Int): Int {
+		return x * multiplier
+	}
+}
+
+fun applyOperation(a: Int, b: Int, op: (Int, Int) -> Int): Int {
+	return op(a, b)
+}
+
+fun testFunctionPointer() {
+	// Top-level function pointer
+	val fAdd = ::addNumbers
+	assert(fAdd(2, 3) == 5)
+
+	val fMul = ::multiplyNumbers
+	assert(fMul(4, 5) == 20)
+
+	// Higher-order function with top-level pointer
+	assert(applyOperation(10, 20, ::addNumbers) == 30)
+	assert(applyOperation(10, 20, ::multiplyNumbers) == 200)
+
+	// Static member function pointer
+	val fSquare = MathHelper::square
+	assert(fSquare(6) == 36)
+
+	// Bound member function pointer
+	val c = Counter()
+	val boundInc = c::increment
+	assert(boundInc(5) == 5)
+	assert(boundInc(3) == 8)
+	assert(c.get() == 8)
+
+	// Unbound member function pointer
+	val unboundTransform = Transformer::transform
+	val t1 = Transformer(2)
+	val t2 = Transformer(3)
+	assert(unboundTransform(t1, 5) == 10)
+	assert(unboundTransform(t2, 5) == 15)
+
+	println("Passed ${__FUNC__}")
+}
+
+testFunctionPointer()

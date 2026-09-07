@@ -41,8 +41,8 @@ ExprNode *IfNode::resolve(in_func) {
 	return this;
 }
 
-void IfNode::optimize(in_func) {
-	condition->optimize(in_data);
+ExprNode *IfNode::optimize(in_func) {
+	condition = static_cast<HasClassIdNode *>(condition->optimize(in_data));
 	if (condition->classId != Autolang::DefaultClass::boolClassId)
 		throwError("Cannot use expression of type '" +
 		           condition->getClassName(in_data) +
@@ -57,7 +57,7 @@ void IfNode::optimize(in_func) {
 		ifTrue.optimize(in_data);
 		ClassId trueClassId = classId;
 		if (ifFalse) {
-			ifFalse->optimize(in_data);
+			ifFalse = static_cast<BlockNode *>(ifFalse->optimize(in_data));
 		} else {
 			if (ifTrue.hasValue && condition->kind == NodeType::CONST_VAL &&
 			    static_cast<ConstValueNode *>(condition)->obj->b) {
@@ -65,14 +65,14 @@ void IfNode::optimize(in_func) {
 			}
 		}
 		if (classId == DefaultClass::floatClassId &&
-		    trueClassId == DefaultClass::intClassId) {
+			trueClassId == DefaultClass::intClassId) {
 			ifTrue.autoCastToFloat = true;
 		}
 	} else {
 		ifTrue.optimize(in_data);
 		ClassId trueClassId = classId;
 		if (ifFalse)
-			ifFalse->optimize(in_data);
+			ifFalse = static_cast<BlockNode *>(ifFalse->optimize(in_data));
 		if (classId == DefaultClass::floatClassId &&
 		    trueClassId == DefaultClass::intClassId) {
 			ifTrue.autoCastToFloat = true;
@@ -89,6 +89,7 @@ void IfNode::optimize(in_func) {
 		}
 		context.mustReturnValueNode = lastMustReturnValueNode;
 	}
+	return this;
 }
 
 ExprNode *IfNode::copy(in_func) {

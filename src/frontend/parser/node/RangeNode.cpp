@@ -12,8 +12,8 @@ ExprNode *RangeNode::resolve(in_func) {
 	return this;
 }
 
-void RangeNode::optimize(in_func) {
-	from->optimize(in_data);
+ExprNode *RangeNode::optimize(in_func) {
+	from = static_cast<HasClassIdNode *>(from->optimize(in_data));
 	if (from->kind == NodeType::CONST_VAL) {
 		static_cast<ConstValueNode *>(from)->isLoadPrimary = true;
 	}
@@ -22,7 +22,7 @@ void RangeNode::optimize(in_func) {
 		           compile.classes[from->classId]->getName(compile) +
 		           "? but Int was expected\nHint: The 'from' bound of range expression (..) cannot be nullable. Ensure the start value is non-null Int or unwrap it using '!'.");
 	}
-	to->optimize(in_data);
+	to = static_cast<HasClassIdNode *>(to->optimize(in_data));
 	if (to->kind == NodeType::CONST_VAL) {
 		static_cast<ConstValueNode *>(to)->isLoadPrimary = true;
 	}
@@ -31,6 +31,7 @@ void RangeNode::optimize(in_func) {
 		           compile.classes[to->classId]->getName(compile) +
 		           "? but Int was expected\nHint: The 'to' bound of range expression (..) cannot be nullable. Ensure the end value is non-null Int or unwrap it using '!'.");
 	}
+	return this;
 }
 
 void RangeNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {

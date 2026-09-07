@@ -1,33 +1,121 @@
 fun testMapSugarSyntax() {
     // 1. Explicitly typed Map sugar syntax
     val m1 = <String, Int>{"one": 1, "two": 2, "three": 3}
-    assert(m1.size() == 3, __FILE__, __LINE__)
-    assert(m1.get("one") == 1, __FILE__, __LINE__)
-    assert(m1.get("two") == 2, __FILE__, __LINE__)
-    assert(m1.get("three") == 3, __FILE__, __LINE__)
+    assert(m1.size() == 3)
+    assert(m1.get("one") == 1)
+    assert(m1.get("two") == 2)
+    assert(m1.get("three") == 3)
 
     // 2. Empty Map sugar syntax
     val m2 = <String, Float>{}
-    assert(m2.size() == 0, __FILE__, __LINE__)
-    assert(m2.isEmpty(), __FILE__, __LINE__)
+    assert(m2.size() == 0)
+    assert(m2.isEmpty())
 
     // 3. Implicitly typed Map sugar syntax (inferred from variable type)
     val m3: Map<Int, String> = {10: "ten", 20: "twenty"}
-    assert(m3.size() == 2, __FILE__, __LINE__)
-    assert(m3.get(10) == "ten", __FILE__, __LINE__)
-    assert(m3.get(20) == "twenty", __FILE__, __LINE__)
+    assert(m3.size() == 2)
+    assert(m3.get(10) == "ten")
+    assert(m3.get(20) == "twenty")
 
     // 4. Nested Maps using sugar syntax
     val nested = <String, Map<String, Int>>{
         "outer1": <String, Int>{"inner1": 100},
         "outer2": <String, Int>{"inner2": 200}
     }
-    assert(nested.size() == 2, __FILE__, __LINE__)
+    assert(nested.size() == 2)
     val inner = nested.get("outer1")
-    assert(inner != null, __FILE__, __LINE__)
-    assert(inner!.get("inner1") == 100, __FILE__, __LINE__)
+    assert(inner != null)
+    assert(inner!.get("inner1") == 100)
+
+    println("Passed ${__FUNC__}")
+}
+
+fun testMapInferenceWithoutTypeAnnotation() {
+    val m = {"a": 1, "b": 2}
+    assert(m is Map<String, Int>)
+    assert(m.size() == 2)
+    assert(m.get("a") == 1)
+    assert(m.get("b") == 2)
+
+    val mInt = {10: "ten", 20: "twenty"}
+    assert(mInt is Map<Int, String>)
+    assert(mInt.size() == 2)
+    assert(mInt.get(10) == "ten")
+    assert(mInt.get(20) == "twenty")
+
+    val nestedMap = {"first": {"a": 100}, "second": {"b": 200}}
+    assert(nestedMap is Map<String, Map<String, Int>>)
+    assert(nestedMap.size() == 2)
+    assert(nestedMap.get("first")!.get("a") == 100)
+
+    println("Passed ${__FUNC__}")
+}
+
+fun testDeepNestedMapComplexFlow() {
+    // 1. Cấu trúc Map lồng Map lồng Array lồng Set lồng nhau đa tầng
+    val complexSystem = {
+        "cluster_alpha": [
+            {"nodes": {101, 102, 103}, "shards": {1, 2}},
+            {"nodes": {104, 105}, "shards": {3, 4}}
+        ],
+        "cluster_beta": [
+            {"nodes": {201, 202}, "shards": {5, 6}}
+        ]
+    }
+
+    assert(complexSystem is Map<String, Array<Map<String, Set<Int>>>>)
+    assert(complexSystem.size() == 2)
+
+    val alpha = complexSystem.get("cluster_alpha")!
+    assert(alpha.length() == 2)
+    assert(alpha[0].get("nodes")!.contains(102))
+    assert(alpha[1].get("shards")!.contains(4))
+    assert(!alpha[0].get("nodes")!.contains(999))
+
+    // 2. Thao tác thay đổi sâu (deep mutation)
+    alpha[0].get("nodes")!.add(999)
+    assert(alpha[0].get("nodes")!.contains(999))
+    assert(alpha[0].get("nodes")!.size() == 4)
+
+    // 3. Map lồng 4 tầng thuần túy
+    val deepMap = {
+        "l1": {
+            "l2": {
+                "l3": {
+                    "target": 12345
+                }
+            }
+        }
+    }
+    assert(deepMap.get("l1")!.get("l2")!.get("l3")!.get("target") == 12345)
+
+    // 4. Duyệt lặp lồng nhau qua các keys và tính tổng
+    var nodeSum = 0
+    val clusterKeys = complexSystem.keys()
+    for (cKey in clusterKeys) {
+        val groups = complexSystem.get(cKey)!
+        for (group in groups) {
+            val nodeSet = group.get("nodes")!
+            for (nodeId in nodeSet) {
+                nodeSum += nodeId
+            }
+        }
+    }
+    // nodes: (101+102+103+999) + (104+105) + (201+202) = 1305 + 209 + 403 = 1917
+    assert(nodeSum == 1917)
+
+    // 5. Thao tác xóa và kiểm tra key rỗng
+    val beta = complexSystem.get("cluster_beta")!
+    val betaGroup = beta[0]
+    betaGroup.remove("shards")
+    assert(betaGroup.get("shards") == null)
+    assert(betaGroup.containsKey("shards") == false)
+    assert(betaGroup.containsKey("nodes") == true)
 
     println("Passed ${__FUNC__}")
 }
 
 testMapSugarSyntax()
+testMapInferenceWithoutTypeAnnotation()
+testDeepNestedMapComplexFlow()
+

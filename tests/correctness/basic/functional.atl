@@ -39,18 +39,18 @@ fun <T, R> testFunctional() {
 	val c: () -> Int = testFunctionalEmptyParams
 	val d: ((Float) -> Int) -> Int = testFunctionalLoad
 	val e = FunctionalTest()
-	val f: () -> Void = e.plus_plus
+	val f: () -> Void = e::plus_plus
 
 	val g: (T) -> R = testFunctionalInput
 	val h = FunctionalTestGeneric<T, R>(g)
 
-	assert(d(b) == 15625, __FILE__, __LINE__)
+	assert(d(b) == 15625)
 
 	f()
 	f()
 	f()
-	assert(e.value == 8, __FILE__, __LINE__)
-	assert(h.get() == "OK", __FILE__, __LINE__)
+	assert(e.value == 8)
+	assert(h.get() == "OK")
 
 	println("Passed ${__FUNC__}")
 }

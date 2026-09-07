@@ -9,20 +9,20 @@ fun testNullAccess() {
 	value?.plus(5)
 	value = NullAccessTest(5)
 	value?.plus(5)
-	assert(value!.value == 10, __FILE__, __LINE__)
+	assert(value!.value == 10)
 
 	var f1 = (value?.value ?? 2)
-	assert(f1 == 10, __FILE__, __LINE__)
+	assert(f1 == 10)
 
 	var secondaryValue: NullAccessTest? = null
-	assert((secondaryValue?.value ?? 2) == 2, __FILE__, __LINE__)
+	assert((secondaryValue?.value ?? 2) == 2)
 	secondaryValue = NullAccessTest(3)
-	assert((secondaryValue?.value ?? 2) == 3, __FILE__, __LINE__)
-	assert(secondaryValue!.value == 3, __FILE__, __LINE__)
+	assert((secondaryValue?.value ?? 2) == 3)
+	assert(secondaryValue!.value == 3)
 
 	value = null
 	val f2 = (null ?? 2)
-	assert(f2 == 2, __FILE__, __LINE__)
+	assert(f2 == 2)
 
 	println("Passed ${__FUNC__}")
 }

@@ -225,6 +225,18 @@ void loadAnnotations(in_func, size_t &i) {
 			--i;
 			break;
 		}
+		case Lexer::TokenType::IMPLICIT: {
+			context.annotationFlags |= AnnotationFlags::AN_IMPLICIT;
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(
+				    context.tokens[i].line,
+				    "@implicit must be followed by a constructor or function\nHint: "
+				    "Correct syntax is '@implicit constructor(m: Map)'");
+			}
+			--i;
+			break;
+		}
 		default: {
 			throw ParserError(
 			    firstLine,

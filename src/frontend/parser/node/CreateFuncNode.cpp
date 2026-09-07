@@ -104,7 +104,11 @@ ExprNode *CreateFuncNode::copy(in_func) {
 	return newCreateFuncNode;
 }
 
-void CreateFuncNode::optimize(in_func) {
+ExprNode *CreateFuncNode::optimize(in_func) {
+	if (optimized) {
+		return this;
+	}
+	optimized = true;
 	const auto &name = context.lexerString[nameId];
 	auto func = compile.functions[id];
 	auto funcInfo = context.functionInfo[id];
@@ -150,6 +154,7 @@ void CreateFuncNode::optimize(in_func) {
 			hash[funcInfo->hash] = func->id;
 		}
 	}
+	return this;
 }
 
 template void CreateFuncNode::pushFunction<false>(in_func);

@@ -378,8 +378,8 @@ resumeCallFrame:;
 			dispatchTable[Autolang::Opcode::NEGATIVE] = &&do_NEGATIVE;
 			dispatchTable[Autolang::Opcode::RETURN_LOCAL] = &&do_RETURN_LOCAL;
 			dispatchTable[Autolang::Opcode::CREATE_OBJECT] = &&do_CREATE_OBJECT;
-			dispatchTable[Autolang::Opcode::FAST_SAVE_MEMBER] =
-			    &&do_FAST_SAVE_MEMBER;
+			dispatchTable[Autolang::Opcode::CREATE_ARRAY_OBJECT] =
+			    &&do_CREATE_ARRAY_OBJECT;
 			dispatchTable[Autolang::Opcode::CREATE_SET_OBJECT] =
 			    &&do_CREATE_SET_OBJECT;
 			dispatchTable[Autolang::Opcode::CREATE_MAP_OBJECT] =
@@ -741,26 +741,38 @@ resumeCallFrame:;
 		// 	ip = get_u32(bytecodes, ip);
 		// 	break;
 		// }
+		auto getElement = [&](uint32_t idx) -> AObject * {
+			switch (list->array->key) {
+				case DefaultClass::intClassId:
+					return notifier->createInt(
+					    list->array->intData[idx]);
+				case DefaultClass::floatClassId:
+					return notifier->createFloat(
+					    list->array->floatData[idx]);
+				default:
+					return list->array->objData[idx];
+			}
+		};
 		if (*iterator == DefaultClass::nullObject) {
-			if (list->member->size == 0) {
+			if (list->array->size == 0) {
 				ip = get_u32(bytecodes, ip);
 				DISPATCH();
 			}
 			*iterator = data.manager.createIntObject(0);
-			*container = list->member->data[0];
+			*container = getElement(0);
 			(*container)->retain();
 			ip += 4;
 			DISPATCH();
 		}
 		data.manager.release(*container);
 		uint32_t newIndex = ++(*iterator)->i;
-		if (list->member->size == newIndex) {
+		if (list->array->size == newIndex) {
 			data.manager.release(*iterator);
 			*iterator = nullptr;
 			ip = get_u32(bytecodes, ip);
 			DISPATCH();
 		}
-		*container = list->member->data[newIndex];
+		*container = getElement(newIndex);
 		(*container)->retain();
 		ip += 4;
 		DISPATCH();
@@ -1033,14 +1045,43 @@ resumeCallFrame:;
 		DISPATCH();
 	}
 
-	do_FAST_SAVE_MEMBER: {
+	do_CREATE_ARRAY_OBJECT: {
 		ClassId classId = get_u32(bytecodes, ip);
+		ClassId keyId = get_u32(bytecodes, ip);
 		uint32_t count = get_u32(bytecodes, ip);
-		auto obj = data.manager.get(classId, count);
-		for (; count-- > 0;) {
-			obj->member->data[count] = stack.pop();
+		auto obj = notifier->createArray(classId, keyId, count);
+		switch (keyId) {
+			case Autolang::DefaultClass::intClassId: {
+				for (uint32_t idx = count; idx-- > 0;) {
+					auto val = stack.pop();
+					obj->array->intData[idx] =
+					    (val->type ==
+					     Autolang::DefaultClass::floatClassId)
+					        ? static_cast<int64_t>(val->f)
+					        : val->i;
+					data.manager.release(val);
+				}
+				break;
+			}
+			case Autolang::DefaultClass::floatClassId: {
+				for (uint32_t idx = count; idx-- > 0;) {
+					auto val = stack.pop();
+					obj->array->floatData[idx] =
+					    (val->type ==
+					     Autolang::DefaultClass::intClassId)
+					        ? static_cast<double>(val->i)
+					        : val->f;
+					data.manager.release(val);
+				}
+				break;
+			}
+			default: {
+				for (uint32_t idx = count; idx-- > 0;) {
+					obj->array->objData[idx] = stack.pop();
+				}
+				break;
+			}
 		}
-		obj->flags |= AObject::Flags::OBJ_IS_ARRAY;
 		stack.push(obj);
 		stack.top()->retain();
 		DISPATCH();

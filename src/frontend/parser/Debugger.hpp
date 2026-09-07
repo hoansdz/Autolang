@@ -15,6 +15,7 @@
 namespace Autolang {
 
 struct ParserContext;
+struct ClassInfo;
 
 struct ParserError : Autolang::Lexer::LexerError {
 	ParserError(uint32_t line, std::string msg)
@@ -37,6 +38,7 @@ LibraryData *loadImport(in_func, LibraryData *currentLibrary,
                         size_t i);
 void estimate(in_func, Lexer::Context &lexerContext);
 void freeData(in_func);
+template <bool isLazy>
 ClassId loadClassGenerics(in_func, std::string &name,
                           ClassDeclaration *classDeclaration);
 void loadFunctionGenerics(in_func, std::string &name,
@@ -88,6 +90,9 @@ TryCatchNode *loadTryCatch(in_func, size_t &i);
 ThrowNode *loadThrow(in_func, size_t &i);
 CreateFuncNode *loadFunc(in_func, size_t &i);
 void loadConstructor(in_func, size_t &i);
+void loadConstructorBody(in_func, size_t &i, uint32_t firstLine,
+                         uint32_t functionFlags, AClass *clazz,
+                         ClassInfo *classInfo);
 CreateClassNode *loadClass(in_func, size_t &i);
 // void loadClassInit(in_func, size_t& i);
 ReturnNode *loadReturn(in_func, size_t &i);

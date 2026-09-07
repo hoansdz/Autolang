@@ -6,7 +6,7 @@
 
 namespace Autolang {
 
-void VarNode::optimize(in_func) {
+ExprNode *VarNode::optimize(in_func) {
 	// std::cerr << "loaded " << declaration->getName(compile) << " "
 	//           << compile.classes[declaration->classId]->getName(compile) <<
 	//           "\n";
@@ -28,6 +28,7 @@ void VarNode::optimize(in_func) {
 			}
 		}
 	}
+	return this;
 }
 
 ExprNode *VarNode::copy(in_func) {

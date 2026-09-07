@@ -175,11 +175,23 @@ inline val aobjectToJs(ANotifier &notifier, AObject *obj) {
 		default: {
 			if (obj->flags & AObject::Flags::OBJ_IS_ARRAY) {
 				val arr = val::array();
-				for (size_t i = 0; i < obj->member->size; ++i) {
-					arr.call<void>("push",
-					               aobjectToJs(notifier, obj->member->data[i]));
-					if (notifier.hasException())
-						return val::undefined();
+				auto array = obj->array;
+				if (array->key == DefaultClass::intClassId) {
+					for (size_t i = 0; i < array->size; ++i) {
+						arr.call<void>("push", array->intData[i]);
+					}
+				} else if (array->key == DefaultClass::floatClassId) {
+					for (size_t i = 0; i < array->size; ++i) {
+						arr.call<void>("push", array->floatData[i]);
+					}
+				} else {
+					for (size_t i = 0; i < array->size; ++i) {
+						arr.call<void>(
+						    "push",
+						    aobjectToJs(notifier, array->objData[i]));
+						if (notifier.hasException())
+							return val::undefined();
+					}
 				}
 				return arr;
 			}

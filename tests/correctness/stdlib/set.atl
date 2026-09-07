@@ -8,7 +8,7 @@ fun accumulateSum(value: Int) {
 
 // Helper function to test nested sets
 fun testNestedSetSyntax(data: Set<Set<Int>>) {
-    assert(data.size() == 3, __FILE__, __LINE__)
+    assert(data.size() == 3)
 }
 
 fun testAllSetFeatures() {
@@ -16,61 +16,61 @@ fun testAllSetFeatures() {
     // 1. Test: __CLASS__() explicit constructor (and private create)
     val explicitSet = Set<Int>()
     explicitSet.add(100)
-    assert(explicitSet.size() == 1, __FILE__, __LINE__)
-    assert(explicitSet.contains(100) == true, __FILE__, __LINE__)
+    assert(explicitSet.size() == 1)
+    assert(explicitSet.contains(100) == true)
 
     // 2. Test: insert, size, isEmpty, and Sugar Syntax
     val s1 = <Int>{1, 2, 3, 4, 5, 5, 4, 3, 2, 1} // Sugar syntax calls insert under the hood
-    assert(s1.size() == 5, __FILE__, __LINE__)
-    assert(s1.isEmpty() == false, __FILE__, __LINE__)
+    assert(s1.size() == 5)
+    assert(s1.isEmpty() == false)
 
     // 3. Test: contains
     val s2 = <String>{"Apple", "Banana"}
     s2.add("Orange")
     s2.add("Apple") // Duplicate, should be ignored
-    assert(s2.contains("Orange") == true, __FILE__, __LINE__)
-    assert(s2.contains("Grapes") == false, __FILE__, __LINE__)
+    assert(s2.contains("Orange") == true)
+    assert(s2.contains("Grapes") == false)
 
     // 4. Test: remove and clear
     s2.remove("Banana")
-    assert(s2.size() == 2, __FILE__, __LINE__)
-    assert(s2.contains("Banana") == false, __FILE__, __LINE__)
+    assert(s2.size() == 2)
+    assert(s2.contains("Banana") == false)
     
     s2.clear()
-    assert(s2.size() == 0, __FILE__, __LINE__)
-    assert(s2.isEmpty() == true, __FILE__, __LINE__)
+    assert(s2.size() == 0)
+    assert(s2.isEmpty() == true)
 
     // // 5. Test: forEach (using a named function callback)
     val s3 = <Int>{10, 20, 30}
     globalSum = 0 // Reset global state
     s3.forEach(accumulateSum) // Passing the function by name
-    assert(globalSum == 60, __FILE__, __LINE__)
+    assert(globalSum == 60)
 
     // // 6. Test: toArray (Public and Private)
     val s4 = <String>{"X", "Y", "Z"}
     val arr = s4.toArray() // Triggers the public toArray, which calls the private toArray
-    assert(arr is Array<String>, __FILE__, __LINE__)
-    assert(arr.size() == 3, __FILE__, __LINE__)
-    assert(arr.contains("X") && arr.contains("Y") && arr.contains("Z"), __FILE__, __LINE__)
+    assert(arr is Array<String>)
+    assert(arr.size() == 3)
+    assert(arr.contains("X") && arr.contains("Y") && arr.contains("Z"))
 
     // // 7. Test: union, intersect, difference
     val setA = <Int>{1, 2, 3, 4}
     val setB = <Int>{3, 4, 5, 6}
 
     val unionSet = setA.union(setB)
-    assert(unionSet.size() == 6, __FILE__, __LINE__)
+    assert(unionSet.size() == 6)
 
     val intersectSet = setA.intersect(setB)
-    assert(intersectSet.size() == 2, __FILE__, __LINE__)
-    assert(intersectSet.contains(3) && intersectSet.contains(4), __FILE__, __LINE__)
+    assert(intersectSet.size() == 2)
+    assert(intersectSet.contains(3) && intersectSet.contains(4))
 
     val diffSet = setA.difference(setB)
-    assert(diffSet.size() == 2, __FILE__, __LINE__)
-    assert(diffSet.contains(1) && !diffSet.contains(3), __FILE__, __LINE__)
+    assert(diffSet.size() == 2)
+    assert(diffSet.contains(1) && !diffSet.contains(3))
 
     // 8. Test: toString
     val str = s3.toString()
-    assert(str is String, __FILE__, __LINE__)
+    assert(str is String)
 
     // 9. Test: Nested Sets
     testNestedSetSyntax({{1, 2}, {3, 4}, {1, 2}})

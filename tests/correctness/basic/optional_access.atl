@@ -14,32 +14,32 @@ fun testOptionalAccess() {
     // Null safe call on null -> no-op
     var a: OptionalAccess?
     a?.hello(1)
-    assert(a?.x == null, __FILE__, __LINE__)
+    assert(a?.x == null)
 
     // Elvis operator on null
-    assert((a?.get() ?? 100) == 100, __FILE__, __LINE__)
+    assert((a?.get() ?? 100) == 100)
 
     // Assign and call
     a = OptionalAccess(null)
     a?.hello(2)
-    assert(a?.x == 2, __FILE__, __LINE__)
+    assert(a?.x == 2)
 
     // Chained null safe call on null child
     a?.child?.hello(3)
-    assert(a?.child?.x == null, __FILE__, __LINE__)
+    assert(a?.child?.x == null)
 
     // Assign child and call
     a!.child = OptionalAccess(null)
     a?.child?.hello(4)
-    assert(a?.child?.x == 4, __FILE__, __LINE__)
+    assert(a?.child?.x == 4)
 
     // Static member via optional access
-    assert(a?.a == 7, __FILE__, __LINE__)
+    assert(a?.a == 7)
 
     // Null optional stays null
     val m: OptionalAccess? = null
-    assert(m == null, __FILE__, __LINE__)
-    assert(m?.x == null, __FILE__, __LINE__)
+    assert(m == null)
+    assert(m?.x == null)
 
     println("Passed ${__FUNC__}")
 }

@@ -220,9 +220,14 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 			parameters->parameters.insert(parameters->parameters.begin(),
 			                              classInfo->declarationThis);
 			parameters->defaultValuePos += 1;
+			uint32_t ctorFlags = FunctionFlags::FUNC_PUBLIC;
+			if (context.annotationFlags & AnnotationFlags::AN_IMPLICIT) {
+				ctorFlags |= FunctionFlags::FUNC_IS_IMPLICIT;
+				context.annotationFlags &= ~AnnotationFlags::AN_IMPLICIT;
+			}
 			classInfo->primaryConstructor = context.createConstructorPool.push(
 			    firstLine, *context.currentClassId, nameId, parameters, true,
-			    FunctionFlags::FUNC_PUBLIC);
+			    ctorFlags);
 			classInfo->primaryConstructor->pushFunction(in_data);
 			if (!nextToken(&token, context.tokens, i)) {
 				context.isInGeneric = false;
@@ -363,6 +368,10 @@ void loadConstructor(in_func, size_t &i) {
 		                  "@no_override is only supported on functions\nHint: "
 		                  "Remove @no_override from constructor declaration");
 	}
+	if (context.annotationFlags & AnnotationFlags::AN_IMPLICIT) {
+		functionFlags |= FunctionFlags::FUNC_IS_IMPLICIT;
+		context.annotationFlags &= ~AnnotationFlags::AN_IMPLICIT;
+	}
 
 	// Arguments
 	if (!nextToken(&token, context.tokens, i)) {
@@ -371,6 +380,13 @@ void loadConstructor(in_func, size_t &i) {
 		                  "Expected '(' but not found\nHint: Add '(' to start "
 		                  "constructor parameter list");
 	}
+	loadConstructorBody(in_data, i, firstLine, functionFlags, clazz, classInfo);
+}
+
+void loadConstructorBody(in_func, size_t &i, uint32_t firstLine,
+                         uint32_t functionFlags, AClass *clazz,
+                         ClassInfo *classInfo) {
+	Lexer::Token *token = &context.tokens[i];
 	Parameter *parameter = nullptr;
 	if (expect(token, Lexer::TokenType::LPAREN)) {
 		if (firstLine != token->line) {
@@ -392,6 +408,36 @@ void loadConstructor(in_func, size_t &i) {
 	} else {
 		parameter = context.parameterPool.push();
 	}
+
+	// Optional return type: e.g. fun ImplicitJson(...): ImplicitJson
+	if (token->type == Lexer::TokenType::COLON) {
+		auto classDeclaration =
+		    loadClassDeclaration(in_data, i, token->line, true);
+		if (!classDeclaration->isGenerics(in_data)) {
+			context.allClassDeclarations.push_back(classDeclaration);
+		}
+		if (classDeclaration->nullable) {
+			throw ParserError(firstLine,
+			                  "Constructor return type cannot be nullable\nHint: "
+			                  "Remove '?' from constructor return type");
+		}
+		if (context.lexerString[classDeclaration->baseClassLexerStringId] !=
+		    clazz->getName(compile)) {
+			throw ParserError(firstLine,
+			                  "Constructor return type must be '" +
+			                      clazz->getName(compile) +
+			                      "' or omitted\nHint: Remove return type or "
+			                      "change to '" +
+			                      clazz->getName(compile) + "'");
+		}
+		if (!nextToken(&token, context.tokens, i)) {
+			--i;
+			throw ParserError(firstLine,
+			                  "Expected body but not found\nHint: Provide "
+			                  "constructor body block '{ ... }'");
+		}
+	}
+
 	// listDeclarationNode.insert(listDeclarationNode.begin(),
 	// context.getCurrentClassInfo(in_data)->declarationThis);
 	// Body
@@ -408,6 +454,14 @@ void loadConstructor(in_func, size_t &i) {
 			throw ParserError(context.tokens[i].line,
 			                  "Expected body but not found\nHint: Provide "
 			                  "constructor body block '{ ... }'");
+		}
+	}
+	if (functionFlags & FunctionFlags::FUNC_IS_IMPLICIT) {
+		if (parameter->defaultValuePos > 1) {
+			throw ParserError(
+			    firstLine,
+			    "Implicit constructor must have at most 1 required parameter\nHint: "
+			    "Provide default values for additional parameters or declare constructor with at most 1 parameter");
 		}
 	}
 	// Create constructor

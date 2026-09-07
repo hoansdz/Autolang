@@ -84,34 +84,43 @@ class ANotifier {
 		obj->member->data[0] = str;
 		return obj;
 	}
-	[[nodiscard]] inline AObject *createArray(ClassId classId) {
+	[[nodiscard]] inline AObject *
+	createArray(ClassId classId, ClassId key = DefaultClass::anyClassId,
+	            uint32_t initialCapacity = 0) {
 		auto obj = vm->data.manager.createEmptyObject();
 		obj->type = classId;
-		obj->member = new NormalArray<Autolang::AObject *>(0);
+		obj->array = new AArray(key, initialCapacity);
 		obj->flags |= AObject::Flags::OBJ_IS_ARRAY;
 		return obj;
 	}
 	inline void arrayAdd(AObject *arr, AObject *obj) {
-		obj->retain();
-
-		if (arr->member->size == 0) {
-			arr->member->reallocate(1);
-			arr->member->data[0] = obj;
-			arr->member->size = 1;
-			arr->member->maxSize = 1;
-			return;
-		}
-
-		if (arr->member->size == arr->member->maxSize) {
+		auto array = arr->array;
+		if (array->size == array->maxSize) {
 			size_t newMax =
-			    (arr->member->maxSize == 0) ? 1 : arr->member->maxSize * 2;
-			arr->member->reallocate(newMax);
-			arr->member->maxSize = static_cast<int64_t>(newMax);
+			    (array->maxSize == 0) ? 1 : array->maxSize * 2;
+			array->reallocate(newMax);
 		}
 
-		arr->member->data[arr->member->size++] = obj;
+		switch (array->key) {
+			case DefaultClass::intClassId: {
+				array->intData[array->size++] = obj->i;
+				break;
+			}
+			case DefaultClass::floatClassId: {
+				array->floatData[array->size++] =
+				    (obj->type == DefaultClass::intClassId)
+				        ? static_cast<double>(obj->i)
+			        : obj->f;
+				break;
+			}
+			default: {
+				obj->retain();
+				array->objData[array->size++] = obj;
+				break;
+			}
+		}
 	}
-	inline size_t getArraySize(AObject *arr) { return arr->member->size; }
+	inline size_t getArraySize(AObject *arr) { return arr->array->size; }
 	inline bool hasException() {
 		return vm->callFrames.index && vm->callFrames.top()->exception;
 	}

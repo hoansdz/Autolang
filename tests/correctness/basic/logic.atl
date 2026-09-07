@@ -2,43 +2,43 @@ class TestLogicClass {
 	val a = true
 
 	fun test() {
-		assert((!a) == false, __FILE__, __LINE__)
-		assert(-(!a) == 0, __FILE__, __LINE__)
+		assert((!a) == false)
+		assert(-(!a) == 0)
 	}
 }
 
 fun testLogic() {
 	// Basic boolean values
-	assert(true == true, __FILE__, __LINE__)
-	assert(false == false, __FILE__, __LINE__)
-	assert(true != false, __FILE__, __LINE__)
+	assert(true == true)
+	assert(false == false)
+	assert(true != false)
 
 	// AND (&&)
-	assert((true && true) == true, __FILE__, __LINE__)
-	assert((true && false) == false, __FILE__, __LINE__)
-	assert((false && true) == false, __FILE__, __LINE__)
-	assert((false && false) == false, __FILE__, __LINE__)
+	assert((true && true) == true)
+	assert((true && false) == false)
+	assert((false && true) == false)
+	assert((false && false) == false)
 
 	// OR (||)
-	assert((true || true) == true, __FILE__, __LINE__)
-	assert((true || false) == true, __FILE__, __LINE__)
-	assert((false || true) == true, __FILE__, __LINE__)
-	assert((false || false) == false, __FILE__, __LINE__)
+	assert((true || true) == true)
+	assert((true || false) == true)
+	assert((false || true) == true)
+	assert((false || false) == false)
 
 	// NOT (!)
-	assert(!true == false, __FILE__, __LINE__)
-	assert(!false == true, __FILE__, __LINE__)
-	assert(!!true == true, __FILE__, __LINE__)
+	assert(!true == false)
+	assert(!false == true)
+	assert(!!true == true)
 
 	// Combined expressions
 	val a = true && false
-	assert((!a) == true, __FILE__, __LINE__)
+	assert((!a) == true)
 
 	val b = true || false
-	assert(b == true && -b == -(1), __FILE__, __LINE__)
+	assert(b == true && -b == -(1))
 
 	val c = !false
-	assert(c == true, __FILE__, __LINE__)
+	assert(c == true)
 
 	// Short-circuit: && stops at first false (right side not evaluated)
 	var evaluated = false
@@ -47,7 +47,7 @@ fun testLogic() {
 		false
 	}
 	val r1 = false && sideEffect()
-	assert(!evaluated, __FILE__, __LINE__)
+	assert(!evaluated)
 
 	// Short-circuit: || stops at first true (right side not evaluated)
 	evaluated = false
@@ -56,13 +56,13 @@ fun testLogic() {
 		true
 	}
 	val r2 = true || sideEffect2()
-	assert(!evaluated, __FILE__, __LINE__)
+	assert(!evaluated)
 
 	// De Morgan's laws
 	val p = true
 	val q = false
-	assert(!(p && q) == (!p || !q), __FILE__, __LINE__)
-	assert(!(p || q) == (!p && !q), __FILE__, __LINE__)
+	assert(!(p && q) == (!p || !q))
+	assert(!(p || q) == (!p && !q))
 
 	// Class method with negation
 	val testLogicObj = TestLogicClass()

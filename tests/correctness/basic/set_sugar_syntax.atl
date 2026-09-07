@@ -4,18 +4,18 @@ fun globalIncrement(n: Int): Int {
 
 fun testSetExhaustive() {
     val emptySet = <Int>{}
-    assert(emptySet.size() == 0, __FILE__, __LINE__)
+    assert(emptySet.size() == 0)
 
     val primitiveSet = <Int>{1, 2, 2, 3, 3, 3}
-    assert(primitiveSet.size() == 3, __FILE__, __LINE__)
+    assert(primitiveSet.size() == 3)
 
     val stringSet = <String>{"abc", "abc", "def"}
-    assert(stringSet.size() == 2, __FILE__, __LINE__)
+    assert(stringSet.size() == 2)
 
     val arr1 = <Int>[1, 2]
     val arr2 = <Int>[1, 2]
     val nestedSet = <Array<Int>>{ arr1, arr2, arr1 }
-    assert(nestedSet.size() == 2, __FILE__, __LINE__)
+    assert(nestedSet.size() == 2)
 
     val f1: (Int) -> Int = globalIncrement
     val f2: (Int) -> Int = globalIncrement
@@ -24,12 +24,12 @@ fun testSetExhaustive() {
     val cl1 = {|n: Int| n + base}
     val cl2 = {|n: Int| n + base}
     val closureSet = <(Int) -> Int>{cl1, cl2, cl1}
-    assert(closureSet.size() == 2, __FILE__, __LINE__)
+    assert(closureSet.size() == 2)
 
     val s1 = <Int>{1, 2}
     val s2 = <Int>{1, 2}
     val deepSet = <Set<Int>>{s1, s2}
-    assert(deepSet.size() == 2, __FILE__, __LINE__)
+    assert(deepSet.size() == 2)
 
     val mixedSet = <(Int) -> Int>{}
     mixedSet.add(f1)
@@ -39,14 +39,88 @@ fun testSetExhaustive() {
         val res = f(5)
         total += res
     }
-    assert(total == 21, __FILE__, __LINE__)
+    assert(total == 21)
 
     val s = <Int>{10, 20, 30}
     s.add(10)
-    assert(s.size() == 3, __FILE__, __LINE__)
-    assert(20 in s, __FILE__, __LINE__)
+    assert(s.size() == 3)
+    assert(20 in s)
+
+    println("Passed ${__FUNC__}")
+}
+
+fun testSetInferenceWithoutTypeAnnotation() {
+    val s = {1, 2, 3}
+    assert(s is Set<Int>)
+    assert(s.size() == 3)
+    assert(1 in s)
+    assert(2 in s)
+    assert(3 in s)
+
+    val sStr = {"hello", "world"}
+    assert(sStr is Set<String>)
+    assert(sStr.size() == 2)
+    assert("hello" in sStr)
+
+    val nestedSet = {{1, 2}, {3, 4}}
+    assert(nestedSet is Set<Set<Int>>)
+    assert(nestedSet.size() == 2)
+
+    println("Passed ${__FUNC__}")
+}
+
+fun testDeepNestedSetComplexOperations() {
+    // 1. Cấu trúc Set lồng 3 tầng
+    val set3D = {{{10, 20}, {30}}, {{40, 50}}}
+    assert(set3D is Set<Set<Set<Int>>>)
+    assert(set3D.size() == 2)
+
+    // 2. Set chứa Array chứa Set
+    val s1 = <Int>{1, 2}
+    val s2 = <Int>{3, 4}
+    val arr1 = [s1, s2]
+    val arr2 = [s2, s1]
+    val metaSet = {arr1, arr2}
+    assert(metaSet is Set<Array<Set<Int>>>)
+    assert(metaSet.size() == 2)
+
+    // 3. Phép toán tập hợp lồng nhau: union, intersect, difference
+    val baseA = {1, 2, 3, 4, 5}
+    val baseB = {4, 5, 6, 7, 8}
+
+    val unionAB = baseA.union(baseB)
+    assert(unionAB.size() == 8)
+    assert(1 in unionAB && 8 in unionAB)
+
+    val intersectAB = baseA.intersect(baseB)
+    assert(intersectAB.size() == 2)
+    assert(4 in intersectAB && 5 in intersectAB)
+    assert(!intersectAB.contains(1))
+
+    val diffAB = baseA.difference(baseB)
+    assert(diffAB.size() == 3)
+    assert(1 in diffAB && 2 in diffAB && 3 in diffAB)
+    assert(!diffAB.contains(4))
+
+    // 4. Vòng lặp lồng nhau với Set và kiểm tra toán tử !in
+    var nestedSum = 0
+    val numberGroups = {{10, 20}, {30, 40}, {50}}
+    for (group in numberGroups) {
+        for (num in group) {
+            assert(num !in diffAB)
+            nestedSum += num
+        }
+    }
+    assert(nestedSum == 150)
+
+    // 5. Thao tác toArray và chuyển đổi lồng nhau
+    val flatArr = diffAB.toArray()
+    assert(flatArr is Array<Int>)
+    assert(flatArr.length() == 3)
 
     println("Passed ${__FUNC__}")
 }
 
 testSetExhaustive()
+testSetInferenceWithoutTypeAnnotation()
+testDeepNestedSetComplexOperations()

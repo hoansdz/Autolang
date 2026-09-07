@@ -2,17 +2,17 @@ fun testWhen() {
 	val a = 5
 	when (a) {
 		in 1..9 -> {}
-		else -> assert(false, __FILE__, __LINE__)
+		else -> assert(false)
 	}
 
 	val b = 6
 	when (b) {
-		b != 6 -> assert(false, __FILE__, __LINE__)
+		b != 6 -> assert(false)
 	}
 
 	when (b) {
 		is Int -> {}
-		else -> assert(false, __FILE__, __LINE__)
+		else -> assert(false)
 	}
 	println("Passed ${__FUNC__}")
 }

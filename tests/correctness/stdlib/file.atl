@@ -15,21 +15,21 @@ class TestFileFeaturesExhaustive {
         if (File.exists(testPath)) {
             File.delete(testPath)
         }
-        assert(File.exists(testPath) == false, __FILE__, __LINE__)
+        assert(File.exists(testPath) == false)
 
         // --- 1. Test WRITE, exists, isFile và isDirectory ---
         val writer = File(testPath, FileMode.WRITE)
         writer.write("Line 1\nLine 2\nLine 3")
         writer.close()
 
-        assert(File.exists(testPath) == true, __FILE__, __LINE__)
-        assert(File.isFile(testPath) == true, __FILE__, __LINE__)
-        assert(File.isDirectory(testPath) == false, __FILE__, __LINE__)
+        assert(File.exists(testPath) == true)
+        assert(File.isFile(testPath) == true)
+        assert(File.isDirectory(testPath) == false)
 
         // --- 2. Test READ (readText) ---
         val reader = File(testPath, FileMode.READ)
         val text1 = reader.readText()
-        assert(text1 == "Line 1\nLine 2\nLine 3", __FILE__, __LINE__)
+        assert(text1 == "Line 1\nLine 2\nLine 3")
         reader.close()
 
         // --- 3. Test APPEND ---
@@ -39,14 +39,14 @@ class TestFileFeaturesExhaustive {
 
         val reader2 = File(testPath, FileMode.READ)
         val text2 = reader2.readText()
-        assert(text2 == "Line 1\nLine 2\nLine 3\nLine 4", __FILE__, __LINE__)
+        assert(text2 == "Line 1\nLine 2\nLine 3\nLine 4")
         reader2.close()
 
         // --- 4. Test Đọc từng dòng (forEachLine) Tối ưu RAM ---
         lineCount = 0
         val lineReader = File(testPath, FileMode.READ)
         lineReader.forEachLine(countLines)
-        assert(lineCount == 4, __FILE__, __LINE__)
+        assert(lineCount == 4)
         lineReader.close()
 
         // --- 5. Test Vừa đọc vừa ghi (READ_WRITE) và Dịch con trỏ (seek) ---
@@ -58,34 +58,117 @@ class TestFileFeaturesExhaustive {
         val reader3 = File(testPath, FileMode.READ)
         val text3 = reader3.readText()
         // Kết quả phải là "DONE 1\n..." vì ta đã vá 4 byte tại chỗ
-        assert(text3 == "DONE 1\nLine 2\nLine 3\nLine 4", __FILE__, __LINE__)
+        assert(text3 == "DONE 1\nLine 2\nLine 3\nLine 4")
         reader3.close()
 
         // --- 6. Test Các hàm tiện ích (Path & Metadata) ---
         val absPath = File.getAbsolutePath(testPath)
-        assert(absPath != "", __FILE__, __LINE__) // Đảm bảo lấy được đường dẫn tuyệt đối
+        assert(absPath != "") // Đảm bảo lấy được đường dẫn tuyệt đối
         
         // C++17 filesystem.parent_path() xử lý đường dẫn chuẩn
         val parentPath = File.getParent("folder/test.txt")
-        assert(parentPath == "folder", __FILE__, __LINE__)
+        assert(parentPath == "folder")
 
         // --- 7. Test getAllFiles (Duyệt thư mục hiện tại ".") ---
         val currentDir = "."
-        assert(File.isDirectory(currentDir) == true, __FILE__, __LINE__)
+        assert(File.isDirectory(currentDir) == true)
         
         val allFiles = File.getAllFiles(currentDir)
-        assert(allFiles is Array<String>, __FILE__, __LINE__)
-        assert(allFiles.size() > 0, __FILE__, __LINE__) // Ít nhất phải chứa file test hoặc src code
+        assert(allFiles is Array<String>)
+        assert(allFiles.size() > 0) // Ít nhất phải chứa file test hoặc src code
 
         // --- 8. Test Enum FileMode ---
-        assert(FileMode.READ.getId() == 0, __FILE__, __LINE__)
-        assert(FileMode.APPEND_READ.getId() == 5, __FILE__, __LINE__)
-        assert(FileMode.READ_WRITE.toString() == "READ_WRITE", __FILE__, __LINE__)
+        assert(FileMode.READ.getId() == 0)
+        assert(FileMode.APPEND_READ.getId() == 5)
+        assert(FileMode.READ_WRITE.toString() == "READ_WRITE")
 
-        // --- 9. Teardown (Xóa file test để trả lại môi trường sạch) ---
+        // --- 9. Test Xử lý lỗi và Trường hợp biên (Edge cases & Resource cleanup) ---
+        // 9.1 Mở file không tồn tại với chế độ READ phải ném ngoại lệ
+        var openNonExistentFailed = false
+        try {
+            File("non_existent_file_definitely_missing_12345.txt", FileMode.READ)
+            assert(false)
+        } catch (e) {
+            assert(e.message.indexOf("Cannot open file") != -1)
+            openNonExistentFailed = true
+        }
+        assert(openNonExistentFailed == true)
+
+        // 9.2 Thao tác trên File đã đóng (closed handle)
+        val closedTestPath = "test_closed_handle.txt"
+        val handleTest = File(closedTestPath, FileMode.WRITE)
+        handleTest.write("sample")
+        handleTest.close()
+        // Đóng lần 2 không được crash
+        handleTest.close()
+
+        var readClosedFailed = false
+        try {
+            handleTest.readText()
+            assert(false)
+        } catch (e) {
+            assert(e.message.indexOf("File is closed") != -1)
+            readClosedFailed = true
+        }
+        assert(readClosedFailed == true)
+
+        var writeClosedFailed = false
+        try {
+            handleTest.write("more")
+            assert(false)
+        } catch (e) {
+            assert(e.message.indexOf("File is closed") != -1)
+            writeClosedFailed = true
+        }
+        assert(writeClosedFailed == true)
+        File.delete(closedTestPath)
+
+        // 9.3 Đảm bảo đóng file an toàn trong try-finally ngay cả khi gặp lỗi
+        val safePath = "test_try_finally_file.txt"
+        var finallyExecuted = false
+        try {
+            val f = File(safePath, FileMode.WRITE)
+            try {
+                f.write("content")
+                throw Exception("Forced error inside file processing")
+            } finally {
+                f.close()
+                finallyExecuted = true
+            }
+        } catch (e) {
+            assert(e.message.indexOf("Forced error") != -1)
+        }
+        assert(finallyExecuted == true)
+        // Trên Windows, nếu file chưa được đóng trong finally thì lệnh delete sẽ thất bại
+        assert(File.delete(safePath) == true)
+
+        // 9.4 Test forEachLine trên file rỗng (0 bytes)
+        val emptyPath = "test_empty_file.txt"
+        val emptyF = File(emptyPath, FileMode.WRITE)
+        emptyF.close()
+        var emptyLineCount = 0
+        val emptyReader = File(emptyPath, FileMode.READ)
+        emptyReader.forEachLine {|line|
+            emptyLineCount += 1
+        }
+        emptyReader.close()
+        assert(emptyLineCount == 0)
+        File.delete(emptyPath)
+
+        // 9.5 Test Metadata mở rộng: getSize, getExtension
+        val metaPath = "test_meta_data.bin"
+        val metaWriter = File(metaPath, FileMode.WRITE)
+        metaWriter.write("1234567890")
+        metaWriter.close()
+        assert(File.getSize(metaPath) == 10)
+        assert(File.getExtension(metaPath) == ".bin")
+        assert(File.getExtension("no_extension_file") == "")
+        File.delete(metaPath)
+
+        // --- 10. Teardown (Xóa file test chính để trả lại môi trường sạch) ---
         val deleted = File.delete(testPath)
-        assert(deleted == true, __FILE__, __LINE__)
-        assert(File.exists(testPath) == false, __FILE__, __LINE__)
+        assert(deleted == true)
+        assert(File.exists(testPath) == false)
 
         // Nếu vượt qua hết
         println("Passed ${__FUNC__}")
@@ -93,4 +176,4 @@ class TestFileFeaturesExhaustive {
 }
 
 // Chạy bài test
-TestFileFeaturesExhaustive().testFileFeaturesExhaustive()
+TestFileFeaturesExhaustive().testFileFeaturesExhaustive()

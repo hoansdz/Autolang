@@ -15,10 +15,11 @@ struct CreateFuncNode : ExprNode {
 	std::optional<ClassId> contextCallClassId;
 	LexerStringId nameId;
 	uint32_t tokenIndex;
-	ClassDeclaration *classDeclaration;
 	FunctionId id;
-	Parameter *parameter;
 	uint32_t functionFlags;
+	ClassDeclaration *classDeclaration;
+	Parameter *parameter;
+	bool optimized;
 	CreateFuncNode(uint32_t line, uint32_t tokenIndex,
 	               std::optional<ClassId> contextCallClassId,
 	               LexerStringId nameId, ClassDeclaration *classDeclaration,
@@ -26,12 +27,13 @@ struct CreateFuncNode : ExprNode {
 	    : ExprNode(NodeType::CREATE_FUNC, line),
 	      contextCallClassId(contextCallClassId), nameId(nameId),
 	      tokenIndex(tokenIndex), classDeclaration(classDeclaration),
-	      parameter(parameter), functionFlags(functionFlags) {}
+	      parameter(parameter), functionFlags(functionFlags), optimized(false) {
+	}
 	template <bool addToGlobalScope = true> void pushFunction(in_func);
 	template <bool addToGlobalScope = true>
 	void pushNativeFunction(in_func, ANativeFunctionData *native);
 	ExprNode *copy(in_func) override;
-	void optimize(in_func) override;
+	ExprNode *optimize(in_func) override;
 	~CreateFuncNode() {}
 };
 

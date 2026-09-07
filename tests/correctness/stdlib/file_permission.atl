@@ -1,21 +1,268 @@
 @import("std/file")
 
-fun testFilePermission() {
-    // Test: File path length > 512 -> should get blocked with SecurityError
+// Test: File path length > 512 -> should get blocked with SecurityError
+fun testFilePermissionExactBoundary() {
+    val path512 = String("a", 512)
+    assert(path512.size() == 512)
+
+    // Đường dẫn 512 ký tự: nằm trong giới hạn cho phép (<= 512), không được ném SecurityError
+    val exists512 = File.exists(path512)
+    assert(exists512 == false)
+
+    // Đường dẫn 513 ký tự: vượt ngưỡng cho phép (> 512), bắt buộc ném SecurityError
+    val path513 = String("a", 513)
+    assert(path513.size() == 513)
+    var blocked = false
     try {
-        var longPath = "a"
-        for (i in 0..8) {
-            longPath = longPath + longPath
-        }
-        longPath = longPath + "b.txt"
-        val f = File(longPath, FileMode.READ)
-        assert(false, __FILE__, __LINE__)
+        File.exists(path513)
     } catch (e) {
-        val errStr = e.message
-        assert(errStr.indexOf("SecurityError") != -1, __FILE__, __LINE__)
+        val msg = e.message
+        if (msg.indexOf("SecurityError") != -1) {
+            blocked = true
+        }
+    }
+    assert(blocked == true)
+}
+
+fun testFilePermissionAllMethods() {
+    val pathOverflow = String("z", 520)
+    var totalBlocked = 0
+
+    // 1. File Constructor READ
+    try {
+        File(pathOverflow, FileMode.READ)
+        assert(false)
+    } catch (e) {
+        if (e.message.indexOf("SecurityError") != -1) totalBlocked += 1
     }
 
+    // 2. File Constructor WRITE
+    try {
+        File(pathOverflow, FileMode.WRITE)
+        assert(false)
+    } catch (e) {
+        if (e.message.indexOf("SecurityError") != -1) totalBlocked += 1
+    }
+
+    // 3. File Constructor APPEND
+    try {
+        File(pathOverflow, FileMode.APPEND)
+        assert(false)
+    } catch (e) {
+        if (e.message.indexOf("SecurityError") != -1) totalBlocked += 1
+    }
+
+    // 4. File.exists
+    try {
+        File.exists(pathOverflow)
+        assert(false)
+    } catch (e) {
+        if (e.message.indexOf("SecurityError") != -1) totalBlocked += 1
+    }
+
+    // 5. File.isFile
+    try {
+        File.isFile(pathOverflow)
+        assert(false)
+    } catch (e) {
+        if (e.message.indexOf("SecurityError") != -1) totalBlocked += 1
+    }
+
+    // 6. File.isDirectory
+    try {
+        File.isDirectory(pathOverflow)
+        assert(false)
+    } catch (e) {
+        if (e.message.indexOf("SecurityError") != -1) totalBlocked += 1
+    }
+
+    // 7. File.getSize
+    try {
+        File.getSize(pathOverflow)
+        assert(false)
+    } catch (e) {
+        if (e.message.indexOf("SecurityError") != -1) totalBlocked += 1
+    }
+
+    // 8. File.getLastModified
+    try {
+        File.getLastModified(pathOverflow)
+        assert(false)
+    } catch (e) {
+        if (e.message.indexOf("SecurityError") != -1) totalBlocked += 1
+    }
+
+    // 9. File.getAbsolutePath
+    try {
+        File.getAbsolutePath(pathOverflow)
+        assert(false)
+    } catch (e) {
+        if (e.message.indexOf("SecurityError") != -1) totalBlocked += 1
+    }
+
+    // 10. File.delete
+    try {
+        File.delete(pathOverflow)
+        assert(false)
+    } catch (e) {
+        if (e.message.indexOf("SecurityError") != -1) totalBlocked += 1
+    }
+
+    // 11. File.getAllFiles
+    try {
+        File.getAllFiles(pathOverflow)
+        assert(false)
+    } catch (e) {
+        if (e.message.indexOf("SecurityError") != -1) totalBlocked += 1
+    }
+
+    assert(totalBlocked == 11)
+}
+
+fun testFilePermissionNestedTryFinally() {
+    val badPath = String("x", 600)
+    var trace = ""
+
+    try {
+        trace += "T1_"
+        try {
+            trace += "T2_"
+            try {
+                trace += "T3_"
+                File.exists(badPath)
+                trace += "NEVER_"
+            } catch (e3) {
+                trace += "C3_"
+                assert(e3.message.indexOf("SecurityError") != -1)
+                // Ném tiếp thao tác vi phạm khác bên trong khối catch
+                File.delete(badPath)
+            } finally {
+                trace += "F3_"
+            }
+        } catch (e2) {
+            trace += "C2_"
+            assert(e2.message.indexOf("SecurityError") != -1)
+        } finally {
+            trace += "F2_"
+        }
+    } finally {
+        trace += "F1"
+    }
+
+    assert(trace == "T1_T2_T3_C3_F3_C2_F2_F1")
+}
+
+fun probeRecursion(depth: Int, maxDepth: Int): Int {
+    if (depth > maxDepth) {
+        return 0
+    }
+    val currentLength = 510 + depth
+    val path = String("r", currentLength)
+    var errorCount = 0
+
+    try {
+        File.exists(path)
+        assert(currentLength <= 512)
+    } catch (e) {
+        assert(currentLength > 512)
+        assert(e.message.indexOf("SecurityError") != -1)
+        errorCount += 1
+    }
+
+    val childCount = probeRecursion(depth + 1, maxDepth)
+    return errorCount + childCount
+}
+
+fun testFilePermissionRecursion() {
+    // depth từ 1 đến 5:
+    // depth 1: len 511 -> ok
+    // depth 2: len 512 -> ok
+    // depth 3: len 513 -> SecurityError (1)
+    // depth 4: len 514 -> SecurityError (2)
+    // depth 5: len 515 -> SecurityError (3)
+    val totalViolations = probeRecursion(1, 5)
+    assert(totalViolations == 3)
+}
+
+fun testFilePermissionNestedCollections() {
+    val pathCatalog = {
+        "ok": ["short_path_1.txt", String("m", 512)],
+        "overflow": [String("n", 513), String("o", 550), String("p", 1000)]
+    }
+
+    var okSeen = 0
+    var overflowBlocked = 0
+
+    // Duyệt qua keys() của map
+    val categories = pathCatalog.keys()
+    for (category in categories) {
+        val paths = pathCatalog.get(category)
+        if (paths != null) {
+            for (p in paths) {
+                try {
+                    val exists = File.exists(p)
+                    assert(exists == false)
+                    assert(category == "ok")
+                    okSeen += 1
+                } catch (e) {
+                    assert(category == "overflow")
+                    assert(e.message.indexOf("SecurityError") != -1)
+                    overflowBlocked += 1
+                }
+            }
+        }
+    }
+
+    assert(okSeen == 2)
+    assert(overflowBlocked == 3)
+
+    // Duyệt bằng forEach closure của Map
+    var forEachOkSeen = 0
+    var forEachOverflowBlocked = 0
+    pathCatalog.forEach {|category, paths|
+        for (p in paths) {
+            try {
+                val isFile = File.isFile(p)
+                assert(isFile == false)
+                assert(category == "ok")
+                forEachOkSeen += 1
+            } catch (e) {
+                assert(category == "overflow")
+                assert(e.message.indexOf("SecurityError") != -1)
+                forEachOverflowBlocked += 1
+            }
+        }
+    }
+
+    assert(forEachOkSeen == 2)
+    assert(forEachOverflowBlocked == 3)
+}
+
+fun testFilePermissionStressLoop() {
+    var caught = 0
+    for (i in 0..49) {
+        val bad = String("s", 513 + i)
+        try {
+            File.isFile(bad)
+            assert(false)
+        } catch (e) {
+            if (e.message.indexOf("SecurityError") != -1) {
+                caught += 1
+            }
+        }
+    }
+    assert(caught == 50)
+}
+
+fun testFilePermission() {
+    testFilePermissionExactBoundary()
+    testFilePermissionAllMethods()
+    testFilePermissionNestedTryFinally()
+    testFilePermissionRecursion()
+    testFilePermissionNestedCollections()
+    testFilePermissionStressLoop()
     println("Passed ${__FUNC__}")
 }
 
 testFilePermission()
+

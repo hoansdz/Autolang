@@ -1,7 +1,40 @@
-class Test {
-	static fun <T> log(value: T?) {
-		println(value)
-	}
+class TestReciprocal {
+    var count = 100
+
+    fun getCountPlus(): Int {
+        return count + 1
+    }
+
+    static fun staticMethod(): String {
+        return "static hello"
+    }
+
+    static val staticProp = 999
 }
 
-Test.log<Int>(5)
+val t = TestReciprocal()
+
+// 1. Function called without parentheses: a.b -> a.b()
+assert(t.getCountPlus == 101)
+assert(t.getCountPlus() == 101)
+
+// 2. Property called with parentheses: a.b() -> a.b
+assert(t.count() == 100)
+assert(t.count == 100)
+
+// 3. Static method called without parentheses: Class.b -> Class.b()
+assert(TestReciprocal.staticMethod == "static hello")
+assert(TestReciprocal.staticMethod() == "static hello")
+
+// 4. Static property called with parentheses: Class.b() -> Class.b
+assert(TestReciprocal.staticProp() == 999)
+assert(TestReciprocal.staticProp == 999)
+
+// 5. Function pointers using ::
+val fn1: () -> Int = t::getCountPlus
+assert(fn1() == 101)
+
+val fn2: () -> String = TestReciprocal::staticMethod
+assert(fn2() == "static hello")
+
+println("All reciprocal and pointer tests passed!")

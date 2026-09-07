@@ -12,37 +12,37 @@ fun testArrayFeaturesExhaustive() {
     // 1. Test: Explicit Constructor Array<Int>(), reserve, isEmpty, size
     val explicitArr = Array<Int>()
     explicitArr.reserve(10)
-    assert(explicitArr.isEmpty() == true, __FILE__, __LINE__)
-    assert(explicitArr.size() == 0, __FILE__, __LINE__)
+    assert(explicitArr.isEmpty() == true)
+    assert(explicitArr.size() == 0)
 
     // 2. Test: Sugar Syntax, get, set, add
     val a = <Int>[5, 9, 12, 6, 3, 4]
-    assert(a.size() == 6, __FILE__, __LINE__)
-    assert(a.get(1) == 9, __FILE__, __LINE__)
+    assert(a.size() == 6)
+    assert(a.get(1) == 9)
     
     a.set(1, 10)
-    assert(a.get(1) == 10, __FILE__, __LINE__)
+    assert(a.get(1) == 10)
     
     a.add(7)
-    assert(a.get(6) == 7, __FILE__, __LINE__)
+    assert(a.get(6) == 7)
 
     // 3. Test: insert, indexOf, contains
     a.insert(2, 1)
-    assert(a.get(2) == 1, __FILE__, __LINE__)
-    assert(a.size() == 8, __FILE__, __LINE__)
+    assert(a.get(2) == 1)
+    assert(a.size() == 8)
     
-    assert(a.indexOf(1) == 2, __FILE__, __LINE__)
-    assert(a.indexOf(33) == -1, __FILE__, __LINE__) 
-    assert(a.contains(12) == true, __FILE__, __LINE__)
-    assert((99 in a) == false, __FILE__, __LINE__)
+    assert(a.indexOf(1) == 2)
+    assert(a.indexOf(33) == -1) 
+    assert(a.contains(12) == true)
+    assert((99 in a) == false)
 
     // 4. Test: remove, pop
     a.remove(2)
-    assert(a.get(2) == 12, __FILE__, __LINE__)
+    assert(a.get(2) == 12)
     
     val poppedValue = a.pop()
-    assert(poppedValue == 7, __FILE__, __LINE__)
-    assert(a.size() == 6, __FILE__, __LINE__)
+    assert(poppedValue == 7)
+    assert(a.size() == 6)
 
     // 5. Test: forEach
     globalArraySum = 0
@@ -52,31 +52,31 @@ fun testArrayFeaturesExhaustive() {
 	a.forEach {|value, index|
 		globalArraySum += value
 	}
-    assert(globalArraySum == 80, __FILE__, __LINE__)
+    assert(globalArraySum == 80)
 
     // 6. Test: sort
     a.sort(arraySortValue)
-    assert(a.get(0) == 3, __FILE__, __LINE__)
-    assert(a.get(5) == 12, __FILE__, __LINE__)
+    assert(a.get(0) == 3)
+    assert(a.get(5) == 12)
 
     // 7. Test: filter
     val filteredArr = a.filter {|value| value > 5}
-    assert(filteredArr.size() == 3, __FILE__, __LINE__)
-    assert(filteredArr.get(0) == 6, __FILE__, __LINE__)
+    assert(filteredArr.size() == 3)
+    assert(filteredArr.get(0) == 6)
 
     // 8. Test: slice
     val slicedArr = a.slice(1, 4)
-    assert(slicedArr.size() == 3, __FILE__, __LINE__)
-    assert(slicedArr.get(0) == 4, __FILE__, __LINE__)
+    assert(slicedArr.size() == 3)
+    assert(slicedArr.get(0) == 4)
 
     // 9. Test: toString
     val str = a.toString()
-    assert(str is String, __FILE__, __LINE__)
+    assert(str is String)
 
     // 10. Clean up test
     a.clear()
-    assert(a.isEmpty() == true, __FILE__, __LINE__)
-    assert(a.size() == 0, __FILE__, __LINE__)
+    assert(a.isEmpty() == true)
+    assert(a.size() == 0)
 
     // Only prints if all assertions pass
     println("Passed ${__FUNC__}")

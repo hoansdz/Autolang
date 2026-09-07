@@ -15,12 +15,12 @@ ExprNode *WhenNode::resolve(in_func) {
 	return this;
 }
 
-void WhenNode::optimize(in_func) {
+ExprNode *WhenNode::optimize(in_func) {
 	if (isForceNonNull) {
 		ifNode->isForceNonNull = true;
 	}
 	if (value) {
-		value->optimize(in_data);
+		value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 	}
 	if (ifNode) {
 		if (classId != DefaultClass::nullClassId) {
@@ -29,16 +29,17 @@ void WhenNode::optimize(in_func) {
 				ifNode->classDeclaration = classDeclaration;
 			}
 			ifNode->nullable = nullable;
-			ifNode->optimize(in_data);
-			return;
+			ifNode = static_cast<IfNode *>(ifNode->optimize(in_data));
+			return this;
 		}
-		ifNode->optimize(in_data);
+		ifNode = static_cast<IfNode *>(ifNode->optimize(in_data));
 		classId = ifNode->classId;
 		nullable = ifNode->nullable;
 		if (classId == DefaultClass::functionClassId) {
 			classDeclaration = ifNode->classDeclaration;
 		}
 	}
+	return this;
 }
 
 void WhenNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {

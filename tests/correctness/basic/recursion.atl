@@ -4,7 +4,7 @@ fun fact(n: Int): Int {
 }
 
 fun testRecursion() {
-	assert(fact(5) == 120, __FILE__, __LINE__)
+	assert(fact(5) == 120)
 	println("Passed ${__FUNC__}")
 }
 

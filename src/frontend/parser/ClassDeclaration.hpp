@@ -2,10 +2,10 @@
 #define CLASS_DECLARATION_HPP
 
 #include "frontend/parser/node/OptimizeNode.hpp"
+#include "shared/DefaultClass.hpp"
 #include "shared/Type.hpp"
 #include <optional>
 #include <vector>
-#include "shared/DefaultClass.hpp"
 
 namespace Autolang {
 
@@ -27,7 +27,8 @@ struct ClassDeclaration {
 	std::vector<ClassDeclaration *> inputClassId;
 	std::optional<uint32_t> classId;
 	inline bool isGenerics(in_func) { return isGeneric; }
-	template <bool changeGenericsClassId, bool canBeFunction = false>
+	template <bool changeGenericsClassId, bool canBeFunction = false,
+	          bool isLazy = false>
 	void load(in_func);
 	template <bool changeGenericsClassId, bool canBeFunction = false>
 	void onLoadTypealias(in_func, TypealiasData *typealias);

@@ -94,6 +94,16 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 	uint32_t firstLine = token->line;
 	HasClassIdNode *node;
 	switch (token->type) {
+		case Lexer::TokenType::COLON_COLON: {
+			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
+			    !expect(token, Lexer::TokenType::IDENTIFIER)) {
+				--i;
+				throw ParserError(firstLine, "Expected function name after '::'");
+			}
+			node = context.functionAccessPool.push(firstLine, nullptr,
+			                                       token->indexData);
+			break;
+		}
 		case Lexer::TokenType::IDENTIFIER: {
 			node = loadIdentifier(in_data, i);
 			if (node->kind != NodeType::CALL ||
@@ -257,6 +267,17 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 		if (!nextToken(&token, context.tokens, i))
 			goto ret;
 		switch (token->type) {
+			case Lexer::TokenType::COLON_COLON: {
+				if (!nextTokenSameLine(&token, context.tokens, i, endLine) ||
+				    !expect(token, Lexer::TokenType::IDENTIFIER)) {
+					--i;
+					throw ParserError(endLine,
+					                  "Expected function name after '::'");
+				}
+				node = context.functionAccessPool.push(endLine, node,
+				                                       token->indexData);
+				break;
+			}
 			case Lexer::TokenType::LBRACKET: {
 				if (token->line != endLine)
 					goto ret;

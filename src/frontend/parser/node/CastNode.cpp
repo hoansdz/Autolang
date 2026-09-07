@@ -77,23 +77,23 @@ errCast:;
 	           "\nHint: Ensure the expression can be cast to the target type or use safe cast 'as?'.");
 }
 
-void CastNode::optimize(in_func) {
-	value->optimize(in_data);
+ExprNode *CastNode::optimize(in_func) {
+	value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 	if (value->classId == classId) {
-		return;
+		return this;
 	}
 	if (classId == DefaultClass::anyClassId) {
-		return;
+		return this;
 	}
 	switch (classId) {
 		case Autolang::DefaultClass::intClassId: {
 			switch (value->classId) {
 				case Autolang::DefaultClass::intClassId:
 				case Autolang::DefaultClass::floatClassId: {
-					return;
+					return this;
 				}
 				case Autolang::DefaultClass::boolClassId: {
-					return;
+					return this;
 				}
 				default: {
 					goto errCast;
@@ -106,7 +106,7 @@ void CastNode::optimize(in_func) {
 				case Autolang::DefaultClass::intClassId:
 				case Autolang::DefaultClass::floatClassId:
 				case Autolang::DefaultClass::boolClassId: {
-					return;
+					return this;
 				}
 				default: {
 					throwError("Cannot cast " +
@@ -127,7 +127,7 @@ void CastNode::optimize(in_func) {
 					    "\nHint: Replace direct boolean cast with an explicit comparison expression.");
 				}
 				case Autolang::DefaultClass::boolClassId: {
-					return;
+					return this;
 				}
 				default: {
 					throwError("Cannot cast " +
@@ -142,7 +142,7 @@ void CastNode::optimize(in_func) {
 			// Extended class
 			if (compile.classes[classId]->inheritance.get(value->classId) ||
 			    compile.classes[value->classId]->inheritance.get(classId)) {
-				return;
+				return this;
 			}
 			throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) +
 			           " to " + compile.classes[classId]->getName(compile) +
@@ -214,16 +214,16 @@ ExprNode *RuntimeCastNode::resolve(in_func) {
 	return this;
 }
 
-void RuntimeCastNode::optimize(in_func) {
-	value->optimize(in_data);
+ExprNode *RuntimeCastNode::optimize(in_func) {
+	value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 	if (value->classId == classId ||
 	    compile.classes[value->classId]->inheritance.get(classId)) {
-		return;
+		return this;
 	}
 	if (classId == DefaultClass::anyClassId ||
 	    value->classId == DefaultClass::anyClassId ||
 	    compile.classes[classId]->inheritance.get(value->classId)) {
-		return;
+		return this;
 	}
 	throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) + " to " +
 	           compile.classes[classId]->getName(compile) +

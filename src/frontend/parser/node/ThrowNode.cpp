@@ -11,8 +11,8 @@ ExprNode *ThrowNode::resolve(in_func) {
 	return this;
 }
 
-void ThrowNode::optimize(in_func) {
-	value->optimize(in_data);
+ExprNode *ThrowNode::optimize(in_func) {
+	value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 	switch (value->kind) {
 		case NodeType::CLASS_ACCESS:
 			throwError("Expression in throw statement must produce a value\nHint: Class reference cannot be thrown directly. Instantiate the exception object (e.g. `throw Exception(...)`).");
@@ -30,6 +30,7 @@ void ThrowNode::optimize(in_func) {
 			}
 		}
 	}
+	return this;
 }
 
 void ThrowNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {

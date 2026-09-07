@@ -39,9 +39,11 @@ template <size_t size> class AreaAllocator {
 		currentManagedMemory += sizeof(AObject);
 		changedMemory = true;
 		if (freeSlot != nullptr) {
-			auto *obj = &freeSlot->obj;
+			auto *slot = freeSlot;
+			auto *obj = &slot->obj;
 			obj->flags = 0;
-			freeSlot = freeSlot->nextFree;
+			freeSlot = slot->nextFree;
+			slot->nextFree = nullptr;
 			return obj;
 		}
 		countObject += size;
@@ -58,13 +60,16 @@ template <size_t size> class AreaAllocator {
 		return &newChunk->data[0].obj;
 	}
 	inline void release(AObject *obj) {
+		AreaChunkSlot *slot = reinterpret_cast<AreaChunkSlot *>(obj);
+		if (slot == freeSlot || slot->nextFree != nullptr) {
+			return;
+		}
 		if (currentManagedMemory >= sizeof(AObject)) {
 			currentManagedMemory -= sizeof(AObject);
 		} else {
 			currentManagedMemory = 0;
 		}
 		changedMemory = true;
-		AreaChunkSlot *slot = reinterpret_cast<AreaChunkSlot *>(obj);
 		obj->flags = AObject::Flags::OBJ_IS_FREE;
 		slot->nextFree = freeSlot;
 		freeSlot = slot;

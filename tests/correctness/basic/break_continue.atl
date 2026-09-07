@@ -7,7 +7,7 @@ fun testBreakContinue() {
 			break
 		}
 	}
-	assert(breakAt == 4, __FILE__, __LINE__)
+	assert(breakAt == 4)
 
 	// Test break exits only inner loop
 	var outerCount = 0
@@ -21,8 +21,8 @@ fun testBreakContinue() {
 			}
 		}
 	}
-	assert(outerCount == 3, __FILE__, __LINE__)
-	assert(innerBreakAt == 2, __FILE__, __LINE__)
+	assert(outerCount == 3)
+	assert(innerBreakAt == 2)
 
 	// Test continue skips rest of loop body
 	var sum = 0
@@ -30,7 +30,7 @@ fun testBreakContinue() {
 		if (i % 2 == 0) continue
 		sum += i  // Only odd: 1+3+5+7+9 = 25
 	}
-	assert(sum == 25, __FILE__, __LINE__)
+	assert(sum == 25)
 
 	// Test break in while loop
 	var n = 0
@@ -38,7 +38,7 @@ fun testBreakContinue() {
 		n += 1
 		if (n == 5) break
 	}
-	assert(n == 5, __FILE__, __LINE__)
+	assert(n == 5)
 
 	// Test continue in while loop (code after continue unreachable)
 	var whileSum = 0
@@ -48,7 +48,7 @@ fun testBreakContinue() {
 		if (k % 2 == 0) continue
 		whileSum += k  // Only odd k: 1+3+5+7+9 = 25
 	}
-	assert(whileSum == 25, __FILE__, __LINE__)
+	assert(whileSum == 25)
 
 	println("Passed ${__FUNC__}")
 }

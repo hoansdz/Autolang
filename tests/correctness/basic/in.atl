@@ -3,31 +3,31 @@ fun testInExpression() {
 	val b = 2
 
 	// Int range inclusive
-	assert((a + b) in 3..9, __FILE__, __LINE__)
-	assert(!((a - b) in 3..9), __FILE__, __LINE__)
-	assert((a + b) in 0..3, __FILE__, __LINE__)
+	assert((a + b) in 3..9)
+	assert(!((a - b) in 3..9))
+	assert((a + b) in 0..3)
 
 	// Int range exclusive
-	assert(!((a + b) in 0..<3), __FILE__, __LINE__)
-	assert((a + b) in 0..<4, __FILE__, __LINE__)
+	assert(!((a + b) in 0..<3))
+	assert((a + b) in 0..<4)
 
 	// Boundary conditions
-	assert(3 in 3..9, __FILE__, __LINE__)    // inclusive lower bound
-	assert(9 in 3..9, __FILE__, __LINE__)    // inclusive upper bound
-	assert(!(2 in 3..9), __FILE__, __LINE__) // below lower bound
-	assert(!(10 in 3..9), __FILE__, __LINE__)// above upper bound
-	assert(!(3 in 4..9), __FILE__, __LINE__) // just below lower
+	assert(3 in 3..9)    // inclusive lower bound
+	assert(9 in 3..9)    // inclusive upper bound
+	assert(!(2 in 3..9)) // below lower bound
+	assert(!(10 in 3..9))// above upper bound
+	assert(!(3 in 4..9)) // just below lower
 
 	// Exclusive upper bound
-	assert(!(9 in 3..<9), __FILE__, __LINE__) // exclusive upper
-	assert(8 in 3..<9, __FILE__, __LINE__)
+	assert(!(9 in 3..<9)) // exclusive upper
+	assert(8 in 3..<9)
 
 	// in with Array<Int>
 	val list = <Int>[1, 2, 3, 4, 5]
-	assert(1 in list, __FILE__, __LINE__)
-	assert(5 in list, __FILE__, __LINE__)
-	assert(!(6 in list), __FILE__, __LINE__)
-	assert(!(0 in list), __FILE__, __LINE__)
+	assert(1 in list)
+	assert(5 in list)
+	assert(!(6 in list))
+	assert(!(0 in list))
 
 	// in with Set<String>
 	val set = <String> {
@@ -35,15 +35,15 @@ fun testInExpression() {
 		"My name is John",
 		"My name is John",  // duplicates collapsed
 	}
-	assert("My name is John" in set, __FILE__, __LINE__)
-	assert("Hello everyone" in set, __FILE__, __LINE__)
-	assert(!("f" in set), __FILE__, __LINE__)
-	assert(!("" in set), __FILE__, __LINE__)
+	assert("My name is John" in set)
+	assert("Hello everyone" in set)
+	assert(!("f" in set))
+	assert(!("" in set))
 
 	// in with Array<String>
 	val words = <String>["apple", "banana", "cherry"]
-	assert("banana" in words, __FILE__, __LINE__)
-	assert(!("grape" in words), __FILE__, __LINE__)
+	assert("banana" in words)
+	assert(!("grape" in words))
 
 	println("Passed ${__FUNC__}")	
 }

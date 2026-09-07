@@ -3,10 +3,39 @@
 fun _d(): Float = 0
 fun plus(a: Int, b: Int, c: Int): Float = a + b + c + _d()
 
+class CallableTestClass {
+	var count = 100
+
+	fun getCount(): Int {
+		return count + 1
+	}
+
+	static fun staticMethod(): String {
+		return "static hello"
+	}
+
+	static val staticProp = 999
+}
+
 fun testFunction() {
 	static val m = 4
 	val x = plus(2, 3, m)
-	assert(x == 9, __FILE__, __LINE__)
+	assert(x == 9)
+
+	val t = CallableTestClass()
+	// Function called without parentheses: a.b -> a.b()
+	assert(t.getCount == 101)
+	assert(t.getCount() == 101)
+
+	// Property called with parentheses: a.b() -> a.b
+	assert(t.count() == 100)
+	assert(t.count == 100)
+
+	// Static method and property equivalence
+	assert(CallableTestClass.staticMethod == "static hello")
+	assert(CallableTestClass.staticMethod() == "static hello")
+	assert(CallableTestClass.staticProp() == 999)
+	assert(CallableTestClass.staticProp == 999)
 
 	println("Passed ${__FUNC__}")
 }

@@ -18,10 +18,11 @@ ExprNode *OptionalAccessNode::resolve(in_func) {
 	return this;
 }
 
-void OptionalAccessNode::optimize(in_func) {
-	value->optimize(in_data);
+ExprNode *OptionalAccessNode::optimize(in_func) {
+	value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 	classId = value->classId;
 	nullable = value->isNullable();
+	return this;
 }
 
 void OptionalAccessNode::putBytecodes(in_func,

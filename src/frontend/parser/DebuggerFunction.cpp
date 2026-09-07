@@ -4,6 +4,7 @@
 #include "frontend/ACompiler.hpp"
 #include "frontend/parser/Debugger.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "shared/ClassFlags.hpp"
 #include "shared/FunctionFlags.hpp"
 
 namespace Autolang {
@@ -101,6 +102,10 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 	if (context.annotationFlags & AnnotationFlags::AN_OPERATOR) {
 		functionFlags |= FunctionFlags::FUNC_IS_OPERATOR;
 	}
+	if (context.annotationFlags & AnnotationFlags::AN_IMPLICIT) {
+		functionFlags |= FunctionFlags::FUNC_IS_IMPLICIT;
+		context.annotationFlags &= ~AnnotationFlags::AN_IMPLICIT;
+	}
 	if (context.annotationFlags & AnnotationFlags::AN_WAIT_INPUT) {
 		throw ParserError(firstLine,
 		                  "@wait_input is currently not supported\nHint: "
@@ -169,6 +174,50 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		throw ParserError(firstLine,
 		                  "Expected '(' after function name but not "
 		                  "found\nHint: Add '(' to start parameter list");
+	}
+	if (token->type != Lexer::TokenType::DOT && context.currentClassId &&
+	    !hasStaticFlag) {
+		auto clazz = context.getCurrentClass(in_data);
+		if (!(clazz->classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR) &&
+		    context.lexerString[nameId] == clazz->getName(compile)) {
+			auto classInfo = context.getCurrentClassInfo(in_data);
+			if (classInfo->primaryConstructor) {
+				throw ParserError(
+				    firstLine,
+				    "Cannot declare constructor in a data class\nHint: "
+				    "Data classes use primary constructor header 'class "
+				    "Name(...)'");
+			}
+			if (functionFlags & FunctionFlags::FUNC_OVERRIDE) {
+				throw ParserError(
+				    firstLine,
+				    "@override is only supported on functions\nHint: "
+				    "Remove @override from constructor declaration");
+			}
+			if (functionFlags & FunctionFlags::FUNC_NO_OVERRIDE) {
+				throw ParserError(
+				    firstLine,
+				    "@no_override is only supported on functions\nHint: "
+				    "Remove @no_override from constructor declaration");
+			}
+			if (functionFlags & FunctionFlags::FUNC_IS_OPERATOR) {
+				throw ParserError(
+				    firstLine,
+				    "@operator is not supported on constructors\nHint: "
+				    "Remove @operator from constructor declaration");
+			}
+			if ((clazz->classFlags & ClassFlags::CLASS_NATIVE_DATA) &&
+			    !(functionFlags & FunctionFlags::FUNC_IS_NATIVE)) {
+				throw ParserError(
+				    firstLine,
+				    "Class " + clazz->getName(compile) +
+				        " is marked @native_data, so the constructor must be "
+				        "native\nHint: Add @native(\"name\") to constructor");
+			}
+			loadConstructorBody(in_data, i, firstLine, functionFlags, clazz,
+			                    classInfo);
+			return nullptr;
+		}
 	}
 	if (token->type == Lexer::TokenType::DOT) {
 		if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
@@ -366,6 +415,14 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			    firstLine,
 			    "Operator 'contains' requires exactly 1 parameter\nHint: "
 			    "Define 'contains' with 1 parameter, e.g. '@operator fun contains(item: T): Bool'");
+		}
+	}
+	if (functionFlags & FunctionFlags::FUNC_IS_IMPLICIT) {
+		if (parameter->defaultValuePos > 1) {
+			throw ParserError(
+			    firstLine,
+			    "Implicit function must have at most 1 required parameter\nHint: "
+			    "Provide default values for additional parameters or declare function with at most 1 parameter");
 		}
 	}
 	if (!parameter->parameterDefaultValues.empty() &&

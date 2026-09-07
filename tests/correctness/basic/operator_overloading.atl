@@ -65,37 +65,37 @@ fun <T, R> testGenericTransform(x: T, fallback: R): R {
 fun testOperatorOverloading() {
 	// 1. Operator keyword (get, set, contains)
 	val col = CustomCollection([10, 20, 30])
-	assert(col[0] == 10, __FILE__, __LINE__)
-	assert(col[1] == 20, __FILE__, __LINE__)
-	assert(col[2] == 30, __FILE__, __LINE__)
+	assert(col[0] == 10)
+	assert(col[1] == 20)
+	assert(col[2] == 30)
 
 	col[1] = 99
-	assert(col[1] == 99, __FILE__, __LINE__)
+	assert(col[1] == 99)
 
-	assert(99 in col, __FILE__, __LINE__)
-	assert(!(100 in col), __FILE__, __LINE__)
+	assert(99 in col)
+	assert(!(100 in col))
 
 	// 2. @operator annotation with duplicates
 	val strCol = AnnotatedCollection(["alpha", "beta"])
-	assert(strCol[0] == "alpha", __FILE__, __LINE__)
-	assert(strCol[1] == "beta", __FILE__, __LINE__)
+	assert(strCol[0] == "alpha")
+	assert(strCol[1] == "beta")
 
 	strCol[0] = "gamma"
-	assert(strCol[0] == "gamma", __FILE__, __LINE__)
-	assert("gamma" in strCol, __FILE__, __LINE__)
-	assert(!("alpha" in strCol), __FILE__, __LINE__)
+	assert(strCol[0] == "gamma")
+	assert("gamma" in strCol)
+	assert(!("alpha" in strCol))
 
 	// 3. override keyword
 	val worker: BaseWorker = DerivedWorker()
-	assert(worker.work() == "DerivedWorker", __FILE__, __LINE__)
+	assert(worker.work() == "DerivedWorker")
 
 	// 4. Duplicate @no_constructor
-	assert(DuplicateAnnotationTest.ping() == "pong", __FILE__, __LINE__)
+	assert(DuplicateAnnotationTest.ping() == "pong")
 
 	// 5. fun <T> Kotlin-style generic functions
-	assert(testGenericIdentity<Int>(42) == 42, __FILE__, __LINE__)
-	assert(testGenericIdentity<String>("hello") == "hello", __FILE__, __LINE__)
-	assert(testGenericTransform<Int, String>(10, "ok") == "ok", __FILE__, __LINE__)
+	assert(testGenericIdentity<Int>(42) == 42)
+	assert(testGenericIdentity<String>("hello") == "hello")
+	assert(testGenericTransform<Int, String>(10, "ok") == "ok")
 
 	println("Passed ${__FUNC__}")
 }

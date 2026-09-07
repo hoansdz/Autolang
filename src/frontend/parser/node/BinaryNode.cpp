@@ -189,9 +189,9 @@ ExprNode *BinaryNode::resolve(in_func) {
 	}
 }
 
-void BinaryNode::optimize(in_func) {
-	left->optimize(in_data);
-	right->optimize(in_data);
+ExprNode *BinaryNode::optimize(in_func) {
+	left = static_cast<HasClassIdNode *>(left->optimize(in_data));
+	right = static_cast<HasClassIdNode *>(right->optimize(in_data));
 	switch (left->kind) {
 		case NodeType::CONST_VAL:
 			static_cast<ConstValueNode *>(left)->isLoadPrimary = true;
@@ -234,7 +234,7 @@ void BinaryNode::optimize(in_func) {
 				           Lexer::Token(0, op).toString(context) + " ClassName).");
 			}
 			classId = DefaultClass::boolClassId;
-			return;
+			return this;
 		}
 		case Lexer::TokenType::IN_:
 		case Lexer::TokenType::NOT_IN: {
@@ -258,7 +258,7 @@ void BinaryNode::optimize(in_func) {
 			}
 
 			classId = DefaultClass::boolClassId;
-			return;
+			return this;
 		}
 		case Lexer::TokenType::PLUS: {
 			if (left->kind == NodeType::CLASS_ACCESS ||
@@ -425,13 +425,13 @@ void BinaryNode::optimize(in_func) {
 			if (left->classId == Autolang::DefaultClass::nullClassId ||
 			    right->classId == Autolang::DefaultClass::nullClassId) {
 				op = Lexer::TokenType::EQEQEQ;
-				return;
+				return this;
 			}
 			if (left->classId == right->classId &&
 			    compile.classes[left->classId]->classFlags &
 			        ClassFlags::CLASS_IS_ENUM) {
 				op = Lexer::TokenType::EQEQEQ;
-				return;
+				return this;
 			}
 			break;
 		}
@@ -447,13 +447,13 @@ void BinaryNode::optimize(in_func) {
 			if (left->classId == Autolang::DefaultClass::nullClassId ||
 			    right->classId == Autolang::DefaultClass::nullClassId) {
 				op = Lexer::TokenType::NOTEQEQ;
-				return;
+				return this;
 			}
 			if (left->classId == right->classId &&
 			    compile.classes[left->classId]->classFlags &
 			        ClassFlags::CLASS_IS_ENUM) {
 				op = Lexer::TokenType::NOTEQEQ;
-				return;
+				return this;
 			}
 			break;
 		}
@@ -467,7 +467,7 @@ void BinaryNode::optimize(in_func) {
 				           "value operands, not class names.");
 			}
 			classId = DefaultClass::boolClassId;
-			return;
+			return this;
 		}
 		default: {
 			if (left->kind == NodeType::CLASS_ACCESS ||
@@ -491,7 +491,7 @@ void BinaryNode::optimize(in_func) {
 	}
 	if (context.getTypeResult(left->classId, right->classId,
 	                          static_cast<uint8_t>(op), classId))
-		return;
+		return this;
 	throwError(std::string("Cannot use '") +
 	           Lexer::Token(0, op).toString(context) + "' between " +
 	           compile.classes[left->classId]->getName(compile) + " and " +
@@ -499,6 +499,7 @@ void BinaryNode::optimize(in_func) {
 	           "\nHint: Ensure both operand types support operator '" +
 	           Lexer::Token(0, op).toString(context) +
 	           "' or provide a valid type conversion.");
+	return this;
 }
 
 bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,

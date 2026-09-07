@@ -17,7 +17,7 @@ ExprNode *TryCatchNode::resolve(in_func) {
 	return this;
 }
 
-void TryCatchNode::optimize(in_func) {
+ExprNode *TryCatchNode::optimize(in_func) {
 	auto lastMustReturnValueNode = context.mustReturnValueNode;
 	context.mustReturnValueNode = nullptr;
 	body.optimize(in_data);
@@ -28,6 +28,7 @@ void TryCatchNode::optimize(in_func) {
 		finallyBody.optimize(in_data);
 	}
 	context.mustReturnValueNode = lastMustReturnValueNode;
+	return this;
 }
 
 void TryCatchNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {

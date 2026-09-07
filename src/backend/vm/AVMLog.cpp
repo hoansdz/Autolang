@@ -335,11 +335,13 @@ void AVM::log(Function *currentFunction) {
 				          << memberCount << "\n";
 				break;
 			}
-			case Autolang::Opcode::FAST_SAVE_MEMBER: {
+			case Autolang::Opcode::CREATE_ARRAY_OBJECT: {
 				uint32_t classId = get_u32(bytecodes, i);
+				uint32_t keyId = get_u32(bytecodes, i);
 				uint32_t memberCount = get_u32(bytecodes, i);
-				std::cerr << "FAST_SAVE_MEMBER	 "
+				std::cerr << "CREATE_ARRAY_OBJECT	 "
 				          << data.classes[classId]->getName(data) << "     "
+				          << data.classes[keyId]->getName(data) << " "
 				          << memberCount << "\n";
 				break;
 			}

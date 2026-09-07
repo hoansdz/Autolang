@@ -86,6 +86,7 @@ GenericData *loadGenericParameters(in_func, size_t &i) {
 	}
 }
 
+template <bool isLazy>
 ClassId loadClassGenerics(in_func, std::string &name,
                           ClassDeclaration *classDeclaration) {
 	auto it =
@@ -197,7 +198,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			// if (condition.condition ==
 			// GenericDeclarationCondition::MUST_EXTENDS) {
 			if (!condition.classDeclaration->classId) {
-				condition.classDeclaration->load<true>(in_data);
+				condition.classDeclaration->template load<true>(in_data);
 				if (!condition.classDeclaration->classId) {
 					condition.classDeclaration->throwError(
 					    "Unresolved " +
@@ -206,7 +207,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 				}
 			} else if (condition.classDeclaration->classId ==
 			           DefaultClass::functionClassId) {
-				condition.classDeclaration->load<true>(in_data);
+				condition.classDeclaration->template load<true>(in_data);
 			}
 			context.checkValidateExtends[genericDeclaration].push_back(
 			    newClassDeclaration);
@@ -229,7 +230,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	for (auto &[classDeclaration, node] :
 	     classInfo->genericData->mustRenameNodes) {
 		if (!classDeclaration->classId) {
-			classDeclaration->load<false, true>(in_data);
+			classDeclaration->template load<false, true, isLazy>(in_data);
 			if (!classDeclaration->classId) {
 				classDeclaration->throwError(
 				    "Unsolved " + classDeclaration->getName(in_data) +
@@ -291,7 +292,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 
 	if (newCreateClassNode->superDeclaration &&
 	    !newCreateClassNode->superDeclaration->classId) {
-		newCreateClassNode->superDeclaration->load<true>(in_data);
+		newCreateClassNode->superDeclaration->template load<true>(in_data);
 		// std::cerr << "Created "
 		//           << newCreateClassNode->superDeclaration->getName(in_data)
 		//           << "\n ";
@@ -300,7 +301,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	for (auto *member : classInfo->member) {
 		if (member->classDeclaration) {
 			if (!member->classDeclaration->classId) {
-				member->classDeclaration->load<true>(in_data);
+				member->classDeclaration->template load<true>(in_data);
 				if (!member->classDeclaration->classId) {
 					classDeclaration->throwError(
 					    "Unsolved " +
@@ -339,7 +340,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	for (auto *declarationNode : classInfo->allDeclarationNode) {
 		if (declarationNode->classDeclaration) {
 			if (!declarationNode->classDeclaration->classId) {
-				declarationNode->classDeclaration->load<false>(in_data);
+				declarationNode->classDeclaration->template load<false>(in_data);
 				if (!declarationNode->classDeclaration->classId) {
 					classDeclaration->throwError(
 					    "Bug: Cannot find class name " +
@@ -371,7 +372,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 		newClassInfo->staticMember[declarationNode->baseName] = node;
 		if (node->classDeclaration) {
 			if (!node->classDeclaration->classId) {
-				node->classDeclaration->load<false>(in_data);
+				node->classDeclaration->template load<false, false, isLazy>(in_data);
 				if (!node->classDeclaration->classId) {
 					classDeclaration->throwError(
 					    "Bug: Cannot find class name " +
@@ -415,6 +416,9 @@ ClassId loadClassGenerics(in_func, std::string &name,
 		    classInfo->primaryConstructor->functionFlags);
 		newClassInfo->primaryConstructor = constructor;
 		constructor->pushFunction(in_data);
+		if constexpr (isLazy) {
+			constructor->optimize(in_data);
+		}
 	} else {
 		newClassInfo->secondaryConstructor.reserve(
 		    classInfo->secondaryConstructor.size());
@@ -439,6 +443,9 @@ ClassId loadClassGenerics(in_func, std::string &name,
 				newConstructor->body.nodes.push_back(node->copy(in_data));
 			}
 			context.gotoFunction(lastCurrentFunctionId);
+			if constexpr (isLazy) {
+				constructor->optimize(in_data);
+			}
 		}
 	}
 
@@ -465,7 +472,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 		newFunc->returnId = compile.functions[createFuncNode->id]->returnId;
 		if (createFuncNode->classDeclaration) {
 			if (!createFuncNode->classDeclaration->classId) {
-				createFuncNode->classDeclaration->load<false>(in_data);
+				createFuncNode->classDeclaration->template load<false>(in_data);
 				if (!createFuncNode->classDeclaration->classId) {
 					classDeclaration->throwError(
 					    "Bug: Cannot resolve return type of generic function\nHint: "
@@ -497,10 +504,18 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			    static_cast<ReturnNode *>(newFuncInfo->body.nodes[0]);
 			context.mustInferenceFunctionType.push_back(newFunc->id);
 		}
+
+		if constexpr (isLazy) {
+			newCreateFuncNode->optimize(in_data);
+		}
 	}
 
 	context.gotoFunction(lastCurrentFunctionId);
 	context.currentClassId = lastCurrentClassId;
+
+	if constexpr (isLazy) {
+		newCreateClassNode->optimize(in_data);
+	}
 
 	// std::cerr << "Created " << newClass->getName(compile) << "\n";
 	return newClassId;
@@ -594,7 +609,7 @@ void loadFunctionGenerics(in_func, std::string &name,
 				// if (condition.condition ==
 				// GenericDeclarationCondition::MUST_EXTENDS) {
 				if (!condition.classDeclaration->classId) {
-					condition.classDeclaration->load<true>(in_data);
+					condition.classDeclaration->template load<true>(in_data);
 					if (!condition.classDeclaration->classId) {
 						condition.classDeclaration->throwError(
 						    "Unresolved " +
@@ -603,7 +618,7 @@ void loadFunctionGenerics(in_func, std::string &name,
 					}
 				} else if (condition.classDeclaration->classId ==
 				           DefaultClass::functionClassId) {
-					condition.classDeclaration->load<true>(in_data);
+					condition.classDeclaration->template load<true>(in_data);
 				}
 				context.checkValidateExtends[genericDeclaration].push_back(
 				    newClassDeclaration);
@@ -627,7 +642,7 @@ void loadFunctionGenerics(in_func, std::string &name,
 		for (auto &[classDeclaration, node] :
 		     funcInfo->genericData->mustRenameNodes) {
 			if (!classDeclaration->classId) {
-				classDeclaration->load<false, true>(in_data);
+				classDeclaration->template load<false, true>(in_data);
 				// if (!classDeclaration->classId) {
 				// 	classDeclaration->throwError(
 				// 	    "Unsolved " + classDeclaration->getName(in_data));
@@ -688,7 +703,7 @@ void loadFunctionGenerics(in_func, std::string &name,
 		// std::cerr << "FUNC " << newFunc->getName(compile) << "\n";
 		if (createFuncNode->classDeclaration) {
 			if (!createFuncNode->classDeclaration->classId) {
-				createFuncNode->classDeclaration->load<false>(in_data);
+				createFuncNode->classDeclaration->template load<false>(in_data);
 				if (!createFuncNode->classDeclaration->classId) {
 					classDeclaration->throwError(
 					    "Bug: Cannot resolve return type of generic function\nHint: "
@@ -729,7 +744,7 @@ void loadFunctionGenerics(in_func, std::string &name,
 			    node->id;
 			if (node->classDeclaration) {
 				if (!node->classDeclaration->classId) {
-					node->classDeclaration->load<false>(in_data);
+					node->classDeclaration->template load<false>(in_data);
 					if (!node->classDeclaration->classId) {
 						classDeclaration->throwError(
 						    "Bug: Cannot find class name " +
@@ -778,7 +793,7 @@ void loadFunctionGenerics(in_func, std::string &name,
 		// for (auto &[classDeclaration, node] :
 		//      funcInfo->genericData->mustRenameNodes) {
 		// 	if (!classDeclaration) {
-		// 		classDeclaration->load<false>(in_data);
+		// 		classDeclaration->template load<false>(in_data);
 		// 		if (!classDeclaration->classId) {
 		// 			classDeclaration->throwError(
 		// 			    "Unsolved " + classDeclaration->getName(in_data));
@@ -812,6 +827,11 @@ void loadFunctionGenerics(in_func, std::string &name,
 		// }
 	}
 }
+
+template ClassId loadClassGenerics<false>(in_func, std::string &name,
+                                         ClassDeclaration *classDeclaration);
+template ClassId loadClassGenerics<true>(in_func, std::string &name,
+                                        ClassDeclaration *classDeclaration);
 
 } // namespace Autolang
 #endif

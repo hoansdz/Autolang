@@ -1,4 +1,4 @@
-﻿#ifndef DEFAULT_FUNCTION_HPP
+#ifndef DEFAULT_FUNCTION_HPP
 #define DEFAULT_FUNCTION_HPP
 
 #include "backend/libs/array.hpp"
@@ -39,8 +39,19 @@ inline AObject *assert_(NativeFuncInData) {
 	if (condition->b) {
 		return nullptr;
 	}
-	notifier.throwException(std::string("At ") + args[1]->str->data + ":" +
-	                        std::to_string(args[2]->i) + ": Wrong");
+	if (argSize == 1) {
+		notifier.throwException("Assertion failed");
+	} else if (argSize == 2) {
+		if (args[1] && args[1]->type == DefaultClass::stringClassId &&
+		    args[1]->str) {
+			notifier.throwException(std::string(args[1]->str->data));
+		} else {
+			notifier.throwException("Assertion failed");
+		}
+	} else {
+		notifier.throwException(std::string("At ") + args[1]->str->data + ":" +
+		                        std::to_string(args[2]->i) + ": Wrong");
+	}
 	return nullptr;
 }
 

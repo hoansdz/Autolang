@@ -11,15 +11,15 @@ enum State {
 fun testEnum() {
 	val a = State.RUNNING
 
-	assert(State.INITIAL != State.RUNNING, __FILE__, __LINE__)
-	assert(State.RUNNING == State.RUNNING, __FILE__, __LINE__)
-	assert(State.LOADED != State.RUNNING, __FILE__, __LINE__)
-	assert(a == State.RUNNING, __FILE__, __LINE__)
-	assert(a != State.LOADED, __FILE__, __LINE__)
-	assert(State.INITIAL.getName() == "INITIAL", __FILE__, __LINE__)
-	assert(State.LOADED.getName() == "LOADED", __FILE__, __LINE__)
-	assert(State.RUNNING.getName() == "RUNNING", __FILE__, __LINE__)
-	assert(a.getName() == "RUNNING", __FILE__, __LINE__)
+	assert(State.INITIAL != State.RUNNING)
+	assert(State.RUNNING == State.RUNNING)
+	assert(State.LOADED != State.RUNNING)
+	assert(a == State.RUNNING)
+	assert(a != State.LOADED)
+	assert(State.INITIAL.getName() == "INITIAL")
+	assert(State.LOADED.getName() == "LOADED")
+	assert(State.RUNNING.getName() == "RUNNING")
+	assert(a.getName() == "RUNNING")
 
 	println("Passed ${__FUNC__}")
 }

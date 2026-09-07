@@ -3,6 +3,7 @@
 
 #include "frontend/parser/node/NodeOptimize.hpp"
 #include "frontend/parser/Debugger.hpp"
+#include "frontend/parser/ImplicitConversion.hpp"
 #include "frontend/parser/ParserContext.hpp"
 #include "frontend/parser/node/CreateNode.hpp"
 
@@ -131,13 +132,14 @@ ExprNode *WhileNode::resolve(in_func) {
 	return this;
 }
 
-void WhileNode::optimize(in_func) {
-	condition->optimize(in_data);
+ExprNode *WhileNode::optimize(in_func) {
+	condition = static_cast<HasClassIdNode *>(condition->optimize(in_data));
 	if (condition->classId != Autolang::DefaultClass::boolClassId)
 		throwError("Cannot use expression of type '" +
 		           condition->getClassName(in_data) +
 		           "' as a condition, expected 'Bool'\nHint: Ensure the loop condition evaluates to a 'Bool' value.");
 	body.optimize(in_data);
+	return this;
 }
 
 ExprNode *WhileNode::copy(in_func) {
@@ -175,9 +177,9 @@ ExprNode *ReturnNode::resolve(in_func) {
 	return this;
 }
 
-void ReturnNode::optimize(in_func) {
+ExprNode *ReturnNode::optimize(in_func) {
 	if (loaded) {
-		return;
+		return this;
 	}
 	auto func = compile.functions[funcId];
 	auto funcInfo = context.functionInfo[funcId];
@@ -189,12 +191,12 @@ void ReturnNode::optimize(in_func) {
 		switch (value->kind) {
 			case NodeType::CREATE_SET: {
 				if (func->returnId == DefaultClass::nullClassId) {
-					value->optimize(in_data);
+					value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 					func->returnId = value->classId;
-					return;
+					return this;
 				}
 				if (value->classDeclaration) {
-					value->optimize(in_data);
+					value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 					break;
 				}
 				if (value->classId == DefaultClass::nullClassId) {
@@ -204,40 +206,53 @@ void ReturnNode::optimize(in_func) {
 						    value->line, nullptr,
 						    std::vector<std::pair<HasClassIdNode *,
 						                          HasClassIdNode *>>{});
+					} else if (canImplicitConvert(in_data, func->returnId, value)) {
+						auto converted = tryImplicitConversion(in_data, func->returnId, value, line);
+						if (converted) {
+							value = converted;
+							return this;
+						}
 					}
 					value->classId = func->returnId;
-					value->optimize(in_data);
-					return;
+					value = static_cast<HasClassIdNode *>(value->optimize(in_data));
+					return this;
 				}
-				value->optimize(in_data);
+				value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 				break;
 			}
 			case NodeType::CREATE_MAP:
 			case NodeType::CREATE_ARRAY: {
 				if (func->returnId == DefaultClass::nullClassId) {
-					value->optimize(in_data);
+					value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 					func->returnId = value->classId;
-					return;
+					return this;
 				}
 				if (value->classDeclaration) {
-					value->optimize(in_data);
+					value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 					break;
 				}
 				if (value->classId == DefaultClass::nullClassId) {
+					if (canImplicitConvert(in_data, func->returnId, value)) {
+						auto converted = tryImplicitConversion(in_data, func->returnId, value, line);
+						if (converted) {
+							value = converted;
+							return this;
+						}
+					}
 					value->classId = func->returnId;
-					value->optimize(in_data);
-					return;
+					value = static_cast<HasClassIdNode *>(value->optimize(in_data));
+					return this;
 				}
-				value->optimize(in_data);
+				value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 				break;
 			}
 			case NodeType::FUNCTION_ACCESS: {
 				if (func->returnId != DefaultClass::nullClassId) {
 					value->classDeclaration = funcInfo->returnClass;
-					value->optimize(in_data);
-					return;
+					value = static_cast<HasClassIdNode *>(value->optimize(in_data));
+					return this;
 				}
-				value->optimize(in_data);
+				value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 				break;
 			}
 			case NodeType::CREATE_CLOSURE: {
@@ -245,22 +260,22 @@ void ReturnNode::optimize(in_func) {
 				if (n->mustInfer &&
 				    func->returnId != DefaultClass::nullClassId) {
 					n->inferFrom(in_data, funcInfo->returnClass);
-					value->optimize(in_data);
-					return;
+					value = static_cast<HasClassIdNode *>(value->optimize(in_data));
+					return this;
 				}
-				value->optimize(in_data);
+				value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 				break;
 			}
 			case NodeType::IF: {
 				auto n = static_cast<IfNode *>(value);
 				if (func->returnId == DefaultClass::nullClassId) {
-					value->optimize(in_data);
+					value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 					func->returnId = value->classId;
 					if (n->nullable) {
 						func->functionFlags |=
 						    FunctionFlags::FUNC_RETURN_NULLABLE;
 					}
-					return;
+					return this;
 				}
 				value->classId = func->returnId;
 				n->nullable =
@@ -269,19 +284,19 @@ void ReturnNode::optimize(in_func) {
 				if (func->returnId == DefaultClass::functionClassId) {
 					n->classDeclaration = funcInfo->returnClass;
 				}
-				value->optimize(in_data);
+				value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 				break;
 			}
 			case NodeType::WHEN: {
 				auto n = static_cast<WhenNode *>(value);
 				if (func->returnId == DefaultClass::nullClassId) {
-					value->optimize(in_data);
+					value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 					func->returnId = value->classId;
 					if (n->nullable) {
 						func->functionFlags |=
 						    FunctionFlags::FUNC_RETURN_NULLABLE;
 					}
-					return;
+					return this;
 				}
 				value->classId = func->returnId;
 				n->nullable =
@@ -289,7 +304,7 @@ void ReturnNode::optimize(in_func) {
 				if (func->returnId == DefaultClass::functionClassId) {
 					n->classDeclaration = funcInfo->returnClass;
 				}
-				value->optimize(in_data);
+				value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 				break;
 			}
 			// case NodeType::VAR:
@@ -298,14 +313,14 @@ void ReturnNode::optimize(in_func) {
 			// 	node->cloneable = true;
 			// }
 			default: {
-				value->optimize(in_data);
+				value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 				break;
 			}
 		}
 		// Marks auto
 		switch (func->returnId) {
 			case DefaultClass::anyClassId: {
-				return;
+				return this;
 			}
 			case DefaultClass::nullClassId: {
 				// std::cerr << "Loaded " << func->getName(compile) << "\n";
@@ -338,22 +353,27 @@ void ReturnNode::optimize(in_func) {
 				throwError("Cannot return nullable variable because function return type is non-nullable\nHint: Mark the function return type as nullable (e.g. Type?) or handle/unwrap the nullable value before returning.");
 			}
 		} else if (value->classId == Autolang::DefaultClass::nullClassId) {
-			return;
+			return this;
 		}
 		if (value->classId == func->returnId) {
-			return;
+			return this;
 		}
 		if (compile.classes[value->classId]->inheritance.get(func->returnId)) {
-			return;
+			return this;
 		}
 		if (value->classId == DefaultClass::intClassId &&
 		    func->returnId == DefaultClass::floatClassId) {
 			auto castNode = context.castPool.push(value, func->returnId);
 			value = static_cast<HasClassIdNode *>(castNode->resolve(in_data));
 			if (value != castNode) {
-				value->optimize(in_data);
+				value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 			}
-			return;
+			return this;
+		}
+		auto converted = tryImplicitConversion(in_data, func->returnId, value, line);
+		if (converted) {
+			value = converted;
+			return this;
 		}
 		throwError("Cannot cast " +
 		           compile.classes[value->classId]->getName(compile) + " to " +
@@ -363,6 +383,7 @@ void ReturnNode::optimize(in_func) {
 	if (func->returnId != Autolang::DefaultClass::voidClassId) {
 		throwError("Function with non-Void return type must return a value\nHint: Ensure all execution paths return a value matching the function return type, or change return type to Void.");
 	}
+	return this;
 }
 
 ExprNode *ReturnNode::copy(in_func) {

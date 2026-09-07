@@ -2,6 +2,7 @@
 #define AOBJECT_HPP
 
 #include "AString.hpp"
+#include "shared/AArray.hpp"
 #include "shared/DefaultClass.hpp"
 #include "shared/FunctionObject.hpp"
 #include "shared/NormalArray.hpp"
@@ -61,6 +62,7 @@ struct AObject {
 		uint8_t b;
 		FunctionObject *function;
 		NormalArray<AObject *> *member;
+		AArray *array;
 		AString *str;
 		ANativeData *data;
 		ABytes *bytes;
@@ -163,6 +165,23 @@ struct AObject {
 // 	return;
 // }
 		if (flags & Flags::OBJ_IS_NO_DATA) {
+			flags = AObject::Flags::OBJ_IS_FREE;
+			return;
+		}
+		if (flags & Flags::OBJ_IS_ARRAY) {
+			if (array) {
+				if (array->key != Autolang::DefaultClass::intClassId &&
+				    array->key != Autolang::DefaultClass::floatClassId) {
+					for (size_t i = 0; i < array->size; ++i) {
+						auto *obj = array->objData[i];
+						if (!obj)
+							continue;
+						if (obj->refCount > 0)
+							--obj->refCount;
+					}
+				}
+				delete array;
+			}
 			flags = AObject::Flags::OBJ_IS_FREE;
 			return;
 		}

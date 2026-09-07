@@ -37,29 +37,29 @@ fun testExtensionFunctions() {
 	val p1 = ExtPoint(3, 4)
 	
 	// Test 1: Gọi extension không tham số
-	assert(p1.sum() == 7, __FILE__, __LINE__)
+	assert(p1.sum() == 7)
 
 	// Test 2: Gọi extension có tham số
-	assert(p1.multiply(2) == 14, __FILE__, __LINE__)
+	assert(p1.multiply(2) == 14)
 
 	// Test 3: Expression body extension
-	assert(p1.diff() == -1, __FILE__, __LINE__)
+	assert(p1.diff() == -1)
 
 	// Test 4: Gọi extension trả về Bool
-	assert(p1.isOrigin() == false, __FILE__, __LINE__)
+	assert(p1.isOrigin() == false)
 
 	// Test 5: Gọi static extension function
 	val p2 = ExtPoint.createDefault()
-	assert(p2.x == 0, __FILE__, __LINE__)
-	assert(p2.y == 0, __FILE__, __LINE__)
-	assert(p2.isOrigin() == true, __FILE__, __LINE__)
+	assert(p2.x == 0)
+	assert(p2.y == 0)
+	assert(p2.isOrigin() == true)
 
 	// Test 6: Gọi extension trên built-in class
 	val greeting = "hello"
-	assert(greeting.exclaim() == "hello!", __FILE__, __LINE__)
+	assert(greeting.exclaim() == "hello!")
 
 	val num = 5
-	assert(num.doubleValue() == 10, __FILE__, __LINE__)
+	assert(num.doubleValue() == 10)
 
 	println("Passed ${__FUNC__}")
 }

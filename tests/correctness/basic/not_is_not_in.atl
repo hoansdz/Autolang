@@ -29,12 +29,12 @@ fun testNotIsExpression() {
 	val cat = NotInCat()
 
 	// !is tests
-	assert(dog is NotInDog, __FILE__, __LINE__)
-	assert(dog is NotInBaseAnimal, __FILE__, __LINE__)
-	assert(dog !is NotInCat, __FILE__, __LINE__)
-	assert(cat !is NotInDog, __FILE__, __LINE__)
-	assert(!(dog !is NotInBaseAnimal), __FILE__, __LINE__)
-	assert(!(dog !is NotInDog), __FILE__, __LINE__)
+	assert(dog is NotInDog)
+	assert(dog is NotInBaseAnimal)
+	assert(dog !is NotInCat)
+	assert(cat !is NotInDog)
+	assert(!(dog !is NotInBaseAnimal))
+	assert(!(dog !is NotInDog))
 
 	// !is in when expression
 	val animal: NotInBaseAnimal = dog
@@ -43,41 +43,41 @@ fun testNotIsExpression() {
 		is NotInDog -> "dog"
 		else -> "unknown"
 	}
-	assert(animalType == "dog", __FILE__, __LINE__)
+	assert(animalType == "dog")
 
 	val catAnimal: NotInBaseAnimal = cat
 	val catType = when (catAnimal) {
 		!is NotInDog -> "not_dog"
 		else -> "dog"
 	}
-	assert(catType == "not_dog", __FILE__, __LINE__)
+	assert(catType == "not_dog")
 
 	println("Passed testNotIsExpression")
 }
 
 fun testNotInExpression() {
 	// !in with Range
-	assert(5 in 1..10, __FILE__, __LINE__)
-	assert(0 !in 1..10, __FILE__, __LINE__)
-	assert(11 !in 1..10, __FILE__, __LINE__)
-	assert(!(5 !in 1..10), __FILE__, __LINE__)
+	assert(5 in 1..10)
+	assert(0 !in 1..10)
+	assert(11 !in 1..10)
+	assert(!(5 !in 1..10))
 
 	// Range exclusive upper bound
-	assert(10 in 1..10, __FILE__, __LINE__)
-	assert(10 !in 1..<10, __FILE__, __LINE__)
-	assert(9 in 1..<10, __FILE__, __LINE__)
+	assert(10 in 1..10)
+	assert(10 !in 1..<10)
+	assert(9 in 1..<10)
 
 	// !in with Array (collection with contains)
 	val arr = <Int>[10, 20, 30]
-	assert(20 in arr, __FILE__, __LINE__)
-	assert(40 !in arr, __FILE__, __LINE__)
-	assert(!(10 !in arr), __FILE__, __LINE__)
+	assert(20 in arr)
+	assert(40 !in arr)
+	assert(!(10 !in arr))
 
 	// !in with custom class using operator contains
 	val container = NotInCustomContainer(<Int>[100, 200, 300])
-	assert(200 in container, __FILE__, __LINE__)
-	assert(999 !in container, __FILE__, __LINE__)
-	assert(!(100 !in container), __FILE__, __LINE__)
+	assert(200 in container)
+	assert(999 !in container)
+	assert(!(100 !in container))
 
 	// !in in when expression
 	val score = 85
@@ -86,14 +86,14 @@ fun testNotInExpression() {
 		!in 50..100 -> "fail"
 		else -> "pass"
 	}
-	assert(grade == "pass", __FILE__, __LINE__)
+	assert(grade == "pass")
 
 	val badScore = 150
 	val badGrade = when (badScore) {
 		!in 0..100 -> "invalid"
 		else -> "valid"
 	}
-	assert(badGrade == "invalid", __FILE__, __LINE__)
+	assert(badGrade == "invalid")
 
 	println("Passed testNotInExpression")
 }

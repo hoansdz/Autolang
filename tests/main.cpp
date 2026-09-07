@@ -260,6 +260,10 @@ int main(int argc, char *argv[]) {
 	// Đặt thành true để chạy riêng một script độc lập
 	bool runSingleCustomScript = false;
 	const char *customScriptPath = "tests/test.atl";
+	if (argc > 1 && argv[1][0] != '-') {
+		runSingleCustomScript = true;
+		customScriptPath = argv[1];
+	}
 
 	if (runSingleCustomScript) {
 		Autolang::ACompiler customCompiler;

@@ -7,13 +7,83 @@
 
 namespace Autolang {
 
-void FunctionAccessNode::optimize(in_func) {
+ExprNode *FunctionAccessNode::resolve(in_func) {
 	if (caller) {
-		caller->optimize(in_data);
+		caller = static_cast<HasClassIdNode *>(caller->resolve(in_data));
+	}
+	return this;
+}
+
+ExprNode *FunctionAccessNode::copy(in_func) {
+	auto newCaller =
+	    caller ? static_cast<HasClassIdNode *>(caller->copy(in_data)) : nullptr;
+	auto node = context.functionAccessPool.push(line, newCaller, nameId);
+	node->funcId = funcId;
+	node->classDeclaration = classDeclaration;
+	node->classId = classId;
+	node->object = object;
+	node->count = count;
+	node->funcs[0] = funcs[0];
+	node->funcs[1] = funcs[1];
+	return node;
+}
+
+ExprNode *FunctionAccessNode::optimize(in_func) {
+	if (caller) {
+		caller = static_cast<HasClassIdNode *>(caller->optimize(in_data));
 	}
 	if (funcId) {
-		return;
+		return this;
 	}
+
+	if (count == 0) {
+		if (caller) {
+			ClassId cId = caller->classId;
+			if (cId != DefaultClass::nullClassId && cId < context.classInfo.size() &&
+			    context.classInfo[cId]) {
+				auto classInfo = context.classInfo[cId];
+				auto it = classInfo->allFunction.find(nameId);
+				if (it != classInfo->allFunction.end()) {
+					funcs[count++] = &it->second;
+				}
+			}
+			if (count == 0) {
+				std::string className =
+				    (caller->classId < compile.classes.size() &&
+				     compile.classes[caller->classId])
+				        ? compile.classes[caller->classId]->getName(compile)
+				        : "Unknown";
+				throwError("Cannot find member function '" +
+				           context.lexerString[nameId] + "' in class '" +
+				           className +
+				           "'\nHint: Verify member function name spelling or accessibility.");
+			}
+		} else {
+			if (context.currentClassId) {
+				auto classInfo = context.getCurrentClassInfo(in_data);
+				auto it = classInfo->allFunction.find(nameId);
+				if (it != classInfo->allFunction.end()) {
+					funcs[count++] = &it->second;
+					if (context.currentFunctionId != context.mainFunctionId &&
+					    !(context.getCurrentFunction(in_data)->functionFlags &
+					      FunctionFlags::FUNC_IS_STATIC)) {
+						caller = context.varPool.push(
+						    line, classInfo->declarationThis, false, false);
+					}
+				}
+			}
+			auto it = context.globalFunction.find(nameId);
+			if (it != context.globalFunction.end()) {
+				funcs[count++] = &it->second;
+			}
+			if (count == 0) {
+				throwError("Cannot find function '" +
+				           context.lexerString[nameId] +
+				           "'\nHint: Check function name spelling, ensure it is in scope or declared before usage.");
+			}
+		}
+	}
+
 	if (!classDeclaration) {
 		if (count == 1 && funcs[0]->size() == 1) {
 			funcId = (*funcs[0])[0];
@@ -29,7 +99,7 @@ void FunctionAccessNode::optimize(in_func) {
 			classDeclaration->isGenericDeclaration = false;
 			classDeclaration->mustInference = false;
 			classDeclaration->inputClassId.reserve(
-			    funcInfo->parameter->parameters.size() + 1);
+			    funcInfo->parameter->parameters.size() + 2);
 			if (func->returnId == DefaultClass::functionClassId) {
 				classDeclaration->inputClassId.push_back(funcInfo->returnClass);
 			} else {
@@ -47,20 +117,24 @@ void FunctionAccessNode::optimize(in_func) {
 				classDeclaration->inputClassId.push_back(
 				    returnClassDeclaration);
 			}
-			for (auto declaration : funcInfo->parameter->parameters) {
+			bool isBoundMember = caller &&
+			                     caller->kind != NodeType::CLASS_ACCESS &&
+			                     !(func->functionFlags & FunctionFlags::FUNC_IS_STATIC);
+			size_t startParamIdx = isBoundMember ? 1 : 0;
+			for (size_t p = startParamIdx; p < funcInfo->parameter->parameters.size(); ++p) {
+				auto declaration = funcInfo->parameter->parameters[p];
 				if (!declaration->classDeclaration) {
 					auto newClassDeclaration =
 					    context.classDeclarationAllocator.push();
-					newClassDeclaration->baseClassLexerStringId = nameId;
+					newClassDeclaration->baseClassLexerStringId = declaration->baseName;
 					newClassDeclaration->isGeneric = true;
 					newClassDeclaration->classId = declaration->classId;
 					newClassDeclaration->mode = mode;
 					newClassDeclaration->line = line;
-					newClassDeclaration->nullable =
-					    func->functionFlags &
-					    FunctionFlags::FUNC_RETURN_NULLABLE;
+					newClassDeclaration->nullable = declaration->nullable;
 					newClassDeclaration->isGenericDeclaration = false;
 					newClassDeclaration->mustInference = false;
+					classDeclaration->inputClassId.push_back(newClassDeclaration);
 				} else {
 					classDeclaration->inputClassId.push_back(
 					    declaration->classDeclaration);
@@ -98,35 +172,67 @@ void FunctionAccessNode::optimize(in_func) {
 	}
 
 	{
-
 		std::optional<FunctionId> matchFuncId;
 
-		for (int i = 0; i < count; ++i) {
-			auto vecs = funcs[i];
-			for (auto funcId : *vecs) {
-				auto func = compile.functions[funcId];
+		for (int idx = 0; idx < count; ++idx) {
+			auto vecs = funcs[idx];
+			for (auto candidateId : *vecs) {
+				auto func = compile.functions[candidateId];
 				if (func->returnId !=
 				    *classDeclaration->inputClassId[0]->classId) {
 					continue;
 				}
-				int j = !(func->functionFlags & FunctionFlags::FUNC_IS_STATIC);
-				if (classDeclaration->inputClassId.size() - 1 !=
-				    func->argSize - j) {
-					continue;
-				}
-				int i = 1;
-				for (; j < func->argSize; ++j) {
-					if (func->args[j] !=
-					    *classDeclaration->inputClassId[i++]->classId) {
-						goto nextFunc;
+				bool isStatic = (func->functionFlags & FunctionFlags::FUNC_IS_STATIC) != 0;
+				bool isUnbound = (caller && caller->kind == NodeType::CLASS_ACCESS && !isStatic);
+
+				if (isUnbound) {
+					if (classDeclaration->inputClassId.size() - 1 != func->argSize) {
+						continue;
 					}
+					if (func->args[0] != *classDeclaration->inputClassId[1]->classId) {
+						continue;
+					}
+					bool argsMatch = true;
+					for (int p = 1; p < func->argSize; ++p) {
+						if (func->args[p] != *classDeclaration->inputClassId[p + 1]->classId) {
+							argsMatch = false;
+							break;
+						}
+					}
+					if (!argsMatch) continue;
+				} else if (!isStatic) {
+					// Bound member reference
+					if (classDeclaration->inputClassId.size() - 1 != func->argSize - 1) {
+						continue;
+					}
+					bool argsMatch = true;
+					for (int p = 1; p < func->argSize; ++p) {
+						if (func->args[p] != *classDeclaration->inputClassId[p]->classId) {
+							argsMatch = false;
+							break;
+						}
+					}
+					if (!argsMatch) continue;
+				} else {
+					// Static or global function
+					if (classDeclaration->inputClassId.size() - 1 != func->argSize) {
+						continue;
+					}
+					bool argsMatch = true;
+					for (int p = 0; p < func->argSize; ++p) {
+						if (func->args[p] != *classDeclaration->inputClassId[p + 1]->classId) {
+							argsMatch = false;
+							break;
+						}
+					}
+					if (!argsMatch) continue;
 				}
+
 				if (matchFuncId) {
 					throwError("Ambiguous function call: overload conflict for '" + func->getName(compile) +
 					           "'\nHint: Multiple overloaded functions match the targeted signature. Explicitly specify types or cast arguments to resolve conflict.");
 				}
-				matchFuncId = funcId;
-			nextFunc:;
+				matchFuncId = candidateId;
 			}
 		}
 
@@ -144,15 +250,16 @@ matched:;
 	auto func = compile.functions[*funcId];
 
 	if (!(func->functionFlags & FunctionFlags::FUNC_IS_STATIC)) {
-		if (!caller) {
-			throwError(
-			    "Expected static function but found non-static function: '" +
-			    compile.functions[*funcId]->getName(compile) +
-			    "'\nHint: Non-static functions require an instance caller. Call the function on an instance or mark it as static.");
+		if (caller && caller->kind != NodeType::CLASS_ACCESS) {
+			object = caller;
+		} else {
+			object = nullptr;
 		}
-		object = caller;
-		return;
+		classId = DefaultClass::functionClassId;
+		return this;
 	}
+	classId = DefaultClass::functionClassId;
+	return this;
 }
 
 void FunctionAccessNode::putBytecodes(in_func,
@@ -165,7 +272,7 @@ void FunctionAccessNode::putBytecodes(in_func,
 	if (object) {
 		object->putBytecodes(in_data, bytecodes);
 	}
-	if (func->functionFlags & FunctionFlags::FUNC_IS_VIRTUAL) {
+	if (object && (func->functionFlags & FunctionFlags::FUNC_IS_VIRTUAL)) {
 		bytecodes.push_back(Opcode::CREATE_FUNCTION_OBJECT_FROM_VTABLE);
 		put_opcode_u32(bytecodes, funcInfo->virtualPosition);
 	} else {

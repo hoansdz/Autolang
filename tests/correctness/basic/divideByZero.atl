@@ -8,7 +8,7 @@ fun testDivideByZero() {
 	} catch (e) {
 		errorCaught = true
 	}
-	assert(errorCaught, __FILE__, __LINE__)
+	assert(errorCaught)
 
 	// Int modulo by zero -> exception
 	errorCaught = false
@@ -19,7 +19,7 @@ fun testDivideByZero() {
 	} catch (e) {
 		errorCaught = true
 	}
-	assert(errorCaught, __FILE__, __LINE__)
+	assert(errorCaught)
 
 	// Exception in try block doesn't affect code after catch
 	var afterCatch = 0
@@ -29,7 +29,7 @@ fun testDivideByZero() {
 	} catch (e) {
 		afterCatch = 42
 	}
-	assert(afterCatch == 42, __FILE__, __LINE__)
+	assert(afterCatch == 42)
 
 	println("Passed ${__FUNC__}")
 }

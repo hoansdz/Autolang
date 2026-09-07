@@ -143,8 +143,26 @@ inline py::object aobjectToPy(ANotifier &notifier, AObject *obj) {
 		default: {
 			if (obj->flags & AObject::Flags::OBJ_IS_ARRAY) {
 				py::list arr;
-				for (size_t i = 0; i < obj->member->size; ++i) {
-					arr.append(aobjectToPy(notifier, obj->member->data[i]));
+				auto array = obj->array;
+				switch (array->key) {
+					case DefaultClass::intClassId: {
+						for (size_t i = 0; i < array->size; ++i) {
+							arr.append(array->intData[i]);
+						}
+						break;
+					}
+					case DefaultClass::floatClassId: {
+						for (size_t i = 0; i < array->size; ++i) {
+							arr.append(array->floatData[i]);
+						}
+						break;
+					}
+					default: {
+						for (size_t i = 0; i < array->size; ++i) {
+							arr.append(aobjectToPy(notifier, array->objData[i]));
+						}
+						break;
+					}
 				}
 				return arr;
 			}

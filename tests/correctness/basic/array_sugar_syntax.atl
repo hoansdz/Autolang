@@ -31,17 +31,17 @@ fun testCallableEquivalenceAndMixing() {
         }
     }
     
-    assert(resultsPtr[0] == 6, __FILE__, __LINE__)
-    assert(resultsClosure[0] == 6, __FILE__, __LINE__)
-    assert(resultsPtr[0] == resultsClosure[0], __FILE__, __LINE__)
+    assert(resultsPtr[0] == 6)
+    assert(resultsClosure[0] == 6)
+    assert(resultsPtr[0] == resultsClosure[0])
     
-    assert(resultsPtr[3] == 21, __FILE__, __LINE__)
-    assert(resultsClosure[3] == 21, __FILE__, __LINE__)
-    assert(resultsPtr[3] == resultsClosure[3], __FILE__, __LINE__)
+    assert(resultsPtr[3] == 21)
+    assert(resultsClosure[3] == 21)
+    assert(resultsPtr[3] == resultsClosure[3])
     
-    assert(totalPtr == 50, __FILE__, __LINE__)
-    assert(totalClosure == 50, __FILE__, __LINE__)
-    assert(totalPtr == totalClosure, __FILE__, __LINE__)
+    assert(totalPtr == 50)
+    assert(totalClosure == 50)
+    assert(totalPtr == totalClosure)
 
     println("Passed ${__FUNC__}")
 }
@@ -60,21 +60,191 @@ fun create2D(): Int[][] {
 
 fun testArrayBracketTypeDeclaration() {
     val arr: Int[] = [10, 20, 30]
-    assert(arr is Array<Int>, __FILE__, __LINE__)
-    assert(arr.length() == 3, __FILE__, __LINE__)
-    assert(sumArray(arr) == 60, __FILE__, __LINE__)
+    assert(arr is Array<Int>)
+    assert(arr.length() == 3)
+    assert(sumArray(arr) == 60)
 
     val matrix: Int[][] = create2D()
-    assert(matrix is Array<Array<Int>>, __FILE__, __LINE__)
-    assert(matrix[0][0] == 1, __FILE__, __LINE__)
-    assert(matrix[1][1] == 4, __FILE__, __LINE__)
+    assert(matrix is Array<Array<Int>>)
+    assert(matrix[0][0] == 1)
+    assert(matrix[1][1] == 4)
 
     val strArr: String[] = ["hello", "autolang"]
-    assert(strArr is Array<String>, __FILE__, __LINE__)
-    assert(strArr[1] == "autolang", __FILE__, __LINE__)
+    assert(strArr is Array<String>)
+    assert(strArr[1] == "autolang")
+
+    println("Passed ${__FUNC__}")
+}
+
+fun testArrayNestedSetAndMapCanSkip() {
+    val arrOfSets = [{}, <Int>{1, 2}]
+    assert(arrOfSets is Array<Set<Int>>)
+    assert(arrOfSets[0].size() == 0)
+    assert(arrOfSets[1].size() == 2)
+
+    val arrOfSets2 = [<Int>{3, 4}, {}]
+    assert(arrOfSets2 is Array<Set<Int>>)
+    assert(arrOfSets2[0].size() == 2)
+    assert(arrOfSets2[1].size() == 0)
+
+    val arrOfMaps1 = [{}, <String, Int>{"a": 1}]
+    assert(arrOfMaps1 is Array<Map<String, Int>>)
+    assert(arrOfMaps1[0].size() == 0)
+    assert(arrOfMaps1[1].size() == 1)
+
+    val arrOfMaps2 = [<String, Int>{"b": 2}, {}]
+    assert(arrOfMaps2 is Array<Map<String, Int>>)
+    assert(arrOfMaps2[0].size() == 1)
+    assert(arrOfMaps2[1].size() == 0)
+
+    println("Passed ${__FUNC__}")
+}
+
+fun testKotlinCollectionHelpersLowering() {
+    // 1. arrayOf & listOf & mutableListOf
+    val a1 = arrayOf(1, 2, 3)
+    assert(a1 is Array<Int>)
+    assert(a1.length() == 3)
+    assert(a1[0] == 1 && a1[1] == 2 && a1[2] == 3)
+
+    val l1 = listOf("hello", "world")
+    assert(l1 is Array<String>)
+    assert(l1.length() == 2)
+    assert(l1[1] == "world")
+
+    val ml1 = mutableListOf(10.5, 20.5)
+    assert(ml1 is Array<Float>)
+    assert(ml1.length() == 2)
+
+    val al1 = arrayListOf(true, false, true)
+    assert(al1 is Array<Bool>)
+    assert(al1.length() == 3)
+
+    // 2. Primitive array helpers
+    val ia = intArrayOf(10, 20, 30)
+    assert(ia is Array<Int>)
+    assert(ia.length() == 3)
+
+    val fa = floatArrayOf(1.0, 2.0)
+    assert(fa is Array<Float>)
+
+    val ba = booleanArrayOf(true, false)
+    assert(ba is Array<Bool>)
+
+    // 3. emptyArray & emptyList
+    val ea: Array<Int> = emptyArray()
+    assert(ea.length() == 0)
+
+    val el: Array<String> = emptyList()
+    assert(el.length() == 0)
+
+    // 4. setOf & emptySet
+    val s1 = setOf(10, 20, 30)
+    assert(s1 is Set<Int>)
+    assert(s1.size() == 3)
+    assert(s1.contains(20))
+
+    val ms1 = mutableSetOf("a", "b")
+    assert(ms1 is Set<String>)
+    assert(ms1.contains("a"))
+
+    val hs1 = hashSetOf(100, 200)
+    assert(hs1 is Set<Int>)
+
+    val es: Set<Int> = emptySet()
+    assert(es.size() == 0)
+
+    // 5. mapOf & emptyMap
+    val em: Map<String, Int> = emptyMap()
+    assert(em.size() == 0)
+
+    val m0: Map<String, Int> = mapOf()
+    assert(m0.size() == 0)
+
+    val m1 = mapOf("key1", 100, "key2", 200)
+    assert(m1 is Map<String, Int>)
+    assert(m1.size() == 2)
+    assert(m1.get("key1") == 100)
+    assert(m1.get("key2") == 200)
+
+    val mm1 = mutableMapOf("x", 1, "y", 2)
+    assert(mm1 is Map<String, Int>)
+    assert(mm1.get("y") == 2)
+
+    // 6. Nested calls
+    val matrix = arrayOf(listOf(1, 2), listOf(3, 4))
+    assert(matrix is Array<Array<Int>>)
+    assert(matrix[0][0] == 1)
+    assert(matrix[1][1] == 4)
+
+    println("Passed ${__FUNC__}")
+}
+
+fun testComplexDeepNestedCollectionsAndKotlinHelpers() {
+    // 1. Ma trận 3 chiều với cú pháp []
+    val cube = [
+        [[1, 2], [3, 4]],
+        [[5, 6], [7, 8]]
+    ]
+    assert(cube is Array<Array<Array<Int>>>)
+    assert(cube[0][1][0] == 3)
+    assert(cube[1][1][1] == 8)
+
+    // Gán lại phần tử sâu
+    cube[1][0][1] = 99
+    assert(cube[1][0][1] == 99)
+
+    // 2. Mảng lồng mảng rỗng có type annotation
+    val emptyNesting: Array<Array<Int>> = [[], [1, 2]]
+    assert(emptyNesting.length() == 2)
+    assert(emptyNesting[0].length() == 0)
+    assert(emptyNesting[1].length() == 2)
+    assert(emptyNesting[1][0] == 1)
+
+    // 3. Kết hợp Kotlin collection helpers lồng nhau 4 tầng:
+    // listOf(arrayOf(mapOf("group", setOf(10, 20))))
+    val hierarchy = listOf(
+        arrayOf(
+            mapOf("teamA", setOf(10, 20)),
+            mapOf("teamB", setOf(30, 40))
+        ),
+        arrayOf(
+            mapOf("teamC", setOf(50, 60))
+        )
+    )
+    assert(hierarchy is Array<Array<Map<String, Set<Int>>>>)
+    assert(hierarchy.length() == 2)
+    assert(hierarchy[0].length() == 2)
+    assert(hierarchy[0][1].get("teamB")!.contains(30))
+    assert(!hierarchy[1][0].get("teamC")!.contains(100))
+
+    // Thêm phần tử sâu vào Set con
+    hierarchy[1][0].get("teamC")!.add(100)
+    assert(hierarchy[1][0].get("teamC")!.contains(100))
+
+    // 4. Vòng lặp lồng nhau 3 tầng duyệt qua cấu trúc phức tạp
+    var totalValue = 0
+    for (layer in hierarchy) {
+        for (mapItem in layer) {
+            val teams = mapItem.keys()
+            for (t in teams) {
+                val memberSet = mapItem.get(t)!
+                for (id in memberSet) {
+                    totalValue += id
+                }
+            }
+        }
+    }
+    // 10 + 20 + 30 + 40 + 50 + 60 + 100 = 310
+    assert(totalValue == 310)
 
     println("Passed ${__FUNC__}")
 }
 
 testCallableEquivalenceAndMixing()
-testArrayBracketTypeDeclaration()
+testArrayBracketTypeDeclaration()
+testArrayNestedSetAndMapCanSkip()
+testKotlinCollectionHelpersLowering()
+testComplexDeepNestedCollectionsAndKotlinHelpers()
+
+

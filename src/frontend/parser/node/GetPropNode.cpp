@@ -147,8 +147,8 @@ bool GetPropNode::optimizeSkipIfNotFoundMember(in_func) {
 	return false;
 }
 
-void GetPropNode::optimize(in_func) {
-	caller->optimize(in_data);
+ExprNode *GetPropNode::optimize(in_func) {
+	caller = static_cast<HasClassIdNode *>(caller->optimize(in_data));
 	if (caller->isNullable()) {
 		if (!accessNullable) {
 			throwError(
@@ -200,6 +200,16 @@ void GetPropNode::optimize(in_func) {
 		// Find static member
 		auto it_ = classInfo->staticMember.find(nameId);
 		if (it_ == classInfo->staticMember.end()) {
+			if (!isStore) {
+				auto itFunc = classInfo->allFunction.find(nameId);
+				if (itFunc != classInfo->allFunction.end()) {
+					auto callNode = context.callNodePool.push(
+					    line, 0, contextCallClassId, caller, nameId,
+					    std::vector<HasClassIdNode *>(), isStatic, nullable,
+					    accessNullable);
+					return callNode->optimize(in_data);
+				}
+			}
 			std::string foundMembers;
 			bool hasMember = false;
 			for (auto *decl : classInfo->member) {
@@ -348,6 +358,7 @@ void GetPropNode::optimize(in_func) {
 			}
 		}
 	}
+	return this;
 }
 
 ExprNode *GetPropNode::copy(in_func) {

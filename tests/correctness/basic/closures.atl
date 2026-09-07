@@ -6,7 +6,7 @@ fun abc(a: Int, b: Int, c: (Int, Int) -> Int): Int = c(a, b)
 
 class TestParentClosureClass {
 	fun test() {
-		assert(false, __FILE__, __LINE__)
+		assert(false)
 	}
 
 	fun getTestFunction() = test // return test
@@ -25,7 +25,7 @@ class TestClosureClass extends TestParentClosureClass {
 
 	@override
 	fun test() {
-		assert(true, __FILE__, __LINE__)
+		assert(true)
 	}
 
     fun createMethodClosure(base: Int): (Int) -> Int {
@@ -41,22 +41,22 @@ class TestClosureClass extends TestParentClosureClass {
 fun testFunctionClosures() {
     val factor = 10
     val explicitAdd = {|x: Int| -> { x + factor }}
-    assert(explicitAdd(5) == 15, __FILE__, __LINE__)
+    assert(explicitAdd(5) == 15)
 
-	assert(abc(1,2) {|a, b| a + b} == 3, __FILE__, __LINE__)
+	assert(abc(1,2) {|a, b| a + b} == 3)
 
     val a = 100
     val outer: (Int) -> ((Int) -> Int) = {|b| {|c| a + b + c}}
     val inner = outer(50)
-    assert(inner(10) == 160, __FILE__, __LINE__)
+    assert(inner(10) == 160)
 
     var x = 500
     val snapshot = {|| x}
     x = 999
-    assert(snapshot() == 500, __FILE__, __LINE__)
+    assert(snapshot() == 500)
 
     val addFive = makeAdder(5)
-    assert(addFive(2) == 7, __FILE__, __LINE__)
+    assert(addFive(2) == 7)
 
 	val nested: () -> ((Float) -> String) -> ((Float) -> String) = {||
 		return {|value|
@@ -72,7 +72,7 @@ fun testFunctionClosures() {
         val res = adder(1)
         total += res
     }
-    assert(total == 50015001, __FILE__, __LINE__)
+    assert(total == 50015001)
 
     println("Passed ${__FUNC__}")
 }
@@ -83,13 +83,60 @@ fun testClassClosures() {
 	val testFunc = clazz.getTestFunction()
 	testFunc()
     
-    assert(clazz.memClosure(3) == 10, __FILE__, __LINE__)
+    assert(clazz.memClosure(3) == 10)
     
     val methodClosure = clazz.createMethodClosure(10)
-    assert(methodClosure(5) == 29, __FILE__, __LINE__)
+    assert(methodClosure(5) == 29)
     
+    println("Passed ${__FUNC__}")
+}
+
+fun testDeepNestedPipelineClosures() {
+    // 1. Currying lồng 4 tầng
+    val curry4 = {|a: Int|
+        {|b: Int|
+            {|c: Int|
+                {|d: Int|
+                    a * 1000 + b * 100 + c * 10 + d
+                }
+            }
+        }
+    }
+    val step1 = curry4(4)
+    val step2 = step1(3)
+    val step3 = step2(2)
+    val result4 = step3(1)
+    assert(result4 == 4321)
+    assert(curry4(9)(8)(7)(6) == 9876)
+
+    // 2. Pipeline closures trong mảng
+    val ops: Array<(Int) -> Int> = [
+        {|x: Int| x + 10},
+        {|x: Int| x * 3},
+        {|x: Int| x - 5},
+        {|x: Int| x / 2}
+    ]
+    var value = 5
+    for (op in ops) {
+        value = op(value)
+    }
+    // ((5 + 10) * 3 - 5) / 2 = (45 - 5) / 2 = 20
+    assert(value == 20)
+
+    // 3. Closure bắt tham chiếu đối tượng và biến đổi sâu
+    val person = TestClosureClass()
+    person.n = 100
+    val mutator = {|bonus: Int|
+        person.n = person.n + bonus
+    }
+    mutator(50)
+    assert(person.n == 150)
+    mutator(25)
+    assert(person.n == 175)
+
     println("Passed ${__FUNC__}")
 }
 
 testFunctionClosures()
 testClassClosures()
+testDeepNestedPipelineClosures()

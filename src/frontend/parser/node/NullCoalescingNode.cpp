@@ -42,9 +42,9 @@ ExprNode *NullCoalescingNode::resolve(in_func) {
 	return this;
 }
 
-void NullCoalescingNode::optimize(in_func) {
-	left->optimize(in_data);
-	right->optimize(in_data);
+ExprNode *NullCoalescingNode::optimize(in_func) {
+	left = static_cast<HasClassIdNode *>(left->optimize(in_data));
+	right = static_cast<HasClassIdNode *>(right->optimize(in_data));
 	if (!left->isNullable()) {
 		warning(in_data, "Right expression won't never be used");
 	} else {
@@ -53,7 +53,7 @@ void NullCoalescingNode::optimize(in_func) {
 			ExprNode::deleteNode(left);
 			left = nullptr;
 			classId = right->classId;
-			return;
+			return this;
 		}
 	}
 	classId = left->classId;
@@ -64,6 +64,7 @@ void NullCoalescingNode::optimize(in_func) {
 		           "')\nHint: Ensure both operands of '?\?' evaluate to compatible types, or explicitly cast one operand to match.");
 	}
 	nullable = right->isNullable();
+	return this;
 }
 
 void NullCoalescingNode::putBytecodes(in_func,

@@ -1,12 +1,12 @@
 class TestPositionMember(val a: Int, val b: Int) {
 	val c: Int = 3
 	fun test() {
-		assert(a != b && a != c && b != c, __FILE__, __LINE__)
+		assert(a != b && a != c && b != c)
 	}
 }
 
 fun testPositionFunc(a: Int, b: Int) {
-	assert(a != b, __FILE__, __LINE__)
+	assert(a != b)
 }
 
 fun testPosition() {
@@ -14,12 +14,12 @@ fun testPosition() {
 	TestPositionMember(1, 2).test()
 	val value = 67
 	val first = {|x: Int| -> {
-		assert(x != value, __FILE__, __LINE__)
+		assert(x != value)
 	}}
 	first(0)
 	val second = {|x: Int, y: Int| -> {
-		assert(x != y, __FILE__, __LINE__)
-		assert(x == value, __FILE__, __LINE__)
+		assert(x != y)
+		assert(x == value)
 	}}
 	second(67, 0)
 	println("Passed ${__FUNC__}")
