@@ -77,7 +77,7 @@ class CompilerWrapper {
                 continue;
             }
 
-            if (py::hasattr(value, "__call__")) { // Kiểm tra xem object có phải là callable/function không
+            if (py::hasattr(value, "__call__")) { // Check if the object is callable/function
                 Autolang::ANativeFunctionData funcData;
                 funcData.type = Autolang::ANativeFunctionType::PY_FUNCTION;
                 funcData.pyFunction = new py::object(value);
@@ -272,7 +272,7 @@ class CompilerWrapper {
     }
 };
 
-// Khai báo Module pybind11 thay thế EMSCRIPTEN_BINDINGS
+// Declare pybind11 module replacing EMSCRIPTEN_BINDINGS
 PYBIND11_MODULE(autolang, m) {
     py::class_<CompilerWrapper>(m, "ACompiler")
         .def(py::init<bool, bool, bool, bool, bool, bool, bool>(),

@@ -257,7 +257,7 @@ bool runCorrectnessTest(Autolang::ACompiler &compiler, const char *scriptPath) {
 int main(int argc, char *argv[]) {
 	auto processStart = std::chrono::high_resolution_clock::now();
 
-	// Đặt thành true để chạy riêng một script độc lập
+	// Set to true to run a standalone script independently
 	bool runSingleCustomScript = false;
 	const char *customScriptPath = "tests/test.atl";
 	if (argc > 1 && argv[1][0] != '-') {
@@ -299,15 +299,15 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	// Khởi tạo một thể hiện ACompiler dùng chung để thực hiện stress test khả năng reload/refresh
+	// Initialize a shared ACompiler instance to stress-test reload/refresh capabilities
 	Autolang::ACompiler sharedCompiler;
 	sharedCompiler.setLimitOpcodeCount(1000000);
 	sharedCompiler.setMaxManagedMemory(1024 * 1024);
 
-	// 1. Thực thi kiểm thử tính đúng đắn (Correctness)
+	// 1. Execute correctness tests
 	bool correctnessPassed = runCorrectnessTest(sharedCompiler, scriptPath);
 
-	// Thiết lập bộ bắt thông báo lỗi yên lặng khi chuyển sang các kiểm thử quy tắc vi phạm
+	// Set silent error handler when transitioning to rule violation tests
 	sharedCompiler.setOnError(new Autolang::FunctionEvent([](std::string_view) {}));
 
 	size_t passedCount = correctnessPassed ? 1 : 0;

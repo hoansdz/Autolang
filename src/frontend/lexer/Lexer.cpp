@@ -299,6 +299,12 @@ void pushIdentifier(Context &context, uint32_t &i) {
 		return;
 	}
 	switch (it->second) {
+		case TokenType::TO: {
+			context.tokens.emplace_back(
+			    context.linePos, TokenType::TO,
+			    pushLexerString(context, std::move(identifier)));
+			return;
+		}
 		ESTIMATE_CASE_ADD(CLASS, classes)
 		// ESTIMATE_CASE_ADD(FUNC, functions)
 		// ESTIMATE_CASE_ADD(CONSTRUCTOR, constructorNode)

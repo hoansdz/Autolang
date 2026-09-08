@@ -13,10 +13,10 @@ endif()
 # -------------------------------------------------------------------
 include(FetchContent)
 
-# Sau lần configure đầu tiên, dependency đã tải xong trong _deps/.
-# Bật ON để bỏ qua kiểm tra git remote mỗi lần re-configure.
+# After initial configure, dependencies are downloaded in _deps/.
+# Turn ON to skip git remote checks on subsequent re-configures.
 option(FETCHCONTENT_UPDATES_DISCONNECTED
-       "Bỏ qua kiểm tra cập nhật dependency (bật sau lần tải đầu)" ON)
+       "Skip dependency update checks (enable after initial download)" ON)
 
 # --- libcurl (static) ---
 if(NOT EMSCRIPTEN)
@@ -101,7 +101,7 @@ else()
   target_compile_definitions(autolang PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
   target_link_libraries(autolang PRIVATE autolang_lib)
 
-  # "cmake --build build --target run" để build và chạy ngay
+  # "cmake --build build --target run" to build and run immediately
   add_custom_target(run
     COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR} $<TARGET_FILE:autolang>
     DEPENDS autolang

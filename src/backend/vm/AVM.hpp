@@ -71,7 +71,8 @@ class AVM {
 
 	void initGlobalVariables();
 	AObject **globalVariables = nullptr;
-	AObject **pointerVariable = nullptr;
+	void *pointerVariable = nullptr;
+	ClassId pointerClassId = 0;
 	void setGlobalVariables(uint32_t i, AObject *object);
 	void restart();
 	uint32_t searchLine(Function *func, uint32_t opcodeIndex);

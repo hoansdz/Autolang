@@ -64,6 +64,8 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerString.emplace_back("hashMapOf");
 	lexerString.emplace_back("linkedMapOf");
 	lexerString.emplace_back("emptyMap");
+	lexerString.emplace_back("Pair");
+	lexerString.emplace_back("pairOf");
 	/*
 	lexerString.emplace_back("unaryPlus");
 	lexerString.emplace_back("unaryMinus");
@@ -143,6 +145,8 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerStringMap["hashMapOf"] = lexerIdhashMapOf;
 	lexerStringMap["linkedMapOf"] = lexerIdlinkedMapOf;
 	lexerStringMap["emptyMap"] = lexerIdemptyMap;
+	lexerStringMap["Pair"] = lexerIdPair;
+	lexerStringMap["pairOf"] = lexerIdpairOf;
 	/*
 	lexerStringMap["unaryPlus"] = lexerIdunaryPlus;
 	lexerStringMap["unaryMinus"] = lexerIdunaryMinus;
@@ -417,6 +421,7 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	createClosurePool.destroy();
 	createSetPool.destroy();
 	createMapPool.destroy();
+	pairPool.destroy();
 	whenNodePool.destroy();
 	functionAccessPool.destroy();
 	classDeclarationAllocator.destroy();

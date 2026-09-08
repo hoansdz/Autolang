@@ -1,0 +1,145 @@
+fun testForMap() {
+	// 1. Iterate over empty Map with 1 variable
+	val empty1 = <String, Int>{}
+	var countEmpty1 = 0
+	for (k in empty1) {
+		countEmpty1 += 1
+	}
+	assert(countEmpty1 == 0)
+
+	// 2. Iterate over empty Map with 2 variables
+	val empty2 = <Int, String>{}
+	var countEmpty2 = 0
+	for (k, v in empty2) {
+		countEmpty2 += 1
+	}
+	assert(countEmpty2 == 0)
+
+	// 3. Iterate over Map<String, Int> with 1 variable
+	val mapStrInt = {"one": 1, "two": 2, "three": 3}
+	var sumValFromKey = 0
+	var keyCount = 0
+	for (k in mapStrInt) {
+		assert(k is String)
+		val v = mapStrInt[k]
+		if (v != null) {
+			sumValFromKey += v!
+		}
+		keyCount += 1
+	}
+	assert(keyCount == 3)
+	assert(sumValFromKey == 6)
+
+	// 4. Iterate over Map<String, Int> with 2 variables (k, v)
+	var sumVal2 = 0
+	var count2 = 0
+	for (k, v in mapStrInt) {
+		assert(k is String)
+		assert(v is Int)
+		assert(mapStrInt[k] == v)
+		sumVal2 += v
+		count2 += 1
+	}
+	assert(count2 == 3)
+	assert(sumVal2 == 6)
+
+	// 5. Iterate over Map<Int, String> with 1 and 2 variables
+	val mapIntStr = <Int, String>{10: "ten", 20: "twenty", 30: "thirty"}
+	var sumKeys = 0
+	for (k in mapIntStr) {
+		assert(k is Int)
+		sumKeys += k
+	}
+	assert(sumKeys == 60)
+
+	var valConcatenated = ""
+	var sumKeys2 = 0
+	for (k, v in mapIntStr) {
+		assert(k is Int)
+		assert(v is String)
+		sumKeys2 += k
+		valConcatenated += v
+	}
+	assert(sumKeys2 == 60)
+	assert(valConcatenated.size() == 15) // "ten" (3) + "twenty" (6) + "thirty" (6) = 15
+
+	// 6. Iterate over Map<Float, Int> with 2 variables
+	val mapFloatInt = <Float, Int>{1.5: 10, 2.5: 20}
+	var floatKeySum = 0.0
+	var intValSum = 0
+	for (k, v in mapFloatInt) {
+		assert(k is Float)
+		assert(v is Int)
+		floatKeySum += k
+		intValSum += v
+	}
+	assert(floatKeySum == 4.0)
+	assert(intValSum == 30)
+
+	// 7. Test break statement in for map
+	val mapBreak = <Int, Int>{1: 100, 2: 200, 3: 300, 4: 400}
+	var breakCount = 0
+	for (k, v in mapBreak) {
+		breakCount += 1
+		if (breakCount == 2) {
+			break
+		}
+	}
+	assert(breakCount == 2)
+
+	// 8. Test continue statement in for map
+	val mapContinue = <Int, Int>{1: 10, 2: 20, 3: 30, 4: 40}
+	var continueSum = 0
+	for (k, v in mapContinue) {
+		if (k % 2 == 0) {
+			continue
+		}
+		continueSum += v
+	}
+	// Only sum odd keys (1 and 3) -> 10 + 30 = 40
+	assert(continueSum == 40)
+
+	// 9. Nested loops with Map
+	val outerMap = <String, Map<String, Int>>{
+		"first": <String, Int>{"a": 1, "b": 2},
+		"second": <String, Int>{"c": 3, "d": 4}
+	}
+	var nestedTotal = 0
+	for (outerKey, innerMap in outerMap) {
+		assert(outerKey is String)
+		for (innerKey, innerVal in innerMap) {
+			assert(innerKey is String)
+			assert(innerVal is Int)
+			nestedTotal += innerVal
+		}
+	}
+	assert(nestedTotal == 10)
+
+	// 10. Direct iteration over Map expression
+	var directSum = 0
+	for (dk, dv in <Int, Int>{5: 50, 6: 60}) {
+		directSum += dk + dv
+	}
+	assert(directSum == 121)
+
+	// 11. Iterate Map with Kotlin-style destructuring syntax: for ((k, v) in map)
+	val kotlinMap = {"alpha": 100, "beta": 200}
+	var kotlinSum = 0
+	for ((k, v) in kotlinMap) {
+		assert(k is String)
+		assert(v is Int)
+		kotlinSum += v
+	}
+	assert(kotlinSum == 300)
+
+	var kotlinKeyCount = 0
+	for ((k) in kotlinMap) {
+		assert(k is String)
+		kotlinKeyCount += 1
+	}
+	assert(kotlinKeyCount == 2)
+
+	println("Passed ${__FUNC__}")
+}
+
+testForMap()

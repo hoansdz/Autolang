@@ -78,4 +78,146 @@ fun testExceptionFeatures() {
 	println("Passed ${__FUNC__}")
 }
 
+class ExceptionA extends Exception {
+	var code: Int = 100
+	constructor(msg: String, code: Int = 100) {
+		super(msg)
+		this.code = code
+	}
+}
+
+class ExceptionB extends Exception {
+	constructor(msg: String) {
+		super(msg)
+	}
+}
+
+fun evaluateError(kind: Int): Int {
+	return try {
+		if (kind == 1) {
+			throw ExceptionA("Kind 1")
+		} else if (kind == 2) {
+			throw ExceptionB("Kind 2")
+		} else if (kind == 3) {
+			throw Exception("Kind 3")
+		}
+		0
+	} catch (e: ExceptionA) {
+		10
+	} catch (e: ExceptionB) {
+		20
+	} catch (e) {
+		30
+	}
+}
+
+fun testMultipleCatches() {
+	// 1. Specific catch (e: ExceptionA) with custom property
+	var caughtSpecificA = false
+	try {
+		throw ExceptionA("Custom A", 404)
+	} catch (e: ExceptionA) {
+		assert(e.code == 404)
+		assert(e.message == "Custom A")
+		caughtSpecificA = true
+	}
+	assert(caughtSpecificA)
+
+	// 2. Multiple catches: first catch matches
+	var matchedFirst = false
+	try {
+		throw ExceptionA("A")
+	} catch (e: ExceptionA) {
+		matchedFirst = true
+	} catch (e: ExceptionB) {
+		assert(false, "Should not reach ExceptionB")
+	} catch (e) {
+		assert(false, "Should not reach catch-all")
+	}
+	assert(matchedFirst)
+
+	// 3. Multiple catches: second catch matches
+	var matchedSecond = false
+	try {
+		throw ExceptionB("B")
+	} catch (e: ExceptionA) {
+		assert(false, "Should not reach ExceptionA")
+	} catch (e: ExceptionB) {
+		assert(e.message == "B")
+		matchedSecond = true
+	} catch (e) {
+		assert(false, "Should not reach catch-all")
+	}
+	assert(matchedSecond)
+
+	// 4. Multiple catches: catch-all matches base Exception
+	var matchedCatchAll = false
+	try {
+		throw Exception("Generic")
+	} catch (e: ExceptionA) {
+		assert(false, "Should not reach ExceptionA")
+	} catch (e: ExceptionB) {
+		assert(false, "Should not reach ExceptionB")
+	} catch (e) {
+		assert(e.message == "Generic")
+		matchedCatchAll = true
+	}
+	assert(matchedCatchAll)
+
+	// 5. Unmatched catch rethrows to outer try
+	var outerCaught = false
+	try {
+		try {
+			throw ExceptionB("Unmatched in inner")
+		} catch (e: ExceptionA) {
+			assert(false, "Should not catch ExceptionB in ExceptionA block")
+		}
+	} catch (e: ExceptionB) {
+		assert(e.message == "Unmatched in inner")
+		outerCaught = true
+	}
+	assert(outerCaught)
+
+	// 6. Multiple catches with finally
+	var executionOrder = ""
+	try {
+		try {
+			throw ExceptionB("Testing finally")
+		} catch (e: ExceptionA) {
+			executionOrder = executionOrder + "A"
+		} catch (e: ExceptionB) {
+			executionOrder = executionOrder + "B"
+		} finally {
+			executionOrder = executionOrder + "F1"
+		}
+	} finally {
+		executionOrder = executionOrder + "F2"
+	}
+	assert(executionOrder == "BF1F2")
+
+	// 7. Unmatched catch with finally preserves exception propagation
+	var propagationOrder = ""
+	try {
+		try {
+			throw ExceptionB("Propagate through finally")
+		} catch (e: ExceptionA) {
+			propagationOrder = propagationOrder + "A"
+		} finally {
+			propagationOrder = propagationOrder + "F"
+		}
+	} catch (e: ExceptionB) {
+		propagationOrder = propagationOrder + "OuterB"
+	}
+	assert(propagationOrder == "FOuterB")
+
+	// 8. Try-catch expression with multiple catches
+	assert(evaluateError(0) == 0)
+	assert(evaluateError(1) == 10)
+	assert(evaluateError(2) == 20)
+	assert(evaluateError(3) == 30)
+
+	println("Passed ${__FUNC__}")
+}
+
 testExceptionFeatures()
+testMultipleCatches()

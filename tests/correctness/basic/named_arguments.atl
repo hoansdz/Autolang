@@ -1,0 +1,172 @@
+// Test named arguments and constructor default parameters
+
+class NamedArgPerson(val name: String, val age: Int = 18) {
+}
+
+class NamedArgFullDefault(val x: Int = 10, val y: Int = 20, val title: String = "Item") {
+}
+
+class NamedArgSecondaryPerson {
+	var name: String = ""
+	var age: Int = 0
+	constructor(name: String, age: Int = 100) {
+		this.name = name
+		this.age = age
+	}
+}	
+
+fun namedArgCalculate(a: Int, b: Int = 5, c: Int = 10): Int {
+	return a + b * c
+}
+
+fun namedArgFormatUser(firstName: String, lastName: String, prefix: String = "Mr."): String {
+	return prefix + " " + firstName + " " + lastName
+}
+
+fun testPrimaryConstructorNamedArgs() {
+	// 1. Normal order
+	val p1 = NamedArgPerson(name = "Alice", age = 25)
+	assert(p1.name == "Alice")
+	assert(p1.age == 25)
+
+	// 2. Reversed order
+	val p2 = NamedArgPerson(age = 30, name = "Bob")
+	assert(p2.name == "Bob")
+	assert(p2.age == 30)
+
+	// 3. Combine positional and named
+	val p3 = NamedArgPerson("Charlie", age = 22)
+	assert(p3.name == "Charlie")
+	assert(p3.age == 22)
+
+	// 4. Omit parameter with default value at the end
+	val p4 = NamedArgPerson(name = "David")
+	assert(p4.name == "David")
+	assert(p4.age == 18)
+}
+
+fun testFullDefaultConstructor() {
+	// 1. Pass no arguments
+	val d1 = NamedArgFullDefault()
+	assert(d1.x == 10)
+	assert(d1.y == 20)
+	assert(d1.title == "Item")
+
+	// 2. Pass only parameter y (omit preceding x)
+	val d2 = NamedArgFullDefault(y = 99)
+	assert(d2.x == 10)
+	assert(d2.y == 99)
+	assert(d2.title == "Item")
+
+	// 3. Pass only title parameter
+	val d3 = NamedArgFullDefault(title = "Custom")
+	assert(d3.x == 10)
+	assert(d3.y == 20)
+	assert(d3.title == "Custom")
+
+	// 4. Reverse argument order
+	val d4 = NamedArgFullDefault(title = "Reversed", x = 1, y = 2)
+	assert(d4.x == 1)
+	assert(d4.y == 2)
+	assert(d4.title == "Reversed")
+}
+
+fun testSecondaryConstructorNamedArgs() {
+	// 1. All arguments with named
+	val s1 = NamedArgSecondaryPerson(name = "Eva", age = 40)
+	assert(s1.name == "Eva")
+	assert(s1.age == 40)
+
+	// 2. Reversed order
+	val s2 = NamedArgSecondaryPerson(age = 50, name = "Frank")
+	assert(s2.name == "Frank")
+	assert(s2.age == 50)
+
+	// 3. Omit default parameter
+	val s3 = NamedArgSecondaryPerson(name = "Grace")
+	assert(s3.name == "Grace")
+	assert(s3.age == 100)
+
+	// 4. Positional + named
+	val s4 = NamedArgSecondaryPerson("Helen", age = 60)
+	assert(s4.name == "Helen")
+	assert(s4.age == 60)
+}
+
+fun testFunctionNamedArgs() {
+	// 1. Positional combined with named, omitting b in the middle
+	val res1 = namedArgCalculate(2, c = 20)
+	// 2 + 5 * 20 = 102
+	assert(res1 == 102)
+
+	// 2. Reverse all arguments
+	val res2 = namedArgCalculate(c = 3, b = 4, a = 1)
+	// 1 + 4 * 3 = 13
+	assert(res2 == 13)
+
+	// 3. Pass only required argument a
+	val res3 = namedArgCalculate(a = 10)
+	// 10 + 5 * 10 = 60
+	assert(res3 == 60)
+
+	// 4. String formatting with named arguments
+	val u1 = namedArgFormatUser(lastName = "Doe", firstName = "John")
+	assert(u1 == "Mr. John Doe")
+
+	val u2 = namedArgFormatUser("Jane", "Smith", prefix = "Dr.")
+	assert(u2 == "Dr. Jane Smith")
+
+	val u3 = namedArgFormatUser(prefix = "Prof.", firstName = "Alan", lastName = "Turing")
+	assert(u3 == "Prof. Alan Turing")
+}
+
+class NamedArgCalculator {
+	fun multiply(x: Int, y: Int = 2, scale: Int = 1): Int {
+		return x * y * scale
+	}
+}
+
+class NamedArgAnimal(val name: String = "Unknown", val sound: String = "None") {
+}
+
+class NamedArgDog extends NamedArgAnimal {
+	var breed: String = ""
+	constructor(name: String = "Puppy", breed: String = "Golden") {
+		super(name = name, sound = "Woof")
+		this.breed = breed
+	}
+}
+
+fun testMethodAndInheritanceNamedArgs() {
+	val calc = NamedArgCalculator()
+	assert(calc.multiply(x = 5) == 10)
+	assert(calc.multiply(scale = 3, x = 4) == 24)
+	assert(calc.multiply(3, scale = 5, y = 2) == 30)
+
+	// Nested calls
+	val nested = namedArgCalculate(a = namedArgCalculate(a = 1, b = 2, c = 3), c = 4)
+	// calculate(1, 2, 3) = 1 + 2 * 3 = 7
+	// calculate(7, 5, 4) = 7 + 5 * 4 = 27
+	assert(nested == 27)
+
+	// Inheritance
+	val dog1 = NamedArgDog()
+	assert(dog1.name == "Puppy")
+	assert(dog1.sound == "Woof")
+	assert(dog1.breed == "Golden")
+
+	val dog2 = NamedArgDog(breed = "Husky", name = "Ghost")
+	assert(dog2.name == "Ghost")
+	assert(dog2.breed == "Husky")
+}
+
+fun testNamedArguments() {
+	testPrimaryConstructorNamedArgs()
+	testFullDefaultConstructor()
+	testSecondaryConstructorNamedArgs()
+	testFunctionNamedArgs()
+	testMethodAndInheritanceNamedArgs()
+	println("Passed ${__FUNC__}")
+}
+
+testNamedArguments()

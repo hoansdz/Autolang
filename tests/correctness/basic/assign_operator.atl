@@ -1,0 +1,61 @@
+class OperatorContainer {
+	var count: Int = 10
+	var ratio: Float = 5.0
+	var text: String = "hello"
+}
+
+class OperatorWrapper {
+	var c: OperatorContainer = OperatorContainer()
+}
+
+fun testNestedAssignOperator() {
+	val w = OperatorWrapper()
+	w.c.count -= 3
+	assert(w.c.count == 7)
+
+	w.c.count += 5
+	assert(w.c.count == 12)
+
+	w.c.count *= 2
+	assert(w.c.count == 24)
+
+	w.c.count /= 4
+	assert(w.c.count == 6)
+
+	w.c.ratio += 2.5
+	assert(w.c.ratio == 7.5)
+
+	w.c.ratio -= 1.5
+	assert(w.c.ratio == 6.0)
+
+	w.c.ratio *= 2.0
+	assert(w.c.ratio == 12.0)
+
+	w.c.ratio /= 3.0
+	assert(w.c.ratio == 4.0)
+
+	w.c.text += " world"
+	assert(w.c.text == "hello world")
+}
+
+fun testAssignOperatorCow() {
+	val x = 100
+	var y = x
+	y += 50
+	assert(x == 100)
+	assert(y == 150)
+
+	val f = 10.5
+	var g = f
+	g -= 2.5
+	assert(f == 10.5)
+	assert(g == 8.0)
+}
+
+fun testAssignOperator() {
+	testNestedAssignOperator()
+	testAssignOperatorCow()
+	println("Passed testAssignOperator")
+}
+
+testAssignOperator()

@@ -113,6 +113,9 @@ int getPrecedence(Lexer::TokenType type) {
 		case Lexer::TokenType::GT: {
 			return 7;
 		}
+		case Lexer::TokenType::TO: {
+			return 6;
+		}
 		case Lexer::TokenType::IN_:
 		case Lexer::TokenType::NOT_IN: {
 			return 5;

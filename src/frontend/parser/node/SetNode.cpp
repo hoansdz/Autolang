@@ -602,6 +602,7 @@ ExprNode *SetNode::optimize(in_func) {
 	case Lexer::TokenType::type: {                                             \
 		auto _node = static_cast<AccessNode *>(detach);                        \
 		_node->isStore = false;                                                \
+		_node->isGetPointer = true;                                            \
 		_node->putBytecodes(in_data, bytecodes);                               \
 		value->putBytecodes(in_data, bytecodes);                               \
 		bytecodes.emplace_back(Opcode::op);                                    \
@@ -612,6 +613,7 @@ ExprNode *SetNode::optimize(in_func) {
 	case Lexer::TokenType::type: {                                             \
 		auto _node = static_cast<AccessNode *>(detach);                        \
 		_node->isStore = false;                                                \
+		_node->isGetPointer = true;                                            \
 		_node->putBytecodes(in_data, bytecodes);                               \
 		value->putBytecodes(in_data, bytecodes);                               \
 		bytecodes.emplace_back(Opcode::op);                                    \

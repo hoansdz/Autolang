@@ -417,6 +417,7 @@ resumeCallFrame:;
 						break;
 					}
 					data.manager.release(*container);
+					*container = nullptr;
 					uint32_t newIndex = ++(*iterator)->i;
 					if (list->array->size == newIndex) {
 						data.manager.release(*iterator);
@@ -475,7 +476,10 @@ resumeCallFrame:;
 							    (*iterator)->data->data);
 							++it;
 							data.manager.release(*container);
+							*container = nullptr;
 							if (it == set->end()) {
+								data.manager.release(*iterator);
+								*iterator = nullptr;
 								i = get_u32(bytecodes, i);
 								break;
 							}
@@ -514,7 +518,10 @@ resumeCallFrame:;
 							    (*iterator)->data->data);
 							++it;
 							data.manager.release(*container);
+							*container = nullptr;
 							if (it == set->end()) {
+								data.manager.release(*iterator);
+								*iterator = nullptr;
 								i = get_u32(bytecodes, i);
 								break;
 							}
@@ -553,7 +560,10 @@ resumeCallFrame:;
 							    (*iterator)->data->data);
 							++it;
 							data.manager.release(*container);
+							*container = nullptr;
 							if (it == set->end()) {
+								data.manager.release(*iterator);
+								*iterator = nullptr;
 								i = get_u32(bytecodes, i);
 								break;
 							}
@@ -592,7 +602,10 @@ resumeCallFrame:;
 							    (*iterator)->data->data);
 							++it;
 							data.manager.release(*container);
+							*container = nullptr;
 							if (it == set->end()) {
+								data.manager.release(*iterator);
+								*iterator = nullptr;
 								i = get_u32(bytecodes, i);
 								break;
 							}
@@ -603,6 +616,424 @@ resumeCallFrame:;
 						}
 					}
 
+					break;
+				}
+				case Autolang::Opcode::FOR_MAP_KEY: {
+					auto mapObject = stack.pop();
+					auto hashMapData =
+					    static_cast<Autolang::Libs::map::AHashMap *>(
+					        mapObject->data->data);
+					bool isGlobal = bytecodes[i++] == Opcode::STORE_GLOBAL;
+					AObject **container;
+					AObject **iterator;
+					if (isGlobal) {
+						container = &globalVariables[get_u32(bytecodes, i)];
+						iterator = &globalVariables[get_u32(bytecodes, i)];
+					} else {
+						container = &stackAllocator[get_u32(bytecodes, i)];
+						iterator = &stackAllocator[get_u32(bytecodes, i)];
+					}
+
+					switch (hashMapData->type) {
+						case DefaultClass::intClassId: {
+							auto map =
+							    static_cast<Autolang::Libs::map::IntHashMap *>(
+							        hashMapData->data);
+							if (*iterator == DefaultClass::nullObject) {
+								if (map->empty()) {
+									i = get_u32(bytecodes, i);
+									break;
+								}
+								auto itPtr =
+								    new Autolang::Libs::map::IntHashMap::
+								        iterator(map->begin());
+								*iterator = notifier->createNativeData(
+								    mapObject->type, itPtr,
+								    [](ANotifier &notifier,
+								       void *data) -> void {
+									    delete static_cast<
+									        Autolang::Libs::map::IntHashMap::
+									            iterator *>(data);
+								    });
+								*container = notifier->createInt((*itPtr)->first);
+								(*container)->retain();
+								i += 4;
+								break;
+							}
+							auto &it = *static_cast<
+							    Autolang::Libs::map::IntHashMap::iterator *>(
+							    (*iterator)->data->data);
+							++it;
+							data.manager.release(*container);
+							*container = nullptr;
+							if (it == map->end()) {
+								data.manager.release(*iterator);
+								*iterator = nullptr;
+								i = get_u32(bytecodes, i);
+								break;
+							}
+							*container = notifier->createInt(it->first);
+							(*container)->retain();
+							i += 4;
+							break;
+						}
+
+						case DefaultClass::floatClassId: {
+							auto map = static_cast<
+							    Autolang::Libs::map::FloatHashMap *>(
+							    hashMapData->data);
+							if (*iterator == DefaultClass::nullObject) {
+								if (map->empty()) {
+									i = get_u32(bytecodes, i);
+									break;
+								}
+								auto itPtr = new Autolang::Libs::map::
+								    FloatHashMap::iterator(map->begin());
+								*iterator = notifier->createNativeData(
+								    mapObject->type, itPtr,
+								    [](ANotifier &notifier,
+								       void *data) -> void {
+									    delete static_cast<
+									        Autolang::Libs::map::FloatHashMap::
+									            iterator *>(data);
+								    });
+								*container = notifier->createFloat((*itPtr)->first);
+								(*container)->retain();
+								i += 4;
+								break;
+							}
+							auto &it = *static_cast<
+							    Autolang::Libs::map::FloatHashMap::iterator *>(
+							    (*iterator)->data->data);
+							++it;
+							data.manager.release(*container);
+							*container = nullptr;
+							if (it == map->end()) {
+								data.manager.release(*iterator);
+								*iterator = nullptr;
+								i = get_u32(bytecodes, i);
+								break;
+							}
+							*container = notifier->createFloat(it->first);
+							(*container)->retain();
+							i += 4;
+							break;
+						}
+
+						case DefaultClass::stringClassId: {
+							auto map = static_cast<
+							    Autolang::Libs::map::StringHashMap *>(
+							    hashMapData->data);
+							if (*iterator == DefaultClass::nullObject) {
+								if (map->empty()) {
+									i = get_u32(bytecodes, i);
+									break;
+								}
+								auto itPtr = new Autolang::Libs::map::
+								    StringHashMap::iterator(map->begin());
+								*iterator = notifier->createNativeData(
+								    mapObject->type, itPtr,
+								    [](ANotifier &notifier,
+								       void *data) -> void {
+									    delete static_cast<
+									        Autolang::Libs::map::StringHashMap::
+									            iterator *>(data);
+								    });
+								*container = (*itPtr)->first;
+								(*container)->retain();
+								i += 4;
+								break;
+							}
+							auto &it = *static_cast<
+							    Autolang::Libs::map::StringHashMap::iterator *>(
+							    (*iterator)->data->data);
+							++it;
+							data.manager.release(*container);
+							*container = nullptr;
+							if (it == map->end()) {
+								data.manager.release(*iterator);
+								*iterator = nullptr;
+								i = get_u32(bytecodes, i);
+								break;
+							}
+							*container = it->first;
+							(*container)->retain();
+							i += 4;
+							break;
+						}
+
+						default: {
+							auto map = static_cast<
+							    Autolang::Libs::map::ObjectHashMap *>(
+							    hashMapData->data);
+							if (*iterator == DefaultClass::nullObject) {
+								if (map->empty()) {
+									i = get_u32(bytecodes, i);
+									break;
+								}
+								auto itPtr = new Autolang::Libs::map::
+								    ObjectHashMap::iterator(map->begin());
+								*iterator = notifier->createNativeData(
+								    mapObject->type, itPtr,
+								    [](ANotifier &notifier,
+								       void *data) -> void {
+									    delete static_cast<
+									        Autolang::Libs::map::ObjectHashMap::
+									            iterator *>(data);
+								    });
+								*container = (*itPtr)->first;
+								(*container)->retain();
+								i += 4;
+								break;
+							}
+							auto &it = *static_cast<
+							    Autolang::Libs::map::ObjectHashMap::iterator *>(
+							    (*iterator)->data->data);
+							++it;
+							data.manager.release(*container);
+							*container = nullptr;
+							if (it == map->end()) {
+								data.manager.release(*iterator);
+								*iterator = nullptr;
+								i = get_u32(bytecodes, i);
+								break;
+							}
+							*container = it->first;
+							(*container)->retain();
+							i += 4;
+							break;
+						}
+					}
+					break;
+				}
+				case Autolang::Opcode::FOR_MAP_KEY_VALUE: {
+					auto mapObject = stack.pop();
+					auto hashMapData =
+					    static_cast<Autolang::Libs::map::AHashMap *>(
+					        mapObject->data->data);
+					bool isGlobal = bytecodes[i++] == Opcode::STORE_GLOBAL;
+					AObject **keyContainer;
+					AObject **valContainer;
+					AObject **iterator;
+					if (isGlobal) {
+						keyContainer = &globalVariables[get_u32(bytecodes, i)];
+						valContainer = &globalVariables[get_u32(bytecodes, i)];
+						iterator = &globalVariables[get_u32(bytecodes, i)];
+					} else {
+						keyContainer = &stackAllocator[get_u32(bytecodes, i)];
+						valContainer = &stackAllocator[get_u32(bytecodes, i)];
+						iterator = &stackAllocator[get_u32(bytecodes, i)];
+					}
+
+					auto getValObj = [&](AObject *value) -> AObject * {
+						if (!value)
+							return DefaultClass::nullObject;
+						switch (value->type) {
+							case DefaultClass::intClassId:
+								return notifier->createInt(value->i);
+							case DefaultClass::floatClassId:
+								return notifier->createFloat(value->f);
+							default:
+								return value;
+						}
+					};
+
+					switch (hashMapData->type) {
+						case DefaultClass::intClassId: {
+							auto map =
+							    static_cast<Autolang::Libs::map::IntHashMap *>(
+							        hashMapData->data);
+							if (*iterator == DefaultClass::nullObject) {
+								if (map->empty()) {
+									i = get_u32(bytecodes, i);
+									break;
+								}
+								auto itPtr =
+								    new Autolang::Libs::map::IntHashMap::
+								        iterator(map->begin());
+								*iterator = notifier->createNativeData(
+								    mapObject->type, itPtr,
+								    [](ANotifier &notifier,
+								       void *data) -> void {
+									    delete static_cast<
+									        Autolang::Libs::map::IntHashMap::
+									            iterator *>(data);
+								    });
+								*keyContainer =
+								    notifier->createInt((*itPtr)->first);
+								(*keyContainer)->retain();
+								*valContainer = getValObj((*itPtr)->second);
+								(*valContainer)->retain();
+								i += 4;
+								break;
+							}
+							auto &it = *static_cast<
+							    Autolang::Libs::map::IntHashMap::iterator *>(
+							    (*iterator)->data->data);
+							++it;
+							data.manager.release(*keyContainer);
+							*keyContainer = nullptr;
+							data.manager.release(*valContainer);
+							*valContainer = nullptr;
+							if (it == map->end()) {
+								data.manager.release(*iterator);
+								*iterator = nullptr;
+								i = get_u32(bytecodes, i);
+								break;
+							}
+							*keyContainer = notifier->createInt(it->first);
+							(*keyContainer)->retain();
+							*valContainer = getValObj(it->second);
+							(*valContainer)->retain();
+							i += 4;
+							break;
+						}
+
+						case DefaultClass::floatClassId: {
+							auto map = static_cast<
+							    Autolang::Libs::map::FloatHashMap *>(
+							    hashMapData->data);
+							if (*iterator == DefaultClass::nullObject) {
+								if (map->empty()) {
+									i = get_u32(bytecodes, i);
+									break;
+								}
+								auto itPtr = new Autolang::Libs::map::
+								    FloatHashMap::iterator(map->begin());
+								*iterator = notifier->createNativeData(
+								    mapObject->type, itPtr,
+								    [](ANotifier &notifier,
+								       void *data) -> void {
+									    delete static_cast<
+									        Autolang::Libs::map::FloatHashMap::
+									            iterator *>(data);
+								    });
+								*keyContainer =
+								    notifier->createFloat((*itPtr)->first);
+								(*keyContainer)->retain();
+								*valContainer = getValObj((*itPtr)->second);
+								(*valContainer)->retain();
+								i += 4;
+								break;
+							}
+							auto &it = *static_cast<
+							    Autolang::Libs::map::FloatHashMap::iterator *>(
+							    (*iterator)->data->data);
+							++it;
+							data.manager.release(*keyContainer);
+							*keyContainer = nullptr;
+							data.manager.release(*valContainer);
+							*valContainer = nullptr;
+							if (it == map->end()) {
+								data.manager.release(*iterator);
+								*iterator = nullptr;
+								i = get_u32(bytecodes, i);
+								break;
+							}
+							*keyContainer = notifier->createFloat(it->first);
+							(*keyContainer)->retain();
+							*valContainer = getValObj(it->second);
+							(*valContainer)->retain();
+							i += 4;
+							break;
+						}
+
+						case DefaultClass::stringClassId: {
+							auto map = static_cast<
+							    Autolang::Libs::map::StringHashMap *>(
+							    hashMapData->data);
+							if (*iterator == DefaultClass::nullObject) {
+								if (map->empty()) {
+									i = get_u32(bytecodes, i);
+									break;
+								}
+								auto itPtr = new Autolang::Libs::map::
+								    StringHashMap::iterator(map->begin());
+								*iterator = notifier->createNativeData(
+								    mapObject->type, itPtr,
+								    [](ANotifier &notifier,
+								       void *data) -> void {
+									    delete static_cast<
+									        Autolang::Libs::map::StringHashMap::
+									            iterator *>(data);
+								    });
+								*keyContainer = (*itPtr)->first;
+								(*keyContainer)->retain();
+								*valContainer = getValObj((*itPtr)->second);
+								(*valContainer)->retain();
+								i += 4;
+								break;
+							}
+							auto &it = *static_cast<
+							    Autolang::Libs::map::StringHashMap::iterator *>(
+							    (*iterator)->data->data);
+							++it;
+							data.manager.release(*keyContainer);
+							*keyContainer = nullptr;
+							data.manager.release(*valContainer);
+							*valContainer = nullptr;
+							if (it == map->end()) {
+								data.manager.release(*iterator);
+								*iterator = nullptr;
+								i = get_u32(bytecodes, i);
+								break;
+							}
+							*keyContainer = it->first;
+							(*keyContainer)->retain();
+							*valContainer = getValObj(it->second);
+							(*valContainer)->retain();
+							i += 4;
+							break;
+						}
+
+						default: {
+							auto map = static_cast<
+							    Autolang::Libs::map::ObjectHashMap *>(
+							    hashMapData->data);
+							if (*iterator == DefaultClass::nullObject) {
+								if (map->empty()) {
+									i = get_u32(bytecodes, i);
+									break;
+								}
+								auto itPtr = new Autolang::Libs::map::
+								    ObjectHashMap::iterator(map->begin());
+								*iterator = notifier->createNativeData(
+								    mapObject->type, itPtr,
+								    [](ANotifier &notifier,
+								       void *data) -> void {
+									    delete static_cast<
+									        Autolang::Libs::map::ObjectHashMap::
+									            iterator *>(data);
+								    });
+								*keyContainer = (*itPtr)->first;
+								(*keyContainer)->retain();
+								*valContainer = getValObj((*itPtr)->second);
+								(*valContainer)->retain();
+								i += 4;
+								break;
+							}
+							auto &it = *static_cast<
+							    Autolang::Libs::map::ObjectHashMap::iterator *>(
+							    (*iterator)->data->data);
+							++it;
+							data.manager.release(*keyContainer);
+							*keyContainer = nullptr;
+							data.manager.release(*valContainer);
+							*valContainer = nullptr;
+							if (it == map->end()) {
+								data.manager.release(*iterator);
+								*iterator = nullptr;
+								i = get_u32(bytecodes, i);
+								break;
+							}
+							*keyContainer = it->first;
+							(*keyContainer)->retain();
+							*valContainer = getValObj(it->second);
+							(*valContainer)->retain();
+							i += 4;
+							break;
+						}
+					}
 					break;
 				}
 				case Autolang::Opcode::IN_RANGE: {
@@ -795,11 +1226,6 @@ resumeCallFrame:;
 				case Autolang::Opcode::STORE_LOCAL: {
 					auto obj = stack.pop();
 					uint32_t pos = get_u32(bytecodes, i);
-					// std::cerr << pos << " "
-					//           << DefaultFunction::to_string(*notifier, obj)
-					//           << " " <<
-					//           data.classes[obj->type]->getName(compile) <<
-					//           "\n";
 					stackAllocator.set(data.manager, pos, obj);
 					break;
 				}
@@ -1543,31 +1969,141 @@ resumeCallFrame:;
 				}
 				case Autolang::Opcode::GET_POINTER_LOCAL: {
 					uint32_t localSlot = get_u32(bytecodes, i);
-					pointerVariable = &stackAllocator[localSlot];
-					stack.push(*pointerVariable);
-					(*pointerVariable)->retain();
+					AObject **targetRef = &stackAllocator[localSlot];
+					AObject *slotObj = *targetRef;
+					if (slotObj) {
+						pointerClassId = slotObj->type;
+						if (pointerClassId == DefaultClass::intClassId) {
+							if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+								auto newObj = notifier->createInt(slotObj->i);
+								newObj->retain();
+								notifier->release(slotObj);
+								*targetRef = newObj;
+								slotObj = newObj;
+							}
+							pointerVariable = &(slotObj->i);
+						} else if (pointerClassId == DefaultClass::floatClassId) {
+							if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+								auto newObj = notifier->createFloat(slotObj->f);
+								newObj->retain();
+								notifier->release(slotObj);
+								*targetRef = newObj;
+								slotObj = newObj;
+							}
+							pointerVariable = &(slotObj->f);
+						} else {
+							pointerVariable = targetRef;
+						}
+						stack.push(slotObj);
+						slotObj->retain();
+					} else {
+						pointerClassId = 0;
+						pointerVariable = targetRef;
+						stack.push(slotObj);
+					}
 					break;
 				}
 				case Autolang::Opcode::GET_POINTER_GLOBAL: {
-					pointerVariable = &globalVariables[get_u32(bytecodes, i)];
-					stack.push(*pointerVariable);
-					(*pointerVariable)->retain();
+					AObject **targetRef = &globalVariables[get_u32(bytecodes, i)];
+					AObject *slotObj = *targetRef;
+					if (slotObj) {
+						pointerClassId = slotObj->type;
+						if (pointerClassId == DefaultClass::intClassId) {
+							if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+								auto newObj = notifier->createInt(slotObj->i);
+								newObj->retain();
+								notifier->release(slotObj);
+								*targetRef = newObj;
+								slotObj = newObj;
+							}
+							pointerVariable = &(slotObj->i);
+						} else if (pointerClassId == DefaultClass::floatClassId) {
+							if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+								auto newObj = notifier->createFloat(slotObj->f);
+								newObj->retain();
+								notifier->release(slotObj);
+								*targetRef = newObj;
+								slotObj = newObj;
+							}
+							pointerVariable = &(slotObj->f);
+						} else {
+							pointerVariable = targetRef;
+						}
+						stack.push(slotObj);
+						slotObj->retain();
+					} else {
+						pointerClassId = 0;
+						pointerVariable = targetRef;
+						stack.push(slotObj);
+					}
 					break;
 				}
 				case Autolang::Opcode::GET_POINTER_MEMBER: {
 					auto obj = stack.pop();
-					pointerVariable = &obj->member->data[get_u32(bytecodes, i)];
-					stack.push(*pointerVariable);
-					(*pointerVariable)->retain();
+					AObject **targetRef = &obj->member->data[get_u32(bytecodes, i)];
+					AObject *slotObj = *targetRef;
+					if (slotObj) {
+						pointerClassId = slotObj->type;
+						if (pointerClassId == DefaultClass::intClassId) {
+							if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+								auto newObj = notifier->createInt(slotObj->i);
+								newObj->retain();
+								notifier->release(slotObj);
+								*targetRef = newObj;
+								slotObj = newObj;
+							}
+							pointerVariable = &(slotObj->i);
+						} else if (pointerClassId == DefaultClass::floatClassId) {
+							if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+								auto newObj = notifier->createFloat(slotObj->f);
+								newObj->retain();
+								notifier->release(slotObj);
+								*targetRef = newObj;
+								slotObj = newObj;
+							}
+							pointerVariable = &(slotObj->f);
+						} else {
+							pointerVariable = targetRef;
+						}
+						stack.push(slotObj);
+						slotObj->retain();
+					} else {
+						pointerClassId = 0;
+						pointerVariable = targetRef;
+						stack.push(slotObj);
+					}
 					break;
 				}
 				case Autolang::Opcode::GET_POINTER_LATEINIT_MEMBER: {
 					auto obj = stack.pop();
 					uint32_t memberIndex = get_u32(bytecodes, i);
-					pointerVariable = &obj->member->data[memberIndex];
-					if (*pointerVariable) {
-						stack.push(*pointerVariable);
-						(*pointerVariable)->retain();
+					AObject **targetRef = &obj->member->data[memberIndex];
+					AObject *slotObj = *targetRef;
+					if (slotObj) {
+						pointerClassId = slotObj->type;
+						if (pointerClassId == DefaultClass::intClassId) {
+							if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+								auto newObj = notifier->createInt(slotObj->i);
+								newObj->retain();
+								notifier->release(slotObj);
+								*targetRef = newObj;
+								slotObj = newObj;
+							}
+							pointerVariable = &(slotObj->i);
+						} else if (pointerClassId == DefaultClass::floatClassId) {
+							if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+								auto newObj = notifier->createFloat(slotObj->f);
+								newObj->retain();
+								notifier->release(slotObj);
+								*targetRef = newObj;
+								slotObj = newObj;
+							}
+							pointerVariable = &(slotObj->f);
+						} else {
+							pointerVariable = targetRef;
+						}
+						stack.push(slotObj);
+						slotObj->retain();
 						break;
 					}
 					throwLateInitException(notifier, obj, memberIndex);

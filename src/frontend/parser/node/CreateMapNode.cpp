@@ -350,10 +350,19 @@ void CreateMapNode::optimizeAndInferenceType(in_func) {
 			if (key->classId == *keyMustBeClassId) {
 				continue;
 			}
-			if (key->classId == DefaultClass::nullClassId) {
-				key->classId = *keyMustBeClassId;
-				key->classDeclaration = keyClassDeclaration;
-				key = static_cast<HasClassIdNode *>(key->optimize(in_data));
+			switch (key->classId) {
+				case DefaultClass::intClassId: {
+					if (*keyMustBeClassId == DefaultClass::floatClassId) {
+						key = context.castPool.push(key, DefaultClass::floatClassId);
+					}
+					break;
+				}
+				case DefaultClass::nullClassId: {
+					key->classId = *keyMustBeClassId;
+					key->classDeclaration = keyClassDeclaration;
+					key = static_cast<HasClassIdNode *>(key->optimize(in_data));
+					break;
+				}
 			}
 		}
 	}
@@ -363,21 +372,30 @@ void CreateMapNode::optimizeAndInferenceType(in_func) {
 			if (value->classId == *valueMustBeClassId) {
 				continue;
 			}
-			if (value->classId == DefaultClass::nullClassId) {
-				if (value->kind == NodeType::CREATE_SET) {
-					auto setNode = static_cast<CreateSetNode *>(value);
-					if (setNode->values.empty() &&
-					    compile.classes[*valueMustBeClassId]->genericBaseClassId ==
-					        DefaultClass::mapClassId) {
-						value = context.createMapPool.push(
-						    value->line, nullptr,
-						    std::vector<std::pair<HasClassIdNode *,
-						                          HasClassIdNode *>>());
+			switch (value->classId) {
+				case DefaultClass::intClassId: {
+					if (*valueMustBeClassId == DefaultClass::floatClassId) {
+						value = context.castPool.push(value, DefaultClass::floatClassId);
 					}
+					break;
 				}
-				value->classId = *valueMustBeClassId;
-				value->classDeclaration = valueClassDeclaration;
-				value = static_cast<HasClassIdNode *>(value->optimize(in_data));
+				case DefaultClass::nullClassId: {
+					if (value->kind == NodeType::CREATE_SET) {
+						auto setNode = static_cast<CreateSetNode *>(value);
+						if (setNode->values.empty() &&
+						    compile.classes[*valueMustBeClassId]->genericBaseClassId ==
+						        DefaultClass::mapClassId) {
+							value = context.createMapPool.push(
+							    value->line, nullptr,
+							    std::vector<std::pair<HasClassIdNode *,
+							                          HasClassIdNode *>>());
+						}
+					}
+					value->classId = *valueMustBeClassId;
+					value->classDeclaration = valueClassDeclaration;
+					value = static_cast<HasClassIdNode *>(value->optimize(in_data));
+					break;
+				}
 			}
 		}
 	}

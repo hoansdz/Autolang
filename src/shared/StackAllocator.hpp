@@ -46,7 +46,7 @@ class StackAllocator {
     // Helper: Gets the absolute memory pointer for a given global index.
     inline AObject **getAbsolute(size_t index) {
         size_t chunkIdx = index >> CHUNK_SHIFT;
-        // FIX: Tự động đảm bảo chunk tồn tại trước khi truy cập, chặn đứng Vector Out-of-bounds
+        // FIX: Automatically ensure chunk exists before access, preventing Vector out-of-bounds
         ensureChunks(chunkIdx + 1); 
         return &chunks[chunkIdx][index & CHUNK_MASK];
     }
@@ -63,7 +63,7 @@ class StackAllocator {
     inline size_t getTop() const { return topIndex; }
 
     inline void ensure(size_t size) {
-        // FIX: Xóa bỏ logic "padding nhảy chunk" để giữ index luôn liền mạch y hệt mảng phẳng ban đầu.
+        // FIX: Remove "chunk jumping padding" logic to keep indices continuous like a flat array.
         size_t requiredTop = topIndex + size;
         size_t chunkIdx = requiredTop >> CHUNK_SHIFT;
         ensureChunks(chunkIdx + 1);
@@ -77,7 +77,7 @@ class StackAllocator {
         for (size_t i = from; i <= to; ++i) {
             size_t chunkIdx = i >> CHUNK_SHIFT;
             
-            // FIX: Bỏ qua an toàn nếu VM cố gắng clear vùng nhớ (to) vượt quá các chunk đã cấp phát
+            // FIX: Safely skip if VM attempts to clear memory region (to) exceeding allocated chunks
             if (chunkIdx >= chunks.size()) {
                 break;
             }
@@ -122,7 +122,7 @@ class StackAllocator {
     }
 
     inline void set(ObjectManager &manager, size_t index, AObject *object) {
-        // FIX: Tính toán địa chỉ tuyệt đối động thay vì dựa vào currentPtr để không bao giờ bị tràn 256
+        // FIX: Dynamically compute absolute address instead of relying on currentPtr to avoid chunk-boundary overflow
         AObject *&last = *getAbsolute(topIndex + index);
         if (last != nullptr) {
             manager.release(last);
@@ -131,7 +131,7 @@ class StackAllocator {
     }
 
     inline AObject *&operator[](size_t index) { 
-        // FIX: Tương tự hàm set(), vượt qua ranh giới chunk một cách an toàn
+        // FIX: Similar to set(), safely crosses chunk boundaries
         return *getAbsolute(topIndex + index); 
     }
 };

@@ -251,6 +251,29 @@ void AVM::log(Function *currentFunction) {
 				          << posJumpIfFalse << "\n";
 				break;
 			}
+			case Autolang::Opcode::FOR_MAP_KEY: {
+				bool isGlobal = bytecodes[i++] == Opcode::STORE_GLOBAL;
+				uint32_t containerPos = get_u32(bytecodes, i);
+				uint32_t pos = get_u32(bytecodes, i);
+				uint32_t posJumpIfFalse = get_u32(bytecodes, i);
+				std::cerr << "FOR_MAP_KEY	 "
+				          << (isGlobal ? "GLOBAL " : "LOCAL ") << containerPos
+				          << " " << pos << " JUMP_IF_FALSE " << posJumpIfFalse
+				          << "\n";
+				break;
+			}
+			case Autolang::Opcode::FOR_MAP_KEY_VALUE: {
+				bool isGlobal = bytecodes[i++] == Opcode::STORE_GLOBAL;
+				uint32_t keyPos = get_u32(bytecodes, i);
+				uint32_t valPos = get_u32(bytecodes, i);
+				uint32_t pos = get_u32(bytecodes, i);
+				uint32_t posJumpIfFalse = get_u32(bytecodes, i);
+				std::cerr << "FOR_MAP_KEY_VALUE	 "
+				          << (isGlobal ? "GLOBAL " : "LOCAL ") << keyPos << " "
+				          << valPos << " " << pos << " JUMP_IF_FALSE "
+				          << posJumpIfFalse << "\n";
+				break;
+			}
 			case Autolang::Opcode::IN_RANGE:
 				std::cerr << "IN_RANGE	 " << (bytecodes[i++] ? "LT" : "LTE")
 				          << "\n";

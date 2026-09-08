@@ -1,0 +1,5 @@
+fun testClosureStatic() {
+	val f = {
+		static val x = 10
+	}
+}

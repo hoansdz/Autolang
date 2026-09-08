@@ -1,0 +1,272 @@
+fun computeNestedBlockValue(x: Int, flag: Bool): Int {
+    return if (flag) {
+        val a = x * 2
+        val b = a + 10
+        val c = b * 3
+        c - 5
+    } else {
+        val u = x - 1
+        val v = u * 4
+        v + 20
+    }
+}
+
+fun computeAutoCastBranch(mode: Int): Float {
+    return if (mode == 1) {
+        val base = 100
+        base // Int automatically promoted to Float
+    } else if (mode == 2) {
+        val factor: Float = 2.5
+        factor * 10
+    } else {
+        0.0
+    }
+}
+
+fun testNestedBlockInference() {
+    // 1. Test nested branching blocks with intermediate computations
+    val res1 = computeNestedBlockValue(5, true)
+    // (5 * 2 + 10) * 3 - 5 = 20 * 3 - 5 = 55
+    assert(res1 == 55)
+
+    val res2 = computeNestedBlockValue(5, false)
+    // (5 - 1) * 4 + 20 = 16 + 20 = 36
+    assert(res2 == 36)
+
+    // 2. Test promotion from integer to float across branches
+    val f1 = computeAutoCastBranch(1)
+    assert(f1 is Float && f1 == 100.0)
+
+    val f2 = computeAutoCastBranch(2)
+    assert(f2 == 25.0)
+
+    val f3 = computeAutoCastBranch(3)
+    assert(f3 == 0.0)
+}
+
+fun testDeepNestedIfWhenBlocks() {
+    val evaluateMultiLayer = {|level: Int, tag: String| -> {
+        if (level > 10) {
+            val offset = 100
+            when (tag) {
+                "A" -> {
+                    val subA = offset + 1
+                    subA * 2
+                }
+                "B" -> {
+                    val subB = offset + 2
+                    subB * 3
+                }
+                else -> {
+                    offset
+                }
+            }
+        } else {
+            val fallback = 50
+            if (tag == "VIP") {
+                fallback * 10
+            } else {
+                fallback
+            }
+        }
+    }}
+
+    assert(evaluateMultiLayer(15, "A") == (100 + 1) * 2)
+    assert(evaluateMultiLayer(15, "B") == (100 + 2) * 3)
+    assert(evaluateMultiLayer(15, "OTHER") == 100)
+    assert(evaluateMultiLayer(5, "VIP") == 500)
+    assert(evaluateMultiLayer(5, "NORMAL") == 50)
+}
+
+fun testBlockWithCollectionsAndMutations() {
+    val processData = {|items: Array<Int>| -> {
+        val buffer: Array<Int> = []
+        var sum = 0
+        for (item in items) {
+            val doubled = item * 2
+            buffer.add(doubled)
+            sum += doubled
+        }
+        val metadata = {
+            "count": buffer.length(),
+            "total": sum
+        }
+        metadata.get("total")!
+    }}
+
+    val total = processData([1, 2, 3, 4, 5])
+    // doubled: 2 + 4 + 6 + 8 + 10 = 30
+    assert(total == 30)
+}
+
+fun testBlockWithThrowBranch() {
+    val safeDivideWithValidation = {|a: Int, b: Int| -> {
+        if (b == 0) {
+            throw Exception("Division by zero in block branch")
+        } else {
+            val quotient = a / b
+            quotient
+        }
+    }}
+
+    assert(safeDivideWithValidation(20, 4) == 5)
+
+    var caught = false
+    try {
+        safeDivideWithValidation(10, 0)
+    } catch (e) {
+        if (e.message.indexOf("Division by zero") != -1) {
+            caught = true
+        }
+    }
+    assert(caught == true)
+}
+
+fun testDeeplyNestedBlocksWithExceptionsAndPipelines() {
+    val complexPipeline = {|mode: Int, x: Int, y: Int| -> {
+        val step1 = if (mode > 0) {
+            val intermediate = x * 10
+            when (intermediate) {
+                100 -> {
+                    val subVal = if (y > 5) {
+                        val tempMap: Map<String, Int> = {
+                            "alpha": intermediate + y,
+                            "beta": intermediate - y
+                        }
+                        tempMap.get("alpha")! * 2
+                    } else if (y == 0) {
+                        throw Exception("y cannot be zero in deep branch")
+                    } else {
+                        val setNums: Set<Int> = {y, y + 1, y + 2}
+                        setNums.size() * 10
+                    }
+                    subVal + 50
+                }
+                else -> {
+                    val fallbackArr = [intermediate, intermediate / 2]
+                    fallbackArr[0] + fallbackArr[1]
+                }
+            }
+        } else {
+            var negativeBranch = 0
+            try {
+                if (x == -999) {
+                    throw Exception("Sentinel negative")
+                }
+                negativeBranch = 0 - x
+            } catch (err) {
+                negativeBranch = 9999
+            }
+            negativeBranch
+        }
+        step1 + 1000
+    }}
+
+    // 1. Mode > 0, x = 10 -> intermediate = 100, y = 10 -> subVal = (100 + 10) * 2 = 220 -> subVal + 50 = 270 -> 270 + 1000 = 1270
+    assert(complexPipeline(1, 10, 10) == 1270)
+
+    // 2. Mode > 0, x = 10 -> intermediate = 100, y = 2 -> subVal = 3 * 10 = 30 -> subVal + 50 = 80 -> 80 + 1000 = 1080
+    assert(complexPipeline(1, 10, 2) == 1080)
+
+    // 3. Mode > 0, x = 10, y = 0 -> deep throw
+    var caughtDeep = false
+    try {
+        complexPipeline(1, 10, 0)
+    } catch (e) {
+        if (e.message.indexOf("y cannot be zero") != -1) {
+            caughtDeep = true
+        }
+    }
+    assert(caughtDeep == true)
+
+    // 4. Mode > 0, x = 20 -> intermediate = 200 -> else -> 200 + 100 = 300 -> 300 + 1000 = 1300
+    assert(complexPipeline(1, 20, 5) == 1300)
+
+    // 5. Mode <= 0, x = 50 -> negativeBranch = -50 -> -50 + 1000 = 950
+    assert(complexPipeline(0, 50, 0) == 950)
+
+    // 6. Mode <= 0, x = -999 -> catch -> 9999 -> 9999 + 1000 = 10999
+    assert(complexPipeline(0, -999, 0) == 10999)
+}
+
+fun testIfBranchWithReturnHelper(x: Int): Int {
+    val a = if (x < 0) {
+        return -1
+    } else {
+        x * 2
+    }
+    return a + 5
+}
+
+fun testIfBranchWithReturn() {
+    assert(testIfBranchWithReturnHelper(-10) == -1)
+    assert(testIfBranchWithReturnHelper(5) == 15) // 5 * 2 + 5 = 15
+}
+
+fun testTryCatchExpressions() {
+    // 1. Basic try-catch expression without exception
+    val valOk = try {
+        val base = 50
+        base * 2
+    } catch (e) {
+        0
+    }
+    assert(valOk == 100)
+
+    // 2. Try-catch expression with division by zero exception
+    val valErr = try {
+        val zero = 0
+        100 / zero
+    } catch (e) {
+        -777
+    }
+    assert(valErr == -777)
+
+    // 3. Try-catch expression with automatic Int to Float promotion
+    val fVal: Float = try {
+        10 // Int is automatically promoted to Float
+    } catch (e) {
+        2.5
+    }
+    assert(fVal == 10.0)
+
+    // 4. Try-catch expression with cleanup in finally block
+    var cleanupDone = false
+    val valFinally = try {
+        val num = 33
+        num + 7
+    } catch (e) {
+        0
+    } finally {
+        cleanupDone = true
+    }
+    assert(valFinally == 40)
+    assert(cleanupDone == true)
+
+    // 5. Nested try-catch expressions
+    val nestedTry = try {
+        val inner = try {
+            val d = 0
+            10 / d
+        } catch (e) {
+            200
+        }
+        inner + 300
+    } catch (e) {
+        0
+    }
+    assert(nestedTry == 500)
+}
+
+fun testBlockInference() {
+    testNestedBlockInference()
+    testDeepNestedIfWhenBlocks()
+    testBlockWithCollectionsAndMutations()
+    testBlockWithThrowBranch()
+    testDeeplyNestedBlocksWithExceptionsAndPipelines()
+    testIfBranchWithReturn()
+    testTryCatchExpressions()
+    println("Passed ${__FUNC__}")
+}
+
+testBlockInference()

@@ -5,21 +5,21 @@ from setuptools import setup
 try:
     from pybind11.setup_helpers import Pybind11Extension, build_ext
 except ImportError:
-    print("Vui lòng cài đặt pybind11 trước: pip install pybind11")
+    print("Please install pybind11 first: pip install pybind11")
     sys.exit(1)
 
-# Thư mục gốc của project (3 cấp lên từ tests/pybind11/release/)
+# Project root directory (3 levels up from tests/pybind11/release/)
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 
 # ---------------------------------------------------------------------------
-# Build class: Lọc và sửa cờ biên dịch theo từng compiler
+# Build class: Filter and adjust compile flags per compiler
 # ---------------------------------------------------------------------------
 class build_ext_fix(build_ext):
     def build_extensions(self):
         compiler_type = self.compiler.compiler_type
         for ext in self.extensions:
             if compiler_type == "msvc":
-                # MSVC: bỏ hết cờ GCC-style, thêm cờ MSVC tương đương
+                # MSVC: strip GCC-style flags, add equivalent MSVC flags
                 ext.extra_compile_args = [
                     "/std:c++17",
                     "/bigobj",
@@ -30,14 +30,14 @@ class build_ext_fix(build_ext):
                     "/wd4065",  # switch with no case
                 ]
             elif compiler_type == "mingw32":
-                # MinGW trên Windows: loại bỏ cờ MSVC và cờ -std= rồi thêm lại
+                # MinGW on Windows: remove MSVC flags and -std= flag, then re-add
                 new_args = [
                     arg for arg in ext.extra_compile_args
                     if not arg.startswith("/") and not arg.startswith("-std=")
                 ]
                 ext.extra_compile_args = ["-std=c++17"] + new_args
             else:
-                # GCC / Clang trên Linux và macOS: loại bỏ cờ Windows-only
+                # GCC / Clang on Linux and macOS: remove Windows-only flags
                 new_args = [
                     arg for arg in ext.extra_compile_args
                     if not arg.startswith("/")
@@ -50,7 +50,7 @@ class build_ext_fix(build_ext):
 
 
 # ---------------------------------------------------------------------------
-# Nguồn file và include
+# Source files and includes
 # ---------------------------------------------------------------------------
 main_cpp = os.path.join(BASE_DIR, "tests/pybind11/main.cpp").replace("\\", "/")
 src_dir  = os.path.join(BASE_DIR, "src").replace("\\", "/")
@@ -64,7 +64,7 @@ include_dirs = [
 ]
 
 # ---------------------------------------------------------------------------
-# Cờ biên dịch mặc định (GCC/MinGW style — sẽ được lọc lại ở build_ext_fix)
+# Default compiler flags (GCC/MinGW style — filtered in build_ext_fix)
 # ---------------------------------------------------------------------------
 extra_compile_args = [
     "-std=c++17",
@@ -76,7 +76,7 @@ extra_compile_args = [
     "-Wno-switch",
     "-Wno-sign-compare",
     "-Wno-reorder",
-    "-Wa,-mbig-obj",  # Windows MinGW only, bị lọc trên Linux/macOS
+    "-Wa,-mbig-obj",  # Windows MinGW only, filtered on Linux/macOS
 ]
 
 extra_objects = []
@@ -107,7 +107,7 @@ long_description = (
 setup(
     name="autolang",
     version="0.1.0",
-    description="Python binding cho AutoLang - ngôn ngữ lập trình nhẹ nhàng, hiệu năng cao",
+    description="Python binding for AutoLang - lightweight, high-performance programming language",
     long_description=long_description,
     long_description_content_type="text/markdown",
     ext_modules=ext_modules,
@@ -122,8 +122,8 @@ setup(
     python_requires=">=3.8",
 )
 
-# Lệnh build thủ công trên Windows (MinGW):
+# Manual build command on Windows (MinGW):
 #   python tests/pybind11/release/setup.py build_ext --inplace --compiler=mingw32 --force
 #
-# Lệnh build thủ công trên Linux/macOS:
+# Manual build command on Linux/macOS:
 #   python tests/pybind11/release/setup.py build_ext --inplace --force

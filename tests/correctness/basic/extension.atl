@@ -1,30 +1,30 @@
 class ExtPoint(val x: Int, val y: Int) {
 }
 
-// 1. Extension function không tham số, truy cập thuộc tính qua `this`
+// 1. Parameterless extension function, accessing properties via `this`
 fun ExtPoint.sum(): Int {
 	return this.x + this.y
 }
 
-// 2. Extension function có tham số
+// 2. Extension function with parameters
 fun ExtPoint.multiply(factor: Int): Int {
 	return (this.x + this.y) * factor
 }
 
-// 3. Extension function dạng biểu thức ngắn (Expression body `=`)
+// 3. Short expression body extension function (`=`)
 fun ExtPoint.diff(): Int = this.x - this.y
 
-// 4. Extension function cho class tĩnh hoặc gọi lẫn nhau
+// 4. Extension function returning boolean
 fun ExtPoint.isOrigin(): Bool {
 	return this.x == 0 and this.y == 0
 }
 
-// 5. Thử nghiệm extension function tĩnh (static fun)
+// 5. Static extension function (static fun)
 static fun ExtPoint.createDefault(): ExtPoint {
 	return ExtPoint(0, 0)
 }
 
-// 6. Extension function cho built-in class (ví dụ String) nếu được hỗ trợ
+// 6. Extension function for built-in classes (e.g. String)
 fun String.exclaim(): String {
 	return this + "!"
 }
@@ -36,25 +36,25 @@ fun Int.doubleValue(): Int {
 fun testExtensionFunctions() {
 	val p1 = ExtPoint(3, 4)
 	
-	// Test 1: Gọi extension không tham số
+	// Test 1: Call parameterless extension
 	assert(p1.sum() == 7)
 
-	// Test 2: Gọi extension có tham số
+	// Test 2: Call extension with parameter
 	assert(p1.multiply(2) == 14)
 
 	// Test 3: Expression body extension
 	assert(p1.diff() == -1)
 
-	// Test 4: Gọi extension trả về Bool
+	// Test 4: Call extension returning Bool
 	assert(p1.isOrigin() == false)
 
-	// Test 5: Gọi static extension function
+	// Test 5: Call static extension function
 	val p2 = ExtPoint.createDefault()
 	assert(p2.x == 0)
 	assert(p2.y == 0)
 	assert(p2.isOrigin() == true)
 
-	// Test 6: Gọi extension trên built-in class
+	// Test 6: Call extension on built-in class
 	val greeting = "hello"
 	assert(greeting.exclaim() == "hello!")
 

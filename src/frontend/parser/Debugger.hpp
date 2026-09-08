@@ -52,7 +52,9 @@ ExprNode *loadLine(in_func, size_t &i);
 template <bool hasParams = true>
 CreateClosureNode *loadClosure(in_func, size_t &i);
 template <bool trailingComma = false>
-std::vector<HasClassIdNode *> loadListArgument(in_func, size_t &i);
+std::vector<HasClassIdNode *>
+loadListArgument(in_func, size_t &i,
+                 std::vector<LexerStringId> *argumentNames = nullptr);
 template <Lexer::TokenType closeBracket = Lexer::TokenType::RPAREN,
           bool mustHaveColon = true, bool allowDefaultValue = true>
 Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar = false);
@@ -86,7 +88,7 @@ IfNode *loadIf(in_func, size_t &i, bool mustReturnValue);
 HasClassIdNode *loadWhen(in_func, size_t &i, bool mustReturnValue);
 ExprNode *loadFor(in_func, size_t &i);
 WhileNode *loadWhile(in_func, size_t &i);
-TryCatchNode *loadTryCatch(in_func, size_t &i);
+TryCatchNode *loadTryCatch(in_func, size_t &i, bool mustReturnValue = false);
 ThrowNode *loadThrow(in_func, size_t &i);
 CreateFuncNode *loadFunc(in_func, size_t &i);
 void loadConstructor(in_func, size_t &i);

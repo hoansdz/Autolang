@@ -27,6 +27,7 @@
 #include <chrono>
 #include <filesystem>
 #include <iostream>
+#include <unordered_set>
 
 namespace Autolang {
 
@@ -623,68 +624,78 @@ void ACompiler::generateBytecodes() {
 		}
 
 		printDebug("Start put bytecodes constructor");
-		for (int i = 0; i < sizeNewClasses; ++i) {
-			auto *node = context.newClasses[i];
-			auto classInfo =
-			    context.classInfo[compile.classes[node->classId]->id];
-			if (classInfo->genericData)
-				continue;
-			if (classInfo->primaryConstructor) {
-				// Put initial bytecodes, example val a = 5 => SetNode
-				//  node->body.optimize(in_data);
-				auto func =
-				    compile.functions[classInfo->primaryConstructor->funcId];
-				context.currentBytecodePos = compile.allBytecodes.size();
-				context.currentOpcodeIndex = compile.allOpcodeLines.size();
-				func->bytecodes.offset = context.currentBytecodePos;
-				func->opcodeIndex = context.currentOpcodeIndex;
-
-				node->body.resolve(in_data);
-				context.currentFunctionId = func->id;
-				node->body.putBytecodes(in_data, compile.allBytecodes);
-				node->body.rewrite(in_data, compile.allBytecodes.data() +
-				                                context.currentBytecodePos);
-
-				classInfo->primaryConstructor->body.resolve(in_data);
-				classInfo->primaryConstructor->body.optimize(in_data);
-				classInfo->primaryConstructor->body.putBytecodes(
-				    in_data, compile.allBytecodes);
-				classInfo->primaryConstructor->body.rewrite(
-				    in_data,
-				    compile.allBytecodes.data() + context.currentBytecodePos);
-
-				func->bytecodes.size =
-				    compile.allBytecodes.size() - func->bytecodes.offset;
-			} else {
-				for (auto &constructor : classInfo->secondaryConstructor) {
-					auto func = compile.functions[constructor->funcId];
+		std::unordered_set<FunctionId> emittedConstructors;
+		auto emitConstructors = [&]() {
+			for (size_t i = 0; i < context.newClasses.getSize(); ++i) {
+				auto *node = context.newClasses[i];
+				auto classInfo =
+				    context.classInfo[compile.classes[node->classId]->id];
+				if (classInfo->genericData)
+					continue;
+				if (classInfo->primaryConstructor) {
+					// Put initial bytecodes, example val a = 5 => SetNode
+					//  node->body.optimize(in_data);
+					auto func =
+					    compile.functions[classInfo->primaryConstructor->funcId];
+					if (emittedConstructors.count(func->id))
+						continue;
+					emittedConstructors.insert(func->id);
 					context.currentBytecodePos = compile.allBytecodes.size();
 					context.currentOpcodeIndex = compile.allOpcodeLines.size();
 					func->bytecodes.offset = context.currentBytecodePos;
 					func->opcodeIndex = context.currentOpcodeIndex;
 
-					// Put initial bytecodes, example val a = 5 => SetNode a
-					// and value 5
-					//  node->body.optimize(in_data);
-					context.currentFunctionId = func->id;
 					node->body.resolve(in_data);
+					context.currentFunctionId = func->id;
 					node->body.putBytecodes(in_data, compile.allBytecodes);
 					node->body.rewrite(in_data, compile.allBytecodes.data() +
 					                                context.currentBytecodePos);
-					// Put constructor bytecodes
-					constructor->body.resolve(in_data);
-					constructor->body.optimize(in_data);
-					constructor->body.putBytecodes(in_data,
-					                               compile.allBytecodes);
-					constructor->body.rewrite(in_data,
-					                          compile.allBytecodes.data() +
-					                              context.currentBytecodePos);
+
+					classInfo->primaryConstructor->body.resolve(in_data);
+					classInfo->primaryConstructor->body.optimize(in_data);
+					classInfo->primaryConstructor->body.putBytecodes(
+					    in_data, compile.allBytecodes);
+					classInfo->primaryConstructor->body.rewrite(
+					    in_data,
+					    compile.allBytecodes.data() + context.currentBytecodePos);
 
 					func->bytecodes.size =
 					    compile.allBytecodes.size() - func->bytecodes.offset;
+				} else {
+					for (auto &constructor : classInfo->secondaryConstructor) {
+						auto func = compile.functions[constructor->funcId];
+						if (emittedConstructors.count(func->id))
+							continue;
+						emittedConstructors.insert(func->id);
+						context.currentBytecodePos = compile.allBytecodes.size();
+						context.currentOpcodeIndex = compile.allOpcodeLines.size();
+						func->bytecodes.offset = context.currentBytecodePos;
+						func->opcodeIndex = context.currentOpcodeIndex;
+
+						// Put initial bytecodes, example val a = 5 => SetNode a
+						// and value 5
+						//  node->body.optimize(in_data);
+						context.currentFunctionId = func->id;
+						node->body.resolve(in_data);
+						node->body.putBytecodes(in_data, compile.allBytecodes);
+						node->body.rewrite(in_data, compile.allBytecodes.data() +
+						                                context.currentBytecodePos);
+						// Put constructor bytecodes
+						constructor->body.resolve(in_data);
+						constructor->body.optimize(in_data);
+						constructor->body.putBytecodes(in_data,
+						                               compile.allBytecodes);
+						constructor->body.rewrite(in_data,
+						                          compile.allBytecodes.data() +
+						                              context.currentBytecodePos);
+
+						func->bytecodes.size =
+						    compile.allBytecodes.size() - func->bytecodes.offset;
+					}
 				}
 			}
-		}
+		};
+		emitConstructors();
 
 		std::vector<uint8_t> mainFunctionBytecodes;
 		std::vector<OpcodeLine> mainOpcodeLine;
@@ -728,7 +739,7 @@ void ACompiler::generateBytecodes() {
 		context.currentAllOpcodeLine = &compile.allOpcodeLines;
 		mainFuncInfo->body.optimize(in_data);
 		printDebug("Start put bytecodes in functions");
-		for (int i = 0; i < sizeNewFunctions; ++i) {
+		for (size_t i = 0; i < context.newFunctions.getSize(); ++i) {
 			auto *node = context.newFunctions[i];
 			if (node->contextCallClassId) {
 				auto classInfo = context.classInfo[*node->contextCallClassId];
@@ -769,6 +780,8 @@ void ACompiler::generateBytecodes() {
 			    compile.allBytecodes.size() - func->bytecodes.offset;
 		}
 
+		emitConstructors();
+
 		printDebug("Start put bytecodes in main");
 		context.currentBytecodePos = compile.allBytecodes.size();
 		context.currentOpcodeIndex = compile.allOpcodeLines.size();
@@ -801,12 +814,16 @@ void ACompiler::generateBytecodes() {
 		}
 
 		printDebug("Put member data to classes");
-		for (int i = 0; i < sizeNewClasses; ++i) {
+		std::unordered_set<ClassId> processedClassMembers;
+		for (size_t i = 0; i < context.newClasses.getSize(); ++i) {
 			auto *node = context.newClasses[i];
 			auto clazz = compile.classes[node->classId];
 			auto classInfo = context.classInfo[clazz->id];
 			if (classInfo->genericData || classInfo->member.empty())
 				continue;
+			if (processedClassMembers.count(clazz->id))
+				continue;
+			processedClassMembers.insert(clazz->id);
 			clazz->memberIdOffset = compile.allMemberId.size();
 			for (auto member : classInfo->member) {
 				compile.allMemberId.push_back(member->classId);

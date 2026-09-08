@@ -59,7 +59,8 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 	context.modifierflags = 0;
 	// Name
 	if (!nextTokenSameLine(&token, context.tokens, i, declaration->line) ||
-	    !expect(token, Lexer::TokenType::IDENTIFIER)) {
+	    (!expect(token, Lexer::TokenType::IDENTIFIER) &&
+	     !expect(token, Lexer::TokenType::TO))) {
 		--i;
 		throw ParserError(context.tokens[i].line,
 		                  "Expected name but not found\nHint: Provide a valid "

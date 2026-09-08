@@ -160,7 +160,8 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			    "Provide a function name, e.g. 'fun <T> foo()'");
 		}
 	}
-	if (!expect(token, Lexer::TokenType::IDENTIFIER)) {
+	if (!expect(token, Lexer::TokenType::IDENTIFIER) &&
+	    !expect(token, Lexer::TokenType::TO)) {
 		--i;
 		throw ParserError(
 		    firstLine,
@@ -646,9 +647,11 @@ createFunc:;
 							return true;
 					}
 					if (tc->hasCatch) {
-						for (auto child : tc->catchBody.nodes) {
-							if (self(self, child))
-								return true;
+						for (auto &clause : tc->catchClauses) {
+							for (auto child : clause.body.nodes) {
+								if (self(self, child))
+									return true;
+							}
 						}
 					}
 					if (tc->hasFinally) {

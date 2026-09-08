@@ -489,7 +489,7 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		if (isForceNonNull) {
 			bytecodes.emplace_back(Opcode::CHECK_FORCE_NON_NULL);
 		}
-		if (cloneable) {
+		if (cloneable && !isGetPointer) {
 			bytecodes.emplace_back(Opcode::CLONE);
 		}
 	}

@@ -181,7 +181,7 @@ fun testKotlinCollectionHelpersLowering() {
 }
 
 fun testComplexDeepNestedCollectionsAndKotlinHelpers() {
-    // 1. Ma trận 3 chiều với cú pháp []
+    // 1. 3D matrix with [] syntax
     val cube = [
         [[1, 2], [3, 4]],
         [[5, 6], [7, 8]]
@@ -190,18 +190,18 @@ fun testComplexDeepNestedCollectionsAndKotlinHelpers() {
     assert(cube[0][1][0] == 3)
     assert(cube[1][1][1] == 8)
 
-    // Gán lại phần tử sâu
+    // Deep element reassignment
     cube[1][0][1] = 99
     assert(cube[1][0][1] == 99)
 
-    // 2. Mảng lồng mảng rỗng có type annotation
+    // 2. Nested array with empty array having type annotation
     val emptyNesting: Array<Array<Int>> = [[], [1, 2]]
     assert(emptyNesting.length() == 2)
     assert(emptyNesting[0].length() == 0)
     assert(emptyNesting[1].length() == 2)
     assert(emptyNesting[1][0] == 1)
 
-    // 3. Kết hợp Kotlin collection helpers lồng nhau 4 tầng:
+    // 3. 4-level nested Kotlin collection helpers:
     // listOf(arrayOf(mapOf("group", setOf(10, 20))))
     val hierarchy = listOf(
         arrayOf(
@@ -218,11 +218,11 @@ fun testComplexDeepNestedCollectionsAndKotlinHelpers() {
     assert(hierarchy[0][1].get("teamB")!.contains(30))
     assert(!hierarchy[1][0].get("teamC")!.contains(100))
 
-    // Thêm phần tử sâu vào Set con
+    // Add deep element to nested Set
     hierarchy[1][0].get("teamC")!.add(100)
     assert(hierarchy[1][0].get("teamC")!.contains(100))
 
-    // 4. Vòng lặp lồng nhau 3 tầng duyệt qua cấu trúc phức tạp
+    // 4. 3-level nested loop iterating over complex structure
     var totalValue = 0
     for (layer in hierarchy) {
         for (mapItem in layer) {

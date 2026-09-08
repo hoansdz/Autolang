@@ -1,0 +1,12 @@
+class Base {
+	static fun foo() {}
+}
+
+class Derived extends Base {
+	constructor() {
+		super()
+	}
+
+	@override
+	static fun foo() {}
+}

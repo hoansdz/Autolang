@@ -7,64 +7,64 @@
  * =============================================================================
  *
  * ARCHITECTURE:
- *   Thay vì vòng lặp while+switch, mỗi opcode là một label `do_OPCODE` và
- *   kết thúc bằng DISPATCH() = `goto *dispatchTable[bytecodes[ip++]]`.
- *   dispatchTable là static array[256] of void*, khởi tạo một lần.
+ *   Instead of a while+switch loop, each opcode is a `do_OPCODE` label and
+ *   ends with DISPATCH() = `goto *dispatchTable[bytecodes[ip++]]`.
+ *   dispatchTable is a static array[256] of void*, initialized once.
  *
- * KHÁC BIỆT QUAN TRỌNG VỚI switch version:
- *   1. Biến `bytecodes`, `size`, `currentFunction` là LOCAL VARIABLE của resume(),
- *      chỉ được cập nhật tại label `resumeCallFrame:`.
- *   2. `ip` là MACRO = `currentCallFrame->i`, nên thay đổi theo callframe hiện tại.
- *   3. callFunction template (AVM.cpp:116) return false sau khi push callframe mới
- *      và set i=0, KHÔNG gọi resume() recursively. Sau đó `goto resumeCallFrame`
- *      trong dispatch handler sẽ update bytecodes/size từ callframe mới.
- *   4. callFunctionObject (AVM.cpp:256) đối với non-native function cuối cùng cũng
- *      gọi callFunction(CallFrame*, uint32_t) (AVM.cpp:336) → resume() đệ quy.
- *      Đây là điểm KHÁC với CALL_FUNCTION template.
+ * IMPORTANT DIFFERENCES WITH switch version:
+ *   1. Variables `bytecodes`, `size`, `currentFunction` are LOCAL VARIABLES of resume(),
+ *      updated only at label `resumeCallFrame:`.
+ *   2. `ip` is a MACRO = `currentCallFrame->i`, so it reflects the current callframe.
+ *   3. callFunction template (AVM.cpp:116) returns false after pushing a new callframe
+ *      and setting i=0, without calling resume() recursively. Then `goto resumeCallFrame`
+ *      in the dispatch handler updates bytecodes/size from the new callframe.
+ *   4. callFunctionObject (AVM.cpp:256) for non-native functions ultimately
+ *      calls callFunction(CallFrame*, uint32_t) (AVM.cpp:336) -> recursive resume().
+ *      This differs from the CALL_FUNCTION template.
  *
- * KNOWN BUG — ACCESS VIOLATION (0xC0000005) SAU testWhen:
- *   - Crash xảy ra khi chạy testFunctional (functional.atl), test dùng closure
- *     và FunctionObject (CREATE_FUNCTION_OBJECT + CALL_FUNCTION_OBJECT).
+ * KNOWN BUG — ACCESS VIOLATION (0xC0000005) AFTER testWhen:
+ *   - Crash occurs when running testFunctional (functional.atl), which uses closures
+ *     and FunctionObject (CREATE_FUNCTION_OBJECT + CALL_FUNCTION_OBJECT).
  *   - Exit code: -1073741819 = 0xC0000005 = Windows Access Violation.
- *   - Suspect: `callFunctionObject` path. Khi closure được gọi qua
- *     CALL_FUNCTION_OBJECT, `callFunctionObject` gọi `callFunction(CallFrame*, uint32_t)`
- *     (AVM.cpp:336) → resume() đệ quy. Inner resume() chạy với `topCallFrame` riêng.
- *     Sau khi inner resume() kết thúc (doneReturnFunction: pop frame, return),
- *     outer resume() tiếp tục DISPATCH(). Nhưng sau đó outer resume() cũng có
- *     thể gặp `doneReturnFunction` với `callFrames.getSize() == topCallFrame`
- *     không đúng nếu frame count bị lệch do inner resume đã pop.
+ *   - Suspect: `callFunctionObject` path. When a closure is called via
+ *     CALL_FUNCTION_OBJECT, `callFunctionObject` calls `callFunction(CallFrame*, uint32_t)`
+ *     (AVM.cpp:336) -> recursive resume(). Inner resume() runs with its own `topCallFrame`.
+ *     After inner resume() finishes (doneReturnFunction: pop frame, return),
+ *     outer resume() continues DISPATCH(). But then outer resume() may also
+ *     hit `doneReturnFunction` where `callFrames.getSize() == topCallFrame`
+ *     is incorrect if frame count diverged due to inner resume popping.
  *
- *   - Nghi vấn cụ thể: `do_RETURN_LOCAL` và `doneReturnFunction` trong outer
- *     resume() sẽ check `callFrames.getSize() == topCallFrame`. Sau khi inner
- *     resume() ran và popped its frame, outer `topCallFrame` vẫn là giá trị
- *     ban đầu. Điều này có thể khiến outer resume() set state=HALTED sớm khi
- *     nó không nên làm vậy, hoặc làm lệch frame stack.
+ *   - Specific suspicion: `do_RETURN_LOCAL` and `doneReturnFunction` in outer
+ *     resume() will check `callFrames.getSize() == topCallFrame`. After inner
+ *     resume() ran and popped its frame, outer `topCallFrame` retains its initial value.
+ *     This could cause outer resume() to set state=HALTED prematurely,
+ *     or corrupt the frame stack.
  *
- *   - Cách debug tiếp: Thêm print statement vào `doneReturnFunction` để xem
- *     `callFrames.getSize()` và `topCallFrame` tại thời điểm crash.
- *     Hoặc test riêng lẻ file functional.atl để isolate.
+ *   - Next debug steps: Add print statements to `doneReturnFunction` to inspect
+ *     `callFrames.getSize()` and `topCallFrame` at crash time,
+ *     or test functional.atl independently to isolate.
  *
- *   - Fix tiềm năng: Sau khi `callFunctionObject` return true, cần update lại
- *     `bytecodes`, `size`, `currentFunction` từ `currentCallFrame` hiện tại
- *     (giống như `goto resumeCallFrame` làm). Hoặc chuyển `callFunctionObject`
- *     path để KHÔNG gọi resume() đệ quy mà return false để main loop handle.
+ *   - Potential fix: After `callFunctionObject` returns true, update
+ *     `bytecodes`, `size`, `currentFunction` from current `currentCallFrame`
+ *     (similar to `goto resumeCallFrame`). Or adjust `callFunctionObject`
+ *     path to not invoke resume() recursively, returning false for main loop handling.
  *
  * EXCEPTION HANDLING:
- *   Đã được đồng bộ với switch: dùng `data.allCatchPosition` + `catchPositionIndex`
- *   thay vì `currentCallFrame->catchPosition` (vector per-frame cũ).
+ *   Synchronized with switch: uses `data.allCatchPosition` + `catchPositionIndex`
+ *   instead of `currentCallFrame->catchPosition` (legacy per-frame vector).
  *
- * OPCODE ĐÃ THÊM (so với phiên bản gốc của file này):
+ * ADDED OPCODES (relative to the original version of this file):
  *   - CHECK_FORCE_NON_NULL
  *   - LOCAL_LOAD_LATEINIT_MEMBER
  *   - GLOBAL_LOAD_LATEINIT_MEMBER
  *   - LOAD_LATEINIT_MEMBER
- *   - IS opcode: dùng notifier->instanceof() thay vì inline check
- *   - ADD_TRY_BLOCK/REMOVE_TRY: dùng data.allCatchPosition
+ *   - IS opcode: uses notifier->instanceof() instead of inline check
+ *   - ADD_TRY_BLOCK/REMOVE_TRY: uses data.allCatchPosition
  *   - doneReturnFunction: cleanup allCatchPosition
  *
  * CALL_NATIVE_FUNCTION:
- *   callNativeFunction không tồn tại (đã bị xóa/comment trong switch).
- *   do_CALL_NATIVE_FUNCTION và do_CALL_VOID_NATIVE_FUNCTION → goto do_ILLEGAL.
+ *   callNativeFunction does not exist (removed/commented out in switch).
+ *   do_CALL_NATIVE_FUNCTION and do_CALL_VOID_NATIVE_FUNCTION -> goto do_ILLEGAL.
  * =============================================================================
  */
 
@@ -358,6 +358,9 @@ resumeCallFrame:;
 			    &&do_CALL_DATA_CONTRUCTOR;
 			dispatchTable[Autolang::Opcode::FOR_LIST] = &&do_FOR_LIST;
 			dispatchTable[Autolang::Opcode::FOR_SET] = &&do_FOR_SET;
+			dispatchTable[Autolang::Opcode::FOR_MAP_KEY] = &&do_FOR_MAP_KEY;
+			dispatchTable[Autolang::Opcode::FOR_MAP_KEY_VALUE] =
+			    &&do_FOR_MAP_KEY_VALUE;
 			dispatchTable[Autolang::Opcode::IN_RANGE] = &&do_IN_RANGE;
 			dispatchTable[Autolang::Opcode::NOT_IN_RANGE] = &&do_NOT_IN_RANGE;
 			dispatchTable[Autolang::Opcode::ADD_FINALLY_BLOCK] =
@@ -765,6 +768,7 @@ resumeCallFrame:;
 			DISPATCH();
 		}
 		data.manager.release(*container);
+		*container = nullptr;
 		uint32_t newIndex = ++(*iterator)->i;
 		if (list->array->size == newIndex) {
 			data.manager.release(*iterator);
@@ -823,7 +827,10 @@ resumeCallFrame:;
 				        (*iterator)->data->data);
 				++it;
 				data.manager.release(*container);
+				*container = nullptr;
 				if (it == set->end()) {
+					data.manager.release(*iterator);
+					*iterator = nullptr;
 					ip = get_u32(bytecodes, ip);
 					break;
 				}
@@ -861,7 +868,10 @@ resumeCallFrame:;
 				        (*iterator)->data->data);
 				++it;
 				data.manager.release(*container);
+				*container = nullptr;
 				if (it == set->end()) {
+					data.manager.release(*iterator);
+					*iterator = nullptr;
 					ip = get_u32(bytecodes, ip);
 					break;
 				}
@@ -899,7 +909,10 @@ resumeCallFrame:;
 				    (*iterator)->data->data);
 				++it;
 				data.manager.release(*container);
+				*container = nullptr;
 				if (it == set->end()) {
+					data.manager.release(*iterator);
+					*iterator = nullptr;
 					ip = get_u32(bytecodes, ip);
 					break;
 				}
@@ -937,12 +950,419 @@ resumeCallFrame:;
 				    (*iterator)->data->data);
 				++it;
 				data.manager.release(*container);
+				*container = nullptr;
 				if (it == set->end()) {
+					data.manager.release(*iterator);
+					*iterator = nullptr;
 					ip = get_u32(bytecodes, ip);
 					break;
 				}
 				*container = *it;
 				(*container)->retain();
+				ip += 4;
+				break;
+			}
+		}
+
+		DISPATCH();
+	}
+
+	do_FOR_MAP_KEY: {
+		auto mapObject = stack.pop();
+		auto hashMapData = static_cast<Autolang::Libs::map::AHashMap *>(
+		    mapObject->data->data);
+		bool isGlobal = bytecodes[ip++] == Opcode::STORE_GLOBAL;
+		AObject **container;
+		AObject **iterator;
+		if (isGlobal) {
+			container = &globalVariables[get_u32(bytecodes, ip)];
+			iterator = &globalVariables[get_u32(bytecodes, ip)];
+		} else {
+			container = &stackAllocator[get_u32(bytecodes, ip)];
+			iterator = &stackAllocator[get_u32(bytecodes, ip)];
+		}
+
+		switch (hashMapData->type) {
+			case DefaultClass::intClassId: {
+				auto map = static_cast<Autolang::Libs::map::IntHashMap *>(
+				    hashMapData->data);
+				if (*iterator == DefaultClass::nullObject) {
+					if (map->empty()) {
+						ip = get_u32(bytecodes, ip);
+						break;
+					}
+					auto itPtr = new Autolang::Libs::map::IntHashMap::iterator(
+					    map->begin());
+					*iterator = notifier->createNativeData(
+					    mapObject->type, itPtr,
+					    [](ANotifier &notifier, void *data) -> void {
+						    delete static_cast<
+						        Autolang::Libs::map::IntHashMap::iterator *>(
+						        data);
+					    });
+					*container = notifier->createInt((*itPtr)->first);
+					(*container)->retain();
+					ip += 4;
+					break;
+				}
+				auto &it = *static_cast<
+				    Autolang::Libs::map::IntHashMap::iterator *>(
+				    (*iterator)->data->data);
+				++it;
+				data.manager.release(*container);
+				*container = nullptr;
+				if (it == map->end()) {
+					data.manager.release(*iterator);
+					*iterator = nullptr;
+					ip = get_u32(bytecodes, ip);
+					break;
+				}
+				*container = notifier->createInt(it->first);
+				(*container)->retain();
+				ip += 4;
+				break;
+			}
+
+			case DefaultClass::floatClassId: {
+				auto map = static_cast<Autolang::Libs::map::FloatHashMap *>(
+				    hashMapData->data);
+				if (*iterator == DefaultClass::nullObject) {
+					if (map->empty()) {
+						ip = get_u32(bytecodes, ip);
+						break;
+					}
+					auto itPtr = new Autolang::Libs::map::FloatHashMap::iterator(
+					    map->begin());
+					*iterator = notifier->createNativeData(
+					    mapObject->type, itPtr,
+					    [](ANotifier &notifier, void *data) -> void {
+						    delete static_cast<
+						        Autolang::Libs::map::FloatHashMap::iterator *>(
+						        data);
+					    });
+					*container = notifier->createFloat((*itPtr)->first);
+					(*container)->retain();
+					ip += 4;
+					break;
+				}
+				auto &it = *static_cast<
+				    Autolang::Libs::map::FloatHashMap::iterator *>(
+				    (*iterator)->data->data);
+				++it;
+				data.manager.release(*container);
+				*container = nullptr;
+				if (it == map->end()) {
+					data.manager.release(*iterator);
+					*iterator = nullptr;
+					ip = get_u32(bytecodes, ip);
+					break;
+				}
+				*container = notifier->createFloat(it->first);
+				(*container)->retain();
+				ip += 4;
+				break;
+			}
+
+			case DefaultClass::stringClassId: {
+				auto map = static_cast<Autolang::Libs::map::StringHashMap *>(
+				    hashMapData->data);
+				if (*iterator == DefaultClass::nullObject) {
+					if (map->empty()) {
+						ip = get_u32(bytecodes, ip);
+						break;
+					}
+					auto itPtr =
+					    new Autolang::Libs::map::StringHashMap::iterator(
+					        map->begin());
+					*iterator = notifier->createNativeData(
+					    mapObject->type, itPtr,
+					    [](ANotifier &notifier, void *data) -> void {
+						    delete static_cast<
+						        Autolang::Libs::map::StringHashMap::iterator *>(
+						        data);
+					    });
+					*container = (*itPtr)->first;
+					(*container)->retain();
+					ip += 4;
+					break;
+				}
+				auto &it = *static_cast<
+				    Autolang::Libs::map::StringHashMap::iterator *>(
+				    (*iterator)->data->data);
+				++it;
+				data.manager.release(*container);
+				*container = nullptr;
+				if (it == map->end()) {
+					data.manager.release(*iterator);
+					*iterator = nullptr;
+					ip = get_u32(bytecodes, ip);
+					break;
+				}
+				*container = it->first;
+				(*container)->retain();
+				ip += 4;
+				break;
+			}
+
+			default: {
+				auto map = static_cast<Autolang::Libs::map::ObjectHashMap *>(
+				    hashMapData->data);
+				if (*iterator == DefaultClass::nullObject) {
+					if (map->empty()) {
+						ip = get_u32(bytecodes, ip);
+						break;
+					}
+					auto itPtr =
+					    new Autolang::Libs::map::ObjectHashMap::iterator(
+					        map->begin());
+					*iterator = notifier->createNativeData(
+					    mapObject->type, itPtr,
+					    [](ANotifier &notifier, void *data) -> void {
+						    delete static_cast<
+						        Autolang::Libs::map::ObjectHashMap::iterator *>(
+						        data);
+					    });
+					*container = (*itPtr)->first;
+					(*container)->retain();
+					ip += 4;
+					break;
+				}
+				auto &it = *static_cast<
+				    Autolang::Libs::map::ObjectHashMap::iterator *>(
+				    (*iterator)->data->data);
+				++it;
+				data.manager.release(*container);
+				*container = nullptr;
+				if (it == map->end()) {
+					data.manager.release(*iterator);
+					*iterator = nullptr;
+					ip = get_u32(bytecodes, ip);
+					break;
+				}
+				*container = it->first;
+				(*container)->retain();
+				ip += 4;
+				break;
+			}
+		}
+
+		DISPATCH();
+	}
+
+	do_FOR_MAP_KEY_VALUE: {
+		auto mapObject = stack.pop();
+		auto hashMapData = static_cast<Autolang::Libs::map::AHashMap *>(
+		    mapObject->data->data);
+		bool isGlobal = bytecodes[ip++] == Opcode::STORE_GLOBAL;
+		AObject **keyContainer;
+		AObject **valContainer;
+		AObject **iterator;
+		if (isGlobal) {
+			keyContainer = &globalVariables[get_u32(bytecodes, ip)];
+			valContainer = &globalVariables[get_u32(bytecodes, ip)];
+			iterator = &globalVariables[get_u32(bytecodes, ip)];
+		} else {
+			keyContainer = &stackAllocator[get_u32(bytecodes, ip)];
+			valContainer = &stackAllocator[get_u32(bytecodes, ip)];
+			iterator = &stackAllocator[get_u32(bytecodes, ip)];
+		}
+
+		auto getValObj = [&](AObject *value) -> AObject * {
+			if (!value)
+				return DefaultClass::nullObject;
+			switch (value->type) {
+				case DefaultClass::intClassId:
+					return notifier->createInt(value->i);
+				case DefaultClass::floatClassId:
+					return notifier->createFloat(value->f);
+				default:
+					return value;
+			}
+		};
+
+		switch (hashMapData->type) {
+			case DefaultClass::intClassId: {
+				auto map = static_cast<Autolang::Libs::map::IntHashMap *>(
+				    hashMapData->data);
+				if (*iterator == DefaultClass::nullObject) {
+					if (map->empty()) {
+						ip = get_u32(bytecodes, ip);
+						break;
+					}
+					auto itPtr = new Autolang::Libs::map::IntHashMap::iterator(
+					    map->begin());
+					*iterator = notifier->createNativeData(
+					    mapObject->type, itPtr,
+					    [](ANotifier &notifier, void *data) -> void {
+						    delete static_cast<
+						        Autolang::Libs::map::IntHashMap::iterator *>(
+						        data);
+					    });
+					*keyContainer = notifier->createInt((*itPtr)->first);
+					(*keyContainer)->retain();
+					*valContainer = getValObj((*itPtr)->second);
+					(*valContainer)->retain();
+					ip += 4;
+					break;
+				}
+				auto &it = *static_cast<
+				    Autolang::Libs::map::IntHashMap::iterator *>(
+				    (*iterator)->data->data);
+				++it;
+				data.manager.release(*keyContainer);
+				*keyContainer = nullptr;
+				data.manager.release(*valContainer);
+				*valContainer = nullptr;
+				if (it == map->end()) {
+					data.manager.release(*iterator);
+					*iterator = nullptr;
+					ip = get_u32(bytecodes, ip);
+					break;
+				}
+				*keyContainer = notifier->createInt(it->first);
+				(*keyContainer)->retain();
+				*valContainer = getValObj(it->second);
+				(*valContainer)->retain();
+				ip += 4;
+				break;
+			}
+
+			case DefaultClass::floatClassId: {
+				auto map = static_cast<Autolang::Libs::map::FloatHashMap *>(
+				    hashMapData->data);
+				if (*iterator == DefaultClass::nullObject) {
+					if (map->empty()) {
+						ip = get_u32(bytecodes, ip);
+						break;
+					}
+					auto itPtr = new Autolang::Libs::map::FloatHashMap::iterator(
+					    map->begin());
+					*iterator = notifier->createNativeData(
+					    mapObject->type, itPtr,
+					    [](ANotifier &notifier, void *data) -> void {
+						    delete static_cast<
+						        Autolang::Libs::map::FloatHashMap::iterator *>(
+						        data);
+					    });
+					*keyContainer = notifier->createFloat((*itPtr)->first);
+					(*keyContainer)->retain();
+					*valContainer = getValObj((*itPtr)->second);
+					(*valContainer)->retain();
+					ip += 4;
+					break;
+				}
+				auto &it = *static_cast<
+				    Autolang::Libs::map::FloatHashMap::iterator *>(
+				    (*iterator)->data->data);
+				++it;
+				data.manager.release(*keyContainer);
+				*keyContainer = nullptr;
+				data.manager.release(*valContainer);
+				*valContainer = nullptr;
+				if (it == map->end()) {
+					data.manager.release(*iterator);
+					*iterator = nullptr;
+					ip = get_u32(bytecodes, ip);
+					break;
+				}
+				*keyContainer = notifier->createFloat(it->first);
+				(*keyContainer)->retain();
+				*valContainer = getValObj(it->second);
+				(*valContainer)->retain();
+				ip += 4;
+				break;
+			}
+
+			case DefaultClass::stringClassId: {
+				auto map = static_cast<Autolang::Libs::map::StringHashMap *>(
+				    hashMapData->data);
+				if (*iterator == DefaultClass::nullObject) {
+					if (map->empty()) {
+						ip = get_u32(bytecodes, ip);
+						break;
+					}
+					auto itPtr =
+					    new Autolang::Libs::map::StringHashMap::iterator(
+					        map->begin());
+					*iterator = notifier->createNativeData(
+					    mapObject->type, itPtr,
+					    [](ANotifier &notifier, void *data) -> void {
+						    delete static_cast<
+						        Autolang::Libs::map::StringHashMap::iterator *>(
+						        data);
+					    });
+					*keyContainer = (*itPtr)->first;
+					(*keyContainer)->retain();
+					*valContainer = getValObj((*itPtr)->second);
+					(*valContainer)->retain();
+					ip += 4;
+					break;
+				}
+				auto &it = *static_cast<
+				    Autolang::Libs::map::StringHashMap::iterator *>(
+				    (*iterator)->data->data);
+				++it;
+				data.manager.release(*keyContainer);
+				*keyContainer = nullptr;
+				data.manager.release(*valContainer);
+				*valContainer = nullptr;
+				if (it == map->end()) {
+					data.manager.release(*iterator);
+					*iterator = nullptr;
+					ip = get_u32(bytecodes, ip);
+					break;
+				}
+				*keyContainer = it->first;
+				(*keyContainer)->retain();
+				*valContainer = getValObj(it->second);
+				(*valContainer)->retain();
+				ip += 4;
+				break;
+			}
+
+			default: {
+				auto map = static_cast<Autolang::Libs::map::ObjectHashMap *>(
+				    hashMapData->data);
+				if (*iterator == DefaultClass::nullObject) {
+					if (map->empty()) {
+						ip = get_u32(bytecodes, ip);
+						break;
+					}
+					auto itPtr =
+					    new Autolang::Libs::map::ObjectHashMap::iterator(
+					        map->begin());
+					*iterator = notifier->createNativeData(
+					    mapObject->type, itPtr,
+					    [](ANotifier &notifier, void *data) -> void {
+						    delete static_cast<
+						        Autolang::Libs::map::ObjectHashMap::iterator *>(
+						        data);
+					    });
+					*keyContainer = (*itPtr)->first;
+					(*keyContainer)->retain();
+					*valContainer = getValObj((*itPtr)->second);
+					(*valContainer)->retain();
+					ip += 4;
+					break;
+				}
+				auto &it = *static_cast<
+				    Autolang::Libs::map::ObjectHashMap::iterator *>(
+				    (*iterator)->data->data);
+				++it;
+				data.manager.release(*keyContainer);
+				*keyContainer = nullptr;
+				data.manager.release(*valContainer);
+				*valContainer = nullptr;
+				if (it == map->end()) {
+					data.manager.release(*iterator);
+					*iterator = nullptr;
+					ip = get_u32(bytecodes, ip);
+					break;
+				}
+				*keyContainer = it->first;
+				(*keyContainer)->retain();
+				*valContainer = getValObj(it->second);
+				(*valContainer)->retain();
 				ip += 4;
 				break;
 			}

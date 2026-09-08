@@ -562,6 +562,16 @@ fun getRefCount(value: Any?): Int
 fun assert(condition: Bool, message: String = "Assertion failed")
 @native("assert")
 fun assert(condition: Bool, fileName: String, line: Int)
+
+class Pair<A, B>(val first: A, val second: B) {
+	fun toString(): String {
+		return "(" + first + ", " + second + ")"
+	}
+}
+
+fun <A, B> pairOf(first: A, second: B): Pair<A, B> {
+	return Pair<A, B>(first, second)
+}
 // @wait_input
 // @native("input")
 // fun input(): String

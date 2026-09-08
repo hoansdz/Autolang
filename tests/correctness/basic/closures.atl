@@ -92,7 +92,7 @@ fun testClassClosures() {
 }
 
 fun testDeepNestedPipelineClosures() {
-    // 1. Currying lồng 4 tầng
+    // 1. 4-level nested currying
     val curry4 = {|a: Int|
         {|b: Int|
             {|c: Int|
@@ -109,7 +109,7 @@ fun testDeepNestedPipelineClosures() {
     assert(result4 == 4321)
     assert(curry4(9)(8)(7)(6) == 9876)
 
-    // 2. Pipeline closures trong mảng
+    // 2. Closure pipeline in an array
     val ops: Array<(Int) -> Int> = [
         {|x: Int| x + 10},
         {|x: Int| x * 3},
@@ -123,7 +123,7 @@ fun testDeepNestedPipelineClosures() {
     // ((5 + 10) * 3 - 5) / 2 = (45 - 5) / 2 = 20
     assert(value == 20)
 
-    // 3. Closure bắt tham chiếu đối tượng và biến đổi sâu
+    // 3. Closure capturing object reference and mutating deeply
     val person = TestClosureClass()
     person.n = 100
     val mutator = {|bonus: Int|

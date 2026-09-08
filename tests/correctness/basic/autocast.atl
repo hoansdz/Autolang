@@ -72,6 +72,19 @@ fun acceptAny(x: Any): String {
 	}
 }
 
+fun acceptAnyCollection(x: Any): String {
+	if (x is Array<Int>) {
+		return "ArrayInt"
+	}
+	if (x is Map<String, Int>) {
+		return "MapStringInt"
+	}
+	if (x is Set<Int>) {
+		return "SetInt"
+	}
+	return "Other"
+}
+
 fun testAutoCast() {
 	// 1. Auto Cast Int to Float
 	val f1: Float = 10
@@ -295,6 +308,98 @@ fun testAutoCast() {
 	val shadowClass = ShadowTestClass()
 	val shadowClosure = shadowClass.getShadowClosure(20)
 	assert(shadowClosure(30) == 60)
+
+	// 9. Collection Autocast & Type Operations (Array, Set, Map with Any, is, as, as?)
+	val rawArr = [1, 2, 3]
+	val anyArr: Any = rawArr
+	assert(anyArr is Array<Int>)
+	val castArr = anyArr as Array<Int>
+	assert(castArr.size() == 3 && castArr[0] == 1)
+	val safeArr = anyArr as? Array<Int>
+	assert(safeArr != null && safeArr![1] == 2)
+	val safeArrFail = anyArr as? Map<String, Int>
+	assert(safeArrFail == null)
+
+	val rawMap = {"a": 1, "b": 2}
+	val anyMap: Any = rawMap
+	assert(anyMap is Map<String, Int>)
+	val castMap = anyMap as Map<String, Int>
+	assert(castMap.size() == 2 && castMap["a"] == 1)
+	val safeMap = anyMap as? Map<String, Int>
+	assert(safeMap != null && safeMap!["b"] == 2)
+	val safeMapFail = anyMap as? Set<Int>
+	assert(safeMapFail == null)
+
+	val rawSet = {10, 20, 30}
+	val anySet: Any = rawSet
+	assert(anySet is Set<Int>)
+	val castSet = anySet as Set<Int>
+	assert(castSet.size() == 3 && castSet.contains(10))
+	val safeSet = anySet as? Set<Int>
+	assert(safeSet != null && safeSet!.contains(20))
+	val safeSetFail = anySet as? Array<Int>
+	assert(safeSetFail == null)
+
+	assert(acceptAnyCollection(rawArr) == "ArrayInt")
+	assert(acceptAnyCollection(rawMap) == "MapStringInt")
+	assert(acceptAnyCollection(rawSet) == "SetInt")
+	assert(acceptAnyCollection("other text") == "Other")
+
+	val childArr = [CastChild()]
+	val anyChildArr: Any = childArr
+	assert(anyChildArr is Array<CastChild>)
+	val castChildArr = anyChildArr as Array<CastChild>
+	assert(castChildArr[0].identify() == "Child")
+
+	// 10. Mixed Type Element Autocast in Collection (e.g. {1, 1.5}, [1, 1.5], {"a": 1, "b": 1.5})
+	val mixedSet = {1, 1.5}
+	assert(mixedSet.size() == 2)
+	var setIntCount = 0
+	var setFloatCount = 0
+	for (x in mixedSet) {
+		if (x is Int) {
+			setIntCount += 1
+		}
+		if (x is Float) {
+			setFloatCount += 1
+		}
+	}
+	assert(setIntCount == 0)
+	assert(setFloatCount == 2)
+
+	val mixedArr = [1, 1.5]
+	assert(mixedArr.size() == 2)
+	assert(mixedArr[0] == 1.0)
+	assert(mixedArr[1] == 1.5)
+	var arrIntCount = 0
+	var arrFloatCount = 0
+	for (x in mixedArr) {
+		if (x is Int) {
+			arrIntCount += 1
+		}
+		if (x is Float) {
+			arrFloatCount += 1
+		}
+	}
+	assert(arrIntCount == 0)
+	assert(arrFloatCount == 2)
+
+	val mixedMap = {"first": 1, "second": 1.5}
+	assert(mixedMap.size() == 2)
+	assert(mixedMap["first"] == 1.0)
+	assert(mixedMap["second"] == 1.5)
+	var mapValIntCount = 0
+	var mapValFloatCount = 0
+	for (k, v in mixedMap) {
+		if (v is Int) {
+			mapValIntCount += 1
+		}
+		if (v is Float) {
+			mapValFloatCount += 1
+		}
+	}
+	assert(mapValIntCount == 0)
+	assert(mapValFloatCount == 2)
 
 	println("Passed ${__FUNC__}")
 }

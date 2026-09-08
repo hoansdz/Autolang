@@ -1,0 +1,9 @@
+class TargetClass {
+	fun instanceMethod(): Int {
+		return 42
+	}
+}
+
+fun testStaticCallInstance() {
+	TargetClass.instanceMethod()
+}

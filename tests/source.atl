@@ -116,13 +116,13 @@
 // var products = Database.get_products()
 // var budget = 1000
 
-// // dp[i] sẽ lưu trọng lượng lớn nhất đạt được với ngân sách đó
+// // dp[i] stores the maximum weight achievable with that budget
 // var dp = Array<Float>()
 // for (i in 0..budget) {
 //     dp.add(0.0)
 // }
 
-// // Thuật toán Knk cho phép nhập trổi loại (Unbounded Knapsack)
+// // Unbounded Knapsack algorithm
 // for (p in products) {
 //     if (p.inStock) {
 //         for (b in p.price..budget) {
@@ -134,4 +134,4 @@
 //     }
 // }
 
-// println("Trọng lượt trổi đạt: ${dp[budget]}")
+// println("Maximum weight achieved: ${dp[budget]}")

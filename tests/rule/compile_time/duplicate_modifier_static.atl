@@ -1,0 +1,3 @@
+class TargetClass {
+	static static val a = 1
+}

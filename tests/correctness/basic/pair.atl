@@ -1,0 +1,66 @@
+fun testPair() {
+    // 1. Basic Pair creation with 'to'
+    val p1 = 1 to "hello"
+    assert(p1.first == 1)
+    assert(p1.second == "hello")
+    assert(p1.toString() == "(1, hello)")
+
+    // 2. Pair with expressions
+    val a = 10
+    val b = 20
+    val p2 = a + 5 to b * 2
+    assert(p2.first == 15)
+    assert(p2.second == 40)
+
+    // 3. pairOf helper function
+    val p3 = pairOf("key", 100)
+    assert(p3.first == "key")
+    assert(p3.second == 100)
+
+    // 4. Nested Pairs
+    val p4 = 1 to (2 to 3)
+    assert(p4.first == 1)
+    assert(p4.second.first == 2)
+    assert(p4.second.second == 3)
+
+    // 5. Map creation with 'to' via mapOf
+    val m1 = mapOf("a" to 1, "b" to 2, "c" to 3)
+    assert(m1.size() == 3)
+    assert(m1["a"] == 1)
+    assert(m1["b"] == 2)
+    assert(m1["c"] == 3)
+
+    // 6. Map creation with mutableMapOf using 'to'
+    val m2 = mutableMapOf("x" to 10, "y" to 20)
+    assert(m2.size() == 2)
+    assert(m2["x"] == 10)
+    assert(m2["y"] == 20)
+
+    // 7. Map literal with 'to'
+    val m3 = { "name" to "Alice", "city" to "Hanoi" }
+    assert(m3.size() == 2)
+    assert(m3["name"] == "Alice")
+    assert(m3["city"] == "Hanoi")
+
+    // 8. Single entry Map literal with 'to'
+    val m4 = { "only" to 42 }
+    assert(m4.size() == 1)
+    assert(m4["only"] == 42)
+
+    // 9. Mixed syntax in map literal: ':' and 'to'
+    val m5 = { "first": 1, "second" to 2 }
+    assert(m5.size() == 2)
+    assert(m5["first"] == 1)
+    assert(m5["second"] == 2)
+
+    // 10. Iterating over map with destructuring
+    var count = 0
+    for (k, v in m1) {
+        count = count + v
+    }
+    assert(count == 6)
+
+    println("Passed testPair")
+}
+
+testPair()

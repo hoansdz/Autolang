@@ -1,0 +1,5 @@
+class TargetClass {
+	static fun testThis() {
+		val t = this
+	}
+}

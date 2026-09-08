@@ -59,7 +59,7 @@ ExprNode *IfNode::optimize(in_func) {
 		if (ifFalse) {
 			ifFalse = static_cast<BlockNode *>(ifFalse->optimize(in_data));
 		} else {
-			if (ifTrue.hasValue && condition->kind == NodeType::CONST_VAL &&
+			if (ifTrue.hasValue() && condition->kind == NodeType::CONST_VAL &&
 			    static_cast<ConstValueNode *>(condition)->obj->b) {
 				mustReturnValue = true;
 			}
@@ -77,8 +77,19 @@ ExprNode *IfNode::optimize(in_func) {
 		    trueClassId == DefaultClass::intClassId) {
 			ifTrue.autoCastToFloat = true;
 		}
-		if (ifTrue.hasValue && ifFalse->hasValue) {
+		bool trueEndsEarly = !ifTrue.nodes.empty() && (ifTrue.nodes.back()->kind == NodeType::THROW || ifTrue.nodes.back()->kind == NodeType::RET);
+		bool falseEndsEarly = ifFalse && !ifFalse->nodes.empty() && (ifFalse->nodes.back()->kind == NodeType::THROW || ifFalse->nodes.back()->kind == NodeType::RET);
+		if ((ifTrue.hasValue() || trueEndsEarly) && (ifFalse && (ifFalse->hasValue() || falseEndsEarly)) && (ifTrue.hasValue() || (ifFalse && ifFalse->hasValue()))) {
 			mustReturnValue = true;
+			if (trueEndsEarly && ifFalse && ifFalse->hasValue()) {
+				classId = ifFalse->classId;
+				classDeclaration = ifFalse->classDeclaration;
+				nullable = ifFalse->isNullable();
+			} else if (falseEndsEarly && ifTrue.hasValue()) {
+				classId = ifTrue.classId;
+				classDeclaration = ifTrue.classDeclaration;
+				nullable = ifTrue.isNullable();
+			}
 		}
 	}
 	// std::cerr << getClassName(in_data) << "\n";

@@ -201,6 +201,9 @@ enum Opcode : uint8_t {
 	ADD_FINALLY_BLOCK,
 	REMOVE_FINALLY,
 	END_FINALLY,
+
+	FOR_MAP_KEY,
+	FOR_MAP_KEY_VALUE,
 };
 
 }

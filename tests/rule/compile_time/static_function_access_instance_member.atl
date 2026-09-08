@@ -1,0 +1,7 @@
+class TargetClass {
+	var count: Int = 10
+
+	static fun getCount(): Int {
+		return count
+	}
+}

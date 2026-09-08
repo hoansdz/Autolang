@@ -19,13 +19,13 @@ def count_lines(directory):
                     all_lines_count = len(lines)
                     non_empty_lines_count = len([l for l in lines if l.strip()])
                     
-                    # 1. Loai bo block comment /* ... */ qua nhieu dong
+                    # 1. Strip multi-line block comments /* ... */
                     content_no_block = re.sub(r'/\*.*?\*/', '', raw_content, flags=re.DOTALL)
                     
-                    # 2. Dem cac dong code thuc te (da loai bo // va #)
+                    # 2. Count actual code lines (excluding // and #)
                     code_lines_count = 0
                     for line in content_no_block.splitlines():
-                        # Cat bo phan single line comment // hoặc #
+                        # Strip single-line comments // or #
                         line_clean = line.split('//')[0].split('#')[0].strip()
                         if line_clean:
                             code_lines_count += 1

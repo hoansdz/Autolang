@@ -167,6 +167,19 @@ ExprNode *CallNode::resolve(in_func) {
 				        std::pair<HasClassIdNode *, HasClassIdNode *>>());
 				return mapNode->resolve(in_data);
 			}
+			case lexerIdpairOf: {
+				if (funcObject)
+					break;
+				if (arguments.size() != 2) {
+					throwError(
+					    "Invalid call: pairOf expects 2 arguments (first, second), but " +
+					    std::to_string(arguments.size()) +
+					    " were provided\nHint: Use pairOf(first, second) or 'first to second'.");
+				}
+				auto pairNode = context.pairPool.push(line, arguments[0], arguments[1]);
+				arguments.clear();
+				return pairNode->resolve(in_data);
+			}
 			case lexerIdmapOf:
 			case lexerIdmutableMapOf:
 			case lexerIdhashMapOf:
@@ -186,6 +199,25 @@ ExprNode *CallNode::resolve(in_func) {
 					arguments.clear();
 					return res;
 				}
+				bool allPairs = true;
+				for (auto *arg : arguments) {
+					if (arg->kind != NodeType::PAIR) {
+						allPairs = false;
+						break;
+					}
+				}
+				if (allPairs) {
+					std::vector<std::pair<HasClassIdNode *, HasClassIdNode *>> entries;
+					entries.reserve(arguments.size());
+					for (auto *arg : arguments) {
+						auto *pairNode = static_cast<PairNode *>(arg);
+						entries.emplace_back(pairNode->first, pairNode->second);
+					}
+					auto mapNode = context.createMapPool.push(
+					    line, nullptr, std::move(entries));
+					arguments.clear();
+					return mapNode->resolve(in_data);
+				}
 				if (arguments.size() % 2 == 0) {
 					std::vector<std::pair<HasClassIdNode *, HasClassIdNode *>>
 					    entries;
@@ -200,11 +232,13 @@ ExprNode *CallNode::resolve(in_func) {
 				}
 				throwError(
 				    "Invalid call: " + context.lexerString[nameId] +
-				    " expects an even number of arguments (key, value pairs) or "
+				    " expects Pair arguments (e.g., key to value), an even number of arguments (key, value pairs), or "
 				    "a single Map, but " +
 				    std::to_string(arguments.size()) +
-				    " arguments were provided\nHint: Pass key-value pairs "
+				    " arguments were provided\nHint: Pass Pair arguments "
 				    "(e.g., " +
+				    context.lexerString[nameId] +
+				    "(k1 to v1, k2 to v2)), key-value pairs (" +
 				    context.lexerString[nameId] +
 				    "(k1, v1, k2, v2)) or a map literal.");
 			}
@@ -228,7 +262,6 @@ ExprNode *CallNode::optimize(in_func) {
 	if (nameId == lexerIdLRBRACKET)
 		nameId = lexerIdget;
 
-	const auto &name = context.lexerString[nameId];
 	bool mustInferenceGenericType = false;
 
 	for (int i = 0; i < arguments.size(); ++i) {
@@ -273,6 +306,8 @@ ExprNode *CallNode::optimize(in_func) {
 			}
 		}
 	}
+
+	const std::string name = context.lexerString[nameId];
 
 	if (caller) {
 		// Caller.funcName() => Class.funcName()
@@ -641,11 +676,65 @@ ExprNode *CallNode::optimize(in_func) {
 		classDeclaration = funcInfo->returnClass;
 	}
 	{
-		int i = arguments.size() +
-		        !(func->functionFlags & FunctionFlags::FUNC_IS_STATIC);
-		for (; i < funcInfo->parameter->parameters.size(); ++i) {
-			arguments.push_back(funcInfo->parameter->parameterDefaultValues
-			                        [i - funcInfo->parameter->defaultValuePos]);
+		bool hasNamed = false;
+		for (auto name : argumentNames) {
+			if (name != 0) {
+				hasNamed = true;
+				break;
+			}
+		}
+		if (hasNamed) {
+			int skip = !(func->functionFlags & FunctionFlags::FUNC_IS_STATIC);
+			size_t totalParams = funcInfo->parameter->parameters.size();
+			size_t userParamCount = totalParams - skip;
+			std::vector<HasClassIdNode *> orderedArgs(userParamCount, nullptr);
+
+			size_t posIdx = 0;
+			while (posIdx < arguments.size() &&
+			       (argumentNames.empty() || argumentNames[posIdx] == 0)) {
+				orderedArgs[posIdx] = arguments[posIdx];
+				posIdx++;
+			}
+
+			for (size_t a = posIdx; a < arguments.size(); ++a) {
+				LexerStringId argNameId = argumentNames[a];
+				const auto &argNameStr = context.lexerString[argNameId];
+				int foundP = -1;
+				for (size_t p = 0; p < userParamCount; ++p) {
+					auto paramDecl = funcInfo->parameter->parameters[skip + p];
+					if (paramDecl->baseName == argNameId ||
+					    paramDecl->name == argNameStr) {
+						foundP = static_cast<int>(p);
+						break;
+					}
+				}
+				if (foundP != -1) {
+					orderedArgs[foundP] = arguments[a];
+				}
+			}
+
+			for (size_t p = 0; p < userParamCount; ++p) {
+				if (orderedArgs[p] == nullptr) {
+					size_t targetIndex = skip + p;
+					orderedArgs[p] = funcInfo->parameter->parameterDefaultValues
+					    [targetIndex - funcInfo->parameter->defaultValuePos];
+				}
+			}
+
+			arguments.clear();
+			arguments.reserve(orderedArgs.size());
+			for (auto *arg : orderedArgs) {
+				arguments.push_back(arg);
+			}
+			argumentNames.clear();
+		} else {
+			int i = arguments.size() +
+			        !(func->functionFlags & FunctionFlags::FUNC_IS_STATIC);
+			for (; i < funcInfo->parameter->parameters.size(); ++i) {
+				arguments.push_back(funcInfo->parameter->parameterDefaultValues
+				                        [i - funcInfo->parameter->defaultValuePos]);
+			}
+			argumentNames.clear();
 		}
 	}
 
@@ -1125,6 +1214,13 @@ bool CallNode::match(in_func, MatchOverload &match,
                      std::vector<FunctionId> &functions, int &i,
                      bool mustInferenceGenericType) {
 	match.score = 0;
+	bool hasNamed = false;
+	for (auto name : argumentNames) {
+		if (name != 0) {
+			hasNamed = true;
+			break;
+		}
+	}
 	for (; i < functions.size(); ++i) {
 		match.id = functions[i];
 		match.func = compile.functions[match.id];
@@ -1139,128 +1235,284 @@ bool CallNode::match(in_func, MatchOverload &match,
 		    funcInfo->tokenIndex > tokenIndex) {
 			continue;
 		}
-		size_t argumentSize = arguments.size() + skip;
-		if (argumentSize < funcInfo->parameter->defaultValuePos ||
-		    argumentSize > funcInfo->parameter->parameters.size())
-			continue;
-		match.errorNonNullIfMatchCount = 0;
-		// std::cerr << match.func->getName(compile) << " " << arguments.size()
-		// << " "
-		//           << argumentSize << " " << skip << " "
-		//           << funcInfo->parameter->parameters.size() << " "
-		//           << funcInfo->parameter->defaultValuePos << "\n";
-		for (int j = 0; j < arguments.size(); ++j) {
-			uint32_t inputClassId = arguments[j]->classId;
-			uint32_t funcExpectClassId = match.func->args[j + skip];
-			// printDebug(compile.classes[inputClassId]->getName(compile) + "
-			// and " + compile.classes[funcExpectClassId]->getName(compile));
 
-			if (funcExpectClassId == inputClassId) {
-				if (funcExpectClassId == DefaultClass::functionClassId) {
-					if (arguments[j]->kind != NodeType::FUNCTION_ACCESS) {
-						// Function access expected context to know what
-						// function auto funcInfo =
-						// context.functionInfo[match.id]; std::cerr << j << " "
-						//           << funcInfo->parameter->parameters[j +
-						//           skip]
-						//                  ->classDeclaration
-						//           << " " << arguments[j]->getNodeType() <<
-						//           "\n";
-						if (!funcInfo->parameter->parameters[j + skip]
-						         ->classDeclaration->isMatch(
-						             arguments[j]->classDeclaration)) {
-							goto finished;
-						}
-					} else {
-					}
-				}
-				match.score += 2;
+		if (!hasNamed) {
+			size_t argumentSize = arguments.size() + skip;
+			if (argumentSize < funcInfo->parameter->defaultValuePos ||
+			    argumentSize > funcInfo->parameter->parameters.size())
 				continue;
-			}
-			if (funcExpectClassId == DefaultClass::anyClassId) {
-				++match.score;
-				continue;
-			}
-			switch (inputClassId) {
-				case DefaultClass::nullClassId: {
-					if (mustInferenceGenericType) {
-						auto argument = arguments[j];
-						auto funcExpectClassInfo =
-						    context.classInfo[funcExpectClassId];
-						auto genericBaseClassId =
-						    compile.classes[funcExpectClassId]
-						        ->genericBaseClassId;
-						switch (argument->kind) {
-							case NodeType::CREATE_ARRAY: {
-								if (genericBaseClassId !=
-								    DefaultClass::arrayClassId) {
-									if (canImplicitConvert(in_data, funcExpectClassId, argument)) {
-										break;
-									}
-									goto finished;
-								}
-								break;
+			match.errorNonNullIfMatchCount = 0;
+			// std::cerr << match.func->getName(compile) << " " << arguments.size()
+			// << " "
+			//           << argumentSize << " " << skip << " "
+			//           << funcInfo->parameter->parameters.size() << " "
+			//           << funcInfo->parameter->defaultValuePos << "\n";
+			for (int j = 0; j < arguments.size(); ++j) {
+				uint32_t inputClassId = arguments[j]->classId;
+				uint32_t funcExpectClassId = match.func->args[j + skip];
+				// printDebug(compile.classes[inputClassId]->getName(compile) + "
+				// and " + compile.classes[funcExpectClassId]->getName(compile));
+
+				if (funcExpectClassId == inputClassId) {
+					if (funcExpectClassId == DefaultClass::functionClassId) {
+						if (arguments[j]->kind != NodeType::FUNCTION_ACCESS) {
+							// Function access expected context to know what
+							// function auto funcInfo =
+							// context.functionInfo[match.id]; std::cerr << j << " "
+							//           << funcInfo->parameter->parameters[j +
+							//           skip]
+							//                  ->classDeclaration
+							//           << " " << arguments[j]->getNodeType() <<
+							//           "\n";
+							if (!funcInfo->parameter->parameters[j + skip]
+							         ->classDeclaration->isMatch(
+							             arguments[j]->classDeclaration)) {
+								goto finished;
 							}
-							case NodeType::CREATE_MAP: {
-								if (genericBaseClassId !=
-								    DefaultClass::mapClassId) {
-									if (canImplicitConvert(in_data, funcExpectClassId, argument)) {
-										break;
-									}
-									goto finished;
-								}
-								break;
-							}
-							case NodeType::CREATE_SET: {
-								if (genericBaseClassId !=
-								    DefaultClass::setClassId) {
-									if (genericBaseClassId ==
-									    DefaultClass::mapClassId) {
-										break;
-									}
-									if (canImplicitConvert(in_data, funcExpectClassId, argument)) {
-										break;
-									}
-									goto finished;
-								}
-								break;
-							}
-							default:
-								break;
+						} else {
 						}
 					}
-
-					++match.score;
-					match.errorNonNullIfMatchCount +=
-					    !funcInfo->parameter->parameters[j + skip]->nullable;
+					match.score += 2;
 					continue;
 				}
-				case DefaultClass::intClassId: {
-					if (funcExpectClassId ==
-					    Autolang::DefaultClass::floatClassId) {
+				if (funcExpectClassId == DefaultClass::anyClassId) {
+					++match.score;
+					continue;
+				}
+				switch (inputClassId) {
+					case DefaultClass::nullClassId: {
+						if (mustInferenceGenericType) {
+							auto argument = arguments[j];
+							auto funcExpectClassInfo =
+							    context.classInfo[funcExpectClassId];
+							auto genericBaseClassId =
+							    compile.classes[funcExpectClassId]
+							        ->genericBaseClassId;
+							switch (argument->kind) {
+								case NodeType::CREATE_ARRAY: {
+									if (genericBaseClassId !=
+									    DefaultClass::arrayClassId) {
+										if (canImplicitConvert(in_data, funcExpectClassId, argument)) {
+											break;
+										}
+										goto finished;
+									}
+									break;
+								}
+								case NodeType::CREATE_MAP: {
+									if (genericBaseClassId !=
+									    DefaultClass::mapClassId) {
+										if (canImplicitConvert(in_data, funcExpectClassId, argument)) {
+											break;
+										}
+										goto finished;
+									}
+									break;
+								}
+								case NodeType::CREATE_SET: {
+									if (genericBaseClassId !=
+									    DefaultClass::setClassId) {
+										if (genericBaseClassId ==
+										    DefaultClass::mapClassId) {
+											break;
+										}
+										if (canImplicitConvert(in_data, funcExpectClassId, argument)) {
+											break;
+										}
+										goto finished;
+									}
+									break;
+								}
+								default:
+									break;
+							}
+						}
+
 						++match.score;
+						match.errorNonNullIfMatchCount +=
+						    !funcInfo->parameter->parameters[j + skip]->nullable;
 						continue;
 					}
-					break;
-				}
-				default: {
-					if (compile.classes[inputClassId]->inheritance.get(
-					        funcExpectClassId)) {
-						++match.score;
-						continue;
+					case DefaultClass::intClassId: {
+						if (funcExpectClassId ==
+						    Autolang::DefaultClass::floatClassId) {
+							++match.score;
+							continue;
+						}
+						break;
 					}
-					break;
+					default: {
+						if (compile.classes[inputClassId]->inheritance.get(
+						        funcExpectClassId)) {
+							++match.score;
+							continue;
+						}
+						break;
+					}
 				}
+				if (canImplicitConvert(in_data, funcExpectClassId, arguments[j])) {
+					++match.score;
+					continue;
+				}
+				goto finished;
 			}
-			if (canImplicitConvert(in_data, funcExpectClassId, arguments[j])) {
-				++match.score;
+			// Matched
+			++i;
+			return true;
+		} else {
+			size_t totalParams = funcInfo->parameter->parameters.size();
+			size_t userParamCount = totalParams - skip;
+			if (arguments.size() > userParamCount)
 				continue;
+
+			std::vector<HasClassIdNode *> paramAssigned(userParamCount, nullptr);
+			bool matchFailed = false;
+
+			size_t posIdx = 0;
+			while (posIdx < arguments.size() &&
+			       (argumentNames.empty() || argumentNames[posIdx] == 0)) {
+				paramAssigned[posIdx] = arguments[posIdx];
+				posIdx++;
 			}
-			goto finished;
+
+			for (size_t a = posIdx; a < arguments.size(); ++a) {
+				LexerStringId argNameId = argumentNames[a];
+				const auto &argNameStr = context.lexerString[argNameId];
+				int foundP = -1;
+				for (size_t p = 0; p < userParamCount; ++p) {
+					auto paramDecl = funcInfo->parameter->parameters[skip + p];
+					if (paramDecl->baseName == argNameId ||
+					    paramDecl->name == argNameStr) {
+						foundP = static_cast<int>(p);
+						break;
+					}
+				}
+				if (foundP == -1 || paramAssigned[foundP] != nullptr) {
+					matchFailed = true;
+					break;
+				}
+				paramAssigned[foundP] = arguments[a];
+			}
+			if (matchFailed)
+				goto finished;
+
+			for (size_t p = 0; p < userParamCount; ++p) {
+				if (paramAssigned[p] == nullptr) {
+					size_t targetIndex = skip + p;
+					if (targetIndex < funcInfo->parameter->defaultValuePos) {
+						matchFailed = true;
+						break;
+					}
+				}
+			}
+			if (matchFailed)
+				goto finished;
+
+			match.errorNonNullIfMatchCount = 0;
+			for (size_t p = 0; p < userParamCount; ++p) {
+				if (paramAssigned[p] == nullptr)
+					continue;
+				auto argNode = paramAssigned[p];
+				uint32_t inputClassId = argNode->classId;
+				uint32_t funcExpectClassId = match.func->args[p + skip];
+
+				if (funcExpectClassId == inputClassId) {
+					if (funcExpectClassId == DefaultClass::functionClassId) {
+						if (argNode->kind != NodeType::FUNCTION_ACCESS) {
+							if (!funcInfo->parameter->parameters[p + skip]
+							         ->classDeclaration->isMatch(
+							             argNode->classDeclaration)) {
+								goto finished;
+							}
+						}
+					}
+					match.score += 2;
+					continue;
+				}
+				if (funcExpectClassId == DefaultClass::anyClassId) {
+					++match.score;
+					continue;
+				}
+				switch (inputClassId) {
+					case DefaultClass::nullClassId: {
+						if (mustInferenceGenericType) {
+							auto funcExpectClassInfo =
+							    context.classInfo[funcExpectClassId];
+							auto genericBaseClassId =
+							    compile.classes[funcExpectClassId]
+							        ->genericBaseClassId;
+							switch (argNode->kind) {
+								case NodeType::CREATE_ARRAY: {
+									if (genericBaseClassId !=
+									    DefaultClass::arrayClassId) {
+										if (canImplicitConvert(in_data, funcExpectClassId, argNode)) {
+											break;
+										}
+										goto finished;
+									}
+									break;
+								}
+								case NodeType::CREATE_MAP: {
+									if (genericBaseClassId !=
+									    DefaultClass::mapClassId) {
+										if (canImplicitConvert(in_data, funcExpectClassId, argNode)) {
+											break;
+										}
+										goto finished;
+									}
+									break;
+								}
+								case NodeType::CREATE_SET: {
+									if (genericBaseClassId !=
+									    DefaultClass::setClassId) {
+										if (genericBaseClassId ==
+										    DefaultClass::mapClassId) {
+											break;
+										}
+										if (canImplicitConvert(in_data, funcExpectClassId, argNode)) {
+											break;
+										}
+										goto finished;
+									}
+									break;
+								}
+								default:
+									break;
+							}
+						}
+
+						++match.score;
+						match.errorNonNullIfMatchCount +=
+						    !funcInfo->parameter->parameters[p + skip]->nullable;
+						continue;
+					}
+					case DefaultClass::intClassId: {
+						if (funcExpectClassId ==
+						    Autolang::DefaultClass::floatClassId) {
+							++match.score;
+							continue;
+						}
+						break;
+					}
+					default: {
+						if (compile.classes[inputClassId]->inheritance.get(
+						        funcExpectClassId)) {
+							++match.score;
+							continue;
+						}
+						break;
+					}
+				}
+				if (canImplicitConvert(in_data, funcExpectClassId, argNode)) {
+					++match.score;
+					continue;
+				}
+				goto finished;
+			}
+			// Matched
+			++i;
+			return true;
 		}
-		// Matched
-		++i;
-		return true;
 	finished:;
 	}
 	return false;
@@ -1380,6 +1632,7 @@ ExprNode *CallNode::copy(in_func) {
 	auto newNode = context.callNodePool.push(
 	    line, tokenIndex, context.currentClassId, newCaller, nameId,
 	    std::move(newArguments), justFindStatic, nullable, accessNullable);
+	newNode->argumentNames = argumentNames;
 	newNode->classId = classId;
 	newNode->classDeclaration = classDeclaration;
 	newNode->isForceNonNull = isForceNonNull;

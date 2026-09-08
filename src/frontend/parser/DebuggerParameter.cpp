@@ -32,7 +32,8 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 				        "'val' keywords in function parameters unless in "
 				        "constructor");
 		}
-		case Lexer::TokenType::IDENTIFIER: {
+		case Lexer::TokenType::IDENTIFIER:
+		case Lexer::TokenType::TO: {
 			--i;
 			break;
 		}
@@ -63,7 +64,8 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 				    "identifier for parameter name after 'var'/'val'");
 			}
 		}
-		if (!expect(token, Lexer::TokenType::IDENTIFIER)) {
+		if (!expect(token, Lexer::TokenType::IDENTIFIER) &&
+		    !expect(token, Lexer::TokenType::TO)) {
 			throw ParserError(
 			    token->line,
 			    "Expected identifier but not found\nHint: Parameter name "

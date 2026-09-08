@@ -1,6 +1,7 @@
 @import("./correctness/basic/basic_operator.atl")
 @import("./correctness/basic/divideByZero.atl")
 @import("./correctness/basic/for_loop.atl")
+@import("./correctness/basic/for_map.atl")
 @import("./correctness/basic/if_else.atl")
 @import("./correctness/basic/in.atl")
 @import("./correctness/basic/logic.atl")
@@ -32,6 +33,10 @@
 @import("./correctness/basic/finally.atl")
 @import("./correctness/basic/function_pointer.atl")
 @import("./correctness/basic/implicit_constructor.atl")
+@import("./correctness/basic/block_inference.atl")
+@import("./correctness/basic/named_arguments.atl")
+@import("./correctness/basic/assign_operator.atl")
+@import("./correctness/basic/pair.atl")
 
 
 @import("./correctness/stdlib/array.atl")

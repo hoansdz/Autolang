@@ -72,6 +72,7 @@ enum NodeType : uint8_t {
 	CREATE_ENUM_VALUE,
 	WHEN,
 	GET_POINTER,
+	PAIR,
 };
 
 struct DeclarationNode;
@@ -138,11 +139,53 @@ struct SkipNode : ExprNode {
 	void rewrite(in_func, uint8_t *bytecodes) override;
 };
 
-struct BlockNode : ExprNode {
+struct HasClassIdNode : ExprNode {
+	ClassDeclaration *classDeclaration;
+	ClassId classId;
+	inline std::string getClassName(in_func) {
+		if (classId == DefaultClass::functionClassId) {
+			return classDeclaration->getName(in_data) +
+			       (isNullable() ? "?" : "");
+		}
+		return compile.classes[classId]->getName(compile) +
+		       +(isNullable() ? "?" : "");
+	}
+	HasClassIdNode(NodeType kind, ClassId classId, uint32_t line,
+	               ClassDeclaration *classDeclaration = nullptr)
+	    : ExprNode(kind, line), classDeclaration(classDeclaration),
+	      classId(classId) {}
+	virtual void putBytecodesIfMustBeCalled(in_func,
+	                                        std::vector<uint8_t> &bytecodes) {};
+	virtual bool isNullable() { return false; }
+	virtual bool isStaticValue() { return false; }
+	virtual void setNullable(bool nullable) {}
+	virtual void setIsStatic(bool isStatic) {}
+	virtual ~HasClassIdNode() {}
+};
+
+struct BlockNode : HasClassIdNode {
 	SmallVector<ExprNode *, 8> nodes;
-	bool hasValue = false;
+	bool hasValueAllCases = false;
 	bool autoCastToFloat = false;
-	BlockNode(uint32_t line) : ExprNode(NodeType::BLOCK, line) {}
+	bool nullable = false;
+	bool isStatic = false;
+
+	inline bool hasValue() const {
+		return classId != DefaultClass::voidClassId;
+	}
+
+	BlockNode(uint32_t line)
+	    : HasClassIdNode(NodeType::BLOCK, DefaultClass::voidClassId, line) {}
+
+	bool isNullable() override { return nullable; }
+	void setNullable(bool n) override { nullable = n; }
+	bool isStaticValue() override { return isStatic; }
+	void setIsStatic(bool s) override { isStatic = s; }
+	void putBytecodesIfMustBeCalled(in_func,
+	                                std::vector<uint8_t> &bytecodes) override {
+		putBytecodes(in_data, bytecodes);
+	}
+
 	void loadReturnValueClassId(in_func, uint32_t line,
 	                            std::optional<ClassId> &currentClassId,
 	                            ClassId newClassId);
@@ -169,30 +212,6 @@ struct CanBreakContinueNode : ExprNode {
 	    : ExprNode(kind, line), body(line) {}
 	ExprNode *resolve(in_func) override { return body.resolve(in_data); };
 	void rewrite(in_func, uint8_t *bytecodes) override;
-};
-
-struct HasClassIdNode : ExprNode {
-	ClassDeclaration *classDeclaration;
-	ClassId classId;
-	inline std::string getClassName(in_func) {
-		if (classId == DefaultClass::functionClassId) {
-			return classDeclaration->getName(in_data) +
-			       (isNullable() ? "?" : "");
-		}
-		return compile.classes[classId]->getName(compile) +
-		       +(isNullable() ? "?" : "");
-	}
-	HasClassIdNode(NodeType kind, ClassId classId, uint32_t line,
-	               ClassDeclaration *classDeclaration = nullptr)
-	    : ExprNode(kind, line), classDeclaration(classDeclaration),
-	      classId(classId) {}
-	virtual void putBytecodesIfMustBeCalled(in_func,
-	                                        std::vector<uint8_t> &bytecodes) {};
-	virtual bool isNullable() { return false; }
-	virtual bool isStaticValue() { return false; }
-	virtual void setNullable(bool nullable) {}
-	virtual void setIsStatic(bool isStatic) {}
-	virtual ~HasClassIdNode() {}
 };
 
 struct NullableNode : HasClassIdNode {
@@ -592,11 +611,15 @@ struct VarNode : AccessNode {
 struct ForNode : CanBreakContinueNode {
 	VarNode *iteratorNode;
 	VarNode *detach;
+	VarNode *detachValue = nullptr;
+	VarNode *collectionNode = nullptr;
 	HasClassIdNode *data;
 	ForNode(uint32_t line, VarNode *detach, HasClassIdNode *data,
-	        VarNode *iteratorNode)
+	        VarNode *iteratorNode, VarNode *detachValue = nullptr,
+	        VarNode *collectionNode = nullptr)
 	    : CanBreakContinueNode(NodeType::FOR, line), iteratorNode(iteratorNode),
-	      detach(detach), data(data) {}
+	      detach(detach), detachValue(detachValue),
+	      collectionNode(collectionNode), data(data) {}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
 	bool putOptimizedRangeBytecode(in_func, std::vector<uint8_t> &bytecodes,
@@ -707,10 +730,11 @@ struct CallNode : NullableNode {
 	uint32_t tokenIndex;
 	LexerStringId nameId;
 	SmallVector<HasClassIdNode *, 4> arguments;
+	SmallVector<LexerStringId, 4> argumentNames;
 	ClassDeclaration *inputGenericArguments;
 	FunctionId funcId;
 	BytecodePos jumpIfNullPos;
-	bool justFindStatic;
+	bool justFindStatic = false;
 	bool pauseVM = false;
 	bool accessNullable;
 	bool isSuper = false;
@@ -718,21 +742,28 @@ struct CallNode : NullableNode {
 	CallNode(uint32_t line, uint32_t tokenIndex,
 	         std::optional<ClassId> contextCallClassId, HasClassIdNode *caller,
 	         LexerStringId nameId, std::vector<HasClassIdNode *> arguments,
-	         bool justFindStatic, bool nullable, bool accessNullable)
+	         bool justFindStatic, bool nullable, bool accessNullable,
+	         std::vector<LexerStringId> argumentNames = {})
 	    : NullableNode(NodeType::CALL, 0, nullable, line),
 	      contextCallClassId(contextCallClassId), caller(caller),
 	      funcObject(nullptr), tokenIndex(tokenIndex), nameId(nameId),
-	      arguments(std::move(arguments)), justFindStatic(justFindStatic),
+	      arguments(std::move(arguments)),
+	      argumentNames(std::move(argumentNames)),
+	      justFindStatic(justFindStatic),
 	      accessNullable(accessNullable) {}
 	CallNode(uint32_t line, uint32_t tokenIndex,
 	         std::optional<ClassId> contextCallClassId,
 	         HasClassIdNode *funcObject, LexerStringId nameId,
 	         bool justFindStatic, std::vector<HasClassIdNode *> arguments,
-	         bool nullable, bool accessNullable)
+	         bool nullable, bool accessNullable,
+	         std::vector<LexerStringId> argumentNames = {})
 	    : NullableNode(NodeType::CALL, 0, nullable, line),
 	      contextCallClassId(contextCallClassId), caller(nullptr),
 	      funcObject(funcObject), tokenIndex(tokenIndex), nameId(nameId),
-	      arguments(std::move(arguments)), accessNullable(accessNullable) {}
+	      arguments(std::move(arguments)),
+	      argumentNames(std::move(argumentNames)),
+	      justFindStatic(justFindStatic),
+	      accessNullable(accessNullable) {}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
 	void putBytecodesIfMustBeCalled(in_func,
@@ -754,19 +785,42 @@ struct CallNode : NullableNode {
 	~CallNode();
 };
 
-struct TryCatchNode : ExprNode {
+struct CatchClause {
+	DeclarationNode *exceptionDeclaration = nullptr;
+	ClassDeclaration *classDeclaration = nullptr;
+	ClassId exceptionClassId = DefaultClass::exceptionClassId;
+	bool isCatchAll = false;
+	BlockNode body;
+	CatchClause(uint32_t line) : body(line) {}
+};
+
+struct TryCatchNode : HasClassIdNode {
 	DeclarationNode *exceptionDeclaration = nullptr;
 	BlockNode body;
 	BlockNode catchBody;
 	BlockNode finallyBody;
+	std::vector<CatchClause> catchClauses;
+	DeclarationNode *tempExceptionVar = nullptr;
 	bool hasCatch = false;
 	bool hasFinally = false;
-	TryCatchNode(uint32_t line)
-	    : ExprNode(NodeType::TRY_CATCH, line), body(line), catchBody(line),
-	      finallyBody(line) {}
+	bool mustReturnValue = false;
+	bool nullable = false;
+
+	TryCatchNode(uint32_t line, bool mustReturnValue = false)
+	    : HasClassIdNode(NodeType::TRY_CATCH, DefaultClass::voidClassId, line),
+	      body(line), catchBody(line), finallyBody(line),
+	      mustReturnValue(mustReturnValue) {}
+
+	bool isNullable() override { return nullable; }
+	void setNullable(bool n) override { nullable = n; }
+	void putBytecodesIfMustBeCalled(in_func,
+	                                std::vector<uint8_t> &bytecodes) override {
+		putBytecodes(in_data, bytecodes);
+	}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
+	void emitCatchClauses(in_func, std::vector<uint8_t> &bytecodes);
 	void rewrite(in_func, uint8_t *bytecodes) override;
 	ExprNode *copy(in_func) override;
 };
@@ -803,6 +857,24 @@ struct RangeNode : HasClassIdNode {
 		return from->isStaticValue() && to->isStaticValue();
 	}
 	~RangeNode();
+};
+
+struct PairNode : HasClassIdNode {
+	HasClassIdNode *first;
+	HasClassIdNode *second;
+	FunctionId constructorFuncId = 0;
+	PairNode(uint32_t line, HasClassIdNode *first, HasClassIdNode *second)
+	    : HasClassIdNode(NodeType::PAIR, DefaultClass::nullClassId, line),
+	      first(first), second(second) {}
+	ExprNode *resolve(in_func) override;
+	ExprNode *optimize(in_func) override;
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
+	void rewrite(in_func, uint8_t *bytecodes) override;
+	ExprNode *copy(in_func) override;
+	bool isStaticValue() override {
+		return first->isStaticValue() && second->isStaticValue();
+	}
+	~PairNode();
 };
 
 struct CreateArrayNode : HasClassIdNode {

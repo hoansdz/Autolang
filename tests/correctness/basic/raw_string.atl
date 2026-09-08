@@ -1,9 +1,9 @@
 fun testRawString() {
-	// 1. Nội dung đơn giản, không có interpolation
+	// 1. Simple content, no interpolation
 	val s1 = """Hello World"""
 	assert(s1 == "Hello World")
 
-	// 2. Backslash KHÔNG được xử lý như escape sequence
+	// 2. Backslash is NOT treated as an escape sequence
 	val s2 = """Hello\nWorld"""
 	assert(s2 == "Hello\\nWorld")
 
@@ -13,11 +13,11 @@ fun testRawString() {
 	val s4 = """\t tab \r carriage"""
 	assert(s4 == "\\t tab \\r carriage")
 
-	// 3. Dấu ngoặc kép đơn bên trong không cần escape
+	// 3. Quotes inside do not need escaping
 	val s5 = """She said "hello" to him"""
 	assert(s5 == "She said \"hello\" to him")
 
-	// 4. Interpolation với $value (identifier đơn giản)
+	// 4. Interpolation with $value (simple identifier)
 	val name = "World"
 	val s6 = """Hello $name"""
 	assert(s6 == "Hello World")
@@ -26,7 +26,7 @@ fun testRawString() {
 	val s7 = """Count is $count items"""
 	assert(s7 == "Count is 42 items")
 
-	// 5. Interpolation với ${...} (biểu thức)
+	// 5. Interpolation with ${...} (expression)
 	val a = 10
 	val b = 20
 	val s8 = """Sum is ${a + b}"""
@@ -35,18 +35,18 @@ fun testRawString() {
 	val s9 = """Result: ${a * b - 5}"""
 	assert(s9 == "Result: 195")
 
-	// 6. Nhiều interpolation trong một raw string
+	// 6. Multiple interpolations in a single raw string
 	val x = 3
 	val y = 7
 	val s10 = """$x plus $y equals ${x + y}"""
 	assert(s10 == "3 plus 7 equals 10")
 
-	// 7. Interpolation với string expression bên trong ${}
+	// 7. Interpolation with string expression inside ${}
 	val word = "raw"
 	val s11 = """This is a ${word} string"""
 	assert(s11 == "This is a raw string")
 
-	// 8. Raw string multiline (span nhiều dòng)
+	// 8. Multiline raw string (spanning multiple lines)
 	val multiline = """Line one
 Line two
 Line three"""
@@ -55,7 +55,7 @@ Line three"""
 	assert(multiline.contains("Line three"))
 	assert(multiline.contains("\n"))
 
-	// 9. Multiline với interpolation
+	// 9. Multiline with interpolation
 	val item = "pizza"
 	val price = 15
 	val receipt = """Item: $item
@@ -65,25 +65,25 @@ Total: ${price * 2} USD"""
 	assert(receipt.contains("15"))
 	assert(receipt.contains("30"))
 
-	// 10. Raw string rỗng
+	// 10. Empty raw string
 	val empty = """"""
 	assert(empty == "")
 	assert(empty.size() == 0)
 
-	// 11. $ ở cuối dòng (không theo sau bởi identifier hợp lệ) - giữ nguyên $
+	// 11. Trailing $ (not followed by valid identifier) - preserve $
 	val s12 = """Price: 100$"""
 	assert(s12 == "Price: 100$")
 
-	// 12. Backslash ở cuối (không xử lý escape)
+	// 12. Trailing backslash (no escape processing)
 	val s13 = """windows\path\"""
 	assert(s13 == "windows\\path\\")
 
-	// 13. Kết hợp backslash và interpolation
+	// 13. Combined backslash and interpolation
 	val dir = "home"
 	val s14 = """C:\$dir\file.txt"""
 	assert(s14 == "C:\\home\\file.txt")
 
-	// 14. Interpolation với method call bên trong ${}
+	// 14. Interpolation with method call inside ${}
 	val numStr = "123"
 	val s15 = """Value is ${numStr.toInt() + 1}"""
 	assert(s15 == "Value is 124")

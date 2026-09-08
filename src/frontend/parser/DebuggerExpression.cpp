@@ -37,7 +37,8 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 		Lexer::TokenType op = token->type;
 		if (firstLine != token->line &&
 		    (op == Lexer::TokenType::IS || op == Lexer::TokenType::NOT_IS ||
-		     op == Lexer::TokenType::IN_ || op == Lexer::TokenType::NOT_IN)) {
+		     op == Lexer::TokenType::IN_ || op == Lexer::TokenType::NOT_IN ||
+		     op == Lexer::TokenType::TO)) {
 			break;
 		}
 		if (!nextToken(&token, context.tokens, i)) {
@@ -59,6 +60,10 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 			}
 			case Lexer::TokenType::QMARK_QMARK: {
 				left = context.nullCoalescingPool.push(firstLine, left, right);
+				continue;
+			}
+			case Lexer::TokenType::TO: {
+				left = context.pairPool.push(firstLine, left, right);
 				continue;
 			}
 			default:
@@ -104,7 +109,8 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 			                                       token->indexData);
 			break;
 		}
-		case Lexer::TokenType::IDENTIFIER: {
+		case Lexer::TokenType::IDENTIFIER:
+		case Lexer::TokenType::TO: {
 			node = loadIdentifier(in_data, i);
 			if (node->kind != NodeType::CALL ||
 			    (context.currentClassId &&
@@ -256,6 +262,10 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 			node = loadWhen(in_data, i, true);
 			break;
 		}
+		case Lexer::TokenType::TRY: {
+			node = loadTryCatch(in_data, i, true);
+			break;
+		}
 		default:
 			throw ParserError(firstLine, "Expected value but token '" +
 			                                 token->toString(context) +
@@ -298,12 +308,13 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 				if (token->line != endLine)
 					goto ret;
 				size_t tokenIndex = i;
-				auto arguments = loadListArgument(in_data, i);
+				std::vector<LexerStringId> argumentNames;
+				auto arguments = loadListArgument(in_data, i, &argumentNames);
 				bool isForceNonNull = nextTokenIfMarkNonNull(in_data, i);
 				auto callNode = context.callNodePool.push(
 				    firstLine, tokenIndex, context.currentClassId, nullptr, 0,
-				    std::move(arguments), context.justFindStatic,
-				    !isForceNonNull, false);
+				    false, std::move(arguments),
+				    !isForceNonNull, false, std::move(argumentNames));
 				if (isForceNonNull) {
 					callNode->isForceNonNull = true;
 				}
@@ -343,7 +354,8 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 				if (!addOptionalNode && accessNullable)
 					addOptionalNode = true;
 				if (!nextToken(&token, context.tokens, i) ||
-				    !expect(token, Lexer::TokenType::IDENTIFIER)) {
+				    (!expect(token, Lexer::TokenType::IDENTIFIER) &&
+				     !expect(token, Lexer::TokenType::TO))) {
 					--i;
 					throw ParserError(
 					    context.tokens[i].line,
@@ -559,14 +571,15 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			// std::cerr << "Created callnode "
 			//           << classDeclaration->getName(in_data) << "\n";
 			size_t tokenIndex = i;
-			auto arguments = loadListArgument(in_data, i);
+			std::vector<LexerStringId> argumentNames;
+			auto arguments = loadListArgument(in_data, i, &argumentNames);
 			bool isForceNonNull = nextTokenIfMarkNonNull(in_data, i);
 			auto callNode = context.callNodePool.push(
 			    firstLine, tokenIndex, context.currentClassId, nullptr,
 			    context.createLexerStringIfNotExists(
 			        classDeclaration->getName(in_data)),
 			    std::move(arguments), context.justFindStatic, !isForceNonNull,
-			    false);
+			    false, std::move(argumentNames));
 			if (isForceNonNull) {
 				callNode->isForceNonNull = true;
 			}
@@ -593,7 +606,8 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 		}
 		case Lexer::TokenType::LPAREN: {
 			uint32_t firstLine = token->line;
-			auto arguments = loadListArgument(in_data, i);
+			std::vector<LexerStringId> argumentNames;
+			auto arguments = loadListArgument(in_data, i, &argumentNames);
 			if (!nextToken(&token, context.tokens, i) ||
 			    !expect(token, Lexer::TokenType::LBRACE)) {
 				--i;
@@ -601,9 +615,14 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			} else {
 				auto closureNode = loadClosure(in_data, i);
 				arguments.push_back(closureNode);
+				argumentNames.push_back(0);
 			}
 			switch (identifier->indexData) {
 				case lexerIdInt: {
+					if (!argumentNames.empty() && argumentNames[0] != 0) {
+						throw ParserError(firstLine,
+						                  "Invalid call: Int does not support named arguments");
+					}
 					if (arguments.size() != 1) {
 						throw ParserError(firstLine,
 						                  "Invalid call: Int expects 1 "
@@ -615,6 +634,10 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 					                             DefaultClass::intClassId);
 				}
 				case lexerIdFloat: {
+					if (!argumentNames.empty() && argumentNames[0] != 0) {
+						throw ParserError(firstLine,
+						                  "Invalid call: Float does not support named arguments");
+					}
 					if (arguments.size() != 1) {
 						throw ParserError(firstLine,
 						                  "Invalid call: Float expects 1 "
@@ -626,6 +649,10 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 					                             DefaultClass::floatClassId);
 				}
 				case lexerIdBool: {
+					if (!argumentNames.empty() && argumentNames[0] != 0) {
+						throw ParserError(firstLine,
+						                  "Invalid call: Bool does not support named arguments");
+					}
 					if (arguments.size() != 1) {
 						throw ParserError(firstLine,
 						                  "Invalid call: Bool expects 1 "
@@ -637,6 +664,10 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 					                             DefaultClass::boolClassId);
 				}
 				case lexerIdgetClassId: {
+					if (!argumentNames.empty() && argumentNames[0] != 0) {
+						throw ParserError(firstLine,
+						                  "Invalid call: getClassId does not support named arguments");
+					}
 					if (arguments.size() != 1) {
 						throw ParserError(firstLine,
 						                  "Invalid call: Bool expects 1 "
@@ -657,7 +688,8 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 					auto callNode = context.callNodePool.push(
 					    firstLine, tokenIndex, context.currentClassId, nullptr,
 					    identifier->indexData, context.justFindStatic,
-					    std::move(arguments), !isForceNonNull, false);
+					    std::move(arguments), !isForceNonNull, false,
+					    std::move(argumentNames));
 					if (isForceNonNull) {
 						callNode->isForceNonNull = true;
 					}
@@ -671,7 +703,8 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			auto callNode = context.callNodePool.push(
 			    firstLine, tokenIndex, context.currentClassId, nullptr,
 			    identifier->indexData, std::move(arguments),
-			    context.justFindStatic, !isForceNonNull, false);
+			    context.justFindStatic, !isForceNonNull, false,
+			    std::move(argumentNames));
 			if (isForceNonNull) {
 				callNode->isForceNonNull = isForceNonNull;
 			}

@@ -309,15 +309,40 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 			auto *tc = static_cast<TryCatchNode *>(node);
 			node = tc->optimize(in_data);
 			tc = static_cast<TryCatchNode *>(node);
-			if (tc->body.hasValue || (tc->hasCatch && tc->catchBody.hasValue) ||
-			    (tc->hasFinally && tc->finallyBody.hasValue)) {
-				hasValue = true;
-			}
-			if (context.currentClosureNode && context.currentClosureNode->funcId) {
-				auto func = compile.functions[*context.currentClosureNode->funcId];
-				if (func->returnId != DefaultClass::nullClassId &&
-				    func->returnId != DefaultClass::voidClassId) {
-					currentClassId = func->returnId;
+			if (tc->mustReturnValue) {
+				if (tc->classId != DefaultClass::voidClassId) {
+					if (!hasValue) {
+						hasValue = true;
+					}
+					loadReturnValueClassId(in_data, line, currentClassId, tc->classId);
+					if (tc->classDeclaration) {
+						newClassDeclaration = tc->classDeclaration;
+					}
+					if (!nullable) {
+						nullable = tc->isNullable();
+					}
+					if (isStatic) {
+						isStatic = tc->isStaticValue();
+					}
+				}
+			} else {
+				bool anyCatchHasValue = false;
+				for (auto &clause : tc->catchClauses) {
+					if (clause.body.hasValue()) {
+						anyCatchHasValue = true;
+						break;
+					}
+				}
+				if (tc->body.hasValue() || anyCatchHasValue ||
+				    (tc->hasFinally && tc->finallyBody.hasValue())) {
+					hasValue = true;
+				}
+				if (context.currentClosureNode && context.currentClosureNode->funcId) {
+					auto func = compile.functions[*context.currentClosureNode->funcId];
+					if (func->returnId != DefaultClass::nullClassId &&
+					    func->returnId != DefaultClass::voidClassId) {
+						currentClassId = func->returnId;
+					}
 				}
 			}
 			break;
@@ -332,9 +357,6 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 
 			if (context.mustReturnValueNode->kind != NodeType::CREATE_CLOSURE) {
 				auto &closureBody = context.currentClosureNode->body;
-				if (!closureBody.hasValue) {
-					closureBody.hasValue = true;
-				}
 				if (n->value) {
 					if (closureBody.autoCastToFloat) {
 						n->value = static_cast<HasClassIdNode *>(
@@ -345,11 +367,15 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 						break;
 					}
 					auto value = static_cast<ExprNode *>(n->value);
+					bool closureHasValue = closureBody.hasValue();
 					loadClassNode(in_data, value,
 					              *context.currentClosureCurrentClassId,
 					              *context.currentClosureNullable,
 					              *context.currentClosureIsStatic,
-					              closureBody.hasValue, newClassDeclaration);
+					              closureHasValue, newClassDeclaration);
+					if (closureHasValue && context.currentClosureCurrentClassId->has_value()) {
+						closureBody.classId = **context.currentClosureCurrentClassId;
+					}
 					node = value;
 					break;
 				}
@@ -408,7 +434,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 void BlockNode::loadClassAndOptimize(in_func) {
 	std::optional<ClassId> currentClassId;
 	bool nullable = false;
-	// bool hasValue = false;
+	bool hasValue = false;
 	bool isStatic = context.mustReturnValueNode->isStaticValue();
 	ClassDeclaration *newClassDeclaration = nullptr;
 	switch (context.mustReturnValueNode->kind) {
@@ -444,12 +470,36 @@ void BlockNode::loadClassAndOptimize(in_func) {
 			}
 			break;
 		}
+		case NodeType::TRY_CATCH: {
+			auto *n = static_cast<TryCatchNode *>(context.mustReturnValueNode);
+			if (n->classId == DefaultClass::nullClassId || n->classId == DefaultClass::voidClassId) {
+				break;
+			}
+			if (n->classDeclaration) {
+				newClassDeclaration = n->classDeclaration;
+			}
+			currentClassId = n->classId;
+			if (n->classId == DefaultClass::floatClassId) {
+				autoCastToFloat = true;
+			}
+			break;
+		}
 	}
 	for (size_t i = 0; i < nodes.size(); ++i) {
 		auto *&node = nodes[i];
 		loadClassNode(in_data, node, currentClassId, nullable, isStatic,
 		              hasValue, newClassDeclaration);
 	}
+	this->nullable = nullable;
+	this->isStatic = isStatic;
+	this->hasValueAllCases = hasValue;
+	if (hasValue && currentClassId) {
+		this->classId = *currentClassId;
+	} else {
+		this->classId = DefaultClass::voidClassId;
+	}
+	this->classDeclaration = newClassDeclaration;
+
 	context.mustReturnValueNode->setNullable(nullable);
 	context.mustReturnValueNode->setIsStatic(isStatic);
 	switch (context.mustReturnValueNode->kind) {
@@ -458,19 +508,46 @@ void BlockNode::loadClassAndOptimize(in_func) {
 			if (nullable) {
 				n->nullable = true;
 			}
+			bool branchEndsEarly = !nodes.empty() && (nodes.back()->kind == NodeType::THROW || nodes.back()->kind == NodeType::RET);
 			if (!currentClassId) {
-				if (!n->mustReturnValue || nullable) {
+				if (!n->mustReturnValue || nullable || branchEndsEarly) {
 					return;
 				}
 				throwError("Expression branch must return a value\nHint: All branches of an 'if' expression must evaluate to a value of a compatible type.");
 			}
-			if (!hasValue && n->mustReturnValue) {
+			if (!this->hasValue() && n->mustReturnValue && !branchEndsEarly) {
 				throwError("Expression branch must return a value\nHint: All branches of an 'if' expression must evaluate to a value of a compatible type.");
 			}
 			if (newClassDeclaration) {
 				n->classDeclaration = newClassDeclaration;
 			}
 			if (n->classId == DefaultClass::nullClassId) {
+				n->classId = *currentClassId;
+				return;
+			}
+			loadReturnValueClassId(in_data, line, currentClassId, n->classId);
+			n->classId = *currentClassId;
+			return;
+		}
+		case NodeType::TRY_CATCH: {
+			auto *n = static_cast<TryCatchNode *>(context.mustReturnValueNode);
+			if (nullable) {
+				n->nullable = true;
+			}
+			bool branchEndsEarly = !nodes.empty() && (nodes.back()->kind == NodeType::THROW || nodes.back()->kind == NodeType::RET);
+			if (!currentClassId) {
+				if (!n->mustReturnValue || nullable || branchEndsEarly) {
+					return;
+				}
+				throwError("Expression branch must return a value\nHint: All branches of a 'try' expression must evaluate to a value of a compatible type.");
+			}
+			if (!this->hasValue() && n->mustReturnValue && !branchEndsEarly) {
+				throwError("Expression branch must return a value\nHint: All branches of a 'try' expression must evaluate to a value of a compatible type.");
+			}
+			if (newClassDeclaration) {
+				n->classDeclaration = newClassDeclaration;
+			}
+			if (n->classId == DefaultClass::nullClassId || n->classId == DefaultClass::voidClassId) {
 				n->classId = *currentClassId;
 				return;
 			}
@@ -496,7 +573,7 @@ void BlockNode::loadClassAndOptimize(in_func) {
 				return;
 			}
 
-			if (!hasValue) {
+			if (!this->hasValue()) {
 				throwError("Expression branch must return a value\nHint: Closure body must return a value matching the declared function return type.");
 			}
 
@@ -547,53 +624,39 @@ ExprNode *BlockNode::optimize(in_func) {
 	}
 	for (size_t i = 0; i < nodes.size(); ++i) {
 		nodes[i] = nodes[i]->optimize(in_data);
-		auto *node = nodes[i];
-		if (!hasValue) {
-			switch (node->kind) {
-				case NodeType::VAR:
-				case NodeType::CONST_VAL:
-				case NodeType::CREATE_ARRAY:
-				case NodeType::CREATE_MAP:
-				case NodeType::CREATE_SET:
-				case NodeType::NULL_COALESCING:
-				case NodeType::CAST:
-				case NodeType::RUNTIME_CAST:
-				case NodeType::OPTIONAL_ACCESS:
-				case NodeType::UNARY:
-				case NodeType::BINARY:
-				case NodeType::GET_PROP: {
-					hasValue = true;
-					break;
+	}
+	if (!nodes.empty()) {
+		auto *lastNode = nodes.back();
+		switch (lastNode->kind) {
+			case NodeType::VAR:
+			case NodeType::CONST_VAL:
+			case NodeType::CREATE_ARRAY:
+			case NodeType::CREATE_MAP:
+			case NodeType::CREATE_SET:
+			case NodeType::NULL_COALESCING:
+			case NodeType::CAST:
+			case NodeType::RUNTIME_CAST:
+			case NodeType::OPTIONAL_ACCESS:
+			case NodeType::UNARY:
+			case NodeType::BINARY:
+			case NodeType::GET_PROP:
+			case NodeType::CREATE_CLOSURE:
+			case NodeType::CALL:
+			case NodeType::IF:
+			case NodeType::WHEN:
+			case NodeType::TRY_CATCH: {
+				auto *hasNode = static_cast<HasClassIdNode *>(lastNode);
+				if (hasNode->classId != DefaultClass::voidClassId) {
+					this->classId = hasNode->classId;
+					this->classDeclaration = hasNode->classDeclaration;
+					this->nullable = hasNode->isNullable();
+					this->isStatic = hasNode->isStaticValue();
+					this->hasValueAllCases = true;
 				}
-				case NodeType::CREATE_CLOSURE: {
-					if (*static_cast<CreateClosureNode *>(node)
-					         ->classDeclaration->inputClassId[0]
-					         ->classId != DefaultClass::voidClassId) {
-						hasValue = true;
-					}
-					break;
-				}
-				case NodeType::CALL: {
-					if (static_cast<CallNode *>(node)->classId !=
-					    DefaultClass::voidClassId) {
-						hasValue = true;
-					}
-					break;
-				}
-				case NodeType::IF: {
-					if (static_cast<IfNode *>(node)->mustReturnValue) {
-						hasValue = true;
-					}
-					break;
-				}
-				case NodeType::WHEN: {
-					if (static_cast<WhenNode *>(node)
-					        ->ifNode->mustReturnValue) {
-						hasValue = true;
-					}
-					break;
-				}
+				break;
 			}
+			default:
+				break;
 		}
 	}
 	return this;
@@ -622,7 +685,8 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		for (size_t i = 0; i < nodes.size(); ++i) {
 			auto *node = nodes[i];
 			if (i < nodes.size() - 1 &&
-			    context.mustReturnValueNode->kind != NodeType::IF) {
+			    context.mustReturnValueNode->kind != NodeType::IF &&
+			    context.mustReturnValueNode->kind != NodeType::TRY_CATCH) {
 				switch (node->kind) {
 					case NodeType::CALL: {
 						auto currentNode = static_cast<CallNode *>(node);
@@ -678,6 +742,31 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					case NodeType::UNARY: {
 						node->putBytecodes(in_data, bytecodes);
 						if (static_cast<HasClassIdNode *>(node)->isNullable() &&
+						    mustReturnValueNode->isForceNonNull) {
+							bytecodes.emplace_back(
+							    Opcode::CHECK_FORCE_NON_NULL);
+						}
+						if (autoCastToFloat) {
+							bytecodes.emplace_back(Opcode::TO_FLOAT);
+						}
+						if (i != nodes.size() - 1) {
+							bytecodes.emplace_back(Opcode::JUMP);
+							static_cast<IfNode *>(context.mustReturnValueNode)
+							    ->jumpPosition.push_back(
+							        bytecodes.size() -
+							        context.currentBytecodePos);
+							put_opcode_u32(bytecodes, 0);
+						}
+						break;
+					}
+					case NodeType::TRY_CATCH: {
+						auto *tc = static_cast<TryCatchNode *>(node);
+						if (!tc->mustReturnValue) {
+							node->putBytecodes(in_data, bytecodes);
+							break;
+						}
+						node->putBytecodes(in_data, bytecodes);
+						if (tc->isNullable() &&
 						    mustReturnValueNode->isForceNonNull) {
 							bytecodes.emplace_back(
 							    Opcode::CHECK_FORCE_NON_NULL);
@@ -788,6 +877,98 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 							        context.currentBytecodePos);
 							put_opcode_u32(bytecodes, 0);
 						}
+						break;
+					}
+					case NodeType::DECLARATION:
+					case NodeType::SET:
+					case NodeType::FOR:
+					case NodeType::THROW:
+					case NodeType::RET: {
+						node->putBytecodes(in_data, bytecodes);
+						break;
+					}
+					default: {
+						throwError("Unsupported expression node type for block "
+						           "return value\nHint: Expression node inside block cannot be evaluated to a return value.");
+					}
+				}
+			} else if (context.mustReturnValueNode->kind == NodeType::TRY_CATCH) {
+				auto mustReturnValueNode =
+				    static_cast<TryCatchNode *>(context.mustReturnValueNode);
+				switch (node->kind) {
+					case NodeType::CALL: {
+						node->putBytecodes(in_data, bytecodes);
+						auto *n = static_cast<CallNode *>(node);
+						if (n->classId == DefaultClass::voidClassId)
+							break;
+						if (autoCastToFloat) {
+							bytecodes.emplace_back(Opcode::TO_FLOAT);
+						}
+						break;
+					}
+					case NodeType::CREATE_CLOSURE:
+					case NodeType::FUNCTION_ACCESS:
+					case NodeType::CONST_VAL:
+					case NodeType::BINARY:
+					case NodeType::CREATE_ARRAY:
+					case NodeType::CREATE_MAP:
+					case NodeType::CREATE_SET:
+					case NodeType::NULL_COALESCING:
+					case NodeType::OPTIONAL_ACCESS:
+					case NodeType::UNARY:
+					case NodeType::CAST:
+					case NodeType::RUNTIME_CAST:
+					case NodeType::GET_PROP:
+					case NodeType::VAR: {
+						node->putBytecodes(in_data, bytecodes);
+						if (autoCastToFloat &&
+						    static_cast<HasClassIdNode *>(node)->classId !=
+						        DefaultClass::floatClassId) {
+							bytecodes.emplace_back(Opcode::TO_FLOAT);
+						}
+						break;
+					}
+					case NodeType::TRY_CATCH: {
+						auto *tc = static_cast<TryCatchNode *>(node);
+						if (!tc->mustReturnValue) {
+							node->putBytecodes(in_data, bytecodes);
+							break;
+						}
+						node->putBytecodes(in_data, bytecodes);
+						if (autoCastToFloat &&
+						    tc->classId != DefaultClass::floatClassId) {
+							bytecodes.emplace_back(Opcode::TO_FLOAT);
+						}
+						break;
+					}
+					case NodeType::IF: {
+						auto *n = static_cast<IfNode *>(node);
+						if (autoCastToFloat) {
+							n->ifTrue.autoCastToFloat = true;
+							if (n->ifFalse) {
+								n->ifFalse->autoCastToFloat = true;
+							}
+						}
+						node->putBytecodes(in_data, bytecodes);
+						break;
+					}
+					case NodeType::WHEN: {
+						auto *n = static_cast<WhenNode *>(node)->ifNode;
+						if (autoCastToFloat) {
+							n->ifTrue.autoCastToFloat = true;
+							if (n->ifFalse) {
+								n->ifFalse->autoCastToFloat = true;
+							}
+						}
+						node->putBytecodes(in_data, bytecodes);
+						break;
+					}
+					case NodeType::DECLARATION:
+					case NodeType::SET:
+					case NodeType::FOR:
+					case NodeType::THROW:
+					case NodeType::RET: {
+						node->putBytecodes(in_data, bytecodes);
 						break;
 					}
 					default: {
@@ -981,6 +1162,12 @@ ExprNode *BlockNode::copy(in_func) {
 	for (auto &node : nodes) {
 		newNode->nodes.push_back(node);
 	}
+	newNode->hasValueAllCases = hasValueAllCases;
+	newNode->autoCastToFloat = autoCastToFloat;
+	newNode->classId = classId;
+	newNode->classDeclaration = classDeclaration;
+	newNode->nullable = nullable;
+	newNode->isStatic = isStatic;
 	return newNode;
 }
 

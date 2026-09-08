@@ -24,8 +24,14 @@ ExprNode *ForNode::resolve(in_func) {
 
 ExprNode *ForNode::optimize(in_func) {
 	detach = static_cast<VarNode *>(detach->optimize(in_data));
+	if (detachValue != nullptr) {
+		detachValue = static_cast<VarNode *>(detachValue->optimize(in_data));
+	}
 	switch (data->kind) {
 		case NodeType::RANGE: {
+			if (detachValue != nullptr) {
+				throwError("Multiple loop variables are not supported for Range\nHint: Use 'for (i in start..end)'.");
+			}
 			switch (detach->classId) {
 				case Autolang::DefaultClass::nullClassId: {
 					detach->declaration->classId =
@@ -71,20 +77,29 @@ ExprNode *ForNode::optimize(in_func) {
 			break;
 		}
 		case NodeType::CLASS_ACCESS: {
-			throwError("Expected iterable value in 'for' loop\nHint: Use an iterable collection like Array, Set, or Range in the for loop.");
+			throwError("Expected iterable value in 'for' loop\nHint: Use an iterable collection like Array, Set, Map, or Range in the for loop.");
 		}
 		default: {
 			data = static_cast<HasClassIdNode *>(data->optimize(in_data));
+			if (collectionNode != nullptr) {
+				collectionNode->declaration->classId = data->classId;
+				collectionNode->declaration->nullable = data->isNullable();
+				collectionNode = static_cast<VarNode *>(collectionNode->optimize(in_data));
+			}
 			auto classInfo = context.classInfo[data->classId];
 			if (classInfo->genericTypeId.empty()) {
 				throwError("Cannot iterate over type '" +
-				           compile.classes[data->classId]->getName(compile) + "'\nHint: Only Array, Set, and Range types support iteration in for loops.");
+				           compile.classes[data->classId]->getName(compile) + "'\nHint: Only Array, Set, Map, and Range types support iteration in for loops.");
 			}
 			auto clazz = compile.classes[data->classId];
 			auto baseClassId = clazz->genericBaseClassId;
 			switch (baseClassId) {
 				case DefaultClass::setClassId:
 				case DefaultClass::arrayClassId: {
+					if (detachValue != nullptr) {
+						throwError("Multiple loop variables are not supported for '" + clazz->getName(compile) +
+						           "'\nHint: Use 'for (item in list)' or iterate over a Map: 'for (key, value in map)'.");
+					}
 					auto classType = classInfo->genericTypeId[0];
 					ClassId target = *classType->classId;
 					switch (detach->classId) {
@@ -120,8 +135,71 @@ ExprNode *ForNode::optimize(in_func) {
 					}
 					break;
 				}
+				case DefaultClass::mapClassId: {
+					auto keyType = classInfo->genericTypeId[0];
+					ClassId keyTarget = *keyType->classId;
+					switch (detach->classId) {
+						case Autolang::DefaultClass::nullClassId: {
+							detach->declaration->classId = keyTarget;
+							if (keyTarget == DefaultClass::functionClassId) {
+								detach->declaration->classDeclaration = keyType;
+							}
+							detach->declaration->nullable = keyType->nullable;
+							break;
+						}
+						default: {
+							if (keyTarget == detach->classId ||
+							    compile.classes[detach->classId]->inheritance.get(keyTarget)) {
+								if (!detach->isNullable() && keyType->nullable) {
+									throwError(
+									    "Cannot assign nullable key to non-nullable variable\nHint: Declare loop variable as nullable (K?) or ensure map key type is non-nullable.");
+								}
+								break;
+							}
+							throwError(
+							    "Type mismatch: expected '" +
+							    compile.classes[keyTarget]->getName(compile) +
+							    "' but '" +
+							    compile.classes[detach->classId]->getName(compile) +
+							    "' found\nHint: Ensure the loop key variable type matches the map key type.");
+							break;
+						}
+					}
+					if (detachValue != nullptr) {
+						auto valType = classInfo->genericTypeId[1];
+						ClassId valTarget = *valType->classId;
+						switch (detachValue->classId) {
+							case Autolang::DefaultClass::nullClassId: {
+								detachValue->declaration->classId = valTarget;
+								if (valTarget == DefaultClass::functionClassId) {
+									detachValue->declaration->classDeclaration = valType;
+								}
+								detachValue->declaration->nullable = valType->nullable;
+								break;
+							}
+							default: {
+								if (valTarget == detachValue->classId ||
+								    compile.classes[detachValue->classId]->inheritance.get(valTarget)) {
+									if (!detachValue->isNullable() && valType->nullable) {
+										throwError(
+										    "Cannot assign nullable value to non-nullable variable\nHint: Declare loop variable as nullable (V?) or ensure map value type is non-nullable.");
+									}
+									break;
+								}
+								throwError(
+								    "Type mismatch: expected '" +
+								    compile.classes[valTarget]->getName(compile) +
+								    "' but '" +
+								    compile.classes[detachValue->classId]->getName(compile) +
+								    "' found\nHint: Ensure the loop value variable type matches the map value type.");
+								break;
+							}
+						}
+					}
+					break;
+				}
 				default: {
-					throwError("Cannot iterate over type '" + clazz->getName(compile) + "'\nHint: Only Array, Set, and Range types support iteration in for loops.");
+					throwError("Cannot iterate over type '" + clazz->getName(compile) + "'\nHint: Only Array, Set, Map, and Range types support iteration in for loops.");
 				}
 			}
 			break;
@@ -134,7 +212,9 @@ ExprNode *ForNode::optimize(in_func) {
 ExprNode *ForNode::copy(in_func) {
 	return context.forPool.push(
 	    line, static_cast<VarNode *>(detach->copy(in_data)),
-	    static_cast<HasClassIdNode *>(data->copy(in_data)), iteratorNode);
+	    static_cast<HasClassIdNode *>(data->copy(in_data)), iteratorNode,
+	    detachValue ? static_cast<VarNode *>(detachValue->copy(in_data)) : nullptr,
+	    collectionNode ? static_cast<VarNode *>(collectionNode->copy(in_data)) : nullptr);
 }
 
 bool ForNode::putOptimizedRangeBytecode(in_func,
@@ -286,7 +366,7 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			auto clazz = compile.classes[data->classId];
 			auto classInfo = context.classInfo[data->classId];
 			if (classInfo->genericTypeId.empty()) {
-				throwError("Cannot iterate over type '" + clazz->getName(compile) + "'\nHint: Only Array, Set, and Range types support iteration in for loops.");
+				throwError("Cannot iterate over type '" + clazz->getName(compile) + "'\nHint: Only Array, Set, Map, and Range types support iteration in for loops.");
 			}
 			auto baseClassId = clazz->genericBaseClassId;
 			switch (baseClassId) {
@@ -298,11 +378,28 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					put_opcode_u32(bytecodes, iteratorNode->declaration->id);
 					put_opcode_u32(bytecodes, 0); // null value
 
+					if (collectionNode != nullptr) {
+						if (data->kind == NodeType::VAR) {
+							static_cast<AccessNode *>(data)->isStore = false;
+						}
+						data->putBytecodes(in_data, bytecodes);
+						bytecodes.emplace_back(collectionNode->declaration->isGlobal
+						                           ? Opcode::STORE_GLOBAL
+						                           : Opcode::STORE_LOCAL);
+						put_opcode_u32(bytecodes, collectionNode->declaration->id);
+					}
+
 					continuePos = bytecodes.size() - context.currentBytecodePos;
 
 					// Skip
-					static_cast<AccessNode *>(data)->isStore = false;
-					data->putBytecodes(in_data, bytecodes);
+					if (collectionNode != nullptr) {
+						collectionNode->putBytecodes(in_data, bytecodes);
+					} else {
+						if (data->kind == NodeType::VAR) {
+							static_cast<AccessNode *>(data)->isStore = false;
+						}
+						data->putBytecodes(in_data, bytecodes);
+					}
 					bytecodes.emplace_back(baseClassId ==
 					                               DefaultClass::arrayClassId
 					                           ? Opcode::FOR_LIST
@@ -317,15 +414,71 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					put_opcode_u32(bytecodes, 0);
 					break;
 				}
+				case DefaultClass::mapClassId: {
+					bytecodes.emplace_back(iteratorNode->declaration->isGlobal
+					                           ? Opcode::GLOBAL_STORE_CONST
+					                           : Opcode::LOCAL_STORE_CONST);
+					put_opcode_u32(bytecodes, iteratorNode->declaration->id);
+					put_opcode_u32(bytecodes, 0); // null value
+
+					if (collectionNode != nullptr) {
+						if (data->kind == NodeType::VAR) {
+							static_cast<AccessNode *>(data)->isStore = false;
+						}
+						data->putBytecodes(in_data, bytecodes);
+						bytecodes.emplace_back(collectionNode->declaration->isGlobal
+						                           ? Opcode::STORE_GLOBAL
+						                           : Opcode::STORE_LOCAL);
+						put_opcode_u32(bytecodes, collectionNode->declaration->id);
+					}
+
+					continuePos = bytecodes.size() - context.currentBytecodePos;
+
+					// Skip
+					if (collectionNode != nullptr) {
+						collectionNode->putBytecodes(in_data, bytecodes);
+					} else {
+						if (data->kind == NodeType::VAR) {
+							static_cast<AccessNode *>(data)->isStore = false;
+						}
+						data->putBytecodes(in_data, bytecodes);
+					}
+					if (detachValue == nullptr) {
+						bytecodes.emplace_back(Opcode::FOR_MAP_KEY);
+						bytecodes.emplace_back(iteratorNode->declaration->isGlobal
+						                           ? Opcode::STORE_GLOBAL
+						                           : Opcode::STORE_LOCAL);
+						put_opcode_u32(bytecodes, detach->declaration->id);
+						put_opcode_u32(bytecodes, iteratorNode->declaration->id);
+						jumpIfFalseByte =
+						    bytecodes.size() - context.currentBytecodePos;
+						put_opcode_u32(bytecodes, 0);
+					} else {
+						bytecodes.emplace_back(Opcode::FOR_MAP_KEY_VALUE);
+						bytecodes.emplace_back(iteratorNode->declaration->isGlobal
+						                           ? Opcode::STORE_GLOBAL
+						                           : Opcode::STORE_LOCAL);
+						put_opcode_u32(bytecodes, detach->declaration->id);
+						put_opcode_u32(bytecodes, detachValue->declaration->id);
+						put_opcode_u32(bytecodes, iteratorNode->declaration->id);
+						jumpIfFalseByte =
+						    bytecodes.size() - context.currentBytecodePos;
+						put_opcode_u32(bytecodes, 0);
+					}
+					break;
+				}
 				default: {
-					throwError("Cannot iterate over type '" + clazz->getName(compile) + "'\nHint: Only Array, Set, and Range types support iteration in for loops.");
+					throwError("Cannot iterate over type '" + clazz->getName(compile) + "'\nHint: Only Array, Set, Map, and Range types support iteration in for loops.");
 				}
 			}
 			break;
 		}
 	}
 	// body
+	auto lastMustReturnValueNode = context.mustReturnValueNode;
+	context.mustReturnValueNode = nullptr;
 	body.putBytecodes(in_data, bytecodes);
+	context.mustReturnValueNode = lastMustReturnValueNode;
 	bytecodes.emplace_back(Opcode::JUMP);
 	put_opcode_u32(bytecodes, continuePos);
 	if (setupJumpIfFalse) {
@@ -343,6 +496,12 @@ ForNode::~ForNode() {
 	deleteNode(detach);
 	deleteNode(data);
 	deleteNode(iteratorNode);
+	if (detachValue) {
+		deleteNode(detachValue);
+	}
+	if (collectionNode) {
+		deleteNode(collectionNode);
+	}
 }
 
 } // namespace Autolang

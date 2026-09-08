@@ -52,7 +52,7 @@ fun testMapInferenceWithoutTypeAnnotation() {
 }
 
 fun testDeepNestedMapComplexFlow() {
-    // 1. Cấu trúc Map lồng Map lồng Array lồng Set lồng nhau đa tầng
+    // 1. Multi-level nested structure: Map inside Map inside Array inside Set
     val complexSystem = {
         "cluster_alpha": [
             {"nodes": {101, 102, 103}, "shards": {1, 2}},
@@ -72,12 +72,12 @@ fun testDeepNestedMapComplexFlow() {
     assert(alpha[1].get("shards")!.contains(4))
     assert(!alpha[0].get("nodes")!.contains(999))
 
-    // 2. Thao tác thay đổi sâu (deep mutation)
+    // 2. Deep mutation operation
     alpha[0].get("nodes")!.add(999)
     assert(alpha[0].get("nodes")!.contains(999))
     assert(alpha[0].get("nodes")!.size() == 4)
 
-    // 3. Map lồng 4 tầng thuần túy
+    // 3. Pure 4-level nested Map
     val deepMap = {
         "l1": {
             "l2": {
@@ -89,7 +89,7 @@ fun testDeepNestedMapComplexFlow() {
     }
     assert(deepMap.get("l1")!.get("l2")!.get("l3")!.get("target") == 12345)
 
-    // 4. Duyệt lặp lồng nhau qua các keys và tính tổng
+    // 4. Nested iteration over keys and summing values
     var nodeSum = 0
     val clusterKeys = complexSystem.keys()
     for (cKey in clusterKeys) {
@@ -104,7 +104,7 @@ fun testDeepNestedMapComplexFlow() {
     // nodes: (101+102+103+999) + (104+105) + (201+202) = 1305 + 209 + 403 = 1917
     assert(nodeSum == 1917)
 
-    // 5. Thao tác xóa và kiểm tra key rỗng
+    // 5. Deletion operation and key check
     val beta = complexSystem.get("cluster_beta")!
     val betaGroup = beta[0]
     betaGroup.remove("shards")

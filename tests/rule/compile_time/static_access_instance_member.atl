@@ -1,0 +1,7 @@
+class TargetClass {
+	var instanceMember: Int = 100
+}
+
+fun testStaticAccessInstance() {
+	val v = TargetClass.instanceMember
+}

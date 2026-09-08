@@ -113,6 +113,8 @@ constexpr LexerStringId lexerIdmutableMapOf = 43;
 constexpr LexerStringId lexerIdhashMapOf = 44;
 constexpr LexerStringId lexerIdlinkedMapOf = 45;
 constexpr LexerStringId lexerIdemptyMap = 46;
+constexpr LexerStringId lexerIdPair = 47;
+constexpr LexerStringId lexerIdpairOf = 48;
 /*
 constexpr LexerStringId lexerIdunaryPlus = 24;   // +a
 constexpr LexerStringId lexerIdunaryMinus = 25;  // -a
@@ -267,6 +269,7 @@ struct ParserContext {
 	ChunkArena<CreateArrayNode, 32> createArrayPool;
 	ChunkArena<CreateSetNode, 16> createSetPool;
 	ChunkArena<CreateMapNode, 16> createMapPool;
+	ChunkArena<PairNode, 32> pairPool;
 	ChunkArena<WhenNode, 16> whenNodePool;
 	ChunkArena<FunctionAccessNode, 8> functionAccessPool;
 	ChunkArena<CreateClosureNode, 32> createClosurePool;

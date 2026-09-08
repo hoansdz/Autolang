@@ -1,0 +1,4 @@
+class TargetClass {
+	var instanceVar = 10
+	static val staticProp = instanceVar
+}

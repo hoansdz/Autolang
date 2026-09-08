@@ -228,6 +228,12 @@ void CreateSetNode::optimizeAndInferenceType(in_func) {
 				continue;
 			}
 			switch (value->classId) {
+				case DefaultClass::intClassId: {
+					if (*valueMustBeClassId == DefaultClass::floatClassId) {
+						value = context.castPool.push(value, DefaultClass::floatClassId);
+					}
+					continue;
+				}
 				case DefaultClass::nullClassId: {
 					switch (value->kind) {
 						case NodeType::CREATE_SET: {

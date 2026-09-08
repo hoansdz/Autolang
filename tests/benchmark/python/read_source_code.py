@@ -17,10 +17,10 @@ class FileAnalysis:
         self.analysis(path)
 
     def analysis(self, root_path):
-        # os.walk duyệt cây thư mục cực kỳ an toàn và không bị đệ quy kép
+        # os.walk traverses directory tree safely without double recursion
         for dirpath, dirnames, filenames in os.walk(root_path):
             
-            # BỎ QUA các thư mục rác (Bạn có thể thêm bớt tùy ý)
+            # SKIP ignored directories (customizable)
             if 'build' in dirnames:
                 dirnames.remove('build')
             if '.git' in dirnames:
@@ -32,18 +32,18 @@ class FileAnalysis:
                 self.total_file += 1
                 filepath = os.path.join(dirpath, filename)
                 
-                # Tính kích thước file
+                # Calculate file size
                 try:
                     self.total_size += os.path.getsize(filepath)
                 except OSError:
-                    continue # Bỏ qua nếu file bị khóa hoặc lỗi quyền
+                    continue # Skip if file is locked or permission error
                 
-                # Lấy đuôi file
+                # Get file extension
                 _, extension = os.path.splitext(filename)
                 extension = extension.lower()
                 self.file_extension[extension] += 1
                 
-                # Đếm dòng
+                # Count lines
                 if extension == '.atl':
                     self.autolang_lines += self.get_count_line(filepath)
                 elif extension in ('.hpp', '.cpp', '.h'):
@@ -52,29 +52,29 @@ class FileAnalysis:
     def get_count_line(self, filepath):
         count = 0
         try:
-            # errors='ignore' để không bị crash nếu gặp file binary nhầm đuôi
+            # errors='ignore' to prevent crashes on binary files with mistaken extensions
             with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
                 for line in f:
-                    if line.strip():  # Giống hệt logic newStr.isEmpty() của bạn
+                    if line.strip():  # Matches newStr.isEmpty() logic
                         count += 1
         except Exception:
             pass
         return count
 
 def main():
-    # Sử dụng perf_counter để đo thời gian chuẩn xác nhất trong Python
+    # Use perf_counter for precise timing in Python
     start_time = time.perf_counter()
     
     target_path = r"./"
-    print(f"Đang phân tích: {target_path}...\n")
+    print(f"Analyzing: {target_path}...\n")
     
     a = FileAnalysis(target_path)
     
     print(f"Total file: {a.total_file}")
-    print(f"Total folder: {a.total_folder - 1}") # -1 để trừ thư mục gốc, giống logic của bạn
+    print(f"Total folder: {a.total_folder - 1}") # -1 to exclude root directory
     print(f"Total size: {a.total_size / 1024 / 1024:.2f} MB")
     
-    # In danh sách extension (sắp xếp giảm dần cho đẹp)
+    # Print extensions list sorted descending
     for ext, count in sorted(a.file_extension.items(), key=lambda item: item[1], reverse=True):
         print(f"Extension {ext if ext else '[No Extension]'}: {count}")
         
@@ -82,7 +82,7 @@ def main():
     print(f"Total autolang line: {a.autolang_lines}")
     
     end_time = time.perf_counter()
-    print(f"\nTime: {end_time - start_time:.4f} giây")
+    print(f"\nTime: {end_time - start_time:.4f} seconds")
 
 if __name__ == "__main__":
     main()

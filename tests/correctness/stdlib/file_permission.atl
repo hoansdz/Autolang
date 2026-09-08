@@ -5,11 +5,11 @@ fun testFilePermissionExactBoundary() {
     val path512 = String("a", 512)
     assert(path512.size() == 512)
 
-    // Đường dẫn 512 ký tự: nằm trong giới hạn cho phép (<= 512), không được ném SecurityError
+    // 512-character path: within allowed limit (<= 512), must not throw SecurityError
     val exists512 = File.exists(path512)
     assert(exists512 == false)
 
-    // Đường dẫn 513 ký tự: vượt ngưỡng cho phép (> 512), bắt buộc ném SecurityError
+    // 513-character path: exceeds allowed threshold (> 512), must throw SecurityError
     val path513 = String("a", 513)
     assert(path513.size() == 513)
     var blocked = false
@@ -134,7 +134,7 @@ fun testFilePermissionNestedTryFinally() {
             } catch (e3) {
                 trace += "C3_"
                 assert(e3.message.indexOf("SecurityError") != -1)
-                // Ném tiếp thao tác vi phạm khác bên trong khối catch
+                // Trigger another violating operation inside the catch block
                 File.delete(badPath)
             } finally {
                 trace += "F3_"
@@ -174,7 +174,7 @@ fun probeRecursion(depth: Int, maxDepth: Int): Int {
 }
 
 fun testFilePermissionRecursion() {
-    // depth từ 1 đến 5:
+    // depth from 1 to 5:
     // depth 1: len 511 -> ok
     // depth 2: len 512 -> ok
     // depth 3: len 513 -> SecurityError (1)
@@ -193,7 +193,7 @@ fun testFilePermissionNestedCollections() {
     var okSeen = 0
     var overflowBlocked = 0
 
-    // Duyệt qua keys() của map
+    // Iterate through map keys()
     val categories = pathCatalog.keys()
     for (category in categories) {
         val paths = pathCatalog.get(category)
@@ -216,7 +216,7 @@ fun testFilePermissionNestedCollections() {
     assert(okSeen == 2)
     assert(overflowBlocked == 3)
 
-    // Duyệt bằng forEach closure của Map
+    // Iterate using Map forEach closure
     var forEachOkSeen = 0
     var forEachOverflowBlocked = 0
     pathCatalog.forEach {|category, paths|
