@@ -52,10 +52,73 @@ fun testAssignOperatorCow() {
 	assert(g == 8.0)
 }
 
+var callCount = 0
+fun getAndNext(): Int {
+	callCount += 1
+	return 1
+}
+
+var targetCallCount = 0
+fun getTargetArray(arr: Array<Int>): Array<Int> {
+	targetCallCount += 1
+	return arr
+}
+
+fun testArrayIndexAssignOperator() {
+	val arr = [10, 20, 30]
+	arr[0] += 5
+	assert(arr[0] == 15)
+
+	arr[1] -= 5
+	assert(arr[1] == 15)
+
+	arr[2] *= 2
+	assert(arr[2] == 60)
+
+	arr[0] /= 3
+	assert(arr[0] == 5)
+
+	arr[2] %= 7
+	assert(arr[2] == 4)
+
+	val strArr = ["hello", "world"]
+	strArr[0] += " autolang"
+	assert(strArr[0] == "hello autolang")
+
+	val floatArr = [1.5, 2.5]
+	floatArr[0] += 2.0
+	assert(floatArr[0] == 3.5)
+	floatArr[1] -= 0.5
+	assert(floatArr[1] == 2.0)
+
+	val m = <String, Int>{"apples": 5}
+	m["apples"]! += 10
+	assert(m["apples"] == 15)
+	m["apples"]! *= 2
+	assert(m["apples"] == 30)
+}
+
+fun testSideEffectIndexAssignOperator() {
+	val a = [100, 200, 300]
+	callCount = 0
+	a[getAndNext()] += 50
+	assert(a[1] == 250)
+	assert(callCount == 1)
+
+	targetCallCount = 0
+	getTargetArray(a)[getAndNext()] += 10
+	assert(a[1] == 260)
+	assert(targetCallCount == 1)
+	assert(callCount == 2)
+}
+
 fun testAssignOperator() {
 	testNestedAssignOperator()
 	testAssignOperatorCow()
+	testArrayIndexAssignOperator()
+	testSideEffectIndexAssignOperator()
 	println("Passed testAssignOperator")
 }
 
 testAssignOperator()
+

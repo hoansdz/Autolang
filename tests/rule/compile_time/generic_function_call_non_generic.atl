@@ -1,0 +1,2 @@
+fun normalNonGenericFunc(x: Int): Int = x
+val res = normalNonGenericFunc<Int>(42)

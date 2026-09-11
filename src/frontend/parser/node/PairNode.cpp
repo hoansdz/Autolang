@@ -19,18 +19,26 @@ ExprNode *PairNode::optimize(in_func) {
 	second = static_cast<HasClassIdNode *>(second->optimize(in_data));
 
 	ClassDeclaration *firstDecl = first->classDeclaration;
-	if (!firstDecl) {
+	if (!firstDecl || firstDecl->isGenericDeclaration ||
+	    (firstDecl->classId && *firstDecl->classId != first->classId)) {
 		firstDecl = context.classDeclarationAllocator.push();
 		firstDecl->classId = first->classId;
+		firstDecl->baseClassLexerStringId =
+		    context.createLexerStringIfNotExists(
+		        compile.classes[first->classId]->getName(compile));
 		firstDecl->line = line;
 		firstDecl->isGeneric = false;
 		firstDecl->nullable = first->isNullable();
 	}
 
 	ClassDeclaration *secondDecl = second->classDeclaration;
-	if (!secondDecl) {
+	if (!secondDecl || secondDecl->isGenericDeclaration ||
+	    (secondDecl->classId && *secondDecl->classId != second->classId)) {
 		secondDecl = context.classDeclarationAllocator.push();
 		secondDecl->classId = second->classId;
+		secondDecl->baseClassLexerStringId =
+		    context.createLexerStringIfNotExists(
+		        compile.classes[second->classId]->getName(compile));
 		secondDecl->line = line;
 		secondDecl->isGeneric = false;
 		secondDecl->nullable = second->isNullable();
@@ -83,9 +91,9 @@ ExprNode *PairNode::copy(in_func) {
 	auto newNode = context.pairPool.push(
 	    line, static_cast<HasClassIdNode *>(first->copy(in_data)),
 	    static_cast<HasClassIdNode *>(second->copy(in_data)));
-	newNode->classDeclaration = classDeclaration;
-	newNode->classId = classId;
-	newNode->constructorFuncId = constructorFuncId;
+	newNode->classDeclaration = nullptr;
+	newNode->classId = 0;
+	newNode->constructorFuncId = 0;
 	return newNode;
 }
 

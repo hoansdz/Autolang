@@ -37,4 +37,110 @@ assert(fn1() == 101)
 val fn2: () -> String = TestReciprocal::staticMethod
 assert(fn2() == "static hello")
 
+val s1 = <Int>{true, false}
+assert(s1.contains(1))
+assert(s1.contains(0))
+assert(s1.size() == 2)
+
+val s2 = <Float>{true}
+assert(s2.contains(1.0))
+
+val s3 = {true, 10}
+assert(s3.contains(1))
+assert(s3.contains(10))
+
+val s4 = {10, true}
+assert(s4.contains(10))
+assert(s4.contains(1))
+
+val s5 = {true, 3.14}
+assert(s5.contains(1.0))
+assert(s5.contains(3.14))
+
+val m1 = <String, Int>{"a": true, "b": false}
+assert(m1["a"] == 1)
+assert(m1["b"] == 0)
+
+val m2 = <String, Float>{"pi": true}
+assert(m2["pi"] == 1.0)
+
+val m3 = <Int, String>{true: "yes", false: "no"}
+assert(m3[1] == "yes")
+assert(m3[0] == "no")
+
+val m4 = <Float, String>{true: "yes"}
+assert(m4[1.0] == "yes")
+
+val m5 = {true: "a", 10: "b"}
+assert(m5[1] == "a")
+assert(m5[10] == "b")
+
+val m6 = {10: "a", true: "b"}
+assert(m6[10] == "a")
+assert(m6[1] == "b")
+
+val m7 = {"a": true, "b": 10}
+assert(m7["a"] == 1)
+assert(m7["b"] == 10)
+
+val m8 = {"a": 10, "b": true}
+assert(m8["a"] == 10)
+assert(m8["b"] == 1)
+
+// Array tests
+val a1 = [true, 10]
+assert(a1[0] == 1)
+assert(a1[1] == 10)
+
+val a2 = [10, true]
+assert(a2[0] == 10)
+assert(a2[1] == 1)
+
+val a3 = [true, 2.5]
+assert(a3[0] == 1.0)
+assert(a3[1] == 2.5)
+
+// If condition with Int and Float
+var c1 = 0
+if (1) { c1 = 10 } else { c1 = 20 }
+assert(c1 == 10)
+
+var c2 = 0
+if (0) { c2 = 10 } else { c2 = 20 }
+assert(c2 == 20)
+
+var c3 = 0
+if (3.14) { c3 = 10 } else { c3 = 20 }
+assert(c3 == 10)
+
+var c4 = 0
+if (0.0) { c4 = 10 } else { c4 = 20 }
+assert(c4 == 20)
+
+val xNonZero = 42
+var v1 = false
+if (xNonZero) { v1 = true }
+assert(v1 == true)
+
+val xZero = 0
+var v2 = false
+if (xZero) { v2 = true } else { v2 = false }
+assert(v2 == false)
+
+val fNonZero = 0.5
+var v3 = false
+if (fNonZero) { v3 = true }
+assert(v3 == true)
+
+val fZero = 0.0
+var v4 = false
+if (fZero) { v4 = true } else { v4 = false }
+assert(v4 == false)
+
+val ifExprRes1 = if (xNonZero) 100 else 200
+assert(ifExprRes1 == 100)
+
+val ifExprRes2 = if (fZero) 100 else 200
+assert(ifExprRes2 == 200)
+
 println("All reciprocal and pointer tests passed!")

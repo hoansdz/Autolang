@@ -1,0 +1,21 @@
+
+fun <T> Array<T>.myReversed(): Array<T> {
+    val copy = this.slice(0, this.size())
+    var i = 0
+    var j = copy.size() - 1
+    while (i < j) {
+        val tmp = copy.get(i)
+        copy.set(i, copy.get(j))
+        copy.set(j, tmp)
+        i = i + 1
+        j = j - 1
+    }
+    return copy
+}
+
+fun main() {
+    val a = [1, 2, 3]
+    val r = a.myReversed()
+    println(r)
+}
+main()

@@ -24,13 +24,15 @@ struct ClassDeclaration {
 	bool mustInference = true;
 	// class A<T> => A<T> has generic declaration
 	bool isGeneric = false;
+	bool isFunction = false;
 	std::vector<ClassDeclaration *> inputClassId;
 	std::optional<uint32_t> classId;
 	inline bool isGenerics(in_func) { return isGeneric; }
 	template <bool changeGenericsClassId, bool canBeFunction = false,
-	          bool isLazy = false>
+	          bool isLazy = false, bool mustBeFunction = false>
 	void load(in_func);
-	template <bool changeGenericsClassId, bool canBeFunction = false>
+	template <bool changeGenericsClassId, bool canBeFunction = false,
+	          bool mustBeFunction = false>
 	void onLoadTypealias(in_func, TypealiasData *typealias);
 	int64_t loadHash() {
 		uint64_t hash = 14695981039346656037ull;

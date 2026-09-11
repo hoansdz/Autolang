@@ -2487,6 +2487,7 @@ resumeCallFrame:;
 		std::cerr << "Function " << currentFunction->getName(data)
 		          << ", bytecode at position " << i << ": "
 		          << uint32_t(bytecodes[i]) << "\n";
+		log(currentFunction);
 		throw std::runtime_error(err.what());
 	}
 }

@@ -731,9 +731,9 @@ struct CallNode : NullableNode {
 	LexerStringId nameId;
 	SmallVector<HasClassIdNode *, 4> arguments;
 	SmallVector<LexerStringId, 4> argumentNames;
-	ClassDeclaration *inputGenericArguments;
-	FunctionId funcId;
-	BytecodePos jumpIfNullPos;
+	ClassDeclaration *inputGenericArguments = nullptr;
+	FunctionId funcId = 0;
+	BytecodePos jumpIfNullPos = 0;
 	bool justFindStatic = false;
 	bool pauseVM = false;
 	bool accessNullable;

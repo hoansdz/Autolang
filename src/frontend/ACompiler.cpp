@@ -764,6 +764,8 @@ void ACompiler::generateBytecodes() {
 			}
 			if (func->functionFlags & FunctionFlags::FUNC_IS_NATIVE)
 				continue;
+			context.currentFunctionId = func->id;
+			context.currentClassId = node->contextCallClassId;
 			if (!funcInfo->inferenceNode) {
 				funcInfo->body.resolve(in_data);
 				funcInfo->body.optimize(in_data);
@@ -772,12 +774,12 @@ void ACompiler::generateBytecodes() {
 			context.currentOpcodeIndex = compile.allOpcodeLines.size();
 			func->bytecodes.offset = context.currentBytecodePos;
 			func->opcodeIndex = context.currentOpcodeIndex;
-			context.currentFunctionId = func->id;
 			funcInfo->body.putBytecodes(in_data, compile.allBytecodes);
 			funcInfo->body.rewrite(in_data, compile.allBytecodes.data() +
 			                                    context.currentBytecodePos);
 			func->bytecodes.size =
 			    compile.allBytecodes.size() - func->bytecodes.offset;
+			context.currentClassId = std::nullopt;
 		}
 
 		emitConstructors();

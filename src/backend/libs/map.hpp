@@ -53,6 +53,8 @@ AObject *get_or_default(NativeFuncInData);
 AObject *set(NativeFuncInData);
 AObject *clear(NativeFuncInData);
 AObject *to_string(NativeFuncInData);
+AObject *clone(NativeFuncInData);
+AObject *filter(NativeFuncInData);
 std::string to_string(ANotifier &notifier, AObject *obj);
 } // namespace map
 } // namespace Libs

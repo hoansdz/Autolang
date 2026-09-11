@@ -40,6 +40,12 @@ ExprNode *VarNode::copy(in_func) {
 	} else {
 		newDeclaration =
 		    static_cast<DeclarationNode *>(declaration->copy(in_data));
+		funcInfo->reflectDeclarationMap[declaration] = newDeclaration;
+		auto func = compile.functions[context.currentFunctionId];
+		if (newDeclaration && newDeclaration->id >= func->maxDeclaration) {
+			func->maxDeclaration = newDeclaration->id + 1;
+			funcInfo->declaration = func->maxDeclaration;
+		}
 	}
 	auto newNode =
 	    context.varPool.push(line, newDeclaration, isStore, nullable);

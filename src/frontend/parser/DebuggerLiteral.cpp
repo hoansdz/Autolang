@@ -214,7 +214,47 @@ HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
 			--i;
 			return loadClosure(in_data, i);
 		}
+		case Lexer::TokenType::MINUS_GT: {
+			switch (canBeNodeType) {
+				case NodeType::CREATE_SET: {
+					throw ParserError(
+					    token->line,
+					    "Expected Set<> but closure found\nHint: Do not pass "
+					    "closure parameters inside Set literal");
+				}
+				case NodeType::CREATE_MAP: {
+					throw ParserError(
+					    token->line,
+					    "Expected Map<> but closure found\nHint: Do not pass "
+					    "closure parameters inside Map literal");
+				}
+				default:
+					break;
+			}
+			--i;
+			return loadClosure(in_data, i);
+		}
 		default: {
+			if (hasArrowAtCurrentBraceLevel(context.tokens, i)) {
+				switch (canBeNodeType) {
+					case NodeType::CREATE_SET: {
+						throw ParserError(
+						    token->line,
+						    "Expected Set<> but closure found\nHint: Do not pass "
+						    "closure parameters inside Set literal");
+					}
+					case NodeType::CREATE_MAP: {
+						throw ParserError(
+						    token->line,
+						    "Expected Map<> but closure found\nHint: Do not pass "
+						    "closure parameters inside Map literal");
+					}
+					default:
+						break;
+				}
+				--i;
+				return loadClosure(in_data, i);
+			}
 			auto firstExpression = loadExpression(in_data, 0, i);
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;

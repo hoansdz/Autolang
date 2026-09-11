@@ -192,6 +192,12 @@ class ObjectManager {
 			obj->flags = AObject::Flags::OBJ_IS_FREE;
 			return;
 		}
+#elif __PYBIND11__
+		if (obj->flags & AObject::Flags::OBJ_IS_PY_OBJECT) {
+			delete obj->pyObject;
+			obj->flags = AObject::Flags::OBJ_IS_FREE;
+			return;
+		}
 #endif
 		if (obj->flags & AObject::Flags::OBJ_IS_NATIVE_DATA) {
 			if (obj->data->destructor) {

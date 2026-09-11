@@ -1,0 +1,3 @@
+class FuncBoundBase {}
+fun <T: FuncBoundBase> processBound(item: T) {}
+processBound<Int>(10)

@@ -210,11 +210,46 @@ ExprNode *ForNode::optimize(in_func) {
 }
 
 ExprNode *ForNode::copy(in_func) {
-	return context.forPool.push(
-	    line, static_cast<VarNode *>(detach->copy(in_data)),
-	    static_cast<HasClassIdNode *>(data->copy(in_data)), iteratorNode,
-	    detachValue ? static_cast<VarNode *>(detachValue->copy(in_data)) : nullptr,
-	    collectionNode ? static_cast<VarNode *>(collectionNode->copy(in_data)) : nullptr);
+	auto funcInfo = context.getCurrentFunctionInfo(in_data);
+	auto newDetach = static_cast<VarNode *>(detach->copy(in_data));
+	if (funcInfo && detach && detach->declaration && newDetach) {
+		funcInfo->reflectDeclarationMap[detach->declaration] =
+		    newDetach->declaration;
+	}
+	VarNode *newDetachValue = nullptr;
+	if (detachValue) {
+		newDetachValue = static_cast<VarNode *>(detachValue->copy(in_data));
+		if (funcInfo && detachValue->declaration && newDetachValue) {
+			funcInfo->reflectDeclarationMap[detachValue->declaration] =
+			    newDetachValue->declaration;
+		}
+	}
+	VarNode *newIteratorNode = nullptr;
+	if (iteratorNode) {
+		newIteratorNode = static_cast<VarNode *>(iteratorNode->copy(in_data));
+		if (funcInfo && iteratorNode->declaration && newIteratorNode) {
+			funcInfo->reflectDeclarationMap[iteratorNode->declaration] =
+			    newIteratorNode->declaration;
+		}
+	}
+	VarNode *newCollectionNode = nullptr;
+	if (collectionNode) {
+		newCollectionNode =
+		    static_cast<VarNode *>(collectionNode->copy(in_data));
+		if (funcInfo && collectionNode->declaration && newCollectionNode) {
+			funcInfo->reflectDeclarationMap[collectionNode->declaration] =
+			    newCollectionNode->declaration;
+		}
+	}
+	auto newNode = context.forPool.push(
+	    line, newDetach,
+	    static_cast<HasClassIdNode *>(data->copy(in_data)), newIteratorNode,
+	    newDetachValue, newCollectionNode);
+	newNode->body.nodes.reserve(body.nodes.size());
+	for (auto *node : body.nodes) {
+		newNode->body.nodes.push_back(node->copy(in_data));
+	}
+	return newNode;
 }
 
 bool ForNode::putOptimizedRangeBytecode(in_func,

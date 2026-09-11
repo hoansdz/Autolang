@@ -177,8 +177,12 @@ ExprNode *DeclarationNode::copy(in_func) {
 	if (classDeclaration && !classDeclaration->isGenerics(in_data)) {
 		return this;
 	}
+	ClassDeclaration *newClassDecl = classDeclaration;
+	if (classDeclaration && classDeclaration->isGeneric) {
+		newClassDecl = classDeclaration->copy(in_data);
+	}
 	auto newNode = context.declarationNodePool.push(
-	    line, context.currentClassId, baseName, name, classDeclaration, isVal,
+	    line, context.currentClassId, baseName, name, newClassDecl, isVal,
 	    isGlobal, nullable);
 	newNode->mustInferenceNullable = mustInferenceNullable;
 	if (isGlobal && context.newPositionOfStaticDeclaration) {
@@ -192,33 +196,34 @@ ExprNode *DeclarationNode::copy(in_func) {
 		newNode->id = id;
 	}
 
-	if (classDeclaration) {
-		if (!classDeclaration->classId) {
-			classDeclaration->template load<false>(in_data);
-			if (!classDeclaration->classId) {
+	if (newClassDecl) {
+		if (!newClassDecl->classId) {
+			newClassDecl->template load<false>(in_data);
+			if (!newClassDecl->classId) {
+				newClassDecl->template load<true>(in_data);
+			}
+			if (!newClassDecl->classId) {
 				throwError("Bug: DeclarationNode copy: Unresolved class " +
-				           classDeclaration->getName(in_data) +
+				           newClassDecl->getName(in_data) +
 				           "\nHint: Internal compiler error - class "
 				           "declaration was not resolved before copy.");
 			}
-			newNode->classId = *classDeclaration->classId;
-			if (classDeclaration->isGeneric &&
-			    !classDeclaration->isGenericDeclaration) {
-				classDeclaration->classId = std::nullopt;
+			newNode->classId = *newClassDecl->classId;
+			if (newClassDecl->isGeneric &&
+			    !newClassDecl->isGenericDeclaration) {
+				newClassDecl->classId = std::nullopt;
 			}
-		} else if (classDeclaration->classId == DefaultClass::functionClassId) {
-			classDeclaration->template load<false>(in_data);
-			newNode->classId = *classDeclaration->classId;
-			if (classDeclaration->isGeneric) {
-				newNode->classDeclaration = classDeclaration->copy(in_data);
-			} else {
-				newNode->classDeclaration = classDeclaration;
+		} else if (newClassDecl->classId == DefaultClass::functionClassId) {
+			newClassDecl->template load<false>(in_data);
+			if (!newClassDecl->classId) {
+				newClassDecl->template load<true>(in_data);
 			}
+			newNode->classId = *newClassDecl->classId;
 		} else {
-			newNode->classId = *classDeclaration->classId;
+			newNode->classId = *newClassDecl->classId;
 		}
 		// newNode->mustInferenceNullable = classDeclaration->mustInference;
-		newNode->nullable = classDeclaration->nullable;
+		newNode->nullable = newClassDecl->nullable;
 
 	} else {
 		newNode->classId = classId;
@@ -313,7 +318,9 @@ ExprNode *CreateConstructorNode::optimize(in_func) {
 		auto &param = parameter->parameters[i];
 		func->args[i] = param->classId;
 		if (isPrimary && i != 0) {
-			memberId[i - 1] = param->classId;
+			if (clazz->memberIdOffset + i - 1 < compile.allMemberId.size()) {
+				memberId[i - 1] = param->classId;
+			}
 		}
 	}
 

@@ -401,6 +401,130 @@ fun testAutoCast() {
 	assert(mapValIntCount == 0)
 	assert(mapValFloatCount == 2)
 
+	// 11. Bool to Int/Float conversion in Array, Set, Map
+	val boolIntSetExplicit = <Int>{true, false}
+	assert(boolIntSetExplicit.contains(1))
+	assert(boolIntSetExplicit.contains(0))
+	assert(boolIntSetExplicit.size() == 2)
+
+	val boolFloatSetExplicit = <Float>{true}
+	assert(boolFloatSetExplicit.contains(1.0))
+
+	val boolIntSetInferred1 = {true, 10}
+	assert(boolIntSetInferred1.contains(1))
+	assert(boolIntSetInferred1.contains(10))
+
+	val boolIntSetInferred2 = {10, true}
+	assert(boolIntSetInferred2.contains(10))
+	assert(boolIntSetInferred2.contains(1))
+
+	val boolFloatSetInferred = {true, 3.14}
+	assert(boolFloatSetInferred.contains(1.0))
+	assert(boolFloatSetInferred.contains(3.14))
+
+	val boolMapExplicitVal1 = <String, Int>{"a": true, "b": false}
+	assert(boolMapExplicitVal1["a"] == 1)
+	assert(boolMapExplicitVal1["b"] == 0)
+
+	val boolMapExplicitVal2 = <String, Float>{"pi": true}
+	assert(boolMapExplicitVal2["pi"] == 1.0)
+
+	val boolMapExplicitKey1 = <Int, String>{true: "yes", false: "no"}
+	assert(boolMapExplicitKey1[1] == "yes")
+	assert(boolMapExplicitKey1[0] == "no")
+
+	val boolMapExplicitKey2 = <Float, String>{true: "yes"}
+	assert(boolMapExplicitKey2[1.0] == "yes")
+
+	val boolMapInferredKey1 = {true: "a", 10: "b"}
+	assert(boolMapInferredKey1[1] == "a")
+	assert(boolMapInferredKey1[10] == "b")
+
+	val boolMapInferredKey2 = {10: "a", true: "b"}
+	assert(boolMapInferredKey2[10] == "a")
+	assert(boolMapInferredKey2[1] == "b")
+
+	val boolMapInferredVal1 = {"a": true, "b": 10}
+	assert(boolMapInferredVal1["a"] == 1)
+	assert(boolMapInferredVal1["b"] == 10)
+
+	val boolMapInferredVal2 = {"a": 10, "b": true}
+	assert(boolMapInferredVal2["a"] == 10)
+	assert(boolMapInferredVal2["b"] == 1)
+
+	val boolArrInferred1 = [true, 10]
+	assert(boolArrInferred1[0] == 1)
+	assert(boolArrInferred1[1] == 10)
+
+	val boolArrInferred2 = [10, true]
+	assert(boolArrInferred2[0] == 10)
+	assert(boolArrInferred2[1] == 1)
+
+	val boolArrInferred3 = [true, 2.5]
+	assert(boolArrInferred3[0] == 1.0)
+	assert(boolArrInferred3[1] == 2.5)
+
+	// 12. If and While condition auto conversion for Int and Float
+	var ifIntConst1 = 0
+	if (1) { ifIntConst1 = 10 } else { ifIntConst1 = 20 }
+	assert(ifIntConst1 == 10)
+
+	var ifIntConst2 = 0
+	if (0) { ifIntConst2 = 10 } else { ifIntConst2 = 20 }
+	assert(ifIntConst2 == 20)
+
+	var ifFloatConst1 = 0
+	if (3.14) { ifFloatConst1 = 10 } else { ifFloatConst1 = 20 }
+	assert(ifFloatConst1 == 10)
+
+	var ifFloatConst2 = 0
+	if (0.0) { ifFloatConst2 = 10 } else { ifFloatConst2 = 20 }
+	assert(ifFloatConst2 == 20)
+
+	val intNonZeroVar = 42
+	var ifIntVarCheck1 = false
+	if (intNonZeroVar) { ifIntVarCheck1 = true }
+	assert(ifIntVarCheck1 == true)
+
+	val intZeroVar = 0
+	var ifIntVarCheck2 = false
+	if (intZeroVar) { ifIntVarCheck2 = true } else { ifIntVarCheck2 = false }
+	assert(ifIntVarCheck2 == false)
+
+	val floatNonZeroVar = 0.5
+	var ifFloatVarCheck1 = false
+	if (floatNonZeroVar) { ifFloatVarCheck1 = true }
+	assert(ifFloatVarCheck1 == true)
+
+	val floatZeroVar = 0.0
+	var ifFloatVarCheck2 = false
+	if (floatZeroVar) { ifFloatVarCheck2 = true } else { ifFloatVarCheck2 = false }
+	assert(ifFloatVarCheck2 == false)
+
+	val ifExprRes1 = if (intNonZeroVar) 100 else 200
+	assert(ifExprRes1 == 100)
+
+	val ifExprRes2 = if (floatZeroVar) 100 else 200
+	assert(ifExprRes2 == 200)
+
+	var whileIntCount = 3
+	var whileIntSum = 0
+	while (whileIntCount) {
+		whileIntSum += whileIntCount
+		whileIntCount -= 1
+	}
+	assert(whileIntSum == 6)
+	assert(whileIntCount == 0)
+
+	var whileFloatCount = 2.0
+	var whileFloatSteps = 0
+	while (whileFloatCount) {
+		whileFloatSteps += 1
+		whileFloatCount -= 1.0
+	}
+	assert(whileFloatSteps == 2)
+	assert(whileFloatCount == 0.0)
+
 	println("Passed ${__FUNC__}")
 }
 

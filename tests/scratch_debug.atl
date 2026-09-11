@@ -1,0 +1,135 @@
+fun testArrayKotlinMethods() {
+    // 1. sort() in-place (numbers & strings)
+    val arr = [5, 2, 8, 1, 9]
+    arr.sort()
+    assert(arr[0] == 1 && arr[1] == 2 && arr[2] == 5 && arr[3] == 8 && arr[4] == 9, "arr.sort() failed")
+
+    val strArr = ["cherry", "apple", "banana"]
+    strArr.sort()
+    assert(strArr[0] == "apple" && strArr[1] == "banana" && strArr[2] == "cherry", "strArr.sort() failed")
+
+    // 2. sorted() returns new sorted copy
+    val original = [30, 10, 20]
+    val sortedArr = original.sorted()
+    assert(original[0] == 30 && original[1] == 10 && original[2] == 20, "original should not mutate")
+    assert(sortedArr[0] == 10 && sortedArr[1] == 20 && sortedArr[2] == 30, "sortedArr failed")
+
+    // 3. map<R>()
+    val numbers = [1, 2, 3]
+    val doubled = numbers.map<Int>({|x: Int| x * 2 })
+    assert(doubled.size() == 3 && doubled[0] == 2 && doubled[1] == 4 && doubled[2] == 6, "map<Int> failed")
+
+    val strMapped = numbers.map<String>({|x: Int| "item_" + x })
+    assert(strMapped[0] == "item_1" && strMapped[2] == "item_3", "map<String> failed")
+
+    // 4. mapIndexed<R>()
+    val indexedMapped = numbers.mapIndexed<String>({|x: Int, idx: Int| x + ":" + idx })
+    assert(indexedMapped[0] == "1:0" && indexedMapped[1] == "2:1", "mapIndexed failed")
+
+    // 5. first() & firstOrNull() & last() & lastOrNull()
+    assert(numbers.first() == 1, "first failed")
+    assert(numbers.firstOrNull() == 1, "firstOrNull failed")
+    assert(numbers.last() == 3, "last failed")
+    assert(numbers.lastOrNull() == 3, "lastOrNull failed")
+
+    val emptyArr = <Int>[]
+    assert(emptyArr.firstOrNull() == null, "empty firstOrNull failed")
+    assert(emptyArr.lastOrNull() == null, "empty lastOrNull failed")
+
+    // 6. count(), count(predicate)
+    assert(numbers.count() == 3, "count() failed")
+    val evenCount = numbers.count({|x: Int| x % 2 == 0 })
+    assert(evenCount == 1, "count(predicate) failed")
+
+    // 7. any(), any(predicate), all(predicate), none(), none(predicate)
+    assert(numbers.any() == true, "any() failed")
+    assert(emptyArr.any() == false, "empty any() failed")
+    assert(numbers.any({|x: Int| x == 2 }) == true, "any(predicate) failed")
+    assert(numbers.any({|x: Int| x == 99 }) == false, "any(predicate) failed")
+
+    assert(numbers.all({|x: Int| x > 0 }) == true, "all(predicate) failed")
+    assert(numbers.all({|x: Int| x > 1 }) == false, "all(predicate) failed")
+
+    assert(emptyArr.none() == true, "none() failed")
+    assert(numbers.none() == false, "none() failed")
+    assert(numbers.none({|x: Int| x < 0 }) == true, "none(predicate) failed")
+    assert(numbers.none({|x: Int| x == 1 }) == false, "none(predicate) failed")
+
+    // 8. joinToString()
+    val joined = numbers.joinToString(", ")
+    assert(joined == "1, 2, 3", "joinToString failed")
+
+    // 9. reversed()
+    val rev = numbers.reversed()
+    assert(rev[0] == 3 && rev[1] == 2 && rev[2] == 1, "reversed failed")
+
+    // 10. take(n) & drop(n)
+    val taken = numbers.take(2)
+    assert(taken.size() == 2 && taken[0] == 1 && taken[1] == 2, "take failed")
+
+    val dropped = numbers.drop(1)
+    assert(dropped.size() == 2 && dropped[0] == 2 && dropped[1] == 3, "drop failed")
+
+    // 11. reduce & fold
+    val sum = numbers.reduce({|a: Int, b: Int| a + b })
+    assert(sum == 6, "reduce failed")
+
+    val foldProduct = numbers.fold<Int>(10, {|acc: Int, x: Int| acc * x })
+    assert(foldProduct == 60, "fold failed")
+}
+
+fun testMapKotlinMethods() {
+    val m = <String, Int>{ "a": 1, "b": 2, "c": 3 }
+
+    // 1. contains(key) & has(key)
+    assert(m.contains("a") == true, "map.contains failed")
+    assert(m.contains("z") == false, "map.contains failed")
+    assert(m.has("b") == true, "map.has failed")
+    assert(m.has("unknown") == false, "map.has failed")
+
+    // 2. count()
+    assert(m.count() == 3, "map.count failed")
+
+    // 3. entries()
+    val entryList = m.entries()
+    assert(entryList.size() == 3, "entries.size failed")
+
+    // 4. filter
+    val filteredMap = m.filter({|k: String, v: Int| v >= 2 })
+    assert(filteredMap.size() == 2, "map.filter size failed")
+    assert(filteredMap.contains("a") == false, "map.filter a removed failed")
+    assert(filteredMap.contains("b") == true && filteredMap.contains("c") == true, "map.filter failed")
+}
+
+fun testSetKotlinMethods() {
+    val s = <Int>{ 10, 20, 30 }
+
+    // 1. includes(val) & count()
+    assert(s.includes(10) == true, "set.includes failed")
+    assert(s.includes(99) == false, "set.includes failed")
+    assert(s.count() == 3, "set.count failed")
+
+    // 2. first() & firstOrNull()
+    assert(s.first() == 10, "set.first failed")
+    assert(s.firstOrNull() == 10, "set.firstOrNull failed")
+
+    val emptySet = <Int>{}
+    assert(emptySet.firstOrNull() == null, "empty set firstOrNull failed")
+
+    // 3. filter
+    val filteredSet = s.filter({|x: Int| x > 15 })
+    assert(filteredSet.size() == 2, "set.filter size failed")
+    assert(filteredSet.contains(10) == false && filteredSet.contains(20) == true, "set.filter failed")
+
+    // 4. map
+    val mappedArr = s.map<String>({|x: Int| "val_" + x })
+    assert(mappedArr.size() == 3, "set.map size failed")
+
+    // 5. any, all, none
+    assert(s.any({|x: Int| x == 20 }) == true, "set.any failed")
+    assert(s.all({|x: Int| x > 0 }) == true, "set.all failed")
+    assert(s.none({|x: Int| x < 0 }) == true, "set.none failed")
+}
+
+testSetKotlinMethods()
+println("All Kotlin collection methods passed successfully!")

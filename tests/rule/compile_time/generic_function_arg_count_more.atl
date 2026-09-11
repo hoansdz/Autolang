@@ -1,0 +1,2 @@
+fun <T> singleGenericFunc(a: T) {}
+singleGenericFunc<Int, String>(1, "extra")

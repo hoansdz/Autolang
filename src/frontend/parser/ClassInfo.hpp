@@ -28,6 +28,7 @@ struct ClassInfo {
 	CreateConstructorNode *primaryConstructor = nullptr;
 	SmallVector<CreateConstructorNode *, 2> secondaryConstructor;
 	SmallVector<CreateFuncNode *, 8> createFunctionNodes;
+	HashMap<LexerStringId, std::vector<CreateFuncNode *>> genericFunctionMap;
 	DeclarationNode *declarationThis = nullptr;
 
 	AccessNode *findDeclaration(in_func, uint32_t line, LexerStringId nameId,

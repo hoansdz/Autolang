@@ -1,4 +1,4 @@
-﻿#ifndef LIBS_SET_CPP
+#ifndef LIBS_SET_CPP
 #define LIBS_SET_CPP
 
 #include "set.hpp"
@@ -596,6 +596,436 @@ std::string to_string(ANotifier &notifier, AObject *obj) {
 
 AObject *to_string(NativeFuncInData) {
 	return notifier.createString(to_string(notifier, args[0]));
+}
+
+AObject *clone(NativeFuncInData) {
+	auto unorderedSetData = static_cast<AUnorderedSet *>(args[0]->data->data);
+	AObject *newObj = constructor(notifier, args[0]->type, unorderedSetData->type);
+	newObj->flags |= AObject::Flags::OBJ_IS_SET;
+	auto newSetData = static_cast<AUnorderedSet *>(newObj->data->data);
+
+	switch (unorderedSetData->type) {
+		case DefaultClass::intClassId: {
+			auto s1 = static_cast<IntHashSet *>(unorderedSetData->data);
+			auto s2 = static_cast<IntHashSet *>(newSetData->data);
+			s2->insert(s1->begin(), s1->end());
+			notifier.addManagedMemory(s1->size() * 32);
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			auto s1 = static_cast<FloatHashSet *>(unorderedSetData->data);
+			auto s2 = static_cast<FloatHashSet *>(newSetData->data);
+			s2->insert(s1->begin(), s1->end());
+			notifier.addManagedMemory(s1->size() * 32);
+			break;
+		}
+		case DefaultClass::stringClassId: {
+			auto s1 = static_cast<StringHashSet *>(unorderedSetData->data);
+			auto s2 = static_cast<StringHashSet *>(newSetData->data);
+			for (auto item : *s1) {
+				item->retain();
+				s2->insert(item);
+			}
+			notifier.addManagedMemory(s1->size() * 32);
+			break;
+		}
+		default: {
+			auto s1 = static_cast<ObjectHashSet *>(unorderedSetData->data);
+			auto s2 = static_cast<ObjectHashSet *>(newSetData->data);
+			for (auto item : *s1) {
+				item->retain();
+				s2->insert(item);
+			}
+			notifier.addManagedMemory(s1->size() * 32);
+			break;
+		}
+	}
+	return newObj;
+}
+
+AObject *filter(NativeFuncInData) {
+	auto unorderedSetData = static_cast<AUnorderedSet *>(args[0]->data->data);
+	auto funcObject = args[1];
+
+	AObject *newObj = constructor(notifier, args[0]->type, unorderedSetData->type);
+	newObj->flags |= AObject::Flags::OBJ_IS_SET;
+	auto newSetData = static_cast<AUnorderedSet *>(newObj->data->data);
+
+	switch (unorderedSetData->type) {
+		case DefaultClass::intClassId: {
+			auto s1 = static_cast<IntHashSet *>(unorderedSetData->data);
+			auto s2 = static_cast<IntHashSet *>(newSetData->data);
+			for (int64_t val : *s1) {
+				auto item = notifier.createInt(val);
+				item->retain();
+				auto res = notifier.callFunctionObject(funcObject, item);
+				notifier.release(item);
+				if (notifier.hasException()) return nullptr;
+				if (res == notifier.getTrueObject()) {
+					s2->insert(val);
+					notifier.addManagedMemory(32);
+				}
+				notifier.release(res);
+			}
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			auto s1 = static_cast<FloatHashSet *>(unorderedSetData->data);
+			auto s2 = static_cast<FloatHashSet *>(newSetData->data);
+			for (double val : *s1) {
+				auto item = notifier.createFloat(val);
+				item->retain();
+				auto res = notifier.callFunctionObject(funcObject, item);
+				notifier.release(item);
+				if (notifier.hasException()) return nullptr;
+				if (res == notifier.getTrueObject()) {
+					s2->insert(val);
+					notifier.addManagedMemory(32);
+				}
+				notifier.release(res);
+			}
+			break;
+		}
+		case DefaultClass::stringClassId: {
+			auto s1 = static_cast<StringHashSet *>(unorderedSetData->data);
+			auto s2 = static_cast<StringHashSet *>(newSetData->data);
+			for (auto item : *s1) {
+				auto res = notifier.callFunctionObject(funcObject, item);
+				if (notifier.hasException()) return nullptr;
+				if (res == notifier.getTrueObject()) {
+					item->retain();
+					s2->insert(item);
+					notifier.addManagedMemory(32);
+				}
+				notifier.release(res);
+			}
+			break;
+		}
+		default: {
+			auto s1 = static_cast<ObjectHashSet *>(unorderedSetData->data);
+			auto s2 = static_cast<ObjectHashSet *>(newSetData->data);
+			for (auto item : *s1) {
+				auto res = notifier.callFunctionObject(funcObject, item);
+				if (notifier.hasException()) return nullptr;
+				if (res == notifier.getTrueObject()) {
+					item->retain();
+					s2->insert(item);
+					notifier.addManagedMemory(32);
+				}
+				notifier.release(res);
+			}
+			break;
+		}
+	}
+	return newObj;
+}
+
+static inline ClassId getSetGenericKey(ANotifier &notifier, ClassId classId) {
+	if (classId < notifier.vm->data.classes.size()) {
+		auto clazz = notifier.vm->data.classes[classId];
+		if (clazz && clazz->genericType.size > 0) {
+			return notifier.vm->data.allGenericType[clazz->genericType.offset];
+		}
+	}
+	return DefaultClass::anyClassId;
+}
+
+AObject *map(NativeFuncInData) {
+	auto unorderedSetData = static_cast<AUnorderedSet *>(args[0]->data->data);
+	auto funcObject = args[1];
+	ClassId returnId = notifier.callFrame->func->returnId;
+	ClassId elemKey = getSetGenericKey(notifier, returnId);
+	auto newArr = notifier.createArray(returnId, elemKey);
+
+	switch (unorderedSetData->type) {
+		case DefaultClass::intClassId: {
+			auto set = static_cast<IntHashSet *>(unorderedSetData->data);
+			for (int64_t val : *set) {
+				auto item = notifier.createInt(val);
+				item->retain();
+				auto res = notifier.callFunctionObject(funcObject, item);
+				notifier.release(item);
+				if (notifier.hasException()) return nullptr;
+				notifier.arrayAdd(newArr, res);
+				notifier.release(res);
+			}
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			auto set = static_cast<FloatHashSet *>(unorderedSetData->data);
+			for (double val : *set) {
+				auto item = notifier.createFloat(val);
+				item->retain();
+				auto res = notifier.callFunctionObject(funcObject, item);
+				notifier.release(item);
+				if (notifier.hasException()) return nullptr;
+				notifier.arrayAdd(newArr, res);
+				notifier.release(res);
+			}
+			break;
+		}
+		default: {
+			auto set = static_cast<ObjectHashSet *>(unorderedSetData->data);
+			for (auto item : *set) {
+				auto res = notifier.callFunctionObject(funcObject, item);
+				if (notifier.hasException()) return nullptr;
+				notifier.arrayAdd(newArr, res);
+				notifier.release(res);
+			}
+			break;
+		}
+	}
+	return newArr;
+}
+
+AObject *first(NativeFuncInData) {
+	auto unorderedSetData = static_cast<AUnorderedSet *>(args[0]->data->data);
+	switch (unorderedSetData->type) {
+		case DefaultClass::intClassId: {
+			auto set = static_cast<IntHashSet *>(unorderedSetData->data);
+			if (set->empty()) {
+				notifier.throwException("Set is empty");
+				return nullptr;
+			}
+			return notifier.createInt(*set->begin());
+		}
+		case DefaultClass::floatClassId: {
+			auto set = static_cast<FloatHashSet *>(unorderedSetData->data);
+			if (set->empty()) {
+				notifier.throwException("Set is empty");
+				return nullptr;
+			}
+			return notifier.createFloat(*set->begin());
+		}
+		default: {
+			auto set = static_cast<ObjectHashSet *>(unorderedSetData->data);
+			if (set->empty()) {
+				notifier.throwException("Set is empty");
+				return nullptr;
+			}
+			AObject *val = *set->begin();
+			if (!val) return notifier.getNullObject();
+			switch (val->type) {
+				case DefaultClass::intClassId:
+					return notifier.createInt(val->i);
+				case DefaultClass::floatClassId:
+					return notifier.createFloat(val->f);
+				default:
+					return val;
+			}
+		}
+	}
+}
+
+AObject *first_or_null(NativeFuncInData) {
+	auto unorderedSetData = static_cast<AUnorderedSet *>(args[0]->data->data);
+	switch (unorderedSetData->type) {
+		case DefaultClass::intClassId: {
+			auto set = static_cast<IntHashSet *>(unorderedSetData->data);
+			if (set->empty()) return notifier.getNullObject();
+			return notifier.createInt(*set->begin());
+		}
+		case DefaultClass::floatClassId: {
+			auto set = static_cast<FloatHashSet *>(unorderedSetData->data);
+			if (set->empty()) return notifier.getNullObject();
+			return notifier.createFloat(*set->begin());
+		}
+		default: {
+			auto set = static_cast<ObjectHashSet *>(unorderedSetData->data);
+			if (set->empty()) return notifier.getNullObject();
+			AObject *val = *set->begin();
+			if (!val) return notifier.getNullObject();
+			switch (val->type) {
+				case DefaultClass::intClassId:
+					return notifier.createInt(val->i);
+				case DefaultClass::floatClassId:
+					return notifier.createFloat(val->f);
+				default:
+					return val;
+			}
+		}
+	}
+}
+
+AObject *any(NativeFuncInData) {
+	auto unorderedSetData = static_cast<AUnorderedSet *>(args[0]->data->data);
+	bool notEmpty = false;
+	switch (unorderedSetData->type) {
+		case DefaultClass::intClassId:
+			notEmpty = !static_cast<IntHashSet *>(unorderedSetData->data)->empty();
+			break;
+		case DefaultClass::floatClassId:
+			notEmpty = !static_cast<FloatHashSet *>(unorderedSetData->data)->empty();
+			break;
+		case DefaultClass::stringClassId:
+			notEmpty = !static_cast<StringHashSet *>(unorderedSetData->data)->empty();
+			break;
+		default:
+			notEmpty = !static_cast<ObjectHashSet *>(unorderedSetData->data)->empty();
+			break;
+	}
+	return notifier.createBool(notEmpty);
+}
+
+AObject *none(NativeFuncInData) {
+	auto unorderedSetData = static_cast<AUnorderedSet *>(args[0]->data->data);
+	bool isEmpty = true;
+	switch (unorderedSetData->type) {
+		case DefaultClass::intClassId:
+			isEmpty = static_cast<IntHashSet *>(unorderedSetData->data)->empty();
+			break;
+		case DefaultClass::floatClassId:
+			isEmpty = static_cast<FloatHashSet *>(unorderedSetData->data)->empty();
+			break;
+		case DefaultClass::stringClassId:
+			isEmpty = static_cast<StringHashSet *>(unorderedSetData->data)->empty();
+			break;
+		default:
+			isEmpty = static_cast<ObjectHashSet *>(unorderedSetData->data)->empty();
+			break;
+	}
+	return notifier.createBool(isEmpty);
+}
+
+AObject *any_fn(NativeFuncInData) {
+	auto unorderedSetData = static_cast<AUnorderedSet *>(args[0]->data->data);
+	auto func = args[1];
+	switch (unorderedSetData->type) {
+		case DefaultClass::intClassId: {
+			auto set = static_cast<IntHashSet *>(unorderedSetData->data);
+			for (int64_t val : *set) {
+				auto item = notifier.createInt(val);
+				item->retain();
+				auto res = notifier.callFunctionObject(func, item);
+				notifier.release(item);
+				if (notifier.hasException()) return nullptr;
+				bool ok = (res == notifier.getTrueObject());
+				notifier.release(res);
+				if (ok) return notifier.createBool(true);
+			}
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			auto set = static_cast<FloatHashSet *>(unorderedSetData->data);
+			for (double val : *set) {
+				auto item = notifier.createFloat(val);
+				item->retain();
+				auto res = notifier.callFunctionObject(func, item);
+				notifier.release(item);
+				if (notifier.hasException()) return nullptr;
+				bool ok = (res == notifier.getTrueObject());
+				notifier.release(res);
+				if (ok) return notifier.createBool(true);
+			}
+			break;
+		}
+		default: {
+			auto set = static_cast<ObjectHashSet *>(unorderedSetData->data);
+			for (auto item : *set) {
+				auto res = notifier.callFunctionObject(func, item);
+				if (notifier.hasException()) return nullptr;
+				bool ok = (res == notifier.getTrueObject());
+				notifier.release(res);
+				if (ok) return notifier.createBool(true);
+			}
+			break;
+		}
+	}
+	return notifier.createBool(false);
+}
+
+AObject *all_fn(NativeFuncInData) {
+	auto unorderedSetData = static_cast<AUnorderedSet *>(args[0]->data->data);
+	auto func = args[1];
+	switch (unorderedSetData->type) {
+		case DefaultClass::intClassId: {
+			auto set = static_cast<IntHashSet *>(unorderedSetData->data);
+			for (int64_t val : *set) {
+				auto item = notifier.createInt(val);
+				item->retain();
+				auto res = notifier.callFunctionObject(func, item);
+				notifier.release(item);
+				if (notifier.hasException()) return nullptr;
+				bool ok = (res == notifier.getTrueObject());
+				notifier.release(res);
+				if (!ok) return notifier.createBool(false);
+			}
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			auto set = static_cast<FloatHashSet *>(unorderedSetData->data);
+			for (double val : *set) {
+				auto item = notifier.createFloat(val);
+				item->retain();
+				auto res = notifier.callFunctionObject(func, item);
+				notifier.release(item);
+				if (notifier.hasException()) return nullptr;
+				bool ok = (res == notifier.getTrueObject());
+				notifier.release(res);
+				if (!ok) return notifier.createBool(false);
+			}
+			break;
+		}
+		default: {
+			auto set = static_cast<ObjectHashSet *>(unorderedSetData->data);
+			for (auto item : *set) {
+				auto res = notifier.callFunctionObject(func, item);
+				if (notifier.hasException()) return nullptr;
+				bool ok = (res == notifier.getTrueObject());
+				notifier.release(res);
+				if (!ok) return notifier.createBool(false);
+			}
+			break;
+		}
+	}
+	return notifier.createBool(true);
+}
+
+AObject *none_fn(NativeFuncInData) {
+	auto unorderedSetData = static_cast<AUnorderedSet *>(args[0]->data->data);
+	auto func = args[1];
+	switch (unorderedSetData->type) {
+		case DefaultClass::intClassId: {
+			auto set = static_cast<IntHashSet *>(unorderedSetData->data);
+			for (int64_t val : *set) {
+				auto item = notifier.createInt(val);
+				item->retain();
+				auto res = notifier.callFunctionObject(func, item);
+				notifier.release(item);
+				if (notifier.hasException()) return nullptr;
+				bool ok = (res == notifier.getTrueObject());
+				notifier.release(res);
+				if (ok) return notifier.createBool(false);
+			}
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			auto set = static_cast<FloatHashSet *>(unorderedSetData->data);
+			for (double val : *set) {
+				auto item = notifier.createFloat(val);
+				item->retain();
+				auto res = notifier.callFunctionObject(func, item);
+				notifier.release(item);
+				if (notifier.hasException()) return nullptr;
+				bool ok = (res == notifier.getTrueObject());
+				notifier.release(res);
+				if (ok) return notifier.createBool(false);
+			}
+			break;
+		}
+		default: {
+			auto set = static_cast<ObjectHashSet *>(unorderedSetData->data);
+			for (auto item : *set) {
+				auto res = notifier.callFunctionObject(func, item);
+				if (notifier.hasException()) return nullptr;
+				bool ok = (res == notifier.getTrueObject());
+				notifier.release(res);
+				if (ok) return notifier.createBool(false);
+			}
+			break;
+		}
+	}
+	return notifier.createBool(true);
 }
 
 } // namespace set

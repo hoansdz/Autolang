@@ -75,6 +75,36 @@ fun testAllSetFeatures() {
     // 9. Test: Nested Sets
     testNestedSetSyntax({{1, 2}, {3, 4}, {1, 2}})
 
+    // 10. Test: clone, filter, map, first, firstOrNull, any, all, none
+    val originalSet = <Int>{10, 20, 30}
+    val clonedSet = originalSet.clone()
+    assert(clonedSet.size() == 3)
+    assert(clonedSet.contains(10) && clonedSet.contains(20) && clonedSet.contains(30))
+
+    val filteredSet = originalSet.filter {v-> v > 15}
+    assert(filteredSet.size() == 2)
+    assert(filteredSet.contains(20) && filteredSet.contains(30) && !filteredSet.contains(10))
+
+    val mappedArr = originalSet.map<Int>({|v: Int| v * 2 })
+    assert(mappedArr is Array<Int>)
+    assert(mappedArr.size() == 3)
+
+    assert(originalSet.firstOrNull() != null)
+    assert(originalSet.any() == true)
+    assert(originalSet.any {|v| v == 20} == true)
+    assert(originalSet.any {|v| v == 99} == false)
+    assert(originalSet.all {|v| v >= 10} == true)
+    assert(originalSet.all {|v| v > 20} == false)
+    assert(originalSet.none() == false)
+    assert(originalSet.none {|v| v < 0} == true)
+    assert(originalSet.none {|v| v == 20} == false)
+
+    val emptySet = Set<Int>()
+    assert(emptySet.isEmpty() == true)
+    assert(emptySet.firstOrNull() == null)
+    assert(emptySet.any() == false)
+    assert(emptySet.none() == true)
+
     println("Passed ${__FUNC__}")
 }
 

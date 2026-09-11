@@ -386,9 +386,12 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 					}
 					default: {
 						assert(temp->kind == NodeType::CALL);
-						static_cast<CallNode *>(temp)->caller = node;
-						static_cast<CallNode *>(temp)->accessNullable =
-						    accessNullable;
+						auto callNode = static_cast<CallNode *>(temp);
+						callNode->caller = node;
+						callNode->accessNullable = accessNullable;
+						if (callNode->inputGenericArguments) {
+							callNode->inputGenericArguments->isFunction = true;
+						}
 						node = temp;
 						break;
 					}
@@ -580,6 +583,7 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			        classDeclaration->getName(in_data)),
 			    std::move(arguments), context.justFindStatic, !isForceNonNull,
 			    false, std::move(argumentNames));
+			callNode->inputGenericArguments = classDeclaration;
 			if (isForceNonNull) {
 				callNode->isForceNonNull = true;
 			}

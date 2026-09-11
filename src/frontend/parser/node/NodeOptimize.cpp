@@ -134,6 +134,32 @@ ExprNode *WhileNode::resolve(in_func) {
 
 ExprNode *WhileNode::optimize(in_func) {
 	condition = static_cast<HasClassIdNode *>(condition->optimize(in_data));
+	switch (condition->classId) {
+		case Autolang::DefaultClass::intClassId: {
+			auto zeroNode =
+			    context.constValuePool.push(condition->line, (int64_t)0);
+			auto binaryNode = context.binaryNodePool.push(
+			    condition->line, 0, context.currentClassId,
+			    Lexer::TokenType::NOTEQ, condition, zeroNode);
+			auto resolved = binaryNode->resolve(in_data);
+			condition =
+			    static_cast<HasClassIdNode *>(resolved->optimize(in_data));
+			break;
+		}
+		case Autolang::DefaultClass::floatClassId: {
+			auto zeroNode =
+			    context.constValuePool.push(condition->line, (double)0.0);
+			auto binaryNode = context.binaryNodePool.push(
+			    condition->line, 0, context.currentClassId,
+			    Lexer::TokenType::NOTEQ, condition, zeroNode);
+			auto resolved = binaryNode->resolve(in_data);
+			condition =
+			    static_cast<HasClassIdNode *>(resolved->optimize(in_data));
+			break;
+		}
+		default:
+			break;
+	}
 	if (condition->classId != Autolang::DefaultClass::boolClassId)
 		throwError("Cannot use expression of type '" +
 		           condition->getClassName(in_data) +
@@ -144,6 +170,8 @@ ExprNode *WhileNode::optimize(in_func) {
 
 ExprNode *WhileNode::copy(in_func) {
 	auto newNode = context.whilePool.push(line);
+	newNode->condition =
+	    static_cast<HasClassIdNode *>(condition->copy(in_data));
 	newNode->body.nodes.reserve(body.nodes.size());
 	for (auto node : body.nodes) {
 		newNode->body.nodes.push_back(node->copy(in_data));

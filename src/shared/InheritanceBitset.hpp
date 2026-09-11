@@ -46,7 +46,9 @@ class InheritanceBitset {
 	inline uint32_t getSize() { return size; }
 	void set(uint32_t index) {
 		uint32_t bitPosition = index >> 6;
-		assert(bitPosition < size);
+		if (bitPosition >= size) {
+			resize(index + 1);
+		}
 		bits[bitPosition] |= static_cast<uint64_t>(1) << (index & 63);
 	}
 	bool get(uint32_t index) {

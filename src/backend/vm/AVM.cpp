@@ -475,4 +475,4 @@ uint32_t AVM::get_u32(uint8_t *code, uint32_t &ip) {
 #include "backend/vm/AVM_run_switch.cpp"
 #endif
 
-#endif
+#endif

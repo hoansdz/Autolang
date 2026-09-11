@@ -1,0 +1,5 @@
+fun testRuntimeArrayModuloAssignZero(): Void {
+	val arr = [100]
+	arr[0] %= 0
+}
+testRuntimeArrayModuloAssignZero()

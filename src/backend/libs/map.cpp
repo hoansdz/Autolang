@@ -1,4 +1,4 @@
-﻿#ifndef LIBS_MAP_CPP
+#ifndef LIBS_MAP_CPP
 #define LIBS_MAP_CPP
 
 #include "map.hpp"
@@ -711,6 +711,140 @@ std::string to_string(ANotifier &notifier, AObject *obj) {
 
 AObject *to_string(NativeFuncInData) {
 	return notifier.createString(to_string(notifier, args[0]));
+}
+
+AObject *clone(NativeFuncInData) {
+	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
+	AObject *newObj = constructor(notifier, args[0]->type, hashMapData->type);
+	newObj->flags |= AObject::Flags::OBJ_IS_MAP;
+	auto newMapData = static_cast<AHashMap *>(newObj->data->data);
+
+	switch (hashMapData->type) {
+		case DefaultClass::intClassId: {
+			auto m1 = static_cast<IntHashMap *>(hashMapData->data);
+			auto m2 = static_cast<IntHashMap *>(newMapData->data);
+			for (auto &[k, v] : *m1) {
+				v->retain();
+				m2->insert({k, v});
+			}
+			notifier.addManagedMemory(m1->size() * 32);
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			auto m1 = static_cast<FloatHashMap *>(hashMapData->data);
+			auto m2 = static_cast<FloatHashMap *>(newMapData->data);
+			for (auto &[k, v] : *m1) {
+				v->retain();
+				m2->insert({k, v});
+			}
+			notifier.addManagedMemory(m1->size() * 32);
+			break;
+		}
+		case DefaultClass::stringClassId: {
+			auto m1 = static_cast<StringHashMap *>(hashMapData->data);
+			auto m2 = static_cast<StringHashMap *>(newMapData->data);
+			for (auto &[k, v] : *m1) {
+				k->retain();
+				v->retain();
+				m2->insert({k, v});
+			}
+			notifier.addManagedMemory(m1->size() * 32);
+			break;
+		}
+		default: {
+			auto m1 = static_cast<ObjectHashMap *>(hashMapData->data);
+			auto m2 = static_cast<ObjectHashMap *>(newMapData->data);
+			for (auto &[k, v] : *m1) {
+				k->retain();
+				v->retain();
+				m2->insert({k, v});
+			}
+			notifier.addManagedMemory(m1->size() * 32);
+			break;
+		}
+	}
+	return newObj;
+}
+
+AObject *filter(NativeFuncInData) {
+	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
+	auto funcObject = args[1];
+
+	AObject *newObj = constructor(notifier, args[0]->type, hashMapData->type);
+	newObj->flags |= AObject::Flags::OBJ_IS_MAP;
+	auto newMapData = static_cast<AHashMap *>(newObj->data->data);
+
+	switch (hashMapData->type) {
+		case DefaultClass::intClassId: {
+			auto m1 = static_cast<IntHashMap *>(hashMapData->data);
+			auto m2 = static_cast<IntHashMap *>(newMapData->data);
+			for (auto &[k, v] : *m1) {
+				auto keyObj = notifier.createInt(k);
+				keyObj->retain();
+				auto res = notifier.callFunctionObject(funcObject, keyObj, v);
+				notifier.release(keyObj);
+				if (notifier.hasException()) return nullptr;
+				if (res == notifier.getTrueObject()) {
+					v->retain();
+					m2->insert({k, v});
+					notifier.addManagedMemory(32);
+				}
+				notifier.release(res);
+			}
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			auto m1 = static_cast<FloatHashMap *>(hashMapData->data);
+			auto m2 = static_cast<FloatHashMap *>(newMapData->data);
+			for (auto &[k, v] : *m1) {
+				auto keyObj = notifier.createFloat(k);
+				keyObj->retain();
+				auto res = notifier.callFunctionObject(funcObject, keyObj, v);
+				notifier.release(keyObj);
+				if (notifier.hasException()) return nullptr;
+				if (res == notifier.getTrueObject()) {
+					v->retain();
+					m2->insert({k, v});
+					notifier.addManagedMemory(32);
+				}
+				notifier.release(res);
+			}
+			break;
+		}
+		case DefaultClass::stringClassId: {
+			auto m1 = static_cast<StringHashMap *>(hashMapData->data);
+			auto m2 = static_cast<StringHashMap *>(newMapData->data);
+			for (auto &[k, v] : *m1) {
+				auto res = notifier.callFunctionObject(funcObject, k, v);
+				if (notifier.hasException()) return nullptr;
+				if (res == notifier.getTrueObject()) {
+					k->retain();
+					v->retain();
+					m2->insert({k, v});
+					notifier.addManagedMemory(32);
+				}
+				notifier.release(res);
+			}
+			break;
+		}
+		default: {
+			auto m1 = static_cast<ObjectHashMap *>(hashMapData->data);
+			auto m2 = static_cast<ObjectHashMap *>(newMapData->data);
+			for (auto &[k, v] : *m1) {
+				auto res = notifier.callFunctionObject(funcObject, k, v);
+				if (notifier.hasException()) return nullptr;
+				if (res == notifier.getTrueObject()) {
+					k->retain();
+					v->retain();
+					m2->insert({k, v});
+					notifier.addManagedMemory(32);
+				}
+				notifier.release(res);
+			}
+			break;
+		}
+	}
+	return newObj;
 }
 
 } // namespace map

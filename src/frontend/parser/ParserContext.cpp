@@ -568,7 +568,7 @@ DeclarationNode *ParserContext::makeDeclarationNode(
 		context.currentClosureNode->newDeclaration.push_back(node);
 		node->classId = Autolang::DefaultClass::nullClassId;
 		node->id = loadId ? context.currentClosureNode->declarationCount++ : 0;
-		if (context.currentClassId) {
+		if (context.currentClassId && !context.preloadGenericData) {
 			auto classInfo = context.classInfo[*context.currentClassId];
 			classInfo->allDeclarationNode.push_back(node);
 		}
@@ -606,7 +606,8 @@ DeclarationNode *ParserContext::makeDeclarationNode(
 	                             classDeclaration, isVal, isGlobal, nullable);
 	node->classId = Autolang::DefaultClass::nullClassId;
 	node->id = loadId ? funcInfo->declaration++ : 0;
-	if (context.currentClassId) {
+	if (context.currentClassId && !context.preloadGenericData &&
+	    (!funcInfo || !funcInfo->genericData)) {
 		auto classInfo = context.classInfo[*context.currentClassId];
 		classInfo->allDeclarationNode.push_back(node);
 	}

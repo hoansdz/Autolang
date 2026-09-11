@@ -3,6 +3,7 @@
 
 #include "Node.hpp"
 #include "frontend/parser/ClassDeclaration.hpp"
+#include "frontend/parser/Debugger.hpp"
 #include "frontend/parser/ParserContext.hpp"
 #include "shared/DefaultClass.hpp"
 
@@ -166,9 +167,10 @@ void CreateArrayNode::optimizeAndInferenceType(in_func) {
 			} else {
 				valueClassDeclaration =
 				    context.classDeclarationAllocator.push();
-				auto classInfo = context.classInfo[value->classId];
-				valueClassDeclaration->inputClassId =
-				    std::vector{valueClassDeclaration};
+				valueClassDeclaration->classId = value->classId;
+				valueClassDeclaration->baseClassLexerStringId =
+				    context.createLexerStringIfNotExists(
+				        compile.classes[value->classId]->getName(compile));
 				valueClassDeclaration->line = line;
 				valueClassDeclaration->isGeneric = false;
 			}
@@ -186,10 +188,16 @@ void CreateArrayNode::optimizeAndInferenceType(in_func) {
 					                              DefaultClass::floatClassId);
 					continue;
 				}
+				if (*valueMustBeClassId == DefaultClass::boolClassId) {
+					valueMustBeClassId = DefaultClass::intClassId;
+					mustReload = true;
+					continue;
+				}
 				break;
 			}
 			case DefaultClass::floatClassId: {
-				if (*valueMustBeClassId == DefaultClass::intClassId) {
+				if (*valueMustBeClassId == DefaultClass::intClassId ||
+				    *valueMustBeClassId == DefaultClass::boolClassId) {
 					valueMustBeClassId = DefaultClass::floatClassId;
 					value = context.castPool.push(value,
 					                              DefaultClass::floatClassId);
@@ -245,6 +253,14 @@ void CreateArrayNode::optimizeAndInferenceType(in_func) {
 					}
 					continue;
 				}
+				case DefaultClass::boolClassId: {
+					if (*valueMustBeClassId == DefaultClass::intClassId) {
+						value = context.castPool.push(value, DefaultClass::intClassId);
+					} else if (*valueMustBeClassId == DefaultClass::floatClassId) {
+						value = context.castPool.push(value, DefaultClass::floatClassId);
+					}
+					continue;
+				}
 				case DefaultClass::nullClassId: {
 					switch (value->kind) {
 						case NodeType::CREATE_SET: {
@@ -278,6 +294,11 @@ void CreateArrayNode::optimizeAndInferenceType(in_func) {
 		}
 	}
 	valueClassDeclaration->classId = *valueMustBeClassId;
+	if (valueClassDeclaration->baseClassLexerStringId == 0) {
+		valueClassDeclaration->baseClassLexerStringId =
+		    context.createLexerStringIfNotExists(
+		        compile.classes[*valueMustBeClassId]->getName(compile));
+	}
 	classDeclaration = context.classDeclarationAllocator.push();
 	classDeclaration->baseClassLexerStringId = lexerIdArray;
 	classDeclaration->inputClassId = std::vector{valueClassDeclaration};
@@ -320,8 +341,14 @@ ExprNode *CreateArrayNode::copy(in_func) {
 		    static_cast<HasClassIdNode *>(value->copy(in_data)));
 	}
 	if (classDeclaration) {
+		if (classDeclaration->isGeneric) {
+			resetClassDeclTree(classDeclaration);
+		}
 		if (!classDeclaration->classId) {
 			classDeclaration->template load<false>(in_data);
+			if (!classDeclaration->classId) {
+				classDeclaration->template load<true>(in_data);
+			}
 			if (!classDeclaration->classId) {
 				throwError("Bug: DeclarationNode copy: Unresolved class " +
 				           classDeclaration->getName(in_data) +
@@ -329,7 +356,9 @@ ExprNode *CreateArrayNode::copy(in_func) {
 				           "declaration was not resolved before copy.");
 			}
 			newNode->classId = *classDeclaration->classId;
-			classDeclaration->classId = std::nullopt;
+			if (classDeclaration->isGeneric) {
+				resetClassDeclTree(classDeclaration);
+			}
 		} else {
 			newNode->classId = *classDeclaration->classId;
 		}

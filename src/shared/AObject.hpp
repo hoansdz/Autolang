@@ -168,6 +168,19 @@ struct AObject {
 			flags = AObject::Flags::OBJ_IS_FREE;
 			return;
 		}
+#ifdef __EMSCRIPTEN__
+		if (flags & Flags::OBJ_IS_JS_OBJECT) {
+			delete jsObject;
+			flags = AObject::Flags::OBJ_IS_FREE;
+			return;
+		}
+#elif __PYBIND11__
+		if (flags & Flags::OBJ_IS_PY_OBJECT) {
+			delete pyObject;
+			flags = AObject::Flags::OBJ_IS_FREE;
+			return;
+		}
+#endif
 		if (flags & Flags::OBJ_IS_ARRAY) {
 			if (array) {
 				if (array->key != Autolang::DefaultClass::intClassId &&

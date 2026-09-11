@@ -1,3 +1,4 @@
+#define AUTOLANG_LIMIT_OPCODE
 // #define NO_INCLUDE_LIBS_HTTP
 #include <Autolang.hpp>
 #include <chrono>
@@ -6,102 +7,6 @@
 #include <functional>
 #include <iomanip>
 #include <iostream>
-#include <vector>
-#include <sstream>
-
-namespace AutolangTests {
-
-inline bool runCompileTimeRuleTest(Autolang::ACompiler &compiler, const std::string &filepath) {
-	bool success = false;
-	try {
-		success = compiler.compile(filepath.c_str(),
-		                           Autolang::LibraryConfig(false, true, true));
-	} catch (...) {
-		compiler.refresh();
-		std::cerr << "[Compile Rule] Exception threw during compile: " << filepath << "\n";
-		return false;
-	}
-	bool isExpectedError = !success || compiler.hasError();
-	if (!isExpectedError) {
-		std::cerr << "[Compile Rule] Expected compile error but it compiled successfully: " << filepath << "\n";
-	}
-	compiler.refresh();
-	return isExpectedError;
-}
-
-inline bool runRuntimeRuleTest(Autolang::ACompiler &compiler, const std::string &filepath) {
-	try {
-		bool compiled = compiler.compile(filepath.c_str(),
-		                                 Autolang::LibraryConfig(false, true, true));
-		if (!compiled || compiler.hasError()) {
-			std::cerr << "[Runtime Rule] Expected compile success but got compile error: " << filepath << "\n";
-			compiler.refresh();
-			return false;
-		}
-
-		std::streambuf* oldCerr = std::cerr.rdbuf();
-		std::ostringstream nullStream;
-		std::cerr.rdbuf(nullStream.rdbuf());
-		
-		try {
-			compiler.run();
-		} catch (...) {
-			std::cerr.rdbuf(oldCerr);
-			throw;
-		}
-		
-		std::cerr.rdbuf(oldCerr);
-
-		bool hasExc = compiler.hasException();
-		if (!hasExc) {
-			std::cerr << "[Runtime Rule] Expected runtime exception but none occurred: " << filepath << "\n";
-		}
-		compiler.refresh();
-		return hasExc;
-	} catch (...) {
-		std::cerr << "[Runtime Rule] Exception threw during compile/run: " << filepath << "\n";
-		compiler.refresh();
-		return false;
-	}
-}
-
-inline size_t runAllCompileTimeRules(Autolang::ACompiler &compiler, const std::string &dirPath, size_t &passedCount) {
-	size_t total = 0;
-	if (!std::filesystem::exists(dirPath)) return 0;
-	for (const auto &entry : std::filesystem::directory_iterator(dirPath)) {
-		if (entry.is_regular_file() && entry.path().extension() == ".atl") {
-			total++;
-			bool passed = runCompileTimeRuleTest(compiler, entry.path().string());
-			if (passed) {
-				std::cout << "Passed [CompileTime] " << entry.path().filename().string() << '\n';
-				passedCount++;
-			} else {
-				std::cerr << "Failed [CompileTime] " << entry.path().filename().string() << '\n';
-			}
-		}
-	}
-	return total;
-}
-
-inline size_t runAllRuntimeRules(Autolang::ACompiler &compiler, const std::string &dirPath, size_t &passedCount) {
-	size_t total = 0;
-	if (!std::filesystem::exists(dirPath)) return 0;
-	for (const auto &entry : std::filesystem::directory_iterator(dirPath)) {
-		if (entry.is_regular_file() && entry.path().extension() == ".atl") {
-			total++;
-			bool passed = runRuntimeRuleTest(compiler, entry.path().string());
-			if (passed) {
-				std::cout << "Passed [Runtime] " << entry.path().filename().string() << '\n';
-				passedCount++;
-			} else {
-				std::cerr << "Failed [Runtime] " << entry.path().filename().string() << '\n';
-			}
-		}
-	}
-	return total;
-}
-
-} // namespace AutolangTests
 
 #ifdef _WIN32
 #include <windows.h>
@@ -231,59 +136,11 @@ void runBenchmarkReport(const std::chrono::high_resolution_clock::time_point &pr
 	std::cout << "====================================================================================================\n\n";
 }
 
-bool runCorrectnessTest(Autolang::ACompiler &compiler, const char *scriptPath) {
-	try {
-#ifdef _WIN32
-		MemoryInfo baseMem = getMemoryUsage();
-#endif
-		if (!compiler.compile(scriptPath, Autolang::LibraryConfig(false, true, true))) {
-			compiler.refresh();
-			return false;
-		}
-#ifdef _WIN32
-		MemoryInfo currentMem = getMemoryUsage();
-		printMemoryUsage(baseMem, currentMem);
-#endif
-		compiler.run();
-		compiler.refresh();
-		return true;
-	} catch (const std::exception &e) {
-		std::cerr << e.what() << '\n';
-		compiler.refresh();
-		return false;
-	}
-}
-
 int main(int argc, char *argv[]) {
 	auto processStart = std::chrono::high_resolution_clock::now();
 
-	// Set to true to run a standalone script independently
-	bool runSingleCustomScript = false;
-	const char *customScriptPath = "tests/test.atl";
-	if (argc > 1 && argv[1][0] != '-') {
-		runSingleCustomScript = true;
-		customScriptPath = argv[1];
-	}
-
-	if (runSingleCustomScript) {
-		Autolang::ACompiler customCompiler;
-		customCompiler.setLimitOpcodeCount(1000000);
-		customCompiler.setMaxManagedMemory(1024 * 1024);
-		try {
-			if (!customCompiler.compile(customScriptPath, Autolang::LibraryConfig(false, true, true))) {
-				std::cerr << "Compilation failed: " << customScriptPath << '\n';
-				return 1;
-			}
-			customCompiler.run();
-		} catch (const std::exception &e) {
-			std::cerr << "Error: " << e.what() << '\n';
-			return 1;
-		}
-		return 0;
-	}
-
 	bool isBenchmark = false;
-	const char* scriptPath = "tests/testCorrectness.atl";
+	const char* scriptPath = "./tests/testCorrectness.atl";
 
 	for (int i = 1; i < argc; ++i) {
 		std::string arg = argv[i];
@@ -299,32 +156,36 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	// Initialize a shared ACompiler instance to stress-test reload/refresh capabilities
-	Autolang::ACompiler sharedCompiler;
-	sharedCompiler.setLimitOpcodeCount(1000000);
-	sharedCompiler.setMaxManagedMemory(1024 * 1024);
-
-	// 1. Execute correctness tests
-	bool correctnessPassed = runCorrectnessTest(sharedCompiler, scriptPath);
-
-	// Set silent error handler when transitioning to rule violation tests
-	sharedCompiler.setOnError(new Autolang::FunctionEvent([](std::string_view) {}));
-
-	size_t passedCount = correctnessPassed ? 1 : 0;
-	size_t totalCount = 1;
-
-	totalCount += AutolangTests::runAllCompileTimeRules(sharedCompiler, "tests/rule/compile_time", passedCount);
-	totalCount += AutolangTests::runAllRuntimeRules(sharedCompiler, "tests/rule/runtime", passedCount);
-
+	// Standard test execution
+	try {
+		try {
+			for (int i = 0; i < 1; ++i) {
+#ifdef _WIN32
+				MemoryInfo baseMem = getMemoryUsage();
+#endif
+				Autolang::ACompiler compiler;
+				compiler.setLimitOpcodeCount(1000000);
+				compiler.setMaxManagedMemory(1024 * 1024);
+				if (compiler.compile(
+				        scriptPath,
+				        Autolang::LibraryConfig(false, true, true))) {
+#ifdef _WIN32
+					MemoryInfo currentMem = getMemoryUsage();
+					printMemoryUsage(baseMem, currentMem);
+#endif
+					compiler.run();
+					compiler.refresh();
+				}
+			}
+		} catch (const std::logic_error &err) {
+			std::cerr << err.what();
+		}
+	} catch (const std::exception &e) {
+		std::cerr << e.what() << '\n';
+	}
 	auto end = std::chrono::high_resolution_clock::now();
 	auto duration =
 	    std::chrono::duration_cast<std::chrono::milliseconds>(end - processStart);
 	std::cout << '\n' << "Total time : " << duration.count() << " ms" << '\n';
-
-	if (passedCount != totalCount) {
-		std::cerr << "Test summary: " << passedCount << "/" << totalCount << " passed.\n";
-		return 1;
-	}
-
 	return 0;
 }

@@ -8,9 +8,17 @@ namespace Autolang {
 
 ExprNode *BlockNode::resolve(in_func) {
 	ParserContext::mode = mode;
-	for (size_t i = 0; i < nodes.size(); ++i) {
-		auto &node = nodes[i];
-		node = node->resolve(in_data);
+	size_t i = 0;
+	while (i < nodes.size()) {
+		nodes[i] = nodes[i]->resolve(in_data);
+		if (nodes[i]->kind == NodeType::BLOCK) {
+			auto subBlock = static_cast<BlockNode *>(nodes[i]);
+			auto subNodes = std::move(subBlock->nodes);
+			nodes.erase(nodes.begin() + i);
+			nodes.insert(nodes.begin() + i, subNodes.begin(), subNodes.end());
+			continue;
+		}
+		++i;
 	}
 	return this;
 }

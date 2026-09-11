@@ -90,7 +90,8 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 			}
 		} else {
 			classDeclaration =
-			    loadClassDeclaration(in_data, i, token->line, false);
+			    loadClassDeclaration(in_data, i, token->line, false,
+			                         closeBracket != Lexer::TokenType::MINUS_GT);
 			if (!classDeclaration->isGenerics(in_data)) {
 				context.allClassDeclarations.push_back(classDeclaration);
 			}
@@ -170,6 +171,9 @@ loadListDeclaration<Lexer::TokenType::RPAREN, true, true>(in_func, size_t &i,
 template Parameter *
 loadListDeclaration<Autolang::Lexer::OR, false, false>(in_func, size_t &i,
                                                        bool allowVar);
+template Parameter *
+loadListDeclaration<Lexer::TokenType::MINUS_GT, false, false>(in_func, size_t &i,
+                                                              bool allowVar);
 
 } // namespace Autolang
 

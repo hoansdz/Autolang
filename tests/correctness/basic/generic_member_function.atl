@@ -1,0 +1,131 @@
+class Helper {
+    fun <T> wrap(value: T): Array<T> {
+        val arr: Array<T> = []
+        arr.add(value)
+        return arr
+    }
+
+    fun <K, V> makePair(k: K, v: V): Pair<K, V> {
+        return k to v
+    }
+
+    static fun <R> echoStatic(x: R): R {
+        return x
+    }
+}
+
+class Container<T>(val item: T) {
+    fun getItem(): T {
+        return this.item
+    }
+
+    fun <K> pairWith(other: K): Pair<T, K> {
+        return this.item to other
+    }
+
+    fun <A, B> nestPairs(a: A, b: B): Pair<Pair<T, A>, B> {
+        val inner: Pair<T, A> = this.item to a
+        return inner to b
+    }
+
+    static fun <K> log(msg: K): K {
+        return msg
+    }
+
+    static fun <K, V> logPair(k: K, v: V): Pair<K, V> {
+        return k to v
+    }
+}
+
+class AdvancedGenericHelper {
+    fun <A, B, C> combineTriple(a: A, b: B, c: C): Pair<Pair<A, B>, C> {
+        val firstTwo: Pair<A, B> = a to b
+        return firstTwo to c
+    }
+}
+
+fun testNormalClassGenericMethod() {
+    val h = Helper()
+    
+    val arrInt = h.wrap<Int>(42)
+    assert(arrInt.size() == 1)
+    assert(arrInt[0] == 42)
+
+    val arrStr = h.wrap<String>("AutoLang")
+    assert(arrStr.size() == 1)
+    assert(arrStr[0] == "AutoLang")
+
+    val p1 = h.makePair<String, Int>("age", 30)
+    assert(p1.first == "age")
+    assert(p1.second == 30)
+
+    val p2 = h.makePair<Int, Boolean>(1, true)
+    assert(p2.first == 1)
+    assert(p2.second == true)
+
+    val staticInt = Helper.echoStatic<Int>(999)
+    assert(staticInt == 999)
+
+    val staticStr = Helper.echoStatic<String>("StaticGeneric")
+    assert(staticStr == "StaticGeneric")
+}
+
+fun testGenericClassWithGenericMethod() {
+    val boxInt = Container<Int>(10)
+    assert(boxInt.getItem() == 10)
+
+    val pairIntString = boxInt.pairWith<String>("dollars")
+    assert(pairIntString.first == 10)
+    assert(pairIntString.second == "dollars")
+
+    val pairIntBool = boxInt.pairWith<Boolean>(true)
+    assert(pairIntBool.first == 10)
+    assert(pairIntBool.second == true)
+
+    val boxStr = Container<String>("Hello")
+    val pairStrInt = boxStr.pairWith<Int>(2026)
+    assert(pairStrInt.first == "Hello")
+    assert(pairStrInt.second == 2026)
+
+    val pairStrFloat = boxStr.pairWith<Float>(3.14)
+    assert(pairStrFloat.first == "Hello")
+    assert(pairStrFloat.second == 3.14)
+}
+
+fun testStaticClassGenericMethod() {
+    val msg = Container<Int>.log<String>("Class<T>.log<K> testing")
+    assert(msg == "Class<T>.log<K> testing")
+
+    val num = Container<String>.log<Int>(12345)
+    assert(num == 12345)
+
+    val p = Container<Float>.logPair<String, Boolean>("isActive", true)
+    assert(p.first == "isActive")
+    assert(p.second == true)
+}
+
+fun testNestedGenericMethodInGenericClass() {
+    val container = Container<Int>(100)
+    val nestedPair = container.nestPairs<String, Boolean>("nestedItem", true)
+    assert(nestedPair.first.first == 100)
+    assert(nestedPair.first.second == "nestedItem")
+    assert(nestedPair.second == true)
+
+    val strContainer = Container<String>("root")
+    val strNested = strContainer.nestPairs<Int, Float>(99, 1.23)
+    assert(strNested.first.first == "root")
+    assert(strNested.first.second == 99)
+    assert(strNested.second == 1.23)
+
+    val adv = AdvancedGenericHelper()
+    val triple = adv.combineTriple<Int, String, Boolean>(1, "second", false)
+    assert(triple.first.first == 1)
+    assert(triple.first.second == "second")
+    assert(triple.second == false)
+}
+
+testNormalClassGenericMethod()
+testGenericClassWithGenericMethod()
+testStaticClassGenericMethod()
+testNestedGenericMethodInGenericClass()
+println("Generic member function tests passed successfully!")

@@ -3,6 +3,7 @@
 
 #include "Node.hpp"
 #include "frontend/parser/ClassDeclaration.hpp"
+#include "frontend/parser/Debugger.hpp"
 #include "frontend/parser/ParserContext.hpp"
 #include "shared/DefaultClass.hpp"
 
@@ -70,6 +71,21 @@ ExprNode *CreateMapNode::optimize(in_func) {
 				}
 				break;
 			}
+			case DefaultClass::boolClassId: {
+				switch (keyMustBeClassId) {
+					case DefaultClass::intClassId: {
+						key = context.castPool.push(key,
+						                            DefaultClass::intClassId);
+						goto loadValue;
+					}
+					case DefaultClass::floatClassId: {
+						key = context.castPool.push(
+						    key, DefaultClass::floatClassId);
+						goto loadValue;
+					}
+				}
+				break;
+			}
 			case DefaultClass::nullClassId: {
 				if (classInfo->genericTypeId[0]->nullable) {
 					goto loadValue;
@@ -121,6 +137,21 @@ ExprNode *CreateMapNode::optimize(in_func) {
 					value = context.castPool.push(value,
 					                              DefaultClass::floatClassId);
 					continue;
+				}
+				break;
+			}
+			case DefaultClass::boolClassId: {
+				switch (valueMustBeClassId) {
+					case DefaultClass::intClassId: {
+						value = context.castPool.push(value,
+						                              DefaultClass::intClassId);
+						continue;
+					}
+					case DefaultClass::floatClassId: {
+						value = context.castPool.push(
+						    value, DefaultClass::floatClassId);
+						continue;
+					}
 				}
 				break;
 			}
@@ -198,8 +229,10 @@ void CreateMapNode::optimizeAndInferenceType(in_func) {
 			} else {
 				keyClassDeclaration =
 				    context.classDeclarationAllocator.push();
-				keyClassDeclaration->inputClassId =
-				    std::vector{keyClassDeclaration};
+				keyClassDeclaration->classId = key->classId;
+				keyClassDeclaration->baseClassLexerStringId =
+				    context.createLexerStringIfNotExists(
+				        compile.classes[key->classId]->getName(compile));
 				keyClassDeclaration->line = line;
 				keyClassDeclaration->isGeneric = false;
 			}
@@ -211,16 +244,35 @@ void CreateMapNode::optimizeAndInferenceType(in_func) {
 						key = context.castPool.push(key, DefaultClass::floatClassId);
 						break;
 					}
+					if (*keyMustBeClassId == DefaultClass::boolClassId) {
+						keyMustBeClassId = DefaultClass::intClassId;
+						mustReloadKey = true;
+						break;
+					}
 					goto keyMismatch;
 				}
 				case DefaultClass::floatClassId: {
-					if (*keyMustBeClassId == DefaultClass::intClassId) {
+					if (*keyMustBeClassId == DefaultClass::intClassId ||
+					    *keyMustBeClassId == DefaultClass::boolClassId) {
 						keyMustBeClassId = DefaultClass::floatClassId;
 						key = context.castPool.push(key, DefaultClass::floatClassId);
 						mustReloadKey = true;
 						break;
 					}
 					goto keyMismatch;
+				}
+				case DefaultClass::boolClassId: {
+					switch (*keyMustBeClassId) {
+						case DefaultClass::intClassId: {
+							key = context.castPool.push(key, DefaultClass::intClassId);
+							break;
+						}
+						case DefaultClass::floatClassId: {
+							key = context.castPool.push(key, DefaultClass::floatClassId);
+							break;
+						}
+					}
+					break;
 				}
 				default:
 				keyMismatch:
@@ -284,8 +336,10 @@ void CreateMapNode::optimizeAndInferenceType(in_func) {
 			} else {
 				valueClassDeclaration =
 				    context.classDeclarationAllocator.push();
-				valueClassDeclaration->inputClassId =
-				    std::vector{valueClassDeclaration};
+				valueClassDeclaration->classId = value->classId;
+				valueClassDeclaration->baseClassLexerStringId =
+				    context.createLexerStringIfNotExists(
+				        compile.classes[value->classId]->getName(compile));
 				valueClassDeclaration->line = line;
 				valueClassDeclaration->isGeneric = false;
 			}
@@ -301,10 +355,16 @@ void CreateMapNode::optimizeAndInferenceType(in_func) {
 					value = context.castPool.push(value, DefaultClass::floatClassId);
 					continue;
 				}
+				if (*valueMustBeClassId == DefaultClass::boolClassId) {
+					valueMustBeClassId = DefaultClass::intClassId;
+					mustReloadValue = true;
+					continue;
+				}
 				break;
 			}
 			case DefaultClass::floatClassId: {
-				if (*valueMustBeClassId == DefaultClass::intClassId) {
+				if (*valueMustBeClassId == DefaultClass::intClassId ||
+				    *valueMustBeClassId == DefaultClass::boolClassId) {
 					valueMustBeClassId = DefaultClass::floatClassId;
 					value = context.castPool.push(value, DefaultClass::floatClassId);
 					mustReloadValue = true;
@@ -357,7 +417,26 @@ void CreateMapNode::optimizeAndInferenceType(in_func) {
 					}
 					break;
 				}
+				case DefaultClass::boolClassId: {
+					if (*keyMustBeClassId == DefaultClass::intClassId) {
+						key = context.castPool.push(key, DefaultClass::intClassId);
+					} else if (*keyMustBeClassId == DefaultClass::floatClassId) {
+						key = context.castPool.push(key, DefaultClass::floatClassId);
+					}
+					break;
+				}
 				case DefaultClass::nullClassId: {
+					if (key->kind == NodeType::CREATE_SET) {
+						auto setNode = static_cast<CreateSetNode *>(key);
+						if (setNode->values.empty() &&
+						    compile.classes[*keyMustBeClassId]->genericBaseClassId ==
+						        DefaultClass::mapClassId) {
+							key = context.createMapPool.push(
+							    key->line, nullptr,
+							    std::vector<std::pair<HasClassIdNode *,
+							                          HasClassIdNode *>>());
+						}
+					}
 					key->classId = *keyMustBeClassId;
 					key->classDeclaration = keyClassDeclaration;
 					key = static_cast<HasClassIdNode *>(key->optimize(in_data));
@@ -375,6 +454,14 @@ void CreateMapNode::optimizeAndInferenceType(in_func) {
 			switch (value->classId) {
 				case DefaultClass::intClassId: {
 					if (*valueMustBeClassId == DefaultClass::floatClassId) {
+						value = context.castPool.push(value, DefaultClass::floatClassId);
+					}
+					break;
+				}
+				case DefaultClass::boolClassId: {
+					if (*valueMustBeClassId == DefaultClass::intClassId) {
+						value = context.castPool.push(value, DefaultClass::intClassId);
+					} else if (*valueMustBeClassId == DefaultClass::floatClassId) {
 						value = context.castPool.push(value, DefaultClass::floatClassId);
 					}
 					break;
@@ -401,7 +488,17 @@ void CreateMapNode::optimizeAndInferenceType(in_func) {
 	}
 
 	keyClassDeclaration->classId = *keyMustBeClassId;
+	if (keyClassDeclaration->baseClassLexerStringId == 0) {
+		keyClassDeclaration->baseClassLexerStringId =
+		    context.createLexerStringIfNotExists(
+		        compile.classes[*keyMustBeClassId]->getName(compile));
+	}
 	valueClassDeclaration->classId = *valueMustBeClassId;
+	if (valueClassDeclaration->baseClassLexerStringId == 0) {
+		valueClassDeclaration->baseClassLexerStringId =
+		    context.createLexerStringIfNotExists(
+		        compile.classes[*valueMustBeClassId]->getName(compile));
+	}
 	classDeclaration = context.classDeclarationAllocator.push();
 	classDeclaration->baseClassLexerStringId = lexerIdMap;
 	classDeclaration->inputClassId = std::vector{keyClassDeclaration, valueClassDeclaration};
@@ -446,15 +543,23 @@ ExprNode *CreateMapNode::copy(in_func) {
 		    static_cast<HasClassIdNode *>(value->copy(in_data))));
 	}
 	if (classDeclaration) {
+		if (classDeclaration->isGeneric) {
+			resetClassDeclTree(classDeclaration);
+		}
 		if (!classDeclaration->classId) {
 			classDeclaration->template load<false>(in_data);
+			if (!classDeclaration->classId) {
+				classDeclaration->template load<true>(in_data);
+			}
 			if (!classDeclaration->classId) {
 				throwError("Bug: DeclarationNode copy: Unresolved class " +
 				           classDeclaration->getName(in_data) +
 				           "\nHint: Internal compiler error - class declaration was not resolved before copy.");
 			}
 			newNode->classId = *classDeclaration->classId;
-			classDeclaration->classId = std::nullopt;
+			if (classDeclaration->isGeneric) {
+				resetClassDeclTree(classDeclaration);
+			}
 		} else {
 			newNode->classId = *classDeclaration->classId;
 		}

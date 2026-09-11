@@ -172,6 +172,11 @@ inline py::object aobjectToPy(ANotifier &notifier, AObject *obj) {
 			if (obj->flags & AObject::Flags::OBJ_IS_MAP) {
 				return aobjectMapToPy(notifier, obj);
 			}
+#ifdef __PYBIND11__
+			if (obj->flags & AObject::Flags::OBJ_IS_PY_OBJECT) {
+				return *obj->pyObject;
+			}
+#endif
 
 			auto clazz = notifier.vm->data.classes[obj->type];
 
@@ -620,37 +625,22 @@ inline AObject *returnPyObjectToAObject(ANotifier &notifier,
 }
 
 inline AObject *callPyFunction(py::object *pyFunction, NativeFuncInData) {
-	py::tuple pyArgsTuple;
-	py::object pyThis = py::none();
-	size_t argsStartIndex = 0;
+	py::tuple pyArgsTuple(argSize);
 
-	if (notifier.callFrame->func->functionFlags &
-	    FunctionFlags::FUNC_IS_STATIC) {
-		pyArgsTuple = py::tuple(argSize);
-		argsStartIndex = 0;
-	} else {
-		pyArgsTuple = py::tuple(argSize - 1);
-		argsStartIndex = 1;
-		pyThis = aobjectToPy(notifier, args[0]);
-		if (notifier.hasException())
-			return nullptr;
-	}
-
-	for (size_t i = argsStartIndex; i < argSize; ++i) {
+	for (size_t i = 0; i < argSize; ++i) {
 		py::object pyArg = aobjectToPy(notifier, args[i]);
 		if (notifier.hasException())
 			return nullptr;
-		pyArgsTuple[i - argsStartIndex] = pyArg;
+		pyArgsTuple[i] = pyArg;
 	}
 
 	try {
-		py::object response;
-		if (argsStartIndex == 1) {
-			response = (*pyFunction)(pyThis, *pyArgsTuple);
-		} else { // Static function call
-			response = (*pyFunction)(*pyArgsTuple);
+		PyObject *result =
+		    PyObject_CallObject(pyFunction->ptr(), pyArgsTuple.ptr());
+		if (!result) {
+			throw py::error_already_set();
 		}
-
+		py::object response = py::reinterpret_steal<py::object>(result);
 		return returnPyObjectToAObject(notifier, response);
 
 	} catch (const py::error_already_set &e) {

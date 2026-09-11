@@ -137,6 +137,52 @@ fun testDeepNestedPipelineClosures() {
     println("Passed ${__FUNC__}")
 }
 
+fun helperRunClosure(a: Int, b: Int, c: (Int, Int) -> Int): Int = c(a, b)
+fun helperRunBlock(fn: () -> Int): Int = fn()
+
+fun testKotlinStyleClosures() {
+    // Explicit parameter types
+    val add1 = { x: Int, y: Int -> x + y }
+    assert(add1(3, 4) == 7)
+
+    // Inferred parameter types
+    val add2: (Int, Int) -> Int = { x, y -> x + y }
+    assert(add2(10, 20) == 30)
+
+    val doubleVal: (Int) -> Int = { x -> x * 2 }
+    assert(doubleVal(5) == 10)
+
+    // 0 parameters
+    val get42 = { -> 42 }
+    assert(get42() == 42)
+
+    // Trailing closure syntax
+    val res1 = helperRunClosure(5, 6) { a, b -> a * b }
+    assert(res1 == 30)
+
+    // Nested arrow closures
+    val outer = { a: Int -> { b: Int -> a + b } }
+    assert(outer(10)(20) == 30)
+
+    // Multi-line closure
+    val multi = { x: Int, y: Int ->
+        val temp = x * 2
+        temp + y
+    }
+    assert(multi(3, 4) == 10)
+
+    // Higher-order function as closure parameter
+    val applyFn = { x: Int, op: (Int) -> Int -> op(x) }
+    assert(applyFn(5) { it: Int -> it + 3 } == 8)
+
+    // 0-param block without arrow
+    val r0 = helperRunBlock { 100 }
+    assert(r0 == 100)
+
+    println("Passed ${__FUNC__}")
+}
+
 testFunctionClosures()
 testClassClosures()
-testDeepNestedPipelineClosures()
+testDeepNestedPipelineClosures()
+testKotlinStyleClosures()

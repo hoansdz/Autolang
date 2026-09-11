@@ -1,0 +1,5 @@
+fun testRuntimeModuloAssignZero(): Void {
+	var x = 100
+	x %= 0
+}
+testRuntimeModuloAssignZero()

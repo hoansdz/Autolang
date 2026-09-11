@@ -15,17 +15,173 @@ ExprNode *SetNode::resolve(in_func) {
 		auto result = static_cast<CallNode *>(detach);
 		if (result->nameId != lexerIdLRBRACKET)
 			return this;
-		if (op != Lexer::TokenType::EQUAL) {
-			throwError("Cannot perform read-modify-write operation on index "
-			           "access. Use direct assignment instead\nHint: Index "
-			           "access operations (like `arr[i] += val`) must be "
-			           "performed using direct assignment (`arr[i] = ...`).");
+		if (op == Lexer::TokenType::EQUAL) {
+			result->nameId = lexerIdset;
+			result->arguments.push_back(value);
+			detach = nullptr;
+			value = nullptr;
+			return result;
 		}
+
+		Lexer::TokenType binaryOp;
+		switch (op) {
+			case Lexer::TokenType::PLUS_EQUAL:
+				binaryOp = Lexer::TokenType::PLUS;
+				break;
+			case Lexer::TokenType::MINUS_EQUAL:
+				binaryOp = Lexer::TokenType::MINUS;
+				break;
+			case Lexer::TokenType::STAR_EQUAL:
+				binaryOp = Lexer::TokenType::STAR;
+				break;
+			case Lexer::TokenType::SLASH_EQUAL:
+				binaryOp = Lexer::TokenType::SLASH;
+				break;
+			case Lexer::TokenType::PERCENT_EQUAL:
+				binaryOp = Lexer::TokenType::PERCENT;
+				break;
+			default:
+				throwError("Cannot perform read-modify-write operation on index "
+				           "access with operator: " +
+				           Lexer::Token(0, op).toString(context));
+		}
+
+		auto isSimple = [](HasClassIdNode *node) -> bool {
+			if (!node) return false;
+			switch (node->kind) {
+				case NodeType::VAR:
+				case NodeType::CONST_VAL:
+					return true;
+				default:
+					return false;
+			}
+		};
+
+		auto cloneSimple = [&](HasClassIdNode *node) -> HasClassIdNode * {
+			switch (node->kind) {
+				case NodeType::VAR: {
+					auto varNode = static_cast<VarNode *>(node);
+					auto newNode = context.varPool.push(
+					    varNode->line, varNode->declaration, false, varNode->nullable);
+					newNode->classId = varNode->classId;
+					newNode->cloneable = varNode->cloneable;
+					newNode->isForceNonNull = varNode->isForceNonNull;
+					return newNode;
+				}
+				default:
+					return static_cast<HasClassIdNode *>(node->copy(in_data));
+			}
+		};
+
+		bool isCallerSimple = (result->caller != nullptr && result->caller->kind == NodeType::VAR);
+		bool areArgsSimple = true;
+		for (auto *arg : result->arguments) {
+			if (!isSimple(arg)) {
+				areArgsSimple = false;
+				break;
+			}
+		}
+
+		if (isCallerSimple && areArgsSimple) {
+			std::vector<HasClassIdNode *> getArgs;
+			getArgs.reserve(result->arguments.size());
+			for (auto *arg : result->arguments) {
+				getArgs.push_back(cloneSimple(arg));
+			}
+			auto getCaller = cloneSimple(result->caller);
+			auto getCall = context.callNodePool.push(
+			    line, result->tokenIndex, result->contextCallClassId,
+			    getCaller, lexerIdLRBRACKET, std::move(getArgs),
+			    result->justFindStatic, !result->isForceNonNull, false);
+			getCall->isForceNonNull = result->isForceNonNull;
+			auto binaryNode = context.binaryNodePool.push(
+			    line, result->tokenIndex, result->contextCallClassId,
+			    binaryOp, getCall, value);
+			auto resolvedBinaryNode = static_cast<HasClassIdNode *>(binaryNode->resolve(in_data));
+			result->nameId = lexerIdset;
+			result->isForceNonNull = false;
+			result->arguments.push_back(resolvedBinaryNode);
+			detach = nullptr;
+			value = nullptr;
+			return result;
+		}
+
+		auto block = context.blockNodePool.push(line);
+		bool isGlobal = context.currentFunctionId == context.mainFunctionId && !context.currentClassId;
+		Function *func = isGlobal ? context.getMainFunction(in_data) : context.getCurrentFunction(in_data);
+		auto assignTempId = [&](DeclarationNode *decl) {
+			if (context.currentClosureNode) {
+				decl->id = context.currentClosureNode->maxDeclaration++;
+				context.currentClosureNode->declarationCount = context.currentClosureNode->maxDeclaration;
+				decl->isGlobal = false;
+				context.currentClosureNode->newDeclaration.push_back(decl);
+			} else {
+				decl->id = func->maxDeclaration++;
+				decl->isGlobal = isGlobal;
+			}
+		};
+
+		HasClassIdNode *getCaller = nullptr;
+		if (!isCallerSimple) {
+			static uint32_t tempCounter = 0;
+			std::string tempName = ".temp_target_" + std::to_string(++tempCounter);
+			auto targetDecl = context.makeDeclarationNode(
+			    in_data, line,
+			    context.createLexerStringIfNotExists(tempName), tempName,
+			    nullptr, false, isGlobal,
+			    result->caller->isNullable(), false, false);
+			assignTempId(targetDecl);
+			auto targetVarForAssign = context.varPool.push(line, targetDecl, true, false);
+			auto targetSet = context.setValuePool.push(
+			    line, targetVarForAssign, result->caller, false, Lexer::TokenType::EQUAL);
+			block->nodes.push_back(targetSet);
+
+			result->caller = context.varPool.push(line, targetDecl, false, false);
+			getCaller = context.varPool.push(line, targetDecl, false, false);
+		} else {
+			getCaller = cloneSimple(result->caller);
+		}
+
+		std::vector<HasClassIdNode *> getArgs;
+		getArgs.reserve(result->arguments.size());
+		for (size_t k = 0; k < result->arguments.size(); ++k) {
+			auto *arg = result->arguments[k];
+			if (!isSimple(arg)) {
+				static uint32_t tempCounter = 0;
+				std::string tempName = ".temp_idx_" + std::to_string(++tempCounter);
+				auto argDecl = context.makeDeclarationNode(
+				    in_data, line,
+				    context.createLexerStringIfNotExists(tempName), tempName,
+				    nullptr, false, isGlobal,
+				    arg->isNullable(), false, false);
+				assignTempId(argDecl);
+				auto argVarForAssign = context.varPool.push(line, argDecl, true, false);
+				auto argSet = context.setValuePool.push(
+				    line, argVarForAssign, arg, false, Lexer::TokenType::EQUAL);
+				block->nodes.push_back(argSet);
+
+				result->arguments[k] = context.varPool.push(line, argDecl, false, false);
+				getArgs.push_back(context.varPool.push(line, argDecl, false, false));
+			} else {
+				getArgs.push_back(cloneSimple(arg));
+			}
+		}
+
+		auto getCall = context.callNodePool.push(
+		    line, result->tokenIndex, result->contextCallClassId,
+		    getCaller, lexerIdLRBRACKET, std::move(getArgs),
+		    result->justFindStatic, !result->isForceNonNull, false);
+		getCall->isForceNonNull = result->isForceNonNull;
+		auto binaryNode = context.binaryNodePool.push(
+		    line, result->tokenIndex, result->contextCallClassId,
+		    binaryOp, getCall, value);
 		result->nameId = lexerIdset;
-		result->arguments.push_back(value);
+		result->isForceNonNull = false;
+		result->arguments.push_back(binaryNode);
+		block->nodes.push_back(result);
 		detach = nullptr;
 		value = nullptr;
-		return result;
+		return block;
 	}
 	return this;
 }
@@ -324,7 +480,6 @@ ExprNode *SetNode::optimize(in_func) {
 			    detach->classId != node->declaration->classId) {
 				detach->classId = node->declaration->classId;
 			}
-			// First value example val a = 1
 			if (detach->classId == Autolang::DefaultClass::nullClassId) {
 				if (node->declaration->classId ==
 				        Autolang::DefaultClass::nullClassId &&

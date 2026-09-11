@@ -33,6 +33,37 @@ fun Int.doubleValue(): Int {
 	return this * 2
 }
 
+// 7. Generic extension function on custom generic class
+class ExtBox<T>(val value: T)
+
+fun <T> ExtBox<T>.getValue(): T = this.value
+
+fun <T> ExtBox<T>.transform(multiplier: Int): Int {
+	return multiplier * 10
+}
+
+// 8. Multi-parameter generic class extension
+class ExtPair<K, V>(val key: K, val valItem: V)
+
+fun <K, V> ExtPair<K, V>.getKey(): K = this.key
+fun <K, V> ExtPair<K, V>.getVal(): V = this.valItem
+
+// 9. Generic extension function on built-in collections
+fun <T> Array<T>.secondElement(): T? {
+	if (this.length() > 1) {
+		return this[1]
+	}
+	return null
+}
+
+fun <T> Set<T>.hasItems(): Bool {
+	return this.size() > 0
+}
+
+fun <K, V> Map<K, V>.entryCount(): Int {
+	return this.size()
+}
+
 fun testExtensionFunctions() {
 	val p1 = ExtPoint(3, 4)
 	
@@ -61,7 +92,40 @@ fun testExtensionFunctions() {
 	val num = 5
 	assert(num.doubleValue() == 10)
 
+	// Test 7: Generic extension function on custom class
+	val boxInt = ExtBox<Int>(42)
+	assert(boxInt.getValue() == 42)
+	assert(boxInt.transform(3) == 30)
+
+	val boxStr = ExtBox<String>("autolang")
+	assert(boxStr.getValue() == "autolang")
+
+	// Test 8: Multi-type generic class extension
+	val pair = ExtPair<String, Int>("count", 100)
+	assert(pair.getKey() == "count")
+	assert(pair.getVal() == 100)
+
+	// Test 9: Generic extension on Array<T>, Set<T>, Map<K, V>
+	val arr = [10, 20, 30]
+	assert(arr.secondElement() == 20)
+	val singleArr = [99]
+	assert(singleArr.secondElement() == null)
+
+	val st = {1, 2, 3}
+	assert(st.hasItems() == true)
+
+	val mp = {"k1": 1, "k2": 2}
+	assert(mp.entryCount() == 2)
+
 	println("Passed ${__FUNC__}")
 }
 
+// Test 10: Extension declared AFTER concrete class instantiation
+val boxLate = ExtBox<Int>(999)
+fun <T> ExtBox<T>.doubleWrapped(): Int {
+	return 2000
+}
+assert(boxLate.doubleWrapped() == 2000)
+
 testExtensionFunctions()
+

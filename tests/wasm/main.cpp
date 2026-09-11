@@ -239,7 +239,13 @@ class CompilerWrapper {
 	bool hasCompilerError() { return compiler.hasError(); }
 
 	bool hasException() {
-		return compiler.hasException();
+		if (compiler.vm.callFrames.getSize() == 0) {
+			if (compiler.vm.callFrames.objects[0].exception) {
+				return true;
+			}
+			return false;
+		}
+		return false;
 	}
 
 	val getException() {

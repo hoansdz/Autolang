@@ -73,10 +73,55 @@ fun testArrayFeaturesExhaustive() {
     val str = a.toString()
     assert(str is String)
 
-    // 10. Clean up test
+    // 10. Test: clone, sorted, first, last, take, drop
+    val c = a.clone()
+    assert(c.size() == a.size())
+    assert(c.first() == 3)
+    assert(c.firstOrNull() == 3)
+    assert(c.last() == 12)
+    assert(c.lastOrNull() == 12)
+
+    val s = <Int>[9, 1, 5, 2].sorted()
+    assert(s.get(0) == 1 && s.get(1) == 2 && s.get(2) == 5 && s.get(3) == 9)
+
+    val t = a.take(2)
+    assert(t.size() == 2 && t.get(0) == 3 && t.get(1) == 4)
+
+    val d = a.drop(4)
+    assert(d.size() == 2 && d.get(0) == 10 && d.get(1) == 12)
+
+    // 11. Test: any, all, none, count(fn)
+    assert(a.any() == true)
+    assert(a.any {|v| v == 10} == true)
+    assert(a.any {|v| v == 999} == false)
+    assert(a.all {|v| v > 0} == true)
+    assert(a.all {|v| v > 5} == false)
+    assert(a.none() == false)
+    assert(a.none {|v| v < 0} == true)
+    assert(a.none {|v| v == 3} == false)
+    assert(a.count {|v| v >= 6} == 3)
+
+    // 12. Test: map, mapIndexed, reduce, fold
+    val doubled = a.map<Int>({|v: Int| v * 2 })
+    assert(doubled.get(0) == 6 && doubled.get(5) == 24)
+
+    val indexed = a.mapIndexed<Int>({|v: Int, idx: Int| v + idx })
+    assert(indexed.get(0) == 3 && indexed.get(1) == 5)
+
+    val sumAll = a.reduce({|acc: Int, v: Int| acc + v })
+    assert(sumAll == 40)
+
+    val foldVal = a.fold<Int>(10, {|acc: Int, v: Int| acc + v })
+    assert(foldVal == 50)
+
+    // 13. Clean up test
     a.clear()
     assert(a.isEmpty() == true)
     assert(a.size() == 0)
+    assert(a.firstOrNull() == null)
+    assert(a.lastOrNull() == null)
+    assert(a.any() == false)
+    assert(a.none() == true)
 
     // Only prints if all assertions pass
     println("Passed ${__FUNC__}")

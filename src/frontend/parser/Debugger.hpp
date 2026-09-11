@@ -43,7 +43,12 @@ ClassId loadClassGenerics(in_func, std::string &name,
                           ClassDeclaration *classDeclaration);
 void loadFunctionGenerics(in_func, std::string &name,
                           ClassDeclaration *classDeclaration);
+void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
+                                const std::string &name,
+                                ClassDeclaration *classDeclaration,
+                                LexerStringId baseNameId);
 GenericData *loadGenericParameters(in_func, size_t &i);
+void resetClassDeclTree(ClassDeclaration *decl);
 void ensureNoKeyword(in_func, size_t &i);
 void ensureNoAnnotations(in_func, size_t &i);
 Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t &i);
@@ -63,7 +68,10 @@ std::vector<ClassDeclaration *> loadListClassDeclaration(in_func, size_t &i,
                                                          bool allowReturnVoid,
                                                          bool &isGeneric);
 ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
-                                       bool allowReturnVoid);
+                                       bool allowReturnVoid,
+                                       bool allowArrow = true);
+bool hasArrowAtCurrentBraceLevel(const std::vector<Lexer::Token> &tokens,
+                                 size_t start);
 void loadListGenericDeclarationType(in_func, size_t &i, uint32_t line,
                                     bool allowReturnVoid,
                                     std::vector<ClassDeclaration *> &inputVecs,

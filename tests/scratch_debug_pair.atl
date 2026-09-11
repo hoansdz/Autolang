@@ -1,0 +1,28 @@
+class Container<T>(val item: T) {
+    fun getItem(): T {
+        return this.item
+    }
+
+    fun <A, B> nestPairs(a: A, b: B): Pair<Pair<T, A>, B> {
+        println("Inside nestPairs")
+        val x: T = this.item
+        println("x loaded")
+        val y: A = a
+        println("y loaded")
+        val inner: Pair<T, A> = x to y
+        println("inner created")
+        val res = inner to b
+        println("res created")
+        return res
+    }
+}
+
+val container = Container<Int>(100)
+println("Calling nestPairs 1")
+val nestedPair = container.nestPairs<String, Boolean>("nestedItem", true)
+println("Call 1 done")
+
+val strContainer = Container<String>("root")
+println("Calling nestPairs 2")
+val strNested = strContainer.nestPairs<Int, Float>(99, 1.23)
+println("Call 2 done")

@@ -1,5 +1,5 @@
-#ifndef DEBUGGER_GENERIC_CPP
-#define DEBUGGER_GENERIC_CPP
+#ifndef DEBUGGER_GENERIC_CLASS_CPP
+#define DEBUGGER_GENERIC_CLASS_CPP
 
 #include "frontend/parser/Debugger.hpp"
 #include "frontend/parser/ParserContext.hpp"
@@ -86,6 +86,24 @@ GenericData *loadGenericParameters(in_func, size_t &i) {
 	}
 }
 
+// Helper: reset classId đệ quy trên cây ClassDeclaration để chuẩn bị load lại
+static void resetClassDeclTreeHelper(ClassDeclaration *decl, int depth) {
+	if (!decl || depth > 16)
+		return;
+	if (!decl->isGenericDeclaration && !decl->inputClassId.empty()) {
+		decl->classId = std::nullopt;
+	}
+	for (auto *child : decl->inputClassId) {
+		if (child && child != decl) {
+			resetClassDeclTreeHelper(child, depth + 1);
+		}
+	}
+}
+
+void resetClassDeclTree(ClassDeclaration *decl) {
+	resetClassDeclTreeHelper(decl, 0);
+}
+
 template <bool isLazy>
 ClassId loadClassGenerics(in_func, std::string &name,
                           ClassDeclaration *classDeclaration) {
@@ -153,6 +171,14 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	std::vector<ClassDeclaration *> genericTypeId;
 	genericTypeId.reserve(classInfo->genericData->genericDeclarations.size());
 
+	// Snapshot state của GenericDeclarationNode để restore sau khi dùng xong
+	struct GenericDeclSnapshot {
+		ClassId classId;
+		bool nullable;
+	};
+	std::vector<GenericDeclSnapshot> genericDeclSnapshots;
+	genericDeclSnapshots.reserve(classInfo->genericData->genericDeclarations.size());
+
 	for (size_t i = 0; i < classInfo->genericData->genericDeclarations.size();
 	     ++i) {
 		auto &genericDeclaration =
@@ -160,6 +186,10 @@ ClassId loadClassGenerics(in_func, std::string &name,
 		auto &inputClass = classDeclaration->inputClassId[i];
 
 		ClassId inputClassId = *inputClass->classId;
+
+		// Lưu snapshot trước khi mutate
+		genericDeclSnapshots.emplace_back(
+		    GenericDeclSnapshot{genericDeclaration->classId, genericDeclaration->nullable});
 
 		// Change callnode name
 		if (!genericDeclaration->allCallNodes.empty()) {
@@ -230,8 +260,22 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	for (auto &[classDeclaration, node] :
 	     classInfo->genericData->mustRenameNodes) {
 		if (!classDeclaration->classId) {
-			classDeclaration->template load<false, true, isLazy>(in_data);
-			if (!classDeclaration->classId) {
+			if (node->kind == NodeType::CALL &&
+			    static_cast<CallNode *>(node)->caller == nullptr &&
+			    context.defaultClassMap.find(
+			        classDeclaration->baseClassLexerStringId) ==
+			        context.defaultClassMap.end()) {
+				classDeclaration->template load<false, true, isLazy, true>(in_data);
+				if (!classDeclaration->classId) {
+					classDeclaration->template load<true, true, isLazy, true>(in_data);
+				}
+			} else {
+				classDeclaration->template load<false, true, isLazy, false>(in_data);
+				if (!classDeclaration->classId) {
+					classDeclaration->template load<true, true, isLazy, false>(in_data);
+				}
+			}
+			if (!classDeclaration->classId && !classDeclaration->isFunction) {
 				classDeclaration->throwError(
 				    "Unsolved " + classDeclaration->getName(in_data) +
 				    "\nHint: Ensure type parameter or class is defined");
@@ -265,7 +309,9 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			default:
 				break;
 		}
+		// Reset: classId và isFunction để tránh state leak sang instantiation tiếp theo
 		classDeclaration->classId = std::nullopt;
+		classDeclaration->isFunction = false;
 	}
 
 	auto newClass = compile.classes[newClassId];
@@ -342,6 +388,9 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			if (!declarationNode->classDeclaration->classId) {
 				declarationNode->classDeclaration->template load<false>(in_data);
 				if (!declarationNode->classDeclaration->classId) {
+					declarationNode->classDeclaration->template load<true>(in_data);
+				}
+				if (!declarationNode->classDeclaration->classId) {
 					classDeclaration->throwError(
 					    "Bug: Cannot find class name " +
 					    declarationNode->classDeclaration->getName(in_data) +
@@ -416,9 +465,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 		    classInfo->primaryConstructor->functionFlags);
 		newClassInfo->primaryConstructor = constructor;
 		constructor->pushFunction(in_data);
-		if constexpr (isLazy) {
-			constructor->optimize(in_data);
-		}
+		constructor->optimize(in_data);
 	} else {
 		newClassInfo->secondaryConstructor.reserve(
 		    classInfo->secondaryConstructor.size());
@@ -453,14 +500,76 @@ ClassId loadClassGenerics(in_func, std::string &name,
 
 	for (auto *createFuncNode : classInfo->createFunctionNodes) {
 		auto funcInfo = context.functionInfo[createFuncNode->id];
-		// std::cerr << " --- " << context.lexerString[createFuncNode->nameId]
-		//           << "\n";
+		auto paramCopy = createFuncNode->parameter->copy(in_data);
+		if (!paramCopy->parameters.empty() &&
+		    paramCopy->parameters[0]->baseName == lexerIdthis) {
+			paramCopy->parameters[0] = newClassInfo->declarationThis;
+		}
+		if (funcInfo->genericData != nullptr) {
+			// Vấn đề 4: Lưu và restore currentClassId khi tạo generic function node
+			auto savedClassId = context.currentClassId;
+			context.currentClassId = newClassId;
+			auto newCreateFuncNode = context.newFunctions.push(
+			    createFuncNode->line, createFuncNode->tokenIndex, newClassId,
+			    createFuncNode->nameId == lexerId__CLASS__ ? newNameId
+			                                               : createFuncNode->nameId,
+			    nullptr, paramCopy,
+			    createFuncNode->functionFlags | FunctionFlags::FUNC_SKIP_LOAD);
+			newCreateFuncNode->pushFunction(in_data);
+			auto newFuncInfo = context.functionInfo[newCreateFuncNode->id];
+			newFuncInfo->genericData = funcInfo->genericData;
+			newFuncInfo->body = funcInfo->body;
+			newCreateFuncNode->classDeclaration = createFuncNode->classDeclaration;
+			compile.functions[newCreateFuncNode->id]->maxDeclaration =
+			    compile.functions[createFuncNode->id]->maxDeclaration;
+			newFuncInfo->declaration = funcInfo->declaration;
+				
+			// Đồng bộ reflectDeclarationMap của clone generic function trong class,
+			// để class-scoped member declaration không bị thiếu khi later compile
+			// generic function bodies from this generic class instance.
+			if (newClassInfo->declarationThis) {
+				newFuncInfo->reflectDeclarationMap[newClassInfo->declarationThis] =
+				    newClassInfo->declarationThis;
+			}
+			for (auto *memberDecl : newClassInfo->member) {
+				if (memberDecl &&
+				    newFuncInfo->reflectDeclarationMap.find(memberDecl) ==
+				        newFuncInfo->reflectDeclarationMap.end()) {
+					newFuncInfo->reflectDeclarationMap[memberDecl] = memberDecl;
+				}
+			}
+
+			for (auto *param : paramCopy->parameters) {
+				if (!param || !param->classDeclaration) continue;
+				auto addClassDeclToGen = [&](auto &self, ClassDeclaration *cd) -> void {
+					if (!cd) return;
+					if (cd->isGenericDeclaration) {
+						for (auto &genDecl : newFuncInfo->genericData->genericDeclarations) {
+							if (cd->baseClassLexerStringId == genDecl->nameId) {
+								genDecl->allClassDeclarations.push_back(cd);
+								break;
+							}
+						}
+					}
+					for (auto *child : cd->inputClassId) {
+						self(self, child);
+					}
+				};
+				addClassDeclToGen(addClassDeclToGen, param->classDeclaration);
+			}
+
+			newClassInfo->genericFunctionMap[createFuncNode->nameId].push_back(
+			    newCreateFuncNode);
+			newClassInfo->createFunctionNodes.push_back(newCreateFuncNode);
+			context.currentClassId = savedClassId;
+			continue;
+		}
 		auto newCreateFuncNode = context.newFunctions.push(
 		    createFuncNode->line, createFuncNode->tokenIndex, newClassId,
 		    createFuncNode->nameId == lexerId__CLASS__ ? newNameId
 		                                               : createFuncNode->nameId,
-		    nullptr, createFuncNode->parameter->copy(in_data),
-		    createFuncNode->functionFlags);
+		    nullptr, paramCopy,
+		    createFuncNode->functionFlags & ~FunctionFlags::FUNC_SKIP_LOAD);
 		if (createFuncNode->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 			newCreateFuncNode->pushNativeFunction(
 			    in_data, compile.functions[createFuncNode->id]->native);
@@ -471,15 +580,16 @@ ClassId loadClassGenerics(in_func, std::string &name,
 		auto newFuncInfo = context.functionInfo[newCreateFuncNode->id];
 		newFunc->returnId = compile.functions[createFuncNode->id]->returnId;
 		if (createFuncNode->classDeclaration) {
+			// Vấn đề 3: Reset cây classDeclaration trước khi load để tránh state cũ từ lần instantiate trước
+			resetClassDeclTree(createFuncNode->classDeclaration);
 			if (!createFuncNode->classDeclaration->classId) {
-				createFuncNode->classDeclaration->template load<false>(in_data);
+				createFuncNode->classDeclaration->template load<true>(in_data);
 				if (!createFuncNode->classDeclaration->classId) {
 					classDeclaration->throwError(
 					    "Bug: Cannot resolve return type of generic function\nHint: "
 					    "Ensure generic function return type is valid and resolved");
 				}
 				newFunc->returnId = *createFuncNode->classDeclaration->classId;
-				createFuncNode->classDeclaration->classId = std::nullopt;
 			} else {
 				newFunc->returnId = *createFuncNode->classDeclaration->classId;
 			}
@@ -488,6 +598,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 				newFuncInfo->returnClass =
 				    createFuncNode->classDeclaration->copy(in_data);
 			}
+			resetClassDeclTree(createFuncNode->classDeclaration);
 		}
 		context.gotoFunction(newCreateFuncNode->id);
 		// ParserContext::mode = createFuncNode->mode; //Loaded in new class
@@ -502,6 +613,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 		if (funcInfo->inferenceNode) {
 			newFuncInfo->inferenceNode =
 			    static_cast<ReturnNode *>(newFuncInfo->body.nodes[0]);
+			newFuncInfo->inferenceNode->loaded = false;
 			context.mustInferenceFunctionType.push_back(newFunc->id);
 		}
 
@@ -513,6 +625,13 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	context.gotoFunction(lastCurrentFunctionId);
 	context.currentClassId = lastCurrentClassId;
 
+	// Restore snapshot của GenericDeclarationNode để sẵn sàng cho instantiation tiếp theo
+	for (size_t i = 0; i < classInfo->genericData->genericDeclarations.size(); ++i) {
+		auto &genericDeclaration = classInfo->genericData->genericDeclarations[i];
+		genericDeclaration->classId = genericDeclSnapshots[i].classId;
+		genericDeclaration->nullable = genericDeclSnapshots[i].nullable;
+	}
+
 	if constexpr (isLazy) {
 		newCreateClassNode->optimize(in_data);
 	}
@@ -521,317 +640,11 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	return newClassId;
 }
 
-void loadFunctionGenerics(in_func, std::string &name,
-                          ClassDeclaration *classDeclaration) {
-	auto it = context.genericFunctionMap.find(
-	    classDeclaration->baseClassLexerStringId);
-	if (it == context.genericFunctionMap.end()) {
-		classDeclaration->throwError(
-		    "Bug: Cannot find function " +
-		    context.lexerString[classDeclaration->baseClassLexerStringId] +
-		    "\nHint: Ensure generic function is defined before instantiation");
-	}
-	{
-		auto it = compile.funcMap.find(name);
-		if (it != compile.funcMap.end()) {
-			return;
-		}
-	}
-
-	auto &allCreateFuncNode = it->second;
-
-	for (auto createFuncNode : allCreateFuncNode) {
-		FunctionId funcId = createFuncNode->id;
-		auto func = compile.functions[funcId];
-		auto funcInfo = context.functionInfo[funcId];
-		if (!funcInfo->genericData) {
-			classDeclaration->throwError(
-			    func->getName(compile) +
-			    " is not generic\nHint: Do not pass type arguments '<...>' to a non-generic "
-			    "function");
-		}
-		if (classDeclaration->inputClassId.size() !=
-		    funcInfo->genericData->genericDeclarations.size()) {
-			continue;
-		}
-		auto allCreateFuncNode =
-		    context
-		        .genericFunctionMap[classDeclaration->baseClassLexerStringId];
-
-		ParserContext::mode = createFuncNode->mode;
-
-		std::vector<ClassDeclaration *> genericTypeId;
-		genericTypeId.reserve(
-		    funcInfo->genericData->genericDeclarations.size());
-
-		for (size_t i = 0;
-		     i < funcInfo->genericData->genericDeclarations.size(); ++i) {
-			auto &genericDeclaration =
-			    funcInfo->genericData->genericDeclarations[i];
-			auto &inputClass = classDeclaration->inputClassId[i];
-
-			ClassId inputClassId = *inputClass->classId;
-
-			// Change callnode name
-			if (!genericDeclaration->allCallNodes.empty()) {
-				const std::string &name =
-				    compile.classes[inputClassId]->getName(compile);
-				auto nameId = context.createLexerStringIfNotExists(name);
-				for (auto *callNode : genericDeclaration->allCallNodes) {
-					callNode->nameId = nameId;
-				}
-			}
-			// Change generics type
-			genericDeclaration->classId = inputClassId;
-			genericDeclaration->nullable = inputClass->nullable;
-			ClassDeclaration *newClassDeclaration;
-			if (inputClass->isGeneric) {
-				newClassDeclaration = context.classDeclarationAllocator.push();
-				newClassDeclaration->classId = inputClassId;
-				newClassDeclaration->nullable = inputClass->nullable;
-				newClassDeclaration->line = genericDeclaration->line;
-				if (inputClassId == DefaultClass::functionClassId) {
-					newClassDeclaration->inputClassId.reserve(
-					    inputClass->inputClassId.size());
-					for (auto classDeclaration : inputClass->inputClassId) {
-						newClassDeclaration->inputClassId.push_back(
-						    classDeclaration->copy(in_data));
-					}
-				}
-			} else {
-				newClassDeclaration = inputClass;
-			}
-
-			genericTypeId.push_back(newClassDeclaration);
-
-			if (genericDeclaration->condition) {
-				auto &condition = *genericDeclaration->condition;
-				// if (condition.condition ==
-				// GenericDeclarationCondition::MUST_EXTENDS) {
-				if (!condition.classDeclaration->classId) {
-					condition.classDeclaration->template load<true>(in_data);
-					if (!condition.classDeclaration->classId) {
-						condition.classDeclaration->throwError(
-						    "Unresolved " +
-						    condition.classDeclaration->getName(in_data) +
-						    "\nHint: Ensure generic constraint class is defined or imported");
-					}
-				} else if (condition.classDeclaration->classId ==
-				           DefaultClass::functionClassId) {
-					condition.classDeclaration->template load<true>(in_data);
-				}
-				context.checkValidateExtends[genericDeclaration].push_back(
-				    newClassDeclaration);
-				// }
-			}
-
-			for (auto *classDeclaration :
-			     genericDeclaration->allClassDeclarations) {
-				classDeclaration->classId = inputClassId;
-				if (classDeclaration->mustInference) {
-					classDeclaration->nullable = inputClass->nullable;
-					// classDeclaration->mustInference = false;
-				}
-				classDeclaration->inputClassId =
-				    newClassDeclaration->inputClassId;
-				classDeclaration->baseClassLexerStringId =
-				    inputClass->baseClassLexerStringId;
-			}
-		}
-
-		for (auto &[classDeclaration, node] :
-		     funcInfo->genericData->mustRenameNodes) {
-			if (!classDeclaration->classId) {
-				classDeclaration->template load<false, true>(in_data);
-				// if (!classDeclaration->classId) {
-				// 	classDeclaration->throwError(
-				// 	    "Unsolved " + classDeclaration->getName(in_data));
-				// }
-			}
-			auto name = classDeclaration->getName(in_data);
-			// std::cerr << name << "\n";
-			switch (node->kind) {
-				case NodeType::UNKNOW: {
-					auto unknowNode = static_cast<UnknowNode *>(node);
-					auto it = context.lexerStringMap.find(name);
-					if (it == context.lexerStringMap.end()) {
-						classDeclaration->throwError(
-						    "Unsolved " + name +
-						    "\nHint: Symbol or type name cannot be resolved");
-					}
-					unknowNode->nameId = it->second;
-					break;
-				}
-				case NodeType::CALL: {
-					auto callNode = static_cast<CallNode *>(node);
-					auto it = context.lexerStringMap.find(name);
-					if (it == context.lexerStringMap.end()) {
-						classDeclaration->throwError(
-						    "Unsolved " + name +
-						    "\nHint: Called symbol or type cannot be resolved");
-					}
-					callNode->nameId = it->second;
-					break;
-				}
-				default:
-					break;
-			}
-			classDeclaration->classId = std::nullopt;
-		}
-
-		auto functionFlags =
-		    createFuncNode->functionFlags & ~(FunctionFlags::FUNC_SKIP_LOAD);
-		auto lastCurrentFunctionId = context.currentFunctionId;
-		auto newCreateFuncNode = context.newFunctions.push(
-		    createFuncNode->line, createFuncNode->tokenIndex,
-		    createFuncNode->contextCallClassId,
-		    context.createLexerStringIfNotExists(name), nullptr,
-		    funcInfo->parameter->copy(in_data), functionFlags);
-
-		if (createFuncNode->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
-			newCreateFuncNode->pushNativeFunction(
-			    in_data, compile.functions[createFuncNode->id]->native);
-		} else {
-			newCreateFuncNode->pushFunction(in_data);
-		}
-		auto newFunc = compile.functions[newCreateFuncNode->id];
-		auto newFuncInfo = context.functionInfo[newCreateFuncNode->id];
-		newFunc->maxDeclaration = func->maxDeclaration;
-		newFuncInfo->declaration = funcInfo->declaration;
-		newFunc->returnId = compile.functions[funcId]->returnId;
-		context.gotoFunction(newCreateFuncNode->id);
-		// std::cerr << "FUNC " << newFunc->getName(compile) << "\n";
-		if (createFuncNode->classDeclaration) {
-			if (!createFuncNode->classDeclaration->classId) {
-				createFuncNode->classDeclaration->template load<false>(in_data);
-				if (!createFuncNode->classDeclaration->classId) {
-					classDeclaration->throwError(
-					    "Bug: Cannot resolve return type of generic function\nHint: "
-					    "Ensure generic function return type is valid and resolved");
-				}
-				newFunc->returnId = *createFuncNode->classDeclaration->classId;
-				createFuncNode->classDeclaration->classId = std::nullopt;
-			} else {
-				newFunc->returnId = *createFuncNode->classDeclaration->classId;
-			}
-			if (newFunc->returnId == DefaultClass::functionClassId) {
-				newFuncInfo->returnClass =
-				    createFuncNode->classDeclaration->copy(in_data);
-			}
-		}
-
-		newFuncInfo->reflectDeclarationMap.reserve(
-		    funcInfo->reflectDeclarationMap.size());
-
-		for (auto &[declarationNode, value] : funcInfo->reflectDeclarationMap) {
-			newFuncInfo->reflectDeclarationMap[declarationNode] =
-			    static_cast<DeclarationNode *>(declarationNode->copy(in_data));
-			// std::cerr << "Created declaration: " << declarationNode << " "
-			//           << newFuncInfo->reflectDeclarationMap[declarationNode]
-			//           << "\n";
-		}
-
-		for (auto &[declarationNode, value] :
-		     funcInfo->genericData->staticDeclaration) {
-			auto node = context.makeDeclarationNode(
-			    in_data, declarationNode->line, declarationNode->baseName,
-			    newFunc->getName(compile) +
-			        context.lexerString[declarationNode->baseName],
-			    declarationNode->classDeclaration, declarationNode->isVal, true,
-			    declarationNode->nullable, false, true);
-			funcInfo->genericData
-			    ->newPositionOfStaticDeclaration[declarationNode->id] =
-			    node->id;
-			if (node->classDeclaration) {
-				if (!node->classDeclaration->classId) {
-					node->classDeclaration->template load<false>(in_data);
-					if (!node->classDeclaration->classId) {
-						classDeclaration->throwError(
-						    "Bug: Cannot find class name " +
-						    node->classDeclaration->getName(in_data) +
-						    "\nHint: Check static variable type in generic function");
-					}
-					// std::cerr << "loaded "
-					//           <<
-					//           declarationNode->classDeclaration->getName(in_data)
-					//           << "\n";
-					node->optimize(in_data);
-					node->classDeclaration->classId = std::nullopt;
-				} else {
-					node->classId = *node->classDeclaration->classId;
-				}
-			}
-			node->optimize(in_data);
-			if (value) {
-				auto varNode = context.varPool.push(declarationNode->line, node,
-				                                    false, true);
-				auto setNode = context.setValuePool.push(declarationNode->line,
-				                                         varNode, value, true);
-				context.staticNode.push_back(setNode);
-			}
-			// declarationNode->classDeclaration = nullptr;
-		}
-
-		// ParserContext::mode = createFuncNode->mode; //Loaded in new class
-		auto lastNewPositionOfStaticDeclaration =
-		    context.newPositionOfStaticDeclaration;
-		context.newPositionOfStaticDeclaration =
-		    &funcInfo->genericData->newPositionOfStaticDeclaration;
-		newFuncInfo->body.nodes.reserve(funcInfo->body.nodes.size());
-		for (auto *node : funcInfo->body.nodes) {
-			newFuncInfo->body.nodes.push_back(node->copy(in_data));
-		}
-		if (funcInfo->inferenceNode) {
-			newFuncInfo->inferenceNode =
-			    static_cast<ReturnNode *>(newFuncInfo->body.nodes[0]);
-			context.mustInferenceFunctionType.push_back(newFunc->id);
-		}
-		context.newPositionOfStaticDeclaration =
-		    lastNewPositionOfStaticDeclaration;
-		context.gotoFunction(lastCurrentFunctionId);
-
-		// for (auto &[classDeclaration, node] :
-		//      funcInfo->genericData->mustRenameNodes) {
-		// 	if (!classDeclaration) {
-		// 		classDeclaration->template load<false>(in_data);
-		// 		if (!classDeclaration->classId) {
-		// 			classDeclaration->throwError(
-		// 			    "Unsolved " + classDeclaration->getName(in_data));
-		// 		}
-		// 	}
-		// 	switch (node->kind) {
-		// 		case NodeType::UNKNOW: {
-		// 			auto unknowNode = static_cast<UnknowNode *>(node);
-		// 			auto it = context.lexerStringMap.find(
-		// 			    classDeclaration->getName(in_data));
-		// 			if (it == context.lexerStringMap.end()) {
-		// 				classDeclaration->throwError(
-		// 				    "Unsolved " + classDeclaration->getName(in_data));
-		// 			}
-		// 			unknowNode->nameId = it->second;
-		// 			break;
-		// 		}
-		// 		case NodeType::CALL: {
-		// 			auto callNode = static_cast<CallNode *>(node);
-		// 			auto it = context.lexerStringMap.find(
-		// 			    classDeclaration->getName(in_data));
-		// 			if (it == context.lexerStringMap.end()) {
-		// 				classDeclaration->throwError(
-		// 				    "Unsolved " + classDeclaration->getName(in_data));
-		// 			}
-		// 			callNode->nameId = it->second;
-		// 			break;
-		// 		}
-		// 	}
-		// 	classDeclaration->classId = std::nullopt;
-		// }
-	}
-}
-
 template ClassId loadClassGenerics<false>(in_func, std::string &name,
                                          ClassDeclaration *classDeclaration);
 template ClassId loadClassGenerics<true>(in_func, std::string &name,
                                         ClassDeclaration *classDeclaration);
+
 
 } // namespace Autolang
 #endif

@@ -43,6 +43,32 @@ ExprNode *IfNode::resolve(in_func) {
 
 ExprNode *IfNode::optimize(in_func) {
 	condition = static_cast<HasClassIdNode *>(condition->optimize(in_data));
+	switch (condition->classId) {
+		case Autolang::DefaultClass::intClassId: {
+			auto zeroNode =
+			    context.constValuePool.push(condition->line, (int64_t)0);
+			auto binaryNode = context.binaryNodePool.push(
+			    condition->line, 0, context.currentClassId,
+			    Lexer::TokenType::NOTEQ, condition, zeroNode);
+			auto resolved = binaryNode->resolve(in_data);
+			condition =
+			    static_cast<HasClassIdNode *>(resolved->optimize(in_data));
+			break;
+		}
+		case Autolang::DefaultClass::floatClassId: {
+			auto zeroNode =
+			    context.constValuePool.push(condition->line, (double)0.0);
+			auto binaryNode = context.binaryNodePool.push(
+			    condition->line, 0, context.currentClassId,
+			    Lexer::TokenType::NOTEQ, condition, zeroNode);
+			auto resolved = binaryNode->resolve(in_data);
+			condition =
+			    static_cast<HasClassIdNode *>(resolved->optimize(in_data));
+			break;
+		}
+		default:
+			break;
+	}
 	if (condition->classId != Autolang::DefaultClass::boolClassId)
 		throwError("Cannot use expression of type '" +
 		           condition->getClassName(in_data) +

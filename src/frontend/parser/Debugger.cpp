@@ -583,6 +583,48 @@ template bool loadBody<false>(in_func, SmallVector<ExprNode *, 8> &nodes,
 template bool loadBody<true>(in_func, SmallVector<ExprNode *, 8> &nodes,
                              size_t &i, bool createScope);
 
+bool hasArrowAtCurrentBraceLevel(const std::vector<Lexer::Token> &tokens,
+                                 size_t start) {
+	size_t depthParen = 0;
+	size_t depthBracket = 0;
+	size_t depthBrace = 0;
+	for (size_t k = start; k < tokens.size(); ++k) {
+		switch (tokens[k].type) {
+			case Lexer::TokenType::LPAREN:
+				depthParen++;
+				break;
+			case Lexer::TokenType::RPAREN:
+				if (depthParen > 0)
+					depthParen--;
+				break;
+			case Lexer::TokenType::LBRACKET:
+				depthBracket++;
+				break;
+			case Lexer::TokenType::RBRACKET:
+				if (depthBracket > 0)
+					depthBracket--;
+				break;
+			case Lexer::TokenType::LBRACE:
+				depthBrace++;
+				break;
+			case Lexer::TokenType::RBRACE:
+				if (depthBrace == 0 && depthParen == 0 && depthBracket == 0)
+					return false;
+				if (depthBrace > 0)
+					depthBrace--;
+				break;
+			case Lexer::TokenType::MINUS_GT:
+				if (depthParen == 0 && depthBracket == 0 && depthBrace == 0) {
+					return true;
+				}
+				break;
+			default:
+				break;
+		}
+	}
+	return false;
+}
+
 } // namespace Autolang
 
 #endif

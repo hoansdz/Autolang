@@ -228,6 +228,7 @@ static const HashMap<std::string, TokenType> CAST = {
     {"-=", TokenType::MINUS_EQUAL},
     {"*=", TokenType::STAR_EQUAL},
     {"/=", TokenType::SLASH_EQUAL},
+    {"%=", TokenType::PERCENT_EQUAL},
     {"=", TokenType::EQUAL},
     {"<", TokenType::LT},
     {">", TokenType::GT},

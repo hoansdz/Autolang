@@ -87,6 +87,14 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 			    " management, it can't have any member\nHint: Remove member "
 			    "variables from @js_object class");
 		}
+#elif __PYBIND11__
+		if (clazz->classFlags & ClassFlags::CLASS_PY_OBJECT) {
+			throw ParserError(
+			    token->line,
+			    "@py_object class is already under automatic memory"
+			    " management, it can't have any member\nHint: Remove member "
+			    "variables from @py_object class");
+		}
 #endif
 		if (isMapExist(context.getCurrentClass(in_data)->memberMap, name) ||
 		    classInfo->staticMember.find(baseName) !=
@@ -398,7 +406,8 @@ std::vector<ClassDeclaration *> loadListClassDeclaration(in_func, size_t &i,
 }
 
 ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
-                                       bool allowReturnVoid) { // Has check
+                                       bool allowReturnVoid,
+                                       bool allowArrow) { // Has check
 	Lexer::Token *token;
 	if (!nextTokenSameLine(&token, context.tokens, i, line)) {
 		--i;
@@ -408,6 +417,7 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 	}
 	ClassDeclaration *result = nullptr;
 	bool expectFunction = false;
+	bool hadParen = false;
 	switch (token->type) {
 		case Lexer::TokenType::IDENTIFIER: {
 			result = context.classDeclarationAllocator.push();
@@ -455,6 +465,7 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 						                  "declaration\nHint: 'Void' can only "
 						                  "be used as a function return type");
 					}
+					result->classId = DefaultClass::voidClassId;
 					break;
 				}
 			}
@@ -500,6 +511,7 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 			break;
 		}
 		case Lexer::LPAREN: {
+			hadParen = true;
 			bool isGeneric = false;
 			std::vector<ClassDeclaration *> listClassDeclaration =
 			    loadListClassDeclaration(in_data, i, line, false, isGeneric);
@@ -536,7 +548,12 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 loadSpecialClass:;
 	switch (token->type) {
 		case Lexer::TokenType::MINUS_GT: {
-			auto returnClass = loadClassDeclaration(in_data, i, line, true);
+			if (!allowArrow && !hadParen) {
+				--i;
+				return result;
+			}
+			auto returnClass =
+			    loadClassDeclaration(in_data, i, line, true, allowArrow);
 			if (expectFunction) {
 				if (result->inputClassId.size() == 2 &&
 				    result->inputClassId[1]->classId &&

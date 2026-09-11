@@ -132,6 +132,9 @@ inline emscripten::val aobjectMapToJS(ANotifier &notifier, AObject *obj) {
 }
 
 inline val aobjectToJs(ANotifier &notifier, AObject *obj) {
+	if (!obj)
+		return val::null();
+
 	switch (obj->type) {
 		case DefaultClass::intClassId: {
 			return val(static_cast<double>(obj->i));
@@ -201,6 +204,11 @@ inline val aobjectToJs(ANotifier &notifier, AObject *obj) {
 			if (obj->flags & AObject::Flags::OBJ_IS_MAP) {
 				return aobjectMapToJS(notifier, obj);
 			}
+#ifdef __EMSCRIPTEN__
+			if (obj->flags & AObject::Flags::OBJ_IS_JS_OBJECT) {
+				return *obj->jsObject;
+			}
+#endif
 
 			auto clazz = notifier.vm->data.classes[obj->type];
 
@@ -649,6 +657,10 @@ inline AObject *returnJsObjectToAObject(ANotifier &notifier, val value) {
 	if (value.isUndefined()) {
 		if (classId == DefaultClass::voidClassId) {
 			return nullptr;
+		}
+
+		if (flags & FunctionFlags::FUNC_RETURN_NULLABLE) {
+			return DefaultClass::nullObject;
 		}
 
 		notifier.throwException(

@@ -1,0 +1,24 @@
+// Test sugar syntax: arr.map<R>({ lambda })
+val nums = [1, 2, 3, 4, 5]
+
+// Cú pháp với {}
+val doubled = nums.map<Int>({|x: Int| x * 2 })
+assert(doubled[0] == 2 && doubled[4] == 10, "map<Int> sugar failed")
+
+val asStr = nums.map<String>({|x: Int| "n" + x })
+assert(asStr[0] == "n1" && asStr[4] == "n5", "map<String> sugar failed")
+
+// sort
+val arr = [3, 1, 4, 1, 5]
+arr.sort()
+assert(arr[0] == 1 && arr[4] == 5, "sort failed")
+
+val sortedCopy = arr.sorted()
+assert(arr[0] == 1, "original intact")
+
+// sort with comparator (reverse)
+val arr2 = [3, 1, 4, 1, 5]
+arr2.sort({|a: Int, b: Int| b - a})
+assert(arr2[0] == 5, "sort desc failed")
+
+println("map sugar and sort tests passed!")

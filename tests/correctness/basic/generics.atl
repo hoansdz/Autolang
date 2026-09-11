@@ -68,6 +68,114 @@ fun <T> testKotlinStyleGeneric(x: T): T {
 	return x
 }
 
+fun <T> helperFunc(x: T): T = x
+
+class GContainer<T>(val item: T) {
+	fun getItem(): T = helperFunc<T>(item)
+}
+
+// Advanced Generic Functions Test Suite
+class GenericPair<A, B>(val first: A, val second: B)
+
+fun <A, B> makeGenericPair(a: A, b: B): GenericPair<A, B> {
+	return GenericPair<A, B>(a, b)
+}
+
+class GenericTriple<A, B, C>(val first: A, val second: B, val third: C)
+
+fun <A, B, C> makeGenericTriple(a: A, b: B, c: C): GenericTriple<A, B, C> {
+	return GenericTriple<A, B, C>(a, b, c)
+}
+
+fun <T> wrapInArray(item: T): Array<T> {
+	return [item]
+}
+
+fun <T> wrapInSet(item: T): Set<T> {
+	return {item}
+}
+
+fun <K, V> wrapInMap(key: K, value: V): Map<K, V> {
+	return {key: value}
+}
+
+fun <T> identityFunc(x: T): T = x
+
+fun <T> nestedIdentityFunc(x: T): T {
+	return identityFunc<T>(x)
+}
+
+fun <T, R> transformItem(item: T, transformer: (T) -> R): R {
+	return transformer(item)
+}
+
+fun <T> fallbackNonNull(first: T?, second: T): T {
+	if (first == null) {
+		return second
+	}
+	return first!
+}
+
+fun <T: GAnimal> fetchAnimalSound(animal: T): String {
+	return animal.sound()
+}
+
+class GenericStorage<T>(val item: T) {
+	fun toMappedPair(label: String): GenericPair<T, String> {
+		return makeGenericPair<T, String>(item, label)
+	}
+}
+
+fun <T> getHeadRecursive(arr: Array<T>, step: Int): T {
+	if (step == 0) {
+		return arr[0]
+	}
+	return getHeadRecursive<T>(arr, step - 1)
+}
+
+// Deeply nested classes
+class DeepNode<T>(val payload: T, val child: DeepNode<T>?)
+class DeepHolder<T>(val root: DeepNode<T>)
+
+// Chained nested generic functions
+fun <A> nestStep1(x: A): Array<A> = [x]
+fun <B> nestStep2(x: Array<B>): Map<String, Array<B>> = {"data": x}
+fun <C> nestStep3(x: Map<String, Array<C>>): GenericPair<String, Map<String, Array<C>>> {
+	return GenericPair<String, Map<String, Array<C>>>("nested", x)
+}
+
+// Nested generic collections
+fun <T> countMatrixElements(matrix: Array<Array<T>>): Int {
+	var total = 0
+	for (row in matrix) {
+		total = total + row.size()
+	}
+	return total
+}
+
+fun <T> flattenMatrix(matrix: Array<Array<T>>): Array<T> {
+	val res = <T>[]
+	for (row in matrix) {
+		for (elem in row) {
+			res.push(elem)
+		}
+	}
+	return res
+}
+
+fun <K, V> createNestedMap(k: K, v: V): Map<K, Array<V>> {
+	return {k: [v]}
+}
+
+fun <A, B, C> combinePairs(p1: GenericPair<A, B>, p2: GenericPair<B, C>): GenericTriple<A, B, C> {
+	return GenericTriple<A, B, C>(p1.first, p1.second, p2.second)
+}
+
+// Generic extension function on generic class
+fun <T> GContainer<T>.unwrap(): T {
+	return this.item
+}
+
 fun testGenerics() {
 	val f1 = GenericTest<GAnimal>()
 	assert(f1 is GenericTest<GAnimal> && f1.value.sound() == f1.sound() && f1.sound() == "Nothing")
@@ -93,6 +201,96 @@ fun testGenerics() {
 	val fColon2 = GenericTestColon<GDog>()
 	assert(fColon2 is GenericTestColon<GDog> && fColon2.sound() == "Go")
 	assert(testGenericFunctionColon<GCat>(GCat()) == "Meow")
+	val containerInt = GContainer<Int>(42)
+	assert(containerInt.getItem() == 42)
+	val containerStr = GContainer<String>("AutoLang")
+	assert(containerStr.getItem() == "AutoLang")
+
+	// Multi-type arguments generic functions
+	val gp1 = makeGenericPair<Int, String>(1, "one")
+	assert(gp1.first == 1 && gp1.second == "one")
+	val gp2 = makeGenericPair<Float, Bool>(3.14, true)
+	assert(gp2.first == 3.14 && gp2.second == true)
+
+	val gt = makeGenericTriple<Int, String, Float>(10, "ten", 10.5)
+	assert(gt.first == 10 && gt.second == "ten" && gt.third == 10.5)
+
+	// Collection generic functions
+	val arrGen = wrapInArray<Int>(42)
+	assert(arrGen.size() == 1 && arrGen[0] == 42)
+	val setGen = wrapInSet<String>("AutoLang")
+	assert(setGen.size() == 1 && setGen.has("AutoLang"))
+	val mapGen = wrapInMap<String, Int>("count", 99)
+	assert(mapGen.size() == 1 && mapGen["count"] == 99)
+
+	// Nested/Chained generic functions
+	assert(nestedIdentityFunc<Int>(100) == 100)
+	assert(nestedIdentityFunc<String>("Nested") == "Nested")
+
+	// Higher-order generic function with closure
+	val doubled = transformItem<Int, Int>(21, {|x: Int| x * 2})
+	assert(doubled == 42)
+	val strLen = transformItem<String, Int>("AutoLang", {|s: String| s.length()})
+	assert(strLen == 8)
+
+	// Nullable generic function
+	assert(fallbackNonNull<Int>(null, 5) == 5)
+	assert(fallbackNonNull<Int>(10, 5) == 10)
+	assert(fallbackNonNull<String>(null, "default") == "default")
+
+	// Polymorphic bound in generic function
+	val dog = GDog()
+	val cat = GCat()
+	assert(fetchAnimalSound<GDog>(dog) == "Go")
+	assert(fetchAnimalSound<GCat>(cat) == "Meow")
+
+	// Generic class invoking multi-param generic function
+	val storage = GenericStorage<Int>(777)
+	val storagePair = storage.toMappedPair("Lucky")
+	assert(storagePair.first == 777 && storagePair.second == "Lucky")
+
+	// Recursive generic function
+	val listItems = [10, 20, 30]
+	assert(getHeadRecursive<Int>(listItems, 2) == 10)
+
+	// Deeply nested generic class test
+	val node3 = DeepNode<Int>(3, null)
+	val node2 = DeepNode<Int>(2, node3)
+	val node1 = DeepNode<Int>(1, node2)
+	val holder = DeepHolder<Int>(node1)
+	assert(holder.root.payload == 1)
+	assert(holder.root.child!.payload == 2)
+	assert(holder.root.child!.child!.payload == 3)
+
+	// Deeply nested chained generic functions
+	val chained = nestStep3<Int>(nestStep2<Int>(nestStep1<Int>(999)))
+	assert(chained.first == "nested")
+	val chainedSec = chained.second
+	assert(chainedSec["data"]![0] == 999)
+
+	// Deeply nested generic collections
+	val matrix = [[1, 2], [3, 4, 5], [6]]
+	assert(countMatrixElements<Int>(matrix) == 6)
+
+	val nestedMap = createNestedMap<String, Int>("scores", 100)
+	assert(nestedMap["scores"]![0] == 100)
+
+	// Nested GenericPair to GenericTriple combination
+	val pairA = GenericPair<String, Int>("alpha", 50)
+	val pairB = GenericPair<Int, Bool>(50, true)
+	val combinedTriple = combinePairs<String, Int, Bool>(pairA, pairB)
+	assert(combinedTriple.first == "alpha" && combinedTriple.second == 50 && combinedTriple.third == true)
+
+	// Generic extension function on nested GContainer
+	val innerBox = GContainer<Int>(777)
+	val outerBox = GContainer<GContainer<Int>>(innerBox)
+	assert(outerBox.unwrap().unwrap() == 777)
+
+	// Nested Array (2D matrix flattening)
+	val flatArr = flattenMatrix<Int>(matrix)
+	assert(flatArr.size() == 6)
+	assert(flatArr[0] == 1 && flatArr[5] == 6)
+
 	println("Passed ${__FUNC__}")
 }
 

@@ -58,10 +58,15 @@ bool ClassDeclaration::isMatch(ClassDeclaration *classDeclaration) {
 }
 
 ClassDeclaration *ClassDeclaration::copy(in_func) {
+	if (baseClassLexerStringId == lexerIdVoid) {
+		classId = DefaultClass::voidClassId;
+		return this;
+	}
+	if (!classId) {
+		load<true>(in_data);
+	}
 	if (!classId) {
 		std::cerr << getName(in_data) << "\n";
-		int *a = nullptr;
-		*a = 5;
 		throwError(
 		    "Cannot copy class declaration because class not exists\nHint: "
 		    "Ensure target class is declared before copying its declaration");
@@ -84,11 +89,16 @@ ClassDeclaration *ClassDeclaration::copy(in_func) {
 			    inputClass->copy(in_data));
 		}
 	}
-	newClassDeclaration->classId = classId;
+	if (isGeneric && !isGenericDeclaration && classId != DefaultClass::functionClassId) {
+		newClassDeclaration->classId = std::nullopt;
+	} else {
+		newClassDeclaration->classId = classId;
+	}
+	newClassDeclaration->isFunction = isFunction;
 	return newClassDeclaration;
 }
 
-template <bool changeGenericsClassId, bool canBeFunction>
+template <bool changeGenericsClassId, bool canBeFunction, bool mustBeFunction>
 void ClassDeclaration::onLoadTypealias(in_func, TypealiasData *typealias) {
 	if (typealias->genericData) {
 		if (typealias->genericData->genericDeclarations.size() !=
@@ -222,6 +232,9 @@ void ClassDeclaration::onLoadTypealias(in_func, TypealiasData *typealias) {
 			break;
 	}
 	auto *classDeclaration = typealias->classDeclaration->copy(in_data);
+	if (!classDeclaration->classId) {
+		classDeclaration->template load<true>(in_data);
+	}
 	classId = classDeclaration->classId;
 	baseClassLexerStringId = classDeclaration->baseClassLexerStringId;
 	inputClassId = classDeclaration->inputClassId;
@@ -234,8 +247,12 @@ void ClassDeclaration::onLoadTypealias(in_func, TypealiasData *typealias) {
 	}
 }
 
-template <bool changeGenericsClassId, bool canBeFunction, bool isLazy>
+template <bool changeGenericsClassId, bool canBeFunction, bool isLazy,
+          bool mustBeFunction>
 void ClassDeclaration::load(in_func) {
+	if (!classId && baseClassLexerStringId == lexerIdFunction) {
+		classId = DefaultClass::functionClassId;
+	}
 	if (classId) {
 		if (classId == DefaultClass::functionClassId) {
 			for (size_t i = 0; i < inputClassId.size(); ++i) {
@@ -262,7 +279,7 @@ void ClassDeclaration::load(in_func) {
 	if (inputClassId.empty()) {
 		if (isGenericDeclaration)
 			return;
-		if constexpr (canBeFunction) {
+		if constexpr (canBeFunction || mustBeFunction) {
 			auto it = compile.funcMap.find(
 			    context.lexerString[baseClassLexerStringId]);
 			if (it != compile.funcMap.end()) {
@@ -292,18 +309,47 @@ void ClassDeclaration::load(in_func) {
 					    " were given\nHint: Check number of type arguments "
 					    "passed to the generic function");
 				}
+				isFunction = true;
 				return;
+			} else if constexpr (mustBeFunction) {
+				std::string targetName =
+				    context.lexerString[baseClassLexerStringId];
+				std::string bestSuggestion;
+				double bestScore = 0.0;
+				auto checkSuggestion = [&](const std::string &candidate) {
+					double score =
+					    rapidfuzz::fuzz::ratio(targetName, candidate);
+					if (score > bestScore && score >= 60.0) {
+						bestScore = score;
+						bestSuggestion = candidate;
+					}
+				};
+				for (const auto &[name, _] : compile.funcMap) {
+					checkSuggestion(name);
+				}
+				std::string errorMsg =
+				    "Cannot find function '" + targetName + "'";
+				if (!bestSuggestion.empty() && bestSuggestion != targetName) {
+					errorMsg += "\nDid you mean: '" + bestSuggestion + "'?";
+				}
+				errorMsg += "\nHint: Ensure the function name is spelled "
+				            "correctly and declared or imported.";
+				throwError(errorMsg);
 			}
 		}
 		{
+			if (baseClassLexerStringId == lexerIdVoid) {
+				classId = DefaultClass::voidClassId;
+				return;
+			}
 			auto it = context.defaultClassMap.find(baseClassLexerStringId);
 			if (it == context.defaultClassMap.end()) {
 				auto typealiasResult =
 				    context.typealiasMap.find(baseClassLexerStringId);
 				if (typealiasResult != context.typealiasMap.end()) {
 					auto typealias = typealiasResult->second;
-					onLoadTypealias<changeGenericsClassId, canBeFunction>(
-					    in_data, typealias);
+					onLoadTypealias<changeGenericsClassId, canBeFunction,
+					                mustBeFunction>(in_data, typealias);
 					return;
 				}
 				std::string targetName =
@@ -371,7 +417,7 @@ void ClassDeclaration::load(in_func) {
 		}
 	}
 
-	if constexpr (canBeFunction) {
+	if constexpr (canBeFunction || mustBeFunction) {
 		auto it =
 		    compile.funcMap.find(context.lexerString[baseClassLexerStringId]);
 		// std::cerr << context.lexerString[baseClassLexerStringId] << "\n";
@@ -409,6 +455,7 @@ void ClassDeclaration::load(in_func) {
 				// if (!isGenerics(in_data)) {
 				loadFunctionGenerics(in_data, name, this);
 				// }
+				isFunction = true;
 				return;
 			}
 			auto funcInfo = context.functionInfo[it->second[0]];
@@ -425,7 +472,34 @@ void ClassDeclaration::load(in_func) {
 				    "with "
 				    "function generic parameters");
 			}
+		} else if constexpr (mustBeFunction) {
+			std::string targetName =
+			    context.lexerString[baseClassLexerStringId];
+			std::string bestSuggestion;
+			double bestScore = 0.0;
+			auto checkSuggestion = [&](const std::string &candidate) {
+				double score =
+				    rapidfuzz::fuzz::ratio(targetName, candidate);
+				if (score > bestScore && score >= 60.0) {
+					bestScore = score;
+					bestSuggestion = candidate;
+				}
+			};
+			for (const auto &[name, _] : compile.funcMap) {
+				checkSuggestion(name);
+			}
+			std::string errorMsg =
+			    "Cannot find function '" + targetName + "'";
+			if (!bestSuggestion.empty() && bestSuggestion != targetName) {
+				errorMsg += "\nDid you mean: '" + bestSuggestion + "'?";
+			}
+			errorMsg += "\nHint: Ensure the function name is spelled "
+			            "correctly or defined before use.";
+			throwError(errorMsg);
 		}
+	}
+	if (isFunction) {
+		return;
 	}
 
 	TypealiasData *typealias = nullptr;
@@ -522,7 +596,8 @@ void ClassDeclaration::load(in_func) {
 		name = getName(in_data);
 	}
 	if (typealias) {
-		onLoadTypealias<changeGenericsClassId, canBeFunction>(in_data, typealias);
+		onLoadTypealias<changeGenericsClassId, canBeFunction, mustBeFunction>(
+		    in_data, typealias);
 		return;
 	}
 	{
@@ -620,6 +695,15 @@ template void ClassDeclaration::load<false, false, true>(in_func);
 template void ClassDeclaration::load<true, false, true>(in_func);
 template void ClassDeclaration::load<false, true, true>(in_func);
 template void ClassDeclaration::load<true, true, true>(in_func);
+
+template void ClassDeclaration::load<false, false, false, true>(in_func);
+template void ClassDeclaration::load<true, false, false, true>(in_func);
+template void ClassDeclaration::load<false, true, false, true>(in_func);
+template void ClassDeclaration::load<true, true, false, true>(in_func);
+template void ClassDeclaration::load<false, false, true, true>(in_func);
+template void ClassDeclaration::load<true, false, true, true>(in_func);
+template void ClassDeclaration::load<false, true, true, true>(in_func);
+template void ClassDeclaration::load<true, true, true, true>(in_func);
 
 template std::string ClassDeclaration::getName<false>(in_func);
 template std::string ClassDeclaration::getName<true>(in_func);

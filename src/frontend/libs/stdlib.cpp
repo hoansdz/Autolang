@@ -325,10 +325,101 @@ class Array<T> {
 
 
 
+	@native("arr_sort_default")
+	fun sort()
+
 	@native("arr_sort")
 	fun sort(comparator: (T, T) -> Int)
 
+	@native("arr_clone")
+	fun clone(): Array<T>
 
+	@native("arr_sorted")
+	fun sorted(): Array<T>
+
+	fun <R> map(fn: (T) -> R): Array<R> {
+		val result: Array<R> = <R>[]
+		var i = 0
+		val sz = this.size()
+		while (i < sz) {
+			result.push(fn(this.get(i)))
+			i = i + 1
+		}
+		return result
+	}
+
+	fun <R> mapIndexed(fn: (T, Int) -> R): Array<R> {
+		val result: Array<R> = <R>[]
+		var i = 0
+		val sz = this.size()
+		while (i < sz) {
+			result.push(fn(this.get(i), i))
+			i = i + 1
+		}
+		return result
+	}
+
+	@native("arr_first")
+	fun first(): T
+
+	@native("arr_first_or_null")
+	fun firstOrNull(): T?
+
+	@native("arr_last")
+	fun last(): T
+
+	@native("arr_last_or_null")
+	fun lastOrNull(): T?
+
+	@native("arr_size")
+	fun count(): Int
+
+	@native("arr_count_fn")
+	fun count(fn: (T) -> Bool): Int
+
+	@native("arr_any")
+	fun any(): Bool
+
+	@native("arr_any_fn")
+	fun any(fn: (T) -> Bool): Bool
+
+	@native("arr_all_fn")
+	fun all(fn: (T) -> Bool): Bool
+
+	@native("arr_none")
+	fun none(): Bool
+
+	@native("arr_none_fn")
+	fun none(fn: (T) -> Bool): Bool
+
+	@native("arr_join_to_string")
+	fun joinToString(separator: String = ", "): String
+
+	@native("arr_join_to_string")
+	fun joinToString(): String
+
+	@native("arr_reversed")
+	fun reversed(): Array<T>
+
+	@native("arr_take")
+	fun take(n: Int): Array<T>
+
+	@native("arr_drop")
+	fun drop(n: Int): Array<T>
+
+	@native("arr_reduce")
+	fun reduce(operation: (T, T) -> T): T
+
+	fun <R> fold(initial: R, operation: (R, T) -> R): R {
+		var acc = initial
+		var i = 0
+		val sz = this.size()
+		while (i < sz) {
+			acc = operation(acc, this.get(i))
+			i = i + 1
+		}
+		return acc
+	}
 
 	@native("arr_slice")
 	fun slice(from: Int, to: Int): Array<T>
@@ -450,8 +541,51 @@ class Set<T> {
     @native("set_difference")
     fun difference(other: Set<T>): Set<T>
 
+	@native("set_contains")
+	fun includes(value: T): Bool
 
-	
+	@native("set_clone")
+	fun clone(): Set<T>
+
+	@native("set_size")
+	fun count(): Int
+
+	@native("set_filter")
+	fun filter(fn: (T) -> Bool): Set<T>
+
+	fun <R> map(fn: (T) -> R): Array<R> {
+		val result: Array<R> = <R>[]
+		val arr = this.toArray()
+		var i = 0
+		val sz = arr.size()
+		while (i < sz) {
+			result.push(fn(arr.get(i)))
+			i = i + 1
+		}
+		return result
+	}
+
+	@native("set_first")
+	fun first(): T
+
+	@native("set_first_or_null")
+	fun firstOrNull(): T?
+
+	@native("set_any")
+	fun any(): Bool
+
+	@native("set_any_fn")
+	fun any(fn: (T) -> Bool): Bool
+
+	@native("set_all_fn")
+	fun all(fn: (T) -> Bool): Bool
+
+	@native("set_none")
+	fun none(): Bool
+
+	@native("set_none_fn")
+	fun none(fn: (T) -> Bool): Bool
+
 	@native("set_to_string")
 	fun toString(): String
 }
@@ -536,7 +670,20 @@ class Map<K, V> {
 	@native("map_clear")
 	fun clear()
 
+	@native("map_contains_key")
+	fun contains(key: K): Bool
 
+	@native("map_contains_key")
+	fun has(key: K): Bool
+
+	@native("map_clone")
+	fun clone(): Map<K, V>
+
+	@native("map_size")
+	fun count(): Int
+
+	@native("map_filter")
+	fun filter(fn: (K, V) -> Bool): Map<K, V>
 
 	@native("map_to_string")
 	fun toString(): String
@@ -572,6 +719,8 @@ class Pair<A, B>(val first: A, val second: B) {
 fun <A, B> pairOf(first: A, second: B): Pair<A, B> {
 	return Pair<A, B>(first, second)
 }
+
+
 // @wait_input
 // @native("input")
 // fun input(): String
@@ -696,11 +845,32 @@ typealias Nothing = Void
 	         {"arr_index_of", &array::index_of},
 	         {"arr_is_empty", &array::is_empty},
 	         {"arr_slice", &array::slice},
+	         {"arr_reversed", &array::reversed},
 	         {"arr_sort", &array::sort},
+	         {"arr_sort_default", &array::sort_default},
 	         {"arr_reserve", &array::reserve},
 	         {"arr_clear", &array::clear},
 	         {"arr_contains", &array::contains},
 	         {"arr_to_string", &array::to_string},
+	         {"arr_join_to_string", &array::join_to_string},
+	         {"arr_clone", &array::clone},
+	         {"arr_sorted", &array::sorted},
+	         {"arr_map", &array::map},
+	         {"arr_map_indexed", &array::map_indexed},
+	         {"arr_reduce", &array::reduce},
+	         {"arr_fold", &array::fold},
+	         {"arr_first", &array::first},
+	         {"arr_first_or_null", &array::first_or_null},
+	         {"arr_last", &array::last},
+	         {"arr_last_or_null", &array::last_or_null},
+	         {"arr_take", &array::take},
+	         {"arr_drop", &array::drop},
+	         {"arr_any", &array::any},
+	         {"arr_any_fn", &array::any_fn},
+	         {"arr_all_fn", &array::all_fn},
+	         {"arr_none", &array::none},
+	         {"arr_none_fn", &array::none_fn},
+	         {"arr_count_fn", &array::count_fn},
 	         {"set_add", &set::add},
 	         {"set_remove", &set::remove},
 	         {"set_size", &set::size},
@@ -713,6 +883,16 @@ typealias Nothing = Void
 	         {"set_intersect", &set::intersect},
 	         {"set_difference", &set::difference},
 	         {"set_to_string", &set::to_string},
+	         {"set_clone", &set::clone},
+	         {"set_filter", &set::filter},
+	         {"set_map", &set::map},
+	         {"set_first", &set::first},
+	         {"set_first_or_null", &set::first_or_null},
+	         {"set_any", &set::any},
+	         {"set_any_fn", &set::any_fn},
+	         {"set_all_fn", &set::all_fn},
+	         {"set_none", &set::none},
+	         {"set_none_fn", &set::none_fn},
 	         {"string_size", &DefaultFunction::get_string_size},
 	         {"map_clear", &map::clear},
 	         {"map_size", &map::size},
@@ -725,6 +905,8 @@ typealias Nothing = Void
 	         {"map_get", &map::get},
 	         {"map_get_or_default", &map::get_or_default},
 	         {"map_set", &map::set},
+	         {"map_clone", &map::clone},
+	         {"map_filter", &map::filter},
 	         {"map_to_string", &map::to_string}}));
 }
 } // namespace stdlib

@@ -346,6 +346,12 @@ ExprNode *CallNode::optimize(in_func) {
 		auto callerClassInfo = context.classInfo[caller->classId];
 		{
 			auto it = callerClassInfo->allFunction.find(nameId);
+			if (it == callerClassInfo->allFunction.end() && inputGenericArguments) {
+				loadMemberFunctionGenerics(
+				    in_data, caller->classId, name, inputGenericArguments,
+				    inputGenericArguments->baseClassLexerStringId);
+				it = callerClassInfo->allFunction.find(nameId);
+			}
 			if (it != callerClassInfo->allFunction.end()) {
 				funcVec[count++] = &it->second;
 				callerCanCallId = caller->classId;
@@ -395,6 +401,14 @@ ExprNode *CallNode::optimize(in_func) {
 					auto callerClassInfo =
 					    context.classInfo[*contextCallClassId];
 					auto it = callerClassInfo->allFunction.find(nameId);
+					if (it == callerClassInfo->allFunction.end() &&
+					    inputGenericArguments) {
+						loadMemberFunctionGenerics(
+						    in_data, *contextCallClassId, name,
+						    inputGenericArguments,
+						    inputGenericArguments->baseClassLexerStringId);
+						it = callerClassInfo->allFunction.find(nameId);
+					}
 					if (it != callerClassInfo->allFunction.end()) {
 						funcVec[count++] = &it->second;
 						callerCanCallId = *contextCallClassId;

@@ -68,6 +68,76 @@ static void checkGenericFunctionDuplicate(in_func, CreateFuncNode *node,
 	}
 }
 
+static void registerExtensionToGenericClass(in_func, ClassId targetClassId,
+                                            CreateFuncNode *node) {
+	auto extClassInfo = context.classInfo[targetClassId];
+	if (!extClassInfo || !extClassInfo->genericData)
+		return;
+	extClassInfo->createFunctionNodes.push_back(node);
+
+	for (size_t cid = 0; cid < compile.classes.size(); ++cid) {
+		auto clazz = compile.classes[cid];
+		if (!clazz || clazz->genericBaseClassId != targetClassId)
+			continue;
+		auto subClassInfo = context.classInfo[cid];
+		if (!subClassInfo)
+			continue;
+		auto paramCopy = node->parameter->copy(in_data);
+		if (!paramCopy->parameters.empty() &&
+		    paramCopy->parameters[0]->baseName == lexerIdthis) {
+			paramCopy->parameters[0]->classId = cid;
+		}
+		auto newCreateFuncNode = context.newFunctions.push(
+		    node->line, node->tokenIndex, cid, node->nameId,
+		    nullptr, paramCopy, node->functionFlags & ~FunctionFlags::FUNC_SKIP_LOAD);
+		if (node->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
+			newCreateFuncNode->pushNativeFunction(
+			    in_data, compile.functions[node->id]->native);
+		} else {
+			newCreateFuncNode->pushFunction(in_data);
+		}
+		auto newFunc = compile.functions[newCreateFuncNode->id];
+		auto newFuncInfo = context.functionInfo[newCreateFuncNode->id];
+		auto funcInfo = context.functionInfo[node->id];
+		newFunc->returnId = compile.functions[node->id]->returnId;
+		if (node->classDeclaration) {
+			if (!node->classDeclaration->classId) {
+				node->classDeclaration->template load<true>(in_data);
+				if (node->classDeclaration->classId) {
+					newFunc->returnId = *node->classDeclaration->classId;
+					node->classDeclaration->classId = std::nullopt;
+				}
+			} else {
+				newFunc->returnId = *node->classDeclaration->classId;
+			}
+			if (newFunc->returnId == DefaultClass::functionClassId) {
+				newFuncInfo->returnClass =
+				    node->classDeclaration->copy(in_data);
+			}
+		}
+		auto lastCurrentFunctionId = context.currentFunctionId;
+		auto lastCurrentClassId = context.currentClassId;
+		context.gotoFunction(newCreateFuncNode->id);
+		context.currentClassId = cid;
+		newFuncInfo->body.nodes.reserve(funcInfo->body.nodes.size());
+		for (auto &[declarationNode, value] : funcInfo->reflectDeclarationMap) {
+			value =
+			    static_cast<DeclarationNode *>(declarationNode->copy(in_data));
+		}
+		for (auto *bodyNode : funcInfo->body.nodes) {
+			newFuncInfo->body.nodes.push_back(bodyNode->copy(in_data));
+		}
+		if (funcInfo->inferenceNode) {
+			newFuncInfo->inferenceNode =
+			    static_cast<ReturnNode *>(newFuncInfo->body.nodes[0]);
+			newFuncInfo->inferenceNode->loaded = false;
+			context.mustInferenceFunctionType.push_back(newFunc->id);
+		}
+		context.gotoFunction(lastCurrentFunctionId);
+		context.currentClassId = lastCurrentClassId;
+	}
+}
+
 CreateFuncNode *loadFunc(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
@@ -143,12 +213,6 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		    "identifier for function name, e.g. 'fun foo()'");
 	}
 	if (expect(token, Lexer::TokenType::LT)) {
-		if (context.currentClassId) {
-			throw ParserError(token->line,
-			                  "Generic functions inside a class are "
-			                  "not supported yet\nHint: Remove generic "
-			                  "type parameters from class member function");
-		}
 		functionFlags |= FunctionFlags::FUNC_SKIP_LOAD;
 		context.preloadGenericData = loadGenericParameters(in_data, i);
 		context.isInGeneric = false;
@@ -175,6 +239,33 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		throw ParserError(firstLine,
 		                  "Expected '(' after function name but not "
 		                  "found\nHint: Add '(' to start parameter list");
+	}
+	if (token->type == Lexer::TokenType::LT) {
+		auto classIt = compile.classMap.find(context.lexerString[nameId]);
+		if (classIt != compile.classMap.end() &&
+		    context.classInfo[classIt->second]->genericData != nullptr) {
+			if (!context.preloadGenericData) {
+				context.preloadGenericData = loadGenericParameters(in_data, i);
+				context.isInGeneric = false;
+			} else {
+				int ltDepth = 1;
+				while (ltDepth > 0 &&
+				       nextTokenSameLine(&token, context.tokens, i, firstLine)) {
+					if (token->type == Lexer::TokenType::LT) {
+						++ltDepth;
+					} else if (token->type == Lexer::TokenType::GT) {
+						--ltDepth;
+					}
+				}
+			}
+			if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
+				--i;
+				throw ParserError(
+				    firstLine,
+				    "Expected '.' after generic class name in extension "
+				    "declaration\nHint: Use syntax 'ClassName<...>.methodName()'");
+			}
+		}
 	}
 	if (token->type != Lexer::TokenType::DOT && context.currentClassId &&
 	    !hasStaticFlag) {
@@ -275,6 +366,35 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 					                      "declared before creating extension");
 				}
 				context.currentClassId = it->second;
+				auto extClassInfo = context.classInfo[it->second];
+				if (extClassInfo && extClassInfo->genericData) {
+					if (context.preloadGenericData) {
+						for (size_t g = 0;
+						     g < context.preloadGenericData->genericDeclarations.size();
+						     ++g) {
+							auto srcDecl =
+							    context.preloadGenericData->genericDeclarations[g];
+							GenericDeclarationNode *targetDecl = nullptr;
+							targetDecl = extClassInfo->findGenericDeclaration(
+							    srcDecl->nameId);
+							if (!targetDecl &&
+							    g < extClassInfo->genericData
+							            ->genericDeclarations.size()) {
+								targetDecl = extClassInfo->genericData
+								                 ->genericDeclarations[g];
+							}
+							if (targetDecl) {
+								for (auto *cd : srcDecl->allClassDeclarations) {
+									targetDecl->allClassDeclarations.push_back(cd);
+								}
+								for (auto *cn : srcDecl->allCallNodes) {
+									targetDecl->allCallNodes.push_back(cn);
+								}
+							}
+						}
+						context.preloadGenericData = nullptr;
+					}
+				}
 				if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 					--i;
 					throw ParserError(
@@ -371,12 +491,6 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 	}
 
 	if (!context.preloadGenericData && expect(token, Lexer::TokenType::LT)) {
-		if (context.currentClassId) {
-			throw ParserError(token->line,
-			                  "Generic functions inside a class are "
-			                  "not supported yet\nHint: Remove generic "
-			                  "type parameters from class member function");
-		}
 		functionFlags |= FunctionFlags::FUNC_SKIP_LOAD;
 		context.preloadGenericData = loadGenericParameters(in_data, i);
 		context.isInGeneric = false;
@@ -502,7 +616,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			node->pushFunction(in_data);
 			auto func = compile.functions[node->id];
 			auto funcInfo = context.functionInfo[node->id];
-			if (context.preloadGenericData) {
+			if (context.preloadGenericData && !classNameId) {
 				checkGenericFunctionDuplicate(in_data, node, nameId, firstLine);
 				context.genericFunctionMap[nameId].push_back(node);
 				funcInfo->genericData = context.preloadGenericData;
@@ -537,7 +651,10 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			if (context.isInGeneric)
 				context.isInGeneric = false;
 			if (classNameId) {
-				context.currentClassId = std::nullopt;
+				if (context.currentClassId) {
+					registerExtensionToGenericClass(in_data, *context.currentClassId, node);
+					context.currentClassId = std::nullopt;
+				}
 			}
 			return node;
 		}
@@ -579,14 +696,18 @@ createFunc:;
 		node->pushNativeFunction(in_data, &it->second);
 		auto func = compile.functions[node->id];
 		auto funcInfo = context.functionInfo[node->id];
-		if (!classDeclaration) {
-			func->returnId = DefaultClass::voidClassId;
-		}
-		if (context.preloadGenericData) {
-			checkGenericFunctionDuplicate(in_data, node, nameId, firstLine);
-			context.genericFunctionMap[nameId].push_back(node);
-			funcInfo->genericData = context.preloadGenericData;
-			context.preloadGenericData = nullptr;
+		if (context.preloadGenericData && !classNameId) {
+			if (context.currentClassId) {
+				auto currentClassInfo = context.getCurrentClassInfo(in_data);
+				currentClassInfo->genericFunctionMap[nameId].push_back(node);
+				funcInfo->genericData = context.preloadGenericData;
+				context.preloadGenericData = nullptr;
+			} else {
+				checkGenericFunctionDuplicate(in_data, node, nameId, firstLine);
+				context.genericFunctionMap[nameId].push_back(node);
+				funcInfo->genericData = context.preloadGenericData;
+				context.preloadGenericData = nullptr;
+			}
 		}
 		// auto func = compile.functions[node->id];
 		// context.gotoFunction(node->id);
@@ -598,7 +719,10 @@ createFunc:;
 		if (context.isInGeneric)
 			context.isInGeneric = false;
 		if (classNameId) {
-			context.currentClassId = std::nullopt;
+			if (context.currentClassId) {
+				registerExtensionToGenericClass(in_data, *context.currentClassId, node);
+				context.currentClassId = std::nullopt;
+			}
 		}
 		return node;
 	} else {
@@ -610,10 +734,16 @@ createFunc:;
 	if (!classDeclaration) {
 		func->returnId = DefaultClass::voidClassId;
 	}
-	if (context.preloadGenericData) {
-		checkGenericFunctionDuplicate(in_data, node, nameId, firstLine);
-		context.genericFunctionMap[nameId].push_back(node);
-		funcInfo->genericData = context.preloadGenericData;
+	if (context.preloadGenericData && !classNameId) {
+		if (context.currentClassId) {
+			auto currentClassInfo = context.getCurrentClassInfo(in_data);
+			currentClassInfo->genericFunctionMap[nameId].push_back(node);
+			funcInfo->genericData = context.preloadGenericData;
+		} else {
+			checkGenericFunctionDuplicate(in_data, node, nameId, firstLine);
+			context.genericFunctionMap[nameId].push_back(node);
+			funcInfo->genericData = context.preloadGenericData;
+		}
 	}
 	// std::cerr<<"Created "<<name+"()"<<" ->
 	// "<<compile.classes[func->returnId]->getName(compile)<<"\n";
@@ -690,7 +820,10 @@ createFunc:;
 	}
 
 	if (classNameId) {
-		context.currentClassId = std::nullopt;
+		if (context.currentClassId) {
+			registerExtensionToGenericClass(in_data, *context.currentClassId, node);
+			context.currentClassId = std::nullopt;
+		}
 	}
 	return node;
 }
@@ -738,14 +871,51 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 				                  "Expected body but not found\nHint: Provide "
 				                  "closure body inside '{ ... }'");
 			}
+		} else if (token->type == Lexer::TokenType::MINUS_GT) {
+			parameter = context.parameterPool.push();
+			classDeclaration->inputClassId.push_back(nullptr);
+			classDeclaration->line = firstLine;
+			loadedLBrace = true;
+			goto createClosure;
+		} else if (token->type == Lexer::TokenType::OR_OR) {
+			parameter = context.parameterPool.push();
+			classDeclaration->inputClassId.push_back(nullptr);
+			classDeclaration->line = firstLine;
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(firstLine,
+				                  "Expected body but not found\nHint: Provide "
+				                  "closure body inside '{ ... }'");
+			}
+			if (!expect(token, Lexer::TokenType::MINUS_GT)) {
+				--i;
+				goto createClosure;
+			}
+			loadedLBrace = false;
+			if (!nextToken(&token, context.tokens, i) ||
+			    !expect(token, Lexer::TokenType::LBRACE)) {
+				--i;
+				throw ParserError(firstLine,
+				                  "Expected body but not found\nHint: Provide "
+				                  "closure body inside '{ ... }'");
+			}
+		} else if (hasArrowAtCurrentBraceLevel(context.tokens, i)) {
+			--i;
+			parameter = loadListDeclaration<Lexer::TokenType::MINUS_GT, false, false>(
+			    in_data, i, false);
+			classDeclaration->inputClassId.reserve(
+			    parameter->parameters.size() + 1);
+			classDeclaration->inputClassId.push_back(nullptr);
+			classDeclaration->line = firstLine;
+			loadedLBrace = true;
+			goto createClosure;
 		} else {
-			throw ParserError(
-			    firstLine,
-			    "Error: Empty closure parameter list is not allowed\nHint: "
-			    "Use {|param|} instead of {} to declare parameters "
-			    "explicitly");
 			--i;
 			parameter = context.parameterPool.push();
+			classDeclaration->inputClassId.push_back(nullptr);
+			classDeclaration->line = firstLine;
+			loadedLBrace = true;
+			goto createClosure;
 		}
 	} else {
 		parameter = context.parameterPool.push();

@@ -1,0 +1,5 @@
+fun testRuntimeModuloZero(): Void {
+	var zero = 0
+	val res = 100 % zero
+}
+testRuntimeModuloZero()

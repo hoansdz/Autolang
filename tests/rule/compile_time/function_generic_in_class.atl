@@ -1,3 +1,5 @@
 class BoxWithGenericFunc {
-	fun <T> badFunc(x: T): T = x
+	fun <T, U> pair(x: T, y: U): T = x
 }
+val box = BoxWithGenericFunc()
+box.pair<Int>(1, 2)

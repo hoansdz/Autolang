@@ -61,7 +61,17 @@ class TestMapFeaturesExhaustive {
 		assert(str is String)
 		assert(str.size() > 0)
 
-		// 8. Clean up test (clear)
+		// 8. Test: clone and filter
+		val origMap = <String, Int>{"A": 1, "B": 2, "C": 3}
+		val clonedMap = origMap.clone()
+		assert(clonedMap.size() == 3)
+		assert(clonedMap.get("A") == 1 && clonedMap.get("B") == 2 && clonedMap.get("C") == 3)
+
+		val filteredMap = origMap.filter {|k, v| v >= 2}
+		assert(filteredMap.size() == 2)
+		assert(filteredMap.containsKey("B") && filteredMap.containsKey("C") && !filteredMap.containsKey("A"))
+
+		// 9. Clean up test (clear)
 		numMap.clear()
 		assert(numMap.isEmpty() == true)
 		assert(numMap.size() == 0)

@@ -49,6 +49,16 @@ AObject *contains(NativeFuncInData);
 AObject *add(NativeFuncInData);
 AObject *clear(NativeFuncInData);
 AObject *to_string(NativeFuncInData);
+AObject *clone(NativeFuncInData);
+AObject *filter(NativeFuncInData);
+AObject *map(NativeFuncInData);
+AObject *first(NativeFuncInData);
+AObject *first_or_null(NativeFuncInData);
+AObject *any(NativeFuncInData);
+AObject *any_fn(NativeFuncInData);
+AObject *all_fn(NativeFuncInData);
+AObject *none(NativeFuncInData);
+AObject *none_fn(NativeFuncInData);
 std::string to_string(ANotifier &notifier, AObject *obj);
 } // namespace set
 } // namespace Libs

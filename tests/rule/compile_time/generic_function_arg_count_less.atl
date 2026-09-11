@@ -1,0 +1,2 @@
+fun <T, U> makePairMismatch(a: T, b: U) {}
+makePairMismatch<Int>(1, 2)
