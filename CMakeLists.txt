@@ -8,6 +8,10 @@ if(MINGW)
   add_compile_options(-Wa,-mbig-obj)
 endif()
 
+if(EMSCRIPTEN)
+  add_compile_options(-fexceptions)
+endif()
+
 # -------------------------------------------------------------------
 # 1. DEPENDENCIES (FetchContent)
 # -------------------------------------------------------------------

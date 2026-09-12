@@ -18,6 +18,18 @@ void ClassDeclaration::throwError(std::string message) {
 	throw ParserError(line, message);
 }
 
+static bool hasUnresolvedGenericDecl(ClassDeclaration *cd, int depth = 0) {
+	if (!cd || depth > 16) return false;
+	if (cd->isGenericDeclaration &&
+	    (!cd->classId || *cd->classId == DefaultClass::nullClassId)) {
+		return true;
+	}
+	for (auto *child : cd->inputClassId) {
+		if (hasUnresolvedGenericDecl(child, depth + 1)) return true;
+	}
+	return false;
+}
+
 bool ClassDeclaration::isSame(ClassDeclaration *classDeclaration) {
 	if (classId != classDeclaration->classId ||
 	    inputClassId.size() != classDeclaration->inputClassId.size()) {
@@ -86,7 +98,7 @@ ClassDeclaration *ClassDeclaration::copy(in_func) {
 		newClassDeclaration->inputClassId.reserve(inputClassId.size());
 		for (auto *inputClass : inputClassId) {
 			newClassDeclaration->inputClassId.push_back(
-			    inputClass->copy(in_data));
+			    inputClass ? inputClass->copy(in_data) : nullptr);
 		}
 	}
 	if (isGeneric && !isGenericDeclaration && classId != DefaultClass::functionClassId) {
@@ -452,9 +464,16 @@ void ClassDeclaration::load(in_func) {
 					}
 				}
 				std::string name = getName(in_data);
-				// if (!isGenerics(in_data)) {
-				loadFunctionGenerics(in_data, name, this);
-				// }
+				bool hasUnresolved = false;
+				for (auto *arg : inputClassId) {
+					if (hasUnresolvedGenericDecl(arg)) {
+						hasUnresolved = true;
+						break;
+					}
+				}
+				if (!hasUnresolved) {
+					loadFunctionGenerics(in_data, name, this);
+				}
 				isFunction = true;
 				return;
 			}
@@ -549,6 +568,14 @@ void ClassDeclaration::load(in_func) {
 	std::string name;
 	if constexpr (!changeGenericsClassId) {
 		bool mustInfer = true;
+		for (size_t i = 0; i < inputClassId.size(); ++i) {
+			if (hasUnresolvedGenericDecl(inputClassId[i])) {
+				mustInfer = false;
+				break;
+			}
+		}
+		if (!mustInfer)
+			return;
 		std::unique_ptr<bool[]> marked(new bool[inputClassId.size()]());
 		for (size_t i = 0; i < inputClassId.size(); ++i) {
 			auto *classDeclaration = inputClassId[i];
@@ -581,10 +608,16 @@ void ClassDeclaration::load(in_func) {
 		bool mustInfer = true;
 		for (size_t i = 0; i < inputClassId.size(); ++i) {
 			auto *classDeclaration = inputClassId[i];
+			if (hasUnresolvedGenericDecl(classDeclaration)) {
+				mustInfer = false;
+				break;
+			}
 			if (!classDeclaration->classId) {
 				classDeclaration->template load<true>(in_data);
-				if (!classDeclaration->classId) {
+				if (!classDeclaration->classId ||
+				    hasUnresolvedGenericDecl(classDeclaration)) {
 					mustInfer = false;
+					break;
 				}
 			} else if (classDeclaration->classId ==
 			           DefaultClass::functionClassId) {
@@ -607,7 +640,6 @@ void ClassDeclaration::load(in_func) {
 			return;
 		}
 	}
-	// context.genericClassMustBeLoaded[baseClassLexerStringId].push_back(this);
 	classId = Autolang::loadClassGenerics<isLazy>(in_data, name, this);
 	auto classInfo = context.classInfo[*classId];
 	if (inputClassId.size() != classInfo->genericTypeId.size()) {

@@ -117,6 +117,15 @@ ExprNode *CreateFuncNode::optimize(in_func) {
 	}
 	for (size_t i = 0; i < parameter->parameters.size(); ++i) {
 		auto &param = parameter->parameters[i];
+		if (param->classDeclaration) {
+			if (!param->classDeclaration->classId) {
+				param->classDeclaration->template load<false>(in_data);
+			}
+			if (param->classDeclaration->classId) {
+				param->classId = *param->classDeclaration->classId;
+				param->nullable = param->classDeclaration->nullable;
+			}
+		}
 		func->args[i] = param->classId;
 	}
 

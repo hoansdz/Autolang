@@ -86,6 +86,10 @@ namespace Autolang {
 		uint8_t tablePos = bytecodes[ip++];                                    \
 		tempAllocateArea[0] = data1[get_u32(bytecodes, ip)];                   \
 		tempAllocateArea[1] = data2[get_u32(bytecodes, ip)];                   \
+		if (!tempAllocateArea[0] || !tempAllocateArea[1]) {                    \
+			notifier->throwException("Variable is used before initialization");\
+			goto resumeCallFrame;                                              \
+		}                                                                      \
 		if (!fastOperate<2>(operatorTable[tablePos]))                          \
 			goto resumeCallFrame;                                              \
 		DISPATCH();                                                            \
@@ -95,9 +99,18 @@ namespace Autolang {
 	do_##opcode : {                                                            \
 		uint8_t tablePos = bytecodes[ip++];                                    \
 		uint32_t pos = get_u32(bytecodes, ip);                                 \
+		AObject *parent = data1[pos];                                          \
+		if (!parent) {                                                         \
+			notifier->throwException("Variable is used before initialization");\
+			goto resumeCallFrame;                                              \
+		}                                                                      \
 		tempAllocateArea[0] =                                                  \
-		    data1[pos]->member->data[get_u32(bytecodes, ip)];                  \
+		    parent->member->data[get_u32(bytecodes, ip)];                      \
 		tempAllocateArea[1] = data2[get_u32(bytecodes, ip)];                   \
+		if (!tempAllocateArea[1]) {                                            \
+			notifier->throwException("Variable is used before initialization");\
+			goto resumeCallFrame;                                              \
+		}                                                                      \
 		if (!fastOperate<2>(operatorTable[tablePos]))                          \
 			goto resumeCallFrame;                                              \
 		DISPATCH();                                                            \
@@ -108,8 +121,13 @@ namespace Autolang {
 		uint8_t tablePos = bytecodes[ip++];                                    \
 		tempAllocateArea[0] = data1[get_u32(bytecodes, ip)];                   \
 		uint32_t pos = get_u32(bytecodes, ip);                                 \
+		AObject *parent = data2[pos];                                          \
+		if (!parent || !tempAllocateArea[0]) {                                 \
+			notifier->throwException("Variable is used before initialization");\
+			goto resumeCallFrame;                                              \
+		}                                                                      \
 		tempAllocateArea[1] =                                                  \
-		    data2[pos]->member->data[get_u32(bytecodes, ip)];                  \
+		    parent->member->data[get_u32(bytecodes, ip)];                      \
 		if (!fastOperate<2>(operatorTable[tablePos]))                          \
 			goto resumeCallFrame;                                              \
 		DISPATCH();                                                            \
@@ -119,11 +137,21 @@ namespace Autolang {
 	do_##opcode : {                                                            \
 		uint8_t tablePos = bytecodes[ip++];                                    \
 		uint32_t pos1 = get_u32(bytecodes, ip);                                \
+		AObject *parent1 = data1[pos1];                                        \
+		if (!parent1) {                                                        \
+			notifier->throwException("Variable is used before initialization");\
+			goto resumeCallFrame;                                              \
+		}                                                                      \
 		tempAllocateArea[0] =                                                  \
-		    data1[pos1]->member->data[get_u32(bytecodes, ip)];                 \
+		    parent1->member->data[get_u32(bytecodes, ip)];                     \
 		uint32_t pos2 = get_u32(bytecodes, ip);                                \
+		AObject *parent2 = data2[pos2];                                        \
+		if (!parent2) {                                                        \
+			notifier->throwException("Variable is used before initialization");\
+			goto resumeCallFrame;                                              \
+		}                                                                      \
 		tempAllocateArea[1] =                                                  \
-		    data2[pos2]->member->data[get_u32(bytecodes, ip)];                 \
+		    parent2->member->data[get_u32(bytecodes, ip)];                     \
 		if (!fastOperate<2>(operatorTable[tablePos]))                          \
 			goto resumeCallFrame;                                              \
 		DISPATCH();                                                            \
@@ -133,6 +161,10 @@ namespace Autolang {
 	do_##opcode : {                                                            \
 		AObject *&obj1 = data1[get_u32(bytecodes, ip)];                        \
 		AObject *obj2 = data2[get_u32(bytecodes, ip)];                         \
+		if (!obj2) {                                                           \
+			notifier->throwException("Variable is used before initialization");\
+			goto resumeCallFrame;                                              \
+		}                                                                      \
 		obj2->retain();                                                        \
 		if (obj1 != nullptr) {                                                 \
 			data.manager.release(obj1);                                        \
@@ -145,6 +177,10 @@ namespace Autolang {
 	do_##opcode : {                                                            \
 		AObject *&obj1 = data1[get_u32(bytecodes, ip)];                        \
 		AObject *obj2 = data2[get_u32(bytecodes, ip)];                         \
+		if (!obj2) {                                                           \
+			notifier->throwException("Variable is used before initialization");\
+			goto resumeCallFrame;                                              \
+		}                                                                      \
 		if (obj1 != nullptr) {                                                 \
 			data.manager.release(obj1);                                        \
 		}                                                                      \
@@ -173,6 +209,10 @@ namespace Autolang {
 #define NEGATIVE_DATA(opcode, data)                                            \
 	do_##opcode : {                                                            \
 		auto obj = data[get_u32(bytecodes, ip)];                               \
+		if (!obj) {                                                            \
+			notifier->throwException("Variable is used before initialization");\
+			goto resumeCallFrame;                                              \
+		}                                                                      \
 		switch (obj->type) {                                                   \
 			case DefaultClass::intClassId: {                                   \
 				auto newValue = notifier->createInt(-obj->i);                  \
@@ -199,6 +239,10 @@ namespace Autolang {
 #define NEGATIVE_DATA_MEMBER(opcode, data1)                                    \
 	do_##opcode : {                                                            \
 		auto parent = data1[get_u32(bytecodes, ip)];                           \
+		if (!parent) {                                                         \
+			notifier->throwException("Variable is used before initialization");\
+			goto resumeCallFrame;                                              \
+		}                                                                      \
 		auto obj = parent->member->data[get_u32(bytecodes, ip)];               \
 		switch (obj->type) {                                                   \
 			case DefaultClass::intClassId: {                                   \
@@ -1549,7 +1593,12 @@ resumeCallFrame:;
 	}
 
 	do_LOAD_GLOBAL: {
-		stack.push(globalVariables[get_u32(bytecodes, ip)]);
+		AObject *obj = globalVariables[get_u32(bytecodes, ip)];
+		if (!obj) {
+			notifier->throwException("Variable is used before initialization");
+			goto resumeCallFrame;
+		}
+		stack.push(obj);
 		stack.top()->retain();
 		DISPATCH();
 	}
@@ -1610,6 +1659,10 @@ resumeCallFrame:;
 	do_GLOBAL_LOAD_MEMBER: {
 		uint32_t pos = get_u32(bytecodes, ip);
 		AObject *obj = globalVariables[pos];
+		if (!obj) {
+			notifier->throwException("Variable is used before initialization");
+			goto resumeCallFrame;
+		}
 		AObject *member = obj->member->data[get_u32(bytecodes, ip)];
 		member->retain();
 		stack.push(member);
@@ -1632,7 +1685,7 @@ resumeCallFrame:;
 			for (auto &[name, index] : clazz->memberMap) {
 				if (index != memberIndex)
 					continue;
-				notifier->throwException("Member '" + name +
+				notifier->throwException("Member '" + std::string(name) +
 				                         "' at class '" + className +
 				                         "' is uninitialized ");
 				goto resumeCallFrame;
@@ -1644,6 +1697,10 @@ resumeCallFrame:;
 	do_GLOBAL_LOAD_LATEINIT_MEMBER: {
 		uint32_t pos = get_u32(bytecodes, ip);
 		AObject *obj = globalVariables[pos];
+		if (!obj) {
+			notifier->throwException("Variable is used before initialization");
+			goto resumeCallFrame;
+		}
 		uint32_t memberIndex = get_u32(bytecodes, ip);
 		AObject *member = obj->member->data[memberIndex];
 		if (member) {
@@ -1657,7 +1714,7 @@ resumeCallFrame:;
 			for (auto &[name, index] : clazz->memberMap) {
 				if (index != memberIndex)
 					continue;
-				notifier->throwException("Member '" + name +
+				notifier->throwException("Member '" + std::string(name) +
 				                         "' at class '" + className +
 				                         "' is uninitialized ");
 				goto resumeCallFrame;
@@ -1669,6 +1726,10 @@ resumeCallFrame:;
 	do_GLOBAL_LOAD_MEMBER_AND_STORE: {
 		uint32_t pos = get_u32(bytecodes, ip);
 		AObject *obj = globalVariables[pos];
+		if (!obj) {
+			notifier->throwException("Variable is used before initialization");
+			goto resumeCallFrame;
+		}
 		obj->member->data[get_u32(bytecodes, ip)] = stack.pop();
 		DISPATCH();
 	}
@@ -1708,7 +1769,7 @@ resumeCallFrame:;
 				if (index != memberIndex)
 					continue;
 				data.manager.release(parent);
-				notifier->throwException("Member '" + name +
+				notifier->throwException("Member '" + std::string(name) +
 				                         "' at class '" + className +
 				                         "' is uninitialized ");
 				goto resumeCallFrame;
@@ -1800,6 +1861,10 @@ resumeCallFrame:;
 			data.manager.release(obj);
 		}
 		auto obj = globalVariables[get_u32(bytecodes, ip)];
+		if (!obj) {
+			notifier->throwException("Variable is used before initialization");
+			goto resumeCallFrame;
+		}
 		obj->retain();
 		stack.push(obj);
 		goto doneReturnFunction;
@@ -1812,8 +1877,13 @@ resumeCallFrame:;
 			data.manager.release(obj);
 		}
 		uint32_t localPos = get_u32(bytecodes, ip);
+		auto parent = stackAllocator[localPos];
+		if (!parent) {
+			notifier->throwException("Variable is used before initialization");
+			goto resumeCallFrame;
+		}
 		auto obj =
-		    stackAllocator[localPos]->member->data[get_u32(bytecodes, ip)];
+		    parent->member->data[get_u32(bytecodes, ip)];
 		obj->retain();
 		stack.push(obj);
 		goto doneReturnFunction;
@@ -1826,8 +1896,13 @@ resumeCallFrame:;
 			data.manager.release(obj);
 		}
 		uint32_t globalPos = get_u32(bytecodes, ip);
+		auto parent = globalVariables[globalPos];
+		if (!parent) {
+			notifier->throwException("Variable is used before initialization");
+			goto resumeCallFrame;
+		}
 		auto obj =
-		    globalVariables[globalPos]->member->data[get_u32(bytecodes, ip)];
+		    parent->member->data[get_u32(bytecodes, ip)];
 		obj->retain();
 		stack.push(obj);
 		goto doneReturnFunction;
@@ -2092,9 +2167,12 @@ resumeCallFrame:;
 	}
 
 	do_PLUS_PLUS_GLOBAL: {
-		// if (!operate<Autolang::DefaultFunction::plus_plus, 1>())
-		// 	goto resumeCallFrame;
-		++globalVariables[get_u32(bytecodes, ip)]->i;
+		auto obj = globalVariables[get_u32(bytecodes, ip)];
+		if (!obj) {
+			notifier->throwException("Variable is used before initialization");
+			goto resumeCallFrame;
+		}
+		++obj->i;
 		DISPATCH();
 	}
 
@@ -2158,13 +2236,18 @@ resumeCallFrame:;
 
 	do_GLOBAL_CAL_CONST_JUMP: {
 		uint8_t tablePos = bytecodes[ip++];
-		tempAllocateArea[0] = globalVariables[get_u32(bytecodes, ip)];
+		auto obj = globalVariables[get_u32(bytecodes, ip)];
+		if (!obj) {
+			notifier->throwException("Variable is used before initialization");
+			goto resumeCallFrame;
+		}
+		tempAllocateArea[0] = obj;
 		tempAllocateArea[1] = data.constPool[get_u32(bytecodes, ip)];
-		auto obj = operatorTable[tablePos](*notifier, tempAllocateArea, size);
+		auto resObj = operatorTable[tablePos](*notifier, tempAllocateArea, size);
 		if (notifier->callFrame->exception) {
 			goto resumeCallFrame;
 		}
-		if (obj == DefaultClass::trueObject) {
+		if (resObj == DefaultClass::trueObject) {
 			ip = get_u32(bytecodes, ip);
 		} else {
 			ip += 4;
@@ -2174,13 +2257,18 @@ resumeCallFrame:;
 
 	do_GLOBAL_CAL_LOCAL_JUMP: {
 		uint8_t tablePos = bytecodes[ip++];
-		tempAllocateArea[0] = globalVariables[get_u32(bytecodes, ip)];
+		auto obj = globalVariables[get_u32(bytecodes, ip)];
+		if (!obj) {
+			notifier->throwException("Variable is used before initialization");
+			goto resumeCallFrame;
+		}
+		tempAllocateArea[0] = obj;
 		tempAllocateArea[1] = stackAllocator[get_u32(bytecodes, ip)];
-		auto obj = operatorTable[tablePos](*notifier, tempAllocateArea, size);
+		auto resObj = operatorTable[tablePos](*notifier, tempAllocateArea, size);
 		if (notifier->callFrame->exception) {
 			goto resumeCallFrame;
 		}
-		if (obj == DefaultClass::trueObject) {
+		if (resObj == DefaultClass::trueObject) {
 			ip = get_u32(bytecodes, ip);
 		} else {
 			ip += 4;
@@ -2190,13 +2278,19 @@ resumeCallFrame:;
 
 	do_GLOBAL_CAL_GLOBAL_JUMP: {
 		uint8_t tablePos = bytecodes[ip++];
-		tempAllocateArea[0] = globalVariables[get_u32(bytecodes, ip)];
-		tempAllocateArea[1] = globalVariables[get_u32(bytecodes, ip)];
-		auto obj = operatorTable[tablePos](*notifier, tempAllocateArea, size);
+		auto obj1 = globalVariables[get_u32(bytecodes, ip)];
+		auto obj2 = globalVariables[get_u32(bytecodes, ip)];
+		if (!obj1 || !obj2) {
+			notifier->throwException("Variable is used before initialization");
+			goto resumeCallFrame;
+		}
+		tempAllocateArea[0] = obj1;
+		tempAllocateArea[1] = obj2;
+		auto resObj = operatorTable[tablePos](*notifier, tempAllocateArea, size);
 		if (notifier->callFrame->exception) {
 			goto resumeCallFrame;
 		}
-		if (obj == DefaultClass::trueObject) {
+		if (resObj == DefaultClass::trueObject) {
 			ip = get_u32(bytecodes, ip);
 		} else {
 			ip += 4;
@@ -2208,11 +2302,11 @@ resumeCallFrame:;
 		uint8_t tablePos = bytecodes[ip++];
 		tempAllocateArea[0] = stackAllocator[get_u32(bytecodes, ip)];
 		tempAllocateArea[1] = data.constPool[get_u32(bytecodes, ip)];
-		auto obj = operatorTable[tablePos](*notifier, tempAllocateArea, size);
+		auto resObj = operatorTable[tablePos](*notifier, tempAllocateArea, size);
 		if (notifier->callFrame->exception) {
 			goto resumeCallFrame;
 		}
-		if (obj == DefaultClass::trueObject) {
+		if (resObj == DefaultClass::trueObject) {
 			ip = get_u32(bytecodes, ip);
 		} else {
 			ip += 4;
@@ -2224,11 +2318,11 @@ resumeCallFrame:;
 		uint8_t tablePos = bytecodes[ip++];
 		tempAllocateArea[0] = stackAllocator[get_u32(bytecodes, ip)];
 		tempAllocateArea[1] = stackAllocator[get_u32(bytecodes, ip)];
-		auto obj = operatorTable[tablePos](*notifier, tempAllocateArea, size);
+		auto resObj = operatorTable[tablePos](*notifier, tempAllocateArea, size);
 		if (notifier->callFrame->exception) {
 			goto resumeCallFrame;
 		}
-		if (obj == DefaultClass::trueObject) {
+		if (resObj == DefaultClass::trueObject) {
 			ip = get_u32(bytecodes, ip);
 		} else {
 			ip += 4;
@@ -2239,12 +2333,17 @@ resumeCallFrame:;
 	do_LOCAL_CAL_GLOBAL_JUMP: {
 		uint8_t tablePos = bytecodes[ip++];
 		tempAllocateArea[0] = stackAllocator[get_u32(bytecodes, ip)];
-		tempAllocateArea[1] = globalVariables[get_u32(bytecodes, ip)];
-		auto obj = operatorTable[tablePos](*notifier, tempAllocateArea, size);
+		auto obj = globalVariables[get_u32(bytecodes, ip)];
+		if (!obj) {
+			notifier->throwException("Variable is used before initialization");
+			goto resumeCallFrame;
+		}
+		tempAllocateArea[1] = obj;
+		auto resObj = operatorTable[tablePos](*notifier, tempAllocateArea, size);
 		if (notifier->callFrame->exception) {
 			goto resumeCallFrame;
 		}
-		if (obj == DefaultClass::trueObject) {
+		if (resObj == DefaultClass::trueObject) {
 			ip = get_u32(bytecodes, ip);
 		} else {
 			ip += 4;
@@ -2339,12 +2438,20 @@ resumeCallFrame:;
 
 	do_NOT_GLOBAL: {
 		auto obj = globalVariables[get_u32(bytecodes, ip)];
+		if (!obj) {
+			notifier->throwException("Variable is used before initialization");
+			goto resumeCallFrame;
+		}
 		stack.push(notifier->createBool(!obj->b));
 		DISPATCH();
 	}
 
 	do_NOT_LOCAL_MEMBER: {
 		auto obj = stackAllocator[get_u32(bytecodes, ip)];
+		if (!obj) {
+			notifier->throwException("Variable is used before initialization");
+			goto resumeCallFrame;
+		}
 		stack.push(notifier->createBool(
 		    !obj->member->data[get_u32(bytecodes, ip)]->b));
 		DISPATCH();
@@ -2352,6 +2459,10 @@ resumeCallFrame:;
 
 	do_NOT_GLOBAL_MEMBER: {
 		auto obj = globalVariables[get_u32(bytecodes, ip)];
+		if (!obj) {
+			notifier->throwException("Variable is used before initialization");
+			goto resumeCallFrame;
+		}
 		stack.push(notifier->createBool(
 		    !obj->member->data[get_u32(bytecodes, ip)]->b));
 		DISPATCH();

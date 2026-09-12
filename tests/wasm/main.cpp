@@ -1,11 +1,15 @@
+#ifndef AUTOLANG_LIMIT_OPCODE
 #define AUTOLANG_LIMIT_OPCODE
+#endif
 
+#include "backend/vm/ANotifier.hpp"
 #include "shared/ANativeFunctionData.hpp"
 #include <Autolang.hpp>
 #include <cstdio>
 #include <emscripten/bind.h>
 #include <emscripten/emscripten.h>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 using namespace emscripten;
@@ -28,10 +32,10 @@ class CompilerWrapper {
 	    : compiler(Autolang::ACompilerConfig{.addStdFile = addStdFile,
 	                                         .addStdRegex = addStdRegex,
 	                                         .addStdJson = addStdJson,
+	                                         .addStdHttp = addStdHttp,
 	                                         .addStdMath = addStdMath,
-	                                         .addStdDate = addStdDate,
 	                                         .addStdBytes = addStdBytes,
-	                                         .addStdHttp = addStdHttp}) {
+	                                         .addStdDate = addStdDate}) {
 		setvbuf(stderr, NULL, _IONBF, 0);
 	}
 

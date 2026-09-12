@@ -74,8 +74,52 @@ fun testJsonFeaturesExhaustive() {
     
     val prettyStr = dumpTest.stringify(4)
     assert(prettyStr.indexOf("\n") != -1)
+
+    val pJson = "{\"name\":\"Alice\",\"age\":30}".parseJson()
+    assert(pJson.getString("name") == "Alice")
+    assert(pJson.getInt("age") == 30)
+    assert(pJson.optString("missing", "default") == "default")
+    assert(pJson.optInt("missing", 99) == 99)
+
+    val person: PersonDto = Json.decodeFromString<PersonDto>("{\"name\":\"Bob\",\"age\":25}")
+    assert(person.name == "Bob")
+    assert(person.age == 25)
+
+    val person2 = pJson.toClass<PersonDto>()
+    assert(person2.name == "Alice")
+    assert(person2.age == 30)
+
+    val person3 = pJson.decodeTo<PersonDto>()
+    assert(person3.name == "Alice")
+    assert(person3.age == 30)
+
+    val person4 = "{\"name\":\"Charlie\",\"age\":40}".decodeJson<PersonDto>()
+    assert(person4.name == "Charlie")
+    assert(person4.age == 40)
+
+    val personList = Json.decodeArrayFromString<PersonDto>("[{\"name\":\"P1\",\"age\":10},{\"name\":\"P2\",\"age\":20}]")
+    assert(personList.size() == 2)
+    assert(personList[0].name == "P1")
+    assert(personList[1].age == 20)
+
+    val personList2 = "[{\"name\":\"P1\",\"age\":10},{\"name\":\"P2\",\"age\":20}]".decodeJsonArray<PersonDto>()
+    assert(personList2.size() == 2)
+    assert(personList2[0].name == "P1")
+
+    val parsedArr = Json.parse("[{\"name\":\"P1\",\"age\":10},{\"name\":\"P2\",\"age\":20}]")
+    val personList3 = parsedArr.toArrayClass<PersonDto>()
+    assert(personList3.size() == 2)
+    assert(personList3[1].name == "P2")
+
+    val encoded = Json.encodeToString(pJson)
+    assert(encoded.indexOf("Alice") != -1)
     
     println("Passed ${__FUNC__}")
+}
+
+class PersonDto {
+    lateinit val name: String
+    lateinit val age: Int
 }
 
 testJsonFeaturesExhaustive()

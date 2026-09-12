@@ -506,7 +506,7 @@ HasClassIdNode *ParserContext::findDeclaration(in_func, uint32_t line,
 			return node;
 		}
 	}
-	if (!inGlobal) {
+	if (!inGlobal || currentClassId) {
 		return nullptr;
 	}
 	auto node =

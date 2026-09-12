@@ -10,6 +10,26 @@ fun testTimeFeatures() {
     assert(formatted.contains("-"))
     assert(formatted.contains(":"))
 
+    val customFormat = Time.format(t, "%H:%M:%S")
+    assert(customFormat.size() == 8)
+    assert(customFormat.contains(":"))
+
+    assert(Time.nowMs() > 0)
+    assert(Time.nowSeconds() > 0)
+    assert(Time.currentTimeMillis() > 0)
+    assert(Time.nowNanos() > 0)
+    assert(Time.nanoTime() > 0)
+
+    val elapsed = Time.measureTimeMillis {
+        Time.sleep(10)
+    }
+    assert(elapsed >= 0)
+
+    val elapsedTop = measureTimeMillis {
+        sleep(5)
+    }
+    assert(elapsedTop >= 0)
+
     println("Passed ${__FUNC__}")
 }
 

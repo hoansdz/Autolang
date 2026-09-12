@@ -174,6 +174,9 @@ int main(int argc, char *argv[]) {
 					printMemoryUsage(baseMem, currentMem);
 #endif
 					compiler.run();
+					if (compiler.exceptionMessage) {
+						std::cerr << "Uncaught exception: " << compiler.exceptionMessage << '\n';
+					}
 					compiler.refresh();
 				}
 			}

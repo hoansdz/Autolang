@@ -3,6 +3,7 @@
 
 #include "frontend/parser/Debugger.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "shared/ClassFlags.hpp"
 #include <rapidfuzz/fuzz.hpp>
 
 namespace Autolang {
@@ -86,7 +87,7 @@ GenericData *loadGenericParameters(in_func, size_t &i) {
 	}
 }
 
-// Helper: reset classId đệ quy trên cây ClassDeclaration để chuẩn bị load lại
+// Helper: reset classId recursively on ClassDeclaration tree to prepare for reloading
 static void resetClassDeclTreeHelper(ClassDeclaration *decl, int depth) {
 	if (!decl || depth > 16)
 		return;
@@ -171,12 +172,22 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	std::vector<ClassDeclaration *> genericTypeId;
 	genericTypeId.reserve(classInfo->genericData->genericDeclarations.size());
 
-	// Snapshot state của GenericDeclarationNode để restore sau khi dùng xong
-	struct GenericDeclSnapshot {
+	// Snapshot state of GenericDeclarationNode to restore after use
+	struct ClassDeclSnapshot {
+		ClassDeclaration *cd;
+		std::optional<ClassId> classId;
+		bool nullable;
+		LexerStringId baseClassLexerStringId;
+		std::vector<ClassDeclaration *> inputClassId;
+	};
+
+	struct GenDeclSnapshot {
+		GenericDeclarationNode *decl;
 		ClassId classId;
 		bool nullable;
+		std::vector<ClassDeclSnapshot> cdSnapshots;
 	};
-	std::vector<GenericDeclSnapshot> genericDeclSnapshots;
+	std::vector<GenDeclSnapshot> genericDeclSnapshots;
 	genericDeclSnapshots.reserve(classInfo->genericData->genericDeclarations.size());
 
 	for (size_t i = 0; i < classInfo->genericData->genericDeclarations.size();
@@ -187,9 +198,18 @@ ClassId loadClassGenerics(in_func, std::string &name,
 
 		ClassId inputClassId = *inputClass->classId;
 
-		// Lưu snapshot trước khi mutate
-		genericDeclSnapshots.emplace_back(
-		    GenericDeclSnapshot{genericDeclaration->classId, genericDeclaration->nullable});
+		// Save snapshot before mutating
+		GenDeclSnapshot snap;
+		snap.decl = genericDeclaration;
+		snap.classId = genericDeclaration->classId;
+		snap.nullable = genericDeclaration->nullable;
+		snap.cdSnapshots.reserve(genericDeclaration->allClassDeclarations.size());
+		for (auto *cd : genericDeclaration->allClassDeclarations) {
+			if (cd) {
+				snap.cdSnapshots.push_back({cd, cd->classId, cd->nullable, cd->baseClassLexerStringId, cd->inputClassId});
+			}
+		}
+		genericDeclSnapshots.push_back(std::move(snap));
 
 		// Change callnode name
 		if (!genericDeclaration->allCallNodes.empty()) {
@@ -252,8 +272,6 @@ ClassId loadClassGenerics(in_func, std::string &name,
 				classDeclaration->nullable = inputClass->nullable;
 				// classDeclaration->mustInference = false;
 			}
-			classDeclaration->baseClassLexerStringId =
-			    inputClass->baseClassLexerStringId;
 		}
 	}
 
@@ -309,7 +327,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			default:
 				break;
 		}
-		// Reset: classId và isFunction để tránh state leak sang instantiation tiếp theo
+		// Reset: classId and isFunction to prevent state leakage to subsequent instantiations
 		classDeclaration->classId = std::nullopt;
 		classDeclaration->isFunction = false;
 	}
@@ -336,12 +354,21 @@ ClassId loadClassGenerics(in_func, std::string &name,
 
 	// std::cerr << "Created " << newClass->getName(compile) << "\n ";
 
-	if (newCreateClassNode->superDeclaration &&
-	    !newCreateClassNode->superDeclaration->classId) {
-		newCreateClassNode->superDeclaration->template load<true>(in_data);
-		// std::cerr << "Created "
-		//           << newCreateClassNode->superDeclaration->getName(in_data)
-		//           << "\n ";
+	if (baseCreateClassNode->superDeclaration) {
+		baseCreateClassNode->superDeclaration->classId = std::nullopt;
+		baseCreateClassNode->superDeclaration->template load<true>(in_data);
+		if (baseCreateClassNode->superDeclaration->classId) {
+			auto superClassId = *baseCreateClassNode->superDeclaration->classId;
+			newClass->parentId = superClassId;
+			auto superDecl = context.classDeclarationAllocator.push();
+			superDecl->classId = superClassId;
+			superDecl->baseClassLexerStringId = context.createLexerStringIfNotExists(
+			    compile.classes[superClassId]->getName(compile));
+			superDecl->line = baseCreateClassNode->line;
+			superDecl->mode = baseCreateClassNode->mode;
+			newCreateClassNode->superDeclaration = superDecl;
+		}
+		baseCreateClassNode->superDeclaration->classId = std::nullopt;
 	}
 
 	for (auto *member : classInfo->member) {
@@ -377,7 +404,6 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	newClassInfo->declarationThis->classId = newClassId;
 	// newClassInfo->func = classInfo->func;
 	newClassInfo->staticFunc = classInfo->staticFunc;
-	newClass->parentId = clazz->parentId;
 
 	// newClass->funcMap = clazz->funcMap;
 
@@ -490,9 +516,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 				newConstructor->body.nodes.push_back(node->copy(in_data));
 			}
 			context.gotoFunction(lastCurrentFunctionId);
-			if constexpr (isLazy) {
-				constructor->optimize(in_data);
-			}
+			newConstructor->optimize(in_data);
 		}
 	}
 
@@ -506,7 +530,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			paramCopy->parameters[0] = newClassInfo->declarationThis;
 		}
 		if (funcInfo->genericData != nullptr) {
-			// Vấn đề 4: Lưu và restore currentClassId khi tạo generic function node
+			// Issue 4: Save and restore currentClassId when creating generic function node
 			auto savedClassId = context.currentClassId;
 			context.currentClassId = newClassId;
 			auto newCreateFuncNode = context.newFunctions.push(
@@ -524,8 +548,8 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			    compile.functions[createFuncNode->id]->maxDeclaration;
 			newFuncInfo->declaration = funcInfo->declaration;
 				
-			// Đồng bộ reflectDeclarationMap của clone generic function trong class,
-			// để class-scoped member declaration không bị thiếu khi later compile
+			// Synchronize reflectDeclarationMap of cloned generic functions in class,
+			// so class-scoped member declarations are not missing during later compilation
 			// generic function bodies from this generic class instance.
 			if (newClassInfo->declarationThis) {
 				newFuncInfo->reflectDeclarationMap[newClassInfo->declarationThis] =
@@ -580,7 +604,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 		auto newFuncInfo = context.functionInfo[newCreateFuncNode->id];
 		newFunc->returnId = compile.functions[createFuncNode->id]->returnId;
 		if (createFuncNode->classDeclaration) {
-			// Vấn đề 3: Reset cây classDeclaration trước khi load để tránh state cũ từ lần instantiate trước
+			// Issue 3: Reset classDeclaration tree before loading to prevent stale state from previous instantiation
 			resetClassDeclTree(createFuncNode->classDeclaration);
 			if (!createFuncNode->classDeclaration->classId) {
 				createFuncNode->classDeclaration->template load<true>(in_data);
@@ -617,19 +641,30 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			context.mustInferenceFunctionType.push_back(newFunc->id);
 		}
 
-		if constexpr (isLazy) {
-			newCreateFuncNode->optimize(in_data);
-		}
+		newCreateFuncNode->optimize(in_data);
 	}
 
 	context.gotoFunction(lastCurrentFunctionId);
 	context.currentClassId = lastCurrentClassId;
 
-	// Restore snapshot của GenericDeclarationNode để sẵn sàng cho instantiation tiếp theo
-	for (size_t i = 0; i < classInfo->genericData->genericDeclarations.size(); ++i) {
-		auto &genericDeclaration = classInfo->genericData->genericDeclarations[i];
-		genericDeclaration->classId = genericDeclSnapshots[i].classId;
-		genericDeclaration->nullable = genericDeclSnapshots[i].nullable;
+	if (newCreateClassNode->classFlags & ClassFlags::CLASS_HAS_PARENT) {
+		newCreateClassNode->loadSuper(in_data);
+	}
+
+	// Restore snapshot of GenericDeclarationNode to be ready for next instantiation
+	for (auto &snap : genericDeclSnapshots) {
+		snap.decl->classId = snap.classId;
+		snap.decl->nullable = snap.nullable;
+		for (auto &cdSnap : snap.cdSnapshots) {
+			cdSnap.cd->classId = cdSnap.classId;
+			cdSnap.cd->nullable = cdSnap.nullable;
+			cdSnap.cd->baseClassLexerStringId = cdSnap.baseClassLexerStringId;
+			cdSnap.cd->inputClassId = cdSnap.inputClassId;
+		}
+	}
+
+	if (baseCreateClassNode->superDeclaration) {
+		baseCreateClassNode->superDeclaration->classId = std::nullopt;
 	}
 
 	if constexpr (isLazy) {

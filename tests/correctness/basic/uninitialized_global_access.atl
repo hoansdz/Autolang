@@ -1,0 +1,21 @@
+class UninitAccessTestClass {
+	fun a(): String = "uninit_ok"
+	fun run(): String {
+		return ::uninitGlobalTarget.a()
+	}
+}
+
+fun testUninitializedGlobalAccess() {
+	var caught = false
+	try {
+		UninitAccessTestClass().run()
+	} catch (e) {
+		caught = true
+		assert(e.message == "Variable is used before initialization")
+	}
+	assert(caught)
+}
+
+testUninitializedGlobalAccess()
+val uninitGlobalTarget: UninitAccessTestClass = UninitAccessTestClass()
+println("Passed uninitialized_global_access")

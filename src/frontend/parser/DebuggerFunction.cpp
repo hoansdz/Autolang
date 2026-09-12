@@ -616,10 +616,16 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			node->pushFunction(in_data);
 			auto func = compile.functions[node->id];
 			auto funcInfo = context.functionInfo[node->id];
-			if (context.preloadGenericData && !classNameId) {
-				checkGenericFunctionDuplicate(in_data, node, nameId, firstLine);
-				context.genericFunctionMap[nameId].push_back(node);
-				funcInfo->genericData = context.preloadGenericData;
+			if (context.preloadGenericData) {
+				if (context.currentClassId) {
+					auto currentClassInfo = context.getCurrentClassInfo(in_data);
+					currentClassInfo->genericFunctionMap[nameId].push_back(node);
+					funcInfo->genericData = context.preloadGenericData;
+				} else {
+					checkGenericFunctionDuplicate(in_data, node, nameId, firstLine);
+					context.genericFunctionMap[nameId].push_back(node);
+					funcInfo->genericData = context.preloadGenericData;
+				}
 			}
 			func->returnId = DefaultClass::nullClassId;
 			context.gotoFunction(node->id);
@@ -696,7 +702,7 @@ createFunc:;
 		node->pushNativeFunction(in_data, &it->second);
 		auto func = compile.functions[node->id];
 		auto funcInfo = context.functionInfo[node->id];
-		if (context.preloadGenericData && !classNameId) {
+		if (context.preloadGenericData) {
 			if (context.currentClassId) {
 				auto currentClassInfo = context.getCurrentClassInfo(in_data);
 				currentClassInfo->genericFunctionMap[nameId].push_back(node);
@@ -734,7 +740,7 @@ createFunc:;
 	if (!classDeclaration) {
 		func->returnId = DefaultClass::voidClassId;
 	}
-	if (context.preloadGenericData && !classNameId) {
+	if (context.preloadGenericData) {
 		if (context.currentClassId) {
 			auto currentClassInfo = context.getCurrentClassInfo(in_data);
 			currentClassInfo->genericFunctionMap[nameId].push_back(node);

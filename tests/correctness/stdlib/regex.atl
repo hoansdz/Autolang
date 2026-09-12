@@ -19,6 +19,38 @@ fun testRegexFeatures() {
     val res = reReplace.replace("quick brown fox", "cat")
     assert(res == "quick brown cat")
 
+    // 4. Constructor and toRegex()
+    val reCtor = Regex("\\d+")
+    assert(reCtor.pattern() == "\\d+")
+    assert(reCtor.matches("999") == true)
+    assert(reCtor.containsMatchIn("foo 999 bar") == true)
+
+    val reExt = "\\s+".toRegex()
+    assert(reExt.isMatch(" ") == true)
+
+    // 5. Find first match
+    val firstMatch = reCtor.find("abc 789 def")
+    assert(firstMatch == "789")
+
+    // 6. Split
+    val splitParts = Regex("[,;]").split("apple,banana;cherry")
+    assert(splitParts.size() == 3)
+    assert(splitParts[0] == "apple")
+    assert(splitParts[1] == "banana")
+    assert(splitParts[2] == "cherry")
+
+    // 7. String extensions
+    assert("12345".matches(reCtor) == true)
+    assert("foo123bar".replace(reCtor, "NUM") == "fooNUMbar")
+    val stringSplit = "one,two,three".split(Regex(","))
+    assert(stringSplit.size() == 3)
+    assert(stringSplit[1] == "two")
+    assert("user_123".contains(reCtor) == true)
+
+    // 8. Static methods
+    assert(Regex.isMatch("\\w+", "hello") == true)
+    assert(Regex.replace("\\d+", "item 5", "X") == "item X")
+
     println("Passed ${__FUNC__}")
 }
 

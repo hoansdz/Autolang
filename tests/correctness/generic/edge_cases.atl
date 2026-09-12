@@ -1,0 +1,112 @@
+class GBoundBase() {
+    fun getScore(): Int = 100
+}
+
+class GBoundChild extends GBoundBase {
+    constructor() {
+        super()
+    }
+    override fun getScore(): Int = 200
+}
+
+class GChecker {
+    fun <T: GBoundBase> check(item: T): Int {
+        return item.getScore()
+    }
+}
+
+class GContainer<T>(val item: T)
+
+class GConverter {
+    fun <T> toContainer(x: T): GContainer<T> {
+        return GContainer<T>(x)
+    }
+}
+
+fun <U> globalBox(u: U): Array<U> = [u]
+
+class BoxCaller<T>(val item: T) {
+    fun <K> wrapBoth(k: K): Pair<Array<T>, Array<K>> {
+        return globalBox<T>(this.item) to globalBox<K>(k)
+    }
+}
+
+fun <T> defaultGenericParam(x: T, y: Int = 10): Int = y
+
+fun <T> nullCheckGeneric(x: T?): Bool = x == null
+
+fun <T, R> transform(x: T, fn: (T) -> R): R = fn(x)
+
+class Pipeline<T>(val value: T) {
+    fun <R> map(f: (T) -> R): Pipeline<R> {
+        return Pipeline<R>(f(this.value))
+    }
+}
+
+fun <T> helperIdentity(x: T): T = x
+
+fun <T> outerDelegate(x: T): T {
+    return helperIdentity<T>(x)
+}
+
+class ParentSwap<A, B>(val a: A, val b: B)
+
+class ChildSwap<X, Y> extends ParentSwap<Y, X> {
+    constructor(x: X, y: Y) {
+        super(y, x)
+    }
+}
+
+fun main() {
+    // Test Case A: Generic member function with bound
+    val checker = GChecker()
+    val base = GBoundBase()
+    val child = GBoundChild()
+    assert(checker.check<GBoundBase>(base) == 100)
+    assert(checker.check<GBoundChild>(child) == 200)
+
+    // Test Case B: Generic member function returns another generic class
+    val conv = GConverter()
+    val box = conv.toContainer<Int>(555)
+    assert(box.item == 555)
+
+    // Test Case C: Generic member in generic class calling global generic function
+    val bc = BoxCaller<String>("hello")
+    val wrapped = bc.wrapBoth<Int>(42)
+    assert((wrapped.first)[0] == "hello")
+    assert((wrapped.second)[0] == 42)
+
+    // Test Case D: Generic function with default parameter
+    assert(defaultGenericParam<String>("test") == 10)
+    assert(defaultGenericParam<String>("test", 99) == 99)
+
+    // Test Case E: Nullable generic test
+    assert(nullCheckGeneric<Int>(null) == true)
+    assert(nullCheckGeneric<Int>(10) == false)
+
+    // Test Case F: Generic function taking closure parameter
+    val doubled = transform<Int, Int>(21, { n: Int -> n * 2 })
+    assert(doubled == 42)
+    val strLen = transform<String, Int>("autolang", { s: String -> s.length })
+    assert(strLen == 8)
+
+    // Test Case G: Chained generic pipeline
+    val pipe = Pipeline<Int>(10)
+    val p2 = pipe.map<String>({ n: Int -> n.toString() })
+    assert(p2.value == "10")
+    val p3 = p2.map<Int>({ s: String -> s.length })
+    assert(p3.value == 2)
+
+    // Test Case H: Generic function calling another generic function
+    assert(outerDelegate<Int>(12345) == 12345)
+    assert(outerDelegate<String>("delegated") == "delegated")
+
+    // Test Case I: Generic inheritance with swapped type parameters
+    val cs = ChildSwap<Int, String>(100, "swapped")
+    assert(cs.a == "swapped")
+    assert(cs.b == 100)
+
+    println("All edge cases passed!")
+}
+
+main()

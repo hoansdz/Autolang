@@ -190,7 +190,8 @@ class String {
     @native("str_to_lower")
     fun lower(): String
 
-
+    @native("str_to_lower")
+    fun lowercase(): String
 
     @native("str_to_upper")
     fun toUpperCase(): String
@@ -200,6 +201,9 @@ class String {
 
     @native("str_to_upper")
     fun upper(): String
+
+    @native("str_to_upper")
+    fun uppercase(): String
 
 
 }

@@ -450,7 +450,7 @@ AObject* jsonObjectToAObject(ANotifier& notifier, const nlohmann::json& j_obj, C
             if (isNullable) {
                 newObj->member->data[memberPos] = notifier.createNull();
             } else {
-                notifier.throwException("JSON missing required non-nullable field: " + memberName);
+                notifier.throwException("JSON missing required non-nullable field: " + std::string(memberName));
                 return nullptr;
             }
         } else {
@@ -494,6 +494,33 @@ AObject *to_array_class(NativeFuncInData) {
     bool elemNullable = notifier.vm->data.allGenericTypeNullable[arrayClass->genericType.offset];
     
     return jsonArrayToAObject(notifier, *j_ptr, arrayClassId, elemClassId, elemNullable);
+}
+
+AObject *decode_from_string(NativeFuncInData) {
+    const std::string &str = args[0]->str->data;
+    nlohmann::json j = nlohmann::json::parse(str, nullptr, false);
+    if (j.is_discarded()) {
+        notifier.throwException("Invalid JSON format");
+        return nullptr;
+    }
+    ClassId classId = notifier.callFrame->func->returnId;
+    return jsonObjectToAObject(notifier, j, classId);
+}
+
+AObject *decode_array_from_string(NativeFuncInData) {
+    const std::string &str = args[0]->str->data;
+    nlohmann::json j = nlohmann::json::parse(str, nullptr, false);
+    if (j.is_discarded()) {
+        notifier.throwException("Invalid JSON format");
+        return nullptr;
+    }
+    ClassId arrayClassId = notifier.callFrame->func->returnId;
+    auto arrayClass = notifier.vm->data.classes[arrayClassId];
+    
+    ClassId elemClassId = notifier.vm->data.allGenericType[arrayClass->genericType.offset];
+    bool elemNullable = notifier.vm->data.allGenericTypeNullable[arrayClass->genericType.offset];
+    
+    return jsonArrayToAObject(notifier, j, arrayClassId, elemClassId, elemNullable);
 }
 
 AObject *to_string(NativeFuncInData) {
@@ -704,6 +731,66 @@ void init(ACompiler &compiler) {
     @native("json_to_array_class")
     fun <T> jsonToArrayClass(json: Json): Array<T>
 
+    @native("json_decode_from_string")
+    static fun <T> Json.decodeFromString(text: String): T
+
+    @native("json_decode_array_from_string")
+    static fun <T> Json.decodeArrayFromString(text: String): Array<T>
+
+    @native("json_decode_from_string")
+    fun <T> decodeFromString(text: String): T
+
+    @native("json_decode_array_from_string")
+    fun <T> decodeArrayFromString(text: String): Array<T>
+
+    @native("json_decode_from_string")
+    fun <T> String.decodeJson(): T
+
+    @native("json_decode_array_from_string")
+    fun <T> String.decodeJsonArray(): Array<T>
+
+    @native("json_to_class")
+    static fun <T> Json.decodeTo(json: Json): T
+
+    @native("json_to_array_class")
+    static fun <T> Json.decodeArrayTo(json: Json): Array<T>
+
+    @native("json_to_class")
+    fun <T> Json.toClass(): T
+
+    @native("json_to_array_class")
+    fun <T> Json.toArrayClass(): Array<T>
+
+    @native("json_to_class")
+    fun <T> Json.decodeTo(): T
+
+    @native("json_to_array_class")
+    fun <T> Json.decodeArrayTo(): Array<T>
+
+    static fun Json.encodeToString(json: Json, indent: Int = -1): String = json.stringify(indent)
+    fun encodeToString(json: Json, indent: Int = -1): String = json.stringify(indent)
+
+    fun Json.getString(key: String): String = this.get(key).asString()
+    fun Json.getInt(key: String): Int = this.get(key).asInt()
+    fun Json.getFloat(key: String): Float = this.get(key).asFloat()
+    fun Json.getBool(key: String): Bool = this.get(key).asBool()
+    fun Json.getArray(key: String): Json = this.get(key)
+    fun Json.getObject(key: String): Json = this.get(key)
+
+    fun Json.optString(key: String, defaultValue: String = ""): String =
+        if (this.has(key) && !this.get(key).isNull()) this.get(key).asString() else defaultValue
+
+    fun Json.optInt(key: String, defaultValue: Int = 0): Int =
+        if (this.has(key) && !this.get(key).isNull()) this.get(key).asInt() else defaultValue
+
+    fun Json.optFloat(key: String, defaultValue: Float = 0.0): Float =
+        if (this.has(key) && !this.get(key).isNull()) this.get(key).asFloat() else defaultValue
+
+    fun Json.optBool(key: String, defaultValue: Bool = false): Bool =
+        if (this.has(key) && !this.get(key).isNull()) this.get(key).asBool() else defaultValue
+
+    fun String.parseJson(): Json = Json.parse(this)
+
     @native("json_null_value")
     static fun Json.nullValue(): Json
 
@@ -779,6 +866,8 @@ void init(ACompiler &compiler) {
             {"json_to_json_array", &json::to_json_array},
             {"json_to_class", &json::json_to_class},
             {"json_to_array_class", &json::to_array_class},
+            {"json_decode_from_string", &json::decode_from_string},
+            {"json_decode_array_from_string", &json::decode_array_from_string},
             {"json_to_string", &json::to_string},
             {"json_null_value", &json::null_value},
             {"json_remove_field", &json::remove_field},

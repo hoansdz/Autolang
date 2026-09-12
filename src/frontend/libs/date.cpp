@@ -1,4 +1,4 @@
-﻿#ifndef LIB_DATE_CPP
+#ifndef LIB_DATE_CPP
 #define LIB_DATE_CPP
 
 #include "date.hpp"
@@ -113,10 +113,13 @@ AObject *get_time(NativeFuncInData) {
 
 AObject *format(NativeFuncInData) {
 	GET_VALID_TM_OR_RETURN_NULL(args[0]->data->data, tm);
-	const std::string &pattern = args[1]->str->data;
+	const char *pattern = "%Y-%m-%d %H:%M:%S";
+	if (argSize > 1 && args[1] && args[1]->str) {
+		pattern = args[1]->str->data;
+	}
 
 	std::ostringstream ss;
-	ss << std::put_time(&tm, pattern.c_str());
+	ss << std::put_time(&tm, pattern);
 
 	if (ss.fail()) {
 		notifier.throwException("Failed to format date with provided pattern");
@@ -124,6 +127,42 @@ AObject *format(NativeFuncInData) {
 	}
 
 	return notifier.createString(ss.str());
+}
+
+AObject *get_day_of_week(NativeFuncInData) {
+	GET_VALID_TM_OR_RETURN_NULL(args[0]->data->data, tm);
+	return notifier.createInt(tm.tm_wday);
+}
+
+AObject *get_day_of_year(NativeFuncInData) {
+	GET_VALID_TM_OR_RETURN_NULL(args[0]->data->data, tm);
+	return notifier.createInt(tm.tm_yday + 1);
+}
+
+AObject *date_parse(NativeFuncInData) {
+	const std::string &dateStr = args[0]->str->data;
+	const char *pattern = "%Y-%m-%d %H:%M:%S";
+	if (argSize > 1 && args[1] && args[1]->str) {
+		pattern = args[1]->str->data;
+	}
+
+	std::tm tm{};
+	std::istringstream ss(dateStr);
+	ss >> std::get_time(&tm, pattern);
+	if (ss.fail()) {
+		notifier.throwException("Failed to parse date string: " + dateStr);
+		return nullptr;
+	}
+
+	std::time_t t = std::mktime(&tm);
+	if (t == -1) {
+		notifier.throwException("Failed to convert date to timestamp: " + dateStr);
+		return nullptr;
+	}
+
+	ClassId classId = notifier.callFrame->func->returnId;
+	auto handle = new ADateHandle{static_cast<int64_t>(t) * 1000};
+	return notifier.createNativeData(classId, handle, destroyDate);
 }
 
 AObject *current_time_millis(NativeFuncInData) {
@@ -195,6 +234,9 @@ class Date {
     @native("date_constructor_ts")
     static fun fromTimestamp(timestamp: Int): Date
 
+    static fun Date(): Date = Date.now()
+    static fun Date(timestamp: Int): Date = Date.fromTimestamp(timestamp)
+
     @native("date_get_year")
     fun getYear(): Int
 
@@ -252,8 +294,35 @@ class Date {
     @native("date_get_time")
     fun toEpochMilli(): Int
     
+    @native("date_get_day_of_week")
+    fun getDayOfWeek(): Int
+
+    @native("date_get_day_of_week")
+    fun dayOfWeek(): Int
+
+    @native("date_get_day_of_year")
+    fun getDayOfYear(): Int
+
+    @native("date_get_day_of_year")
+    fun dayOfYear(): Int
+
+    @native("date_parse")
+    static fun parse(dateStr: String, pattern: String = "%Y-%m-%d %H:%M:%S"): Date
+
     @native("date_format")
-    fun format(pattern: String): String
+    fun format(pattern: String = "%Y-%m-%d %H:%M:%S"): String
+
+    fun toString(): String = this.format("%Y-%m-%d %H:%M:%S")
+    fun toISOString(): String = this.format("%Y-%m-%dT%H:%M:%S")
+    fun toDateString(): String = this.format("%Y-%m-%d")
+    fun toTimeString(): String = this.format("%H:%M:%S")
+
+    fun diff(other: Date): Int = this.getTime() - other.getTime()
+    fun isBefore(other: Date): Bool = this.getTime() < other.getTime()
+    fun isAfter(other: Date): Bool = this.getTime() > other.getTime()
+
+    fun copy(): Date = Date.fromTimestamp(this.getTime())
+    fun clone(): Date = Date.fromTimestamp(this.getTime())
 
     @native("date_current_time_millis")
     static fun currentTimeMillis(): Int
@@ -290,11 +359,14 @@ class Date {
 	        {"date_get_year", &date::get_year},
 	        {"date_get_month", &date::get_month},
 	        {"date_get_day", &date::get_day},
+	        {"date_get_day_of_week", &date::get_day_of_week},
+	        {"date_get_day_of_year", &date::get_day_of_year},
 	        {"date_get_hours", &date::get_hours},
 	        {"date_get_minutes", &date::get_minutes},
 	        {"date_get_seconds", &date::get_seconds},
 	        {"date_get_time", &date::get_time},
 	        {"date_format", &date::format},
+	        {"date_parse", &date::date_parse},
 	        {"date_current_time_millis", &date::current_time_millis},
 	        {"date_add_days", &date::add_days},
 	        {"date_add_hours", &date::add_hours},

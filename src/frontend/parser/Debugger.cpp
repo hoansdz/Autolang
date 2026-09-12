@@ -128,6 +128,7 @@ initial:;
 		case Lexer::TokenType::LBRACKET:
 		case Lexer::TokenType::NUMBER:
 		case Lexer::TokenType::STRING:
+		case Lexer::TokenType::COLON_COLON:
 		case Lexer::TokenType::IDENTIFIER: {
 			if (!isInFunction) {
 				goto err_call_func;

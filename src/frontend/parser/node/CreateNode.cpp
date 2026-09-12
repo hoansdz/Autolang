@@ -195,6 +195,7 @@ ExprNode *DeclarationNode::copy(in_func) {
 	} else {
 		newNode->id = id;
 	}
+	newNode->tokenIndex = tokenIndex;
 
 	if (newClassDecl) {
 		if (!newClassDecl->classId) {
@@ -286,7 +287,7 @@ void CreateConstructorNode::pushFunction(in_func) {
 		for (size_t i = 1; i < parameter->parameters.size(); ++i) {
 			auto param = parameter->parameters[i];
 			classInfo->memberMap[param->baseName] = i - 1;
-			clazz->memberMap[param->name] = i - 1;
+			clazz->memberMap[compile.stringArena.allocateView(param->name)] = i - 1;
 			classInfo->member.push_back(param);
 		}
 	}
@@ -316,6 +317,15 @@ ExprNode *CreateConstructorNode::optimize(in_func) {
 	ClassId *memberId = compile.getMemberRef(clazz->memberIdOffset);
 	for (size_t i = 0; i < parameter->parameters.size(); ++i) {
 		auto &param = parameter->parameters[i];
+		if (param->classDeclaration) {
+			if (!param->classDeclaration->classId) {
+				param->classDeclaration->template load<false>(in_data);
+			}
+			if (param->classDeclaration->classId) {
+				param->classId = *param->classDeclaration->classId;
+				param->nullable = param->classDeclaration->nullable;
+			}
+		}
 		func->args[i] = param->classId;
 		if (isPrimary && i != 0) {
 			if (clazz->memberIdOffset + i - 1 < compile.allMemberId.size()) {
@@ -513,7 +523,7 @@ void CreateClassNode::loadSuper(in_func) {
 			memberToFind[declaration->name] = declaration;
 			declaration->id += superClassInfo->member.size();
 			classInfo->memberMap[declaration->baseName] = declaration->id;
-			clazz->memberMap[declaration->name] = declaration->id;
+			clazz->memberMap[compile.stringArena.allocateView(declaration->name)] = declaration->id;
 		}
 		uint32_t newPosition = superClassInfo->member.size();
 		for (auto &declaration : superClassInfo->member) {
@@ -529,7 +539,7 @@ void CreateClassNode::loadSuper(in_func) {
 				           "member variable in child class.");
 			}
 			classInfo->memberMap[declaration->baseName] = declaration->id;
-			clazz->memberMap[declaration->name] = declaration->id;
+			clazz->memberMap[compile.stringArena.allocateView(declaration->name)] = declaration->id;
 		}
 		classInfo->member.reserve(classInfo->member.size() +
 		                          superClassInfo->member.size());

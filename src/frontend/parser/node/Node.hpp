@@ -274,16 +274,22 @@ struct NullCoalescingNode : JumpIfNullNode {
 
 struct UnknowNode : NullableNode {
 	LexerStringId nameId;
+	uint32_t tokenIndex;
 	std::optional<ClassId> contextCallClassId;
 	FunctionId contextCallFuncId;
 	bool justFindStaticMember;
-	UnknowNode(uint32_t line, std::optional<ClassId> contextCallClassId,
+	bool forceGlobal = false;
+	UnknowNode(uint32_t line, uint32_t tokenIndex,
+	           std::optional<ClassId> contextCallClassId,
 	           FunctionId contextCallFuncId, LexerStringId nameId,
-	           bool nullable, bool justFindStaticMember)
+	           bool nullable, bool justFindStaticMember,
+	           bool forceGlobal = false)
 	    : NullableNode(NodeType::UNKNOW, 0, nullable, line), nameId(nameId),
+	      tokenIndex(tokenIndex),
 	      contextCallClassId(contextCallClassId),
 	      contextCallFuncId(contextCallFuncId),
-	      justFindStaticMember(justFindStaticMember) {}
+	      justFindStaticMember(justFindStaticMember),
+	      forceGlobal(forceGlobal) {}
 	ExprNode *resolve(in_func) override;
 	ExprNode *copy(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;

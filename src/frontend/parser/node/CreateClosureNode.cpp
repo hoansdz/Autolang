@@ -14,6 +14,9 @@ ExprNode *CreateClosureNode::resolve(in_func) {
 }
 
 ExprNode *CreateClosureNode::optimize(in_func) {
+	if (funcId) {
+		return this;
+	}
 	std::string name = "Closure@" + std::to_string(context.closureCount++);
 	LexerStringId nameId = context.createLexerStringIfNotExists(name);
 	CreateFuncNode *node = context.newFunctions.push(
@@ -223,8 +226,9 @@ ExprNode *CreateClosureNode::copy(in_func) {
 		newObjects.push_back(
 		    static_cast<HasClassIdNode *>(object->copy(in_data)));
 	}
+	auto newParam = parameter->copy(in_data);
 	auto *newNode =
-	    context.createClosurePool.push(line, parameter->copy(in_data));
+	    context.createClosurePool.push(line, newParam);
 	if (!classDeclaration->classId) {
 		classDeclaration->template load<true>(in_data);
 		if (!classDeclaration->classId) {
@@ -234,8 +238,19 @@ ExprNode *CreateClosureNode::copy(in_func) {
 		}
 	}
 	newNode->objects = std::move(newObjects);
-	newNode->classDeclaration = classDeclaration;
+	newNode->classDeclaration = classDeclaration->copy(in_data);
+	for (size_t p = 0; p < newParam->parameters.size(); ++p) {
+		if (p + 1 < newNode->classDeclaration->inputClassId.size()) {
+			newNode->classDeclaration->inputClassId[p + 1] =
+			    newParam->parameters[p]->classDeclaration;
+		}
+	}
 	newNode->scopes = scopes;
+	if (!newNode->scopes.scopes.empty()) {
+		for (auto *param : newParam->parameters) {
+			newNode->scopes.back()[param->baseName] = param;
+		}
+	}
 	newNode->declarationCount = declarationCount;
 	newNode->maxDeclaration = maxDeclaration;
 	newNode->newDeclaration = newDeclaration;

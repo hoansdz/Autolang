@@ -5,11 +5,9 @@
 #include "shared/Type.hpp"
 
 #ifdef __EMSCRIPTEN__
-#include "shared/JSFunction.hpp"
-#include <emscripten/bind.h>
+#include <emscripten/val.h>
 using namespace emscripten;
 #elif __PYBIND11__
-#include "shared/PYFunction.hpp"
 #include <pybind11/embed.h>
 using namespace pybind11;
 
@@ -51,30 +49,7 @@ struct ANativeFunctionData {
 	ANativeFunctionData(object *pyFunction)
 	    : type(ANativeFunctionType::PY_FUNCTION), pyFunction(pyFunction) {}
 #endif
-	inline AObject *operator()(NativeFuncInData) {
-		switch (type) {
-			case FUNC: {
-				return native(notifier, args, argSize);
-			}
-			case LAMBDA: {
-				return (*nativeLambda)(notifier, args, argSize);
-			}
-#ifdef __EMSCRIPTEN__
-			case JS_FUNCTION: {
-				return callJSFunction(jsFunction, notifier, args, argSize);
-			}
-#endif
-#ifdef __PYBIND11__
-			case PY_FUNCTION: {
-				return callPyFunction(pyFunction, notifier, args, argSize);
-			}
-#endif
-			default: {
-				// notifier.throwException("What happen when call operator()");
-				return nullptr;
-			}
-		}
-	}
+	AObject *operator()(NativeFuncInData);
 };
 
 } // namespace Autolang

@@ -7,6 +7,21 @@
 
 namespace Autolang {
 
+struct ClassDeclSnapshot {
+	ClassDeclaration *cd;
+	std::optional<ClassId> classId;
+	bool nullable;
+	LexerStringId baseClassLexerStringId;
+	std::vector<ClassDeclaration *> inputClassId;
+};
+
+struct GenDeclSnapshot {
+	GenericDeclarationNode *decl;
+	ClassId classId;
+	bool nullable;
+	std::vector<ClassDeclSnapshot> cdSnapshots;
+};
+
 void loadFunctionGenerics(in_func, std::string &name,
                           ClassDeclaration *classDeclaration) {
 	auto it = context.genericFunctionMap.find(
@@ -50,12 +65,8 @@ void loadFunctionGenerics(in_func, std::string &name,
 		genericTypeId.reserve(
 		    funcInfo->genericData->genericDeclarations.size());
 
-		// Snapshot state của GenericDeclarationNode (loadFunctionGenerics)
-		struct FuncGenDeclSnapshot {
-			ClassId classId;
-			bool nullable;
-		};
-		std::vector<FuncGenDeclSnapshot> funcGenDeclSnapshots;
+		// Snapshot state of GenericDeclarationNode (loadFunctionGenerics)
+		std::vector<GenDeclSnapshot> funcGenDeclSnapshots;
 		funcGenDeclSnapshots.reserve(
 		    funcInfo->genericData->genericDeclarations.size());
 
@@ -67,9 +78,18 @@ void loadFunctionGenerics(in_func, std::string &name,
 
 			ClassId inputClassId = *inputClass->classId;
 
-			// Lưu snapshot trước khi mutate
-			funcGenDeclSnapshots.emplace_back(
-			    FuncGenDeclSnapshot{genericDeclaration->classId, genericDeclaration->nullable});
+			// Save snapshot before mutating
+			GenDeclSnapshot snap;
+			snap.decl = genericDeclaration;
+			snap.classId = genericDeclaration->classId;
+			snap.nullable = genericDeclaration->nullable;
+			snap.cdSnapshots.reserve(genericDeclaration->allClassDeclarations.size());
+			for (auto *cd : genericDeclaration->allClassDeclarations) {
+				if (cd) {
+					snap.cdSnapshots.push_back({cd, cd->classId, cd->nullable, cd->baseClassLexerStringId, cd->inputClassId});
+				}
+			}
+			funcGenDeclSnapshots.push_back(std::move(snap));
 
 			// Change callnode name
 			if (!genericDeclaration->allCallNodes.empty()) {
@@ -133,8 +153,6 @@ void loadFunctionGenerics(in_func, std::string &name,
 				}
 				classDeclaration->inputClassId =
 				    newClassDeclaration->inputClassId;
-				classDeclaration->baseClassLexerStringId =
-				    inputClass->baseClassLexerStringId;
 			}
 		}
 
@@ -212,13 +230,13 @@ void loadFunctionGenerics(in_func, std::string &name,
 				default:
 					break;
 			}
-			// Reset classId và isFunction để tránh state leak
+			// Reset classId and isFunction to prevent state leakage
 			classDeclaration->classId = std::nullopt;
 			classDeclaration->isFunction = false;
 		}
 		// std::cerr << "FUNC " << newFunc->getName(compile) << "\n";
 		if (createFuncNode->classDeclaration) {
-			// Vấn đề 3: Reset cây trước khi load return type (loadFunctionGenerics)
+			// Issue 3: Reset tree before loading return type (loadFunctionGenerics)
 			resetClassDeclTree(createFuncNode->classDeclaration);
 			if (!createFuncNode->classDeclaration->classId) {
 				createFuncNode->classDeclaration->template load<true>(in_data);
@@ -311,14 +329,19 @@ void loadFunctionGenerics(in_func, std::string &name,
 		}
 		context.newPositionOfStaticDeclaration =
 		    lastNewPositionOfStaticDeclaration;
+		newCreateFuncNode->optimize(in_data);
 		context.gotoFunction(lastCurrentFunctionId);
 
-		// Restore snapshot của GenericDeclarationNode (loadFunctionGenerics)
-		for (size_t si = 0;
-		     si < funcInfo->genericData->genericDeclarations.size(); ++si) {
-			auto &genDecl = funcInfo->genericData->genericDeclarations[si];
-			genDecl->classId = funcGenDeclSnapshots[si].classId;
-			genDecl->nullable = funcGenDeclSnapshots[si].nullable;
+		// Restore snapshot of GenericDeclarationNode (loadFunctionGenerics)
+		for (auto &snap : funcGenDeclSnapshots) {
+			snap.decl->classId = snap.classId;
+			snap.decl->nullable = snap.nullable;
+			for (auto &cdSnap : snap.cdSnapshots) {
+				cdSnap.cd->classId = cdSnap.classId;
+				cdSnap.cd->nullable = cdSnap.nullable;
+				cdSnap.cd->baseClassLexerStringId = cdSnap.baseClassLexerStringId;
+				cdSnap.cd->inputClassId = cdSnap.inputClassId;
+			}
 		}
 
 		// for (auto &[classDeclaration, node] :
@@ -391,32 +414,6 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 
 	auto &allCreateFuncNode = it->second;
 
-	auto callerClass = compile.classes[callerClassId];
-	if (callerClass && callerClass->genericBaseClassId != 0) {
-		auto baseClassInfo = context.classInfo[callerClass->genericBaseClassId];
-		if (baseClassInfo && baseClassInfo->genericData) {
-			for (size_t j = 0;
-			     j < baseClassInfo->genericData->genericDeclarations.size();
-			     ++j) {
-				auto &classGenDecl =
-				    baseClassInfo->genericData->genericDeclarations[j];
-				if (j < callerClassInfo->genericTypeId.size()) {
-					auto classInputType = callerClassInfo->genericTypeId[j];
-					if (classInputType->classId) {
-						ClassId classInputId = *classInputType->classId;
-						classGenDecl->classId = classInputId;
-						for (auto *cd : classGenDecl->allClassDeclarations) {
-							cd->classId = classInputId;
-							cd->inputClassId = classInputType->inputClassId;
-							cd->baseClassLexerStringId =
-							    classInputType->baseClassLexerStringId;
-						}
-					}
-				}
-			}
-		}
-	}
-
 	for (auto createFuncNode : allCreateFuncNode) {
 		auto resolvedCreateFuncNode = createFuncNode;
 		FunctionId resolvedFuncId = createFuncNode->id;
@@ -467,14 +464,43 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 		genericTypeId.reserve(
 		    funcInfo->genericData->genericDeclarations.size());
 
-		// Snapshot state của GenericDeclarationNode (loadMemberFunctionGenerics)
-		struct MemberGenDeclSnapshot {
-			ClassId classId;
-			bool nullable;
-		};
-		std::vector<MemberGenDeclSnapshot> memberGenDeclSnapshots;
+		// Snapshot state of GenericDeclarationNode (loadMemberFunctionGenerics)
+		std::vector<GenDeclSnapshot> memberGenDeclSnapshots;
 		memberGenDeclSnapshots.reserve(
 		    funcInfo->genericData->genericDeclarations.size());
+
+		std::vector<GenDeclSnapshot> classGenDeclSnapshots;
+		auto callerClass = compile.classes[callerClassId];
+		if (callerClass && callerClass->genericBaseClassId != 0) {
+			auto baseClassInfo = context.classInfo[callerClass->genericBaseClassId];
+			if (baseClassInfo && baseClassInfo->genericData) {
+				for (size_t ci = 0; ci < baseClassInfo->genericData->genericDeclarations.size() &&
+				                    ci < callerClassInfo->genericTypeId.size(); ++ci) {
+					auto *classGenDecl = baseClassInfo->genericData->genericDeclarations[ci];
+					auto *typeDecl = callerClassInfo->genericTypeId[ci];
+					if (typeDecl && typeDecl->classId) {
+						GenDeclSnapshot snap;
+						snap.decl = classGenDecl;
+						snap.classId = classGenDecl->classId;
+						snap.nullable = classGenDecl->nullable;
+						snap.cdSnapshots.reserve(classGenDecl->allClassDeclarations.size());
+						for (auto *cd : classGenDecl->allClassDeclarations) {
+							if (cd) {
+								snap.cdSnapshots.push_back({cd, cd->classId, cd->nullable, cd->baseClassLexerStringId, cd->inputClassId});
+							}
+						}
+						classGenDeclSnapshots.push_back(std::move(snap));
+						classGenDecl->classId = *typeDecl->classId;
+						classGenDecl->nullable = typeDecl->nullable;
+						for (auto *cd : classGenDecl->allClassDeclarations) {
+							cd->classId = *typeDecl->classId;
+							cd->inputClassId = typeDecl->inputClassId;
+							cd->baseClassLexerStringId = typeDecl->baseClassLexerStringId;
+						}
+					}
+				}
+			}
+		}
 
 		for (size_t i = 0;
 		     i < funcInfo->genericData->genericDeclarations.size(); ++i) {
@@ -488,9 +514,18 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 
 			ClassId inputClassId = *inputClass->classId;
 
-			// Lưu snapshot trước khi mutate
-			memberGenDeclSnapshots.emplace_back(
-			    MemberGenDeclSnapshot{genericDeclaration->classId, genericDeclaration->nullable});
+			// Save snapshot before mutating
+			GenDeclSnapshot snap;
+			snap.decl = genericDeclaration;
+			snap.classId = genericDeclaration->classId;
+			snap.nullable = genericDeclaration->nullable;
+			snap.cdSnapshots.reserve(genericDeclaration->allClassDeclarations.size());
+			for (auto *cd : genericDeclaration->allClassDeclarations) {
+				if (cd) {
+					snap.cdSnapshots.push_back({cd, cd->classId, cd->nullable, cd->baseClassLexerStringId, cd->inputClassId});
+				}
+			}
+			memberGenDeclSnapshots.push_back(std::move(snap));
 
 			// Change callnode name
 			if (!genericDeclaration->allCallNodes.empty()) {
@@ -542,7 +577,7 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 				    newClassDeclaration);
 			}
 
-			// Fix Vấn đề 2: Patch cả allCallNodes của class-level generic declarations
+			// Fix Issue 2: Patch allCallNodes of class-level generic declarations as well
 			if (!genericDeclaration->allCallNodes.empty()) {
 				const std::string &inputName =
 				    compile.classes[inputClassId]->getName(compile);
@@ -557,26 +592,6 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 					cd->nullable = inputClass->nullable;
 				}
 				cd->inputClassId = newClassDeclaration->inputClassId;
-				cd->baseClassLexerStringId = inputClass->baseClassLexerStringId;
-			}
-			auto updateParamDecl = [&](auto &self, ClassDeclaration *cd) -> void {
-				if (!cd) return;
-				if (cd->isGenericDeclaration && cd->baseClassLexerStringId == genericDeclaration->nameId) {
-					cd->classId = inputClassId;
-					if (cd->mustInference) {
-						cd->nullable = inputClass->nullable;
-					}
-					cd->inputClassId = newClassDeclaration->inputClassId;
-					cd->baseClassLexerStringId = inputClass->baseClassLexerStringId;
-				}
-				for (auto *child : cd->inputClassId) {
-					self(self, child);
-				}
-			};
-			for (auto *param : funcInfo->parameter->parameters) {
-				if (param) {
-					updateParamDecl(updateParamDecl, param->classDeclaration);
-				}
 			}
 		}
 
@@ -590,6 +605,46 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 		if (!(functionFlags & FunctionFlags::FUNC_IS_STATIC) &&
 		    !paramCopy->parameters.empty() && callerClassInfo->declarationThis) {
 			paramCopy->parameters[0] = callerClassInfo->declarationThis;
+		}
+
+		auto substituteGenerics = [&](auto &self, ClassDeclaration *cd) -> void {
+			if (!cd) return;
+			for (size_t gi = 0; gi < funcInfo->genericData->genericDeclarations.size(); ++gi) {
+				auto &genDecl = funcInfo->genericData->genericDeclarations[gi];
+				if (cd->isGenericDeclaration && cd->baseClassLexerStringId == genDecl->nameId) {
+					auto &inputClass = classDeclaration->inputClassId[gi];
+					cd->classId = *inputClass->classId;
+					if (cd->mustInference) cd->nullable = inputClass->nullable;
+					cd->inputClassId = genericTypeId[gi]->inputClassId;
+					return;
+				}
+			}
+			if (callerClass && callerClass->genericBaseClassId != 0) {
+				auto baseClassInfo = context.classInfo[callerClass->genericBaseClassId];
+				if (baseClassInfo && baseClassInfo->genericData) {
+					for (size_t ci = 0; ci < baseClassInfo->genericData->genericDeclarations.size() &&
+					                    ci < callerClassInfo->genericTypeId.size(); ++ci) {
+						auto *classGenDecl = baseClassInfo->genericData->genericDeclarations[ci];
+						if (cd->isGenericDeclaration && cd->baseClassLexerStringId == classGenDecl->nameId) {
+							auto *typeDecl = callerClassInfo->genericTypeId[ci];
+							if (typeDecl && typeDecl->classId) {
+								cd->classId = *typeDecl->classId;
+								if (cd->mustInference) cd->nullable = typeDecl->nullable;
+								cd->inputClassId = typeDecl->inputClassId;
+								return;
+							}
+						}
+					}
+				}
+			}
+			for (auto *child : cd->inputClassId) {
+				self(self, child);
+			}
+		};
+		for (auto *param : paramCopy->parameters) {
+			if (param && param->classDeclaration) {
+				substituteGenerics(substituteGenerics, param->classDeclaration);
+			}
 		}
 
 		auto newCreateFuncNode = context.newFunctions.push(
@@ -661,7 +716,7 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 				default:
 					break;
 			}
-			// Reset classId và isFunction
+			// Reset classId and isFunction
 			classDeclarationNode->classId = std::nullopt;
 			classDeclarationNode->isFunction = false;
 		}
@@ -712,7 +767,7 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 			}
 		}
 
-		// Vấn đề 6: Thêm mapping cho các member của caller class để body copy có thể resolve đúng
+		// Issue 6: Add mapping for caller class members so body copy can resolve correctly
 		for (auto *memberDecl : callerClassInfo->member) {
 			if (memberDecl &&
 			    newFuncInfo->reflectDeclarationMap.find(memberDecl) ==
@@ -804,25 +859,26 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 		context.currentClassId = lastCurrentClassId;
 		context.gotoFunction(lastCurrentFunctionId);
 
-		// Restore snapshot của GenericDeclarationNode (loadMemberFunctionGenerics)
-		for (size_t si = 0;
-		     si < funcInfo->genericData->genericDeclarations.size(); ++si) {
-			auto &genDecl = funcInfo->genericData->genericDeclarations[si];
-			genDecl->classId = memberGenDeclSnapshots[si].classId;
-			genDecl->nullable = memberGenDeclSnapshots[si].nullable;
-			auto restoreParamDecl = [&](auto &self, ClassDeclaration *cd) -> void {
-				if (!cd) return;
-				if (cd->isGenericDeclaration && cd->baseClassLexerStringId == genDecl->nameId) {
-					cd->classId = memberGenDeclSnapshots[si].classId;
-				}
-				for (auto *child : cd->inputClassId) {
-					self(self, child);
-				}
-			};
-			for (auto *param : funcInfo->parameter->parameters) {
-				if (param) {
-					restoreParamDecl(restoreParamDecl, param->classDeclaration);
-				}
+		// Restore snapshot of GenericDeclarationNode (loadMemberFunctionGenerics)
+		for (auto &snap : memberGenDeclSnapshots) {
+			snap.decl->classId = snap.classId;
+			snap.decl->nullable = snap.nullable;
+			for (auto &cdSnap : snap.cdSnapshots) {
+				cdSnap.cd->classId = cdSnap.classId;
+				cdSnap.cd->nullable = cdSnap.nullable;
+				cdSnap.cd->baseClassLexerStringId = cdSnap.baseClassLexerStringId;
+				cdSnap.cd->inputClassId = cdSnap.inputClassId;
+			}
+		}
+
+		for (auto &snap : classGenDeclSnapshots) {
+			snap.decl->classId = snap.classId;
+			snap.decl->nullable = snap.nullable;
+			for (auto &cdSnap : snap.cdSnapshots) {
+				cdSnap.cd->classId = cdSnap.classId;
+				cdSnap.cd->nullable = cdSnap.nullable;
+				cdSnap.cd->baseClassLexerStringId = cdSnap.baseClassLexerStringId;
+				cdSnap.cd->inputClassId = cdSnap.inputClassId;
 			}
 		}
 	}

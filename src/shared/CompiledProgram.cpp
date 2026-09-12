@@ -42,7 +42,7 @@ FunctionId CompiledProgram::registerFunction(const char *path, AClass *clazz,
                                              uint32_t functionFlags) {
 	uint32_t id = functions.size();
 	if (clazz != nullptr) {
-		clazz->funcMap[name].push_back(id);
+		clazz->funcMap[stringArena.allocateView(name)].push_back(id);
 		name = clazz->getName(*this) + '.' + name;
 		// if constexpr (!isConstructor) {
 		// 	if (native && !isStatic) //Auto insert "this" if native function in
@@ -111,6 +111,11 @@ Offset CompiledProgram::registerConstPool(
 		delete value;
 		return it->second;
 	}
+	char *arenaData =
+	    stringArena.allocate(std::string_view(value->data, value->size));
+	delete[] value->data;
+	value->data = arenaData;
+	value->setRef(true);
 	uint32_t id = constPool.size();
 	map[value] = id;
 	// printDebug("Value : "+toStr(value)+" at

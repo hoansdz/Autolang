@@ -222,7 +222,7 @@ inline val aobjectToJs(ANotifier &notifier, AObject *obj) {
 
 			for (const auto &[memberName, memberPos] : clazz->memberMap) {
 				AObject *memberVal = obj->member->data[memberPos];
-				jsObj.set(memberName, aobjectToJs(notifier, memberVal));
+				jsObj.set(std::string(memberName), aobjectToJs(notifier, memberVal));
 
 				if (notifier.hasException()) {
 					return val::undefined();
@@ -441,7 +441,8 @@ inline AObject *jsObjectToAObject(ANotifier &notifier, const val &jsObj,
 		bool isNullable =
 		    notifier.vm->data.allMemberNullable[nullableOffset + memberPos];
 
-		val fieldVal = jsObj[memberName];
+		std::string memberStr(memberName);
+		val fieldVal = jsObj[memberStr];
 
 		if (fieldVal.isUndefined() || fieldVal.isNull()) {
 			if (isNullable) {
@@ -449,7 +450,7 @@ inline AObject *jsObjectToAObject(ANotifier &notifier, const val &jsObj,
 			} else {
 				notifier.throwException(
 				    "JS Object missing required non-nullable field: " +
-				    memberName);
+				    memberStr);
 				notifier.release(newObj);
 				return nullptr;
 			}
@@ -464,7 +465,7 @@ inline AObject *jsObjectToAObject(ANotifier &notifier, const val &jsObj,
 			if (val == DefaultClass::nullObject && !isNullable) {
 				notifier.throwException(
 				    "JS Object field cannot be null (field is non-nullable): " +
-				    memberName);
+				    std::string(memberName));
 				notifier.release(newObj);
 				return nullptr;
 			}

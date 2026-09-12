@@ -17,6 +17,7 @@
 #include "frontend/ACompiler.hpp"
 #include "frontend/parser/Debugger.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "shared/ClassFlags.hpp"
 #include "shared/Utils.hpp"
 
 namespace Autolang {
@@ -265,6 +266,7 @@ createNode:;
 	    in_data, firstLine, baseName, declarationName, classDeclaration, isVal,
 	    isGlobal, nullable, isInFunction && !isStatic,
 	    isInFunction || isStatic);
+	node->tokenIndex = i;
 	if (isLateinit) {
 		node->isLateInit = true;
 	}
@@ -321,7 +323,7 @@ createNode:;
 			funcInfo->reflectDeclarationMap[node] = nullptr;
 		}
 		classInfo->memberMap[baseName] = nodeId;
-		clazz->memberMap[node->name] = nodeId;
+		clazz->memberMap[compile.stringArena.allocateView(node->name)] = nodeId;
 		// Add member id
 		node->id = nodeId;
 
@@ -421,26 +423,30 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 	switch (token->type) {
 		case Lexer::TokenType::IDENTIFIER: {
 			result = context.classDeclarationAllocator.push();
-			auto genericDeclaration =
+			GenericDeclarationNode *genericDeclaration =
 			    context.preloadGenericData == nullptr
 			        ? nullptr
 			        : context.preloadGenericData->findDeclaration(
 			              token->indexData);
+			if (!genericDeclaration) {
+				auto currentFuncInfo = context.getCurrentFunctionInfo(in_data);
+				if (currentFuncInfo) {
+					genericDeclaration =
+					    currentFuncInfo->findGenericDeclaration(token->indexData);
+				}
+			}
+			if (!genericDeclaration && context.currentClassId) {
+				auto currentClassInfo = context.getCurrentClassInfo(in_data);
+				if (currentClassInfo) {
+					genericDeclaration =
+					    currentClassInfo->findGenericDeclaration(token->indexData);
+				}
+			}
 			if (genericDeclaration) {
 				result->isGeneric = true;
 				result->isGenericDeclaration = true;
 				result->classId = DefaultClass::nullClassId;
 				genericDeclaration->allClassDeclarations.push_back(result);
-			} else if (context.currentClassId) {
-				auto currentClassInfo = context.getCurrentClassInfo(in_data);
-				auto genericDeclaration =
-				    currentClassInfo->findGenericDeclaration(token->indexData);
-				if (genericDeclaration) {
-					result->isGenericDeclaration = true;
-					result->isGeneric = true;
-					result->classId = DefaultClass::nullClassId;
-					genericDeclaration->allClassDeclarations.push_back(result);
-				}
 			}
 			result->line = token->line;
 			result->baseClassLexerStringId = token->indexData;

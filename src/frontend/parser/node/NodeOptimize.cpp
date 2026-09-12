@@ -10,6 +10,44 @@
 namespace Autolang {
 
 ExprNode *UnknowNode::resolve(in_func) {
+	if (forceGlobal) {
+		{
+			auto globalNode = context.getMainFunctionInfo(in_data)->findDeclaration(
+			    in_data, line, nameId);
+			if (globalNode) {
+				if (contextCallFuncId != context.mainFunctionId ||
+				    !globalNode->declaration ||
+				    globalNode->declaration->tokenIndex <= tokenIndex) {
+					if (static_cast<AccessNode *>(globalNode)->nullable)
+						static_cast<AccessNode *>(globalNode)->nullable = nullable;
+					ExprNode::deleteNode(this);
+					return globalNode;
+				}
+			}
+		}
+
+		{
+			std::vector<FunctionId> *funcs[1];
+			auto it = context.globalFunction.find(nameId);
+			if (it != context.globalFunction.end()) {
+				funcs[0] = &it->second;
+				return context.functionAccessPool.push(line, nullptr, nameId, 1,
+				                                       nullptr, funcs);
+			}
+		}
+
+		{
+			auto it = context.constValue.find(nameId);
+			if (it != context.constValue.end()) {
+				return it->second;
+			}
+		}
+
+		throwError("Cannot find global variable or function '" +
+		           context.lexerString[nameId] +
+		           "'\nHint: Check symbol spelling or verify whether it is declared in global scope.");
+	}
+
 	{
 		auto it = context.defaultClassMap.find(nameId);
 		if (it != context.defaultClassMap.end()) {
@@ -38,7 +76,8 @@ ExprNode *UnknowNode::resolve(in_func) {
 				//     contextCallFuncId != context.mainFunctionId) {
 				// 	if (correctNode->declaration->accessModifier ==)
 				// }
-				static_cast<AccessNode *>(correctNode)->nullable = nullable;
+				if (static_cast<AccessNode *>(correctNode)->nullable)
+					static_cast<AccessNode *>(correctNode)->nullable = nullable;
 				ExprNode::deleteNode(this);
 				return correctNode;
 			}
@@ -78,6 +117,21 @@ ExprNode *UnknowNode::resolve(in_func) {
 				                                       count, nullptr, funcs);
 			}
 		}
+
+		{
+			auto globalNode = context.getMainFunctionInfo(in_data)->findDeclaration(
+			    in_data, line, nameId);
+			if (globalNode) {
+				if (contextCallFuncId != context.mainFunctionId ||
+				    !globalNode->declaration ||
+				    globalNode->declaration->tokenIndex <= tokenIndex) {
+					if (static_cast<AccessNode *>(globalNode)->nullable)
+						static_cast<AccessNode *>(globalNode)->nullable = nullable;
+					ExprNode::deleteNode(this);
+					return globalNode;
+				}
+			}
+		}
 	} else {
 		{
 			std::vector<FunctionId> *funcs[1];
@@ -86,6 +140,28 @@ ExprNode *UnknowNode::resolve(in_func) {
 				funcs[0] = &it->second;
 				return context.functionAccessPool.push(line, nullptr, nameId, 1,
 				                                       nullptr, funcs);
+			}
+		}
+
+		{
+			auto it = context.constValue.find(nameId);
+			if (it != context.constValue.end()) {
+				return it->second;
+			}
+		}
+
+		{
+			auto globalNode = context.getMainFunctionInfo(in_data)->findDeclaration(
+			    in_data, line, nameId);
+			if (globalNode) {
+				if (contextCallFuncId != context.mainFunctionId ||
+				    !globalNode->declaration ||
+				    globalNode->declaration->tokenIndex <= tokenIndex) {
+					if (static_cast<AccessNode *>(globalNode)->nullable)
+						static_cast<AccessNode *>(globalNode)->nullable = nullable;
+					ExprNode::deleteNode(this);
+					return globalNode;
+				}
 			}
 		}
 	}
@@ -117,9 +193,9 @@ ExprNode *UnknowNode::copy(in_func) {
 			                                    genericDeclaration->classId);
 		}
 	}
-	return context.unknowNodePool.push(line, context.currentClassId,
+	return context.unknowNodePool.push(line, tokenIndex, context.currentClassId,
 	                                   contextCallFuncId, nameId, nullable,
-	                                   justFindStaticMember);
+	                                   justFindStaticMember, forceGlobal);
 }
 
 void UnknowNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {

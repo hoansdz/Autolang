@@ -644,8 +644,9 @@ void ACompiler::generateBytecodes() {
 					context.currentOpcodeIndex = compile.allOpcodeLines.size();
 					func->bytecodes.offset = context.currentBytecodePos;
 					func->opcodeIndex = context.currentOpcodeIndex;
-
+					context.currentClassId = node->classId;
 					node->body.resolve(in_data);
+					node->body.optimize(in_data);
 					context.currentFunctionId = func->id;
 					node->body.putBytecodes(in_data, compile.allBytecodes);
 					node->body.rewrite(in_data, compile.allBytecodes.data() +
@@ -674,9 +675,10 @@ void ACompiler::generateBytecodes() {
 
 						// Put initial bytecodes, example val a = 5 => SetNode a
 						// and value 5
-						//  node->body.optimize(in_data);
+						context.currentClassId = node->classId;
 						context.currentFunctionId = func->id;
 						node->body.resolve(in_data);
+						node->body.optimize(in_data);
 						node->body.putBytecodes(in_data, compile.allBytecodes);
 						node->body.rewrite(in_data, compile.allBytecodes.data() +
 						                                context.currentBytecodePos);
@@ -693,6 +695,7 @@ void ACompiler::generateBytecodes() {
 						    compile.allBytecodes.size() - func->bytecodes.offset;
 					}
 				}
+				context.currentClassId = std::nullopt;
 			}
 		};
 		emitConstructors();
@@ -769,6 +772,14 @@ void ACompiler::generateBytecodes() {
 			if (!funcInfo->inferenceNode) {
 				funcInfo->body.resolve(in_data);
 				funcInfo->body.optimize(in_data);
+			} else if (!funcInfo->inferenceNode->loaded) {
+				funcInfo->inferenceNode->resolve(in_data);
+				funcInfo->inferenceNode->optimize(in_data);
+				funcInfo->inferenceNode->loaded = true;
+				if (funcInfo->inferenceNode->value->classId ==
+				    DefaultClass::voidClassId) {
+					funcInfo->body.nodes[0] = funcInfo->inferenceNode->value;
+				}
 			}
 			context.currentBytecodePos = compile.allBytecodes.size();
 			context.currentOpcodeIndex = compile.allOpcodeLines.size();

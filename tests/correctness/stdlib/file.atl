@@ -170,6 +170,34 @@ class TestFileFeaturesExhaustive {
         assert(deleted == true)
         assert(File.exists(testPath) == false)
 
+        // --- 11. Kotlin-style File API Tests ---
+        val kPath = "test_kotlin_style.txt"
+        File.writeText(kPath, "Kotlin Line 1\nKotlin Line 2")
+        assert(File.exists(kPath) == true)
+        assert(File.readText(kPath) == "Kotlin Line 1\nKotlin Line 2")
+
+        File.appendText(kPath, "\nKotlin Line 3")
+        val lines = File.readLines(kPath)
+        assert(lines.size() == 3)
+        assert(lines[0] == "Kotlin Line 1")
+        assert(lines[2] == "Kotlin Line 3")
+
+        val kFile = File(kPath)
+        assert(kFile.name() == "test_kotlin_style.txt")
+        assert(kFile.extension() == ".txt")
+        assert(kFile.exists() == true)
+        assert(kFile.isFile() == true)
+        assert(kFile.size() > 0)
+        assert(kFile.readLines().size() == 3)
+        kFile.close()
+
+        val extFile = kPath.toFile()
+        assert(extFile.exists() == true)
+        extFile.close()
+
+        assert(kFile.delete() == true)
+        assert(File.exists(kPath) == false)
+
         // If all passed
         println("Passed ${__FUNC__}")
     }

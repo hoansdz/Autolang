@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <bitset>
+#include <string_view>
 #include "third_party/ankerl/unordered_dense.h"
 #include "shared/SmallVector.hpp"
 #include "shared/Type.hpp"
@@ -26,8 +27,8 @@ struct AClass
 	GenericTypes genericType;
 	Offset memberIdOffset;
 	SmallVector<FunctionId, 4> vtable; // Override function
-	HashMap<std::string, MemberOffset> memberMap;
-	HashMap<std::string, std::vector<FunctionId>> funcMap;
+	HashMap<std::string_view, MemberOffset> memberMap;
+	HashMap<std::string_view, std::vector<FunctionId>> funcMap;
 	InheritanceBitset inheritance;
 	AClass(){}
 	// AClass(std::string name, uint32_t id) : name(std::move(name)), id(id) {}

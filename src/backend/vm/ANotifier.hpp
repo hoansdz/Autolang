@@ -170,7 +170,7 @@ class ANotifier {
 		for (auto &[name, memberIndex] : clazz->memberMap) {
 			if (memberIndex != index)
 				continue;
-			return name;
+			return std::string(name);
 		}
 		return "";
 	}

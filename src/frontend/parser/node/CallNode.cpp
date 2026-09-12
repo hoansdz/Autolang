@@ -5,10 +5,155 @@
 #include "frontend/ACompiler.hpp"
 #include "frontend/parser/ImplicitConversion.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "frontend/parser/Debugger.hpp"
+#include "frontend/parser/ClassInfo.hpp"
+#include "frontend/parser/GenericData.hpp"
 #include "shared/ClassFlags.hpp"
 #include <rapidfuzz/fuzz.hpp>
 
 namespace Autolang {
+
+static bool matchAndBindType(in_func, ClassDeclaration *paramDecl, HasClassIdNode *argNode,
+                             ClassDeclaration *argDecl,
+                             HashMap<LexerStringId, ClassDeclaration *> &bindings,
+                             GenericData *genericData) {
+	if (!paramDecl) return true;
+
+	bool isGenericParam = paramDecl->isGenericDeclaration ||
+	                      (genericData && genericData->findDeclaration(paramDecl->baseClassLexerStringId) != nullptr);
+
+	if (isGenericParam) {
+		ClassDeclaration *concreteDecl = argDecl;
+		if (!concreteDecl && argNode) {
+			if (argNode->classDeclaration) {
+				concreteDecl = argNode->classDeclaration;
+			} else {
+				concreteDecl = context.classDeclarationAllocator.push();
+				concreteDecl->classId = argNode->classId;
+				concreteDecl->nullable = argNode->isNullable();
+				concreteDecl->baseClassLexerStringId =
+				    context.createLexerStringIfNotExists(compile.classes[argNode->classId]->getName(compile));
+			}
+		}
+		if (!concreteDecl) return false;
+
+		if (genericData) {
+			auto genDecl = genericData->findDeclaration(paramDecl->baseClassLexerStringId);
+			if (genDecl && genDecl->condition.has_value()) {
+				auto boundDecl = genDecl->condition->classDeclaration;
+				if (boundDecl) {
+					if (!boundDecl->classId.has_value()) {
+						boundDecl->template load<false>(in_data);
+					}
+					if (boundDecl->classId.has_value() && concreteDecl->classId.has_value()) {
+						ClassId boundId = *boundDecl->classId;
+						ClassId actualId = *concreteDecl->classId;
+						if (actualId != boundId && !compile.classes[actualId]->inheritance.get(boundId)) {
+							return false;
+						}
+					}
+				}
+			}
+		}
+
+		auto it = bindings.find(paramDecl->baseClassLexerStringId);
+		if (it != bindings.end()) {
+			if (it->second->classId.has_value() && concreteDecl->classId.has_value()) {
+				ClassId prevId = *it->second->classId;
+				ClassId currId = *concreteDecl->classId;
+				if (prevId == currId) {
+					return true;
+				}
+				if (compile.classes[currId]->inheritance.get(prevId)) {
+					return true;
+				}
+				if (compile.classes[prevId]->inheritance.get(currId)) {
+					it->second = concreteDecl;
+					return true;
+				}
+				return false;
+			}
+			return true;
+		} else {
+			bindings[paramDecl->baseClassLexerStringId] = concreteDecl;
+			return true;
+		}
+	}
+
+	if (!paramDecl->inputClassId.empty()) {
+		const std::vector<ClassDeclaration *> *argArgs = nullptr;
+		std::vector<ClassDeclaration *> fallbackArgs;
+
+		if (argDecl && !argDecl->inputClassId.empty()) {
+			argArgs = &argDecl->inputClassId;
+		} else if (argNode && argNode->classDeclaration && !argNode->classDeclaration->inputClassId.empty()) {
+			argArgs = &argNode->classDeclaration->inputClassId;
+		} else {
+			ClassId actualClassId = argDecl && argDecl->classId.has_value() ? *argDecl->classId : (argNode ? argNode->classId : DefaultClass::nullClassId);
+			if (actualClassId != DefaultClass::nullClassId && actualClassId < context.classInfo.size()) {
+				auto actualInfo = context.classInfo[actualClassId];
+				if (actualInfo && !actualInfo->genericTypeId.empty()) {
+					fallbackArgs.assign(actualInfo->genericTypeId.begin(), actualInfo->genericTypeId.end());
+					argArgs = &fallbackArgs;
+				}
+			}
+		}
+
+		if (argArgs && argArgs->size() == paramDecl->inputClassId.size()) {
+			for (size_t k = 0; k < paramDecl->inputClassId.size(); ++k) {
+				if (!matchAndBindType(in_data, paramDecl->inputClassId[k], nullptr, (*argArgs)[k], bindings, genericData)) {
+					return false;
+				}
+			}
+			return true;
+		}
+	}
+
+	return true;
+}
+
+static ClassDeclaration *tryInferGenericArguments(in_func, GenericData *genericData,
+                                                  Parameter *parameter,
+                                                  const SmallVector<HasClassIdNode *, 4> &arguments,
+                                                  size_t skip, LexerStringId baseNameId) {
+	if (!genericData || !parameter) return nullptr;
+	size_t numArgs = arguments.size();
+	size_t numParams = parameter->parameters.size();
+	if (numArgs + skip > numParams) return nullptr;
+	if (numArgs + skip < parameter->defaultValuePos) return nullptr;
+
+	HashMap<LexerStringId, ClassDeclaration *> bindings;
+	for (size_t j = 0; j < numArgs; ++j) {
+		auto paramNode = parameter->parameters[j + skip];
+		auto argNode = arguments[j];
+		if (!matchAndBindType(in_data, paramNode->classDeclaration, argNode, nullptr, bindings, genericData)) {
+			return nullptr;
+		}
+	}
+
+	for (auto *genDecl : genericData->genericDeclarations) {
+		if (bindings.find(genDecl->nameId) == bindings.end()) {
+			return nullptr;
+		}
+	}
+
+	auto inferredClassDecl = context.classDeclarationAllocator.push();
+	inferredClassDecl->baseClassLexerStringId = baseNameId;
+	inferredClassDecl->isGeneric = true;
+	inferredClassDecl->isGenericDeclaration = false;
+	inferredClassDecl->inputClassId.reserve(genericData->genericDeclarations.size());
+	for (auto *genDecl : genericData->genericDeclarations) {
+		auto *boundType = bindings[genDecl->nameId];
+		if (!boundType->classId.has_value()) {
+			boundType->template load<false>(in_data);
+			if (!boundType->classId.has_value()) {
+				boundType->template load<true>(in_data);
+			}
+		}
+		inferredClassDecl->inputClassId.push_back(boundType);
+	}
+	return inferredClassDecl;
+}
 
 ExprNode *CallNode::resolve(in_func) {
 	for (auto &argument : arguments) {
@@ -307,7 +452,7 @@ ExprNode *CallNode::optimize(in_func) {
 		}
 	}
 
-	const std::string name = context.lexerString[nameId];
+	std::string name = context.lexerString[nameId];
 
 	if (caller) {
 		// Caller.funcName() => Class.funcName()
@@ -346,11 +491,83 @@ ExprNode *CallNode::optimize(in_func) {
 		auto callerClassInfo = context.classInfo[caller->classId];
 		{
 			auto it = callerClassInfo->allFunction.find(nameId);
-			if (it == callerClassInfo->allFunction.end() && inputGenericArguments) {
-				loadMemberFunctionGenerics(
-				    in_data, caller->classId, name, inputGenericArguments,
-				    inputGenericArguments->baseClassLexerStringId);
-				it = callerClassInfo->allFunction.find(nameId);
+			if (inputGenericArguments) {
+				LexerStringId baseNameId = inputGenericArguments->baseClassLexerStringId;
+				auto git = callerClassInfo->genericFunctionMap.find(baseNameId);
+				if (git != callerClassInfo->genericFunctionMap.end() ||
+				    it == callerClassInfo->allFunction.end()) {
+					loadMemberFunctionGenerics(
+					    in_data, caller->classId, name, inputGenericArguments,
+					    baseNameId);
+					it = callerClassInfo->allFunction.find(nameId);
+				}
+			} else {
+				std::vector<CreateFuncNode *> *candidates = nullptr;
+				auto git = callerClassInfo->genericFunctionMap.find(nameId);
+				if (git != callerClassInfo->genericFunctionMap.end()) {
+					candidates = &git->second;
+				} else {
+					auto callerClass = compile.classes[caller->classId];
+					if (callerClass && callerClass->genericBaseClassId != 0) {
+						auto baseClassInfo = context.classInfo[callerClass->genericBaseClassId];
+						auto baseGit = baseClassInfo->genericFunctionMap.find(nameId);
+						if (baseGit != baseClassInfo->genericFunctionMap.end()) {
+							candidates = &baseGit->second;
+						}
+					}
+				}
+				if (candidates && !candidates->empty()) {
+					bool shouldInfer = (it == callerClassInfo->allFunction.end());
+					if (!shouldInfer) {
+						shouldInfer = true;
+						for (auto fid : it->second) {
+							auto fInfo = context.functionInfo[fid];
+							if (!fInfo->genericData) {
+								auto fn = compile.functions[fid];
+								size_t skip = (fn->functionFlags & FunctionFlags::FUNC_IS_STATIC) ? 0 : 1;
+								if (arguments.size() + skip >= fInfo->parameter->defaultValuePos &&
+								    arguments.size() + skip <= fInfo->parameter->parameters.size()) {
+									bool argsMatch = true;
+									for (size_t j = 0; j < arguments.size(); ++j) {
+										uint32_t expected = fn->args[j + skip];
+										uint32_t actual = arguments[j]->classId;
+										if (expected != actual && expected != DefaultClass::anyClassId &&
+										    !compile.classes[actual]->inheritance.get(expected)) {
+											argsMatch = false;
+											break;
+										}
+									}
+									if (argsMatch) {
+										shouldInfer = false;
+										break;
+									}
+								}
+							}
+						}
+					}
+					if (shouldInfer) {
+						for (auto *candidateNode : *candidates) {
+							auto candidateInfo = context.functionInfo[candidateNode->id];
+							if (candidateInfo->genericData) {
+								size_t skip = (candidateNode->functionFlags & FunctionFlags::FUNC_IS_STATIC) ? 0 : 1;
+								auto inferredDecl = tryInferGenericArguments(
+								    in_data, candidateInfo->genericData,
+								    candidateNode->parameter, arguments, skip, nameId);
+								if (inferredDecl) {
+									std::string specializedName = inferredDecl->getName(in_data);
+									LexerStringId specializedNameId = context.createLexerStringIfNotExists(specializedName);
+									loadMemberFunctionGenerics(
+									    in_data, caller->classId, specializedName, inferredDecl, nameId);
+									inputGenericArguments = inferredDecl;
+									name = specializedName;
+									nameId = specializedNameId;
+									it = callerClassInfo->allFunction.find(specializedNameId);
+									break;
+								}
+							}
+						}
+					}
+				}
 			}
 			if (it != callerClassInfo->allFunction.end()) {
 				funcVec[count++] = &it->second;
@@ -401,13 +618,53 @@ ExprNode *CallNode::optimize(in_func) {
 					auto callerClassInfo =
 					    context.classInfo[*contextCallClassId];
 					auto it = callerClassInfo->allFunction.find(nameId);
-					if (it == callerClassInfo->allFunction.end() &&
-					    inputGenericArguments) {
-						loadMemberFunctionGenerics(
-						    in_data, *contextCallClassId, name,
-						    inputGenericArguments,
-						    inputGenericArguments->baseClassLexerStringId);
-						it = callerClassInfo->allFunction.find(nameId);
+					if (inputGenericArguments) {
+						LexerStringId baseNameId = inputGenericArguments->baseClassLexerStringId;
+						auto git = callerClassInfo->genericFunctionMap.find(baseNameId);
+						if (git != callerClassInfo->genericFunctionMap.end() ||
+						    it == callerClassInfo->allFunction.end()) {
+							loadMemberFunctionGenerics(
+							    in_data, *contextCallClassId, name,
+							    inputGenericArguments,
+							    baseNameId);
+							it = callerClassInfo->allFunction.find(nameId);
+						}
+					} else {
+						auto git = callerClassInfo->genericFunctionMap.find(nameId);
+						if (git != callerClassInfo->genericFunctionMap.end() && !git->second.empty()) {
+							bool shouldInfer = (it == callerClassInfo->allFunction.end());
+							if (!shouldInfer) {
+								shouldInfer = true;
+								for (auto fid : it->second) {
+									if (!context.functionInfo[fid]->genericData) {
+										shouldInfer = false;
+										break;
+									}
+								}
+							}
+							if (shouldInfer) {
+								for (auto *candidateNode : git->second) {
+									auto candidateInfo = context.functionInfo[candidateNode->id];
+									if (candidateInfo->genericData) {
+										size_t skip = (candidateNode->functionFlags & FunctionFlags::FUNC_IS_STATIC) ? 0 : 1;
+										auto inferredDecl = tryInferGenericArguments(
+										    in_data, candidateInfo->genericData,
+										    candidateNode->parameter, arguments, skip, nameId);
+										if (inferredDecl) {
+											std::string specializedName = inferredDecl->getName(in_data);
+											LexerStringId specializedNameId = context.createLexerStringIfNotExists(specializedName);
+											loadMemberFunctionGenerics(
+											    in_data, *contextCallClassId, specializedName, inferredDecl, nameId);
+											inputGenericArguments = inferredDecl;
+											name = specializedName;
+											nameId = specializedNameId;
+											it = callerClassInfo->allFunction.find(specializedNameId);
+											break;
+										}
+									}
+								}
+							}
+						}
 					}
 					if (it != callerClassInfo->allFunction.end()) {
 						funcVec[count++] = &it->second;
@@ -423,12 +680,95 @@ ExprNode *CallNode::optimize(in_func) {
 					           '.' + name;
 					caller = context.classAccessPool.push(line, it->second);
 				} else {
-					funcName = name;
+					if (!inputGenericArguments) {
+						ClassDeclaration *inferredDecl = nullptr;
+						if (classInfo->primaryConstructor) {
+							inferredDecl = tryInferGenericArguments(
+							    in_data, classInfo->genericData,
+							    classInfo->primaryConstructor->parameter,
+							    arguments, 1, nameId);
+						}
+						if (!inferredDecl) {
+							for (auto *ctor : classInfo->secondaryConstructor) {
+								inferredDecl = tryInferGenericArguments(
+								    in_data, classInfo->genericData,
+								    ctor->parameter, arguments, 1, nameId);
+								if (inferredDecl) break;
+							}
+						}
+						if (inferredDecl) {
+							std::string specializedName = inferredDecl->getName(in_data);
+							ClassId specializedClassId = loadClassGenerics<false>(
+							    in_data, specializedName, inferredDecl);
+							inputGenericArguments = inferredDecl;
+							caller = context.classAccessPool.push(line, specializedClassId);
+							funcName = compile.classes[specializedClassId]->getName(compile) +
+							           '.' + compile.classes[specializedClassId]->getName(compile);
+						} else {
+							funcName = name;
+						}
+					} else {
+						funcName = name;
+					}
 				}
 			}
 		}
 
 		{
+			auto git = context.genericFunctionMap.find(nameId);
+			if (!inputGenericArguments && !caller && git != context.genericFunctionMap.end() && !git->second.empty()) {
+				auto fit = compile.funcMap.find(funcName);
+				bool shouldInfer = (fit == compile.funcMap.end());
+				if (!shouldInfer) {
+					shouldInfer = true;
+					for (auto fid : fit->second) {
+						auto fInfo = context.functionInfo[fid];
+						if (!fInfo->genericData) {
+							auto fn = compile.functions[fid];
+							size_t skip = (fn->functionFlags & FunctionFlags::FUNC_IS_STATIC) ? 0 : 1;
+							if (arguments.size() + skip >= fInfo->parameter->defaultValuePos &&
+							    arguments.size() + skip <= fInfo->parameter->parameters.size()) {
+								bool argsMatch = true;
+								for (size_t j = 0; j < arguments.size(); ++j) {
+									uint32_t expected = fn->args[j + skip];
+									uint32_t actual = arguments[j]->classId;
+									if (expected != actual && expected != DefaultClass::anyClassId &&
+									    !compile.classes[actual]->inheritance.get(expected)) {
+										argsMatch = false;
+										break;
+									}
+								}
+								if (argsMatch) {
+									shouldInfer = false;
+									break;
+								}
+							}
+						}
+					}
+				}
+				if (shouldInfer) {
+					for (auto *candidateNode : git->second) {
+						auto candidateInfo = context.functionInfo[candidateNode->id];
+						if (candidateInfo->genericData) {
+							size_t skip = (candidateNode->functionFlags & FunctionFlags::FUNC_IS_STATIC) ? 0 :
+							              (candidateNode->contextCallClassId.has_value() ? 1 : 0);
+							auto inferredDecl = tryInferGenericArguments(
+							    in_data, candidateInfo->genericData,
+							    candidateNode->parameter, arguments, skip, nameId);
+							if (inferredDecl) {
+								std::string specializedName = inferredDecl->getName(in_data);
+								LexerStringId specializedNameId = context.createLexerStringIfNotExists(specializedName);
+								loadFunctionGenerics(in_data, specializedName, inferredDecl);
+								inputGenericArguments = inferredDecl;
+								name = specializedName;
+								nameId = specializedNameId;
+								funcName = specializedName;
+								break;
+							}
+						}
+					}
+				}
+			}
 			auto it = compile.funcMap.find(funcName);
 			if (it != compile.funcMap.end()) {
 				funcVec[count++] = &it->second;
@@ -798,7 +1138,6 @@ ExprNode *CallNode::optimize(in_func) {
 						case NodeType::CREATE_CLOSURE: {
 							auto node =
 							    static_cast<CreateClosureNode *>(argument);
-							// if (node->mustInfer) {
 							node->inferFrom(in_data,
 							                funcExpectClass->classDeclaration);
 							argument->optimize(in_data);
@@ -1247,6 +1586,9 @@ bool CallNode::match(in_func, MatchOverload &match,
 		}
 		if (match.func->functionFlags & FunctionFlags::FUNC_UNUSABLE &&
 		    funcInfo->tokenIndex > tokenIndex) {
+			continue;
+		}
+		if (funcInfo->genericData) {
 			continue;
 		}
 

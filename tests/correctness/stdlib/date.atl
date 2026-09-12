@@ -44,6 +44,42 @@ fun testDateFeatures() {
     val str = dFormat.format("%Y")
     assert(str == "2024" || str == "2023")
 
+    // 6. Factory constructors
+    val dCtor = Date()
+    assert(dCtor != null)
+    assert(dCtor.getTime() > 0)
+
+    val dCtorTs = Date(1000)
+    assert(dCtorTs.getTime() == 1000)
+
+    // 7. Day of week & Day of year
+    assert(dCtor.dayOfWeek() >= 0 && dCtor.dayOfWeek() <= 6)
+    assert(dCtor.dayOfYear() >= 1 && dCtor.dayOfYear() <= 366)
+
+    // 8. Parse
+    val dParsed = Date.parse("2024-05-20 14:30:00")
+    assert(dParsed.year() == 2024)
+    assert(dParsed.month() == 5)
+    assert(dParsed.day() == 20)
+    assert(dParsed.hour() == 14)
+    assert(dParsed.minute() == 30)
+    assert(dParsed.second() == 0)
+
+    // 9. Comparison, diff, clone
+    assert(dParsed.isAfter(dEpoch) == true)
+    assert(dEpoch.isBefore(dParsed) == true)
+    assert(dParsed.diff(dEpoch) > 0)
+
+    val dCopy = dParsed.copy()
+    assert(dCopy.getTime() == dParsed.getTime())
+
+    // 10. String conversions
+    val parsedStr = dParsed.toString()
+    assert(parsedStr == "2024-05-20 14:30:00")
+    assert(dParsed.toDateString() == "2024-05-20")
+    assert(dParsed.toTimeString() == "14:30:00")
+    assert(dParsed.toISOString() == "2024-05-20T14:30:00")
+
     println("Passed ${__FUNC__}")
 }
 

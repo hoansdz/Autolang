@@ -1,0 +1,66 @@
+var globalCount: Int = 100
+var globalMessage: String = "global_text"
+
+class ParentScope {
+    var parentVal: Int = 500
+}
+
+class ScopeContainer extends ParentScope {
+    var globalCount: Int = 10
+    var ownMember: String = "member_text"
+
+    constructor() {
+        super()
+    }
+
+    fun getCount(): Int = globalCount
+
+    fun updateCount(newVal: Int) {
+        globalCount = newVal
+    }
+
+    fun getGlobal(): String = globalMessage
+
+    fun getParentValue(): Int = parentVal
+
+    fun testClosureAccess(): Int {
+        val adder = {|num: Int| num + globalCount}
+        return adder(10)
+    }
+}
+
+class CtorShadow(val globalCount: Int) {
+    fun readCount(): Int = globalCount
+}
+
+fun testScopeShadowing() {
+    val obj = ScopeContainer()
+
+    // 1. Member variable shadows global variable on read
+    assert(obj.getCount() == 10)
+    assert(globalCount == 100)
+
+    // 2. Member variable update inside method modifies member, not global
+    obj.updateCount(77)
+    assert(obj.getCount() == 77)
+    assert(globalCount == 100)
+
+    // 3. Method falls back to global variable when class has no such member
+    assert(obj.getGlobal() == "global_text")
+
+    // 4. Method accesses inherited parent member
+    assert(obj.getParentValue() == 500)
+
+    // 5. Closure inside method accesses this.member correctly
+    // adder(10) where globalCount is 77: 10 + 77 = 87
+    assert(obj.testClosureAccess() == 87)
+
+    // 6. Constructor parameter shadows global variable
+    val ctorObj = CtorShadow(1234)
+    assert(ctorObj.readCount() == 1234)
+    assert(globalCount == 100)
+
+    println("All scope shadowing tests passed successfully!")
+}
+
+testScopeShadowing()

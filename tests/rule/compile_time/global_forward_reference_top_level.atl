@@ -1,0 +1,2 @@
+val x: Int = declaredLaterGlobal
+var declaredLaterGlobal: Int = 10

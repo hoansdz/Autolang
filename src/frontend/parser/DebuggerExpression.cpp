@@ -4,6 +4,7 @@
 #include "frontend/ACompiler.hpp"
 #include "frontend/parser/Debugger.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "frontend/parser/GenericData.hpp"
 #include "shared/DefaultClass.hpp"
 #include "shared/DefaultFunction.hpp"
 #include "shared/DefaultOperator.hpp"
@@ -13,6 +14,20 @@
 #include <string>
 
 namespace Autolang {
+
+static bool hasGenericParamFrom(ClassDeclaration *cd, GenericData *gdata, int depth = 0) {
+	if (!cd || !gdata || depth > 16) return false;
+	if (cd->isGenericDeclaration) {
+		if (gdata->findDeclaration(cd->baseClassLexerStringId)) return true;
+		for (auto &decl : gdata->genericDeclarations) {
+			if (decl->nameId == cd->baseClassLexerStringId) return true;
+		}
+	}
+	for (auto *child : cd->inputClassId) {
+		if (hasGenericParamFrom(child, gdata, depth + 1)) return true;
+	}
+	return false;
+}
 
 HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 	HasClassIdNode *left = parsePrimary(in_data, i);
@@ -103,10 +118,12 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 			    !expect(token, Lexer::TokenType::IDENTIFIER)) {
 				--i;
-				throw ParserError(firstLine, "Expected function name after '::'");
+				throw ParserError(firstLine, "Expected identifier after '::'");
 			}
-			node = context.functionAccessPool.push(firstLine, nullptr,
-			                                       token->indexData);
+			auto unknowNode = context.unknowNodePool.push(
+			    firstLine, i, std::nullopt, context.currentFunctionId,
+			    token->indexData, true, false, true);
+			node = unknowNode;
 			break;
 		}
 		case Lexer::TokenType::IDENTIFIER:
@@ -278,6 +295,8 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 			goto ret;
 		switch (token->type) {
 			case Lexer::TokenType::COLON_COLON: {
+				if (token->line != endLine)
+					goto ret;
 				if (!nextTokenSameLine(&token, context.tokens, i, endLine) ||
 				    !expect(token, Lexer::TokenType::IDENTIFIER)) {
 					--i;
@@ -491,7 +510,7 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			// Never happen because closure end with '}'
 			// addThisToClosure(in_data, i);
 			return context.unknowNodePool.push(
-			    context.tokens[i].line, context.currentClassId,
+			    context.tokens[i].line, i, context.currentClassId,
 			    context.currentFunctionId, identifier->indexData, true,
 			    context.justFindStaticMember);
 		}
@@ -551,7 +570,7 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 				    context.createLexerStringIfNotExists(name);
 
 				auto node = context.unknowNodePool.push(
-				    context.tokens[i].line, context.currentClassId,
+				    context.tokens[i].line, i, context.currentClassId,
 				    context.currentFunctionId, newNameId, true,
 				    context.justFindStaticMember);
 				if (isGeneric) {
@@ -562,9 +581,14 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 					//           << "\n";
 					if (context.currentClassId) {
 						auto classInfo = context.getCurrentClassInfo(in_data);
-						classInfo->genericData
-						    ->mustRenameNodes[classDeclaration] = node;
-					} else if (context.preloadGenericData) {
+						if (classInfo && classInfo->genericData &&
+						    hasGenericParamFrom(classDeclaration, classInfo->genericData)) {
+							classInfo->genericData
+							    ->mustRenameNodes[classDeclaration] = node;
+						}
+					}
+					if (context.preloadGenericData &&
+					    hasGenericParamFrom(classDeclaration, context.preloadGenericData)) {
 						context.preloadGenericData
 						    ->mustRenameNodes[classDeclaration] = node;
 					}
@@ -596,11 +620,14 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			} else {
 				if (context.currentClassId) {
 					auto classInfo = context.getCurrentClassInfo(in_data);
-					if (classInfo->genericData) {
+					if (classInfo && classInfo->genericData &&
+					    hasGenericParamFrom(classDeclaration, classInfo->genericData)) {
 						classInfo->genericData
 						    ->mustRenameNodes[classDeclaration] = callNode;
 					}
-				} else if (context.preloadGenericData) {
+				}
+				if (context.preloadGenericData &&
+				    hasGenericParamFrom(classDeclaration, context.preloadGenericData)) {
 					context.preloadGenericData
 					    ->mustRenameNodes[classDeclaration] = callNode;
 				}
@@ -789,7 +816,7 @@ doneLT:;
 	if (!allowAddThis) {
 		addThisToClosure(in_data, i);
 		auto node = context.unknowNodePool.push(
-		    token->line, context.currentClassId, context.currentFunctionId,
+		    token->line, i, context.currentClassId, context.currentFunctionId,
 		    identifier->indexData, nullable, context.justFindStaticMember);
 		if (!nullable) {
 			node->isForceNonNull = true;
@@ -826,7 +853,7 @@ HasClassIdNode *findIdentifierNode(in_func, size_t &i, LexerStringId nameId,
 	if (nameId == lexerIdthis) {
 		if (!context.currentClassId) {
 			return context.unknowNodePool.push(
-			    context.tokens[i].line, std::nullopt, context.currentFunctionId,
+			    context.tokens[i].line, i, std::nullopt, context.currentFunctionId,
 			    nameId, nullable, context.justFindStaticMember);
 		}
 		addThisToClosure(in_data, i);
@@ -839,7 +866,7 @@ HasClassIdNode *findIdentifierNode(in_func, size_t &i, LexerStringId nameId,
 			                            false, false);
 		}
 		return context.unknowNodePool.push(
-		    context.tokens[i].line, context.currentClassId,
+		    context.tokens[i].line, i, context.currentClassId,
 		    context.currentFunctionId, nameId, nullable,
 		    context.justFindStaticMember);
 	}
@@ -850,7 +877,7 @@ HasClassIdNode *findIdentifierNode(in_func, size_t &i, LexerStringId nameId,
 	// std::cerr << "C " << context.lexerString[nameId] << "\n";
 	addThisToClosure(in_data, i);
 	auto unknowNode = context.unknowNodePool.push(
-	    context.tokens[i].line, context.currentClassId,
+	    context.tokens[i].line, i, context.currentClassId,
 	    context.currentFunctionId, nameId, nullable,
 	    context.justFindStaticMember);
 	if (context.preloadGenericData) {
@@ -863,6 +890,21 @@ HasClassIdNode *findIdentifierNode(in_func, size_t &i, LexerStringId nameId,
 			declaration->allClassDeclarations.push_back(classDeclaration);
 			context.preloadGenericData->mustRenameNodes[classDeclaration] =
 			    unknowNode;
+		}
+	}
+	if (context.currentClassId) {
+		auto classInfo = context.getCurrentClassInfo(in_data);
+		if (classInfo && classInfo->genericData) {
+			auto declaration = classInfo->genericData->findDeclaration(nameId);
+			if (declaration) {
+				auto classDeclaration = context.classDeclarationAllocator.push();
+				classDeclaration->line = context.tokens[i].line;
+				classDeclaration->baseClassLexerStringId = nameId;
+				classDeclaration->isGeneric = true;
+				declaration->allClassDeclarations.push_back(classDeclaration);
+				classInfo->genericData->mustRenameNodes[classDeclaration] =
+				    unknowNode;
+			}
 		}
 	}
 	return unknowNode;

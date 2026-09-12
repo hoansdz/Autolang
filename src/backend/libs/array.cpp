@@ -900,7 +900,7 @@ AObject *join_to_string(NativeFuncInData) {
 			break;
 		}
 		default: {
-			// Bool, String, Object, Function đều dùng objData
+			// Bool, String, Object, Function all use objData
 			for (size_t i = 0; i < sz; ++i) {
 				if (i > 0) result += separator;
 				result +=

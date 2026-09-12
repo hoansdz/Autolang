@@ -1,0 +1,67 @@
+// 1. Forward reference: class method calls global object declared AFTER the class
+class Worker {
+    fun doWork(): String {
+        return deferredService.serve()
+    }
+}
+
+class BackendService {
+    fun serve(): String = "service_ok"
+}
+
+val deferredService = BackendService()
+
+// 2. Global scope resolution with '::': class has method 'a', global instance also has method 'a'
+class Engine {
+    fun a(): String = "engine_a"
+    fun run(): String {
+        // Calls method 'a' on global variable 'globalEngine' via '::'
+        return ::globalEngine.a()
+    }
+}
+
+val globalEngine = Engine()
+
+// 3. Global variable shadowing: member 'val' vs global 'val'
+var globalScore: Int = 500
+
+class GameSession {
+    var globalScore: Int = 50
+
+    fun checkAndSet(): Void {
+        assert(globalScore == 50)
+        assert(::globalScore == 500)
+
+        globalScore = 75
+        assert(globalScore == 75)
+        assert(::globalScore == 500)
+
+        ::globalScore = 1000
+        assert(::globalScore == 1000)
+        assert(globalScore == 75)
+    }
+}
+
+// 4. Standalone top-level function forward referencing global variable
+fun getGlobalConfig(): String {
+    return appConfig
+}
+
+val appConfig: String = "production_mode"
+
+fun testAll() {
+    val worker = Worker()
+    assert(worker.doWork() == "service_ok")
+
+    val eng = Engine()
+    assert(eng.run() == "engine_a")
+
+    val session = GameSession()
+    session.checkAndSet()
+
+    assert(getGlobalConfig() == "production_mode")
+
+    println("All global scope and forward reference tests passed!")
+}
+
+testAll()

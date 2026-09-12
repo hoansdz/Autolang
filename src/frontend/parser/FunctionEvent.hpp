@@ -2,7 +2,7 @@
 #define FUNCTION_EVENT_HPP
 
 #ifdef __EMSCRIPTEN__
-#include "shared/JSFunction.hpp"
+#include <emscripten/val.h>
 using namespace emscripten;
 #elif __PYBIND11__
 #include "shared/PYFunction.hpp"

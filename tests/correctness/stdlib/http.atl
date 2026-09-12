@@ -2,9 +2,13 @@
 
 fun checkResponse(res: HttpResponse) {
     assert(res.status >= 100 && res.status < 600)
+    assert(res.statusCode() >= 100 && res.statusCode() < 600)
     assert(res.url != "")
     assert(res.headers.size() >= 0)
     assert(res.body.size() >= 0)
+    assert(res.text().size() >= 0)
+    assert(res.isOk() == res.ok)
+    assert(res.isSuccess() == res.ok)
 }
 
 fun testHttpFeatures() {
@@ -28,6 +32,16 @@ fun testHttpFeatures() {
         val errStr = e.message
         assert(errStr.indexOf("SecurityError") == -1)
         println("Http.post bypassed security but failed with network/other error: ${errStr}")
+    }
+
+    try {
+        val res = Http.put("https://example.com", "put body", 2000)
+        checkResponse(res)
+        println("Http.put ok: ${res.ok}, status: ${res.status}, url: ${res.url}, body size: ${res.body.size()}")
+    } catch (e) {
+        val errStr = e.message
+        assert(errStr.indexOf("SecurityError") == -1)
+        println("Http.put bypassed security but failed with network/other error: ${errStr}")
     }
 
     try {

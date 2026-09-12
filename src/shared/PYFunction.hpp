@@ -189,7 +189,7 @@ inline py::object aobjectToPy(ANotifier &notifier, AObject *obj) {
 			py::dict pyObj;
 			for (const auto &[memberName, memberPos] : clazz->memberMap) {
 				AObject *memberVal = obj->member->data[memberPos];
-				pyObj[py::str(memberName)] = aobjectToPy(notifier, memberVal);
+				pyObj[py::str(std::string(memberName))] = aobjectToPy(notifier, memberVal);
 			}
 			return pyObj;
 		}
@@ -397,12 +397,13 @@ inline AObject *pyObjectToAObject(ANotifier &notifier, const py::object &pyObj,
 		py::object fieldVal = py::none();
 
 		if (isDict) {
-			if (pyDict.contains(py::str(memberName))) {
-				fieldVal = pyDict[py::str(memberName)];
+			if (pyDict.contains(py::str(std::string(memberName)))) {
+				fieldVal = pyDict[py::str(std::string(memberName))];
 			}
 		} else {
-			if (py::hasattr(pyObj, memberName.c_str())) {
-				fieldVal = py::getattr(pyObj, memberName.c_str());
+			std::string memberStr(memberName);
+			if (py::hasattr(pyObj, memberStr.c_str())) {
+				fieldVal = py::getattr(pyObj, memberStr.c_str());
 			}
 		}
 
@@ -412,7 +413,7 @@ inline AObject *pyObjectToAObject(ANotifier &notifier, const py::object &pyObj,
 			} else {
 				notifier.throwException(
 				    "Python Object missing required non-nullable field: " +
-				    memberName);
+				    std::string(memberName));
 				notifier.release(newObj);
 				return nullptr;
 			}

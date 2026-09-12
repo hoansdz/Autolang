@@ -1,4 +1,4 @@
-﻿#ifndef LIBS_BYTES_CPP
+#ifndef LIBS_BYTES_CPP
 #define LIBS_BYTES_CPP
 
 #include "backend/vm/ANotifier.hpp"
@@ -341,6 +341,83 @@ AObject *to_base64(NativeFuncInData) {
 	return notifier.createString(ret);
 }
 
+static inline bool is_base64(unsigned char c) {
+	return (isalnum(c) || (c == '+') || (c == '/'));
+}
+
+AObject *from_base64(NativeFuncInData) {
+	static const std::string base64_chars =
+	    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	const std::string &encoded_string = args[0]->str->data;
+	int in_len = encoded_string.size();
+	int i = 0;
+	int j = 0;
+	int in_ = 0;
+	unsigned char char_array_4[4], char_array_3[3];
+	std::vector<uint8_t> ret;
+
+	while (in_len-- && (encoded_string[in_] != '=') && is_base64(encoded_string[in_])) {
+		char_array_4[i++] = encoded_string[in_]; in_++;
+		if (i == 4) {
+			for (i = 0; i < 4; i++)
+				char_array_4[i] = base64_chars.find(char_array_4[i]);
+
+			char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
+			char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
+			char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
+
+			for (i = 0; (i < 3); i++)
+				ret.push_back(char_array_3[i]);
+			i = 0;
+		}
+	}
+
+	if (i) {
+		for (j = i; j < 4; j++)
+			char_array_4[j] = 0;
+
+		for (j = 0; j < 4; j++)
+			char_array_4[j] = base64_chars.find(char_array_4[j]);
+
+		char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
+		char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
+		char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
+
+		for (j = 0; (j < i - 1); j++) ret.push_back(char_array_3[j]);
+	}
+
+	AObject *obj = notifier.createBytes(ret.size());
+	if (!ret.empty()) {
+		std::memcpy(obj->bytes->data, ret.data(), ret.size());
+		obj->bytes->size = ret.size();
+	}
+	return obj;
+}
+
+AObject *from_hex(NativeFuncInData) {
+	const std::string &hex = args[0]->str->data;
+	size_t len = hex.length();
+	AObject *obj = notifier.createBytes(len / 2);
+	auto b = obj->bytes;
+	b->size = 0;
+	for (size_t i = 0; i + 1 < len; i += 2) {
+		char byteStr[3] = {hex[i], hex[i + 1], '\0'};
+		uint8_t byteVal = static_cast<uint8_t>(std::strtoul(byteStr, nullptr, 16));
+		b->data[b->size++] = byteVal;
+	}
+	return obj;
+}
+
+AObject *to_byte_array(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	ClassId arrayClassId = notifier.callFrame->func->returnId;
+	AObject *arr = notifier.createArray(arrayClassId);
+	for (size_t i = 0; i < b->size; ++i) {
+		notifier.arrayAdd(arr, notifier.createInt(b->data[i]));
+	}
+	return arr;
+}
+
 AObject *read_int32_be(NativeFuncInData) {
 	ABytes *b = args[0]->bytes;
 	int64_t offset = args[1]->i;
@@ -493,6 +570,19 @@ fun Bytes.readFloatLE(offset: Int): Float
 @native("bytes_to_base64")
 fun Bytes.toBase64(): String
 
+fun Bytes.encodeBase64(): String = this.toBase64()
+
+@native("bytes_from_base64")
+static fun Bytes.fromBase64(base64: String): Bytes
+
+@native("bytes_from_hex")
+static fun Bytes.fromHex(hex: String): Bytes
+
+@native("bytes_to_byte_array")
+fun Bytes.toByteArray(): Array<Int>
+
+fun Bytes.decodeToString(): String = this.toUtf8String()
+
 @native("bytes_read_int32_be")
 fun Bytes.readInt32BE(offset: Int): Int
 
@@ -505,6 +595,8 @@ fun Bytes.xorWith(other: Bytes, lenBytes: Int)
 @native("bytes_ext_string_to_bytes")
 fun String.toBytes(): Bytes
 
+fun String.encodeToByteArray(): Bytes = this.toBytes()
+
 @native("bytes_ext_string_from_bytes")
 static fun String.fromBytes(bytes: Bytes): String
 
@@ -515,6 +607,9 @@ fun Int.toBigEndianBytes(): Bytes
 	    ANativeMap({
 	        {"bytes_constructor", &bytes::alloc_bytes},
 	        {"bytes_from_string_static", &bytes::from_string},
+	        {"bytes_from_hex", &bytes::from_hex},
+	        {"bytes_from_base64", &bytes::from_base64},
+	        {"bytes_to_byte_array", &bytes::to_byte_array},
 	        {"bytes_append", &bytes::append},
 	        {"bytes_size", &bytes::size},
 	        {"bytes_is_empty", &bytes::is_empty},

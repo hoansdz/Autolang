@@ -1,0 +1,163 @@
+class IBase() {
+    fun score(): Int = 10
+}
+
+class IChild extends IBase {
+    constructor() {
+        super()
+    }
+    override fun score(): Int = 20
+}
+
+class IChecker {
+    fun <T: IBase> check(item: T): Int {
+        return item.score()
+    }
+}
+
+class IBox<T>(val value: T) {
+    fun getVal(): T = this.value
+}
+
+class IConverter {
+    fun <T> toBox(v: T): IBox<T> {
+        return IBox(v)
+    }
+}
+
+class IPair<A, B>(val first: A, val second: B)
+
+fun <T> identity(x: T): T = x
+
+fun <A, B> makePair(a: A, b: B): IPair<A, B> {
+    return IPair(a, b)
+}
+
+fun <T> arrayFirst(arr: Array<T>): T = arr[0]
+
+fun <T> outerIdentity(v: T): T {
+    return identity(v)
+}
+
+class IPipeline<T>(val value: T) {
+    fun <R> map(fn: (T) -> R): IPipeline<R> {
+        return IPipeline<R>(fn(this.value))
+    }
+}
+
+// Map and Set helpers
+fun <K, V> mapSize(m: Map<K, V>): Int = m.size
+fun <T> setSize(s: Set<T>): Int = s.size
+
+// Multiple arguments with same type parameter
+fun <T> chooseFirst(a: T, b: T): T = a
+
+// Secondary constructor in generic class
+class MultiCtor<T> {
+    var data: T?
+    var extra: Int
+    constructor(d: T) {
+        this.data = d
+        this.extra = 0
+    }
+    constructor(d: T, ext: Int) {
+        this.data = d
+        this.extra = ext
+    }
+}
+
+// Overload between non-generic and generic
+fun overTest(x: Int): String = "int"
+fun <T> overTest(x: T): String = "generic"
+
+// Default parameter with generic
+fun <T> withDefault(x: T, y: Int = 100): Int = y
+
+fun main() {
+    // 1. Global function inference
+    val a = identity(12345)
+    assert(a == 12345)
+
+    val s = identity("hello_inference")
+    assert(s == "hello_inference")
+
+    // 2. Multiple type parameters inference
+    val pair = makePair(42, "answer")
+    assert(pair.first == 42)
+    assert(pair.second == "answer")
+
+    // 3. Primary constructor inference
+    val boxInt = IBox(999)
+    assert(boxInt.getVal() == 999)
+
+    val boxStr = IBox("content")
+    assert(boxStr.getVal() == "content")
+
+    // 4. Member method inference
+    val conv = IConverter()
+    val boxed = conv.toBox(777)
+    assert(boxed.getVal() == 777)
+
+    // 5. Constrained generic method inference
+    val checker = IChecker()
+    val child = IChild()
+    val score = checker.check(child)
+    assert(score == 20)
+
+    // 6. Array generic parameter inference
+    val arr = [100, 200, 300]
+    val firstElem = arrayFirst(arr)
+    assert(firstElem == 100)
+
+    // 7. Generic function calling generic function without type params
+    assert(outerIdentity(9999) == 9999)
+    assert(outerIdentity("delegated_string") == "delegated_string")
+
+    // 8. Nested inferred generic objects
+    val nestedPair = makePair(IBox(1), IBox("nested"))
+    assert(nestedPair.first.getVal() == 1)
+    assert(nestedPair.second.getVal() == "nested")
+
+    // 9. Inferred array of generic objects
+    val boxArr = [IBox(11), IBox(22)]
+    assert(arrayFirst(boxArr).getVal() == 11)
+
+    // 10. Generic pipeline with constructor inference
+    val pipe = IPipeline(10)
+    val p2 = pipe.map<String>({ n: Int -> n.toString() })
+    assert(p2.value == "10")
+    val p3 = p2.map<Int>({ str: String -> str.length })
+    assert(p3.value == 2)
+
+    // 11. Map and Set parameter inference
+    val myMap = <String, Int>{"apple": 1, "banana": 2}
+    assert(mapSize(myMap) == 2)
+
+    val mySet = <Int>{10, 20, 30, 40}
+    assert(setSize(mySet) == 4)
+
+    // 12. Multiple arguments with same type parameter
+    assert(chooseFirst(111, 222) == 111)
+    assert(chooseFirst("first", "second") == "first")
+
+    // 13. Secondary constructor inference in generic class
+    val mc1 = MultiCtor("single_arg")
+    assert(mc1.data == "single_arg")
+    assert(mc1.extra == 0)
+
+    val mc2 = MultiCtor(777, 42)
+    assert(mc2.data == 777)
+    assert(mc2.extra == 42)
+
+    // 14. Overload between non-generic and generic
+    assert(overTest(10) == "int")
+    assert(overTest("text") == "generic")
+
+    // 15. Default parameter with generic inference
+    assert(withDefault("default_test") == 100)
+    assert(withDefault("default_test", 555) == 555)
+
+    println("All generic inference tests passed!")
+}
+
+main()

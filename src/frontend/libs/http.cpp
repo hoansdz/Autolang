@@ -1,4 +1,4 @@
-﻿#ifndef LIB_HTTP_CPP
+#ifndef LIB_HTTP_CPP
 #define LIB_HTTP_CPP
 
 #include "backend/libs/map.hpp"
@@ -337,6 +337,117 @@ AObject *post(NativeFuncInData) {
 	return resObj;
 }
 
+AObject *http_put(NativeFuncInData) {
+	const char *req_url = args[0]->str->data;
+	const std::string &body = args[1]->str->data;
+	long timeout_ms = static_cast<long>(args[2]->i);
+	ClassId resClassId = args[3]->i;
+	ClassId mapClassId = args[4]->i;
+
+	int status_code = 0;
+	std::string response_body = "";
+	std::string response_headers = "";
+	std::string effective_url = req_url;
+
+	if (!checkUrlSecurity(req_url, notifier)) {
+		status_code = 403;
+		response_body = "SecurityError: Domain not allowed.";
+	} else {
+#ifdef FETCH_IMPLEMENTATION_LIBCURL
+		CURL *curl = curl_easy_init();
+		if (curl) {
+			curl_easy_setopt(curl, CURLOPT_URL, req_url);
+			curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+			curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE,
+			                 static_cast<long>(body.size()));
+			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+			curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, timeout_ms);
+			curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, timeout_ms);
+			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+			curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_body);
+			curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, WriteCallback);
+			curl_easy_setopt(curl, CURLOPT_HEADERDATA, &response_headers);
+
+			CURLcode res = curl_easy_perform(curl);
+			if (res == CURLE_OK) {
+				long http_code = 0;
+				curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+				status_code = static_cast<int>(http_code);
+				char *eff_url = nullptr;
+				curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &eff_url);
+				if (eff_url)
+					effective_url = eff_url;
+			} else {
+				status_code = 500;
+				response_body = curl_easy_strerror(res);
+			}
+			curl_easy_cleanup(curl);
+		}
+#elif defined(FETCH_IMPLEMENTATION_EMSCRIPTEN)
+		emscripten_fetch_attr_t attr;
+		emscripten_fetch_attr_init(&attr);
+		strcpy(attr.requestMethod, "PUT");
+		attr.timeoutMSecs = timeout_ms;
+		attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
+		attr.requestData = body.c_str();
+		attr.requestDataSize = body.size();
+
+		FetchContext ctx;
+		attr.onsuccess = on_fetch_success;
+		attr.onerror = on_fetch_error;
+		attr.userData = &ctx;
+
+		emscripten_fetch(&attr, req_url);
+		while (!ctx.done) {
+			emscripten_sleep(10);
+		}
+		emscripten_fetch_t *fetch = ctx.fetch;
+
+		status_code = fetch->status == 0 ? 500 : fetch->status;
+		effective_url = fetch->url;
+		response_body =
+		    std::string(fetch->data && fetch->numBytes > 0 ? fetch->data : "",
+		                fetch->numBytes);
+
+		size_t header_len = emscripten_fetch_get_response_headers_length(fetch);
+		if (header_len > 0) {
+			std::vector<char> h_buf(header_len);
+			emscripten_fetch_get_response_headers(fetch, h_buf.data(),
+			                                      header_len);
+			response_headers = std::string(h_buf.data());
+		}
+		emscripten_fetch_close(fetch);
+#endif
+	}
+
+	auto clazz = notifier.vm->data.classes[resClassId];
+	AObject *resObj =
+	    notifier.createMemberObject(resClassId, clazz->memberMap.size());
+
+	auto member0 = notifier.createInt(status_code);
+	member0->retain();
+	resObj->member->data[0] = member0;
+
+	auto member1 = notifier.createBool(status_code >= 200 && status_code < 300);
+	member1->retain();
+	resObj->member->data[1] = member1;
+
+	auto member2 = notifier.createString(effective_url);
+	member2->retain();
+	resObj->member->data[2] = member2;
+
+	auto member3 = createHeadersMap(notifier, mapClassId, response_headers);
+	member3->retain();
+	resObj->member->data[3] = member3;
+
+	auto member4 = notifier.createString(response_body);
+	member4->retain();
+	resObj->member->data[4] = member4;
+
+	return resObj;
+}
+
 AObject *http_delete(NativeFuncInData) {
 	const char *req_url = args[0]->str->data;
 	long timeout_ms = static_cast<long>(args[1]->i);
@@ -461,7 +572,7 @@ AObject *get_all(NativeFuncInData) {
 	std::vector<std::string> response_headers_list(url_count);
 
 	for (size_t i = 0; i < url_count; ++i) {
-		const char *url = arrayObj->member->data[i]->str->data;
+		const char *url = arrayObj->array->objData[i]->str->data;
 		if (!checkUrlSecurity(url, notifier)) {
 			AObject *errObj = notifier.createMemberObject(
 			    resClassId, clazz->memberMap.size());
@@ -517,7 +628,7 @@ AObject *get_all(NativeFuncInData) {
 
 		long status_code = 0;
 		char *url_ptr = nullptr;
-		std::string effective_url = arrayObj->member->data[i]->str->data;
+		std::string effective_url = arrayObj->array->objData[i]->str->data;
 
 		curl_easy_getinfo(easy_handles[i], CURLINFO_RESPONSE_CODE,
 		                  &status_code);
@@ -563,7 +674,7 @@ AObject *get_all(NativeFuncInData) {
 	std::vector<bool> skipped(url_count, false);
 
 	for (size_t i = 0; i < url_count; ++i) {
-		const char *url = arrayObj->member->data[i]->str->data;
+		const char *url = arrayObj->array->objData[i]->str->data;
 		if (!checkUrlSecurity(url, notifier)) {
 			AObject *errObj = notifier.createMemberObject(
 			    resClassId, clazz->memberMap.size());
@@ -677,6 +788,11 @@ class HttpResponse {
     lateinit val url: String
     lateinit val headers: Map<String, String>
     lateinit val body: String
+
+    fun text(): String = this.body
+    fun statusCode(): Int = this.status
+    fun isSuccess(): Bool = this.ok
+    fun isOk(): Bool = this.ok
 }
 
 @no_constructor
@@ -687,6 +803,9 @@ class Http {
 
     @native("http_post")
     private static fun _post(url: String, body: String, timeoutMs: Int, resClassId: Int, mapClassId: Int): HttpResponse
+
+    @native("http_put")
+    private static fun _put(url: String, body: String, timeoutMs: Int, resClassId: Int, mapClassId: Int): HttpResponse
 
     @native("http_delete")
     private static fun _delete(url: String, timeoutMs: Int, resClassId: Int, mapClassId: Int): HttpResponse
@@ -700,6 +819,9 @@ class Http {
     static fun post(url: String, body: String, timeoutMs: Int = 10000): HttpResponse = 
         _post(url, body, timeoutMs, getClassId(HttpResponse), getClassId(Map<String, String>))
 
+    static fun put(url: String, body: String, timeoutMs: Int = 10000): HttpResponse = 
+        _put(url, body, timeoutMs, getClassId(HttpResponse), getClassId(Map<String, String>))
+
     static fun delete(url: String, timeoutMs: Int = 10000): HttpResponse = 
         _delete(url, timeoutMs, getClassId(HttpResponse), getClassId(Map<String, String>))
 
@@ -711,6 +833,7 @@ class Http {
 	                                ANativeMap({
 	                                    {"http_get", &http::get},
 	                                    {"http_post", &http::post},
+	                                    {"http_put", &http::http_put},
 	                                    {"http_delete", &http::http_delete},
 	                                    {"http_get_all", &http::get_all},
 	                                }));

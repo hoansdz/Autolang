@@ -38,6 +38,9 @@
 @import("./correctness/basic/named_arguments.atl")
 @import("./correctness/basic/assign_operator.atl")
 @import("./correctness/basic/pair.atl")
+@import("./correctness/basic/scope_shadowing.atl")
+@import("./correctness/basic/global_scope_resolution.atl")
+@import("./correctness/basic/uninitialized_global_access.atl")
 
 
 @import("./correctness/stdlib/array.atl")
