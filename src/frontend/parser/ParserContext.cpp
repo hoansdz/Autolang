@@ -66,6 +66,11 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerString.emplace_back("emptyMap");
 	lexerString.emplace_back("Pair");
 	lexerString.emplace_back("pairOf");
+	lexerString.emplace_back("plus");
+	lexerString.emplace_back("minus");
+	lexerString.emplace_back("times");
+	lexerString.emplace_back("div");
+	lexerString.emplace_back("rem");
 	/*
 	lexerString.emplace_back("unaryPlus");
 	lexerString.emplace_back("unaryMinus");
@@ -147,6 +152,11 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerStringMap["emptyMap"] = lexerIdemptyMap;
 	lexerStringMap["Pair"] = lexerIdPair;
 	lexerStringMap["pairOf"] = lexerIdpairOf;
+	lexerStringMap["plus"] = lexerIdplus;
+	lexerStringMap["minus"] = lexerIdminus;
+	lexerStringMap["times"] = lexerIdtimes;
+	lexerStringMap["div"] = lexerIddiv;
+	lexerStringMap["rem"] = lexerIdrem;
 	/*
 	lexerStringMap["unaryPlus"] = lexerIdunaryPlus;
 	lexerStringMap["unaryMinus"] = lexerIdunaryMinus;
@@ -273,6 +283,10 @@ void ParserContext::init(CompiledProgram &compile) {
 		    {makeTuple(stringClassId, intClassId, (uint8_t)TT::PLUS),
 		     stringClassId},
 		    {makeTuple(stringClassId, floatClassId, (uint8_t)TT::PLUS),
+		     stringClassId},
+		    {makeTuple(stringClassId, boolClassId, (uint8_t)TT::PLUS),
+		     stringClassId},
+		    {makeTuple(stringClassId, nullClassId, (uint8_t)TT::PLUS),
 		     stringClassId},
 		    {makeTuple(stringClassId, stringClassId, (uint8_t)TT::PLUS),
 		     stringClassId},

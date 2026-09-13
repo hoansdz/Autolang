@@ -493,7 +493,10 @@ bool loadBody(in_func, SmallVector<ExprNode *, 8> &nodes, size_t &i,
 		context.getCurrentFunctionInfo(in_data)->scopes.emplace_back();
 	if constexpr (!loadedLBrace) {
 		if (token->type != Lexer::TokenType::LBRACE) {
-			nodes.push_back(loadLine(in_data, i));
+			auto lineNode = loadLine(in_data, i);
+			if (lineNode != nullptr) {
+				nodes.push_back(lineNode);
+			}
 			if (createScope)
 				context.getCurrentFunctionInfo(in_data)->popBackScope();
 			return true;
@@ -617,6 +620,59 @@ bool hasArrowAtCurrentBraceLevel(const std::vector<Lexer::Token> &tokens,
 			case Lexer::TokenType::MINUS_GT:
 				if (depthParen == 0 && depthBracket == 0 && depthBrace == 0) {
 					return true;
+				}
+				break;
+			default:
+				break;
+		}
+	}
+	return false;
+}
+
+bool hasItIdentifierAtCurrentBraceLevel(const ParserContext &context,
+                                       const std::vector<Lexer::Token> &tokens,
+                                       size_t start) {
+	if (start < tokens.size() && tokens[start].type == Lexer::TokenType::LBRACE) {
+		start++;
+	}
+	size_t depthParen = 0;
+	size_t depthBracket = 0;
+	size_t depthBrace = 0;
+	for (size_t k = start; k < tokens.size(); ++k) {
+		switch (tokens[k].type) {
+			case Lexer::TokenType::LPAREN:
+				depthParen++;
+				break;
+			case Lexer::TokenType::RPAREN:
+				if (depthParen > 0)
+					depthParen--;
+				break;
+			case Lexer::TokenType::LBRACKET:
+				depthBracket++;
+				break;
+			case Lexer::TokenType::RBRACKET:
+				if (depthBracket > 0)
+					depthBracket--;
+				break;
+			case Lexer::TokenType::LBRACE:
+				depthBrace++;
+				break;
+			case Lexer::TokenType::RBRACE:
+				if (depthBrace == 0 && depthParen == 0 && depthBracket == 0)
+					return false;
+				if (depthBrace > 0)
+					depthBrace--;
+				break;
+			case Lexer::TokenType::IDENTIFIER:
+				if (depthBrace == 0) {
+					if (k > 0 && (tokens[k - 1].type == Lexer::TokenType::DOT ||
+					              tokens[k - 1].type == Lexer::TokenType::QMARK_DOT)) {
+						break;
+					}
+					if (tokens[k].indexData < context.lexerString.size() &&
+					    context.lexerString[tokens[k].indexData] == "it") {
+						return true;
+					}
 				}
 				break;
 			default:

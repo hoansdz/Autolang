@@ -1,4 +1,4 @@
-﻿#ifndef LIB_MATH_CPP
+#ifndef LIB_MATH_CPP
 #define LIB_MATH_CPP
 
 #include "math.hpp"
@@ -411,8 +411,21 @@ class Math {
 	@native("random") static fun random(minValue: Float, maxValue: Float): Float
 
 }
+
+@native("round") fun round(value: Float): Int
+@native("floor") fun floor(value: Float): Int
+@native("ceil")  fun ceil(value: Float): Int
+@native("trunc") fun trunc(value: Float): Int
+@native("abs") fun abs(value: Int): Int
+@native("abs") fun abs(value: Float): Float
+@native("sqrt") fun sqrt(value: Float): Float
+@native("sqrt") fun sqrt(value: Int): Float
+@native("min") fun min(a: Int, b: Int): Int
+@native("min") fun min(a: Float, b: Float): Float
+@native("max") fun max(a: Int, b: Int): Int
+@native("max") fun max(a: Float, b: Float): Float
     )###",
-	                                LibraryConfig(), std::move(nativeMap));
+	                                LibraryConfig(true), std::move(nativeMap));
 }
 
 } // namespace Math

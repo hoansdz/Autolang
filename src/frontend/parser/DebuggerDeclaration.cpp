@@ -199,15 +199,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 		bool lastJustFindStatic = context.justFindStatic;
 		context.justFindStatic = isStatic;
 		value = loadExpression(in_data, 0, i);
-		if (!classDeclaration && value->kind == NodeType::CONST_VAL &&
-		    value->classId == DefaultClass::nullClassId) {
-			throw ParserError(token->line,
-			                  "Variable '" + name +
-			                      "' must have an explicit type "
-			                      "when initialized with 'null'\nHint: Change "
-			                      "to 'val " +
-			                      name + ": Type? = null'");
-		}
+		// Allow initializing with null (infers nullClassId, nullable = true)
 		context.justFindStatic = lastJustFindStatic;
 	} else {
 		if (!classDeclaration) {

@@ -280,7 +280,8 @@ ExprNode *BinaryNode::optimize(in_func) {
 						case DefaultClass::intClassId:
 						case DefaultClass::floatClassId:
 						case DefaultClass::boolClassId:
-						case DefaultClass::stringClassId: {
+						case DefaultClass::stringClassId:
+						case DefaultClass::nullClassId: {
 							break;
 						}
 						default: {
@@ -330,7 +331,8 @@ ExprNode *BinaryNode::optimize(in_func) {
 						case DefaultClass::intClassId:
 						case DefaultClass::floatClassId:
 						case DefaultClass::boolClassId:
-						case DefaultClass::stringClassId: {
+						case DefaultClass::stringClassId:
+						case DefaultClass::nullClassId: {
 							break;
 						}
 						default: {
@@ -368,15 +370,18 @@ ExprNode *BinaryNode::optimize(in_func) {
 				}
 			}
 
-			if (left->isNullable() || right->isNullable()) {
-				throwError(
-				    "Cannot use operator '" +
-				    Lexer::Token(0, op).toString(context) +
-				    "' with nullable value: " + left->getClassName(in_data) +
-				    " " + Lexer::Token(0, op).toString(context) + " " +
-				    right->getClassName(in_data) +
-				    "\nHint: Perform a null check or unwrap nullable value "
-				    "with '!!' before adding.");
+			if (left->classId != DefaultClass::stringClassId &&
+			    right->classId != DefaultClass::stringClassId) {
+				if (left->isNullable() || right->isNullable()) {
+					throwError(
+					    "Cannot use operator '" +
+					    Lexer::Token(0, op).toString(context) +
+					    "' with nullable value: " + left->getClassName(in_data) +
+					    " " + Lexer::Token(0, op).toString(context) + " " +
+					    right->getClassName(in_data) +
+					    "\nHint: Perform a null check or unwrap nullable value "
+					    "with '!!' before adding.");
+				}
 			}
 			break;
 		}
@@ -492,6 +497,68 @@ ExprNode *BinaryNode::optimize(in_func) {
 	if (context.getTypeResult(left->classId, right->classId,
 	                          static_cast<uint8_t>(op), classId))
 		return this;
+
+	if (op == Lexer::TokenType::PLUS &&
+	    (left->classId == DefaultClass::stringClassId ||
+	     right->classId == DefaultClass::stringClassId)) {
+		classId = DefaultClass::stringClassId;
+		return this;
+	}
+
+	LexerStringId opMethodId = 0;
+	switch (op) {
+		case Lexer::TokenType::PLUS:
+			opMethodId = lexerIdplus;
+			break;
+		case Lexer::TokenType::MINUS:
+			opMethodId = lexerIdminus;
+			break;
+		case Lexer::TokenType::STAR:
+			opMethodId = lexerIdtimes;
+			break;
+		case Lexer::TokenType::SLASH:
+			opMethodId = lexerIddiv;
+			break;
+		case Lexer::TokenType::PERCENT:
+			opMethodId = lexerIdrem;
+			break;
+		default:
+			break;
+	}
+
+	if (opMethodId != 0) {
+		auto callerClassInfo = context.classInfo[left->classId];
+		bool hasOpMethod = false;
+		if (callerClassInfo) {
+			if (callerClassInfo->allFunction.find(opMethodId) !=
+			    callerClassInfo->allFunction.end()) {
+				hasOpMethod = true;
+			} else {
+				auto callerClass = compile.classes[left->classId];
+				if (callerClass && callerClass->genericBaseClassId != 0 &&
+				    callerClass->genericBaseClassId != DefaultClass::nullClassId) {
+					auto baseClassInfo =
+					    context.classInfo[callerClass->genericBaseClassId];
+					if (baseClassInfo &&
+					    baseClassInfo->allFunction.find(opMethodId) !=
+					        baseClassInfo->allFunction.end()) {
+						hasOpMethod = true;
+					}
+				}
+			}
+		}
+		if (hasOpMethod) {
+			auto *callNode = context.callNodePool.push(
+			    line, tokenIndex, left->classId, left, opMethodId,
+			    std::vector<HasClassIdNode *>{right}, false,
+			    left->isNullable(), false);
+			left = nullptr;
+			right = nullptr;
+			callNode->resolve(in_data);
+			return callNode->optimize(in_data);
+		}
+	}
+
 	throwError(std::string("Cannot use '") +
 	           Lexer::Token(0, op).toString(context) + "' between " +
 	           compile.classes[left->classId]->getName(compile) + " and " +
@@ -837,7 +904,10 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		return;
 	}
 	if ((left->classId == DefaultClass::nullClassId ||
-	     right->classId == DefaultClass::nullClassId)) {
+	     right->classId == DefaultClass::nullClassId) &&
+	    !(op == Lexer::TokenType::PLUS &&
+	      (left->classId == DefaultClass::stringClassId ||
+	       right->classId == DefaultClass::stringClassId))) {
 		if (left->classId != DefaultClass::nullClassId) {
 			left->putBytecodes(in_data, bytecodes);
 		} else {
@@ -892,37 +962,27 @@ void BinaryNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			break;
 	}
 	left->putBytecodes(in_data, bytecodes);
+	if (right->kind == NodeType::RANGE &&
+	    (op == Lexer::TokenType::IN_ || op == Lexer::TokenType::NOT_IN)) {
+		auto rangeNode = static_cast<RangeNode *>(right);
+		rangeNode->from->putBytecodes(in_data, bytecodes);
+		rangeNode->to->putBytecodes(in_data, bytecodes);
+		bytecodes.emplace_back(op == Lexer::TokenType::IN_ ? Opcode::IN_RANGE
+		                                                   : Opcode::NOT_IN_RANGE);
+		bytecodes.emplace_back(rangeNode->lessThan);
+		return;
+	}
 	right->putBytecodes(in_data, bytecodes);
 	switch (op) {
 		case Lexer::TokenType::IN_: {
-			switch (right->kind) {
-				case NodeType::RANGE: {
-					bytecodes.emplace_back(Opcode::IN_RANGE);
-					bytecodes.emplace_back(
-					    static_cast<RangeNode *>(right)->lessThan);
-					return;
-				}
-				default: {
-					throwError("Operator 'in' is currently only supported for "
-					           "Range types\nHint: Check if the right operand "
-					           "is a valid range (e.g. start..end).");
-				}
-			}
+			throwError("Operator 'in' is currently only supported for "
+			           "Range types\nHint: Check if the right operand "
+			           "is a valid range (e.g. start..end).");
 		}
 		case Lexer::TokenType::NOT_IN: {
-			switch (right->kind) {
-				case NodeType::RANGE: {
-					bytecodes.emplace_back(Opcode::NOT_IN_RANGE);
-					bytecodes.emplace_back(
-					    static_cast<RangeNode *>(right)->lessThan);
-					return;
-				}
-				default: {
-					throwError("Operator '!in' is currently only supported for "
-					           "Range types\nHint: Check if the right operand "
-					           "is a valid range (e.g. start..end).");
-				}
-			}
+			throwError("Operator '!in' is currently only supported for "
+			           "Range types\nHint: Check if the right operand "
+			           "is a valid range (e.g. start..end).");
 		}
 		case Lexer::TokenType::PLUS: {
 			// switch (left->classId) {

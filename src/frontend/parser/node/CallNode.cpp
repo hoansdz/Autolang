@@ -166,7 +166,11 @@ ExprNode *CallNode::resolve(in_func) {
 	if (caller) {
 		caller = static_cast<HasClassIdNode *>(caller->resolve(in_data));
 	} else {
-		switch (nameId) {
+		LexerStringId checkNameId = nameId;
+		if (inputGenericArguments && !caller) {
+			checkNameId = inputGenericArguments->baseClassLexerStringId;
+		}
+		switch (checkNameId) {
 			case lexerIdInt: {
 				if (arguments.size() != 1) {
 					throwError(
@@ -229,6 +233,7 @@ ExprNode *CallNode::resolve(in_func) {
 				// 	throwError("Invalid call: " + context.lexerString[nameId] +
 				// 	           " is magic const ");
 				// }
+			case lexerIdArray:
 			case lexerIdarrayOf:
 			case lexerIdlistOf:
 			case lexerIdmutableListOf:
@@ -242,13 +247,21 @@ ExprNode *CallNode::resolve(in_func) {
 			case lexerIdbyteArrayOf: {
 				if (funcObject)
 					break;
+				if ((nameId == lexerIdemptyArray || nameId == lexerIdemptyList) && !arguments.empty()) {
+					throwError("Invalid call: " + context.lexerString[nameId] +
+					           " expects 0 arguments, but " +
+					           std::to_string(arguments.size()) +
+					           " were provided\nHint: " +
+					           context.lexerString[nameId] +
+					           "() takes no arguments.");
+				}
 				std::vector<HasClassIdNode *> vals;
 				vals.reserve(arguments.size());
 				for (auto *arg : arguments) {
 					vals.push_back(arg);
 				}
 				auto arrayNode = context.createArrayPool.push(
-				    line, nullptr, std::move(vals));
+				    line, inputGenericArguments, std::move(vals));
 				arguments.clear();
 				return arrayNode->resolve(in_data);
 			}
@@ -265,22 +278,29 @@ ExprNode *CallNode::resolve(in_func) {
 					           "() takes no arguments.");
 				}
 				auto arrayNode = context.createArrayPool.push(
-				    line, nullptr, std::vector<HasClassIdNode *>());
+				    line, inputGenericArguments, std::vector<HasClassIdNode *>());
 				return arrayNode->resolve(in_data);
 			}
+			case lexerIdSet:
 			case lexerIdsetOf:
 			case lexerIdmutableSetOf:
 			case lexerIdhashSetOf:
 			case lexerIdlinkedSetOf: {
 				if (funcObject)
 					break;
+				if (nameId == lexerIdemptySet && !arguments.empty()) {
+					throwError(
+					    "Invalid call: emptySet expects 0 arguments, but " +
+					    std::to_string(arguments.size()) +
+					    " were provided\nHint: emptySet() takes no arguments.");
+				}
 				std::vector<HasClassIdNode *> vals;
 				vals.reserve(arguments.size());
 				for (auto *arg : arguments) {
 					vals.push_back(arg);
 				}
 				auto setNode =
-				    context.createSetPool.push(line, nullptr, std::move(vals));
+				    context.createSetPool.push(line, inputGenericArguments, std::move(vals));
 				arguments.clear();
 				return setNode->resolve(in_data);
 			}
@@ -294,7 +314,7 @@ ExprNode *CallNode::resolve(in_func) {
 					    " were provided\nHint: emptySet() takes no arguments.");
 				}
 				auto setNode = context.createSetPool.push(
-				    line, nullptr, std::vector<HasClassIdNode *>());
+				    line, inputGenericArguments, std::vector<HasClassIdNode *>());
 				return setNode->resolve(in_data);
 			}
 			case lexerIdemptyMap: {
@@ -307,7 +327,7 @@ ExprNode *CallNode::resolve(in_func) {
 					    " were provided\nHint: emptyMap() takes no arguments.");
 				}
 				auto mapNode = context.createMapPool.push(
-				    line, nullptr,
+				    line, inputGenericArguments,
 				    std::vector<
 				        std::pair<HasClassIdNode *, HasClassIdNode *>>());
 				return mapNode->resolve(in_data);
@@ -325,15 +345,22 @@ ExprNode *CallNode::resolve(in_func) {
 				arguments.clear();
 				return pairNode->resolve(in_data);
 			}
+			case lexerIdMap:
 			case lexerIdmapOf:
 			case lexerIdmutableMapOf:
 			case lexerIdhashMapOf:
 			case lexerIdlinkedMapOf: {
 				if (funcObject)
 					break;
+				if (nameId == lexerIdemptyMap && !arguments.empty()) {
+					throwError(
+					    "Invalid call: emptyMap expects 0 arguments, but " +
+					    std::to_string(arguments.size()) +
+					    " were provided\nHint: emptyMap() takes no arguments.");
+				}
 				if (arguments.empty()) {
 					auto mapNode = context.createMapPool.push(
-					    line, nullptr,
+					    line, inputGenericArguments,
 					    std::vector<
 					        std::pair<HasClassIdNode *, HasClassIdNode *>>());
 					return mapNode->resolve(in_data);
@@ -355,37 +382,28 @@ ExprNode *CallNode::resolve(in_func) {
 					std::vector<std::pair<HasClassIdNode *, HasClassIdNode *>> entries;
 					entries.reserve(arguments.size());
 					for (auto *arg : arguments) {
-						auto *pairNode = static_cast<PairNode *>(arg);
-						entries.emplace_back(pairNode->first, pairNode->second);
+						auto *p = static_cast<PairNode *>(arg);
+						entries.emplace_back(p->first, p->second);
 					}
 					auto mapNode = context.createMapPool.push(
-					    line, nullptr, std::move(entries));
+					    line, inputGenericArguments, std::move(entries));
 					arguments.clear();
 					return mapNode->resolve(in_data);
 				}
 				if (arguments.size() % 2 == 0) {
-					std::vector<std::pair<HasClassIdNode *, HasClassIdNode *>>
-					    entries;
+					std::vector<std::pair<HasClassIdNode *, HasClassIdNode *>> entries;
 					entries.reserve(arguments.size() / 2);
-					for (size_t k = 0; k < arguments.size(); k += 2) {
-						entries.emplace_back(arguments[k], arguments[k + 1]);
+					for (size_t i = 0; i < arguments.size(); i += 2) {
+						entries.emplace_back(arguments[i], arguments[i + 1]);
 					}
 					auto mapNode = context.createMapPool.push(
-					    line, nullptr, std::move(entries));
+					    line, inputGenericArguments, std::move(entries));
 					arguments.clear();
 					return mapNode->resolve(in_data);
 				}
 				throwError(
-				    "Invalid call: " + context.lexerString[nameId] +
-				    " expects Pair arguments (e.g., key to value), an even number of arguments (key, value pairs), or "
-				    "a single Map, but " +
-				    std::to_string(arguments.size()) +
-				    " arguments were provided\nHint: Pass Pair arguments "
-				    "(e.g., " +
-				    context.lexerString[nameId] +
-				    "(k1 to v1, k2 to v2)), key-value pairs (" +
-				    context.lexerString[nameId] +
-				    "(k1, v1, k2, v2)) or a map literal.");
+				    "Invalid call: mapOf expects key-value pairs (using 'to' or pairOf), or an even number of arguments (key, value, ...), but " +
+				    std::to_string(arguments.size()) + " arguments were provided\nHint: Use mapOf(k1 to v1, k2 to v2) or mapOf(k1, v1, k2, v2).");
 			}
 		}
 	}
@@ -406,6 +424,173 @@ ExprNode *CallNode::optimize(in_func) {
 
 	if (nameId == lexerIdLRBRACKET)
 		nameId = lexerIdget;
+
+	if (!caller && !funcObject) {
+		LexerStringId checkNameId = nameId;
+		if (inputGenericArguments) {
+			checkNameId = inputGenericArguments->baseClassLexerStringId;
+		}
+		switch (checkNameId) {
+			case lexerIdArray:
+			case lexerIdarrayOf:
+			case lexerIdlistOf:
+			case lexerIdmutableListOf:
+			case lexerIdarrayListOf:
+			case lexerIdintArrayOf:
+			case lexerIdfloatArrayOf:
+			case lexerIddoubleArrayOf:
+			case lexerIdbooleanArrayOf:
+			case lexerIdstringArrayOf:
+			case lexerIdlongArrayOf:
+			case lexerIdbyteArrayOf: {
+				if ((nameId == lexerIdemptyArray || nameId == lexerIdemptyList) && !arguments.empty()) {
+					throwError("Invalid call: " + context.lexerString[nameId] +
+					           " expects 0 arguments, but " +
+					           std::to_string(arguments.size()) +
+					           " were provided\nHint: " +
+					           context.lexerString[nameId] +
+					           "() takes no arguments.");
+				}
+				std::vector<HasClassIdNode *> vals;
+				vals.reserve(arguments.size());
+				for (auto *arg : arguments) {
+					vals.push_back(arg);
+				}
+				auto arrayNode = context.createArrayPool.push(
+				    line, inputGenericArguments, std::move(vals));
+				arguments.clear();
+				return arrayNode->optimize(in_data);
+			}
+			case lexerIdemptyArray:
+			case lexerIdemptyList: {
+				if (!arguments.empty()) {
+					throwError("Invalid call: " + context.lexerString[nameId] +
+					           " expects 0 arguments, but " +
+					           std::to_string(arguments.size()) +
+					           " were provided\nHint: " +
+					           context.lexerString[nameId] +
+					           "() takes no arguments.");
+				}
+				auto arrayNode = context.createArrayPool.push(
+				    line, inputGenericArguments, std::vector<HasClassIdNode *>());
+				return arrayNode->optimize(in_data);
+			}
+			case lexerIdSet:
+			case lexerIdsetOf:
+			case lexerIdmutableSetOf:
+			case lexerIdhashSetOf:
+			case lexerIdlinkedSetOf: {
+				if (nameId == lexerIdemptySet && !arguments.empty()) {
+					throwError(
+					    "Invalid call: emptySet expects 0 arguments, but " +
+					    std::to_string(arguments.size()) +
+					    " were provided\nHint: emptySet() takes no arguments.");
+				}
+				std::vector<HasClassIdNode *> vals;
+				vals.reserve(arguments.size());
+				for (auto *arg : arguments) {
+					vals.push_back(arg);
+				}
+				auto setNode =
+				    context.createSetPool.push(line, inputGenericArguments, std::move(vals));
+				arguments.clear();
+				return setNode->optimize(in_data);
+			}
+			case lexerIdemptySet: {
+				if (!arguments.empty()) {
+					throwError(
+					    "Invalid call: emptySet expects 0 arguments, but " +
+					    std::to_string(arguments.size()) +
+					    " were provided\nHint: emptySet() takes no arguments.");
+				}
+				auto setNode = context.createSetPool.push(
+				    line, inputGenericArguments, std::vector<HasClassIdNode *>());
+				return setNode->optimize(in_data);
+			}
+			case lexerIdemptyMap: {
+				if (!arguments.empty()) {
+					throwError(
+					    "Invalid call: emptyMap expects 0 arguments, but " +
+					    std::to_string(arguments.size()) +
+					    " were provided\nHint: emptyMap() takes no arguments.");
+				}
+				auto mapNode = context.createMapPool.push(
+				    line, inputGenericArguments,
+				    std::vector<
+				        std::pair<HasClassIdNode *, HasClassIdNode *>>());
+				return mapNode->optimize(in_data);
+			}
+			case lexerIdMap:
+			case lexerIdmapOf:
+			case lexerIdmutableMapOf:
+			case lexerIdhashMapOf:
+			case lexerIdlinkedMapOf: {
+				if (nameId == lexerIdemptyMap && !arguments.empty()) {
+					throwError(
+					    "Invalid call: emptyMap expects 0 arguments, but " +
+					    std::to_string(arguments.size()) +
+					    " were provided\nHint: emptyMap() takes no arguments.");
+				}
+				if (arguments.empty()) {
+					auto mapNode = context.createMapPool.push(
+					    line, inputGenericArguments,
+					    std::vector<
+					        std::pair<HasClassIdNode *, HasClassIdNode *>>());
+					return mapNode->optimize(in_data);
+				}
+				if (arguments.size() == 1 &&
+				    arguments[0]->kind == NodeType::CREATE_MAP) {
+					auto res = arguments[0];
+					arguments.clear();
+					return res->optimize(in_data);
+				}
+				bool allPairs = true;
+				for (auto *arg : arguments) {
+					if (arg->kind != NodeType::PAIR) {
+						allPairs = false;
+						break;
+					}
+				}
+				if (allPairs) {
+					std::vector<std::pair<HasClassIdNode *, HasClassIdNode *>> entries;
+					entries.reserve(arguments.size());
+					for (auto *arg : arguments) {
+						auto *pairNode = static_cast<PairNode *>(arg);
+						entries.emplace_back(pairNode->first, pairNode->second);
+					}
+					auto mapNode = context.createMapPool.push(
+					    line, inputGenericArguments, std::move(entries));
+					arguments.clear();
+					return mapNode->optimize(in_data);
+				}
+				if (arguments.size() % 2 == 0) {
+					std::vector<std::pair<HasClassIdNode *, HasClassIdNode *>>
+					    entries;
+					entries.reserve(arguments.size() / 2);
+					for (size_t k = 0; k < arguments.size(); k += 2) {
+						entries.emplace_back(arguments[k], arguments[k + 1]);
+					}
+					auto mapNode = context.createMapPool.push(
+					    line, inputGenericArguments, std::move(entries));
+					arguments.clear();
+					return mapNode->optimize(in_data);
+				}
+				throwError(
+				    "Invalid call: " + context.lexerString[nameId] +
+				    " expects Pair arguments (e.g., key to value), an even number of arguments (key, value pairs), or "
+				    "a single Map, but " +
+				    std::to_string(arguments.size()) +
+				    " arguments were provided\nHint: Pass Pair arguments "
+				    "(e.g., " +
+				    context.lexerString[nameId] +
+				    "(k1 to v1, k2 to v2)), key-value pairs (" +
+				    context.lexerString[nameId] +
+				    "(k1, v1, k2, v2)) or a map literal.");
+			}
+			default:
+				break;
+		}
+	}
 
 	bool mustInferenceGenericType = false;
 
@@ -604,10 +789,28 @@ ExprNode *CallNode::optimize(in_func) {
 		// }
 
 	} else {
-		// Check if constructor
+		// Check if constructor or callable function object
 		if (funcObject) {
-			matchFunction(in_data, mustInferenceGenericType);
-			return this;
+			auto optFuncObj = static_cast<HasClassIdNode *>(funcObject->optimize(in_data));
+			if (optFuncObj->classId == DefaultClass::functionClassId) {
+				funcObject = optFuncObj;
+				matchFunction(in_data, mustInferenceGenericType);
+				return this;
+			}
+			bool hasFunctionWithName = (context.globalFunction.find(nameId) != context.globalFunction.end());
+			if (!hasFunctionWithName && contextCallClassId) {
+				auto callerClassInfo = context.classInfo[*contextCallClassId];
+				if (callerClassInfo && callerClassInfo->allFunction.find(nameId) != callerClassInfo->allFunction.end()) {
+					hasFunctionWithName = true;
+				}
+			}
+			if (hasFunctionWithName) {
+				funcObject = nullptr;
+			} else {
+				funcObject = optFuncObj;
+				matchFunction(in_data, mustInferenceGenericType);
+				return this;
+			}
 		}
 
 		{
@@ -621,8 +824,14 @@ ExprNode *CallNode::optimize(in_func) {
 					if (inputGenericArguments) {
 						LexerStringId baseNameId = inputGenericArguments->baseClassLexerStringId;
 						auto git = callerClassInfo->genericFunctionMap.find(baseNameId);
-						if (git != callerClassInfo->genericFunctionMap.end() ||
-						    it == callerClassInfo->allFunction.end()) {
+						if (git == callerClassInfo->genericFunctionMap.end()) {
+							auto callerClass = compile.classes[*contextCallClassId];
+							if (callerClass && callerClass->genericBaseClassId != 0) {
+								auto baseClassInfo = context.classInfo[callerClass->genericBaseClassId];
+								git = baseClassInfo->genericFunctionMap.find(baseNameId);
+							}
+						}
+						if (git != callerClassInfo->genericFunctionMap.end()) {
 							loadMemberFunctionGenerics(
 							    in_data, *contextCallClassId, name,
 							    inputGenericArguments,
@@ -715,6 +924,14 @@ ExprNode *CallNode::optimize(in_func) {
 		}
 
 		{
+			if (inputGenericArguments && !caller) {
+				LexerStringId baseNameId = inputGenericArguments->baseClassLexerStringId;
+				auto git = context.genericFunctionMap.find(baseNameId);
+				if (git != context.genericFunctionMap.end() && !git->second.empty()) {
+					loadFunctionGenerics(in_data, name, inputGenericArguments);
+					funcName = name;
+				}
+			}
 			auto git = context.genericFunctionMap.find(nameId);
 			if (!inputGenericArguments && !caller && git != context.genericFunctionMap.end() && !git->second.empty()) {
 				auto fit = compile.funcMap.find(funcName);
@@ -1991,6 +2208,7 @@ ExprNode *CallNode::copy(in_func) {
 	newNode->argumentNames = argumentNames;
 	newNode->classId = classId;
 	newNode->classDeclaration = classDeclaration;
+	newNode->inputGenericArguments = inputGenericArguments;
 	newNode->isForceNonNull = isForceNonNull;
 	if (funcObject) {
 		newNode->funcObject =

@@ -16,6 +16,7 @@
 @import("./correctness/basic/generic_member_function.atl")
 @import("./correctness/basic/static.atl")
 @import("./correctness/basic/array_sugar_syntax.atl")
+@import("./correctness/basic/collection_kotlin_methods.atl")
 @import("./correctness/basic/set_sugar_syntax.atl")
 @import("./correctness/basic/map_sugar_syntax.atl")
 @import("./correctness/basic/enum.atl")

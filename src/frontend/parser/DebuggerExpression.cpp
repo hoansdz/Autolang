@@ -202,48 +202,23 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 					break;
 				}
 				case Lexer::TokenType::LBRACE: {
+					auto closure = loadClosure(in_data, i);
 					if (inputVecs.size() == 1) {
-						auto classDeclaration =
-						    context.classDeclarationAllocator.push();
-						classDeclaration->baseClassLexerStringId = lexerIdSet;
-						classDeclaration->inputClassId = std::move(inputVecs);
-						classDeclaration->line = firstLine;
-						classDeclaration->isGeneric = isGeneric;
-						if (!isGeneric) {
-							context.allClassDeclarations.push_back(
-							    classDeclaration);
+						if (!inputVecs[0]->classId.has_value()) {
+							inputVecs[0]->template load<true>(in_data);
 						}
-						node = inferenceNodeFromLBrace(in_data, i,
-						                               NodeType::CREATE_SET);
-						static_cast<CreateSetNode *>(node)->classDeclaration =
-						    classDeclaration;
-					} else {
-						if (inputVecs.size() != 2) {
-							throw ParserError(
-							    token->line,
-							    "'Map' expects 2 type argument but " +
-							        std::to_string(inputVecs.size()) +
-							        " were given");
+						if (inputVecs[0]->classId.has_value() &&
+						    *inputVecs[0]->classId == DefaultClass::functionClassId) {
+							closure->inferFrom(in_data, inputVecs[0]);
+						} else {
+							closure->classDeclaration->inputClassId[0] = inputVecs[0];
 						}
-						auto classDeclaration =
-						    context.classDeclarationAllocator.push();
-						classDeclaration->baseClassLexerStringId = lexerIdMap;
-						classDeclaration->inputClassId = std::move(inputVecs);
-						classDeclaration->line = firstLine;
-						classDeclaration->isGeneric = isGeneric;
-						if (!isGeneric) {
-							context.allClassDeclarations.push_back(
-							    classDeclaration);
-						}
-						node = inferenceNodeFromLBrace(in_data, i,
-						                               NodeType::CREATE_MAP);
-						static_cast<CreateMapNode *>(node)->classDeclaration =
-						    classDeclaration;
 					}
+					node = closure;
 					break;
 				}
 				default: {
-					throw ParserError(firstLine, "Expected array after <Type>");
+					throw ParserError(firstLine, "Expected '[' or '{' after <Type>");
 				}
 			}
 			break;
@@ -255,7 +230,7 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 			break;
 		}
 		case Lexer::TokenType::LBRACE: {
-			node = inferenceNodeFromLBrace(in_data, i, NodeType::UNKNOW);
+			node = loadClosure(in_data, i);
 			break;
 		}
 		case Lexer::TokenType::LPAREN: {
@@ -639,14 +614,16 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			uint32_t firstLine = token->line;
 			std::vector<LexerStringId> argumentNames;
 			auto arguments = loadListArgument(in_data, i, &argumentNames);
-			if (!nextToken(&token, context.tokens, i) ||
-			    !expect(token, Lexer::TokenType::LBRACE)) {
-				--i;
-				token = &context.tokens[i];
-			} else {
+			if (context.allowTrailingClosure && nextToken(&token, context.tokens, i) &&
+			    expect(token, Lexer::TokenType::LBRACE)) {
 				auto closureNode = loadClosure(in_data, i);
 				arguments.push_back(closureNode);
 				argumentNames.push_back(0);
+			} else {
+				if (context.allowTrailingClosure) {
+					--i;
+					token = &context.tokens[i];
+				}
 			}
 			switch (identifier->indexData) {
 				case lexerIdInt: {
@@ -783,6 +760,9 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			return callNode;
 		}
 		case Lexer::TokenType::LBRACE: {
+			if (!context.allowTrailingClosure) {
+				break;
+			}
 			addThisToClosure(in_data, i);
 			uint32_t firstLine = token->line;
 			size_t tokenIndex = i;

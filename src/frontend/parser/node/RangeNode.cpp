@@ -31,6 +31,23 @@ ExprNode *RangeNode::optimize(in_func) {
 		           compile.classes[to->classId]->getName(compile) +
 		           "? but Int was expected\nHint: The 'to' bound of range expression (..) cannot be nullable. Ensure the end value is non-null Int or unwrap it using '!'.");
 	}
+
+	auto valueClassDeclaration = context.classDeclarationAllocator.push();
+	valueClassDeclaration->classId = DefaultClass::intClassId;
+	valueClassDeclaration->baseClassLexerStringId =
+	    context.createLexerStringIfNotExists(
+	        compile.classes[DefaultClass::intClassId]->getName(compile));
+	valueClassDeclaration->line = line;
+	valueClassDeclaration->isGeneric = false;
+
+	classDeclaration = context.classDeclarationAllocator.push();
+	classDeclaration->baseClassLexerStringId = lexerIdArray;
+	classDeclaration->inputClassId = std::vector{valueClassDeclaration};
+	classDeclaration->line = line;
+	classDeclaration->isGeneric = false;
+	classDeclaration->template load<true, false, true>(in_data);
+	classId = *classDeclaration->classId;
+
 	return this;
 }
 
@@ -38,6 +55,9 @@ void RangeNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	loadOpcodeLine(in_data, bytecodes);
 	from->putBytecodes(in_data, bytecodes);
 	to->putBytecodes(in_data, bytecodes);
+	bytecodes.emplace_back(Opcode::CREATE_RANGE_ARRAY);
+	put_opcode_u32(bytecodes, classId);
+	bytecodes.emplace_back(lessThan ? 1 : 0);
 }
 
 void RangeNode::rewrite(in_func, uint8_t *bytecodes) {

@@ -847,6 +847,177 @@ AObject *filter(NativeFuncInData) {
 	return newObj;
 }
 
+AObject *plus(NativeFuncInData) {
+	auto map1Obj = args[0];
+	auto map2Obj = args[1];
+	auto h1 = static_cast<AHashMap *>(map1Obj->data->data);
+	auto h2 = static_cast<AHashMap *>(map2Obj->data->data);
+	AObject *newObj = constructor(notifier, map1Obj->type, h1->type);
+	newObj->flags |= AObject::Flags::OBJ_IS_MAP;
+	auto newMapData = static_cast<AHashMap *>(newObj->data->data);
+
+	switch (h1->type) {
+		case DefaultClass::intClassId: {
+			auto m1 = static_cast<IntHashMap *>(h1->data);
+			auto m2 = static_cast<IntHashMap *>(h2->data);
+			auto res = static_cast<IntHashMap *>(newMapData->data);
+			for (auto &[k, v] : *m1) {
+				v->retain();
+				res->insert({k, v});
+			}
+			for (auto &[k, v] : *m2) {
+				auto it = res->find(k);
+				if (it != res->end()) {
+					v->retain();
+					notifier.release(it->second);
+					it->second = v;
+				} else {
+					v->retain();
+					res->insert({k, v});
+				}
+			}
+			notifier.addManagedMemory(res->size() * 32);
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			auto m1 = static_cast<FloatHashMap *>(h1->data);
+			auto m2 = static_cast<FloatHashMap *>(h2->data);
+			auto res = static_cast<FloatHashMap *>(newMapData->data);
+			for (auto &[k, v] : *m1) {
+				v->retain();
+				res->insert({k, v});
+			}
+			for (auto &[k, v] : *m2) {
+				auto it = res->find(k);
+				if (it != res->end()) {
+					v->retain();
+					notifier.release(it->second);
+					it->second = v;
+				} else {
+					v->retain();
+					res->insert({k, v});
+				}
+			}
+			notifier.addManagedMemory(res->size() * 32);
+			break;
+		}
+		case DefaultClass::stringClassId: {
+			auto m1 = static_cast<StringHashMap *>(h1->data);
+			auto m2 = static_cast<StringHashMap *>(h2->data);
+			auto res = static_cast<StringHashMap *>(newMapData->data);
+			for (auto &[k, v] : *m1) {
+				k->retain();
+				v->retain();
+				res->insert({k, v});
+			}
+			for (auto &[k, v] : *m2) {
+				auto it = res->find(k);
+				if (it != res->end()) {
+					v->retain();
+					notifier.release(it->second);
+					it->second = v;
+				} else {
+					k->retain();
+					v->retain();
+					res->insert({k, v});
+				}
+			}
+			notifier.addManagedMemory(res->size() * 32);
+			break;
+		}
+		default: {
+			auto m1 = static_cast<ObjectHashMap *>(h1->data);
+			auto m2 = static_cast<ObjectHashMap *>(h2->data);
+			auto res = static_cast<ObjectHashMap *>(newMapData->data);
+			for (auto &[k, v] : *m1) {
+				k->retain();
+				v->retain();
+				res->insert({k, v});
+			}
+			for (auto &[k, v] : *m2) {
+				auto it = res->find(k);
+				if (it != res->end()) {
+					v->retain();
+					notifier.release(it->second);
+					it->second = v;
+				} else {
+					k->retain();
+					v->retain();
+					res->insert({k, v});
+				}
+			}
+			notifier.addManagedMemory(res->size() * 32);
+			break;
+		}
+	}
+	return newObj;
+}
+
+AObject *minus(NativeFuncInData) {
+	auto mapObj = args[0];
+	auto key = args[1];
+	auto h = static_cast<AHashMap *>(mapObj->data->data);
+	AObject *newObj = constructor(notifier, mapObj->type, h->type);
+	newObj->flags |= AObject::Flags::OBJ_IS_MAP;
+	auto newMapData = static_cast<AHashMap *>(newObj->data->data);
+
+	switch (h->type) {
+		case DefaultClass::intClassId: {
+			auto m = static_cast<IntHashMap *>(h->data);
+			auto res = static_cast<IntHashMap *>(newMapData->data);
+			int64_t targetKey = key->i;
+			for (auto &[k, v] : *m) {
+				if (k != targetKey) {
+					v->retain();
+					res->insert({k, v});
+				}
+			}
+			notifier.addManagedMemory(res->size() * 32);
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			auto m = static_cast<FloatHashMap *>(h->data);
+			auto res = static_cast<FloatHashMap *>(newMapData->data);
+			double targetKey = (key->type == DefaultClass::intClassId) ? static_cast<double>(key->i) : key->f;
+			for (auto &[k, v] : *m) {
+				if (k != targetKey) {
+					v->retain();
+					res->insert({k, v});
+				}
+			}
+			notifier.addManagedMemory(res->size() * 32);
+			break;
+		}
+		case DefaultClass::stringClassId: {
+			auto m = static_cast<StringHashMap *>(h->data);
+			auto res = static_cast<StringHashMap *>(newMapData->data);
+			for (auto &[k, v] : *m) {
+				if (!(k->str->size == key->str->size && memcmp(k->str->data, key->str->data, k->str->size) == 0)) {
+					k->retain();
+					v->retain();
+					res->insert({k, v});
+				}
+			}
+			notifier.addManagedMemory(res->size() * 32);
+			break;
+		}
+		default: {
+			auto m = static_cast<ObjectHashMap *>(h->data);
+			auto res = static_cast<ObjectHashMap *>(newMapData->data);
+			for (auto &[k, v] : *m) {
+				if (!DefaultFunction::op_eqeq(k, key)) {
+					k->retain();
+					v->retain();
+					res->insert({k, v});
+				}
+			}
+			notifier.addManagedMemory(res->size() * 32);
+			break;
+		}
+	}
+	return newObj;
+}
+
 } // namespace map
 } // namespace Libs
 } // namespace Autolang

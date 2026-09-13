@@ -16,28 +16,29 @@ ExprNode *DeclarationNode::optimize(in_func) {
 	if (loaded) {
 		return this;
 	}
-	{
-		auto it = context.globalFunction.find(baseName);
-		if (it != context.globalFunction.end()) {
-			std::string hint =
-			    "Rename the variable or function to avoid name collision.";
-			if (!it->second.empty()) {
-				FunctionId prevFuncId = it->second.front();
-				auto prevFunc = compile.functions[prevFuncId];
-				auto prevFuncInfo = context.functionInfo[prevFuncId];
-				std::string prevPath = (prevFunc && prevFunc->path)
-				                           ? prevFunc->path
-				                           : "unknown";
-				hint =
-				    "Previously defined at " + prevPath + ":" +
-				    std::to_string(prevFuncInfo ? prevFuncInfo->line : 0) +
-				    ". " + hint;
-			}
-			throwError(
-			    "Cannot declare variable with the same name as function: '" +
-			    name + "'\nHint: " + hint);
-		}
-	}
+	// Allow variables/parameters/members to have the same name as functions
+	// {
+	// 	auto it = context.globalFunction.find(baseName);
+	// 	if (it != context.globalFunction.end()) {
+	// 		std::string hint =
+	// 		    "Rename the variable or function to avoid name collision.";
+	// 		if (!it->second.empty()) {
+	// 			FunctionId prevFuncId = it->second.front();
+	// 			auto prevFunc = compile.functions[prevFuncId];
+	// 			auto prevFuncInfo = context.functionInfo[prevFuncId];
+	// 			std::string prevPath = (prevFunc && prevFunc->path)
+	// 			                           ? prevFunc->path
+	// 			                           : "unknown";
+	// 			hint =
+	// 			    "Previously defined at " + prevPath + ":" +
+	// 			    std::to_string(prevFuncInfo ? prevFuncInfo->line : 0) +
+	// 			    ". " + hint;
+	// 		}
+	// 		throwError(
+	// 		    "Cannot declare variable with the same name as function: '" +
+	// 		    name + "'\nHint: " + hint);
+	// 	}
+	// }
 	// if (contextCallClassId) {
 	// 	auto classInfo = context.classInfo[*contextCallClassId];
 	// 	auto it = classInfo->allFunction.find(baseName);
@@ -81,7 +82,7 @@ ExprNode *DeclarationNode::optimize(in_func) {
 	}
 	{
 		auto it = context.typealiasMap.find(baseName);
-		if (it != context.typealiasMap.end()) {
+		if (it != context.typealiasMap.end() && !name.empty() && isupper(name[0])) {
 			std::string hint =
 			    "Choose a different variable name that does not conflict with existing typealias names.";
 			if (it->second && it->second->classDeclaration &&

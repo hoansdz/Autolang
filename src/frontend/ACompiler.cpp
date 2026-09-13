@@ -501,6 +501,30 @@ void ACompiler::generateBytecodes() {
 		return;
 	}
 
+	{
+		LexerStringId mainNameId = context.createLexerStringIfNotExists("main");
+		auto mainIt = compile.funcMap.find("main");
+		if (mainIt != compile.funcMap.end() && !mainIt->second.empty()) {
+			auto mainFuncInfo = context.getMainFunctionInfo(in_data);
+			bool alreadyHasMainCall = false;
+			for (auto *stmt : mainFuncInfo->body.nodes) {
+				if (stmt && stmt->kind == NodeType::CALL) {
+					auto callStmt = static_cast<CallNode *>(stmt);
+					if (callStmt->nameId == mainNameId) {
+						alreadyHasMainCall = true;
+						break;
+					}
+				}
+			}
+			if (!alreadyHasMainCall) {
+				auto callMainNode = context.callNodePool.push(
+				    1, 0, std::nullopt, nullptr, mainNameId,
+				    std::vector<HasClassIdNode *>(), false, false, false);
+				mainFuncInfo->body.nodes.push_back(callMainNode);
+			}
+		}
+	}
+
 	try {
 		printDebug("-----------------AST Node-----------------\n");
 

@@ -10,6 +10,10 @@ ExprNode *BlockNode::resolve(in_func) {
 	ParserContext::mode = mode;
 	size_t i = 0;
 	while (i < nodes.size()) {
+		if (nodes[i] == nullptr) {
+			nodes.erase(nodes.begin() + i);
+			continue;
+		}
 		nodes[i] = nodes[i]->resolve(in_data);
 		if (nodes[i]->kind == NodeType::BLOCK) {
 			auto subBlock = static_cast<BlockNode *>(nodes[i]);

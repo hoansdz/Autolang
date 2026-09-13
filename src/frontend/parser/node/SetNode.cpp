@@ -347,11 +347,14 @@ ExprNode *SetNode::optimize(in_func) {
 	}
 
 	if (value->isNullable() && op != Lexer::TokenType::EQUAL) {
-		throwError("Cannot use operator '" +
-		           Lexer::Token(0, op).toString(context) +
-		           "' with nullable variables\nHint: Compound assignment "
-		           "operators cannot be used on nullable values. Unwrap the "
-		           "value with '!' or perform a null check.");
+		if (!(detach->classId == Autolang::DefaultClass::stringClassId &&
+		      op == Lexer::TokenType::PLUS_EQUAL)) {
+			throwError("Cannot use operator '" +
+			           Lexer::Token(0, op).toString(context) +
+			           "' with nullable variables\nHint: Compound assignment "
+			           "operators cannot be used on nullable values. Unwrap the "
+			           "value with '!' or perform a null check.");
+		}
 	}
 
 	classId = value->classId;
@@ -570,13 +573,16 @@ ExprNode *SetNode::optimize(in_func) {
 				auto node = static_cast<AccessNode *>(value);
 				auto detachNode = static_cast<AccessNode *>(detach);
 				if (!detach->isNullable() && node->nullable) {
-					std::string detachName;
-					detachName = detachNode->declaration->name;
-					throwError("Cannot assign nullable variable '" +
-					           node->declaration->name +
-					           "' to non-null variable '" + detachName +
-					           "'\nHint: Use non-null assertion ('!') or check "
-					           "nullability before assignment.");
+					if (!(detach->classId == Autolang::DefaultClass::stringClassId &&
+					      op == Lexer::TokenType::PLUS_EQUAL)) {
+						std::string detachName;
+						detachName = detachNode->declaration->name;
+						throwError("Cannot assign nullable variable '" +
+						           node->declaration->name +
+						           "' to non-null variable '" + detachName +
+						           "'\nHint: Use non-null assertion ('!') or check "
+						           "nullability before assignment.");
+					}
 				}
 				// if (detachNode->isVal && node->isVal) {
 				// 	node->cloneable = false;
@@ -586,17 +592,20 @@ ExprNode *SetNode::optimize(in_func) {
 			case NodeType::CALL: {
 				if (!detach->isNullable() &&
 				    static_cast<CallNode *>(value)->nullable) {
-					std::string detachName;
-					detachName =
-					    static_cast<AccessNode *>(detach)->declaration->name;
-					throwError(
-					    "Cannot assign nullable return value of '" +
-					    context.lexerString[static_cast<CallNode *>(value)
-					                            ->nameId] +
-					    "' to non-null variable '" + detachName +
-					    "'\nHint: Function return type is nullable. Unwrap "
-					    "return value with '!' or declare variable as "
-					    "nullable.");
+					if (!(detach->classId == Autolang::DefaultClass::stringClassId &&
+					      op == Lexer::TokenType::PLUS_EQUAL)) {
+						std::string detachName;
+						detachName =
+						    static_cast<AccessNode *>(detach)->declaration->name;
+						throwError(
+						    "Cannot assign nullable return value of '" +
+						    context.lexerString[static_cast<CallNode *>(value)
+						                            ->nameId] +
+						    "' to non-null variable '" + detachName +
+						    "'\nHint: Function return type is nullable. Unwrap "
+						    "return value with '!' or declare variable as "
+						    "nullable.");
+					}
 				}
 				break;
 			}
@@ -614,12 +623,15 @@ ExprNode *SetNode::optimize(in_func) {
 			    "operators on nullable target without prior null check.");
 		}
 	} else if (value->isNullable()) {
-		throwError("Cannot assign nullable type '" +
-		           compile.classes[value->classId]->getName(compile) +
-		           "?' to non-null variable of type '" +
-		           compile.classes[detach->classId]->getName(compile) +
-		           "'\nHint: Target variable is non-nullable. Unwrap assigned "
-		           "value using '!' or declare target as nullable.");
+		if (!(detach->classId == Autolang::DefaultClass::stringClassId &&
+		      op == Lexer::TokenType::PLUS_EQUAL)) {
+			throwError("Cannot assign nullable type '" +
+			           compile.classes[value->classId]->getName(compile) +
+			           "?' to non-null variable of type '" +
+			           compile.classes[detach->classId]->getName(compile) +
+			           "'\nHint: Target variable is non-nullable. Unwrap assigned "
+			           "value using '!' or declare target as nullable.");
+		}
 	}
 
 	if (detach->classId == value->classId) {
@@ -725,6 +737,10 @@ ExprNode *SetNode::optimize(in_func) {
 		}
 		default:
 			break;
+	}
+	if (detach->classId == Autolang::DefaultClass::stringClassId &&
+	    op == Lexer::TokenType::PLUS_EQUAL) {
+		return this;
 	}
 	if (detach->isNullable() && value->classId == DefaultClass::nullClassId) {
 		return this;

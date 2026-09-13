@@ -9,6 +9,36 @@
 
 namespace Autolang {
 
+static inline bool isSingleParamOperator(LexerStringId nameId) {
+	switch (nameId) {
+		case lexerIdcontains:
+		case lexerIdplus:
+		case lexerIdminus:
+		case lexerIdtimes:
+		case lexerIddiv:
+		case lexerIdrem:
+			return true;
+		default:
+			return false;
+	}
+}
+
+static inline bool isSupportedOperatorName(LexerStringId nameId) {
+	switch (nameId) {
+		case lexerIdget:
+		case lexerIdset:
+		case lexerIdcontains:
+		case lexerIdplus:
+		case lexerIdminus:
+		case lexerIdtimes:
+		case lexerIddiv:
+		case lexerIdrem:
+			return true;
+		default:
+			return false;
+	}
+}
+
 static void checkGenericFunctionDuplicate(in_func, CreateFuncNode *node,
                                           LexerStringId nameId, uint32_t line) {
 	auto it = context.genericFunctionMap.find(nameId);
@@ -481,12 +511,12 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 	}
 
 	if (functionFlags & FunctionFlags::FUNC_IS_OPERATOR) {
-		if (nameId != lexerIdget && nameId != lexerIdset && nameId != lexerIdcontains) {
+		if (!isSupportedOperatorName(nameId)) {
 			throw ParserError(
 			    firstLine,
 			    "'" + context.lexerString[nameId] +
 			        "' is not a supported operator function name\nHint: Supported operator "
-			        "function names are 'get', 'set', 'contains'");
+			        "function names are 'get', 'set', 'contains', 'plus', 'minus', 'times', 'div', 'rem'");
 		}
 	}
 
@@ -513,23 +543,32 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 	auto parameter = loadListDeclaration(in_data, i);
 	if (functionFlags & FunctionFlags::FUNC_IS_OPERATOR) {
 		size_t paramCount = parameter->parameters.size();
-		if (nameId == lexerIdget && paramCount < 1) {
-			throw ParserError(
-			    firstLine,
-			    "Operator 'get' requires at least 1 parameter\nHint: "
-			    "Define 'get' with at least 1 index parameter, e.g. '@operator fun get(index: Int)'");
-		}
-		if (nameId == lexerIdset && paramCount < 2) {
-			throw ParserError(
-			    firstLine,
-			    "Operator 'set' requires at least 2 parameters\nHint: "
-			    "Define 'set' with index and value parameters, e.g. '@operator fun set(index: Int, value: T)'");
-		}
-		if (nameId == lexerIdcontains && paramCount != 1) {
-			throw ParserError(
-			    firstLine,
-			    "Operator 'contains' requires exactly 1 parameter\nHint: "
-			    "Define 'contains' with 1 parameter, e.g. '@operator fun contains(item: T): Bool'");
+		switch (nameId) {
+			case lexerIdget:
+				if (paramCount < 1) {
+					throw ParserError(
+					    firstLine,
+					    "Operator 'get' requires at least 1 parameter\nHint: "
+					    "Define 'get' with at least 1 index parameter, e.g. '@operator fun get(index: Int)'");
+				}
+				break;
+			case lexerIdset:
+				if (paramCount < 2) {
+					throw ParserError(
+					    firstLine,
+					    "Operator 'set' requires at least 2 parameters\nHint: "
+					    "Define 'set' with index and value parameters, e.g. '@operator fun set(index: Int, value: T)'");
+				}
+				break;
+			default:
+				if (isSingleParamOperator(nameId) && paramCount != 1) {
+					throw ParserError(
+					    firstLine,
+					    "Operator '" + context.lexerString[nameId] + "' requires exactly 1 parameter\nHint: "
+					    "Define '" + context.lexerString[nameId] + "' with 1 parameter, e.g. '@operator fun " +
+					    context.lexerString[nameId] + "(other: T)'");
+				}
+				break;
 		}
 	}
 	if (functionFlags & FunctionFlags::FUNC_IS_IMPLICIT) {
@@ -919,6 +958,14 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 			--i;
 			parameter = context.parameterPool.push();
 			classDeclaration->inputClassId.push_back(nullptr);
+			if (hasItIdentifierAtCurrentBraceLevel(context, context.tokens, i)) {
+				LexerStringId itNameId = context.createLexerStringIfNotExists("it");
+				const std::string &itName = context.lexerString[itNameId];
+				auto itDeclaration = context.makeDeclarationNode(
+				    in_data, firstLine, itNameId, itName, nullptr, true,
+				    false, true, false, false);
+				parameter->parameters.push_back(itDeclaration);
+			}
 			classDeclaration->line = firstLine;
 			loadedLBrace = true;
 			goto createClosure;

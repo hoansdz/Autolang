@@ -852,7 +852,7 @@ struct RangeNode : HasClassIdNode {
 	    : HasClassIdNode(NodeType::RANGE, DefaultClass::intClassId, line),
 	      from(from), to(to), lessThan(lessThan) {}
 	bool isNullable() override {
-		return from->isNullable() || to->isNullable();
+		return false;
 	}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;

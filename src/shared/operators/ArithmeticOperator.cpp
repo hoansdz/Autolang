@@ -2,6 +2,7 @@
 #include "backend/vm/ANotifier.hpp"
 #include "backend/vm/AVM.hpp"
 #include "shared/DefaultClass.hpp"
+#include "shared/default_functions/ConversionFunctions.hpp"
 #include <cmath>
 
 namespace Autolang {
@@ -10,6 +11,7 @@ namespace DefaultFunction {
 AObject *plus(NativeFuncInData) {
 	auto obj1 = args[0];
 	auto obj2 = args[1];
+	if (!obj1 || !obj2) return nullptr;
 	switch (obj1->type) {
 		case Autolang::DefaultClass::intClassId: {
 			switch (obj2->type) {
@@ -70,12 +72,31 @@ AObject *plus(NativeFuncInData) {
 					                             (obj2->b ? "true" : "false"));
 				case Autolang::DefaultClass::stringClassId:
 					return notifier.createString((*obj1->str) + (obj2->str));
-				default:
-					break;
+				case Autolang::DefaultClass::nullClassId:
+					return notifier.createString((*obj1->str) + "null");
+				default: {
+					std::string s = to_string(notifier, obj2);
+					if (notifier.hasException())
+						return nullptr;
+					return notifier.createString((*obj1->str) + s.c_str());
+				}
 			}
 		}
-		default:
+		case Autolang::DefaultClass::nullClassId: {
+			if (obj2->type == Autolang::DefaultClass::stringClassId) {
+				return notifier.createString(AString::plus("null", obj2->str));
+			}
 			break;
+		}
+		default: {
+			if (obj2->type == Autolang::DefaultClass::stringClassId) {
+				std::string s = to_string(notifier, obj1);
+				if (notifier.hasException())
+					return nullptr;
+				return notifier.createString(AString::plus(s.c_str(), obj2->str));
+			}
+			break;
+		}
 	}
 	notifier.throwException(
 	    "Cannot plus " +

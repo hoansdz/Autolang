@@ -2,6 +2,7 @@
 #include "backend/vm/ANotifier.hpp"
 #include "backend/vm/AVM.hpp"
 #include "shared/DefaultClass.hpp"
+#include "shared/default_functions/ConversionFunctions.hpp"
 #include <cmath>
 
 namespace Autolang {
@@ -53,17 +54,38 @@ AObject *plus_eq(NativeFuncInData) {
 					break;
 			}
 		} else if (ptrClassId == Autolang::DefaultClass::stringClassId) {
+			AString *resStr = nullptr;
 			switch (obj2->type) {
-				case Autolang::DefaultClass::stringClassId: {
-					auto oldObj = obj1;
-					auto newStrObj = notifier.createString((*obj1->str) + obj2->str);
-					newStrObj->retain();
-					(*static_cast<AObject **>(ptr)) = newStrObj;
-					notifier.release(oldObj);
-					return nullptr;
-				}
-				default:
+				case Autolang::DefaultClass::intClassId:
+					resStr = (*obj1->str) + obj2->i;
 					break;
+				case Autolang::DefaultClass::floatClassId:
+					resStr = (*obj1->str) + obj2->f;
+					break;
+				case Autolang::DefaultClass::boolClassId:
+					resStr = (*obj1->str) + (obj2->b ? "true" : "false");
+					break;
+				case Autolang::DefaultClass::stringClassId:
+					resStr = (*obj1->str) + obj2->str;
+					break;
+				case Autolang::DefaultClass::nullClassId:
+					resStr = (*obj1->str) + "null";
+					break;
+				default: {
+					std::string s = to_string(notifier, obj2);
+					if (notifier.hasException())
+						return nullptr;
+					resStr = (*obj1->str) + s.c_str();
+					break;
+				}
+			}
+			if (resStr) {
+				auto oldObj = obj1;
+				auto newStrObj = notifier.createString(resStr);
+				newStrObj->retain();
+				(*static_cast<AObject **>(ptr)) = newStrObj;
+				notifier.release(oldObj);
+				return nullptr;
 			}
 		}
 	}
@@ -102,19 +124,40 @@ AObject *plus_eq(NativeFuncInData) {
 			break;
 		}
 		case Autolang::DefaultClass::stringClassId: {
+			AString *resStr = nullptr;
 			switch (obj2->type) {
-				case Autolang::DefaultClass::stringClassId: {
-					auto oldObj = obj1;
-					auto newStrObj = notifier.createString((*obj1->str) + obj2->str);
-					newStrObj->retain();
-					if (ptr) {
-						(*static_cast<AObject **>(ptr)) = newStrObj;
-					}
-					notifier.release(oldObj);
-					return nullptr;
-				}
-				default:
+				case Autolang::DefaultClass::intClassId:
+					resStr = (*obj1->str) + obj2->i;
 					break;
+				case Autolang::DefaultClass::floatClassId:
+					resStr = (*obj1->str) + obj2->f;
+					break;
+				case Autolang::DefaultClass::boolClassId:
+					resStr = (*obj1->str) + (obj2->b ? "true" : "false");
+					break;
+				case Autolang::DefaultClass::stringClassId:
+					resStr = (*obj1->str) + obj2->str;
+					break;
+				case Autolang::DefaultClass::nullClassId:
+					resStr = (*obj1->str) + "null";
+					break;
+				default: {
+					std::string s = to_string(notifier, obj2);
+					if (notifier.hasException())
+						return nullptr;
+					resStr = (*obj1->str) + s.c_str();
+					break;
+				}
+			}
+			if (resStr) {
+				auto oldObj = obj1;
+				auto newStrObj = notifier.createString(resStr);
+				newStrObj->retain();
+				if (ptr) {
+					(*static_cast<AObject **>(ptr)) = newStrObj;
+				}
+				notifier.release(oldObj);
+				return nullptr;
 			}
 			break;
 		}

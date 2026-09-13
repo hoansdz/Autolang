@@ -11,29 +11,63 @@ WhileNode *loadWhile(in_func, size_t &i) {
 	uint32_t firstLine = token->line;
 	WhileNode *node = context.whilePool.push(firstLine); // WhilePool managed
 	// Condition
-	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
-	    !expect(token, Lexer::TokenType::LPAREN)) {
-		--i;
-		throw ParserError(
-		    firstLine,
-		    "Expected '(' after 'while' in while statement\nHint: Enclose the "
-		    "while condition in parentheses: while (condition)");
-	}
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 		--i;
 		throw ParserError(
 		    firstLine,
 		    "Expected condition expression in while statement\nHint: Provide a "
-		    "boolean condition expression inside while (...)");
+		    "boolean condition expression after while");
 	}
+	bool hasOuterParen = false;
+	if (expect(token, Lexer::TokenType::LPAREN)) {
+		int depth = 0;
+		for (size_t s = i; s < context.tokens.size(); ++s) {
+			if (context.tokens[s].type == Lexer::TokenType::LPAREN) {
+				depth++;
+			} else if (context.tokens[s].type == Lexer::TokenType::RPAREN) {
+				depth--;
+				if (depth == 0) {
+					size_t nextIdx = s + 1;
+					if (nextIdx < context.tokens.size()) {
+						auto nextType = context.tokens[nextIdx].type;
+						if (nextType == Lexer::TokenType::LBRACE ||
+						    nextType == Lexer::TokenType::RETURN ||
+						    nextType == Lexer::TokenType::THROW ||
+						    nextType == Lexer::TokenType::VAR ||
+						    nextType == Lexer::TokenType::VAL ||
+						    getPrecedence(nextType) == -1) {
+							hasOuterParen = true;
+						}
+					} else {
+						hasOuterParen = true;
+					}
+					break;
+				}
+			}
+		}
+		if (hasOuterParen) {
+			if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
+				--i;
+				throw ParserError(
+				    firstLine,
+				    "Expected condition expression in while statement\nHint: Provide a "
+				    "boolean condition expression inside while (...)");
+			}
+		}
+	}
+	bool prevAllowTrailingClosure = context.allowTrailingClosure;
+	if (!hasOuterParen) context.allowTrailingClosure = false;
 	node->condition = loadExpression(in_data, 0, i);
-	if (!nextToken(&token, context.tokens, i) ||
-	    !expect(token, Lexer::TokenType::RPAREN)) {
-		--i;
-		throw ParserError(
-		    context.tokens[i].line,
-		    "Expected closing ')' after while condition\nHint: Close the while "
-		    "condition with ')'");
+	context.allowTrailingClosure = prevAllowTrailingClosure;
+	if (hasOuterParen) {
+		if (!nextToken(&token, context.tokens, i) ||
+		    !expect(token, Lexer::TokenType::RPAREN)) {
+			--i;
+			throw ParserError(
+			    context.tokens[i].line,
+			    "Expected closing ')' after while condition\nHint: Close the while "
+			    "condition with ')'");
+		}
 	}
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
@@ -50,28 +84,50 @@ ExprNode *loadFor(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
 
-	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
-	    !expect(token, Lexer::TokenType::LPAREN)) {
-		--i;
-		throw ParserError(
-		    firstLine,
-		    "Expected '(' after 'for' in for statement\nHint: Enclose the for "
-		    "loop parameters in parentheses: for (item in list)");
-	}
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 		--i;
 		throw ParserError(
 		    firstLine,
-		    "Expected loop variable name in for statement\nHint: Declare a loop "
-		    "variable after 'for (', e.g. for (i in ...)");
+		    "Expected loop variable in for statement\nHint: Declare a loop "
+		    "variable after 'for', e.g. for (item in list) or for item in list");
+	}
+	bool hasOuterParen = false;
+	if (expect(token, Lexer::TokenType::LPAREN)) {
+		int depth = 0;
+		for (size_t s = i; s < context.tokens.size(); ++s) {
+			if (context.tokens[s].type == Lexer::TokenType::LPAREN) {
+				depth++;
+			} else if (context.tokens[s].type == Lexer::TokenType::RPAREN) {
+				depth--;
+				if (depth == 0) {
+					size_t nextIdx = s + 1;
+					if (nextIdx < context.tokens.size() &&
+					    context.tokens[nextIdx].type == Lexer::TokenType::IN_) {
+						hasOuterParen = false;
+					} else {
+						hasOuterParen = true;
+					}
+					break;
+				}
+			}
+		}
+		if (hasOuterParen) {
+			if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
+				--i;
+				throw ParserError(
+				    firstLine,
+				    "Expected loop variable name in for statement\nHint: Declare a loop "
+				    "variable after 'for (', e.g. for (i in ...)");
+			}
+		}
 	}
 	bool isDestructuring = false;
 	if (expect(token, Lexer::TokenType::LPAREN)) {
 		isDestructuring = true;
-		if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
+		if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 			--i;
 			throw ParserError(
-			    firstLine,
+			    token->line,
 			    "Expected loop variable name in for statement\nHint: Declare a loop "
 			    "variable after 'for ((', e.g. for ((k, v) in ...)");
 		}
@@ -144,7 +200,10 @@ ExprNode *loadFor(in_func, size_t &i) {
 		    "Expected iterable expression after 'in' in for statement\nHint: "
 		    "Provide an array, range, or iterable object after 'in'");
 	}
+	bool prevAllowTrailingClosure = context.allowTrailingClosure;
+	if (!hasOuterParen) context.allowTrailingClosure = false;
 	HasClassIdNode *data = loadExpression(in_data, 0, i);
+	context.allowTrailingClosure = prevAllowTrailingClosure;
 	VarNode *iteratorNode = nullptr;
 	VarNode *collectionNode = nullptr;
 	if (data->kind != NodeType::RANGE) {
@@ -168,13 +227,15 @@ ExprNode *loadFor(in_func, size_t &i) {
 			    context.varPool.push(firstLine, collectionDecl, false, false);
 		}
 	}
-	if (!nextToken(&token, context.tokens, i) ||
-	    !expect(token, Lexer::TokenType::RPAREN)) {
-		--i;
-		throw ParserError(
-		    context.tokens[i].line,
-		    "Expected closing ')' after for condition\nHint: Close the for "
-		    "header with ')' after the iterable expression");
+	if (hasOuterParen) {
+		if (!nextToken(&token, context.tokens, i) ||
+		    !expect(token, Lexer::TokenType::RPAREN)) {
+			--i;
+			throw ParserError(
+			    context.tokens[i].line,
+			    "Expected closing ')' after for condition\nHint: Close the for "
+			    "header with ')' after the iterable expression");
+		}
 	}
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;

@@ -1114,6 +1114,32 @@ resumeCallFrame:;
 					data.manager.release(obj2);
 					break;
 				}
+				case Autolang::Opcode::CREATE_RANGE_ARRAY: {
+					ClassId classId = get_u32(bytecodes, i);
+					bool isLessThan = bytecodes[i++];
+					auto obj2 = stack.pop();
+					auto obj1 = stack.pop();
+					int64_t start = (obj1->type == Autolang::DefaultClass::floatClassId)
+					                    ? static_cast<int64_t>(obj1->f)
+					                    : obj1->i;
+					int64_t end = (obj2->type == Autolang::DefaultClass::floatClassId)
+					                  ? static_cast<int64_t>(obj2->f)
+					                  : obj2->i;
+					if (isLessThan) {
+						end -= 1;
+					}
+					int64_t count = (end >= start) ? (end - start + 1) : 0;
+					auto obj = notifier->createArray(classId, Autolang::DefaultClass::intClassId,
+					                                 static_cast<uint32_t>(count));
+					for (int64_t val = start, idx = 0; val <= end; ++val, ++idx) {
+						obj->array->intData[idx] = val;
+					}
+					stack.push(obj);
+					stack.top()->retain();
+					data.manager.release(obj1);
+					data.manager.release(obj2);
+					break;
+				}
 				case Autolang::Opcode::LOAD_CONST: {
 					stack.push(getConstObject(get_u32(bytecodes, i)));
 					// std::cerr<<stack.top()<<" created\n";

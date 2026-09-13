@@ -115,6 +115,11 @@ constexpr LexerStringId lexerIdlinkedMapOf = 45;
 constexpr LexerStringId lexerIdemptyMap = 46;
 constexpr LexerStringId lexerIdPair = 47;
 constexpr LexerStringId lexerIdpairOf = 48;
+constexpr LexerStringId lexerIdplus = 49;
+constexpr LexerStringId lexerIdminus = 50;
+constexpr LexerStringId lexerIdtimes = 51;
+constexpr LexerStringId lexerIddiv = 52;
+constexpr LexerStringId lexerIdrem = 53;
 /*
 constexpr LexerStringId lexerIdunaryPlus = 24;   // +a
 constexpr LexerStringId lexerIdunaryMinus = 25;  // -a
@@ -207,6 +212,7 @@ struct ParserContext {
 
 	bool hasError = false;
 	bool canBreakContinue = false;
+	bool allowTrailingClosure = true;
 	// Be used when it is static keywords, example static val a = ...
 	bool justFindStatic = false;
 	bool justFindStaticMember = false;

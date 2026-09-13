@@ -50,3 +50,6 @@ test_*.atl
 *.tmp
 out*.txt
 err*.txt
+
+# Local build instructions
+cach_build.md

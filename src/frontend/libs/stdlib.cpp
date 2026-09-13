@@ -28,12 +28,76 @@ void init(ACompiler &compiler) {
 class Int {
 	@native("to_string")
 	fun toString(): String
+
+	fun coerceIn(minimumValue: Int, maximumValue: Int): Int {
+		if (this < minimumValue) return minimumValue
+		if (this > maximumValue) return maximumValue
+		return this
+	}
+
+	fun coerceAtLeast(minimumValue: Int): Int {
+		if (this < minimumValue) return minimumValue
+		return this
+	}
+
+	fun coerceAtMost(maximumValue: Int): Int {
+		if (this > maximumValue) return maximumValue
+		return this
+	}
+
+	fun toFloat(): Float {
+		return this
+	}
+
+	fun toDouble(): Float {
+		return this
+	}
+
+	fun toInt(): Int {
+		return this
+	}
+
+	fun toLong(): Int {
+		return this
+	}
 }
 @no_extends
 @no_constructor
 class Float {
 	@native("to_string")
 	fun toString(): String
+
+	fun coerceIn(minimumValue: Float, maximumValue: Float): Float {
+		if (this < minimumValue) return minimumValue
+		if (this > maximumValue) return maximumValue
+		return this
+	}
+
+	fun coerceAtLeast(minimumValue: Float): Float {
+		if (this < minimumValue) return minimumValue
+		return this
+	}
+
+	fun coerceAtMost(maximumValue: Float): Float {
+		if (this > maximumValue) return maximumValue
+		return this
+	}
+
+	fun toInt(): Int {
+		return this
+	}
+
+	fun toLong(): Int {
+		return this
+	}
+
+	fun toFloat(): Float {
+		return this
+	}
+
+	fun toDouble(): Float {
+		return this
+	}
 }
 @no_extends
 @no_constructor
@@ -58,7 +122,9 @@ class String {
 
 	@native("string_size")
 	fun length(): Int
-
+	fun toString(): String {
+		return this
+	}
 
 
 	@native("str_is_empty")
@@ -118,8 +184,11 @@ class String {
 	@native("str_substr")
 	fun substr(from: Int, subLength: Int): String
 
-	@native("str_substr")
-	fun substring(from: Int, subLength: Int): String
+	fun substring(startIndex: Int, endIndex: Int): String {
+		val subLen = endIndex - startIndex
+		if (subLen <= 0) return ""
+		return this.substr(startIndex, subLen)
+	}
 
 	@native("str_substr")
 	fun slice(from: Int, subLength: Int): String
@@ -205,7 +274,65 @@ class String {
     @native("str_to_upper")
     fun uppercase(): String
 
+	fun lines(): Array<String> {
+		return this.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+	}
 
+	fun repeat(n: Int): String {
+		return String(this, n)
+	}
+
+	fun isBlank(): Bool {
+		return this.trim().isEmpty()
+	}
+
+	fun isNotBlank(): Bool {
+		return !this.isBlank()
+	}
+
+	fun padStart(length: Int, padChar: String = " "): String {
+		val currentLen = this.length()
+		if (currentLen >= length) return this
+		val padLen = length - currentLen
+		var padding = ""
+		while (padding.length() < padLen) {
+			padding = padding + padChar
+		}
+		if (padding.length() > padLen) {
+			padding = padding.substr(0, padLen)
+		}
+		return padding + this
+	}
+
+	fun padEnd(length: Int, padChar: String = " "): String {
+		val currentLen = this.length()
+		if (currentLen >= length) return this
+		val padLen = length - currentLen
+		var padding = ""
+		while (padding.length() < padLen) {
+			padding = padding + padChar
+		}
+		if (padding.length() > padLen) {
+			padding = padding.substr(0, padLen)
+		}
+		return this + padding
+	}
+
+	fun toIntOrNull(): Int? {
+		try {
+			return this.toInt()
+		} catch (e) {
+			return null
+		}
+	}
+
+	fun toFloatOrNull(): Float? {
+		try {
+			return this.toFloat()
+		} catch (e) {
+			return null
+		}
+	}
 }
 
 @no_constructor
@@ -223,7 +350,8 @@ class Null {
 @no_extends
 @no_constructor
 class Any {
-
+	@native("to_string")
+	fun toString(): String
 }
 
 @no_extends
@@ -414,6 +542,21 @@ class Array<T> {
 	@native("arr_reduce")
 	fun reduce(operation: (T, T) -> T): T
 
+	fun reduce(operation: (T, T) -> T, initial: T): T {
+		return this.fold(initial, operation)
+	}
+
+	fun fold(initial: T, operation: (T, T) -> T): T {
+		var acc = initial
+		var i = 0
+		val sz = this.size()
+		while (i < sz) {
+			acc = operation(acc, this.get(i))
+			i = i + 1
+		}
+		return acc
+	}
+
 	fun <R> fold(initial: R, operation: (R, T) -> R): R {
 		var acc = initial
 		var i = 0
@@ -424,6 +567,24 @@ class Array<T> {
 		}
 		return acc
 	}
+
+	@native("arr_sum")
+	fun sum(): Int
+
+	@native("arr_sum_of")
+	fun sumOf(selector: (T) -> Int): Int
+
+	@native("arr_plus")
+	operator fun plus(other: Array<T>): Array<T>
+
+	@native("arr_plus")
+	fun plus(element: T): Array<T>
+
+	@native("arr_minus")
+	fun minus(element: T): Array<T>
+
+	@native("arr_minus")
+	operator fun minus(elements: Array<T>): Array<T>
 
 	@native("arr_slice")
 	fun slice(from: Int, to: Int): Array<T>
@@ -438,9 +599,6 @@ class Array<T> {
 
 	@native("arr_index_of")
 	fun findIndex(value: T): Int
-
-	@native("arr_index_of")
-	fun find(value: T): Int
 
 	@native("arr_reserve")
 	fun reserve(capacity: Int)
@@ -463,13 +621,61 @@ class Array<T> {
 
 	@native("arr_to_string")
 	fun toString(): String
+
+	@native("arr_average")
+	fun average(): Float
+
+	@native("arr_max_or_null")
+	fun maxOrNull(): T?
+
+	@native("arr_min_or_null")
+	fun minOrNull(): T?
+
+	fun max(): T? {
+		return this.maxOrNull()
+	}
+
+	fun min(): T? {
+		return this.minOrNull()
+	}
+
+	@native("arr_find")
+	fun find(predicate: (T) -> Bool): T?
+
+	@native("arr_find_last")
+	fun findLast(predicate: (T) -> Bool): T?
+
+	@native("arr_filter_not")
+	fun filterNot(predicate: (T) -> Bool): Array<T>
+
+	@native("arr_filter_not_null")
+	fun filterNotNull(): Array<T>
+
+	@native("arr_distinct")
+	fun distinct(): Array<T>
+
+	@native("arr_take_last")
+	fun takeLast(n: Int): Array<T>
+
+	@native("arr_drop_last")
+	fun dropLast(n: Int): Array<T>
+
+	@native("arr_take_while")
+	fun takeWhile(predicate: (T) -> Bool): Array<T>
+
+	@native("arr_drop_while")
+	fun dropWhile(predicate: (T) -> Bool): Array<T>
+
+	@native("arr_chunked")
+	fun chunked(size: Int): Array<Any>
+
+	@native("arr_to_set")
+	fun toSet(): Set<T>
 }
 
 @no_extends
 @no_constructor
 class Set<T> {
-	static fun __CLASS__(): Set<T> = <T>{}
-
 	@native("set_add")
 	fun add(value: T)
 
@@ -545,6 +751,24 @@ class Set<T> {
     @native("set_difference")
     fun difference(other: Set<T>): Set<T>
 
+	@native("set_union")
+	operator fun plus(other: Set<T>): Set<T>
+
+	@native("set_difference")
+	operator fun minus(other: Set<T>): Set<T>
+
+	fun plus(element: T): Set<T> {
+		val res = this.clone()
+		res.add(element)
+		return res
+	}
+
+	fun minus(element: T): Set<T> {
+		val res = this.clone()
+		res.remove(element)
+		return res
+	}
+
 	@native("set_contains")
 	fun includes(value: T): Bool
 
@@ -597,8 +821,6 @@ class Set<T> {
 @no_extends
 @no_constructor
 class Map<K, V> {
-	static fun __CLASS__(): Map<K, V> = <K, V>{}
-	
 	@native("map_get")
 	fun get(key: K): V?
 
@@ -691,6 +913,64 @@ class Map<K, V> {
 
 	@native("map_to_string")
 	fun toString(): String
+
+	@native("map_plus")
+	operator fun plus(other: Map<K, V>): Map<K, V>
+
+	fun plus(pair: Pair<K, V>): Map<K, V> {
+		val res = this.clone()
+		res.set(pair.first, pair.second)
+		return res
+	}
+
+	@native("map_minus")
+	operator fun minus(key: K): Map<K, V>
+
+	fun getOrElse(key: K, defaultBlock: () -> V): V {
+		if (this.containsKey(key)) {
+			val v = this.get(key)
+			if (v != null) {
+				return v!
+			}
+		}
+		return defaultBlock()
+	}
+
+	fun filterKeys(predicate: (K) -> Bool): Map<K, V> {
+		val res = this.clone()
+		res.clear()
+		val kList = this.keys()
+		var i = 0
+		val sz = kList.size()
+		while (i < sz) {
+			val k = kList.get(i)
+			if (predicate(k)) {
+				val v = this.get(k)
+				if (v != null) {
+					res.set(k, v!)
+				}
+			}
+			i = i + 1
+		}
+		return res
+	}
+
+	fun filterValues(predicate: (V) -> Bool): Map<K, V> {
+		val res = this.clone()
+		res.clear()
+		val kList = this.keys()
+		var i = 0
+		val sz = kList.size()
+		while (i < sz) {
+			val k = kList.get(i)
+			val v = this.get(k)
+			if (v != null && predicate(v!)) {
+				res.set(k, v!)
+			}
+			i = i + 1
+		}
+		return res
+	}
 }
 
 @no_extends
@@ -716,12 +996,36 @@ fun assert(condition: Bool, fileName: String, line: Int)
 
 class Pair<A, B>(val first: A, val second: B) {
 	fun toString(): String {
-		return "(" + first + ", " + second + ")"
+		return "(" + first.toString() + ", " + second.toString() + ")"
 	}
 }
 
 fun <A, B> pairOf(first: A, second: B): Pair<A, B> {
 	return Pair<A, B>(first, second)
+}
+
+fun repeat(times: Int, action: (Int) -> Void) {
+	var i = 0
+	while (i < times) {
+		action(i)
+		i = i + 1
+	}
+}
+
+fun require(condition: Bool, message: String = "Requirement failed.") {
+	if (!condition) {
+		throw Exception(message)
+	}
+}
+
+fun check(condition: Bool, message: String = "Check failed.") {
+	if (!condition) {
+		throw Exception(message)
+	}
+}
+
+fun error(message: String) {
+	throw Exception(message)
 }
 
 
@@ -755,6 +1059,12 @@ typealias LinkedList<T> = Array<T>
 typealias Vector<T> = Array<T>
 typealias Vec<T> = Array<T>
 typealias MutableList<T> = Array<T>
+typealias mutableListOf<T> = Array<T>
+typealias listOf<T> = Array<T>
+typealias arrayOf<T> = Array<T>
+typealias arrayListOf<T> = Array<T>
+typealias emptyList<T> = Array<T>
+typealias emptyArray<T> = Array<T>
 
 // Map/Dictionary aliases
 typealias HashMap<K, V> = Map<K, V>
@@ -762,11 +1072,21 @@ typealias Dictionary<K, V> = Map<K, V>
 typealias Dict<K, V> = Map<K, V>
 typealias TreeMap<K, V> = Map<K, V>
 typealias MutableMap<K, V> = Map<K, V>
+typealias mapOf<K, V> = Map<K, V>
+typealias mutableMapOf<K, V> = Map<K, V>
+typealias hashMapOf<K, V> = Map<K, V>
+typealias linkedMapOf<K, V> = Map<K, V>
+typealias emptyMap<K, V> = Map<K, V>
 
 // Set aliases
 typealias HashSet<T> = Set<T>
 typealias TreeSet<T> = Set<T>
 typealias MutableSet<T> = Set<T>
+typealias setOf<T> = Set<T>
+typealias mutableSetOf<T> = Set<T>
+typealias hashSetOf<T> = Set<T>
+typealias linkedSetOf<T> = Set<T>
+typealias emptySet<T> = Set<T>
 
 // Nullable
 typealias Optional<T> = T?
@@ -855,6 +1175,20 @@ typealias Nothing = Void
 	         {"arr_reserve", &array::reserve},
 	         {"arr_clear", &array::clear},
 	         {"arr_contains", &array::contains},
+	         {"arr_plus", &array::plus},
+	         {"arr_minus", &array::minus},
+	         {"arr_find", &array::find},
+	         {"arr_find_last", &array::find_last},
+	         {"arr_filter_not", &array::filter_not},
+	         {"arr_filter_not_null", &array::filter_not_null},
+	         {"arr_distinct", &array::distinct},
+	         {"arr_take_last", &array::take_last},
+	         {"arr_drop_last", &array::drop_last},
+	         {"arr_take_while", &array::take_while},
+	         {"arr_drop_while", &array::drop_while},
+	         {"arr_chunked", &array::chunked},
+	         {"arr_to_set", &array::to_set},
+	         {"arr_sum_of", &array::sum_of},
 	         {"arr_to_string", &array::to_string},
 	         {"arr_join_to_string", &array::join_to_string},
 	         {"arr_clone", &array::clone},
@@ -863,6 +1197,10 @@ typealias Nothing = Void
 	         {"arr_map_indexed", &array::map_indexed},
 	         {"arr_reduce", &array::reduce},
 	         {"arr_fold", &array::fold},
+	         {"arr_sum", &array::sum},
+	         {"arr_average", &array::average},
+	         {"arr_max_or_null", &array::max_or_null},
+	         {"arr_min_or_null", &array::min_or_null},
 	         {"arr_first", &array::first},
 	         {"arr_first_or_null", &array::first_or_null},
 	         {"arr_last", &array::last},
@@ -911,6 +1249,8 @@ typealias Nothing = Void
 	         {"map_set", &map::set},
 	         {"map_clone", &map::clone},
 	         {"map_filter", &map::filter},
+	         {"map_plus", &map::plus},
+	         {"map_minus", &map::minus},
 	         {"map_to_string", &map::to_string}}));
 }
 } // namespace stdlib

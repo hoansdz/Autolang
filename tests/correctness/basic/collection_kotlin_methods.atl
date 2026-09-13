@@ -76,6 +76,63 @@ fun testArrayKotlinMethods() {
 
     val foldProduct = numbers.fold<Int>(10, {|acc: Int, x: Int| acc * x })
     assert(foldProduct == 60, "fold failed")
+
+    // 12. find & findLast
+    val fVal = numbers.find({|x: Int| x > 1 })
+    assert(fVal == 2, "find failed")
+    val flVal = numbers.findLast({|x: Int| x > 1 })
+    assert(flVal == 3, "findLast failed")
+
+    // 13. filterNot & filterNotNull
+    val notTwo = numbers.filterNot({|x: Int| x == 2 })
+    assert(notTwo.size() == 2 && notTwo[0] == 1 && notTwo[1] == 3, "filterNot failed")
+
+    val withNulls: Array<Int?> = [1, null, 2, null, 3]
+    val withoutNulls = withNulls.filterNotNull()
+    assert(withoutNulls.size() == 3 && withoutNulls[0] == 1 && withoutNulls[2] == 3, "filterNotNull failed")
+
+    // 14. distinct
+    val duplicates = [1, 2, 2, 3, 1, 4]
+    val distinctVals = duplicates.distinct()
+    assert(distinctVals.size() == 4 && distinctVals[0] == 1 && distinctVals[3] == 4, "distinct failed")
+
+    // 15. takeLast & dropLast
+    val items = [10, 20, 30, 40, 50]
+    val tLast = items.takeLast(2)
+    assert(tLast.size() == 2 && tLast[0] == 40 && tLast[1] == 50, "takeLast failed")
+    val dLast = items.dropLast(2)
+    assert(dLast.size() == 3 && dLast[0] == 10 && dLast[2] == 30, "dropLast failed")
+
+    // 16. takeWhile & dropWhile
+    val sequence = [1, 2, 3, 2, 1]
+    val tWhile = sequence.takeWhile({|x: Int| x < 3 })
+    assert(tWhile.size() == 2 && tWhile[0] == 1 && tWhile[1] == 2, "takeWhile failed")
+    val dWhile = sequence.dropWhile({|x: Int| x < 3 })
+    assert(dWhile.size() == 3 && dWhile[0] == 3 && dWhile[2] == 1, "dropWhile failed")
+
+    // 17. chunked
+    val toChunk = [1, 2, 3, 4, 5]
+    val chunks = toChunk.chunked(2)
+    assert(chunks.size() == 3, "chunked size failed")
+
+    // 18. toSet
+    val sFromArr = [1, 2, 2, 3].toSet()
+    assert(sFromArr.size() == 3 && sFromArr.contains(1) && sFromArr.contains(3), "toSet failed")
+
+    // 19. sumOf, max, min
+    val sumMultiplied = numbers.sumOf({|x: Int| x * 10 })
+    assert(sumMultiplied == 60, "sumOf failed")
+    assert(numbers.max() == 3, "max failed")
+    assert(numbers.min() == 1, "min failed")
+
+    // 20. range expression as array
+    val rangeArr = 1..10
+    assert(rangeArr.size() == 10 && rangeArr[0] == 1 && rangeArr[9] == 10, "rangeArr failed")
+    val evens = rangeArr.filter({|n: Int| n % 2 == 0 })
+    assert(evens.size() == 5 && evens.sum() == 30, "range filter and sum failed")
+
+    val untilArr = 1..<5
+    assert(untilArr.size() == 4 && untilArr[3] == 4, "untilArr failed")
 }
 
 fun testMapKotlinMethods() {
@@ -129,7 +186,148 @@ fun testSetKotlinMethods() {
     assert(s.none({|x: Int| x < 0 }) == true, "set.none failed")
 }
 
+fun testCollectionOperators() {
+    // 1. Array + Array & Array + Element
+    val a1 = [1, 2] + [3, 4]
+    assert(a1.size() == 4 && a1[0] == 1 && a1[3] == 4, "Array + Array failed")
+
+    val a2 = [1, 2] + 3
+    assert(a2.size() == 3 && a2[2] == 3, "Array + Element failed")
+
+    var a3 = [1, 2]
+    a3 += 3
+    assert(a3.size() == 3 && a3[2] == 3, "Array += Element failed")
+
+    var a4 = [1, 2]
+    a4 += [3, 4]
+    assert(a4.size() == 4 && a4[3] == 4, "Array += Array failed")
+
+    // 2. AI Benchmark Case: Grok-4.6 (Array + [x])
+    val numbers = listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    var evens = <Int>[]
+    for (x in numbers) {
+        if (x % 2 == 0) {
+            evens = evens + [x]
+        }
+    }
+    var sum = 0
+    for (x in evens) {
+        sum += x
+    }
+    assert(sum == 30, "Grok benchmark case failed")
+
+    // 3. AI Benchmark Case: Qwen-3.8 (mutableListOf<Int>())
+    val numbers2 = listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    val evens2 = mutableListOf<Int>()
+    for (number in numbers2) {
+        if (number % 2 == 0) {
+            evens2.add(number)
+        }
+    }
+    var sum2 = 0
+    for (num in evens2) {
+        sum2 += num
+    }
+    assert(sum2 == 30, "Qwen benchmark case failed")
+
+    // 4. Set operators (+, -, +=)
+    val s1 = setOf(1, 2) + setOf(3, 4)
+    assert(s1.size() == 4, "Set + Set failed")
+
+    val s2 = s1 - 2
+    assert(s2.size() == 3 && !s2.contains(2), "Set - Element failed")
+
+    // 5. Map operators (+, -)
+    val m1 = mapOf("a" to 1) + mapOf("b" to 2)
+    assert(m1.size() == 2 && m1["b"] == 2, "Map + Map failed")
+
+    val m2 = m1 - "a"
+    assert(m2.size() == 1 && !m2.contains("a"), "Map - Key failed")
+}
+
+fun testKotlinCollectionConstructors() {
+    // 1. List / MutableList
+    val ml1 = mutableListOf(1, 2, 3)
+    assert(ml1.size() == 3 && ml1[0] == 1, "mutableListOf(...) failed")
+
+    val ml2 = mutableListOf<Int>(4, 5, 6)
+    assert(ml2.size() == 3 && ml2[2] == 6, "mutableListOf<Int>(...) failed")
+
+    val ml3 = mutableListOf<Int>()
+    assert(ml3.size() == 0, "mutableListOf<Int>() failed")
+
+    val l1 = listOf(1, 2, 3)
+    assert(l1.size() == 3 && l1[0] == 1, "listOf(...) failed")
+
+    val l2 = listOf<Int>(4, 5, 6)
+    assert(l2.size() == 3 && l2[2] == 6, "listOf<Int>(...) failed")
+
+    val l3 = listOf<Int>()
+    assert(l3.size() == 0, "listOf<Int>() failed")
+
+    val l4 = arrayListOf<Int>(10, 20)
+    assert(l4.size() == 2 && l4[1] == 20, "arrayListOf<Int>(...) failed")
+
+    val l5 = emptyList<Int>()
+    assert(l5.size() == 0, "emptyList<Int>() failed")
+
+    // 2. Set / MutableSet
+    val ms1 = mutableSetOf(1, 2, 3)
+    assert(ms1.size() == 3 && ms1.contains(2), "mutableSetOf(...) failed")
+
+    val ms2 = mutableSetOf<Int>(4, 5, 6)
+    assert(ms2.size() == 3 && ms2.contains(5), "mutableSetOf<Int>(...) failed")
+
+    val ms3 = mutableSetOf<Int>()
+    ms3.add(5)
+    assert(ms3.size() == 1 && ms3.contains(5), "mutableSetOf<Int>() failed")
+
+    val s1 = setOf(1, 2, 3)
+    assert(s1.size() == 3 && s1.contains(2), "setOf(...) failed")
+
+    val s2 = setOf<Int>(4, 5, 6)
+    assert(s2.size() == 3 && s2.contains(5), "setOf<Int>(...) failed")
+
+    val s3 = setOf<Int>()
+    assert(s3.size() == 0, "setOf<Int>() failed")
+
+    val s4 = hashSetOf<Int>(4, 5)
+    assert(s4.size() == 2 && s4.contains(4), "hashSetOf<Int>(...) failed")
+
+    val s5 = emptySet<Int>()
+    assert(s5.size() == 0, "emptySet<Int>() failed")
+
+    // 3. Map / MutableMap
+    val mm1 = mutableMapOf("a" to 1, "b" to 2)
+    assert(mm1.size() == 2 && mm1["b"] == 2, "mutableMapOf(...) failed")
+
+    val mm2 = mutableMapOf<String, Int>("c" to 3)
+    assert(mm2.size() == 1 && mm2["c"] == 3, "mutableMapOf<String, Int>(...) failed")
+
+    val mm3 = mutableMapOf<String, Int>()
+    mm3["k"] = 42
+    assert(mm3.size() == 1 && mm3["k"] == 42, "mutableMapOf<String, Int>() failed")
+
+    val m1 = mapOf("a" to 1, "b" to 2)
+    assert(m1.size() == 2 && m1["b"] == 2, "mapOf(...) failed")
+
+    val m2 = mapOf<String, Int>("c" to 3)
+    assert(m2.size() == 1 && m2["c"] == 3, "mapOf<String, Int>(...) failed")
+
+    val m3 = mapOf<String, Int>()
+    assert(m3.size() == 0, "mapOf<String, Int>() failed")
+
+    val m4 = hashMapOf<String, Int>("x" to 99)
+    assert(m4.size() == 1 && m4["x"] == 99, "hashMapOf<String, Int>(...) failed")
+
+    val m5 = emptyMap<String, Int>()
+    assert(m5.size() == 0, "emptyMap<String, Int>() failed")
+}
+
 testArrayKotlinMethods()
 testMapKotlinMethods()
 testSetKotlinMethods()
+testCollectionOperators()
+testKotlinCollectionConstructors()
 println("All Kotlin collection methods passed successfully!")
+

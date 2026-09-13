@@ -465,8 +465,10 @@ ExprNode *ReturnNode::optimize(in_func) {
 		if (compile.classes[value->classId]->inheritance.get(func->returnId)) {
 			return this;
 		}
-		if (value->classId == DefaultClass::intClassId &&
-		    func->returnId == DefaultClass::floatClassId) {
+		if ((value->classId == DefaultClass::intClassId &&
+		     func->returnId == DefaultClass::floatClassId) ||
+		    (value->classId == DefaultClass::floatClassId &&
+		     func->returnId == DefaultClass::intClassId)) {
 			auto castNode = context.castPool.push(value, func->returnId);
 			value = static_cast<HasClassIdNode *>(castNode->resolve(in_data));
 			if (value != castNode) {

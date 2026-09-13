@@ -742,7 +742,8 @@ bool isOperator(char chr) {
 		case '!':
 		case '=':
 		case '<':
-		case '>': {
+		case '>':
+		case ':': {
 			return true;
 		}
 		default:
@@ -772,6 +773,8 @@ std::string Token::toString(ParserContext &context) {
 			return "?";
 		case TokenType::QMARK_DOT:
 			return "?.";
+		case TokenType::QMARK_QMARK:
+			return "?:";
 		case TokenType::EXMARK:
 			return "!";
 		case TokenType::AT_SIGN:

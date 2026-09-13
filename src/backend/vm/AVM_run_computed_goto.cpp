@@ -407,6 +407,8 @@ resumeCallFrame:;
 			    &&do_FOR_MAP_KEY_VALUE;
 			dispatchTable[Autolang::Opcode::IN_RANGE] = &&do_IN_RANGE;
 			dispatchTable[Autolang::Opcode::NOT_IN_RANGE] = &&do_NOT_IN_RANGE;
+			dispatchTable[Autolang::Opcode::CREATE_RANGE_ARRAY] =
+			    &&do_CREATE_RANGE_ARRAY;
 			dispatchTable[Autolang::Opcode::ADD_FINALLY_BLOCK] =
 			    &&do_ADD_FINALLY_BLOCK;
 			dispatchTable[Autolang::Opcode::REMOVE_FINALLY] =
@@ -1446,6 +1448,33 @@ resumeCallFrame:;
 			    notifier->createBool(!(obj->i >= obj1->i && obj->i <= obj2->i)));
 		}
 		data.manager.release(obj);
+		data.manager.release(obj1);
+		data.manager.release(obj2);
+		DISPATCH();
+	}
+
+	do_CREATE_RANGE_ARRAY: {
+		ClassId classId = get_u32(bytecodes, ip);
+		bool isLessThan = bytecodes[ip++];
+		auto obj2 = stack.pop();
+		auto obj1 = stack.pop();
+		int64_t start = (obj1->type == Autolang::DefaultClass::floatClassId)
+		                    ? static_cast<int64_t>(obj1->f)
+		                    : obj1->i;
+		int64_t end = (obj2->type == Autolang::DefaultClass::floatClassId)
+		                  ? static_cast<int64_t>(obj2->f)
+		                  : obj2->i;
+		if (isLessThan) {
+			end -= 1;
+		}
+		int64_t count = (end >= start) ? (end - start + 1) : 0;
+		auto obj = notifier->createArray(classId, Autolang::DefaultClass::intClassId,
+		                                 static_cast<uint32_t>(count));
+		for (int64_t val = start, idx = 0; val <= end; ++val, ++idx) {
+			obj->array->intData[idx] = val;
+		}
+		stack.push(obj);
+		stack.top()->retain();
 		data.manager.release(obj1);
 		data.manager.release(obj2);
 		DISPATCH();

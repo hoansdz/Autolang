@@ -204,6 +204,7 @@ enum Opcode : uint8_t {
 
 	FOR_MAP_KEY,
 	FOR_MAP_KEY_VALUE,
+	CREATE_RANGE_ARRAY,
 };
 
 }

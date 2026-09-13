@@ -37,7 +37,7 @@ def count_lines(directory):
                 except Exception as e:
                     print(f"Error reading {filepath}: {e}")
                     
-    # Sap xep cac file theo so dong code thuc te giam dan
+    # Sort files by actual lines of code in descending order
     file_stats.sort(key=lambda x: x[3], reverse=True)
     
     print("LINE COUNT STATISTICS FOR CORRECTNESS TESTS:")

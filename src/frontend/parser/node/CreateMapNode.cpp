@@ -19,6 +19,9 @@ ExprNode *CreateMapNode::resolve(in_func) {
 
 ExprNode *CreateMapNode::optimize(in_func) {
 	if (classDeclaration) {
+		if (!classDeclaration->classId.has_value()) {
+			classDeclaration->template load<true>(in_data);
+		}
 		classId = *classDeclaration->classId;
 	}
 	if (classId == DefaultClass::nullClassId) {

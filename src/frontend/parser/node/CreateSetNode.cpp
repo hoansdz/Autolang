@@ -18,6 +18,9 @@ ExprNode *CreateSetNode::resolve(in_func) {
 
 ExprNode *CreateSetNode::optimize(in_func) {
 	if (classDeclaration) {
+		if (!classDeclaration->classId.has_value()) {
+			classDeclaration->template load<true>(in_data);
+		}
 		classId = *classDeclaration->classId;
 	}
 	if (classId == DefaultClass::nullClassId) {

@@ -46,6 +46,24 @@ AObject *all_fn(NativeFuncInData);
 AObject *none(NativeFuncInData);
 AObject *none_fn(NativeFuncInData);
 AObject *count_fn(NativeFuncInData);
+AObject *sum(NativeFuncInData);
+AObject *average(NativeFuncInData);
+AObject *max_or_null(NativeFuncInData);
+AObject *min_or_null(NativeFuncInData);
+AObject *plus(NativeFuncInData);
+AObject *minus(NativeFuncInData);
+AObject *find(NativeFuncInData);
+AObject *find_last(NativeFuncInData);
+AObject *filter_not(NativeFuncInData);
+AObject *filter_not_null(NativeFuncInData);
+AObject *distinct(NativeFuncInData);
+AObject *take_last(NativeFuncInData);
+AObject *drop_last(NativeFuncInData);
+AObject *take_while(NativeFuncInData);
+AObject *drop_while(NativeFuncInData);
+AObject *chunked(NativeFuncInData);
+AObject *to_set(NativeFuncInData);
+AObject *sum_of(NativeFuncInData);
 std::string to_string(ANotifier &notifier, AObject *obj);
 } // namespace array
 } // namespace Libs

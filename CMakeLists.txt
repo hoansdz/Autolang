@@ -87,11 +87,9 @@ if(EMSCRIPTEN)
   )
 
   target_link_options(autolang_wasm PRIVATE
-    "-O2"
-    "-gsource-map"
+    "-O3"
     "-fexceptions"
     "--bind"
-    "-sASSERTIONS=1"
     "-sALLOW_MEMORY_GROWTH=1"
     "-sINITIAL_MEMORY=10MB"
     "-sASYNCIFY"

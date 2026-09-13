@@ -282,6 +282,13 @@ void AVM::log(Function *currentFunction) {
 				std::cerr << "NOT_IN_RANGE	 " << (bytecodes[i++] ? "LT" : "LTE")
 				          << "\n";
 				break;
+			case Autolang::Opcode::CREATE_RANGE_ARRAY: {
+				uint32_t classId = get_u32(bytecodes, i);
+				bool isLessThan = bytecodes[i++];
+				std::cerr << "CREATE_RANGE_ARRAY	 " << classId << " "
+				          << (isLessThan ? "LT" : "LTE") << "\n";
+				break;
+			}
 			case Autolang::Opcode::LOAD_CONST: {
 				auto obj = data.constPool[get_u32(bytecodes, i)];
 				std::cerr << "LOAD_CONST	 "

@@ -41,6 +41,13 @@ static void destroyFile(ANotifier &notifier, void *fileData) {
 	delete handle;
 }
 
+static inline std::string extractPath(AObject *obj) {
+	if (obj->flags & AObject::Flags::OBJ_IS_NATIVE_DATA) {
+		return static_cast<AFileHandle *>(obj->data->data)->path;
+	}
+	return std::string(obj->str->data, obj->str->size);
+}
+
 static bool checkFilePathSecurity(const std::string &path, ANotifier &notifier) {
 	if (path.length() > 512) {
 		return false;
@@ -82,6 +89,11 @@ AObject *constructor(NativeFuncInData) {
 	if (!checkFilePathSecurity(path, notifier)) {
 		notifier.throwException("SecurityError: File path is not allowed.");
 		return nullptr;
+	}
+
+	if (modeInt == -1) {
+		auto handle = new AFileHandle{nullptr, path};
+		return notifier.createNativeData(classId, handle, destroyFile);
 	}
 
 	bool requiresRead = (modeInt == 0 || modeInt == 3 || modeInt == 4 || modeInt == 5);
@@ -141,7 +153,7 @@ AObject *static_read_text(NativeFuncInData) {
 		notifier.throwException("SecurityError: File read operation is not allowed.");
 		return nullptr;
 	}
-	const std::string &rawPath = args[0]->str->data;
+	const std::string &rawPath = extractPath(args[0]);
 	std::string path = resolveFilePath(rawPath, notifier);
 	if (!checkFilePathSecurity(path, notifier)) {
 		notifier.throwException("SecurityError: File path is not allowed.");
@@ -169,7 +181,7 @@ AObject *static_write_text(NativeFuncInData) {
 		notifier.throwException("SecurityError: File write operation is not allowed.");
 		return nullptr;
 	}
-	const std::string &rawPath = args[0]->str->data;
+	const std::string &rawPath = extractPath(args[0]);
 	std::string path = resolveFilePath(rawPath, notifier);
 	if (!checkFilePathSecurity(path, notifier)) {
 		notifier.throwException("SecurityError: File path is not allowed.");
@@ -193,7 +205,7 @@ AObject *static_append_text(NativeFuncInData) {
 		notifier.throwException("SecurityError: File write operation is not allowed.");
 		return nullptr;
 	}
-	const std::string &rawPath = args[0]->str->data;
+	const std::string &rawPath = extractPath(args[0]);
 	std::string path = resolveFilePath(rawPath, notifier);
 	if (!checkFilePathSecurity(path, notifier)) {
 		notifier.throwException("SecurityError: File path is not allowed.");
@@ -217,7 +229,7 @@ AObject *static_read_lines(NativeFuncInData) {
 		notifier.throwException("SecurityError: File read operation is not allowed.");
 		return nullptr;
 	}
-	const std::string &rawPath = args[0]->str->data;
+	const std::string &rawPath = extractPath(args[0]);
 	std::string path = resolveFilePath(rawPath, notifier);
 	if (!checkFilePathSecurity(path, notifier)) {
 		notifier.throwException("SecurityError: File path is not allowed.");
@@ -259,8 +271,7 @@ AObject *read_text(NativeFuncInData) {
 	}
 	auto handle = static_cast<AFileHandle *>(args[0]->data->data);
 	if (!handle->fp) {
-		notifier.throwException("File is closed");
-		return nullptr;
+		return static_read_text(notifier, args, argSize);
 	}
 
 	FSEEK(handle->fp, 0, SEEK_END);
@@ -269,7 +280,6 @@ AObject *read_text(NativeFuncInData) {
 
 	std::string buffer;
 	if (size > 0) {
-
 		buffer.resize(size);
 		fread(buffer.data(), 1, size, handle->fp);
 	}
@@ -285,17 +295,28 @@ AObject *for_each_line(NativeFuncInData) {
 	auto handle = static_cast<AFileHandle *>(args[0]->data->data);
 	auto funcObject = args[1];
 
-	if (!handle->fp) {
-		notifier.throwException("File is closed");
-		return nullptr;
+	FILE *fp = handle->fp;
+	bool closeFp = false;
+	if (!fp) {
+		std::string path = resolveFilePath(handle->path, notifier);
+		if (!checkFilePathSecurity(path, notifier)) {
+			notifier.throwException("SecurityError: File path is not allowed.");
+			return nullptr;
+		}
+		fp = fopen(path.c_str(), "rb");
+		if (!fp) {
+			notifier.throwException("Cannot open file: " + path);
+			return nullptr;
+		}
+		closeFp = true;
 	}
 
-	FSEEK(handle->fp, 0, SEEK_SET);
+	FSEEK(fp, 0, SEEK_SET);
 
 	char buf[4096];
 	std::string line;
 
-	while (fgets(buf, sizeof(buf), handle->fp)) {
+	while (fgets(buf, sizeof(buf), fp)) {
 		size_t len = strlen(buf);
 
 		if (len > 0 && buf[len - 1] == '\n') {
@@ -306,12 +327,14 @@ AObject *for_each_line(NativeFuncInData) {
 
 			auto lineObj = notifier.createString(line);
 			auto value = notifier.callFunctionObject(funcObject, lineObj);
-			if (notifier.hasException())
+			if (notifier.hasException()) {
+				if (closeFp)
+					fclose(fp);
 				return nullptr;
+			}
 
 			line.clear();
 		} else {
-
 			line.append(buf, len);
 		}
 	}
@@ -320,6 +343,9 @@ AObject *for_each_line(NativeFuncInData) {
 		auto lineObj = notifier.createString(line);
 		auto value = notifier.callFunctionObject(funcObject, lineObj);
 	}
+
+	if (closeFp)
+		fclose(fp);
 
 	return nullptr;
 }
@@ -366,7 +392,7 @@ AObject *exists(NativeFuncInData) {
 		notifier.throwException("SecurityError: File read operation is not allowed.");
 		return nullptr;
 	}
-	const std::string &rawPath = args[0]->str->data;
+	const std::string &rawPath = extractPath(args[0]);
 	std::string path = resolveFilePath(rawPath, notifier);
 	if (!checkFilePathSecurity(path, notifier)) {
 		notifier.throwException("SecurityError: File path is not allowed.");
@@ -382,7 +408,7 @@ AObject *delete_file(NativeFuncInData) {
 		notifier.throwException("SecurityError: File delete operation is not allowed.");
 		return nullptr;
 	}
-	const std::string &rawPath = args[0]->str->data;
+	const std::string &rawPath = extractPath(args[0]);
 	std::string path = resolveFilePath(rawPath, notifier);
 	if (!checkFilePathSecurity(path, notifier)) {
 		notifier.throwException("SecurityError: File path is not allowed.");
@@ -393,7 +419,7 @@ AObject *delete_file(NativeFuncInData) {
 }
 
 AObject *get_parent(NativeFuncInData) {
-	const std::string &rawPath = args[0]->str->data;
+	const std::string &rawPath = extractPath(args[0]);
 	std::string path = resolveFilePath(rawPath, notifier);
 	size_t sep_pos = path.find_last_of("/\\");
 
@@ -406,12 +432,25 @@ AObject *get_parent(NativeFuncInData) {
 	return notifier.createString(path.substr(0, sep_pos));
 }
 
+AObject *get_parent_file(NativeFuncInData) {
+	ClassId classId = notifier.callFrame->func->returnId;
+	const std::string &rawPath = extractPath(args[0]);
+	std::string path = resolveFilePath(rawPath, notifier);
+	size_t sep_pos = path.find_last_of("/\\");
+	if (sep_pos == std::string::npos) {
+		return nullptr;
+	}
+	std::string parentStr = (sep_pos == 0) ? path.substr(0, 1) : path.substr(0, sep_pos);
+	auto handle = new AFileHandle{nullptr, parentStr};
+	return notifier.createNativeData(classId, handle, destroyFile);
+}
+
 AObject *get_absolute_path(NativeFuncInData) {
 	if (!notifier.vm->allowFileRead) {
 		notifier.throwException("SecurityError: File read operation is not allowed.");
 		return nullptr;
 	}
-	const std::string &rawPath = args[0]->str->data;
+	const std::string &rawPath = extractPath(args[0]);
 	std::string path = resolveFilePath(rawPath, notifier);
 	if (!checkFilePathSecurity(path, notifier)) {
 		notifier.throwException("SecurityError: File path is not allowed.");
@@ -432,7 +471,7 @@ AObject *is_directory(NativeFuncInData) {
 		notifier.throwException("SecurityError: File read operation is not allowed.");
 		return nullptr;
 	}
-	const std::string &rawPath = args[0]->str->data;
+	const std::string &rawPath = extractPath(args[0]);
 	std::string path = resolveFilePath(rawPath, notifier);
 	if (!checkFilePathSecurity(path, notifier)) {
 		notifier.throwException("SecurityError: File path is not allowed.");
@@ -453,7 +492,7 @@ AObject *is_file(NativeFuncInData) {
 		notifier.throwException("SecurityError: File read operation is not allowed.");
 		return nullptr;
 	}
-	const std::string &rawPath = args[0]->str->data;
+	const std::string &rawPath = extractPath(args[0]);
 	std::string path = resolveFilePath(rawPath, notifier);
 	if (!checkFilePathSecurity(path, notifier)) {
 		notifier.throwException("SecurityError: File path is not allowed.");
@@ -474,7 +513,7 @@ AObject *get_all_files(NativeFuncInData) {
 		notifier.throwException("SecurityError: File read operation is not allowed.");
 		return nullptr;
 	}
-	const std::string &rawPath = args[0]->str->data;
+	const std::string &rawPath = extractPath(args[0]);
 	std::string path = resolveFilePath(rawPath, notifier);
 	if (!checkFilePathSecurity(path, notifier)) {
 		notifier.throwException("SecurityError: File path is not allowed.");
@@ -511,7 +550,7 @@ AObject *get_all_files(NativeFuncInData) {
 }
 
 AObject *get_name(NativeFuncInData) {
-	const std::string &rawPath = args[0]->str->data;
+	const std::string &rawPath = extractPath(args[0]);
 	std::string path = resolveFilePath(rawPath, notifier);
 	size_t sep_pos = path.find_last_of("/\\");
 	if (sep_pos == std::string::npos) {
@@ -523,12 +562,24 @@ AObject *get_name(NativeFuncInData) {
 	return notifier.createString(path.substr(sep_pos + 1));
 }
 
+AObject *get_name_without_extension(NativeFuncInData) {
+	const std::string &rawPath = extractPath(args[0]);
+	std::string path = resolveFilePath(rawPath, notifier);
+	size_t sep_pos = path.find_last_of("/\\");
+	std::string name = (sep_pos == std::string::npos) ? path : path.substr(sep_pos + 1);
+	size_t dot_pos = name.find_last_of('.');
+	if (dot_pos != std::string::npos && dot_pos > 0) {
+		return notifier.createString(name.substr(0, dot_pos));
+	}
+	return notifier.createString(name);
+}
+
 AObject *get_size(NativeFuncInData) {
 	if (!notifier.vm->allowFileRead) {
 		notifier.throwException("SecurityError: File read operation is not allowed.");
 		return nullptr;
 	}
-	const std::string &rawPath = args[0]->str->data;
+	const std::string &rawPath = extractPath(args[0]);
 	std::string path = resolveFilePath(rawPath, notifier);
 	if (!checkFilePathSecurity(path, notifier)) {
 		notifier.throwException("SecurityError: File path is not allowed.");
@@ -546,7 +597,7 @@ AObject *get_size(NativeFuncInData) {
 }
 
 AObject *get_extension(NativeFuncInData) {
-	const std::string &rawPath = args[0]->str->data;
+	const std::string &rawPath = extractPath(args[0]);
 	std::string path = resolveFilePath(rawPath, notifier);
 	size_t dot_pos = path.find_last_of('.');
 	size_t sep_pos = path.find_last_of("/\\");
@@ -557,9 +608,9 @@ AObject *get_extension(NativeFuncInData) {
 	}
 	if (dot_pos == sep_pos + 1 ||
 	    (sep_pos == std::string::npos && dot_pos == 0)) {
-		return notifier.createString(path.substr(dot_pos));
+		return notifier.createString("");
 	}
-	return notifier.createString(path.substr(dot_pos));
+	return notifier.createString(path.substr(dot_pos + 1));
 }
 
 AObject *get_last_modified(NativeFuncInData) {
@@ -567,7 +618,7 @@ AObject *get_last_modified(NativeFuncInData) {
 		notifier.throwException("SecurityError: File read operation is not allowed.");
 		return nullptr;
 	}
-	const std::string &rawPath = args[0]->str->data;
+	const std::string &rawPath = extractPath(args[0]);
 	std::string path = resolveFilePath(rawPath, notifier);
 	if (!checkFilePathSecurity(path, notifier)) {
 		notifier.throwException("SecurityError: File path is not allowed.");
@@ -581,6 +632,61 @@ AObject *get_last_modified(NativeFuncInData) {
 
 	notifier.throwException("Cannot get last modified time for: " + path);
 	return nullptr;
+}
+
+AObject *create_new_file(NativeFuncInData) {
+	if (!notifier.vm->allowFileWrite) {
+		notifier.throwException("SecurityError: File write operation is not allowed.");
+		return nullptr;
+	}
+	const std::string &rawPath = extractPath(args[0]);
+	std::string path = resolveFilePath(rawPath, notifier);
+	if (!checkFilePathSecurity(path, notifier)) {
+		notifier.throwException("SecurityError: File path is not allowed.");
+		return nullptr;
+	}
+	std::error_code ec;
+	if (std::filesystem::exists(std::filesystem::path(path), ec)) {
+		return notifier.createBool(false);
+	}
+	FILE *fp = fopen(path.c_str(), "wb");
+	if (!fp) {
+		return notifier.createBool(false);
+	}
+	fclose(fp);
+	return notifier.createBool(true);
+}
+
+AObject *make_dir(NativeFuncInData) {
+	if (!notifier.vm->allowFileWrite) {
+		notifier.throwException("SecurityError: File write operation is not allowed.");
+		return nullptr;
+	}
+	const std::string &rawPath = extractPath(args[0]);
+	std::string path = resolveFilePath(rawPath, notifier);
+	if (!checkFilePathSecurity(path, notifier)) {
+		notifier.throwException("SecurityError: File path is not allowed.");
+		return nullptr;
+	}
+	std::error_code ec;
+	bool ok = std::filesystem::create_directories(std::filesystem::path(path), ec);
+	return notifier.createBool(ok && !ec);
+}
+
+AObject *delete_recursively(NativeFuncInData) {
+	if (!notifier.vm->allowFileWrite || !notifier.vm->allowFileDelete) {
+		notifier.throwException("SecurityError: File delete operation is not allowed.");
+		return nullptr;
+	}
+	const std::string &rawPath = extractPath(args[0]);
+	std::string path = resolveFilePath(rawPath, notifier);
+	if (!checkFilePathSecurity(path, notifier)) {
+		notifier.throwException("SecurityError: File path is not allowed.");
+		return nullptr;
+	}
+	std::error_code ec;
+	uintmax_t count = std::filesystem::remove_all(std::filesystem::path(path), ec);
+	return notifier.createBool(count > 0 && !ec);
 }
 
 void init(ACompiler &compiler) {
@@ -622,30 +728,96 @@ class File {
     @native("file_constructor")
     private static fun File(path: String, modeId: Int): File
 
-    static fun File(path: String): File = File(path, FileMode.READ)
+    static fun File(path: String): File = File(path, -1)
     static fun File(path: String, mode: FileMode): File = File(path, mode.getId())
+    static fun File(parent: String, child: String): File = File(parent + "/" + child)
+    static fun File(parent: File, child: String): File = File(parent.getPath() + "/" + child)
 
     @native("file_get_path")
     fun getPath(): String
 
-    fun exists(): Bool = File.exists(this.getPath())
-    fun delete(): Bool = File.delete(this.getPath())
-    fun name(): String = File.getName(this.getPath())
-    fun getName(): String = File.getName(this.getPath())
-    fun extension(): String = File.getExtension(this.getPath())
-    fun getExtension(): String = File.getExtension(this.getPath())
-    fun size(): Int = File.getSize(this.getPath())
-    fun length(): Int = File.getSize(this.getPath())
-    fun parent(): String = File.getParent(this.getPath())
-    fun getParent(): String = File.getParent(this.getPath())
-    fun absolutePath(): String = File.getAbsolutePath(this.getPath())
-    fun getAbsolutePath(): String = File.getAbsolutePath(this.getPath())
-    fun isDirectory(): Bool = File.isDirectory(this.getPath())
-    fun isFile(): Bool = File.isFile(this.getPath())
+    @native("file_get_path")
+    fun path(): String
 
-    fun writeText(text: String) { this.write(text) }
-    fun appendText(text: String) { File.appendText(this.getPath(), text) }
-    fun readLines(): Array<String> = File.readLines(this.getPath())
+    @native("file_exists")
+    fun exists(): Bool
+
+    @native("file_delete")
+    fun delete(): Bool
+
+    @native("file_delete_recursively")
+    fun deleteRecursively(): Bool
+
+    @native("file_create_new_file")
+    fun createNewFile(): Bool
+
+    @native("file_mkdir")
+    fun mkdir(): Bool
+
+    @native("file_mkdir")
+    fun mkdirs(): Bool
+
+    @native("file_get_name")
+    fun name(): String
+
+    @native("file_get_name")
+    fun getName(): String
+
+    @native("file_get_extension")
+    fun extension(): String
+
+    @native("file_get_extension")
+    fun getExtension(): String
+
+    @native("file_get_name_without_extension")
+    fun nameWithoutExtension(): String
+
+    @native("file_get_size")
+    fun size(): Int
+
+    @native("file_get_size")
+    fun length(): Int
+
+    @native("file_get_parent")
+    fun parent(): String
+
+    @native("file_get_parent")
+    fun getParent(): String
+
+    @native("file_get_parent_file")
+    fun parentFile(): File?
+
+    @native("file_get_parent_file")
+    fun getParentFile(): File?
+
+    @native("file_get_absolute_path")
+    fun absolutePath(): String
+
+    @native("file_get_absolute_path")
+    fun getAbsolutePath(): String
+
+    @native("file_is_directory")
+    fun isDirectory(): Bool
+
+    @native("file_is_file")
+    fun isFile(): Bool
+
+    fun resolve(relative: String): File = File(this.getPath() + "/" + relative)
+    fun resolve(relative: File): File = File(this.getPath() + "/" + relative.getPath())
+    fun resolveSibling(relative: String): File {
+        val p = this.getParent()
+        if (p.length() == 0) return File(relative)
+        return File(p + "/" + relative)
+    }
+
+    @native("file_static_write_text")
+    fun writeText(text: String)
+
+    @native("file_static_append_text")
+    fun appendText(text: String)
+
+    @native("file_static_read_lines")
+    fun readLines(): Array<String>
 
     @native("file_static_read_text")
     static fun readText(path: String): String
@@ -659,7 +831,7 @@ class File {
     @native("file_static_read_lines")
     static fun readLines(path: String): Array<String>
 
-    @native("file_read_text")
+    @native("file_static_read_text")
     fun readText(): String
 
     @native("file_for_each_line")
@@ -680,6 +852,15 @@ class File {
     @native("file_delete")
     static fun delete(path: String): Bool
 
+    @native("file_delete_recursively")
+    static fun deleteRecursively(path: String): Bool
+
+    @native("file_create_new_file")
+    static fun createNewFile(path: String): Bool
+
+    @native("file_mkdir")
+    static fun mkdir(path: String): Bool
+
     @native("file_get_parent")
     static fun getParent(path: String): String
 
@@ -695,6 +876,16 @@ class File {
     @native("file_get_all_files")
     static fun getAllFiles(dirPath: String): Array<String>
 
+    fun list(): Array<String> = File.getAllFiles(this.getPath())
+    fun listFiles(): Array<File> {
+        val arr = File.getAllFiles(this.getPath())
+        val res = <File>[]
+        for (f in arr) {
+            res.add(File(f))
+        }
+        return res
+    }
+
     @native("file_get_name")
     static fun getName(path: String): String
 
@@ -709,8 +900,13 @@ class File {
 }
 
 fun String.toFile(): File = File(this)
+
+fun readFile(path: String): String = File.readText(path)
+fun readLines(path: String): Array<String> = File.readLines(path)
+fun writeFile(path: String, text: String) { File.writeText(path, text) }
+fun appendFile(path: String, text: String) { File.appendText(path, text) }
     )###",
-	    LibraryConfig(),
+	    LibraryConfig(true),
 	    ANativeMap({
 	        {"file_constructor", &file::constructor},
 	        {"file_get_path", &file::get_file_path},
@@ -723,10 +919,12 @@ fun String.toFile(): File = File(this)
 	        {"file_write", &file::write},
 	        {"file_close", &file::close},
 	        {"file_get_parent", &file::get_parent},
+	        {"file_get_parent_file", &file::get_parent_file},
 	        {"file_get_absolute_path", &file::get_absolute_path},
 	        {"file_get_all_files", &file::get_all_files},
 	        {"file_is_directory", &file::is_directory},
 	        {"file_get_name", &file::get_name},
+	        {"file_get_name_without_extension", &file::get_name_without_extension},
 	        {"file_get_size", &file::get_size},
 	        {"file_get_last_modified", &file::get_last_modified},
 	        {"file_is_file", &file::is_file},
@@ -734,6 +932,9 @@ fun String.toFile(): File = File(this)
 	        {"file_get_extension", &file::get_extension},
 	        {"file_exists", &file::exists},
 	        {"file_delete", &file::delete_file},
+	        {"file_delete_recursively", &file::delete_recursively},
+	        {"file_create_new_file", &file::create_new_file},
+	        {"file_mkdir", &file::make_dir},
 	    }));
 }
 

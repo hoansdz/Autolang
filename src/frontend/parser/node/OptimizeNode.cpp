@@ -89,12 +89,35 @@ ConstValueNode *plus(in_func, ConstValueNode *left, ConstValueNode *right) {
 				case Autolang::DefaultClass::floatClassId:
 					return context.constValuePool.push(
 					    left->line, strLeft + std::to_string(right->f));
+				case Autolang::DefaultClass::boolClassId:
+					return context.constValuePool.push(
+					    left->line, strLeft + (right->obj->b ? "true" : "false"));
 				case Autolang::DefaultClass::stringClassId:
 					return context.constValuePool.push(
 					    left->line,
 					    strLeft + *static_cast<std::string *>(right->str));
+				case Autolang::DefaultClass::nullClassId:
+					return context.constValuePool.push(
+					    left->line, strLeft + "null");
 				default:
 					break;
+			}
+			break;
+		}
+		case Autolang::DefaultClass::nullClassId: {
+			if (right->classId == Autolang::DefaultClass::stringClassId) {
+				return context.constValuePool.push(
+				    left->line,
+				    std::string("null") + *static_cast<std::string *>(right->str));
+			}
+			break;
+		}
+		case Autolang::DefaultClass::boolClassId: {
+			if (right->classId == Autolang::DefaultClass::stringClassId) {
+				return context.constValuePool.push(
+				    left->line,
+				    std::string(left->obj->b ? "true" : "false") +
+				        *static_cast<std::string *>(right->str));
 			}
 			break;
 		}
