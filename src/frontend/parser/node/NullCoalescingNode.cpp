@@ -68,6 +68,12 @@ ExprNode *NullCoalescingNode::optimize(in_func) {
 	}
 	if (!rightEndsEarly && left->classId != right->classId) {
 		ClassId commonId = ExprNode::getCommonSuperType(in_data, left->classId, right->classId);
+		if (commonId == DefaultClass::anyClassId && left->classId != DefaultClass::anyClassId && right->classId != DefaultClass::anyClassId) {
+			throwError("Left and right operands of null coalescing operator (??) must be of compatible types (got '" +
+			           compile.classes[left->classId]->getName(compile) + "' and '" +
+			           compile.classes[right->classId]->getName(compile) +
+			           "')\nHint: Ensure both operands of '??' evaluate to compatible types, or explicitly cast one operand to match.");
+		}
 		classId = commonId;
 		classDeclaration = ExprNode::getOrCreateClassDeclaration(in_data, commonId, line, rightEndsEarly ? false : right->isNullable());
 	}

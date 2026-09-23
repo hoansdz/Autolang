@@ -55,8 +55,7 @@ ExprNode *CreateArrayNode::optimize(in_func) {
 			}
 		}
 		value = static_cast<HasClassIdNode *>(value->optimize(in_data));
-		if (value->classId == valueMustBeClassId ||
-		    ExprNode::canCast(in_data, value->classId, valueMustBeClassId)) {
+		if (value->classId == valueMustBeClassId) {
 			continue;
 		}
 		switch (value->classId) {
@@ -92,7 +91,8 @@ ExprNode *CreateArrayNode::optimize(in_func) {
 				           "to allow null elements.");
 			}
 		}
-		if (valueMustBeClassId == DefaultClass::anyClassId) {
+		if (valueMustBeClassId == DefaultClass::anyClassId ||
+		    compile.classes[value->classId]->inheritance.get(valueMustBeClassId)) {
 			continue;
 		}
 		throwError("Cannot cast " +
@@ -179,7 +179,8 @@ void CreateArrayNode::optimizeAndInferenceType(in_func) {
 			continue;
 		}
 		if (value->classId == *valueMustBeClassId ||
-		    ExprNode::canCast(in_data, value->classId, *valueMustBeClassId)) {
+		    *valueMustBeClassId == DefaultClass::anyClassId ||
+		    compile.classes[value->classId]->inheritance.get(*valueMustBeClassId)) {
 			continue;
 		}
 		switch (value->classId) {
@@ -200,8 +201,6 @@ void CreateArrayNode::optimizeAndInferenceType(in_func) {
 				if (*valueMustBeClassId == DefaultClass::intClassId ||
 				    *valueMustBeClassId == DefaultClass::boolClassId) {
 					valueMustBeClassId = DefaultClass::floatClassId;
-					value = context.castPool.push(value,
-					                              DefaultClass::floatClassId);
 					mustReload = true;
 					continue;
 				}
@@ -246,7 +245,8 @@ void CreateArrayNode::optimizeAndInferenceType(in_func) {
 	if (mustReload) {
 		for (auto *&value : values) {
 			if (value->classId == *valueMustBeClassId ||
-			    ExprNode::canCast(in_data, value->classId, *valueMustBeClassId)) {
+			    *valueMustBeClassId == DefaultClass::anyClassId ||
+			    compile.classes[value->classId]->inheritance.get(*valueMustBeClassId)) {
 				continue;
 			}
 			switch (value->classId) {

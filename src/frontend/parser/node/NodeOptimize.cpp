@@ -178,10 +178,16 @@ ExprNode *UnknowNode::resolve(in_func) {
 		if (funcInfo) {
 			auto varNode = funcInfo->findDeclaration(in_data, line, nameId, justFindStaticMember);
 			if (varNode) {
-				if (static_cast<AccessNode *>(varNode)->nullable)
-					static_cast<AccessNode *>(varNode)->nullable = nullable;
-				ExprNode::deleteNode(this);
-				return varNode;
+				if (contextCallFuncId == context.mainFunctionId &&
+				    varNode->declaration &&
+				    varNode->declaration->tokenIndex > tokenIndex) {
+					// Forward reference in top-level main function is not allowed
+				} else {
+					if (static_cast<AccessNode *>(varNode)->nullable)
+						static_cast<AccessNode *>(varNode)->nullable = nullable;
+					ExprNode::deleteNode(this);
+					return varNode;
+				}
 			}
 		}
 	}

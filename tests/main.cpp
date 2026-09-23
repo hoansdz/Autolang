@@ -16,9 +16,12 @@ namespace AutolangTests {
 inline bool runCompileTimeRuleTest(Autolang::ACompiler &compiler, const std::string &filepath) {
 	bool success = false;
 	try {
+		compiler.setStrictMode(true);
 		success = compiler.compile(filepath.c_str(),
 		                           Autolang::LibraryConfig(false, true, true));
+		compiler.setStrictMode(false);
 	} catch (...) {
+		compiler.setStrictMode(false);
 		compiler.refresh();
 		std::cerr << "[Compile Rule] Exception threw during compile: " << filepath << "\n";
 		return false;
