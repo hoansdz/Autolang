@@ -56,8 +56,7 @@ ExprNode *CreateArrayNode::optimize(in_func) {
 		}
 		value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 		if (value->classId == valueMustBeClassId ||
-		    compile.classes[value->classId]->inheritance.get(
-		        valueMustBeClassId)) {
+		    ExprNode::canCast(in_data, value->classId, valueMustBeClassId)) {
 			continue;
 		}
 		switch (value->classId) {
@@ -180,8 +179,7 @@ void CreateArrayNode::optimizeAndInferenceType(in_func) {
 			continue;
 		}
 		if (value->classId == *valueMustBeClassId ||
-		    compile.classes[value->classId]->inheritance.get(
-		        *valueMustBeClassId)) {
+		    ExprNode::canCast(in_data, value->classId, *valueMustBeClassId)) {
 			continue;
 		}
 		switch (value->classId) {
@@ -229,14 +227,15 @@ void CreateArrayNode::optimizeAndInferenceType(in_func) {
 				continue;
 			}
 		}
-		if (valueMustBeClassId == DefaultClass::anyClassId) {
-			continue;
+		if (valueMustBeClassId && *valueMustBeClassId != DefaultClass::anyClassId) {
+			ClassId commonId = ExprNode::getCommonSuperType(in_data, *valueMustBeClassId, value->classId);
+			if (commonId != *valueMustBeClassId) {
+				valueMustBeClassId = commonId;
+				valueClassDeclaration = ExprNode::getOrCreateClassDeclaration(in_data, commonId, line, false);
+				mustReload = true;
+				continue;
+			}
 		}
-		throwError("Cannot cast " +
-		           compile.classes[value->classId]->getName(compile) + " to " +
-		           compile.classes[*valueMustBeClassId]->getName(compile) +
-		           "\nHint: Ensure all elements in the Array match the "
-		           "expected element type or provide an explicit conversion.");
 	}
 	if (!valueMustBeClassId) {
 		throwError(
@@ -246,7 +245,8 @@ void CreateArrayNode::optimizeAndInferenceType(in_func) {
 	}
 	if (mustReload) {
 		for (auto *&value : values) {
-			if (value->classId == *valueMustBeClassId) {
+			if (value->classId == *valueMustBeClassId ||
+			    ExprNode::canCast(in_data, value->classId, *valueMustBeClassId)) {
 				continue;
 			}
 			switch (value->classId) {
@@ -297,6 +297,9 @@ void CreateArrayNode::optimizeAndInferenceType(in_func) {
 		}
 	}
 	valueClassDeclaration->classId = *valueMustBeClassId;
+	if (nullable) {
+		valueClassDeclaration->nullable = true;
+	}
 	if (valueClassDeclaration->baseClassLexerStringId == 0) {
 		valueClassDeclaration->baseClassLexerStringId =
 		    context.createLexerStringIfNotExists(

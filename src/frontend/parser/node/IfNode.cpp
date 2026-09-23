@@ -6,6 +6,187 @@
 
 namespace Autolang {
 
+void SmartCastInfo::apply() {
+	if (!declaration) return;
+	originalClassId = declaration->classId;
+	originalClassDeclaration = declaration->classDeclaration;
+	originalNullable = declaration->nullable;
+
+	if (hasTargetClass) {
+		declaration->classId = targetClassId;
+		declaration->classDeclaration = targetClassDeclaration;
+	}
+	declaration->nullable = targetNullable;
+}
+
+void SmartCastInfo::restore() {
+	if (!declaration) return;
+	declaration->classId = originalClassId;
+	declaration->classDeclaration = originalClassDeclaration;
+	declaration->nullable = originalNullable;
+}
+
+static DeclarationNode *extractDeclaration(in_func, HasClassIdNode *node) {
+	if (!node) return nullptr;
+	if (node->kind == NodeType::VAR || node->kind == NodeType::GET_PROP) {
+		return static_cast<AccessNode *>(node)->declaration;
+	}
+	if (node->kind == NodeType::UNKNOW) {
+		auto unknow = static_cast<UnknowNode *>(node);
+		auto found = context.findDeclaration(in_data, unknow->line, unknow->nameId, true);
+		if (found && (found->kind == NodeType::VAR || found->kind == NodeType::GET_PROP)) {
+			return static_cast<AccessNode *>(found)->declaration;
+		}
+	}
+	return nullptr;
+}
+
+static bool isNullNode(in_func, HasClassIdNode *node) {
+	if (!node) return false;
+	if (node->kind == NodeType::CONST_VAL && node->classId == DefaultClass::nullClassId) {
+		return true;
+	}
+	if (node->kind == NodeType::UNKNOW) {
+		auto unknow = static_cast<UnknowNode *>(node);
+		if (unknow->nameId == lexerIdnull) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static bool extractTargetClass(in_func, HasClassIdNode *right, ClassId &outClassId, ClassDeclaration *&outDecl) {
+	if (!right) return false;
+	if (right->kind == NodeType::CLASS_ACCESS) {
+		auto ca = static_cast<ClassAccessNode *>(right);
+		outClassId = ca->classId;
+		outDecl = context.classDeclarationAllocator.push();
+		outDecl->line = ca->line;
+		outDecl->classId = ca->classId;
+		return true;
+	}
+	if (right->kind == NodeType::UNKNOW) {
+		auto unknow = static_cast<UnknowNode *>(right);
+		LexerStringId nameId = unknow->nameId;
+		auto itDef = context.defaultClassMap.find(nameId);
+		if (itDef != context.defaultClassMap.end()) {
+			outClassId = itDef->second;
+			outDecl = context.classDeclarationAllocator.push();
+			outDecl->line = unknow->line;
+			outDecl->baseClassLexerStringId = nameId;
+			outDecl->classId = outClassId;
+			return true;
+		}
+		auto itAlias = context.typealiasMap.find(nameId);
+		if (itAlias != context.typealiasMap.end()) {
+			if (itAlias->second->classDeclaration && itAlias->second->classDeclaration->classId) {
+				outClassId = *itAlias->second->classDeclaration->classId;
+				outDecl = itAlias->second->classDeclaration;
+				return true;
+			}
+		}
+		auto itCls = compile.classMap.find(std::string(context.lexerString[nameId]));
+		if (itCls != compile.classMap.end()) {
+			outClassId = itCls->second;
+			outDecl = context.classDeclarationAllocator.push();
+			outDecl->line = unknow->line;
+			outDecl->baseClassLexerStringId = nameId;
+			outDecl->classId = outClassId;
+			return true;
+		}
+	}
+	return false;
+}
+
+static void addSmartCast(SmallVector<SmartCastInfo, 2> &casts, DeclarationNode *decl,
+                         bool nullable, bool hasClass = false, ClassId classId = 0,
+                         ClassDeclaration *classDecl = nullptr) {
+	if (!decl) return;
+	for (auto &c : casts) {
+		if (c.declaration == decl) {
+			c.targetNullable = nullable;
+			if (hasClass) {
+				c.hasTargetClass = true;
+				c.targetClassId = classId;
+				c.targetClassDeclaration = classDecl;
+			}
+			return;
+		}
+	}
+	SmartCastInfo info;
+	info.declaration = decl;
+	info.targetNullable = nullable;
+	info.hasTargetClass = hasClass;
+	info.targetClassId = classId;
+	info.targetClassDeclaration = classDecl;
+	casts.push_back(info);
+}
+
+void extractSmartCasts(in_func, HasClassIdNode *cond,
+                       SmallVector<SmartCastInfo, 2> &trueCasts,
+                       SmallVector<SmartCastInfo, 2> &falseCasts) {
+	if (!cond) return;
+	if (cond->kind == NodeType::BINARY) {
+		auto binary = static_cast<BinaryNode *>(cond);
+		if (binary->op == Lexer::TokenType::AND_AND || binary->op == Lexer::TokenType::AND) {
+			SmallVector<SmartCastInfo, 2> dummy1, dummy2;
+			extractSmartCasts(in_data, binary->left, trueCasts, dummy1);
+			extractSmartCasts(in_data, binary->right, trueCasts, dummy2);
+			return;
+		}
+		if (binary->op == Lexer::TokenType::OR_OR || binary->op == Lexer::TokenType::OR) {
+			SmallVector<SmartCastInfo, 2> dummy1, dummy2;
+			extractSmartCasts(in_data, binary->left, dummy1, falseCasts);
+			extractSmartCasts(in_data, binary->right, dummy2, falseCasts);
+			return;
+		}
+		if (binary->op == Lexer::TokenType::NOTEQ || binary->op == Lexer::TokenType::NOTEQEQ) {
+			if (isNullNode(in_data, binary->right)) {
+				auto decl = extractDeclaration(in_data, binary->left);
+				if (decl) addSmartCast(trueCasts, decl, false);
+			} else if (isNullNode(in_data, binary->left)) {
+				auto decl = extractDeclaration(in_data, binary->right);
+				if (decl) addSmartCast(trueCasts, decl, false);
+			}
+			return;
+		}
+		if (binary->op == Lexer::TokenType::EQEQ || binary->op == Lexer::TokenType::EQEQEQ) {
+			if (isNullNode(in_data, binary->right)) {
+				auto decl = extractDeclaration(in_data, binary->left);
+				if (decl) addSmartCast(falseCasts, decl, false);
+			} else if (isNullNode(in_data, binary->left)) {
+				auto decl = extractDeclaration(in_data, binary->right);
+				if (decl) addSmartCast(falseCasts, decl, false);
+			}
+			return;
+		}
+		if (binary->op == Lexer::TokenType::IS) {
+			auto decl = extractDeclaration(in_data, binary->left);
+			ClassId cid = 0;
+			ClassDeclaration *cdecl = nullptr;
+			if (decl && extractTargetClass(in_data, binary->right, cid, cdecl)) {
+				addSmartCast(trueCasts, decl, false, true, cid, cdecl);
+			}
+			return;
+		}
+		if (binary->op == Lexer::TokenType::NOT_IS) {
+			auto decl = extractDeclaration(in_data, binary->left);
+			ClassId cid = 0;
+			ClassDeclaration *cdecl = nullptr;
+			if (decl && extractTargetClass(in_data, binary->right, cid, cdecl)) {
+				addSmartCast(falseCasts, decl, false, true, cid, cdecl);
+			}
+			return;
+		}
+	} else if (cond->kind == NodeType::UNARY) {
+		auto unary = static_cast<UnaryNode *>(cond);
+		if (unary->op == Lexer::TokenType::EXMARK || unary->op == Lexer::TokenType::NOT) {
+			extractSmartCasts(in_data, unary->value, falseCasts, trueCasts);
+			return;
+		}
+	}
+}
+
 ExprNode *IfNode::resolve(in_func) {
 	condition = static_cast<HasClassIdNode *>(condition->resolve(in_data));
 	// if (condition->kind == NodeType::CONST_VAL) {
@@ -34,9 +215,25 @@ ExprNode *IfNode::resolve(in_func) {
 	// 	}
 	// 	return this;
 	// }
+	for (auto &cast : trueCasts) cast.apply();
 	ifTrue.resolve(in_data);
+	for (auto &cast : trueCasts) cast.restore();
+	if (!ifTrue.nodes.empty()) {
+		auto lastKind = ifTrue.nodes.back()->kind;
+		if (lastKind == NodeType::RET || lastKind == NodeType::THROW || lastKind == NodeType::SKIP) {
+			trueBranchReturns = true;
+		}
+	}
 	if (ifFalse) {
+		for (auto &cast : falseCasts) cast.apply();
 		ifFalse->resolve(in_data);
+		for (auto &cast : falseCasts) cast.restore();
+		if (!ifFalse->nodes.empty()) {
+			auto falseLastKind = ifFalse->nodes.back()->kind;
+			if (falseLastKind == NodeType::RET || falseLastKind == NodeType::THROW || falseLastKind == NodeType::SKIP) {
+				falseBranchReturns = true;
+			}
+		}
 	}
 	return this;
 }
@@ -80,12 +277,16 @@ ExprNode *IfNode::optimize(in_func) {
 		context.mustReturnValueNode = this;
 	}
 	if (!ifFalse || mustReturnValue) {
+		for (auto &cast : trueCasts) cast.apply();
 		ifTrue.optimize(in_data);
+		for (auto &cast : trueCasts) cast.restore();
 		ClassId trueClassId = classId;
 		if (ifFalse) {
+			for (auto &cast : falseCasts) cast.apply();
 			ifFalse = static_cast<BlockNode *>(ifFalse->optimize(in_data));
+			for (auto &cast : falseCasts) cast.restore();
 		} else {
-			if (ifTrue.hasValue() && condition->kind == NodeType::CONST_VAL &&
+			if (loadReturnBlock && ifTrue.hasValue() && condition->kind == NodeType::CONST_VAL &&
 			    static_cast<ConstValueNode *>(condition)->obj->b) {
 				mustReturnValue = true;
 			}
@@ -95,17 +296,22 @@ ExprNode *IfNode::optimize(in_func) {
 			ifTrue.autoCastToFloat = true;
 		}
 	} else {
+		for (auto &cast : trueCasts) cast.apply();
 		ifTrue.optimize(in_data);
+		for (auto &cast : trueCasts) cast.restore();
 		ClassId trueClassId = classId;
-		if (ifFalse)
+		if (ifFalse) {
+			for (auto &cast : falseCasts) cast.apply();
 			ifFalse = static_cast<BlockNode *>(ifFalse->optimize(in_data));
+			for (auto &cast : falseCasts) cast.restore();
+		}
 		if (classId == DefaultClass::floatClassId &&
 		    trueClassId == DefaultClass::intClassId) {
 			ifTrue.autoCastToFloat = true;
 		}
-		bool trueEndsEarly = !ifTrue.nodes.empty() && (ifTrue.nodes.back()->kind == NodeType::THROW || ifTrue.nodes.back()->kind == NodeType::RET);
-		bool falseEndsEarly = ifFalse && !ifFalse->nodes.empty() && (ifFalse->nodes.back()->kind == NodeType::THROW || ifFalse->nodes.back()->kind == NodeType::RET);
-		if ((ifTrue.hasValue() || trueEndsEarly) && (ifFalse && (ifFalse->hasValue() || falseEndsEarly)) && (ifTrue.hasValue() || (ifFalse && ifFalse->hasValue()))) {
+		bool trueEndsEarly = !ifTrue.nodes.empty() && (ifTrue.nodes.back()->kind == NodeType::THROW || ifTrue.nodes.back()->kind == NodeType::RET || ifTrue.nodes.back()->kind == NodeType::SKIP);
+		bool falseEndsEarly = ifFalse && !ifFalse->nodes.empty() && (ifFalse->nodes.back()->kind == NodeType::THROW || ifFalse->nodes.back()->kind == NodeType::RET || ifFalse->nodes.back()->kind == NodeType::SKIP);
+		if (loadReturnBlock && (ifTrue.hasValue() || trueEndsEarly) && (ifFalse && (ifFalse->hasValue() || falseEndsEarly)) && (ifTrue.hasValue() || (ifFalse && ifFalse->hasValue()))) {
 			mustReturnValue = true;
 			if (trueEndsEarly && ifFalse && ifFalse->hasValue()) {
 				classId = ifFalse->classId;
@@ -116,6 +322,9 @@ ExprNode *IfNode::optimize(in_func) {
 				classDeclaration = ifTrue.classDeclaration;
 				nullable = ifTrue.isNullable();
 			}
+		}
+		if (classId == DefaultClass::anyClassId || (!classDeclaration && classId != DefaultClass::nullClassId)) {
+			classDeclaration = ExprNode::getOrCreateClassDeclaration(in_data, classId, line, nullable);
 		}
 	}
 	// std::cerr << getClassName(in_data) << "\n";
@@ -133,6 +342,23 @@ ExprNode *IfNode::copy(in_func) {
 	auto newNode = context.ifPool.push(line, mustReturnValue);
 	newNode->condition =
 	    static_cast<HasClassIdNode *>(condition->copy(in_data));
+	newNode->trueCasts = trueCasts;
+	newNode->falseCasts = falseCasts;
+	newNode->trueBranchReturns = trueBranchReturns;
+	newNode->falseBranchReturns = falseBranchReturns;
+	auto funcInfo = context.getCurrentFunctionInfo(in_data);
+	for (auto &cast : newNode->trueCasts) {
+		auto it = funcInfo->reflectDeclarationMap.find(cast.declaration);
+		if (it != funcInfo->reflectDeclarationMap.end()) {
+			cast.declaration = it->second;
+		}
+	}
+	for (auto &cast : newNode->falseCasts) {
+		auto it = funcInfo->reflectDeclarationMap.find(cast.declaration);
+		if (it != funcInfo->reflectDeclarationMap.end()) {
+			cast.declaration = it->second;
+		}
+	}
 	newNode->ifTrue.nodes.reserve(ifTrue.nodes.size());
 	for (auto node : ifTrue.nodes) {
 		newNode->ifTrue.nodes.push_back(node->copy(in_data));

@@ -216,7 +216,16 @@ HasClassIdNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 					currentIfNode->ifFalse->nodes.push_back(ifNode);
 					currentIfNode = ifNode;
 				}
+				extractSmartCasts(in_data, ifNode->condition, ifNode->trueCasts, ifNode->falseCasts);
+				for (auto &cast : ifNode->trueCasts) cast.apply();
 				loadBody<false>(in_data, ifNode->ifTrue.nodes, i, true);
+				for (auto &cast : ifNode->trueCasts) cast.restore();
+				if (!ifNode->ifTrue.nodes.empty()) {
+					auto lastKind = ifNode->ifTrue.nodes.back()->kind;
+					if (lastKind == NodeType::RET || lastKind == NodeType::THROW || lastKind == NodeType::SKIP) {
+						ifNode->trueBranchReturns = true;
+					}
+				}
 				break;
 			}
 		}

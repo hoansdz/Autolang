@@ -98,7 +98,21 @@ ExprNode *BinaryNode::leftOpRight(in_func, ConstValueNode *l,
 
 ExprNode *BinaryNode::resolve(in_func) {
 	left = static_cast<HasClassIdNode *>(left->resolve(in_data));
-	right = static_cast<HasClassIdNode *>(right->resolve(in_data));
+	if (op == Lexer::TokenType::AND_AND || op == Lexer::TokenType::AND) {
+		SmallVector<SmartCastInfo, 2> trueCasts, dummy;
+		extractSmartCasts(in_data, left, trueCasts, dummy);
+		for (auto &cast : trueCasts) cast.apply();
+		right = static_cast<HasClassIdNode *>(right->resolve(in_data));
+		for (auto &cast : trueCasts) cast.restore();
+	} else if (op == Lexer::TokenType::OR_OR || op == Lexer::TokenType::OR) {
+		SmallVector<SmartCastInfo, 2> dummy, falseCasts;
+		extractSmartCasts(in_data, left, dummy, falseCasts);
+		for (auto &cast : falseCasts) cast.apply();
+		right = static_cast<HasClassIdNode *>(right->resolve(in_data));
+		for (auto &cast : falseCasts) cast.restore();
+	} else {
+		right = static_cast<HasClassIdNode *>(right->resolve(in_data));
+	}
 	switch (op) {
 		case Lexer::TokenType::IN_:
 		case Lexer::TokenType::NOT_IN: {
@@ -147,8 +161,10 @@ ExprNode *BinaryNode::resolve(in_func) {
 				           "Provide a valid class name on the right side of "
 				           "'as' (e.g. value as Type).");
 			}
+			bool isSafeCast = (op == Lexer::TokenType::SAFE_CAST);
+			bool isTargetNullable = isSafeCast || right->isNullable();
 			auto result = context.runtimeCastPool.push(
-			    left, right->classId, op == Lexer::TokenType::SAFE_CAST);
+			    left, right->classId, isSafeCast, isTargetNullable);
 			left = nullptr;
 			ExprNode::deleteNode(this);
 			return result->resolve(in_data);
@@ -191,7 +207,21 @@ ExprNode *BinaryNode::resolve(in_func) {
 
 ExprNode *BinaryNode::optimize(in_func) {
 	left = static_cast<HasClassIdNode *>(left->optimize(in_data));
-	right = static_cast<HasClassIdNode *>(right->optimize(in_data));
+	if (op == Lexer::TokenType::AND_AND || op == Lexer::TokenType::AND) {
+		SmallVector<SmartCastInfo, 2> trueCasts, dummy;
+		extractSmartCasts(in_data, left, trueCasts, dummy);
+		for (auto &cast : trueCasts) cast.apply();
+		right = static_cast<HasClassIdNode *>(right->optimize(in_data));
+		for (auto &cast : trueCasts) cast.restore();
+	} else if (op == Lexer::TokenType::OR_OR || op == Lexer::TokenType::OR) {
+		SmallVector<SmartCastInfo, 2> dummy, falseCasts;
+		extractSmartCasts(in_data, left, dummy, falseCasts);
+		for (auto &cast : falseCasts) cast.apply();
+		right = static_cast<HasClassIdNode *>(right->optimize(in_data));
+		for (auto &cast : falseCasts) cast.restore();
+	} else {
+		right = static_cast<HasClassIdNode *>(right->optimize(in_data));
+	}
 	switch (left->kind) {
 		case NodeType::CONST_VAL:
 			static_cast<ConstValueNode *>(left)->isLoadPrimary = true;
@@ -438,6 +468,10 @@ ExprNode *BinaryNode::optimize(in_func) {
 				op = Lexer::TokenType::EQEQEQ;
 				return this;
 			}
+			if (left->classId == DefaultClass::anyClassId ||
+			    right->classId == DefaultClass::anyClassId) {
+				return this;
+			}
 			break;
 		}
 		case Lexer::TokenType::NOTEQ: {
@@ -458,6 +492,10 @@ ExprNode *BinaryNode::optimize(in_func) {
 			    compile.classes[left->classId]->classFlags &
 			        ClassFlags::CLASS_IS_ENUM) {
 				op = Lexer::TokenType::NOTEQEQ;
+				return this;
+			}
+			if (left->classId == DefaultClass::anyClassId ||
+			    right->classId == DefaultClass::anyClassId) {
 				return this;
 			}
 			break;
@@ -506,6 +544,7 @@ ExprNode *BinaryNode::optimize(in_func) {
 	}
 
 	LexerStringId opMethodId = 0;
+	bool isComparisonOp = false;
 	switch (op) {
 		case Lexer::TokenType::PLUS:
 			opMethodId = lexerIdplus;
@@ -521,6 +560,13 @@ ExprNode *BinaryNode::optimize(in_func) {
 			break;
 		case Lexer::TokenType::PERCENT:
 			opMethodId = lexerIdrem;
+			break;
+		case Lexer::TokenType::LT:
+		case Lexer::TokenType::LTE:
+		case Lexer::TokenType::GT:
+		case Lexer::TokenType::GTE:
+			opMethodId = lexerIdcompareTo;
+			isComparisonOp = true;
 			break;
 		default:
 			break;
@@ -555,7 +601,15 @@ ExprNode *BinaryNode::optimize(in_func) {
 			left = nullptr;
 			right = nullptr;
 			callNode->resolve(in_data);
-			return callNode->optimize(in_data);
+			auto optimizedCall = static_cast<HasClassIdNode *>(callNode->optimize(in_data));
+			if (!isComparisonOp) {
+				return optimizedCall;
+			}
+			auto zeroConst = context.constValuePool.push(line, (int64_t)0);
+			auto cmpNode = context.binaryNodePool.push(
+			    line, tokenIndex, context.currentClassId, op, optimizedCall, zeroConst);
+			cmpNode->resolve(in_data);
+			return cmpNode->optimize(in_data);
 		}
 	}
 
@@ -587,6 +641,14 @@ bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
 	auto it = context.operatorTable.find(op);
 	if (it == context.operatorTable.end())
 		return false;
+	if ((left->kind == NodeType::VAR &&
+	     static_cast<VarNode *>(left)->declaration->isCapturedByClosure &&
+	     !static_cast<VarNode *>(left)->declaration->isGlobal) ||
+	    (right->kind == NodeType::VAR &&
+	     static_cast<VarNode *>(right)->declaration->isCapturedByClosure &&
+	     !static_cast<VarNode *>(right)->declaration->isGlobal)) {
+		return false;
+	}
 	OperatorId operatorId = it->second;
 	switch (left->kind) {
 		case NodeType::VAR: {

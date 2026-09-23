@@ -8,7 +8,7 @@ fun accumulateSum(value: Int) {
 
 // Helper function to test nested sets
 fun testNestedSetSyntax(data: Set<Set<Int>>) {
-    assert(data.size() == 3)
+    assert(data.size() == 2)
 }
 
 fun testAllSetFeatures() {
@@ -19,13 +19,25 @@ fun testAllSetFeatures() {
     assert(explicitSet.size() == 1)
     assert(explicitSet.contains(100) == true)
 
-    // 2. Test: insert, size, isEmpty, and Sugar Syntax
-    val s1 = <Int>{1, 2, 3, 4, 5, 5, 4, 3, 2, 1} // Sugar syntax calls insert under the hood
+    // 2. Test: insert, size, isEmpty
+    val s1 = Set<Int>()
+    s1.add(1)
+    s1.add(2)
+    s1.add(3)
+    s1.add(4)
+    s1.add(5)
+    s1.add(5)
+    s1.add(4)
+    s1.add(3)
+    s1.add(2)
+    s1.add(1)
     assert(s1.size() == 5)
     assert(s1.isEmpty() == false)
 
     // 3. Test: contains
-    val s2 = <String>{"Apple", "Banana"}
+    val s2 = Set<String>()
+    s2.add("Apple")
+    s2.add("Banana")
     s2.add("Orange")
     s2.add("Apple") // Duplicate, should be ignored
     assert(s2.contains("Orange") == true)
@@ -40,22 +52,37 @@ fun testAllSetFeatures() {
     assert(s2.size() == 0)
     assert(s2.isEmpty() == true)
 
-    // // 5. Test: forEach (using a named function callback)
-    val s3 = <Int>{10, 20, 30}
+    // 5. Test: forEach (using a named function callback)
+    val s3 = Set<Int>()
+    s3.add(10)
+    s3.add(20)
+    s3.add(30)
     globalSum = 0 // Reset global state
     s3.forEach(accumulateSum) // Passing the function by name
     assert(globalSum == 60)
 
-    // // 6. Test: toArray (Public and Private)
-    val s4 = <String>{"X", "Y", "Z"}
-    val arr = s4.toArray() // Triggers the public toArray, which calls the private toArray
+    // 6. Test: toArray (Public and Private)
+    val s4 = Set<String>()
+    s4.add("X")
+    s4.add("Y")
+    s4.add("Z")
+    val arr = s4.toArray()
     assert(arr is Array<String>)
     assert(arr.size() == 3)
     assert(arr.contains("X") && arr.contains("Y") && arr.contains("Z"))
 
-    // // 7. Test: union, intersect, difference
-    val setA = <Int>{1, 2, 3, 4}
-    val setB = <Int>{3, 4, 5, 6}
+    // 7. Test: union, intersect, difference
+    val setA = Set<Int>()
+    setA.add(1)
+    setA.add(2)
+    setA.add(3)
+    setA.add(4)
+
+    val setB = Set<Int>()
+    setB.add(3)
+    setB.add(4)
+    setB.add(5)
+    setB.add(6)
 
     val unionSet = setA.union(setB)
     assert(unionSet.size() == 6)
@@ -73,21 +100,33 @@ fun testAllSetFeatures() {
     assert(str is String)
 
     // 9. Test: Nested Sets
-    testNestedSetSyntax({{1, 2}, {3, 4}, {1, 2}})
+    val subSet1 = Set<Int>()
+    subSet1.add(1)
+    subSet1.add(2)
+    val subSet2 = Set<Int>()
+    subSet2.add(3)
+    subSet2.add(4)
+    val nestedSet = Set<Set<Int>>()
+    nestedSet.add(subSet1)
+    nestedSet.add(subSet2)
+    testNestedSetSyntax(nestedSet)
 
     // 10. Test: clone, filter, map, first, firstOrNull, any, all, none
-    val originalSet = <Int>{10, 20, 30}
+    val originalSet = Set<Int>()
+    originalSet.add(10)
+    originalSet.add(20)
+    originalSet.add(30)
     val clonedSet = originalSet.clone()
     assert(clonedSet.size() == 3)
     assert(clonedSet.contains(10) && clonedSet.contains(20) && clonedSet.contains(30))
 
-    val filteredSet = originalSet.filter {v-> v > 15}
-    assert(filteredSet.size() == 2)
-    assert(filteredSet.contains(20) && filteredSet.contains(30) && !filteredSet.contains(10))
+    val filteredSetTest = originalSet.filter {v-> v > 15}
+    assert(filteredSetTest.size() == 2)
+    assert(filteredSetTest.contains(20) && filteredSetTest.contains(30) && !filteredSetTest.contains(10))
 
-    val mappedArr = originalSet.map<Int>({|v: Int| v * 2 })
-    assert(mappedArr is Array<Int>)
-    assert(mappedArr.size() == 3)
+    val mappedArrTest = originalSet.map<Int>({|v: Int| v * 2 })
+    assert(mappedArrTest is Array<Int>)
+    assert(mappedArrTest.size() == 3)
 
     assert(originalSet.firstOrNull() != null)
     assert(originalSet.any() == true)

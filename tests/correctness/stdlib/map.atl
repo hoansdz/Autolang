@@ -12,8 +12,11 @@ class TestMapFeaturesExhaustive {
 		assert(explicitMap.isEmpty() == true)
 		assert(explicitMap.size() == 0)
 
-		// 2. Test: Sugar Syntax, set, get, size
-		val m = <String, Int>{"Apple": 10, "Banana": 20, "Cherry": 30}
+		// 2. Test: set, get, size
+		val m = Map<String, Int>()
+		m.set("Apple", 10)
+		m.set("Banana", 20)
+		m.set("Cherry", 30)
 		assert(m.size() == 3)
 		assert(m.get("Banana") == 20)
 		assert(m.get("Durian") == null) // Non-existent key returns null
@@ -33,7 +36,7 @@ class TestMapFeaturesExhaustive {
 		assert(m.size() == 2) // Only Apple and Cherry remain
 
 		// 5. Test: forEach (Create an Int, Int map for easy summation)
-		val numMap = <Int, Int>{1: 100, 2: 200, 3: 300}
+		val numMap = mapOf(1 to 100, 2 to 200, 3 to 300)
 		mapKeySum = 0
 		mapValueSum = 0
 		numMap.forEach {|key, value|
@@ -62,7 +65,7 @@ class TestMapFeaturesExhaustive {
 		assert(str.size() > 0)
 
 		// 8. Test: clone and filter
-		val origMap = <String, Int>{"A": 1, "B": 2, "C": 3}
+		val origMap = mapOf("A" to 1, "B" to 2, "C" to 3)
 		val clonedMap = origMap.clone()
 		assert(clonedMap.size() == 3)
 		assert(clonedMap.get("A") == 1 && clonedMap.get("B") == 2 && clonedMap.get("C") == 3)

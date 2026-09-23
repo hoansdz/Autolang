@@ -1,0 +1,68 @@
+class ScopeTestUser {
+    var name: String = ""
+    var age: Int = 0
+}
+
+// 1. run (no receiver)
+val r1 = run {
+    val a = 10
+    val b = 20
+    a + b
+}
+assert(r1 == 30, "run no-receiver test")
+
+// 2. receiver.run
+val r2 = "hello".run { it ->
+    it + " world"
+}
+assert(r2 == "hello world", "receiver.run test")
+
+// 3. receiver.let
+val r3 = 50.let { it ->
+    it * 2
+}
+assert(r3 == 100, "let test")
+
+// 4. receiver.also
+var sideEffect = 0
+val r4 = 123.also {
+    sideEffect = it
+}
+assert(r4 == 123, "also return caller")
+assert(sideEffect == 123, "also side effect")
+
+// 5. receiver.apply
+val u = ScopeTestUser()
+val r5 = u.apply { it ->
+    it.name = "John"
+    it.age = 25
+}
+assert(r5.name == "John", "apply return caller")
+assert(r5.age == 25, "apply modified caller")
+
+// 6. with(receiver) { ... }
+val r6 = with("autolang") { it ->
+    it.length
+}
+assert(r6 == 8, "with test")
+
+// 7. takeIf
+val t1 = "1234567890".takeIf { it -> it.length >= 10 }
+assert(t1 != null && t1 == "1234567890", "takeIf match")
+val t2 = "123".takeIf { it -> it.length >= 10 }
+assert(t2 == null, "takeIf mismatch")
+
+// 8. takeUnless
+val tu1 = "123".takeUnless { it -> it.length >= 10 }
+assert(tu1 != null && tu1 == "123", "takeUnless match")
+val tu2 = "1234567890".takeUnless { it -> it.length >= 10 }
+assert(tu2 == null, "takeUnless mismatch")
+
+// 9. safe-call chain: ?.takeIf?.let?:
+val nullStr: String? = null
+val s1 = nullStr?.takeIf { it -> it.length > 0 }?.let { it -> "matched" } ?: "fallback"
+assert(s1 == "fallback", "safe-call chain null")
+
+val validStr: String? = "0987654321"
+val s2 = validStr?.takeIf { it -> it.length >= 10 }?.let { it -> it } ?: "fallback"
+assert(s2 == "0987654321", "safe-call chain non-null")

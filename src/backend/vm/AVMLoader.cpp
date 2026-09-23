@@ -32,7 +32,6 @@ void AVM::start() {
 	initGlobalVariables();
 	// }
 	run();
-	// log();
 	// allowDebug = true;
 	while (allowDebug) {
 		std::string command;

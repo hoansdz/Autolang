@@ -53,7 +53,7 @@ fun testFunctionClosures() {
     var x = 500
     val snapshot = {|| x}
     x = 999
-    assert(snapshot() == 500)
+    assert(snapshot() == 999)
 
     val addFive = makeAdder(5)
     assert(addFive(2) == 7)

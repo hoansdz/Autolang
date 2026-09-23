@@ -73,6 +73,7 @@ enum NodeType : uint8_t {
 	WHEN,
 	GET_POINTER,
 	PAIR,
+	DESTRUCTURE,
 };
 
 struct DeclarationNode;
@@ -103,8 +104,10 @@ struct ExprNode {
 	static inline void deleteNode(ExprNode *node) {};
 	void loadOpcodeLine(in_func, std::vector<uint8_t> &bytecodes);
 	std::string getNodeType();
-	bool canCast(in_func, ClassDeclaration *from, ClassDeclaration *to);
-	bool canCast(in_func, ClassId from, ClassId to);
+	static bool canCast(in_func, ClassDeclaration *from, ClassDeclaration *to);
+	static bool canCast(in_func, ClassId from, ClassId to);
+	static ClassId getCommonSuperType(in_func, ClassId a, ClassId b);
+	static ClassDeclaration *getOrCreateClassDeclaration(in_func, ClassId classId, uint32_t line, bool nullable = false);
 	inline bool isNullableNode() {
 		switch (kind) {
 			case NodeType::VAR:
@@ -125,18 +128,14 @@ struct ExprNode {
 	virtual ExprNode *resolve(in_func) { return this; }
 	virtual ExprNode *optimize(in_func) { return this; }
 	virtual void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {};
+	virtual bool putBytecodesIfMustBeCalled(in_func,
+	                                        std::vector<uint8_t> &bytecodes) {
+		putBytecodes(in_data, bytecodes);
+		return true;
+	}
 	virtual void rewrite(in_func, uint8_t *bytecodes) {}
 	virtual ExprNode *copy(in_func) { return nullptr; }
 	virtual ~ExprNode() {}
-};
-
-struct SkipNode : ExprNode {
-	Lexer::TokenType type;
-	BytecodePos jumpBytePos;
-	SkipNode(Lexer::TokenType type, uint32_t line)
-	    : ExprNode(NodeType::SKIP, line), type(type) {}
-	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
-	void rewrite(in_func, uint8_t *bytecodes) override;
 };
 
 struct HasClassIdNode : ExprNode {
@@ -154,13 +153,30 @@ struct HasClassIdNode : ExprNode {
 	               ClassDeclaration *classDeclaration = nullptr)
 	    : ExprNode(kind, line), classDeclaration(classDeclaration),
 	      classId(classId) {}
-	virtual void putBytecodesIfMustBeCalled(in_func,
-	                                        std::vector<uint8_t> &bytecodes) {};
+	virtual bool putBytecodesIfMustBeCalled(in_func,
+	                                        std::vector<uint8_t> &bytecodes) override {
+		return false;
+	}
 	virtual bool isNullable() { return false; }
 	virtual bool isStaticValue() { return false; }
 	virtual void setNullable(bool nullable) {}
 	virtual void setIsStatic(bool isStatic) {}
 	virtual ~HasClassIdNode() {}
+};
+
+struct SkipNode : HasClassIdNode {
+	Lexer::TokenType type;
+	BytecodePos jumpBytePos;
+	SkipNode(Lexer::TokenType type, uint32_t line)
+	    : HasClassIdNode(NodeType::SKIP, DefaultClass::voidClassId, line), type(type) {}
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
+	void rewrite(in_func, uint8_t *bytecodes) override;
+	bool putBytecodesIfMustBeCalled(in_func,
+	                                std::vector<uint8_t> &bytecodes) override {
+		putBytecodes(in_data, bytecodes);
+		return true;
+	}
+	ExprNode *copy(in_func) override;
 };
 
 struct BlockNode : HasClassIdNode {
@@ -181,9 +197,10 @@ struct BlockNode : HasClassIdNode {
 	void setNullable(bool n) override { nullable = n; }
 	bool isStaticValue() override { return isStatic; }
 	void setIsStatic(bool s) override { isStatic = s; }
-	void putBytecodesIfMustBeCalled(in_func,
+	bool putBytecodesIfMustBeCalled(in_func,
 	                                std::vector<uint8_t> &bytecodes) override {
 		putBytecodes(in_data, bytecodes);
+		return true;
 	}
 
 	void loadReturnValueClassId(in_func, uint32_t line,
@@ -236,10 +253,13 @@ struct OptionalAccessNode : JumpIfNullNode {
 	    : JumpIfNullNode(NodeType::OPTIONAL_ACCESS, line), value(value) {}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
-	void putBytecodesIfMustBeCalled(in_func,
+	bool putBytecodesIfMustBeCalled(in_func,
 	                                std::vector<uint8_t> &bytecodes) override {
 		putBytecodes(in_data, bytecodes);
-		bytecodes.emplace_back(Opcode::POP);
+		if (classId != DefaultClass::voidClassId) {
+			bytecodes.emplace_back(Opcode::POP);
+		}
+		return true;
 	}
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	void rewrite(in_func, uint8_t *bytecodes) override;
@@ -258,10 +278,11 @@ struct NullCoalescingNode : JumpIfNullNode {
 	      right(right) {}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
-	void putBytecodesIfMustBeCalled(in_func,
+	bool putBytecodesIfMustBeCalled(in_func,
 	                                std::vector<uint8_t> &bytecodes) override {
-		putBytecodes(in_data, bytecodes);
-		bytecodes.emplace_back(Opcode::POP);
+		bool l = left ? left->putBytecodesIfMustBeCalled(in_data, bytecodes) : false;
+		bool r = right ? right->putBytecodesIfMustBeCalled(in_data, bytecodes) : false;
+		return l || r;
 	}
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	void rewrite(in_func, uint8_t *bytecodes) override;
@@ -279,6 +300,8 @@ struct UnknowNode : NullableNode {
 	FunctionId contextCallFuncId;
 	bool justFindStaticMember;
 	bool forceGlobal = false;
+	bool autoDeclare = false;
+	bool explicitNullable = false;
 	UnknowNode(uint32_t line, uint32_t tokenIndex,
 	           std::optional<ClassId> contextCallClassId,
 	           FunctionId contextCallFuncId, LexerStringId nameId,
@@ -290,6 +313,10 @@ struct UnknowNode : NullableNode {
 	      contextCallFuncId(contextCallFuncId),
 	      justFindStaticMember(justFindStaticMember),
 	      forceGlobal(forceGlobal) {}
+	void setNullable(bool n) override {
+		nullable = n;
+		explicitNullable = n;
+	}
 	ExprNode *resolve(in_func) override;
 	ExprNode *copy(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
@@ -317,8 +344,8 @@ struct ConstValueNode : HasClassIdNode {
 		double f;
 		AObject *obj;
 	};
-	bool isLoadPrimary = false;
 	uint32_t id = UINT32_MAX;
+	bool isLoadPrimary = false;
 	ConstValueNode()
 	    : HasClassIdNode(NodeType::CONST_VAL,
 	                     Autolang::DefaultClass::intClassId, line) {}
@@ -334,6 +361,10 @@ struct ConstValueNode : HasClassIdNode {
 	    : HasClassIdNode(NodeType::CONST_VAL,
 	                     Autolang::DefaultClass::stringClassId, line),
 	      str(new std::string(std::move(str))) {}
+	ConstValueNode(uint32_t line, std::string_view str)
+	    : HasClassIdNode(NodeType::CONST_VAL,
+	                     Autolang::DefaultClass::stringClassId, line),
+	      str(new std::string(str)) {}
 	ConstValueNode(uint32_t line, bool b)
 	    : HasClassIdNode(NodeType::CONST_VAL,
 	                     Autolang::DefaultClass::boolClassId, line),
@@ -360,27 +391,34 @@ struct GetPointerNode : NullableNode {
 	      value(value) {}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
-	void putBytecodesIfMustBeCalled(in_func,
-	                                std::vector<uint8_t> &bytecodes) override {}
+	bool putBytecodesIfMustBeCalled(in_func,
+	                                std::vector<uint8_t> &bytecodes) override {
+		return false;
+	}
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	void rewrite(in_func, uint8_t *bytecodes) override;
 	ExprNode *copy(in_func) override;
 	bool isStaticValue() override { return value->isStaticValue(); }
 };
 
-struct ReturnNode : ExprNode {
+struct ReturnNode : HasClassIdNode {
 	// Current function
-	FunctionId funcId;
 	HasClassIdNode *value;
+	FunctionId funcId;
 	bool loaded = false;
 	bool throwErrIfVoid = false;
 	ReturnNode(uint32_t line, FunctionId funcId, HasClassIdNode *value)
-	    : ExprNode(NodeType::RET, line), funcId(funcId), value(value) {}
+	    : HasClassIdNode(NodeType::RET, DefaultClass::voidClassId, line), value(value), funcId(funcId) {}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
 	static void putOptimizedBytecodes(in_func, HasClassIdNode *value,
 	                                  std::vector<uint8_t> &bytecodes);
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
+	bool putBytecodesIfMustBeCalled(in_func,
+	                                std::vector<uint8_t> &bytecodes) override {
+		putBytecodes(in_data, bytecodes);
+		return true;
+	}
 	inline void rewrite(in_func, uint8_t *bytecodes) override {
 		if (value)
 			value->rewrite(in_data, bytecodes);
@@ -402,9 +440,14 @@ struct UnaryNode : HasClassIdNode {
 	template <Opcode normal, Opcode local, Opcode global, Opcode local_member,
 	          Opcode global_member>
 	void putOptimizedBytecodes(in_func, std::vector<uint8_t> &bytecodes);
-	void putBytecodesIfMustBeCalled(in_func,
+	bool putBytecodesIfMustBeCalled(in_func,
 	                                std::vector<uint8_t> &bytecodes) override {
-		value->putBytecodesIfMustBeCalled(in_data, bytecodes);
+		if (op == Lexer::TokenType::PLUS_PLUS || op == Lexer::TokenType::MINUS_MINUS) {
+			putBytecodes(in_data, bytecodes);
+			bytecodes.emplace_back(Opcode::POP);
+			return true;
+		}
+		return value ? value->putBytecodesIfMustBeCalled(in_data, bytecodes) : false;
 	}
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	inline void rewrite(in_func, uint8_t *bytecodes) override {
@@ -418,26 +461,27 @@ struct UnaryNode : HasClassIdNode {
 
 // 1 + 2 * 3 ...
 struct BinaryNode : HasClassIdNode {
-	Lexer::TokenType op;
-	uint32_t tokenIndex;
 	std::optional<ClassId> contextCallClassId;
 	HasClassIdNode *left;
 	HasClassIdNode *right;
+	uint32_t tokenIndex;
+	Lexer::TokenType op;
 	bool optimized =
 	    false; // For && to skip right expression or || to jump to end
 	BinaryNode(uint32_t line, uint32_t tokenIndex,
 	           std::optional<ClassId> contextCallClassId, Lexer::TokenType op,
 	           HasClassIdNode *left, HasClassIdNode *right)
-	    : HasClassIdNode(NodeType::BINARY, 0, line), op(op),
-	      tokenIndex(tokenIndex), contextCallClassId(contextCallClassId),
-	      left(left), right(right) {}
+	    : HasClassIdNode(NodeType::BINARY, 0, line),
+	      contextCallClassId(contextCallClassId), left(left), right(right),
+	      tokenIndex(tokenIndex), op(op) {}
 	ExprNode *leftOpRight(in_func, ConstValueNode *l, ConstValueNode *r);
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
-	void putBytecodesIfMustBeCalled(in_func,
+	bool putBytecodesIfMustBeCalled(in_func,
 	                                std::vector<uint8_t> &bytecodes) override {
-		putBytecodes(in_data, bytecodes);
-		bytecodes.emplace_back(Opcode::POP);
+		bool l = left ? left->putBytecodesIfMustBeCalled(in_data, bytecodes) : false;
+		bool r = right ? right->putBytecodesIfMustBeCalled(in_data, bytecodes) : false;
+		return l || r;
 	}
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	static bool putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
@@ -465,9 +509,9 @@ struct CastNode : NullableNode { // #
 	      value(value) {}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
-	void putBytecodesIfMustBeCalled(in_func,
+	bool putBytecodesIfMustBeCalled(in_func,
 	                                std::vector<uint8_t> &bytecodes) override {
-		value->putBytecodesIfMustBeCalled(in_data, bytecodes);
+		return value ? value->putBytecodesIfMustBeCalled(in_data, bytecodes) : false;
 	}
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	inline void rewrite(in_func, uint8_t *bytecodes) override {
@@ -480,16 +524,21 @@ struct CastNode : NullableNode { // #
 
 struct RuntimeCastNode : NullableNode { // #
 	HasClassIdNode *value;
-	RuntimeCastNode(HasClassIdNode *value, ClassId classId, bool isSafeCast)
-	    : NullableNode(NodeType::RUNTIME_CAST, classId, isSafeCast,
-	                   value->line),
-	      value(value) {}
+	bool isSafeCast;
+	bool isTargetNullable;
+	RuntimeCastNode(HasClassIdNode *value, ClassId classId, bool isSafeCast,
+	                bool isTargetNullable = false)
+	    : NullableNode(NodeType::RUNTIME_CAST, classId,
+	                   isSafeCast || isTargetNullable, value->line),
+	      value(value), isSafeCast(isSafeCast),
+	      isTargetNullable(isTargetNullable) {}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
-	void putBytecodesIfMustBeCalled(in_func,
+	bool putBytecodesIfMustBeCalled(in_func,
 	                                std::vector<uint8_t> &bytecodes) override {
 		putBytecodes(in_data, bytecodes);
 		bytecodes.emplace_back(Opcode::POP);
+		return true;
 	}
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	inline void rewrite(in_func, uint8_t *bytecodes) override {
@@ -522,9 +571,9 @@ struct GetPropNode : AccessNode {
 	ExprNode *resolve(in_func) override;
 	bool optimizeSkipIfNotFoundMember(in_func);
 	ExprNode *optimize(in_func) override;
-	void putBytecodesIfMustBeCalled(in_func,
+	bool putBytecodesIfMustBeCalled(in_func,
 	                                std::vector<uint8_t> &bytecodes) override {
-		caller->putBytecodesIfMustBeCalled(in_data, bytecodes);
+		return caller ? caller->putBytecodesIfMustBeCalled(in_data, bytecodes) : false;
 	}
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	void rewrite(in_func, uint8_t *bytecodes) override;
@@ -534,22 +583,49 @@ struct GetPropNode : AccessNode {
 	~GetPropNode();
 };
 
+struct SmartCastInfo {
+	DeclarationNode *declaration = nullptr;
+	ClassDeclaration *targetClassDeclaration = nullptr;
+	ClassDeclaration *originalClassDeclaration = nullptr;
+
+	ClassId targetClassId = 0;
+	ClassId originalClassId = 0;
+
+	bool targetNullable = false;
+	bool hasTargetClass = false;
+	bool originalNullable = false;
+
+	void apply();
+	void restore();
+};
+
+void extractSmartCasts(in_func, HasClassIdNode *cond,
+                       SmallVector<SmartCastInfo, 2> &trueCasts,
+                       SmallVector<SmartCastInfo, 2> &falseCasts);
+
 struct IfNode : NullableNode {
 	HasClassIdNode *condition;
 	BlockNode ifTrue;
 	BlockNode *ifFalse = nullptr;
 	bool mustReturnValue = false;
 	bool isStatic = false;
+	bool trueBranchReturns = false;
+	bool falseBranchReturns = false;
 	SmallVector<BytecodePos, 4> jumpPosition;
+	SmallVector<SmartCastInfo, 2> trueCasts;
+	SmallVector<SmartCastInfo, 2> falseCasts;
 	IfNode(uint32_t line, bool mustReturnValue)
 	    : NullableNode(NodeType::IF, DefaultClass::nullClassId, false, line),
 	      ifTrue(line), mustReturnValue(mustReturnValue) {}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
-	void putBytecodesIfMustBeCalled(in_func,
+	bool putBytecodesIfMustBeCalled(in_func,
 	                                std::vector<uint8_t> &bytecodes) override {
 		putBytecodes(in_data, bytecodes);
-		bytecodes.emplace_back(Opcode::POP);
+		if (mustReturnValue) {
+			bytecodes.emplace_back(Opcode::POP);
+		}
+		return true;
 	}
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	void rewrite(in_func, uint8_t *bytecodes) override;
@@ -561,6 +637,7 @@ struct IfNode : NullableNode {
 
 struct WhileNode : CanBreakContinueNode {
 	HasClassIdNode *condition;
+	SmallVector<SmartCastInfo, 2> trueCasts;
 	WhileNode(uint32_t line) : CanBreakContinueNode(NodeType::WHILE, line) {}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
@@ -581,18 +658,27 @@ struct WhileNode : CanBreakContinueNode {
 
 // detach = value
 struct SetNode : HasClassIdNode {
-	Lexer::TokenType op;
 	HasClassIdNode *detach;
 	HasClassIdNode *value;
+	Lexer::TokenType op;
 	bool justDetachStatic = false;
 	SetNode(uint32_t line, HasClassIdNode *detach, HasClassIdNode *value,
 	        bool justDetachStatic,
 	        Lexer::TokenType op = Lexer::TokenType::EQUAL)
-	    : HasClassIdNode(NodeType::SET, 0, line), op(op), detach(detach),
-	      value(value), justDetachStatic(justDetachStatic) {}
+	    : HasClassIdNode(NodeType::SET, 0, line), detach(detach),
+	      value(value), op(op), justDetachStatic(justDetachStatic) {
+		if (op == Lexer::TokenType::EQUAL && detach && detach->kind == NodeType::UNKNOW) {
+			static_cast<UnknowNode *>(detach)->autoDeclare = true;
+		}
+	}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
+	bool putBytecodesIfMustBeCalled(
+	    in_func, std::vector<uint8_t> &bytecodes) override {
+		putBytecodes(in_data, bytecodes);
+		return true;
+	}
 	void rewrite(in_func, uint8_t *bytecodes) override {
 		value->rewrite(in_data, bytecodes);
 	}
@@ -603,10 +689,13 @@ struct SetNode : HasClassIdNode {
 
 // getName(id) => variable
 struct VarNode : AccessNode {
+	bool isInitDeclaration = false;
+	bool isCaptureRawBox = false;
 	VarNode(uint32_t line, DeclarationNode *declaration, bool isStore,
 	        bool nullable)
 	    : AccessNode(NodeType::VAR, line, declaration, nullable,
 	                 Autolang::DefaultClass::nullClassId, true, isStore) {}
+	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	ExprNode *copy(in_func) override;
@@ -620,12 +709,15 @@ struct ForNode : CanBreakContinueNode {
 	VarNode *detachValue = nullptr;
 	VarNode *collectionNode = nullptr;
 	HasClassIdNode *data;
+	std::vector<DeclarationNode *> destructureTargets;
 	ForNode(uint32_t line, VarNode *detach, HasClassIdNode *data,
 	        VarNode *iteratorNode, VarNode *detachValue = nullptr,
-	        VarNode *collectionNode = nullptr)
+	        VarNode *collectionNode = nullptr,
+	        std::vector<DeclarationNode *> destructureTargets = {})
 	    : CanBreakContinueNode(NodeType::FOR, line), iteratorNode(iteratorNode),
 	      detach(detach), detachValue(detachValue),
-	      collectionNode(collectionNode), data(data) {}
+	      collectionNode(collectionNode), data(data),
+	      destructureTargets(std::move(destructureTargets)) {}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
 	bool putOptimizedRangeBytecode(in_func, std::vector<uint8_t> &bytecodes,
@@ -641,10 +733,13 @@ struct ForNode : CanBreakContinueNode {
 };
 
 struct ClassAccessNode : HasClassIdNode {
-	ClassAccessNode(uint32_t line, ClassId type)
-	    : HasClassIdNode(NodeType::CLASS_ACCESS, type, line) {}
+	bool nullable = false;
+	ClassAccessNode(uint32_t line, ClassId type, bool nullable = false)
+	    : HasClassIdNode(NodeType::CLASS_ACCESS, type, line), nullable(nullable) {}
 	ExprNode *copy(in_func) override { return this; }
 	bool isStaticValue() override { return true; }
+	bool isNullable() override { return nullable; }
+	void setNullable(bool nullable) override { this->nullable = nullable; }
 };
 
 struct FunctionAccessNode : HasClassIdNode {
@@ -690,25 +785,26 @@ struct CreateClosureNode : HasClassIdNode {
 	Parameter *parameter;
 	BlockNode body;
 	std::optional<FunctionId> funcId;
+	Scopes scopes;
+	DeclarationNode *declarationThis = nullptr;
 	uint32_t declarationCount;
 	uint32_t maxDeclaration;
 	uint32_t parameterCountFirstTime;
-	Scopes scopes;
-	DeclarationNode *declarationThis = nullptr;
 	bool mustInfer = false;
 	CreateClosureNode(uint32_t line, Parameter *parameter)
 	    : HasClassIdNode(NodeType::CREATE_CLOSURE,
 	                     DefaultClass::functionClassId, line),
 	      parameter(std::move(parameter)), body(line),
-	      declarationCount(parameter->parameters.size()),
-	      maxDeclaration(parameter->parameters.size()),
-	      parameterCountFirstTime(parameter->parameters.size()) {}
+	      declarationCount(this->parameter->parameters.size()),
+	      maxDeclaration(this->parameter->parameters.size()),
+	      parameterCountFirstTime(this->parameter->parameters.size()) {}
 	ExprNode *copy(in_func) override;
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	void rewrite(in_func, uint8_t *bytecodes) override;
 	void inferFrom(in_func, ClassDeclaration *from);
+	bool tryInferReturnType(in_func, ClassDeclaration *expectedFuncType = nullptr);
 	bool isStaticValue() override { return false; }
 };
 
@@ -772,10 +868,15 @@ struct CallNode : NullableNode {
 	      accessNullable(accessNullable) {}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
-	void putBytecodesIfMustBeCalled(in_func,
+	bool putBytecodesIfMustBeCalled(in_func,
 	                                std::vector<uint8_t> &bytecodes) override {
 		putBytecodes(in_data, bytecodes);
-		bytecodes.emplace_back(Opcode::POP);
+		if (isSuper) {
+			bytecodes.emplace_back(Opcode::POP_NO_RELEASE);
+		} else if (classId != DefaultClass::voidClassId) {
+			bytecodes.emplace_back(Opcode::POP);
+		}
+		return true;
 	}
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	void rewrite(in_func, uint8_t *bytecodes) override;
@@ -819,9 +920,13 @@ struct TryCatchNode : HasClassIdNode {
 
 	bool isNullable() override { return nullable; }
 	void setNullable(bool n) override { nullable = n; }
-	void putBytecodesIfMustBeCalled(in_func,
+	bool putBytecodesIfMustBeCalled(in_func,
 	                                std::vector<uint8_t> &bytecodes) override {
 		putBytecodes(in_data, bytecodes);
+		if (mustReturnValue) {
+			bytecodes.emplace_back(Opcode::POP);
+		}
+		return true;
 	}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
@@ -831,13 +936,18 @@ struct TryCatchNode : HasClassIdNode {
 	ExprNode *copy(in_func) override;
 };
 
-struct ThrowNode : ExprNode {
+struct ThrowNode : HasClassIdNode {
 	HasClassIdNode *value;
 	ThrowNode(uint32_t line, HasClassIdNode *value)
-	    : ExprNode(NodeType::THROW, line), value(value) {}
+	    : HasClassIdNode(NodeType::THROW, DefaultClass::voidClassId, line), value(value) {}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
+	bool putBytecodesIfMustBeCalled(
+	    in_func, std::vector<uint8_t> &bytecodes) override {
+		putBytecodes(in_data, bytecodes);
+		return true;
+	}
 	void rewrite(in_func, uint8_t *bytecodes) override;
 	ExprNode *copy(in_func) override;
 	~ThrowNode();
@@ -857,6 +967,11 @@ struct RangeNode : HasClassIdNode {
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
+	bool putBytecodesIfMustBeCalled(in_func,
+	                                std::vector<uint8_t> &bytecodes) override {
+		putBytecodes(in_data, bytecodes);
+		return true;
+	}
 	void rewrite(in_func, uint8_t *bytecodes) override;
 	ExprNode *copy(in_func) override;
 	bool isStaticValue() override {
@@ -943,10 +1058,13 @@ struct WhenNode : NullableNode {
 	      value(value), ifNode(ifNode) {}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
-	void putBytecodesIfMustBeCalled(in_func,
+	bool putBytecodesIfMustBeCalled(in_func,
 	                                std::vector<uint8_t> &bytecodes) override {
 		putBytecodes(in_data, bytecodes);
-		bytecodes.emplace_back(Opcode::POP);
+		if (ifNode && ifNode->mustReturnValue) {
+			bytecodes.emplace_back(Opcode::POP);
+		}
+		return true;
 	}
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	void rewrite(in_func, uint8_t *bytecodes) override;
@@ -956,6 +1074,29 @@ struct WhenNode : NullableNode {
 		return !ifNode ? true : ifNode->isStaticValue();
 	}
 	~WhenNode();
+};
+
+struct DestructureNode : HasClassIdNode {
+	HasClassIdNode *sourceExpr;
+	SmallVector<DeclarationNode *, 8> targets;
+	BlockNode innerBlock;
+	bool isResolved = false;
+
+	DestructureNode(uint32_t line, HasClassIdNode *sourceExpr,
+	                SmallVector<DeclarationNode *, 8> targets)
+	    : HasClassIdNode(NodeType::DESTRUCTURE, DefaultClass::voidClassId, line),
+	      sourceExpr(sourceExpr), targets(std::move(targets)), innerBlock(line) {}
+
+	ExprNode *resolve(in_func) override;
+	ExprNode *optimize(in_func) override;
+	bool putBytecodesIfMustBeCalled(in_func,
+	                                std::vector<uint8_t> &bytecodes) override {
+		return innerBlock.putBytecodesIfMustBeCalled(in_data, bytecodes);
+	}
+	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
+	void rewrite(in_func, uint8_t *bytecodes) override;
+	ExprNode *copy(in_func) override;
+	~DestructureNode();
 };
 
 } // namespace Autolang

@@ -1,0 +1,58 @@
+data class BoxedData(val label: String, var amount: Int)
+
+fun testRefFeatures() {
+    // 1. intRef and basic closure accumulation
+    val total = intRef(0)
+    val items = listOf(10, 20, 30, 40)
+    items.forEach { x ->
+        total.value += x
+    }
+    assert(total.value == 100)
+
+    // 2. stringRef and string concatenation in closure
+    val str = stringRef("base")
+    val parts = listOf("alpha", "beta", "gamma")
+    parts.forEach { part ->
+        str.value = str.value + "_" + part
+    }
+    assert(str.value == "base_alpha_beta_gamma")
+
+    // 3. booleanRef and conditional flag modification in closure
+    val found = booleanRef(false)
+    val words = listOf("cat", "dog", "target", "fish")
+    words.forEach { w ->
+        if (w == "target") {
+            found.value = true
+        }
+    }
+    assert(found.value == true)
+
+    // 4. floatRef and floating-point accumulation in closure
+    val sumFloat = floatRef(1.5)
+    val increments = listOf(2.5, 3.0, 4.0)
+    increments.forEach { inc ->
+        sumFloat.value += inc
+    }
+    assert(sumFloat.value == 11.0)
+
+    // 5. Multi-level nested closure reference update
+    val counter = intRef(0)
+    val matrix = listOf(listOf(1, 2), listOf(3, 4))
+    matrix.forEach { row ->
+        row.forEach { cell ->
+            counter.value += cell
+        }
+    }
+    assert(counter.value == 10)
+
+    // 6. Generic ref(T) with custom object
+    val dataRef = ref(BoxedData("primary", 50))
+    listOf(10, 20).forEach { addVal ->
+        dataRef.value.amount += addVal
+    }
+    assert(dataRef.value.amount == 80)
+
+    println("Passed ${__FUNC__}")
+}
+
+testRefFeatures()

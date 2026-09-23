@@ -1,14 +1,159 @@
 #ifndef BLOCK_NODE_CPP
 #define BLOCK_NODE_CPP
 
+#include <algorithm>
 #include "Node.hpp"
 #include "frontend/parser/ParserContext.hpp"
 
 namespace Autolang {
 
+static DeclarationNode *extractAssignmentTarget(in_func, ExprNode *node, bool &outIsNonNull) {
+	if (!node || node->kind != NodeType::SET) return nullptr;
+	auto setNode = static_cast<SetNode *>(node);
+	if (!setNode->detach || !setNode->value) return nullptr;
+	DeclarationNode *decl = nullptr;
+	if (setNode->detach->kind == NodeType::VAR || setNode->detach->kind == NodeType::GET_PROP) {
+		decl = static_cast<AccessNode *>(setNode->detach)->declaration;
+	} else if (setNode->detach->kind == NodeType::UNKNOW) {
+		auto unknow = static_cast<UnknowNode *>(setNode->detach);
+		auto found = context.findDeclaration(in_data, unknow->line, unknow->nameId, true);
+		if (found && (found->kind == NodeType::VAR || found->kind == NodeType::GET_PROP)) {
+			decl = static_cast<AccessNode *>(found)->declaration;
+		}
+	}
+	if (!decl) return nullptr;
+	outIsNonNull = !setNode->value->isNullable();
+	return decl;
+}
+
+enum class VarBranchStatus {
+	UNMODIFIED,
+	ASSIGNED_NON_NULL,
+	ASSIGNED_NULLABLE,
+	EXITS_EARLY
+};
+
+template <typename Container>
+static VarBranchStatus analyzeVarInBranch(in_func, const Container &nodes, DeclarationNode *targetDecl) {
+	if (nodes.empty()) return VarBranchStatus::UNMODIFIED;
+	auto lastKind = nodes.back()->kind;
+	if (lastKind == NodeType::RET || lastKind == NodeType::THROW || lastKind == NodeType::SKIP) {
+		return VarBranchStatus::EXITS_EARLY;
+	}
+	for (auto it = nodes.rbegin(); it != nodes.rend(); ++it) {
+		ExprNode *stmt = *it;
+		if (!stmt) continue;
+		bool isNonNull = false;
+		DeclarationNode *decl = extractAssignmentTarget(in_data, stmt, isNonNull);
+		if (decl == targetDecl) {
+			return isNonNull ? VarBranchStatus::ASSIGNED_NON_NULL : VarBranchStatus::ASSIGNED_NULLABLE;
+		}
+	}
+	return VarBranchStatus::UNMODIFIED;
+}
+
+static void checkAndApplyGuardCasts(in_func, ExprNode *node, SmallVector<SmartCastInfo, 4> &activeGuardCasts) {
+	if (!node) return;
+
+	// If statement flow analysis
+	if (node->kind == NodeType::IF) {
+		auto ifNode = static_cast<IfNode *>(node);
+		if (!ifNode->ifFalse) {
+			bool returns = ifNode->trueBranchReturns;
+			if (!returns && !ifNode->ifTrue.nodes.empty()) {
+				auto lastKind = ifNode->ifTrue.nodes.back()->kind;
+				returns = (lastKind == NodeType::RET || lastKind == NodeType::THROW || lastKind == NodeType::SKIP);
+			}
+			for (auto &cast : ifNode->falseCasts) {
+				if (!cast.declaration) continue;
+				if (returns) {
+					cast.apply();
+					activeGuardCasts.push_back(cast);
+				} else if (!cast.targetNullable) {
+					auto status = analyzeVarInBranch(in_data, ifNode->ifTrue.nodes, cast.declaration);
+					if (status == VarBranchStatus::ASSIGNED_NON_NULL || status == VarBranchStatus::EXITS_EARLY) {
+						cast.apply();
+						activeGuardCasts.push_back(cast);
+					}
+				}
+			}
+		} else if (ifNode->ifFalse) {
+			bool returns = ifNode->falseBranchReturns;
+			if (!returns && !ifNode->ifFalse->nodes.empty()) {
+				auto falseLastKind = ifNode->ifFalse->nodes.back()->kind;
+				returns = (falseLastKind == NodeType::RET || falseLastKind == NodeType::THROW || falseLastKind == NodeType::SKIP);
+			}
+			if (returns) {
+				for (auto &cast : ifNode->trueCasts) {
+					cast.apply();
+					activeGuardCasts.push_back(cast);
+				}
+			}
+
+			SmallVector<DeclarationNode *, 4> candidates;
+			for (auto &c : ifNode->trueCasts) {
+				if (c.declaration && std::find(candidates.begin(), candidates.end(), c.declaration) == candidates.end()) {
+					candidates.push_back(c.declaration);
+				}
+			}
+			for (auto &c : ifNode->falseCasts) {
+				if (c.declaration && std::find(candidates.begin(), candidates.end(), c.declaration) == candidates.end()) {
+					candidates.push_back(c.declaration);
+				}
+			}
+			for (auto *stmt : ifNode->ifTrue.nodes) {
+				bool isNonNull = false;
+				auto *d = extractAssignmentTarget(in_data, stmt, isNonNull);
+				if (d && std::find(candidates.begin(), candidates.end(), d) == candidates.end()) {
+					candidates.push_back(d);
+				}
+			}
+
+			for (auto *decl : candidates) {
+				bool trueNonNull = false;
+				for (auto &c : ifNode->trueCasts) {
+					if (c.declaration == decl && !c.targetNullable) {
+						trueNonNull = true;
+						break;
+					}
+				}
+				auto trueStatus = analyzeVarInBranch(in_data, ifNode->ifTrue.nodes, decl);
+				if (trueStatus == VarBranchStatus::ASSIGNED_NON_NULL || trueStatus == VarBranchStatus::EXITS_EARLY) {
+					trueNonNull = true;
+				} else if (trueStatus == VarBranchStatus::ASSIGNED_NULLABLE) {
+					trueNonNull = false;
+				}
+
+				bool falseNonNull = false;
+				for (auto &c : ifNode->falseCasts) {
+					if (c.declaration == decl && !c.targetNullable) {
+						falseNonNull = true;
+						break;
+					}
+				}
+				auto falseStatus = analyzeVarInBranch(in_data, ifNode->ifFalse->nodes, decl);
+				if (falseStatus == VarBranchStatus::ASSIGNED_NON_NULL || falseStatus == VarBranchStatus::EXITS_EARLY) {
+					falseNonNull = true;
+				} else if (falseStatus == VarBranchStatus::ASSIGNED_NULLABLE) {
+					falseNonNull = false;
+				}
+
+				if (trueNonNull && falseNonNull) {
+					SmartCastInfo info;
+					info.declaration = decl;
+					info.targetNullable = false;
+					info.apply();
+					activeGuardCasts.push_back(info);
+				}
+			}
+		}
+	}
+}
+
 ExprNode *BlockNode::resolve(in_func) {
 	ParserContext::mode = mode;
 	size_t i = 0;
+	SmallVector<SmartCastInfo, 4> activeGuardCasts;
 	while (i < nodes.size()) {
 		if (nodes[i] == nullptr) {
 			nodes.erase(nodes.begin() + i);
@@ -22,7 +167,11 @@ ExprNode *BlockNode::resolve(in_func) {
 			nodes.insert(nodes.begin() + i, subNodes.begin(), subNodes.end());
 			continue;
 		}
+		checkAndApplyGuardCasts(in_data, nodes[i], activeGuardCasts);
 		++i;
+	}
+	for (auto it = activeGuardCasts.rbegin(); it != activeGuardCasts.rend(); ++it) {
+		it->restore();
 	}
 	return this;
 }
@@ -58,18 +207,17 @@ void BlockNode::loadReturnValueClassId(in_func, uint32_t line,
 		autoCastToFloat = true;
 		return;
 	}
-	if (compile.classes[*currentClassId]->inheritance.get(newClassId)) {
+	if (*currentClassId < compile.classes.size() && compile.classes[*currentClassId] &&
+	    compile.classes[*currentClassId]->inheritance.get(newClassId)) {
 		currentClassId = newClassId;
 		return;
 	}
-	if (compile.classes[newClassId]->inheritance.get(*currentClassId)) {
+	if (newClassId < compile.classes.size() && compile.classes[newClassId] &&
+	    compile.classes[newClassId]->inheritance.get(*currentClassId)) {
 		return;
 	}
-	throw ParserError(
-	    line,
-	    "Cannot cast '" + compile.classes[*currentClassId]->getName(compile) +
-	        "' to '" + compile.classes[newClassId]->getName(compile) + "'" +
-	        "\nHint: Ensure returned expressions across block branches have compatible types or add an explicit type cast.");
+	ClassId commonId = ExprNode::getCommonSuperType(in_data, *currentClassId, newClassId);
+	currentClassId = commonId;
 }
 
 void BlockNode::loadClassNode(in_func, ExprNode *&node,
@@ -100,6 +248,12 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 				}
 				case DefaultClass::functionClassId: {
 					newClassDeclaration = n->classDeclaration;
+					break;
+				}
+				default: {
+					if (n->classDeclaration && !n->classDeclaration->inputClassId.empty()) {
+						newClassDeclaration = n->classDeclaration;
+					}
 					break;
 				}
 			}
@@ -217,6 +371,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 			}
 			break;
 		}
+		case NodeType::PAIR:
 		case NodeType::CAST:
 		case NodeType::RUNTIME_CAST:
 		case NodeType::NULL_COALESCING:
@@ -255,6 +410,12 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 					newClassDeclaration = n->classDeclaration;
 					break;
 				}
+				default: {
+					if (n->classDeclaration && !n->classDeclaration->inputClassId.empty()) {
+						newClassDeclaration = n->classDeclaration;
+					}
+					break;
+				}
 			}
 			if (isStatic) {
 				isStatic = n->isStaticValue();
@@ -280,12 +441,14 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 				}
 			}
 
-			loadReturnValueClassId(in_data, line, currentClassId, n->classId);
-			if (!nullable) {
-				nullable = n->isNullable();
-			}
-			if (isStatic) {
-				isStatic = n->isStaticValue();
+			if (n->ifNode->mustReturnValue && n->classId != DefaultClass::voidClassId) {
+				loadReturnValueClassId(in_data, line, currentClassId, n->classId);
+				if (!nullable) {
+					nullable = n->isNullable();
+				}
+				if (isStatic) {
+					isStatic = n->isStaticValue();
+				}
 			}
 			break;
 		}
@@ -308,12 +471,14 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 				}
 			}
 
-			loadReturnValueClassId(in_data, line, currentClassId, n->classId);
-			if (!nullable) {
-				nullable = n->isNullable();
-			}
-			if (isStatic) {
-				isStatic = n->isStaticValue();
+			if (n->mustReturnValue && n->classId != DefaultClass::voidClassId) {
+				loadReturnValueClassId(in_data, line, currentClassId, n->classId);
+				if (!nullable) {
+					nullable = n->isNullable();
+				}
+				if (isStatic) {
+					isStatic = n->isStaticValue();
+				}
 			}
 			break;
 		}
@@ -388,7 +553,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 					if (closureHasValue && context.currentClosureCurrentClassId->has_value()) {
 						closureBody.classId = **context.currentClosureCurrentClassId;
 					}
-					node = value;
+					node = n->optimize(in_data);
 					break;
 				}
 				node = n->optimize(in_data);
@@ -497,20 +662,30 @@ void BlockNode::loadClassAndOptimize(in_func) {
 			break;
 		}
 	}
+	SmallVector<SmartCastInfo, 4> activeGuardCasts;
 	for (size_t i = 0; i < nodes.size(); ++i) {
 		auto *&node = nodes[i];
 		loadClassNode(in_data, node, currentClassId, nullable, isStatic,
 		              hasValue, newClassDeclaration);
+		checkAndApplyGuardCasts(in_data, node, activeGuardCasts);
+	}
+	for (auto it = activeGuardCasts.rbegin(); it != activeGuardCasts.rend(); ++it) {
+		it->restore();
 	}
 	this->nullable = nullable;
 	this->isStatic = isStatic;
 	this->hasValueAllCases = hasValue;
 	if (hasValue && currentClassId) {
 		this->classId = *currentClassId;
+		if (this->classId == DefaultClass::anyClassId || !newClassDeclaration) {
+			this->classDeclaration = ExprNode::getOrCreateClassDeclaration(in_data, *currentClassId, line, this->nullable);
+		} else {
+			this->classDeclaration = newClassDeclaration;
+		}
 	} else {
 		this->classId = DefaultClass::voidClassId;
+		this->classDeclaration = newClassDeclaration;
 	}
-	this->classDeclaration = newClassDeclaration;
 
 	context.mustReturnValueNode->setNullable(nullable);
 	context.mustReturnValueNode->setIsStatic(isStatic);
@@ -520,7 +695,7 @@ void BlockNode::loadClassAndOptimize(in_func) {
 			if (nullable) {
 				n->nullable = true;
 			}
-			bool branchEndsEarly = !nodes.empty() && (nodes.back()->kind == NodeType::THROW || nodes.back()->kind == NodeType::RET);
+			bool branchEndsEarly = !nodes.empty() && (nodes.back()->kind == NodeType::THROW || nodes.back()->kind == NodeType::RET || nodes.back()->kind == NodeType::SKIP);
 			if (!currentClassId) {
 				if (!n->mustReturnValue || nullable || branchEndsEarly) {
 					return;
@@ -535,10 +710,16 @@ void BlockNode::loadClassAndOptimize(in_func) {
 			}
 			if (n->classId == DefaultClass::nullClassId) {
 				n->classId = *currentClassId;
+				if (n->classId == DefaultClass::anyClassId || !n->classDeclaration) {
+					n->classDeclaration = ExprNode::getOrCreateClassDeclaration(in_data, *currentClassId, line, n->nullable);
+				}
 				return;
 			}
 			loadReturnValueClassId(in_data, line, currentClassId, n->classId);
 			n->classId = *currentClassId;
+			if (n->classId == DefaultClass::anyClassId || !n->classDeclaration) {
+				n->classDeclaration = ExprNode::getOrCreateClassDeclaration(in_data, *currentClassId, line, n->nullable);
+			}
 			return;
 		}
 		case NodeType::TRY_CATCH: {
@@ -546,7 +727,7 @@ void BlockNode::loadClassAndOptimize(in_func) {
 			if (nullable) {
 				n->nullable = true;
 			}
-			bool branchEndsEarly = !nodes.empty() && (nodes.back()->kind == NodeType::THROW || nodes.back()->kind == NodeType::RET);
+			bool branchEndsEarly = !nodes.empty() && (nodes.back()->kind == NodeType::THROW || nodes.back()->kind == NodeType::RET || nodes.back()->kind == NodeType::SKIP);
 			if (!currentClassId) {
 				if (!n->mustReturnValue || nullable || branchEndsEarly) {
 					return;
@@ -561,10 +742,16 @@ void BlockNode::loadClassAndOptimize(in_func) {
 			}
 			if (n->classId == DefaultClass::nullClassId || n->classId == DefaultClass::voidClassId) {
 				n->classId = *currentClassId;
+				if (n->classId == DefaultClass::anyClassId || !n->classDeclaration) {
+					n->classDeclaration = ExprNode::getOrCreateClassDeclaration(in_data, *currentClassId, line, n->nullable);
+				}
 				return;
 			}
 			loadReturnValueClassId(in_data, line, currentClassId, n->classId);
 			n->classId = *currentClassId;
+			if (n->classId == DefaultClass::anyClassId || !n->classDeclaration) {
+				n->classDeclaration = ExprNode::getOrCreateClassDeclaration(in_data, *currentClassId, line, n->nullable);
+			}
 			return;
 		}
 		case NodeType::CREATE_CLOSURE: {
@@ -595,7 +782,7 @@ void BlockNode::loadClassAndOptimize(in_func) {
 					newClassDeclaration->nullable = true;
 				}
 				auto returnClass = n->classDeclaration->inputClassId[0];
-				if (nullable && !returnClass->nullable) {
+				if (returnClass && nullable && !returnClass->nullable) {
 					throwError("Cannot cast '" +
 					           newClassDeclaration->getName<true>(in_data) +
 					           "' to '" + returnClass->getName<true>(in_data) +
@@ -615,7 +802,7 @@ void BlockNode::loadClassAndOptimize(in_func) {
 				classDeclaration->nullable = true;
 			}
 			auto returnClass = n->classDeclaration->inputClassId[0];
-			if (nullable && !returnClass->nullable) {
+			if (returnClass && nullable && !returnClass->nullable) {
 				throwError("Cannot cast '" +
 				           classDeclaration->getName<true>(in_data) + "' to '" +
 				           returnClass->getName<true>(in_data) +
@@ -634,8 +821,13 @@ ExprNode *BlockNode::optimize(in_func) {
 		loadClassAndOptimize(in_data);
 		return this;
 	}
+	SmallVector<SmartCastInfo, 4> activeGuardCasts;
 	for (size_t i = 0; i < nodes.size(); ++i) {
 		nodes[i] = nodes[i]->optimize(in_data);
+		checkAndApplyGuardCasts(in_data, nodes[i], activeGuardCasts);
+	}
+	for (auto it = activeGuardCasts.rbegin(); it != activeGuardCasts.rend(); ++it) {
+		it->restore();
 	}
 	if (!nodes.empty()) {
 		auto *lastNode = nodes.back();
@@ -653,16 +845,46 @@ ExprNode *BlockNode::optimize(in_func) {
 			case NodeType::BINARY:
 			case NodeType::GET_PROP:
 			case NodeType::CREATE_CLOSURE:
-			case NodeType::CALL:
-			case NodeType::IF:
-			case NodeType::WHEN:
-			case NodeType::TRY_CATCH: {
+			case NodeType::CALL: {
 				auto *hasNode = static_cast<HasClassIdNode *>(lastNode);
 				if (hasNode->classId != DefaultClass::voidClassId) {
 					this->classId = hasNode->classId;
 					this->classDeclaration = hasNode->classDeclaration;
 					this->nullable = hasNode->isNullable();
 					this->isStatic = hasNode->isStaticValue();
+					this->hasValueAllCases = true;
+				}
+				break;
+			}
+			case NodeType::IF: {
+				auto *ifNode = static_cast<IfNode *>(lastNode);
+				if (ifNode->mustReturnValue && ifNode->classId != DefaultClass::voidClassId) {
+					this->classId = ifNode->classId;
+					this->classDeclaration = ifNode->classDeclaration;
+					this->nullable = ifNode->isNullable();
+					this->isStatic = ifNode->isStaticValue();
+					this->hasValueAllCases = true;
+				}
+				break;
+			}
+			case NodeType::WHEN: {
+				auto *whenNode = static_cast<WhenNode *>(lastNode);
+				if (whenNode->ifNode && whenNode->ifNode->mustReturnValue && whenNode->classId != DefaultClass::voidClassId) {
+					this->classId = whenNode->classId;
+					this->classDeclaration = whenNode->classDeclaration;
+					this->nullable = whenNode->isNullable();
+					this->isStatic = whenNode->isStaticValue();
+					this->hasValueAllCases = true;
+				}
+				break;
+			}
+			case NodeType::TRY_CATCH: {
+				auto *tcNode = static_cast<TryCatchNode *>(lastNode);
+				if (tcNode->mustReturnValue && tcNode->classId != DefaultClass::voidClassId) {
+					this->classId = tcNode->classId;
+					this->classDeclaration = tcNode->classDeclaration;
+					this->nullable = tcNode->isNullable();
+					this->isStatic = tcNode->isStaticValue();
 					this->hasValueAllCases = true;
 				}
 				break;
@@ -699,19 +921,7 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			if (i < nodes.size() - 1 &&
 			    context.mustReturnValueNode->kind != NodeType::IF &&
 			    context.mustReturnValueNode->kind != NodeType::TRY_CATCH) {
-				switch (node->kind) {
-					case NodeType::CALL: {
-						auto currentNode = static_cast<CallNode *>(node);
-						node->putBytecodes(in_data, bytecodes);
-						if (currentNode->isSuper)
-							bytecodes.emplace_back(Opcode::POP_NO_RELEASE);
-						break;
-					}
-					default: {
-						node->putBytecodes(in_data, bytecodes);
-						break;
-					}
-				}
+				node->putBytecodesIfMustBeCalled(in_data, bytecodes);
 				continue;
 			}
 			if (context.mustReturnValueNode->kind == NodeType::IF) {
@@ -895,7 +1105,8 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					case NodeType::SET:
 					case NodeType::FOR:
 					case NodeType::THROW:
-					case NodeType::RET: {
+					case NodeType::RET:
+					case NodeType::SKIP: {
 						node->putBytecodes(in_data, bytecodes);
 						break;
 					}
@@ -979,7 +1190,8 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					case NodeType::SET:
 					case NodeType::FOR:
 					case NodeType::THROW:
-					case NodeType::RET: {
+					case NodeType::RET:
+					case NodeType::SKIP: {
 						node->putBytecodes(in_data, bytecodes);
 						break;
 					}
@@ -1109,61 +1321,7 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		return;
 	}
 	for (auto *node : nodes) {
-		switch (node->kind) {
-			case NodeType::CALL: {
-				auto currentNode = static_cast<CallNode *>(node);
-				node->putBytecodes(in_data, bytecodes);
-				// if (currentNode->isSuper) break;
-				// if (currentNode->classId != DefaultClass::voidClassId) {
-				// bytecodes.emplace_back(currentNode->isSuper
-				//                            ? Opcode::POP_NO_RELEASE
-				//                            : Opcode::POP);
-				if (currentNode->isSuper)
-					bytecodes.emplace_back(Opcode::POP_NO_RELEASE);
-				// }
-				break;
-			}
-				// 	case NodeType::OPTIONAL_ACCESS: {
-				// 		auto currentNode = static_cast<OptionalAccessNode
-				// *>(node); 		currentNode->returnNullIfNull = false;
-				// 		node->putBytecodes(in_data, bytecodes);
-				// 		if (currentNode->value->kind != NodeType::CALL ||
-				// 		    currentNode->value->classId !=
-				// DefaultClass::voidClassId)
-				// 			bytecodes.emplace_back(Opcode::POP);
-				// 		currentNode->jumpIfNullPos = bytecodes.size() -
-				// context.currentBytecodePos; 		break;
-				// 	}
-			// case NodeType::CONST_VAL:
-			// case NodeType::CREATE_CLOSURE:
-			// case NodeType::FUNCTION_ACCESS:
-			// case NodeType::BINARY:
-			// case NodeType::GET_PROP:
-			// case NodeType::VAR:
-			// case NodeType::CREATE_ARRAY:
-			// case NodeType::CREATE_MAP:
-			// case NodeType::CREATE_SET:
-			// case NodeType::NULL_COALESCING:
-			// case NodeType::CAST:
-			// case NodeType::RUNTIME_CAST:
-			// case NodeType::OPTIONAL_ACCESS:
-			// case NodeType::UNARY: {
-			// 	node->putBytecodes(in_data, bytecodes);
-			// 	if (autoCastToFloat) {
-			// 		bytecodes.emplace_back(Opcode::TO_FLOAT);
-			// 	}
-			// 	break;
-			// }
-			// 	case NodeType::CLASS_ACCESS:
-			// 	case NodeType::CONST_VAL:
-			// 	case NodeType::VAR: {
-			// 		break;
-			// 	}
-			default: {
-				node->putBytecodes(in_data, bytecodes);
-				break;
-			}
-		}
+		node->putBytecodesIfMustBeCalled(in_data, bytecodes);
 	}
 }
 

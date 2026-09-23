@@ -12,7 +12,7 @@ template <bool addToGlobalScope> void CreateFuncNode::pushFunction(in_func) {
 	AClass *clazz =
 	    contextCallClassId ? compile.classes[*contextCallClassId] : nullptr;
 	id = compile.registerFunction(
-	    mode->path.c_str(), clazz, context.lexerString[nameId],
+	    mode->path.c_str(), clazz, std::string(context.lexerString[nameId]),
 	    new ClassId[parameter->parameters.size()]{},
 	    parameter->parameters.size(), Autolang::DefaultClass::voidClassId,
 	    functionFlags);
@@ -37,8 +37,7 @@ template <bool addToGlobalScope> void CreateFuncNode::pushFunction(in_func) {
 	funcInfo->declaration = parameter->parameters.size();
 	funcInfo->parameter = parameter;
 	funcInfo->tokenIndex = tokenIndex;
-	if (classDeclaration &&
-	    classDeclaration->classId == DefaultClass::functionClassId) {
+	if (classDeclaration) {
 		funcInfo->returnClass = classDeclaration;
 	}
 }
@@ -48,7 +47,7 @@ void CreateFuncNode::pushNativeFunction(in_func, ANativeFunctionData *native) {
 	AClass *clazz =
 	    contextCallClassId ? compile.classes[*contextCallClassId] : nullptr;
 	id = compile.registerFunction(
-	    mode->path.c_str(), clazz, context.lexerString[nameId],
+	    mode->path.c_str(), clazz, std::string(context.lexerString[nameId]),
 	    new ClassId[parameter->parameters.size()]{},
 	    parameter->parameters.size(), Autolang::DefaultClass::voidClassId,
 	    functionFlags | FunctionFlags::FUNC_IS_NATIVE);
@@ -74,8 +73,7 @@ void CreateFuncNode::pushNativeFunction(in_func, ANativeFunctionData *native) {
 	funcInfo->declaration = parameter->parameters.size();
 	funcInfo->parameter = parameter;
 	funcInfo->tokenIndex = tokenIndex;
-	if (classDeclaration &&
-	    classDeclaration->classId == DefaultClass::functionClassId) {
+	if (classDeclaration) {
 		funcInfo->returnClass = classDeclaration;
 	}
 }
@@ -113,7 +111,12 @@ ExprNode *CreateFuncNode::optimize(in_func) {
 	auto func = compile.functions[id];
 	auto funcInfo = context.functionInfo[id];
 	if (classDeclaration) {
-		func->returnId = *classDeclaration->classId;
+		if (!classDeclaration->classId) {
+			classDeclaration->template load<true>(in_data);
+		}
+		if (classDeclaration->classId) {
+			func->returnId = *classDeclaration->classId;
+		}
 	}
 	for (size_t i = 0; i < parameter->parameters.size(); ++i) {
 		auto &param = parameter->parameters[i];

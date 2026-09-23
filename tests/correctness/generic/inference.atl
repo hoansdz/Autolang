@@ -55,7 +55,7 @@ fun <T> chooseFirst(a: T, b: T): T = a
 // Secondary constructor in generic class
 class MultiCtor<T> {
     var data: T?
-    var extra: Int
+    var extra: Int = 0
     constructor(d: T) {
         this.data = d
         this.extra = 0
@@ -72,6 +72,12 @@ fun <T> overTest(x: T): String = "generic"
 
 // Default parameter with generic
 fun <T> withDefault(x: T, y: Int = 100): Int = y
+
+// Nullable type parameter inference
+fun <T> unwrapOr(value: T?, fallback: T): T = value ?: fallback
+
+// Array last element inference
+fun <T> arrayLast(arr: Array<T>): T = arr.get(arr.size() - 1)
 
 fun main() {
     // 1. Global function inference
@@ -130,10 +136,10 @@ fun main() {
     assert(p3.value == 2)
 
     // 11. Map and Set parameter inference
-    val myMap = <String, Int>{"apple": 1, "banana": 2}
+    val myMap = mapOf("apple" to 1, "banana" to 2)
     assert(mapSize(myMap) == 2)
 
-    val mySet = <Int>{10, 20, 30, 40}
+    val mySet = setOf(10, 20, 30, 40)
     assert(setSize(mySet) == 4)
 
     // 12. Multiple arguments with same type parameter
@@ -156,6 +162,35 @@ fun main() {
     // 15. Default parameter with generic inference
     assert(withDefault("default_test") == 100)
     assert(withDefault("default_test", 555) == 555)
+
+    // 16. Nullable type parameter inference
+    val nullFallback = unwrapOr(null, "fallback_value")
+    assert(nullFallback == "fallback_value")
+    val nonNullRes = unwrapOr("actual_value", "fallback_value")
+    assert(nonNullRes == "actual_value")
+
+    // 17. Array last element inference with various types
+    val numArr = [10, 20, 30]
+    assert(arrayLast(numArr) == 30)
+    val strArr = ["x", "y", "z"]
+    assert(arrayLast(strArr) == "z")
+
+    // 18. Multi-level deep generic nesting
+    val deepBox = IBox(IBox(IBox(42)))
+    assert(deepBox.getVal().getVal().getVal() == 42)
+
+    // 19. Common supertype inference across inheritance hierarchy
+    val baseItem = IBase()
+    val chosenBase = chooseFirst(child, baseItem)
+    assert(chosenBase.score() == 20)
+
+    // 20. Multi-level nested collections inference
+    val matrix = listOf(listOf(1, 2), listOf(3, 4))
+    assert(matrix.size() == 2)
+    assert(matrix.get(0).get(1) == 2)
+
+    val nestedMap = mapOf("primes" to listOf(2, 3, 5))
+    assert(nestedMap.get("primes")?.get(2) == 5)
 
     println("All generic inference tests passed!")
 }

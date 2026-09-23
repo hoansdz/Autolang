@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <limits>
 #include <random>
 
 namespace Autolang {
@@ -105,6 +106,20 @@ AObject *abs(NativeFuncInData) {
 }
 
 AObject *round(NativeFuncInData) {
+	auto obj1 = args[0];
+	switch (obj1->type) {
+		case Autolang::DefaultClass::intClassId:
+			return notifier.createFloat(static_cast<double>(obj1->i));
+		case Autolang::DefaultClass::floatClassId:
+			return notifier.createFloat(std::round(obj1->f));
+		default: {
+			notifier.throwException("Wrong type");
+			return nullptr;
+		}
+	}
+}
+
+AObject *round_to_int(NativeFuncInData) {
 	auto obj1 = args[0];
 	switch (obj1->type) {
 		case Autolang::DefaultClass::intClassId:
@@ -341,9 +356,154 @@ AObject *m_max(NativeFuncInData) {
 	return notifier.createFloat(std::max(v1, v2));
 }
 
+AObject *sign(NativeFuncInData) {
+	auto obj = args[0];
+	if (obj->type == Autolang::DefaultClass::intClassId) {
+		int64_t val = obj->i;
+		return notifier.createInt(val > 0 ? 1 : (val < 0 ? -1 : 0));
+	}
+	double val = obj->f;
+	if (std::isnan(val) || val == 0.0) return notifier.createFloat(val);
+	return notifier.createFloat(val > 0.0 ? 1.0 : -1.0);
+}
+
+AObject *ln(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	return notifier.createFloat(std::log(val));
+}
+
+AObject *log2(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	return notifier.createFloat(std::log2(val));
+}
+
+AObject *log10(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	return notifier.createFloat(std::log10(val));
+}
+
+AObject *asin(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	return notifier.createFloat(std::asin(val));
+}
+
+AObject *acos(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	return notifier.createFloat(std::acos(val));
+}
+
+AObject *atan(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	return notifier.createFloat(std::atan(val));
+}
+
+AObject *atan2(NativeFuncInData) {
+	double y = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	double x = (args[1]->type == Autolang::DefaultClass::intClassId) ? args[1]->i : args[1]->f;
+	return notifier.createFloat(std::atan2(y, x));
+}
+
+AObject *sinh(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	return notifier.createFloat(std::sinh(val));
+}
+
+AObject *cosh(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	return notifier.createFloat(std::cosh(val));
+}
+
+AObject *tanh(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	return notifier.createFloat(std::tanh(val));
+}
+
+AObject *asinh(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	return notifier.createFloat(std::asinh(val));
+}
+
+AObject *acosh(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	return notifier.createFloat(std::acosh(val));
+}
+
+AObject *atanh(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	return notifier.createFloat(std::atanh(val));
+}
+
+AObject *hypot(NativeFuncInData) {
+	double x = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	double y = (args[1]->type == Autolang::DefaultClass::intClassId) ? args[1]->i : args[1]->f;
+	return notifier.createFloat(std::hypot(x, y));
+}
+
+AObject *ieee_rem(NativeFuncInData) {
+	double x = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	double y = (args[1]->type == Autolang::DefaultClass::intClassId) ? args[1]->i : args[1]->f;
+	return notifier.createFloat(std::remainder(x, y));
+}
+
+AObject *cbrt(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	return notifier.createFloat(std::cbrt(val));
+}
+
+AObject *expm1(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	return notifier.createFloat(std::expm1(val));
+}
+
+AObject *ln1p(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	return notifier.createFloat(std::log1p(val));
+}
+
+AObject *log_base(NativeFuncInData) {
+	double x = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	double base = (args[1]->type == Autolang::DefaultClass::intClassId) ? args[1]->i : args[1]->f;
+	if (x <= 0.0 || base <= 0.0 || base == 1.0) {
+		notifier.throwException("Invalid arguments for log with base");
+		return nullptr;
+	}
+	return notifier.createFloat(std::log(x) / std::log(base));
+}
+
+AObject *with_sign(NativeFuncInData) {
+	double mag = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	double s = (args[1]->type == Autolang::DefaultClass::intClassId) ? args[1]->i : args[1]->f;
+	return notifier.createFloat(std::copysign(mag, s));
+}
+
+AObject *next_up(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	return notifier.createFloat(std::nextafter(val, std::numeric_limits<double>::infinity()));
+}
+
+AObject *next_down(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	return notifier.createFloat(std::nextafter(val, -std::numeric_limits<double>::infinity()));
+}
+
+AObject *next_after(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	double dir = (args[1]->type == Autolang::DefaultClass::intClassId) ? args[1]->i : args[1]->f;
+	return notifier.createFloat(std::nextafter(val, dir));
+}
+
+AObject *ulp(NativeFuncInData) {
+	double val = (args[0]->type == Autolang::DefaultClass::intClassId) ? args[0]->i : args[0]->f;
+	if (std::isnan(val)) return notifier.createFloat(std::numeric_limits<double>::quiet_NaN());
+	if (std::isinf(val)) return notifier.createFloat(std::numeric_limits<double>::infinity());
+	if (val == 0.0) return notifier.createFloat(std::numeric_limits<double>::denorm_min());
+	double next = std::nextafter(std::abs(val), std::numeric_limits<double>::infinity());
+	return notifier.createFloat(next - std::abs(val));
+}
+
 void init(Autolang::ACompiler &compiler) {
 	auto nativeMap = ANativeMap();
-	nativeMap.reserve(20);
+	nativeMap.reserve(40);
 
 	nativeMap.emplace("round", &Math::round);
 	nativeMap.emplace("floor", &Math::floor);
@@ -363,32 +523,69 @@ void init(Autolang::ACompiler &compiler) {
 	nativeMap.emplace("log", &Math::log);
 	nativeMap.emplace("exp", &Math::exp);
 
-	compiler.registerBuiltInLibrary("std/math", R"###(
+	nativeMap.emplace("sign", &Math::sign);
+	nativeMap.emplace("ln", &Math::ln);
+	nativeMap.emplace("log2", &Math::log2);
+	nativeMap.emplace("log10", &Math::log10);
+	nativeMap.emplace("asin", &Math::asin);
+	nativeMap.emplace("acos", &Math::acos);
+	nativeMap.emplace("atan", &Math::atan);
+	nativeMap.emplace("atan2", &Math::atan2);
+	nativeMap.emplace("sinh", &Math::sinh);
+	nativeMap.emplace("cosh", &Math::cosh);
+	nativeMap.emplace("tanh", &Math::tanh);
+	nativeMap.emplace("asinh", &Math::asinh);
+	nativeMap.emplace("acosh", &Math::acosh);
+	nativeMap.emplace("atanh", &Math::atanh);
+	nativeMap.emplace("hypot", &Math::hypot);
+	nativeMap.emplace("ieee_rem", &Math::ieee_rem);
+	nativeMap.emplace("cbrt", &Math::cbrt);
+	nativeMap.emplace("expm1", &Math::expm1);
+	nativeMap.emplace("ln1p", &Math::ln1p);
+	nativeMap.emplace("log_base", &Math::log_base);
+	nativeMap.emplace("with_sign", &Math::with_sign);
+	nativeMap.emplace("next_up", &Math::next_up);
+	nativeMap.emplace("next_down", &Math::next_down);
+	nativeMap.emplace("next_after", &Math::next_after);
+	nativeMap.emplace("ulp", &Math::ulp);
+	nativeMap.emplace("round", &Math::round);
+	nativeMap.emplace("roundToInt", &Math::round_to_int);
+	nativeMap.emplace("roundToLong", &Math::round_to_int);
+	nativeMap.emplace("truncate", &Math::trunc);
+
+	std::string mathSource = R"###(
+val PI: Float = 3.141592653589793
+val E: Float  = 2.718281828459045
+
 @no_constructor
 class Math {
 	static val PI: Float = 3.141592653589793
 	static val E: Float  = 2.718281828459045
 
-	@native("round") static fun round(value: Float): Int
+	@native("round") static fun round(value: Float): Float
+	@native("roundToInt") static fun roundToInt(value: Float): Int
+	@native("roundToLong") static fun roundToLong(value: Float): Int
 	@native("floor") static fun floor(value: Float): Int
 	@native("ceil")  static fun ceil(value: Float): Int
 	@native("trunc") static fun trunc(value: Float): Int
+	@native("truncate") static fun truncate(value: Float): Int
 	
 	@native("abs") static fun abs(value: Int): Int
 	@native("abs") static fun abs(value: Float): Float
-
+	@native("sign") static fun sign(value: Int): Int
+	@native("sign") static fun sign(value: Float): Float
 
 	@native("pow") static fun pow(base: Float, exp_: Float): Float
 	@native("pow") static fun pow(base: Int, exp_: Int): Int
 
-
 	@native("sqrt") static fun sqrt(value: Float): Float
 	@native("sqrt") static fun sqrt(value: Int): Float
 
-
 	@native("exp") static fun exp(value: Float): Float
 	@native("log") static fun log(value: Float): Float
-
+	@native("ln") static fun ln(value: Float): Float
+	@native("log2") static fun log2(value: Float): Float
+	@native("log10") static fun log10(value: Float): Float
 
 	@native("sin") static fun sin(value: Float): Float
 	@native("sin") static fun sin(value: Int): Float
@@ -397,34 +594,96 @@ class Math {
 	@native("tan") static fun tan(value: Float): Float
 	@native("tan") static fun tan(value: Int): Float
 
+	@native("asin") static fun asin(value: Float): Float
+	@native("acos") static fun acos(value: Float): Float
+	@native("atan") static fun atan(value: Float): Float
+	@native("atan2") static fun atan2(y: Float, x: Float): Float
+
+	@native("sinh") static fun sinh(value: Float): Float
+	@native("cosh") static fun cosh(value: Float): Float
+	@native("tanh") static fun tanh(value: Float): Float
+	@native("asinh") static fun asinh(value: Float): Float
+	@native("acosh") static fun acosh(value: Float): Float
+	@native("atanh") static fun atanh(value: Float): Float
+
+	@native("hypot") static fun hypot(x: Float, y: Float): Float
+	@native("ieee_rem") static fun IEEErem(x: Float, y: Float): Float
+	@native("cbrt") static fun cbrt(value: Float): Float
+	@native("cbrt") static fun cbrt(value: Int): Float
+	@native("expm1") static fun expm1(value: Float): Float
+	@native("ln1p") static fun ln1p(value: Float): Float
+	@native("log_base") static fun log(value: Float, base: Float): Float
+	@native("with_sign") static fun withSign(value: Float, sign: Float): Float
+	@native("next_up") static fun nextUp(value: Float): Float
+	@native("next_down") static fun nextDown(value: Float): Float
+	@native("next_after") static fun nextAfter(value: Float, direction: Float): Float
+	@native("ulp") static fun ulp(value: Float): Float
+
 	@native("fmod") static fun fmod(num1: Float, num2: Float): Float
 	@native("min") static fun min(a: Int, b: Int): Int
 	@native("min") static fun min(a: Float, b: Float): Float
 
-
 	@native("max") static fun max(a: Int, b: Int): Int
 	@native("max") static fun max(a: Float, b: Float): Float
-
 
 	@native("random") static fun random(): Float
 	@native("random") static fun random(minValue: Int, maxValue: Int): Int
 	@native("random") static fun random(minValue: Float, maxValue: Float): Float
-
 }
 
-@native("round") fun round(value: Float): Int
+@native("round") fun round(value: Float): Float
+@native("roundToInt") fun roundToInt(value: Float): Int
+@native("roundToLong") fun roundToLong(value: Float): Int
 @native("floor") fun floor(value: Float): Int
 @native("ceil")  fun ceil(value: Float): Int
 @native("trunc") fun trunc(value: Float): Int
+@native("truncate") fun truncate(value: Float): Int
 @native("abs") fun abs(value: Int): Int
 @native("abs") fun abs(value: Float): Float
+@native("sign") fun sign(value: Int): Int
+@native("sign") fun sign(value: Float): Float
 @native("sqrt") fun sqrt(value: Float): Float
 @native("sqrt") fun sqrt(value: Int): Float
+@native("cbrt") fun cbrt(value: Float): Float
+@native("cbrt") fun cbrt(value: Int): Float
+@native("exp") fun exp(value: Float): Float
+@native("expm1") fun expm1(value: Float): Float
+@native("ln") fun ln(value: Float): Float
+@native("ln1p") fun ln1p(value: Float): Float
+@native("log2") fun log2(value: Float): Float
+@native("log10") fun log10(value: Float): Float
+@native("sin") fun sin(value: Float): Float
+@native("sin") fun sin(value: Int): Float
+@native("cos") fun cos(value: Float): Float
+@native("cos") fun cos(value: Int): Float
+@native("tan") fun tan(value: Float): Float
+@native("tan") fun tan(value: Int): Float
+@native("asin") fun asin(value: Float): Float
+@native("acos") fun acos(value: Float): Float
+@native("atan") fun atan(value: Float): Float
+@native("atan2") fun atan2(y: Float, x: Float): Float
+@native("sinh") fun sinh(value: Float): Float
+@native("cosh") fun cosh(value: Float): Float
+@native("tanh") fun tanh(value: Float): Float
+@native("asinh") fun asinh(value: Float): Float
+@native("acosh") fun acosh(value: Float): Float
+@native("atanh") fun atanh(value: Float): Float
+@native("hypot") fun hypot(x: Float, y: Float): Float
+@native("ieee_rem") fun IEEErem(x: Float, y: Float): Float
+@native("with_sign") fun withSign(value: Float, sign: Float): Float
+@native("next_up") fun nextUp(value: Float): Float
+@native("next_down") fun nextDown(value: Float): Float
+@native("next_after") fun nextAfter(value: Float, direction: Float): Float
+@native("ulp") fun ulp(value: Float): Float
 @native("min") fun min(a: Int, b: Int): Int
 @native("min") fun min(a: Float, b: Float): Float
 @native("max") fun max(a: Int, b: Int): Int
 @native("max") fun max(a: Float, b: Float): Float
-    )###",
+    )###";
+	if (compiler.parserContext.kotlinCompatEnabled) {
+		mathSource += "\ntypealias kotlin.math = Math\n";
+	}
+	compiler.registerBuiltInLibrary("std/math", mathSource.c_str(),
 	                                LibraryConfig(true), std::move(nativeMap));
 }
 

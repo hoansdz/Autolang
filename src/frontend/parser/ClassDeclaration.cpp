@@ -74,16 +74,17 @@ ClassDeclaration *ClassDeclaration::copy(in_func) {
 		classId = DefaultClass::voidClassId;
 		return this;
 	}
-	if (!classId) {
+	bool isUnresolvedGeneric = isGenericDeclaration || hasUnresolvedGenericDecl(this);
+	if (!classId && !isUnresolvedGeneric) {
 		load<true>(in_data);
 	}
-	if (!classId) {
+	if (!classId && !isUnresolvedGeneric) {
 		std::cerr << getName(in_data) << "\n";
 		throwError(
 		    "Cannot copy class declaration because class not exists\nHint: "
 		    "Ensure target class is declared before copying its declaration");
 	}
-	if (!isGeneric) {
+	if (!isGeneric && !isUnresolvedGeneric) {
 		return this;
 	}
 	auto newClassDeclaration = context.classDeclarationAllocator.push();
@@ -116,7 +117,7 @@ void ClassDeclaration::onLoadTypealias(in_func, TypealiasData *typealias) {
 		if (typealias->genericData->genericDeclarations.size() !=
 		    inputClassId.size()) {
 			throwError(
-			    "Typealias " + context.lexerString[baseClassLexerStringId] +
+			    "Typealias " + std::string(context.lexerString[baseClassLexerStringId]) +
 			    " expects " +
 			    std::to_string(
 			        typealias->genericData->genericDeclarations.size()) +
@@ -128,7 +129,7 @@ void ClassDeclaration::onLoadTypealias(in_func, TypealiasData *typealias) {
 	} else {
 		if (inputClassId.size()) {
 			throwError("Typealias " +
-			           context.lexerString[baseClassLexerStringId] +
+			           std::string(context.lexerString[baseClassLexerStringId]) +
 			           " expects no type argument but " +
 			           std::to_string(inputClassId.size()) +
 			           " were given\nHint: "
@@ -293,7 +294,7 @@ void ClassDeclaration::load(in_func) {
 			return;
 		if constexpr (canBeFunction || mustBeFunction) {
 			auto it = compile.funcMap.find(
-			    context.lexerString[baseClassLexerStringId]);
+			    std::string(context.lexerString[baseClassLexerStringId]));
 			if (it != compile.funcMap.end()) {
 				// Generics no overload
 				auto funcId = it->second[0];
@@ -301,7 +302,7 @@ void ClassDeclaration::load(in_func) {
 				auto funcInfo = context.functionInfo[funcId];
 				if (funcInfo->genericData) {
 					throwError(
-					    "'" + context.lexerString[baseClassLexerStringId] +
+					    "'" + std::string(context.lexerString[baseClassLexerStringId]) +
 					    "' expects " +
 					    std::to_string(
 					        funcInfo->genericData->genericDeclarations.size()) +
@@ -313,7 +314,7 @@ void ClassDeclaration::load(in_func) {
 				    funcInfo->genericData->genericDeclarations.size()) {
 					throwError(
 					    "Function '" +
-					    context.lexerString[baseClassLexerStringId] +
+					    std::string(context.lexerString[baseClassLexerStringId]) +
 					    "' expects " +
 					    std::to_string(funcInfo->genericTypeId.size()) +
 					    " type argument but " +
@@ -324,11 +325,10 @@ void ClassDeclaration::load(in_func) {
 				isFunction = true;
 				return;
 			} else if constexpr (mustBeFunction) {
-				std::string targetName =
-				    context.lexerString[baseClassLexerStringId];
+				std::string targetName(context.lexerString[baseClassLexerStringId]);
 				std::string bestSuggestion;
 				double bestScore = 0.0;
-				auto checkSuggestion = [&](const std::string &candidate) {
+				auto checkSuggestion = [&](std::string_view candidate) {
 					double score =
 					    rapidfuzz::fuzz::ratio(targetName, candidate);
 					if (score > bestScore && score >= 60.0) {
@@ -364,11 +364,10 @@ void ClassDeclaration::load(in_func) {
 					                mustBeFunction>(in_data, typealias);
 					return;
 				}
-				std::string targetName =
-				    context.lexerString[baseClassLexerStringId];
+				std::string targetName(context.lexerString[baseClassLexerStringId]);
 				std::string bestSuggestion;
 				double bestScore = 0.0;
-				auto checkSuggestion = [&](const std::string &candidate) {
+				auto checkSuggestion = [&](std::string_view candidate) {
 					double score =
 					    rapidfuzz::fuzz::ratio(targetName, candidate);
 					if (score > bestScore && score >= 60.0) {
@@ -398,7 +397,7 @@ void ClassDeclaration::load(in_func) {
 			auto classInfo = context.classInfo[*classId];
 			if (classInfo->genericData) {
 				throwError(
-				    "'" + context.lexerString[baseClassLexerStringId] +
+				    "'" + std::string(context.lexerString[baseClassLexerStringId]) +
 				    "' expects " +
 				    std::to_string(
 				        classInfo->genericData->genericDeclarations.size()) +
@@ -407,7 +406,7 @@ void ClassDeclaration::load(in_func) {
 				    "generic type arguments '<...>' for the class");
 			}
 			if (inputClassId.size() != classInfo->genericTypeId.size()) {
-				throwError("'" + context.lexerString[baseClassLexerStringId] +
+				throwError("'" + std::string(context.lexerString[baseClassLexerStringId]) +
 				           "' expects " +
 				           std::to_string(classInfo->genericTypeId.size()) +
 				           " type argument but " +
@@ -422,7 +421,7 @@ void ClassDeclaration::load(in_func) {
 		if (isGenericDeclaration) {
 			throwError(
 			    "Type parameter '" +
-			    context.lexerString[baseClassLexerStringId] +
+			    std::string(context.lexerString[baseClassLexerStringId]) +
 			    "' cannot have type arguments\nHint: Generic type "
 			    "parameters "
 			    "(like T, U) cannot accept further type arguments '<...>'");
@@ -431,18 +430,17 @@ void ClassDeclaration::load(in_func) {
 
 	if constexpr (canBeFunction || mustBeFunction) {
 		auto it =
-		    compile.funcMap.find(context.lexerString[baseClassLexerStringId]);
+		    compile.funcMap.find(std::string(context.lexerString[baseClassLexerStringId]));
 		// std::cerr << context.lexerString[baseClassLexerStringId] << "\n";
 		if (it != compile.funcMap.end()) {
+			bool foundGeneric = false;
 			for (FunctionId funcId : it->second) {
 				auto func = compile.functions[funcId];
 				auto funcInfo = context.functionInfo[funcId];
 				if (!funcInfo->genericData) {
-					throwError(
-					    "'" + context.lexerString[baseClassLexerStringId] +
-					    "' isn't generic function\nHint: Do not pass type "
-					    "arguments '<...>' to a non-generic function");
+					continue;
 				}
+				foundGeneric = true;
 				if (inputClassId.size() !=
 				    funcInfo->genericData->genericDeclarations.size()) {
 					continue;
@@ -477,26 +475,32 @@ void ClassDeclaration::load(in_func) {
 				isFunction = true;
 				return;
 			}
-			auto funcInfo = context.functionInfo[it->second[0]];
-			if (inputClassId.size() !=
-			    funcInfo->genericData->genericDeclarations.size()) {
+			if (foundGeneric) {
+				auto funcInfo = context.functionInfo[it->second[0]];
+				if (inputClassId.size() !=
+				    funcInfo->genericData->genericDeclarations.size()) {
+					throwError(
+					    "Function '" + std::string(context.lexerString[baseClassLexerStringId]) +
+					    "' expects " +
+					    std::to_string(
+					        funcInfo->genericData->genericDeclarations.size()) +
+					    " type argument but " +
+					    std::to_string(inputClassId.size()) +
+					    " were given\nHint: Match number of type arguments "
+					    "with "
+					    "function generic parameters");
+				}
+			} else if constexpr (mustBeFunction) {
 				throwError(
-				    "Function '" + context.lexerString[baseClassLexerStringId] +
-				    "' expects " +
-				    std::to_string(
-				        funcInfo->genericData->genericDeclarations.size()) +
-				    " type argument but " +
-				    std::to_string(inputClassId.size()) +
-				    " were given\nHint: Match number of type arguments "
-				    "with "
-				    "function generic parameters");
+				    "'" + std::string(context.lexerString[baseClassLexerStringId]) +
+				    "' isn't generic function\nHint: Do not pass type "
+				    "arguments '<...>' to a non-generic function");
 			}
 		} else if constexpr (mustBeFunction) {
-			std::string targetName =
-			    context.lexerString[baseClassLexerStringId];
+			std::string targetName(context.lexerString[baseClassLexerStringId]);
 			std::string bestSuggestion;
 			double bestScore = 0.0;
-			auto checkSuggestion = [&](const std::string &candidate) {
+			auto checkSuggestion = [&](std::string_view candidate) {
 				double score =
 				    rapidfuzz::fuzz::ratio(targetName, candidate);
 				if (score > bestScore && score >= 60.0) {
@@ -532,11 +536,10 @@ void ClassDeclaration::load(in_func) {
 				typealias = typealiasResult->second;
 				goto continueLoad;
 			}
-			std::string targetName =
-			    context.lexerString[baseClassLexerStringId];
+			std::string targetName(context.lexerString[baseClassLexerStringId]);
 			std::string bestSuggestion;
 			double bestScore = 0.0;
-			auto checkSuggestion = [&](const std::string &candidate) {
+			auto checkSuggestion = [&](std::string_view candidate) {
 				double score = rapidfuzz::fuzz::ratio(targetName, candidate);
 				if (score > bestScore && score >= 60.0) {
 					bestScore = score;
@@ -645,7 +648,7 @@ void ClassDeclaration::load(in_func) {
 	if (inputClassId.size() != classInfo->genericTypeId.size()) {
 		// int* x = nullptr; *x = 5;
 		throwError(
-		    "'" + context.lexerString[baseClassLexerStringId] + "' expects " +
+		    "'" + std::string(context.lexerString[baseClassLexerStringId]) + "' expects " +
 		    std::to_string(classInfo->genericTypeId.size()) +
 		    " type argument but " + std::to_string(inputClassId.size()) +
 		    " were given\nHint: Match number of type arguments with class "
@@ -691,14 +694,14 @@ template <bool addNullable> std::string ClassDeclaration::getName(in_func) {
 	}
 	if (inputClassId.empty()) {
 		if constexpr (!addNullable) {
-			return context.lexerString[baseClassLexerStringId];
+			return std::string(context.lexerString[baseClassLexerStringId]);
 		}
 		if (nullable) {
-			return context.lexerString[baseClassLexerStringId] + "?";
+			return std::string(context.lexerString[baseClassLexerStringId]) + "?";
 		}
-		return context.lexerString[baseClassLexerStringId];
+		return std::string(context.lexerString[baseClassLexerStringId]);
 	}
-	std::string name = context.lexerString[baseClassLexerStringId] + "<";
+	std::string name = std::string(context.lexerString[baseClassLexerStringId]) + "<";
 	bool isFirst = true;
 	for (auto classDeclaration : inputClassId) {
 		if (!isFirst) {

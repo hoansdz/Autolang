@@ -35,6 +35,25 @@ IfNode *loadIf(in_func, size_t &i, bool mustReturnValue) {
 						    nextType == Lexer::TokenType::VAL ||
 						    getPrecedence(nextType) == -1) {
 							hasOuterParen = true;
+						} else if (nextType == Lexer::TokenType::MINUS ||
+						           nextType == Lexer::TokenType::PLUS ||
+						           nextType == Lexer::TokenType::EXMARK) {
+							int scanDepth = 0;
+							for (size_t t = nextIdx; t < context.tokens.size(); ++t) {
+								if (context.tokens[t].type == Lexer::TokenType::LPAREN ||
+								    context.tokens[t].type == Lexer::TokenType::LBRACKET ||
+								    context.tokens[t].type == Lexer::TokenType::LBRACE) {
+									scanDepth++;
+								} else if (context.tokens[t].type == Lexer::TokenType::RPAREN ||
+								           context.tokens[t].type == Lexer::TokenType::RBRACKET ||
+								           context.tokens[t].type == Lexer::TokenType::RBRACE) {
+									if (scanDepth == 0) break;
+									scanDepth--;
+								} else if (scanDepth == 0 && context.tokens[t].type == Lexer::TokenType::ELSE) {
+									hasOuterParen = true;
+									break;
+								}
+							}
 						}
 					} else {
 						hasOuterParen = true;
@@ -67,7 +86,20 @@ IfNode *loadIf(in_func, size_t &i, bool mustReturnValue) {
 		throw ParserError(context.tokens[i].line,
 		                  "Expected a command after 'if' but not found\nHint: Provide a statement block '{ ... }' after 'if (...)'");
 	}
+
+	extractSmartCasts(in_data, node->condition, node->trueCasts, node->falseCasts);
+
+	for (auto &cast : node->trueCasts) cast.apply();
 	loadBody<false>(in_data, node->ifTrue.nodes, i);
+	for (auto &cast : node->trueCasts) cast.restore();
+
+	if (!node->ifTrue.nodes.empty()) {
+		auto lastKind = node->ifTrue.nodes.back()->kind;
+		if (lastKind == NodeType::RET || lastKind == NodeType::THROW || lastKind == NodeType::SKIP) {
+			node->trueBranchReturns = true;
+		}
+	}
+
 	if (!nextToken(&token, context.tokens, i) ||
 	    !expect(token, Lexer::TokenType::ELSE)) {
 		--i;
@@ -84,7 +116,18 @@ IfNode *loadIf(in_func, size_t &i, bool mustReturnValue) {
 		                  "Expected a command after 'else' but not found\nHint: Provide a statement block '{ ... }' or 'if' statement after 'else'");
 	}
 	node->ifFalse = context.blockNodePool.push(token->line);
+
+	for (auto &cast : node->falseCasts) cast.apply();
 	loadBody<false>(in_data, node->ifFalse->nodes, i);
+	for (auto &cast : node->falseCasts) cast.restore();
+
+	if (!node->ifFalse->nodes.empty()) {
+		auto falseLastKind = node->ifFalse->nodes.back()->kind;
+		if (falseLastKind == NodeType::RET || falseLastKind == NodeType::THROW || falseLastKind == NodeType::SKIP) {
+			node->falseBranchReturns = true;
+		}
+	}
+
 	return node;
 }
 

@@ -1,4 +1,5 @@
 #include "shared/DefaultOperator.hpp"
+#include "backend/libs/array.hpp"
 #include "backend/vm/ANotifier.hpp"
 #include "backend/vm/AVM.hpp"
 #include "shared/DefaultClass.hpp"
@@ -87,6 +88,16 @@ AObject *plus_eq(NativeFuncInData) {
 				notifier.release(oldObj);
 				return nullptr;
 			}
+		} else if (ptrClassId == Autolang::DefaultClass::arrayClassId ||
+		           (obj1 && (obj1->flags & AObject::Flags::OBJ_IS_ARRAY))) {
+			AObject *newArrObj = Libs::array::plus(notifier, args, argSize);
+			if (newArrObj) {
+				auto oldObj = obj1;
+				newArrObj->retain();
+				(*static_cast<AObject **>(ptr)) = newArrObj;
+				notifier.release(oldObj);
+				return nullptr;
+			}
 		}
 	}
 
@@ -161,8 +172,21 @@ AObject *plus_eq(NativeFuncInData) {
 			}
 			break;
 		}
-		default:
+		default: {
+			if (obj1->flags & AObject::Flags::OBJ_IS_ARRAY) {
+				AObject *newArrObj = Libs::array::plus(notifier, args, argSize);
+				if (newArrObj) {
+					auto oldObj = obj1;
+					newArrObj->retain();
+					if (ptr) {
+						(*static_cast<AObject **>(ptr)) = newArrObj;
+					}
+					notifier.release(oldObj);
+					return nullptr;
+				}
+			}
 			break;
+		}
 	}
 	notifier.throwException(
 	    "Cannot use += between " +
@@ -216,6 +240,16 @@ AObject *minus_eq(NativeFuncInData) {
 				default:
 					break;
 			}
+		} else if (ptrClassId == Autolang::DefaultClass::arrayClassId ||
+		           (obj1 && (obj1->flags & AObject::Flags::OBJ_IS_ARRAY))) {
+			AObject *newArrObj = Libs::array::minus(notifier, args, argSize);
+			if (newArrObj) {
+				auto oldObj = obj1;
+				newArrObj->retain();
+				(*static_cast<AObject **>(ptr)) = newArrObj;
+				notifier.release(oldObj);
+				return nullptr;
+			}
 		}
 	}
 
@@ -252,8 +286,21 @@ AObject *minus_eq(NativeFuncInData) {
 			}
 			break;
 		}
-		default:
+		default: {
+			if (obj1->flags & AObject::Flags::OBJ_IS_ARRAY) {
+				AObject *newArrObj = Libs::array::minus(notifier, args, argSize);
+				if (newArrObj) {
+					auto oldObj = obj1;
+					newArrObj->retain();
+					if (ptr) {
+						(*static_cast<AObject **>(ptr)) = newArrObj;
+					}
+					notifier.release(oldObj);
+					return nullptr;
+				}
+			}
 			break;
+		}
 	}
 	notifier.throwException(
 	    "Cannot use -= between " +

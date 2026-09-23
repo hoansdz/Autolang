@@ -31,6 +31,7 @@ namespace file {
 struct AFileHandle {
 	FILE *fp = nullptr;
 	std::string path;
+	bool isClosed = false;
 };
 
 static void destroyFile(ANotifier &notifier, void *fileData) {
@@ -270,6 +271,10 @@ AObject *read_text(NativeFuncInData) {
 		return nullptr;
 	}
 	auto handle = static_cast<AFileHandle *>(args[0]->data->data);
+	if (handle->isClosed) {
+		notifier.throwException("File is closed");
+		return nullptr;
+	}
 	if (!handle->fp) {
 		return static_read_text(notifier, args, argSize);
 	}
@@ -285,6 +290,153 @@ AObject *read_text(NativeFuncInData) {
 	}
 
 	return notifier.createString(buffer);
+}
+
+AObject *static_read_bytes(NativeFuncInData) {
+	if (!notifier.vm->allowFileRead) {
+		notifier.throwException("SecurityError: File read operation is not allowed.");
+		return nullptr;
+	}
+	const std::string &rawPath = extractPath(args[0]);
+	std::string path = resolveFilePath(rawPath, notifier);
+	if (!checkFilePathSecurity(path, notifier)) {
+		notifier.throwException("SecurityError: File path is not allowed.");
+		return nullptr;
+	}
+	FILE *fp = fopen(path.c_str(), "rb");
+	if (!fp) {
+		notifier.throwException("Cannot open file: " + path);
+		return nullptr;
+	}
+	FSEEK(fp, 0, SEEK_END);
+	int64_t size = FTELL(fp);
+	FSEEK(fp, 0, SEEK_SET);
+	AObject *bytesObj = notifier.createBytes(size);
+	if (size > 0) {
+		fread(bytesObj->bytes->data, 1, size, fp);
+		bytesObj->bytes->size = size;
+	}
+	fclose(fp);
+	return bytesObj;
+}
+
+AObject *read_bytes(NativeFuncInData) {
+	if (!notifier.vm->allowFileRead) {
+		notifier.throwException("SecurityError: File read operation is not allowed.");
+		return nullptr;
+	}
+	auto handle = static_cast<AFileHandle *>(args[0]->data->data);
+	if (handle->isClosed) {
+		notifier.throwException("File is closed");
+		return nullptr;
+	}
+	if (!handle->fp) {
+		return static_read_bytes(notifier, args, argSize);
+	}
+	FSEEK(handle->fp, 0, SEEK_END);
+	int64_t size = FTELL(handle->fp);
+	FSEEK(handle->fp, 0, SEEK_SET);
+	AObject *bytesObj = notifier.createBytes(size);
+	if (size > 0) {
+		fread(bytesObj->bytes->data, 1, size, handle->fp);
+		bytesObj->bytes->size = size;
+	}
+	return bytesObj;
+}
+
+AObject *static_write_bytes(NativeFuncInData) {
+	if (!notifier.vm->allowFileWrite) {
+		notifier.throwException("SecurityError: File write operation is not allowed.");
+		return nullptr;
+	}
+	const std::string &rawPath = extractPath(args[0]);
+	std::string path = resolveFilePath(rawPath, notifier);
+	if (!checkFilePathSecurity(path, notifier)) {
+		notifier.throwException("SecurityError: File path is not allowed.");
+		return nullptr;
+	}
+	ABytes *b = args[1]->bytes;
+	FILE *fp = fopen(path.c_str(), "wb");
+	if (!fp) {
+		notifier.throwException("Cannot open file for writing: " + path);
+		return nullptr;
+	}
+	if (b && b->size > 0) {
+		fwrite(b->data, 1, b->size, fp);
+	}
+	fclose(fp);
+	return nullptr;
+}
+
+AObject *write_bytes(NativeFuncInData) {
+	if (!notifier.vm->allowFileWrite) {
+		notifier.throwException("SecurityError: File write operation is not allowed.");
+		return nullptr;
+	}
+	auto handle = static_cast<AFileHandle *>(args[0]->data->data);
+	if (handle->isClosed) {
+		notifier.throwException("File is closed");
+		return nullptr;
+	}
+	if (!handle->fp) {
+		return static_write_bytes(notifier, args, argSize);
+	}
+	ABytes *b = args[1]->bytes;
+	if (b && b->size > 0) {
+		fwrite(b->data, 1, b->size, handle->fp);
+	}
+	return nullptr;
+}
+
+AObject *copy_to(NativeFuncInData) {
+	if (!notifier.vm->allowFileRead || !notifier.vm->allowFileWrite) {
+		notifier.throwException("SecurityError: File copy operation is not allowed.");
+		return nullptr;
+	}
+	const std::string &rawSrc = extractPath(args[0]);
+	const std::string &rawDst = extractPath(args[1]);
+	std::string src = resolveFilePath(rawSrc, notifier);
+	std::string dst = resolveFilePath(rawDst, notifier);
+	if (!checkFilePathSecurity(src, notifier) || !checkFilePathSecurity(dst, notifier)) {
+		notifier.throwException("SecurityError: File path is not allowed.");
+		return nullptr;
+	}
+	bool overwrite = (argSize >= 3 && args[2]->type == DefaultClass::boolClassId) ? args[2]->b : false;
+
+	std::error_code ec;
+	auto options = overwrite ? std::filesystem::copy_options::overwrite_existing : std::filesystem::copy_options::none;
+	std::filesystem::copy_file(src, dst, options, ec);
+	if (ec) {
+		notifier.throwException("Failed to copy file: " + ec.message());
+		return nullptr;
+	}
+	return args[1];
+}
+
+AObject *copy_recursively(NativeFuncInData) {
+	if (!notifier.vm->allowFileRead || !notifier.vm->allowFileWrite) {
+		notifier.throwException("SecurityError: File copy operation is not allowed.");
+		return nullptr;
+	}
+	const std::string &rawSrc = extractPath(args[0]);
+	const std::string &rawDst = extractPath(args[1]);
+	std::string src = resolveFilePath(rawSrc, notifier);
+	std::string dst = resolveFilePath(rawDst, notifier);
+	if (!checkFilePathSecurity(src, notifier) || !checkFilePathSecurity(dst, notifier)) {
+		notifier.throwException("SecurityError: File path is not allowed.");
+		return nullptr;
+	}
+	bool overwrite = (argSize >= 3 && args[2]->type == DefaultClass::boolClassId) ? args[2]->b : false;
+
+	std::error_code ec;
+	auto options = std::filesystem::copy_options::recursive;
+	if (overwrite) options |= std::filesystem::copy_options::overwrite_existing;
+	std::filesystem::copy(src, dst, options, ec);
+	if (ec) {
+		notifier.throwException("Failed to copy recursively: " + ec.message());
+		return nullptr;
+	}
+	return notifier.createBool(true);
 }
 
 AObject *for_each_line(NativeFuncInData) {
@@ -356,7 +508,7 @@ AObject *write(NativeFuncInData) {
 		return nullptr;
 	}
 	auto handle = static_cast<AFileHandle *>(args[0]->data->data);
-	if (!handle->fp) {
+	if (!handle->fp || handle->isClosed) {
 		notifier.throwException("File is closed");
 		return nullptr;
 	}
@@ -384,6 +536,7 @@ AObject *close(NativeFuncInData) {
 		fclose(handle->fp);
 		handle->fp = nullptr;
 	}
+	handle->isClosed = true;
 	return nullptr;
 }
 
@@ -831,7 +984,7 @@ class File {
     @native("file_static_read_lines")
     static fun readLines(path: String): Array<String>
 
-    @native("file_static_read_text")
+    @native("file_read_text")
     fun readText(): String
 
     @native("file_for_each_line")
@@ -897,14 +1050,57 @@ class File {
     
     @native("file_get_last_modified")
     static fun getLastModified(path: String): Int
+
+    @native("file_read_bytes")
+    fun readBytes(): Bytes
+
+    @native("file_write_bytes")
+    fun writeBytes(bytes: Bytes)
+
+    @native("file_copy_to")
+    fun copyTo(target: File, overwrite: Bool = false): File
+
+    @native("file_copy_to")
+    fun copyTo(target: String, overwrite: Bool = false): String
+
+    @native("file_copy_recursively")
+    fun copyRecursively(target: File, overwrite: Bool = false): Bool
+
+    @native("file_copy_recursively")
+    fun copyRecursively(target: String, overwrite: Bool = false): Bool
+
+    @native("file_static_read_bytes")
+    static fun readBytes(path: String): Bytes
+
+    @native("file_static_write_bytes")
+    static fun writeBytes(path: String, bytes: Bytes)
+
+    @native("file_copy_to")
+    static fun copyTo(source: String, target: String, overwrite: Bool = false): String
+
+    @native("file_copy_recursively")
+    static fun copyRecursively(source: String, target: String, overwrite: Bool = false): Bool
 }
 
 fun String.toFile(): File = File(this)
 
-fun readFile(path: String): String = File.readText(path)
-fun readLines(path: String): Array<String> = File.readLines(path)
-fun writeFile(path: String, text: String) { File.writeText(path, text) }
-fun appendFile(path: String, text: String) { File.appendText(path, text) }
+@native("file_static_read_text")
+fun readFile(path: String): String
+
+@native("file_static_read_lines")
+fun readLines(path: String): Array<String>
+
+@native("file_static_read_bytes")
+fun readBytes(path: String): Bytes
+
+@native("file_static_write_text")
+fun writeFile(path: String, text: String)
+
+@native("file_static_write_bytes")
+fun writeBytes(path: String, bytes: Bytes)
+
+@native("file_static_append_text")
+fun appendFile(path: String, text: String)
     )###",
 	    LibraryConfig(true),
 	    ANativeMap({
@@ -935,6 +1131,12 @@ fun appendFile(path: String, text: String) { File.appendText(path, text) }
 	        {"file_delete_recursively", &file::delete_recursively},
 	        {"file_create_new_file", &file::create_new_file},
 	        {"file_mkdir", &file::make_dir},
+	        {"file_read_bytes", &file::read_bytes},
+	        {"file_static_read_bytes", &file::static_read_bytes},
+	        {"file_write_bytes", &file::write_bytes},
+	        {"file_static_write_bytes", &file::static_write_bytes},
+	        {"file_copy_to", &file::copy_to},
+	        {"file_copy_recursively", &file::copy_recursively},
 	    }));
 }
 

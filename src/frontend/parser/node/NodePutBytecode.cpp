@@ -27,6 +27,10 @@ void SkipNode::rewrite(in_func, uint8_t *bytecodes) {
 	}
 }
 
+ExprNode *SkipNode::copy(in_func) {
+	return context.skipNodePool.push(type, line);
+}
+
 void CanBreakContinueNode::rewrite(in_func, uint8_t *bytecodes) {
 	uint32_t lastContinuePos = context.continuePos;
 	uint32_t lastBreakPos = context.breakPos;
@@ -73,6 +77,9 @@ void ReturnNode::putOptimizedBytecodes(in_func, HasClassIdNode *value,
 		switch (value->kind) {
 			case NodeType::VAR: {
 				auto node = static_cast<VarNode *>(value);
+				if (node->declaration->isCapturedByClosure && !node->declaration->isGlobal) {
+					break;
+				}
 				bytecodes.emplace_back(
 				    node->declaration->isGlobal ? RETURN_GLOBAL : RETURN_LOCAL);
 				put_opcode_u32(bytecodes, node->declaration->id);

@@ -29,13 +29,18 @@ static void destroyRegex(ANotifier &notifier, void *regexData) {
 AObject *constructor(NativeFuncInData) {
 	ClassId classId = args[0]->i;
 	const std::string &pattern = args[1]->str->data;
+	int64_t options = (argSize >= 3 && args[2]->type == DefaultClass::intClassId) ? args[2]->i : 0;
+
+	std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
+	if (options & 1) {
+		flags |= std::regex_constants::icase;
+	}
 
 	try {
-		auto handle = new ARegexHandle{std::regex(pattern), pattern};
+		auto handle = new ARegexHandle{std::regex(pattern, flags), pattern};
 		notifier.addManagedMemory(128);
 		return notifier.createNativeData(classId, handle, destroyRegex);
 	} catch (const std::regex_error &e) {
-
 		notifier.throwException(std::string("Invalid Regex Pattern: ") +
 		                        e.what());
 		return nullptr;
@@ -67,11 +72,22 @@ AObject *is_match(NativeFuncInData) {
 	return notifier.createBool(result);
 }
 
+AObject *match_entire(NativeFuncInData) {
+	GET_VALID_REGEX_OR_RETURN_NULL(args[0]->data->data, re);
+	const std::string &text = args[1]->str->data;
+	return notifier.createBool(std::regex_match(text, re));
+}
+
 AObject *find(NativeFuncInData) {
 	GET_VALID_REGEX_OR_RETURN_NULL(args[0]->data->data, re);
 	const std::string &text = args[1]->str->data;
+	int64_t startIndex = (argSize >= 3 && args[2]->type == DefaultClass::intClassId) ? args[2]->i : 0;
+	if (startIndex < 0) startIndex = 0;
+	if (static_cast<size_t>(startIndex) > text.size()) return notifier.createString("");
+
 	std::smatch m;
-	if (std::regex_search(text, m, re)) {
+	auto startIt = text.cbegin() + startIndex;
+	if (std::regex_search(startIt, text.cend(), m, re)) {
 		return notifier.createString(m.str());
 	}
 	return notifier.createString("");
@@ -80,11 +96,22 @@ AObject *find(NativeFuncInData) {
 AObject *find_all(NativeFuncInData) {
 	GET_VALID_REGEX_OR_RETURN_NULL(args[0]->data->data, re);
 	const std::string &text = args[1]->str->data;
-	ClassId arrayClassId = args[2]->i;
+	int64_t startIndex = 0;
+	ClassId arrayClassId = DefaultClass::anyClassId;
+	if (argSize >= 3 && args[2]->type == DefaultClass::intClassId) {
+		startIndex = args[2]->i;
+	}
+	if (argSize >= 4 && args[3]->type == DefaultClass::intClassId) {
+		arrayClassId = args[3]->i;
+	} else if (argSize >= 3 && args[2]->type != DefaultClass::intClassId) {
+		arrayClassId = args[2]->i;
+	}
+	if (startIndex < 0) startIndex = 0;
+	if (static_cast<size_t>(startIndex) > text.size()) startIndex = text.size();
 
 	auto newArr = notifier.createArray(arrayClassId);
-
-	auto words_begin = std::sregex_iterator(text.begin(), text.end(), re);
+	auto startIt = text.cbegin() + startIndex;
+	auto words_begin = std::sregex_iterator(startIt, text.cend(), re);
 	auto words_end = std::sregex_iterator();
 
 	for (std::sregex_iterator i = words_begin; i != words_end; ++i) {
@@ -95,7 +122,38 @@ AObject *find_all(NativeFuncInData) {
 	return newArr;
 }
 
+AObject *replace_eval(NativeFuncInData) {
+	GET_VALID_REGEX_OR_RETURN_NULL(args[0]->data->data, re);
+	const std::string &text = args[1]->str->data;
+	auto transform = args[2];
+
+	std::string result;
+	size_t lastPos = 0;
+	auto words_begin = std::sregex_iterator(text.begin(), text.end(), re);
+	auto words_end = std::sregex_iterator();
+
+	for (std::sregex_iterator i = words_begin; i != words_end; ++i) {
+		std::smatch match = *i;
+		result.append(text, lastPos, match.position() - lastPos);
+		auto matchStr = notifier.createString(match.str());
+		matchStr->retain();
+		auto rep = notifier.callFunctionObject(transform, matchStr);
+		notifier.release(matchStr);
+		if (notifier.hasException()) return nullptr;
+		if (rep && rep->type == DefaultClass::stringClassId) {
+			result.append(rep->str->data);
+		}
+		if (rep) notifier.release(rep);
+		lastPos = match.position() + match.length();
+	}
+	result.append(text, lastPos, text.size() - lastPos);
+	return notifier.createString(result);
+}
+
 AObject *replace(NativeFuncInData) {
+	if (args[2]->type == DefaultClass::functionClassId) {
+		return replace_eval(notifier, args, argSize);
+	}
 	GET_VALID_REGEX_OR_RETURN_NULL(args[0]->data->data, re);
 	const std::string &text = args[1]->str->data;
 	const std::string &replacement = args[2]->str->data;
@@ -107,28 +165,53 @@ AObject *replace(NativeFuncInData) {
 AObject *split(NativeFuncInData) {
 	GET_VALID_REGEX_OR_RETURN_NULL(args[0]->data->data, re);
 	const std::string &text = args[1]->str->data;
-	ClassId arrayClassId = args[2]->i;
+	int64_t limit = 0;
+	ClassId arrayClassId = DefaultClass::anyClassId;
+	if (argSize >= 3 && args[2]->type == DefaultClass::intClassId) {
+		limit = args[2]->i;
+	}
+	if (argSize >= 4 && args[3]->type == DefaultClass::intClassId) {
+		arrayClassId = args[3]->i;
+	} else if (argSize >= 3 && args[2]->type != DefaultClass::intClassId) {
+		arrayClassId = args[2]->i;
+	}
 
 	auto newArr = notifier.createArray(arrayClassId);
-	std::sregex_token_iterator iter(text.begin(), text.end(), re, -1);
-	std::sregex_token_iterator end;
-
-	for (; iter != end; ++iter) {
-		notifier.arrayAdd(newArr, notifier.createString(iter->str()));
+	if (limit == 1) {
+		notifier.arrayAdd(newArr, notifier.createString(text));
+		return newArr;
 	}
+
+	size_t lastPos = 0;
+	auto words_begin = std::sregex_iterator(text.begin(), text.end(), re);
+	auto words_end = std::sregex_iterator();
+	int64_t count = 0;
+
+	for (std::sregex_iterator i = words_begin; i != words_end; ++i) {
+		std::smatch match = *i;
+		if (limit > 0 && count + 1 >= limit) {
+			break;
+		}
+		notifier.arrayAdd(newArr, notifier.createString(text.substr(lastPos, match.position() - lastPos)));
+		lastPos = match.position() + match.length();
+		count++;
+	}
+	notifier.arrayAdd(newArr, notifier.createString(text.substr(lastPos)));
 	return newArr;
 }
 
 void init(ACompiler &compiler) {
 	auto nativeMap = ANativeMap();
-	nativeMap.reserve(8);
+	nativeMap.reserve(10);
 
 	nativeMap.emplace("regex_constructor", &regex::constructor);
 	nativeMap.emplace("regex_get_pattern", &regex::get_pattern);
 	nativeMap.emplace("regex_is_match", &regex::is_match);
+	nativeMap.emplace("regex_match_entire", &regex::match_entire);
 	nativeMap.emplace("regex_find", &regex::find);
 	nativeMap.emplace("regex_find_all", &regex::find_all);
 	nativeMap.emplace("regex_replace", &regex::replace);
+	nativeMap.emplace("regex_replace_eval", &regex::replace_eval);
 	nativeMap.emplace("regex_split", &regex::split);
 
 	compiler.registerBuiltInLibrary("std/regex", R"###(
@@ -137,11 +220,11 @@ void init(ACompiler &compiler) {
 class Regex {
     
     @native("regex_constructor")
-    private static fun _create(classId: Int, pattern: String): Regex
+    private static fun _create(classId: Int, pattern: String, options: Int = 0): Regex
     
-    static fun Regex(pattern: String): Regex = _create(getClassId(Regex), pattern)
-    static fun compile(pattern: String): Regex = _create(getClassId(Regex), pattern)
-    static fun from(pattern: String): Regex = _create(getClassId(Regex), pattern)
+    static fun Regex(pattern: String, options: Int = 0): Regex = _create(getClassId(Regex), pattern, options)
+    static fun compile(pattern: String, options: Int = 0): Regex = _create(getClassId(Regex), pattern, options)
+    static fun from(pattern: String, options: Int = 0): Regex = _create(getClassId(Regex), pattern, options)
 
     @native("regex_get_pattern")
     fun pattern(): String
@@ -151,6 +234,9 @@ class Regex {
 
     @native("regex_is_match")
     fun isMatch(text: String): Bool
+
+    @native("regex_match_entire")
+    fun matchEntire(text: String): Bool
 
     @native("regex_is_match")
     fun test(text: String): Bool
@@ -164,22 +250,25 @@ class Regex {
     fun containsMatchIn(text: String): Bool = this.isMatch(text)
 
     @native("regex_find")
-    fun find(text: String): String
+    fun find(text: String, startIndex: Int = 0): String
 
     @native("regex_find_all")
-    fun findAll(text: String, arrayClassId: Int = getClassId(Array<String>)): Array<String>
+    fun findAll(text: String, startIndex: Int = 0, arrayClassId: Int = getClassId(Array<String>)): Array<String>
 
     @native("regex_find_all")
-    fun matchAll(text: String, arrayClassId: Int = getClassId(Array<String>)): Array<String>
+    fun matchAll(text: String, startIndex: Int = 0, arrayClassId: Int = getClassId(Array<String>)): Array<String>
 
     @native("regex_find_all")
-    fun search(text: String, arrayClassId: Int = getClassId(Array<String>)): Array<String>
+    fun search(text: String, startIndex: Int = 0, arrayClassId: Int = getClassId(Array<String>)): Array<String>
 
     @native("regex_find_all")
-    fun findAllMatches(text: String, arrayClassId: Int = getClassId(Array<String>)): Array<String>
+    fun findAllMatches(text: String, startIndex: Int = 0, arrayClassId: Int = getClassId(Array<String>)): Array<String>
 
     @native("regex_replace")
     fun replace(text: String, replacement: String): String
+
+    @native("regex_replace_eval")
+    fun replace(text: String, transform: (String) -> String): String
 
     @native("regex_replace")
     fun replaceAll(text: String, replacement: String): String
@@ -188,16 +277,16 @@ class Regex {
     fun sub(text: String, replacement: String): String
 
     @native("regex_split")
-    fun split(text: String, arrayClassId: Int = getClassId(Array<String>)): Array<String>
+    fun split(text: String, limit: Int = 0, arrayClassId: Int = getClassId(Array<String>)): Array<String>
 
     static fun isMatch(pattern: String, text: String): Bool = Regex.compile(pattern).isMatch(text)
     static fun replace(pattern: String, text: String, replacement: String): String = Regex.compile(pattern).replace(text, replacement)
-    static fun split(pattern: String, text: String): Array<String> = Regex.compile(pattern).split(text)
+    static fun split(pattern: String, text: String, limit: Int = 0): Array<String> = Regex.compile(pattern).split(text, limit)
 }
-fun String.toRegex(): Regex = Regex.compile(this)
+fun String.toRegex(options: Int = 0): Regex = Regex.compile(this, options)
 fun String.matches(regex: Regex): Bool = regex.matches(this)
 fun String.replace(regex: Regex, replacement: String): String = regex.replace(this, replacement)
-fun String.split(regex: Regex): Array<String> = regex.split(this)
+fun String.split(regex: Regex, limit: Int = 0): Array<String> = regex.split(this, limit)
 fun String.contains(regex: Regex): Bool = regex.isMatch(this)
     )###",
 	                                LibraryConfig(), std::move(nativeMap));

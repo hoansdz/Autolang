@@ -236,11 +236,15 @@ void CreateSetNode::optimizeAndInferenceType(in_func) {
 		if (valueMustBeClassId == DefaultClass::anyClassId) {
 			continue;
 		}
-		throwError("Cannot cast " +
-		           compile.classes[value->classId]->getName(compile) + " to " +
-		           compile.classes[*valueMustBeClassId]->getName(compile) +
-		           "\nHint: Ensure all elements in the Set match the "
-		           "expected element type or provide an explicit conversion.");
+		if (valueMustBeClassId) {
+			ClassId commonId = ExprNode::getCommonSuperType(in_data, *valueMustBeClassId, value->classId);
+			if (commonId != *valueMustBeClassId) {
+				valueMustBeClassId = commonId;
+				valueClassDeclaration = ExprNode::getOrCreateClassDeclaration(in_data, commonId, line, false);
+				mustReload = true;
+				continue;
+			}
+		}
 	}
 	if (!valueMustBeClassId) {
 		throwError(
@@ -301,6 +305,9 @@ void CreateSetNode::optimizeAndInferenceType(in_func) {
 		}
 	}
 	valueClassDeclaration->classId = *valueMustBeClassId;
+	if (nullable) {
+		valueClassDeclaration->nullable = true;
+	}
 	if (valueClassDeclaration->baseClassLexerStringId == 0) {
 		valueClassDeclaration->baseClassLexerStringId =
 		    context.createLexerStringIfNotExists(

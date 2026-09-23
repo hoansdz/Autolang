@@ -72,7 +72,7 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 			    "must be a valid identifier");
 		}
 		LexerStringId baseName = token->indexData;
-		const std::string &name = context.lexerString[token->indexData];
+		const auto &name = context.lexerString[token->indexData];
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
 			throw ParserError(
@@ -106,7 +106,7 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 		// }
 		auto node = context.makeDeclarationNode(
 		    in_data, token->line, baseName, name, classDeclaration, isVal,
-		    false, classDeclaration ? classDeclaration->nullable : true, false,
+		    false, classDeclaration ? classDeclaration->nullable : false, false,
 		    false);
 		parameter->parameters.push_back(node);
 		if (expect(token, Lexer::TokenType::EQUAL)) {

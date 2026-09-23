@@ -199,6 +199,17 @@ class ObjectManager {
 			return;
 		}
 #endif
+		if (obj->flags & AObject::Flags::OBJ_IS_BOX) {
+			if (obj->boxedValue) {
+				release(obj->boxedValue);
+			}
+			obj->flags = AObject::Flags::OBJ_IS_FREE;
+			return;
+		}
+		if (obj->flags & AObject::Flags::OBJ_IS_NO_DATA) {
+			obj->flags = AObject::Flags::OBJ_IS_FREE;
+			return;
+		}
 		if (obj->flags & AObject::Flags::OBJ_IS_NATIVE_DATA) {
 			if (obj->data->destructor) {
 				obj->data->destructor(*notifier, obj->data->data);

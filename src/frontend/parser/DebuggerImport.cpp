@@ -34,7 +34,7 @@ LibraryData *loadImport(in_func, LibraryData* currentLibrary, std::vector<Lexer:
 		    "@import expects a string value\nHint: Provide a string literal inside "
 		    "parentheses, e.g. @import(\"path/to/file\")");
 	}
-	const std::string &path = context.lexerString[token->indexData];
+	std::string path(context.lexerString[token->indexData]);
 	if (!nextTokenSameLine(&token, tokens, i, firstLine) ||
 	    !expect(token, Lexer::TokenType::RPAREN)) {
 		--i;

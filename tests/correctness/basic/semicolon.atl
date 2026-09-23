@@ -1,0 +1,53 @@
+fun logInvalidTransition(orderId: String, state: String, event: String) {
+}
+
+fun testSemicolon() {
+    // 1. Single line statements separated by semicolon
+    var x = 10; var y = 20; var z = 30
+    assert(x == 10 && y == 20 && z == 30, "Single line semicolon failed")
+
+    // 2. Trailing semicolons
+    x = 100;
+    y = 200;;;
+    assert(x == 100 && y == 200, "Trailing semicolon failed")
+
+    // 3. Standalone semicolon
+    ;
+    ;;
+
+    // 4. Inside block on single line with trailing semicolon
+    { var blk1 = 1; var blk2 = 2; }
+    var isValid = false; var nextState = ""
+
+    // 5. User's exact scenario
+    val events = listOf("CREATE", "PAY", "PACK", "VERIFY", "SHIP")
+    var state = "START"
+    var successCount = 0
+    val orderId = "ORD-701"
+    for (event in events) {
+        var valid = false
+        var nextSt = ""
+        when (state) {
+            "START" -> if (event == "CREATE") { valid = true; nextSt = "CREATED" }
+            "CREATED" -> if (event == "PAY") { valid = true; nextSt = "PAID" }
+            "PAID" -> if (event == "VERIFY") { valid = true; nextSt = "VERIFIED" }
+            "VERIFIED" -> if (event == "PACK") { valid = true; nextSt = "PACKED" }
+            "PACKED" -> if (event == "SHIP") { valid = true; nextSt = "SHIPPED" }
+            "SHIPPED" -> if (event == "DELIVER") { valid = true; nextSt = "DELIVERED" }
+        }
+        if (valid) {
+            state = nextSt
+            successCount = successCount + 1
+        } else {
+            val fromState = state
+            state = "REJECTED"
+            logInvalidTransition(orderId, fromState, event)
+            break
+        }
+    }
+    assert(state == "REJECTED" && successCount == 2, "State machine with semicolons failed")
+
+    println("Passed ${__FUNC__}")
+}
+
+testSemicolon()

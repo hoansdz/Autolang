@@ -474,6 +474,45 @@ resumeCallFrame:;
 					i += 4;
 					break;
 				}
+				case Autolang::Opcode::FOR_STRING: {
+					AObject *strObj = stack.pop();
+					bool isGlobal = bytecodes[i++] == Opcode::STORE_GLOBAL;
+					AObject **iterator;
+					AObject **container;
+					if (isGlobal) {
+						container = &globalVariables[get_u32(bytecodes, i)];
+						iterator = &globalVariables[get_u32(bytecodes, i)];
+					} else {
+						container = &stackAllocator[get_u32(bytecodes, i)];
+						iterator = &stackAllocator[get_u32(bytecodes, i)];
+					}
+					AString *str = (strObj && strObj->type == DefaultClass::stringClassId) ? strObj->str : nullptr;
+					uint32_t strLen = str ? str->size : 0;
+					if (*iterator == DefaultClass::nullObject) {
+						if (strLen == 0) {
+							i = get_u32(bytecodes, i);
+							break;
+						}
+						*iterator = data.manager.createIntObject(0);
+						*container = notifier->createString(AString::from(str->data[0]));
+						(*container)->retain();
+						i += 4;
+						break;
+					}
+					data.manager.release(*container);
+					*container = nullptr;
+					uint32_t newIndex = ++(*iterator)->i;
+					if (newIndex >= strLen) {
+						data.manager.release(*iterator);
+						*iterator = nullptr;
+						i = get_u32(bytecodes, i);
+						break;
+					}
+					*container = notifier->createString(AString::from(str->data[newIndex]));
+					(*container)->retain();
+					i += 4;
+					break;
+				}
 				case Autolang::Opcode::FOR_SET: {
 					auto setObject = stack.pop();
 					auto unorderedSetData =
@@ -1140,6 +1179,34 @@ resumeCallFrame:;
 					data.manager.release(obj2);
 					break;
 				}
+				case Autolang::Opcode::DUP: {
+					auto top = stack.top();
+					top->retain();
+					stack.push(top);
+					break;
+				}
+				case Autolang::Opcode::TAKE_IF_CHECK: {
+					auto cond = stack.pop();
+					bool ok = cond->b;
+					data.manager.release(cond);
+					if (!ok) {
+						auto val = stack.pop();
+						data.manager.release(val);
+						stack.push(Autolang::DefaultClass::nullObject);
+					}
+					break;
+				}
+				case Autolang::Opcode::TAKE_UNLESS_CHECK: {
+					auto cond = stack.pop();
+					bool ok = cond->b;
+					data.manager.release(cond);
+					if (ok) {
+						auto val = stack.pop();
+						data.manager.release(val);
+						stack.push(Autolang::DefaultClass::nullObject);
+					}
+					break;
+				}
 				case Autolang::Opcode::LOAD_CONST: {
 					stack.push(getConstObject(get_u32(bytecodes, i)));
 					// std::cerr<<stack.top()<<" created\n";
@@ -1302,6 +1369,47 @@ resumeCallFrame:;
 					auto obj = stack.pop();
 					uint32_t pos = get_u32(bytecodes, i);
 					stackAllocator.set(data.manager, pos, obj);
+					break;
+				}
+				case Autolang::Opcode::BOX_LOCAL: {
+					auto obj = stack.pop();
+					uint32_t pos = get_u32(bytecodes, i);
+					auto box = notifier->createBox(obj);
+					box->retain();
+					if (obj) notifier->release(obj);
+					stackAllocator.set(data.manager, pos, box);
+					break;
+				}
+				case Autolang::Opcode::BOXED_LOAD_LOCAL: {
+					uint32_t pos = get_u32(bytecodes, i);
+					AObject *box = stackAllocator[pos];
+					if (box && (box->flags & AObject::Flags::OBJ_IS_BOX)) {
+						AObject *inner = box->boxedValue;
+						if (inner) {
+							inner->retain();
+							stack.push(inner);
+						} else {
+							stack.push(notifier->getNullObject());
+						}
+					} else if (box) {
+						box->retain();
+						stack.push(box);
+					}
+					break;
+				}
+				case Autolang::Opcode::BOXED_STORE_LOCAL: {
+					auto obj = stack.pop();
+					uint32_t pos = get_u32(bytecodes, i);
+					AObject *box = stackAllocator[pos];
+					if (box && (box->flags & AObject::Flags::OBJ_IS_BOX)) {
+						auto old = box->boxedValue;
+						box->boxedValue = obj;
+						if (obj) obj->retain();
+						if (old) data.manager.release(old);
+					} else {
+						stackAllocator.set(data.manager, pos, obj);
+					}
+					if (obj) notifier->release(obj);
 					break;
 				}
 					DATA_STORE_DATA(LOCAL_STORE_LOCAL, stackAllocator,
@@ -1674,6 +1782,20 @@ resumeCallFrame:;
 					data.manager.release(stack.pop());
 					goto resumeCallFrame;
 				}
+				case Autolang::Opcode::UNSAFE_CAST_NULLABLE: {
+					auto obj = stack.top();
+					uint32_t classId = get_u32(bytecodes, i);
+					if (obj->type == DefaultClass::nullClassId ||
+					    obj->type == classId ||
+					    data.classes[obj->type]->inheritance.get(classId)) {
+						break;
+					}
+					notifier->throwException(
+					    "Cannot cast '" + notifier->getClassName(obj->type) +
+					    "' to '" + notifier->getClassName(classId) + "'");
+					data.manager.release(stack.pop());
+					goto resumeCallFrame;
+				}
 				case Autolang::Opcode::WAIT_INPUT: {
 					state = VMState::WAITING;
 					break;
@@ -1832,12 +1954,14 @@ resumeCallFrame:;
 							auto newObj = notifier->createInt(obj->i++);
 							notifier->release(obj);
 							stack.top() = newObj;
+							newObj->retain();
 							break;
 						}
 						case DefaultClass::floatClassId: {
 							auto newObj = notifier->createFloat(obj->f++);
 							notifier->release(obj);
 							stack.top() = newObj;
+							newObj->retain();
 							break;
 						}
 						default: {
@@ -1856,12 +1980,14 @@ resumeCallFrame:;
 							auto newObj = notifier->createInt(obj->i--);
 							notifier->release(obj);
 							stack.top() = newObj;
+							newObj->retain();
 							break;
 						}
 						case DefaultClass::floatClassId: {
 							auto newObj = notifier->createFloat(obj->f--);
 							notifier->release(obj);
 							stack.top() = newObj;
+							newObj->retain();
 							break;
 						}
 						default: {

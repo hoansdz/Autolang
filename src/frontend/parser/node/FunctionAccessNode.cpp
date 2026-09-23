@@ -54,7 +54,7 @@ ExprNode *FunctionAccessNode::optimize(in_func) {
 				        ? compile.classes[caller->classId]->getName(compile)
 				        : "Unknown";
 				throwError("Cannot find member function '" +
-				           context.lexerString[nameId] + "' in class '" +
+				           std::string(context.lexerString[nameId]) + "' in class '" +
 				           className +
 				           "'\nHint: Verify member function name spelling or accessibility.");
 			}
@@ -78,7 +78,7 @@ ExprNode *FunctionAccessNode::optimize(in_func) {
 			}
 			if (count == 0) {
 				throwError("Cannot find function '" +
-				           context.lexerString[nameId] +
+				           std::string(context.lexerString[nameId]) +
 				           "'\nHint: Check function name spelling, ensure it is in scope or declared before usage.");
 			}
 		}
@@ -160,7 +160,7 @@ ExprNode *FunctionAccessNode::optimize(in_func) {
 				}
 			}
 			throwError("Ambiguous reference to: '" +
-			           context.lexerString[nameId] + "'\nFound: " + found +
+			           std::string(context.lexerString[nameId]) + "'\nFound: " + found +
 			           "\nHint: Multiple functions match this identifier. Explicitly specify function parameter types or refine the type signature.");
 		}
 	}
@@ -238,7 +238,7 @@ ExprNode *FunctionAccessNode::optimize(in_func) {
 
 		if (!matchFuncId) {
 			throwError(
-			    "Cannot find function '" + context.lexerString[nameId] +
+			    "Cannot find function '" + std::string(context.lexerString[nameId]) +
 			    "' matching signature: " + classDeclaration->getName(in_data) +
 			    "\nHint: Verify the function name spelling, argument count, parameter types, and return type against available definitions.");
 		}

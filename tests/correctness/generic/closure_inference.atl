@@ -1,0 +1,85 @@
+// Test suite: Type inference for Kotlin-style Closures ({}) in Array, If and When expressions
+
+val condTrue = true
+val condFalse = false
+val selector = 1
+
+// 1. Empty braces {} correctly inferred as closure () -> Void
+val emptyClosure = {}
+emptyClosure()
+
+// 2. Array of empty closures [{}]
+val arrEmptyClosure = [{}, {}, {}]
+assert(arrEmptyClosure.length() == 3)
+arrEmptyClosure[0]()
+arrEmptyClosure[1]()
+arrEmptyClosure[2]()
+
+// 3. Zero-argument closure returning a value (Kotlin-style { expr } syntax)
+val getTen = { 10 }
+assert(getTen() == 10)
+
+val arrReturnValueClosure = [{ 10 }, { 20 }, { 30 }]
+assert(arrReturnValueClosure.length() == 3)
+assert(arrReturnValueClosure[0]() == 10)
+assert(arrReturnValueClosure[1]() == 20)
+assert(arrReturnValueClosure[2]() == 30)
+
+// 4. Array of closures with explicit parameters
+val arrParamClosure = [
+    { x: Int -> x + 1 },
+    { x: Int -> x * 2 },
+    { x: Int -> x * x }
+]
+assert(arrParamClosure.length() == 3)
+assert(arrParamClosure[0](5) == 6)
+assert(arrParamClosure[1](5) == 10)
+assert(arrParamClosure[2](5) == 25)
+
+// 5. If-expression returning closure (else branch infers parameter type from true branch)
+val ifClosure = if (condTrue) ({ x: Int -> x + 10 }) else ({ x -> x * 10 })
+assert(ifClosure(5) == 15)
+
+val ifClosureFalse = if (condFalse) ({ x: Int -> x + 10 }) else ({ x -> x * 10 })
+assert(ifClosureFalse(5) == 50)
+
+// 6. When-expression returning closure (else branch infers parameter type from previous branch)
+val whenClosure = when (selector) {
+    1 -> ({ n: Int -> n + 100 })
+    else -> ({ n -> n * 100 })
+}
+assert(whenClosure(2) == 102)
+
+// 7. Array containing {} combined with if/when expressions returning closures
+val arrCombined = [
+    {},
+    if (condTrue) ({}) else ({}),
+    when (selector) {
+        1 -> ({})
+        else -> ({})
+    }
+]
+assert(arrCombined.length() == 3)
+arrCombined[0]()
+arrCombined[1]()
+arrCombined[2]()
+
+// 8. Array combining value-returning closures and if/when expressions
+val arrCombinedVal = [
+    { 50 },
+    if (condTrue) ({ 60 }) else ({ 70 }),
+    when (selector) {
+        1 -> ({ 80 })
+        else -> ({ 90 })
+    }
+]
+assert(arrCombinedVal.length() == 3)
+assert(arrCombinedVal[0]() == 50)
+assert(arrCombinedVal[1]() == 60)
+assert(arrCombinedVal[2]() == 80)
+
+// 9. Closure using implicit 'it' parameter
+val doubleIt: (Int) -> Int = { it * 2 }
+assert(doubleIt(4) == 8)
+
+println("All Kotlin-style closure inference tests passed!")

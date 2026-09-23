@@ -36,8 +36,9 @@ fun testArrayFeaturesExhaustive() {
     assert(a.contains(12) == true)
     assert((99 in a) == false)
 
-    // 4. Test: remove, pop
-    a.remove(2)
+    // 4. Test: removeAt, pop
+    val removedVal = a.removeAt(2)
+    assert(removedVal == 1)
     assert(a.get(2) == 12)
     
     val poppedValue = a.pop()

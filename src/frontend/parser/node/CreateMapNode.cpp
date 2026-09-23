@@ -279,11 +279,13 @@ void CreateMapNode::optimizeAndInferenceType(in_func) {
 				}
 				default:
 				keyMismatch:
-					if (keyMustBeClassId != DefaultClass::anyClassId) {
-						throwError("Cannot cast " +
-						           compile.classes[key->classId]->getName(compile) + " to " +
-						           compile.classes[*keyMustBeClassId]->getName(compile) +
-						           "\nHint: Ensure all keys in the Map match the expected key type or provide an explicit conversion.");
+					if (keyMustBeClassId && *keyMustBeClassId != DefaultClass::anyClassId) {
+						ClassId commonId = ExprNode::getCommonSuperType(in_data, *keyMustBeClassId, key->classId);
+						if (commonId != *keyMustBeClassId) {
+							keyMustBeClassId = commonId;
+							keyClassDeclaration = ExprNode::getOrCreateClassDeclaration(in_data, commonId, line, false);
+							mustReloadKey = true;
+						}
 					}
 					break;
 			}
@@ -392,13 +394,15 @@ void CreateMapNode::optimizeAndInferenceType(in_func) {
 				continue;
 			}
 		}
-		if (valueMustBeClassId == DefaultClass::anyClassId) {
-			continue;
+		if (valueMustBeClassId && *valueMustBeClassId != DefaultClass::anyClassId) {
+			ClassId commonId = ExprNode::getCommonSuperType(in_data, *valueMustBeClassId, value->classId);
+			if (commonId != *valueMustBeClassId) {
+				valueMustBeClassId = commonId;
+				valueClassDeclaration = ExprNode::getOrCreateClassDeclaration(in_data, commonId, line, false);
+				mustReloadValue = true;
+				continue;
+			}
 		}
-		throwError("Cannot cast " +
-		           compile.classes[value->classId]->getName(compile) + " to " +
-		           compile.classes[*valueMustBeClassId]->getName(compile) +
-		           "\nHint: Ensure all values in the Map match the expected value type or provide an explicit conversion.");
 	}
 
 	if (!keyMustBeClassId || !valueMustBeClassId) {

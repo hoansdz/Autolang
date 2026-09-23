@@ -29,7 +29,7 @@ ExprNode *ForNode::optimize(in_func) {
 	}
 	switch (data->kind) {
 		case NodeType::RANGE: {
-			if (detachValue != nullptr) {
+			if (detachValue != nullptr || !destructureTargets.empty()) {
 				throwError("Multiple loop variables are not supported for Range\nHint: Use 'for (i in start..end)'.");
 			}
 			switch (detach->classId) {
@@ -86,10 +86,36 @@ ExprNode *ForNode::optimize(in_func) {
 				collectionNode->declaration->nullable = data->isNullable();
 				collectionNode = static_cast<VarNode *>(collectionNode->optimize(in_data));
 			}
+			if (data->classId == DefaultClass::stringClassId) {
+				if (detachValue != nullptr) {
+					throwError("Multiple loop variables are not supported for 'String'\nHint: Use 'for (ch in str)'.");
+				}
+				if (!destructureTargets.empty()) {
+					throwError("Destructuring is not supported for 'String'\nHint: Use 'for (ch in str)'.");
+				}
+				switch (detach->classId) {
+					case Autolang::DefaultClass::nullClassId: {
+						detach->declaration->classId = DefaultClass::stringClassId;
+						detach->declaration->nullable = false;
+						break;
+					}
+					case Autolang::DefaultClass::stringClassId: {
+						break;
+					}
+					default: {
+						throwError(
+						    "Type mismatch: expected 'String' but '" +
+						    compile.classes[detach->classId]->getName(compile) +
+						    "' found\nHint: Loop control variable for String must be of type String.");
+						break;
+					}
+				}
+				break;
+			}
 			auto classInfo = context.classInfo[data->classId];
 			if (classInfo->genericTypeId.empty()) {
 				throwError("Cannot iterate over type '" +
-				           compile.classes[data->classId]->getName(compile) + "'\nHint: Only Array, Set, Map, and Range types support iteration in for loops.");
+				           compile.classes[data->classId]->getName(compile) + "'\nHint: Only Array, Set, Map, String, and Range types support iteration in for loops.");
 			}
 			auto clazz = compile.classes[data->classId];
 			auto baseClassId = clazz->genericBaseClassId;
@@ -105,10 +131,7 @@ ExprNode *ForNode::optimize(in_func) {
 					switch (detach->classId) {
 						case Autolang::DefaultClass::nullClassId: {
 							detach->declaration->classId = target;
-							if (target == DefaultClass::functionClassId) {
-								detach->declaration->classDeclaration =
-								    classType;
-							}
+							detach->declaration->classDeclaration = classType;
 							detach->declaration->nullable = classType->nullable;
 							break;
 						}
@@ -133,9 +156,92 @@ ExprNode *ForNode::optimize(in_func) {
 							break;
 						}
 					}
+					if (!destructureTargets.empty()) {
+						auto elemClass = compile.classes[target];
+						auto elemInfo = context.classInfo[target];
+						std::vector<LexerStringId> propNames;
+						for (auto *memberDecl : elemInfo->member) {
+							if (memberDecl) {
+								propNames.push_back(memberDecl->baseName);
+							}
+						}
+						if (destructureTargets.size() > propNames.size()) {
+							throwError("Destructuring declaration has " + std::to_string(destructureTargets.size()) +
+							           " variables, but type '" + elemClass->getName(compile) +
+							           "' only has " + std::to_string(propNames.size()) +
+							           " properties\nHint: Check number of destructured variables");
+						}
+						size_t insertIdx = 0;
+						for (size_t k = 0; k < destructureTargets.size(); ++k) {
+							auto *targetDecl = destructureTargets[k];
+							if (!targetDecl) {
+								continue;
+							}
+							LexerStringId propId = propNames[k];
+							auto *varElem = context.varPool.push(line, detach->declaration, false, false);
+							auto *getProp = context.getPropPool.push(
+							    line, nullptr, context.currentClassId, varElem, propId, false, false, false);
+							auto *optimizedProp = static_cast<HasClassIdNode *>(getProp->optimize(in_data));
+
+							targetDecl->classId = optimizedProp->classId;
+							targetDecl->nullable = optimizedProp->isNullable();
+							targetDecl->classDeclaration = optimizedProp->classDeclaration;
+
+							auto *varTarget = context.varPool.push(line, targetDecl, true, true);
+							auto *setValue = context.setValuePool.push(line, varTarget, optimizedProp, false);
+							auto *optSet = setValue->optimize(in_data);
+							body.nodes.insert(body.nodes.begin() + insertIdx, optSet);
+							insertIdx++;
+						}
+						destructureTargets.clear();
+					}
 					break;
 				}
 				case DefaultClass::mapClassId: {
+					if (!destructureTargets.empty()) {
+						if (destructureTargets.size() == 1) {
+							DeclarationNode *keyDecl = destructureTargets[0];
+							if (!keyDecl) {
+								keyDecl = context.makeDeclarationNode(
+								    in_data, line, context.createLexerStringIfNotExists(".unused_k"),
+								    ".unused_k", nullptr, true,
+								    context.currentFunctionId == context.mainFunctionId &&
+								        !context.currentClosureNode,
+								    false, true, true);
+								keyDecl->classId = Autolang::DefaultClass::nullClassId;
+							}
+							detach = context.varPool.push(line, keyDecl, false, false);
+							detachValue = nullptr;
+							destructureTargets.clear();
+						} else if (destructureTargets.size() == 2) {
+							DeclarationNode *keyDecl = destructureTargets[0];
+							if (!keyDecl) {
+								keyDecl = context.makeDeclarationNode(
+								    in_data, line, context.createLexerStringIfNotExists(".unused_k"),
+								    ".unused_k", nullptr, true,
+								    context.currentFunctionId == context.mainFunctionId &&
+								        !context.currentClosureNode,
+								    false, true, true);
+								keyDecl->classId = Autolang::DefaultClass::nullClassId;
+							}
+							DeclarationNode *valDecl = destructureTargets[1];
+							if (!valDecl) {
+								valDecl = context.makeDeclarationNode(
+								    in_data, line, context.createLexerStringIfNotExists(".unused_v"),
+								    ".unused_v", nullptr, true,
+								    context.currentFunctionId == context.mainFunctionId &&
+								        !context.currentClosureNode,
+								    false, true, true);
+								valDecl->classId = Autolang::DefaultClass::nullClassId;
+							}
+							detach = context.varPool.push(line, keyDecl, false, false);
+							detachValue = context.varPool.push(line, valDecl, false, false);
+							destructureTargets.clear();
+						} else {
+							throwError("Cannot destructure " + std::to_string(destructureTargets.size()) +
+							           " variables from Map\nHint: Map only supports 1 or 2 loop variables: for (key in map) or for ((key, value) in map)");
+						}
+					}
 					auto keyType = classInfo->genericTypeId[0];
 					ClassId keyTarget = *keyType->classId;
 					switch (detach->classId) {
@@ -244,7 +350,7 @@ ExprNode *ForNode::copy(in_func) {
 	auto newNode = context.forPool.push(
 	    line, newDetach,
 	    static_cast<HasClassIdNode *>(data->copy(in_data)), newIteratorNode,
-	    newDetachValue, newCollectionNode);
+	    newDetachValue, newCollectionNode, destructureTargets);
 	newNode->body.nodes.reserve(body.nodes.size());
 	for (auto *node : body.nodes) {
 		newNode->body.nodes.push_back(node->copy(in_data));
@@ -398,10 +504,50 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		}
 		default: {
 			data->optimize(in_data);
+			if (data->classId == DefaultClass::stringClassId) {
+				bytecodes.emplace_back(iteratorNode->declaration->isGlobal
+				                           ? Opcode::GLOBAL_STORE_CONST
+				                           : Opcode::LOCAL_STORE_CONST);
+				put_opcode_u32(bytecodes, iteratorNode->declaration->id);
+				put_opcode_u32(bytecodes, 0); // null value
+
+				if (collectionNode != nullptr) {
+					if (data->kind == NodeType::VAR) {
+						static_cast<AccessNode *>(data)->isStore = false;
+					}
+					data->putBytecodes(in_data, bytecodes);
+					bytecodes.emplace_back(collectionNode->declaration->isGlobal
+					                           ? Opcode::STORE_GLOBAL
+					                           : Opcode::STORE_LOCAL);
+					put_opcode_u32(bytecodes, collectionNode->declaration->id);
+				}
+
+				continuePos = bytecodes.size() - context.currentBytecodePos;
+
+				// Skip
+				if (collectionNode != nullptr) {
+					collectionNode->putBytecodes(in_data, bytecodes);
+				} else {
+					if (data->kind == NodeType::VAR) {
+						static_cast<AccessNode *>(data)->isStore = false;
+					}
+					data->putBytecodes(in_data, bytecodes);
+				}
+				bytecodes.emplace_back(Opcode::FOR_STRING);
+				bytecodes.emplace_back(iteratorNode->declaration->isGlobal
+				                           ? Opcode::STORE_GLOBAL
+				                           : Opcode::STORE_LOCAL);
+				put_opcode_u32(bytecodes, detach->declaration->id);
+				put_opcode_u32(bytecodes, iteratorNode->declaration->id);
+				jumpIfFalseByte =
+				    bytecodes.size() - context.currentBytecodePos;
+				put_opcode_u32(bytecodes, 0);
+				break;
+			}
 			auto clazz = compile.classes[data->classId];
 			auto classInfo = context.classInfo[data->classId];
 			if (classInfo->genericTypeId.empty()) {
-				throwError("Cannot iterate over type '" + clazz->getName(compile) + "'\nHint: Only Array, Set, Map, and Range types support iteration in for loops.");
+				throwError("Cannot iterate over type '" + clazz->getName(compile) + "'\nHint: Only Array, Set, Map, String, and Range types support iteration in for loops.");
 			}
 			auto baseClassId = clazz->genericBaseClassId;
 			switch (baseClassId) {

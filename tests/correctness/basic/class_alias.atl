@@ -1,0 +1,29 @@
+// Test class and namespace alias functionality
+
+// 1. Single class alias
+typealias MyMath = Math
+assert(MyMath.abs(-10) == 10)
+assert(MyMath.max(20, 30) == 30)
+
+// 2. Chained alias
+typealias MathOne = Math
+typealias MathTwo = MathOne
+assert(MathTwo.abs(-42) == 42)
+
+// 3. Dotted alias on left side: typealias kotlin.math = Math
+typealias kotlin.math = Math
+assert(kotlin.math.abs(-100) == 100)
+assert(kotlin.math.min(5, 8) == 5)
+
+// 4. Reverse dotted alias: typealias Math = kotlin.math
+typealias Math = kotlin.math
+assert(Math.abs(-99) == 99)
+
+// 5. Data class
+data class Job(val id: String, val priority: Int, val duration: Int)
+val job = Job("J1", 3, 8)
+assert(job.id == "J1")
+assert(job.priority == 3)
+assert(job.duration == 8)
+
+println("Passed testClassAlias")

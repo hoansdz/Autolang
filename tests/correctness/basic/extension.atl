@@ -111,10 +111,10 @@ fun testExtensionFunctions() {
 	val singleArr = [99]
 	assert(singleArr.secondElement() == null)
 
-	val st = {1, 2, 3}
+	val st = setOf(1, 2, 3)
 	assert(st.hasItems() == true)
 
-	val mp = {"k1": 1, "k2": 2}
+	val mp = mapOf("k1" to 1, "k2" to 2)
 	assert(mp.entryCount() == 2)
 
 	println("Passed ${__FUNC__}")

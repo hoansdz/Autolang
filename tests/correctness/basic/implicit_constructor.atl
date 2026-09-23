@@ -1,5 +1,5 @@
 class ImplicitJson {
-	var data: Map<String, Any> = {}
+	var data: Map<String, Any> = mapOf<String, Any>()
 
 	implicit constructor(m: Map<String, Any>) {
 		this.data = m
@@ -153,11 +153,11 @@ class AddressInfo {
 
 class PersonProfile {
 	var name: String = ""
-	var address: AddressInfo = {}
+	var address: AddressInfo = AddressInfo(mapOf<String, Any>())
 	var age: ImplicitIntWrapper = 0
 	var note: ImplicitStringWrapper = ""
 	var scores: ImplicitIntList = []
-	var extra: ImplicitJson = {}
+	var extra: ImplicitJson = mapOf<String, Any>()
 
 	constructor(name: String, address: AddressInfo, age: ImplicitIntWrapper, note: ImplicitStringWrapper, scores: ImplicitIntList, extra: ImplicitJson) {
 		this.name = name
@@ -172,7 +172,7 @@ class PersonProfile {
 class Department {
 	var name: String = ""
 	lateinit var manager: PersonProfile
-	var config: ImplicitJson = {}
+	var config: ImplicitJson = mapOf<String, Any>()
 
 	constructor(name: String, manager: PersonProfile, config: ImplicitJson) {
 		this.name = name
@@ -190,7 +190,7 @@ fun processNestedChain(p: PersonProfile): Int {
 }
 
 fun makeImplicitJson(key: String, value: Any): ImplicitJson {
-	return {key: value}
+	return mapOf(key to value)
 }
 
 fun wrapChainMessage(msg: String): ImplicitStringWrapper {
@@ -207,17 +207,17 @@ fun helperTakeIntList(list: ImplicitIntList): Int {
 
 fun testImplicitConstructor() {
 	// 1. Variable initialization with empty and populated Map
-	val j1: ImplicitJson = {}
+	val j1: ImplicitJson = mapOf<String, Any>()
 	assert(j1.data.size() == 0)
 
-	val j2: ImplicitJson = {"name": "AutoLang", "count": 42}
+	val j2: ImplicitJson = mapOf("name" to "AutoLang", "count" to 42)
 	assert(j2.data.size() == 2)
 	assert((j2.data.get("name") as String) == "AutoLang")
 	assert((j2.data.get("count") as Int) == 42)
 
 	// 2. Variable reassignment
-	var j3: ImplicitJson = {}
-	j3 = {"updated": 99}
+	var j3: ImplicitJson = mapOf<String, Any>()
+	j3 = mapOf("updated" to 99)
 	assert(j3.data.size() == 1)
 	assert((j3.data.get("updated") as Int) == 99)
 
@@ -241,22 +241,22 @@ fun testImplicitConstructor() {
 	assert(iw.value == 12345)
 
 	// 6. Implicit conversion as function parameter
-	assert(helperTakeJson({}) == 0)
-	assert(helperTakeJson({"k1": 1, "k2": 2, "k3": 3}) == 3)
+	assert(helperTakeJson(mapOf<String, Any>()) == 0)
+	assert(helperTakeJson(mapOf("k1" to 1, "k2" to 2, "k3" to 3)) == 3)
 	assert(helperTakeIntList([]) == 0)
 	assert(helperTakeIntList([1, 2]) == 2)
 
 	// 7. Implicit conversion in member method parameter
 	val svc = Service()
-	assert(svc.process({}) == 0)
-	assert(svc.process({"x": 1, "y": 2}) == 2)
+	assert(svc.process(mapOf<String, Any>()) == 0)
+	assert(svc.process(mapOf("x" to 1, "y" to 2)) == 2)
 
 	// 8. Implicit conversion in return statement
 	val ret = helperReturnWrapper()
 	assert(ret.valStr == "returned implicitly")
 
 	// 9. 0-argument implicit constructor
-	val eh: ImplicitEmptyHolder = {}
+	val eh = ImplicitEmptyHolder()
 	assert(eh.initialized == true)
 
 	// 10. Multiple implicit constructors on single class
@@ -291,21 +291,21 @@ fun testImplicitConstructor() {
 	assert(fnr.num == 8888)
 
 	// 16. Deeply nested JSON map and array hierarchy
-	val deepJson: ImplicitJson = {
-		"system": <String, Any>{
-			"env": "production",
-			"database": <String, Any>{
-				"host": "db.internal",
-				"ports": [5432, 5433],
-				"replicas": <String, Any>{
-					"primary": "db-1",
-					"secondary": ["db-2", "db-3"]
-				}
-			}
-		},
-		"tags": ["core", "infra", "secure"],
-		"version": 3
-	}
+	val deepJson: ImplicitJson = mapOf<String, Any>(
+		"system" to mapOf<String, Any>(
+			"env" to "production",
+			"database" to mapOf<String, Any>(
+				"host" to "db.internal",
+				"ports" to [5432, 5433],
+				"replicas" to mapOf<String, Any>(
+					"primary" to "db-1",
+					"secondary" to ["db-2", "db-3"]
+				)
+			)
+		),
+		"tags" to ["core", "infra", "secure"],
+		"version" to 3
+	)
 	assert(deepJson.data.size() == 3)
 	assert((deepJson.data.get("version") as Int) == 3)
 	val sys = deepJson.data.get("system") as Map<String, Any>
@@ -328,7 +328,7 @@ fun testImplicitConstructor() {
 		32,
 		"Engineering Manager",
 		[90, 95, 98, 100],
-		{"github": "alice-dev", "clearance": "level-5"}
+		mapOf("github" to "alice-dev", "clearance" to "level-5")
 	)
 	assert(mgr.name == "Alice")
 	assert(mgr.address.street == "123 Main St")
@@ -347,13 +347,13 @@ fun testImplicitConstructor() {
 	val dept = Department(
 		"Core Platform",
 		mgr,
-		<String, Any>{
-			"tier": 1,
-			"metadata": <String, Any>{
-				"cloud": "gcp",
-				"regions": ["asia-southeast1", "us-central1"]
-			}
-		}
+		mapOf<String, Any>(
+			"tier" to 1,
+			"metadata" to mapOf<String, Any>(
+				"cloud" to "gcp",
+				"regions" to ["asia-southeast1", "us-central1"]
+			)
+		)
 	)
 	assert(dept.name == "Core Platform")
 	assert(dept.manager.name == "Alice")
@@ -370,9 +370,9 @@ fun testImplicitConstructor() {
 				28,
 				"AI Lead",
 				[100, 100],
-				{"framework": "AutoLang"}
+				mapOf("framework" to "AutoLang")
 			),
-			{"budget": 500000}
+			mapOf("budget" to 500000)
 		)
 	)
 	assert(inlineDeptSummary == "R&D/Bob/DaNang")
@@ -391,12 +391,13 @@ fun testImplicitConstructor() {
 	dept.manager.scores = [100, 100, 100]
 	assert(dept.manager.scores.items.size() == 3)
 
-	dept.config = <String, Any>{"tier": 2, "updated": true}
+	dept.config = mapOf("tier" to 2, "updated" to true)
 	assert(dept.config.data.size() == 2)
 	assert((dept.config.data.get("updated") as Bool) == true)
 
 	// 21. Default and empty nested holders
-	val emptyMgr = PersonProfile("Ghost", {}, 0, "", [], {})
+	val emptyScores: Array<Int> = []
+	val emptyMgr = PersonProfile("Ghost", AddressInfo(mapOf<String, Any>()), 0, "", emptyScores, mapOf<String, Any>())
 	assert(emptyMgr.address.street == "")
 	assert(emptyMgr.address.city == "")
 	assert(emptyMgr.age.value == 0)

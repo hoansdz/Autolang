@@ -57,6 +57,23 @@ AObject *clone(NativeFuncInData);
 AObject *filter(NativeFuncInData);
 AObject *plus(NativeFuncInData);
 AObject *minus(NativeFuncInData);
+AObject *is_not_empty(NativeFuncInData);
+AObject *contains_value(NativeFuncInData);
+AObject *get_or_put(NativeFuncInData);
+AObject *get_or_else(NativeFuncInData);
+AObject *filter_keys(NativeFuncInData);
+AObject *filter_values(NativeFuncInData);
+AObject *map_values(NativeFuncInData);
+AObject *map_keys(NativeFuncInData);
+AObject *plus_pair(NativeFuncInData);
+AObject *entries(NativeFuncInData);
+AObject *put_all(NativeFuncInData);
+AObject *remove_pair(NativeFuncInData);
+AObject *to_list(NativeFuncInData);
+AObject *any_fn(NativeFuncInData);
+AObject *all_fn(NativeFuncInData);
+AObject *none_fn(NativeFuncInData);
+AObject *filter_not(NativeFuncInData);
 std::string to_string(ANotifier &notifier, AObject *obj);
 } // namespace map
 } // namespace Libs

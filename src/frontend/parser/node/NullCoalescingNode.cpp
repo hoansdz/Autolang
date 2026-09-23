@@ -57,13 +57,21 @@ ExprNode *NullCoalescingNode::optimize(in_func) {
 		}
 	}
 	classId = left->classId;
-	if (left->classId != right->classId) {
-		throwError("Left and right operands of null coalescing operator (?\?) must be of the same type (got '" +
-		           compile.classes[left->classId]->getName(compile) + "' and '" +
-		           compile.classes[right->classId]->getName(compile) +
-		           "')\nHint: Ensure both operands of '?\?' evaluate to compatible types, or explicitly cast one operand to match.");
+	classDeclaration = left->classDeclaration;
+	bool rightEndsEarly = (right->kind == NodeType::SKIP || right->kind == NodeType::RET || right->kind == NodeType::THROW);
+	if (!rightEndsEarly && right->kind == NodeType::BLOCK) {
+		auto block = static_cast<BlockNode *>(right);
+		if (!block->nodes.empty()) {
+			auto lastKind = block->nodes.back()->kind;
+			rightEndsEarly = (lastKind == NodeType::SKIP || lastKind == NodeType::RET || lastKind == NodeType::THROW);
+		}
 	}
-	nullable = right->isNullable();
+	if (!rightEndsEarly && left->classId != right->classId) {
+		ClassId commonId = ExprNode::getCommonSuperType(in_data, left->classId, right->classId);
+		classId = commonId;
+		classDeclaration = ExprNode::getOrCreateClassDeclaration(in_data, commonId, line, rightEndsEarly ? false : right->isNullable());
+	}
+	nullable = rightEndsEarly ? false : right->isNullable();
 	return this;
 }
 

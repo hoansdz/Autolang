@@ -77,7 +77,7 @@ ExprNode *DeclarationNode::optimize(in_func) {
 			}
 			throwError(
 			    "Cannot declare variable with the same name as class: '" +
-			    name + "'\nHint: " + hint);
+			    std::string(name) + "'\nHint: " + hint);
 		}
 	}
 	{
@@ -94,7 +94,7 @@ ExprNode *DeclarationNode::optimize(in_func) {
 			}
 			throwError(
 			    "Cannot declare variable with the same name as typealias: '" +
-			    name + "'\nHint: " + hint);
+			    std::string(name) + "'\nHint: " + hint);
 		}
 	}
 	if (classDeclaration) {
@@ -110,7 +110,7 @@ ExprNode *DeclarationNode::optimize(in_func) {
 		if (it == context.defaultClassMap.end()) {
 			std::string bestSuggestion;
 			double bestScore = 0.0;
-			auto checkSuggestion = [&](const std::string &candidate) {
+			auto checkSuggestion = [&](std::string_view candidate) {
 				double score = rapidfuzz::fuzz::ratio(baseClassName, candidate);
 				if (score > bestScore && score >= 60.0) {
 					bestScore = score;
@@ -127,7 +127,7 @@ ExprNode *DeclarationNode::optimize(in_func) {
 			}
 
 			std::string errorMsg =
-			    "Cannot find class name: '" + baseClassName + "'";
+			    "Cannot find class name: '" + std::string(baseClassName) + "'";
 			if (!bestSuggestion.empty() && bestSuggestion != baseClassName) {
 				errorMsg += "\nDid you mean: '" + bestSuggestion + "'?";
 			}
@@ -144,7 +144,7 @@ ExprNode *DeclarationNode::optimize(in_func) {
 		if (classInfo->genericData->genericDeclarations.size() !=
 		        classDeclaration->inputClassId.size() &&
 		    !classDeclaration->isGenericDeclaration) {
-			throwError("'" + baseClassName + "' expects " +
+			throwError("'" + std::string(baseClassName) + "' expects " +
 			           std::to_string(
 			               classInfo->genericData->genericDeclarations.size()) +
 			           " type argument but " +
@@ -154,7 +154,7 @@ ExprNode *DeclarationNode::optimize(in_func) {
 		}
 		// Generics
 		if (!classDeclaration->classId) {
-			throwError("Unresolved class ID for declaration '" + name +
+			throwError("Unresolved class ID for declaration '" + std::string(name) +
 			           "'\nHint: Internal compiler error - class declaration "
 			           "was not resolved.");
 		}
@@ -186,6 +186,7 @@ ExprNode *DeclarationNode::copy(in_func) {
 	    line, context.currentClassId, baseName, name, newClassDecl, isVal,
 	    isGlobal, nullable);
 	newNode->mustInferenceNullable = mustInferenceNullable;
+	newNode->declaredNullable = declaredNullable;
 	if (isGlobal && context.newPositionOfStaticDeclaration) {
 		auto it = context.newPositionOfStaticDeclaration->find(id);
 		if (it != context.newPositionOfStaticDeclaration->end()) {
@@ -249,7 +250,8 @@ std::string DeclarationNode::toString(in_func, bool isStaticMember) {
 		result += "lateinit ";
 	}
 	result += (isVal ? "val " : "var ");
-	result += name + ": ";
+	result += name;
+	result += ": ";
 	if (classDeclaration) {
 		result += classDeclaration->getName<true>(in_data);
 	} else if (classId && classId < compile.classes.size()) {
@@ -265,7 +267,7 @@ void CreateConstructorNode::pushFunction(in_func) {
 	auto *clazz = compile.classes[classId];
 	auto *classInfo = context.classInfo[classId];
 	funcId = compile.registerFunction<true>(
-	    mode->path.c_str(), clazz, context.lexerString[nameId],
+	    mode->path.c_str(), clazz, std::string(context.lexerString[nameId]),
 	    new ClassId[parameter->parameters.size()]{},
 	    parameter->parameters.size(), classId,
 	    functionFlags | FunctionFlags::FUNC_IS_CONSTRUCTOR);
@@ -390,7 +392,7 @@ ExprNode *CreateConstructorNode::optimize(in_func) {
 }
 
 void CreateClassNode::pushClass(in_func) {
-	classId = compile.registerClass(context.lexerString[nameId], classFlags);
+	classId = compile.registerClass(std::string(context.lexerString[nameId]), classFlags);
 	context.defaultClassMap[nameId] = classId;
 	auto clazz = compile.classes[classId];
 	auto classInfo = context.classInfoAllocator.push();
@@ -431,7 +433,7 @@ ExprNode *CreateClassNode::optimize(in_func) {
 			    context.defaultClassMap.end()) {
 				throwError("Cannot declare generic type parameter with the "
 				           "same name as class: '" +
-				           context.lexerString[genericDeclaration->nameId] +
+				           std::string(context.lexerString[genericDeclaration->nameId]) +
 				           "'\nHint: Rename the generic type parameter so it "
 				           "does not conflict with a class name.");
 			}
@@ -456,7 +458,7 @@ ExprNode *CreateClassNode::optimize(in_func) {
 				}
 				throwError(
 				    "Cannot declare class with the same name as function: '" +
-				    name + "'\nHint: " + hint);
+				    std::string(name) + "'\nHint: " + hint);
 			}
 		}
 	}
@@ -533,7 +535,7 @@ void CreateClassNode::loadSuper(in_func) {
 			}
 			auto it = memberToFind.find(declaration->name);
 			if (it != memberToFind.end()) {
-				throwError("Member '" + declaration->name +
+				throwError(std::string("Member '") + std::string(declaration->name) +
 				           "' is already declared in superclass '" +
 				           superClass->getName(compile) +
 				           "'. Overriding is not supported yet.\nHint: Rename "

@@ -211,6 +211,33 @@ AObject *ext_string_from_bytes(NativeFuncInData) {
 	    std::string(reinterpret_cast<char *>(b->data), b->size));
 }
 
+AObject *decode_to_string(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	if (!b || b->size == 0) {
+		return notifier.createString("");
+	}
+	int64_t start = (argSize >= 2 && args[1]->type == DefaultClass::intClassId) ? args[1]->i : 0;
+	int64_t end = (argSize >= 3 && args[2]->type == DefaultClass::intClassId && args[2]->i >= 0) ? args[2]->i : b->size;
+	if (start < 0) start = 0;
+	if (end > b->size) end = b->size;
+	if (start >= end) return notifier.createString("");
+	return notifier.createString(std::string(reinterpret_cast<char *>(b->data + start), end - start));
+}
+
+AObject *encode_to_byte_array(NativeFuncInData) {
+	const std::string &str = args[0]->str->data;
+	int64_t start = (argSize >= 2 && args[1]->type == DefaultClass::intClassId) ? args[1]->i : 0;
+	int64_t end = (argSize >= 3 && args[2]->type == DefaultClass::intClassId && args[2]->i >= 0) ? args[2]->i : static_cast<int64_t>(str.size());
+	if (start < 0) start = 0;
+	if (end > static_cast<int64_t>(str.size())) end = static_cast<int64_t>(str.size());
+	if (start >= end) return notifier.createBytes(0);
+	int64_t len = end - start;
+	AObject *obj = notifier.createBytes(len);
+	std::memcpy(obj->bytes->data, str.data() + start, len);
+	obj->bytes->size = len;
+	return obj;
+}
+
 AObject *ext_int_to_bytes(NativeFuncInData) {
 	int64_t val = args[0]->i;
 	AObject *obj = notifier.createBytes(8);
@@ -581,7 +608,8 @@ static fun Bytes.fromHex(hex: String): Bytes
 @native("bytes_to_byte_array")
 fun Bytes.toByteArray(): Array<Int>
 
-fun Bytes.decodeToString(): String = this.toUtf8String()
+@native("bytes_decode_to_string")
+fun Bytes.decodeToString(startIndex: Int = 0, endIndex: Int = -1): String
 
 @native("bytes_read_int32_be")
 fun Bytes.readInt32BE(offset: Int): Int
@@ -595,7 +623,8 @@ fun Bytes.xorWith(other: Bytes, lenBytes: Int)
 @native("bytes_ext_string_to_bytes")
 fun String.toBytes(): Bytes
 
-fun String.encodeToByteArray(): Bytes = this.toBytes()
+@native("bytes_encode_to_byte_array")
+fun String.encodeToByteArray(startIndex: Int = 0, endIndex: Int = -1): Bytes
 
 @native("bytes_ext_string_from_bytes")
 static fun String.fromBytes(bytes: Bytes): String
@@ -634,6 +663,8 @@ fun Int.toBigEndianBytes(): Bytes
 	        {"bytes_ext_string_to_bytes", &bytes::ext_string_to_bytes},
 	        {"bytes_ext_string_from_bytes", &bytes::ext_string_from_bytes},
 	        {"bytes_ext_int_to_bytes", &bytes::ext_int_to_bytes},
+	        {"bytes_decode_to_string", &bytes::decode_to_string},
+	        {"bytes_encode_to_byte_array", &bytes::encode_to_byte_array},
 	    }));
 }
 

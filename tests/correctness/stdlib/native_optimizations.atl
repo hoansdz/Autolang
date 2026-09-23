@@ -1,0 +1,82 @@
+@import("std/time")
+@import("std/date")
+
+var nativeOptSum = 0
+
+fun testNativeOptimizations() {
+    // Test Array.lastIndex, max, min
+    val arr = [10, 20, 5, 40, 15]
+    assert(arr.lastIndex() == 4, "lastIndex failed")
+    assert(arr.max() == 40, "max failed")
+    assert(arr.min() == 5, "min failed")
+
+    // Test String.toString
+    val s = "hello"
+    assert(s.toString() == "hello", "toString failed")
+
+    // Test repeat
+    nativeOptSum = 0
+    repeat(5) { i: Int ->
+        nativeOptSum = nativeOptSum + i
+    }
+    assert(nativeOptSum == 10, "repeat failed")
+
+    // Test require & check
+    require(nativeOptSum == 10, "require passed")
+    check(nativeOptSum == 10, "check passed")
+
+    // Test measureTimeMillis
+    val elapsed = measureTimeMillis {
+        var c = 0
+        repeat(100) { j: Int ->
+            c = c + 1
+        }
+    }
+    assert(elapsed >= 0, "measureTimeMillis failed")
+
+    // Test minOf, maxOf, clamp
+    assert(minOf(10, 20) == 10, "minOf int failed")
+    assert(minOf(10.5, 20.5) == 10.5, "minOf float failed")
+    assert(minOf(30, 10, 20) == 10, "minOf 3 int failed")
+    assert(maxOf(10, 20) == 20, "maxOf int failed")
+    assert(maxOf(10.5, 20.5) == 20.5, "maxOf float failed")
+    assert(maxOf(30, 10, 20) == 30, "maxOf 3 int failed")
+    assert(clamp(5, 10, 20) == 10, "clamp min failed")
+    assert(clamp(25, 10, 20) == 20, "clamp max failed")
+    assert(clamp(15, 10, 20) == 15, "clamp in-range failed")
+
+    val d1 = Date(1000)
+    val d2 = Date(2000)
+    assert(d2.diff(d1) == 1000, "date diff failed")
+    assert(d1.isBefore(d2), "date isBefore failed")
+    assert(d2.isAfter(d1), "date isAfter failed")
+    val d3 = d1.copy()
+    assert(d3.getTime() == 1000, "date copy failed")
+
+    // Test Array.indices
+    val indicesArr = arr.indices()
+    assert(indicesArr.size() == 5, "indices size failed")
+    assert(indicesArr[0] == 0 && indicesArr[4] == 4, "indices values failed")
+
+    // Test requireNotNull & checkNotNull
+    val nonNullVal: String = requireNotNull("hello", "must not be null")
+    assert(nonNullVal == "hello", "requireNotNull failed")
+    val checkedVal: Int = checkNotNull(123, "must not be null")
+    assert(checkedVal == 123, "checkNotNull failed")
+
+    // Test Pair and Triple components & copy
+    val pair = pairOf("A", 100)
+    assert(pair.component1() == "A", "pair component1 failed")
+    assert(pair.component2() == 100, "pair component2 failed")
+    val pairCopy = pair.copy("B", 200)
+    assert(pairCopy.first == "B" && pairCopy.second == 200, "pair copy failed")
+
+    val triple = tripleOf("X", 3.14, true)
+    assert(triple.component1() == "X", "triple component1 failed")
+    assert(triple.component2() == 3.14, "triple component2 failed")
+    assert(triple.component3() == true, "triple component3 failed")
+
+    println("Passed testNativeOptimizations")
+}
+
+testNativeOptimizations()

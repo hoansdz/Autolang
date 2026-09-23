@@ -216,6 +216,25 @@ fun testMultipleCatches() {
 	assert(evaluateError(2) == 20)
 	assert(evaluateError(3) == 30)
 
+	// 9. Kotlin TODO helper
+	var caughtTodo1 = false
+	try {
+		TODO()
+	} catch (e) {
+		assert(e.message == "TODO: An operation is not implemented.")
+		caughtTodo1 = true
+	}
+	assert(caughtTodo1)
+
+	var caughtTodo2 = false
+	try {
+		TODO("custom task")
+	} catch (e) {
+		assert(e.message == "TODO: custom task")
+		caughtTodo2 = true
+	}
+	assert(caughtTodo2)
+
 	println("Passed ${__FUNC__}")
 }
 

@@ -1,0 +1,316 @@
+fun testKotlinStdlib() {
+    // 1. Int & Float coerce
+    val a: Int = 15
+    val b: Int = a.coerceIn(0, 10)
+    if (b != 10) {
+        error("coerceIn failed")
+    }
+    if (a.coerceAtLeast(20) != 20) {
+        error("coerceAtLeast failed")
+    }
+    if (a.coerceAtMost(5) != 5) {
+        error("coerceAtMost failed")
+    }
+
+    // 2. String helpers
+    val s: String = "Hello World"
+    if (s.substring(0, 5) != "Hello") {
+        error("substring(0, 5) failed")
+    }
+    if (s.substring(6) != "World") {
+        error("substring(6) failed")
+    }
+    val blankStr: String = "   "
+    if (!blankStr.isBlank()) {
+        error("isBlank failed")
+    }
+    if (s.isBlank()) {
+        error("s.isBlank should be false")
+    }
+    if ("ab".repeat(3) != "ababab") {
+        error("repeat failed")
+    }
+    if ("5".padStart(3, "0") != "005") {
+        error("padStart failed")
+    }
+    if ("5".padEnd(3, "0") != "500") {
+        error("padEnd failed")
+    }
+    val multiline: String = "line1\nline2\nline3"
+    val linesArr: Array<String> = multiline.lines()
+    if (linesArr.length() != 3 || linesArr[0] != "line1" || linesArr[2] != "line3") {
+        error("lines() failed")
+    }
+
+    // 3. Array functions
+    val nums: Array<Int> = [1, 2, 3, 4, 5]
+    if (nums.sum() != 15) {
+        error("sum failed")
+    }
+    if (nums.average() != 3.0) {
+        error("average failed")
+    }
+    if (nums.maxOrNull()! != 5) {
+        error("maxOrNull failed")
+    }
+    if (nums.minOrNull()! != 1) {
+        error("minOrNull failed")
+    }
+    val even: Int? = nums.find({ x: Int -> x % 2 == 0 })
+    if (even! != 2) {
+        error("find failed")
+    }
+    val oddArr: Array<Int> = nums.filterNot({ x: Int -> x % 2 == 0 })
+    if (oddArr.length() != 3 || oddArr[0] != 1 || oddArr[1] != 3 || oddArr[2] != 5) {
+        error("filterNot failed")
+    }
+
+    // 3b. Implicit 'it' parameter in lambdas
+    val testItList: Array<Int> = [12, -5, 18, 7, -2, 25, 4, 30]
+    val filterItSum: Int = testItList.filter { it > 10 && it > 0 }.sum()
+    if (filterItSum != 85) {
+        error("filter with it failed")
+    }
+    val anyNeg: Bool = testItList.any { it < 0 }
+    if (!anyNeg) {
+        error("any with it failed")
+    }
+    val foundIt: Int? = testItList.find { it > 20 }
+    if (foundIt! != 25) {
+        error("find with it failed")
+    }
+    val dupes: Array<Int> = [1, 2, 2, 3, 1, 4]
+    val distinctArr: Array<Int> = dupes.distinct()
+    if (distinctArr.length() != 4 || distinctArr[0] != 1 || distinctArr[3] != 4) {
+        error("distinct failed")
+    }
+    val lastTwo: Array<Int> = nums.takeLast(2)
+    if (lastTwo.length() != 2 || lastTwo[0] != 4 || lastTwo[1] != 5) {
+        error("takeLast failed")
+    }
+    val chunks: Array<Any> = nums.chunked(2)
+    if (chunks.length() != 3) {
+        error("chunked failed")
+    }
+    val numSet: Set<Int> = dupes.toSet()
+    if (numSet.size() != 4) {
+        error("toSet failed")
+    }
+
+    // 4. Set plus / minus & setOf
+    val sSetOf = setOf(1, 2, 3, 2)
+    if (sSetOf.size() != 3 || !sSetOf.contains(2)) {
+        error("setOf initialization failed")
+    }
+
+    val s1: Set<Int> = Set<Int>()
+    s1.add(1)
+    s1.add(2)
+    val s2: Set<Int> = Set<Int>()
+    s2.add(2)
+    s2.add(3)
+    val sUnion: Set<Int> = s1.plus(s2)
+    if (sUnion.size() != 3) {
+        error("Set.plus failed")
+    }
+    val sDiff: Set<Int> = s1.minus(s2)
+    if (sDiff.size() != 1 || !sDiff.contains(1)) {
+        error("Set.minus failed")
+    }
+
+    // 4.1 Filter and predicates with implicit it inside parentheses
+    val testList = listOf(5, 10, 15, 20)
+    val filteredInParens = testList.filter({ it > 10 })
+    if (filteredInParens.size() != 2 || filteredInParens.get(0) != 15) {
+        error("filter({ it > 10 }) in parentheses failed")
+    }
+    if (!testList.any({ it == 20 }) || !testList.all({ it > 0 }) || !testList.none({ it < 0 })) {
+        error("predicate({ it ... }) in parentheses failed")
+    }
+
+    // 5. Map helpers & mapOf
+    val testMapOf = mapOf("alpha" to 10, "beta" to 20)
+    if (testMapOf.size() != 2 || testMapOf.get("alpha") != 10) {
+        error("mapOf initialization failed")
+    }
+    val map: Map<String, Int> = mapOf()
+    map.set("a", 100)
+    map.set("b", 200)
+    val v1: Int = map.getOrElse("a", { -> 0 })
+    val v2: Int = map.getOrElse("c", { -> -1 })
+    if (v1 != 100 || v2 != -1) {
+        error("getOrElse failed")
+    }
+
+    // 6. Global helpers
+    val counts: Array<Int> = []
+    repeat(4, { i: Int ->
+        counts.push(i)
+    })
+    if (counts.length() != 4 || counts.sum() != 6) {
+        error("global repeat failed")
+    }
+    require(counts.length() == 4, "require condition failed")
+    check(counts.sum() == 6, "check condition failed")
+
+    // 7. Math helpers
+    if (abs(-10) != 10 || abs(10) != 10) {
+        error("abs failed")
+    }
+    if (min(20, 10) != 10 || max(20, 10) != 20) {
+        error("min/max failed")
+    }
+    if (floor(3.7) != 3.0 || ceil(3.2) != 4.0 || round(3.5) != 4.0) {
+        error("floor/ceil/round failed")
+    }
+    if (sqrt(16.0) != 4.0) {
+        error("sqrt failed")
+    }
+
+    // 8. Optional parentheses syntax for loops and conditions
+    val testNumbers = [12, -5, 18, 7, -2, 25, 4, 30]
+    var loopSum = 0
+    for n in testNumbers {
+        if n > 10 {
+            loopSum = loopSum + n
+        }
+    }
+    check(loopSum == 85, "optional parens for/if failed")
+
+    var whileCount = 0
+    var whileIdx = 0
+    while whileIdx < 4 {
+        whileCount = whileCount + whileIdx
+        whileIdx = whileIdx + 1
+    }
+    check(whileCount == 6, "optional parens while failed")
+
+    var ifBranch = ""
+    if loopSum > 50 {
+        ifBranch = "large"
+    } else {
+        ifBranch = "small"
+    }
+    check(ifBranch == "large", "optional parens if-else failed")
+
+    // 9. Nullable inference without explicit type
+    val testId = "USER" + "_" + "405"
+    var testNick: String? = null
+    var testName = if (testNick != null) testNick else testId
+    check(testName == "USER_405", "null initialization inference failed")
+    check(testName.length() == 8, "null ternary result length mismatch")
+
+    // 10. Advanced edge cases for optional parens and closures
+    val subExprX = 2
+    var passedSubExpr = false
+    if (subExprX + 3) * 4 == 20 {
+        passedSubExpr = true
+    }
+    check(passedSubExpr, "subexpression condition without outer parens failed")
+
+    val condA = true
+    val condB = false
+    val condC = true
+    var passedLogic = false
+    if (condA && condB) || (condA && condC) {
+        passedLogic = true
+    }
+    check(passedLogic, "compound logic without outer parens failed")
+
+    var sumBreakContinue = 0
+    for n in 1..10 {
+        if n % 2 == 0 {
+            continue
+        }
+        if n > 7 {
+            break
+        }
+        sumBreakContinue = sumBreakContinue + n
+    }
+    check(sumBreakContinue == 16, "for loop break and continue failed")
+
+    val rawNums = [5, 12, 3, 22, 8, 30]
+    var totalFiltered = 0
+    for x in rawNums.filter({ it >= 10 }) {
+        if x < 30 {
+            totalFiltered = totalFiltered + x
+        }
+    }
+    check(totalFiltered == 34, "filter in for iterable failed")
+
+    val outerNums = [1, 2, 3]
+    val innerFiltered = outerNums.filter({
+        val current = it
+        val evens = [2, 4, 6].filter({ it > current })
+        evens.length() > 0
+    })
+    check(innerFiltered.length() == 3, "nested closures with it failed")
+
+        // 11. Newly added Kotlin standard functions
+    check(minOf(10, 20) == 10, "minOf(Int, Int) failed")
+    check(minOf(2.5, 1.2) == 1.2, "minOf(Float, Float) failed")
+    check(minOf(10, 2.5) == 2.5, "minOf(Int, Float) failed")
+    check(minOf(2.5, 10) == 2.5, "minOf(Float, Int) failed")
+    check(minOf(15, 5, 25) == 5, "minOf 3 args failed")
+    check(minOf(15.0, 5.5, 25.0) == 5.5, "minOf 3 float args failed")
+
+    check(maxOf(10, 20) == 20, "maxOf(Int, Int) failed")
+    check(maxOf(2.5, 1.2) == 2.5, "maxOf(Float, Float) failed")
+    check(maxOf(10, 2.5) == 10.0, "maxOf(Int, Float) failed")
+    check(maxOf(2.5, 10) == 10.0, "maxOf(Float, Int) failed")
+    check(maxOf(15, 5, 25) == 25, "maxOf 3 args failed")
+    check(maxOf(15.0, 5.5, 25.0) == 25.0, "maxOf 3 float args failed")
+
+    check(clamp(5, 10, 20) == 10, "clamp min failed")
+    check(clamp(15, 10, 20) == 15, "clamp in range failed")
+    check(clamp(25, 10, 20) == 20, "clamp max failed")
+
+    // 12. String take, drop, removePrefix, removeSuffix, reversed
+    val strKt = "KotlinAutoLang"
+    check(strKt.take(6) == "Kotlin", "String.take failed")
+    check(strKt.take(-1) == "", "String.take negative failed")
+    check(strKt.take(99) == "KotlinAutoLang", "String.take excess failed")
+    check(strKt.takeLast(4) == "Lang", "String.takeLast failed")
+    check(strKt.drop(6) == "AutoLang", "String.drop failed")
+    check(strKt.dropLast(4) == "KotlinAuto", "String.dropLast failed")
+    check(strKt.removePrefix("Kotlin") == "AutoLang", "String.removePrefix failed")
+    check(strKt.removePrefix("Other") == "KotlinAutoLang", "String.removePrefix unmatched failed")
+    check(strKt.removeSuffix("Lang") == "KotlinAuto", "String.removeSuffix failed")
+    check("racecar".reversed() == "racecar", "String.reversed failed")
+    check("hello".reversed() == "olleh", "String.reversed failed")
+
+    // 13. Array safe access and operations
+    val ktArr = [10, 20, 30, 40]
+    check(ktArr.getOrNull(1) == 20, "getOrNull valid failed")
+    check(ktArr.getOrNull(-1) == null, "getOrNull negative failed")
+    check(ktArr.getOrNull(10) == null, "getOrNull out of bounds failed")
+    check(ktArr.getOrElse(10, { idx -> idx * 10 }) == 100, "getOrElse failed")
+
+    val descArr = ktArr.sortedDescending()
+    check(descArr[0] == 40 && descArr[3] == 10, "sortedDescending failed")
+    check(ktArr.indexOfFirst({ x -> x > 25 }) == 2, "indexOfFirst failed")
+    check(ktArr.indexOfLast({ x -> x < 35 }) == 2, "indexOfLast failed")
+
+    val singleArr = [99]
+    check(singleArr.single() == 99, "single failed")
+    check(singleArr.singleOrNull() == 99, "singleOrNull valid failed")
+    check(ktArr.singleOrNull() == null, "singleOrNull multiple failed")
+
+    // 14. Map getOrPut
+    val ktMap = mapOf("existing" to 100)
+    val vExist = ktMap.getOrPut("existing", { 999 })
+    check(vExist == 100, "getOrPut existing failed")
+    val vCreated = ktMap.getOrPut("created", { 200 })
+    check(vCreated == 200, "getOrPut created return failed")
+    check(ktMap.get("created") == 200, "getOrPut created stored failed")
+
+    // 15. Triple and tripleOf
+    val trip = tripleOf("ID-1", 42, true)
+    check(trip.first == "ID-1", "Triple.first failed")
+    check(trip.second == 42, "Triple.second failed")
+    check(trip.third == true, "Triple.third failed")
+
+    print("ALL KOTLIN STDLIB TESTS PASSED")
+}
+
+testKotlinStdlib()

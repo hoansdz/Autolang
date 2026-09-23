@@ -1,0 +1,162 @@
+class BaseAnimal() {
+    fun name(): String = "Animal"
+}
+
+class DogEntity extends BaseAnimal {
+    constructor () {
+        super()
+    }
+    @override
+    fun name(): String = "Dog"
+}
+
+class CatEntity extends BaseAnimal {
+    constructor () {
+        super()
+    }
+    @override
+    fun name(): String = "Cat"
+}
+
+fun <T> chooseGeneric(first: T, second: T, pickFirst: Bool): T {
+    if (pickFirst) {
+        return first
+    }
+    return second
+}
+
+fun testIfElseInference() {
+    val a = if (true) 100 else "hello"
+    assert(a == 100, "if-else Any inference true branch failed")
+
+    val b = if (false) 100 else "hello"
+    assert(b == "hello", "if-else Any inference false branch failed")
+
+    val c = if (true) 42 else null
+    assert(c == 42, "if-else Int? inference non-null failed")
+
+    val d = if (false) 42 else null
+    assert(d == null, "if-else Int? inference null failed")
+
+    val cond = true
+    val e = if (cond) 123 else (if (false) "world" else null)
+    assert(e == 123, "if-else Any? inference failed")
+
+    val num = if (true) 10 else 20.5
+    assert(num == 10.0, "if-else numeric promotion failed")
+
+    println("testIfElseInference passed")
+}
+
+fun testWhenInference() {
+    val selector = 2
+    val res = when (selector) {
+        1 -> 100
+        2 -> "two"
+        else -> true
+    }
+    assert(res == "two", "when Any inference failed")
+
+    val res2 = when (1) {
+        1 -> 100
+        2 -> "two"
+        else -> true
+    }
+    assert(res2 == 100, "when Any inference branch 1 failed")
+
+    println("testWhenInference passed")
+}
+
+fun testElvisInference() {
+    val nullableInt: Int? = null
+    val fallbackStr = nullableInt ?: "default_str"
+    assert(fallbackStr == "default_str", "elvis Any fallback failed")
+
+    val nonNullInt: Int? = 99
+    val keepVal = nonNullInt ?: "default_str"
+    assert(keepVal == 99, "elvis Any keep non-null failed")
+
+    val sameType: Int? = null
+    val sameTypeRes = sameType ?: 10
+    assert(sameTypeRes == 10, "elvis same type failed")
+
+    println("testElvisInference passed")
+}
+
+fun testCollectionInference() {
+    val arr = [1, "two", 3.14, true]
+    assert(arr.size() == 4, "Array<Any> size failed")
+    assert(arr.get(0) == 1, "Array<Any> elem 0 failed")
+    assert(arr.get(1) == "two", "Array<Any> elem 1 failed")
+
+    val s = setOf(10, "text", true)
+    assert(s.size() == 3, "Set<Any> size failed")
+    assert(s.contains(10) == true, "Set<Any> contains int failed")
+    assert(s.contains("text") == true, "Set<Any> contains str failed")
+
+    val m = mapOf("k1", 100, 200, "val2")
+    assert(m.size() == 2, "Map<Any, Any> size failed")
+    assert(m.get("k1") == 100, "Map<Any, Any> get k1 failed")
+    assert(m.get(200) == "val2", "Map<Any, Any> get 200 failed")
+
+    println("testCollectionInference passed")
+}
+
+fun testInheritanceInference() {
+    val dog = DogEntity()
+    val cat = CatEntity()
+
+    val pet = if (true) dog else cat
+    assert(pet.name() == "Dog", "Common supertype Animal failed")
+
+    val pet2 = if (false) dog else cat
+    assert(pet2.name() == "Cat", "Common supertype Animal false branch failed")
+
+    val unrelated = if (true) dog else "Not an animal"
+    assert(unrelated.toString() != "", "Any fallback with object failed")
+
+    println("testInheritanceInference passed")
+}
+
+fun testGenericInference() {
+    val g1 = chooseGeneric(10, "hello", true)
+    assert(g1 == 10, "chooseGeneric true branch failed")
+
+    val g2 = chooseGeneric(10, "hello", false)
+    assert(g2 == "hello", "chooseGeneric false branch failed")
+
+    println("testGenericInference passed")
+}
+
+fun testSmartCastFromAny() {
+    val val1: Any = if (true) 12345 else "str"
+    if (val1 is Int) {
+        val multiplied = val1 * 2
+        assert(multiplied == 24690, "Smart cast Int failed")
+    } else {
+        assert(false, "Expected val1 is Int")
+    }
+
+    val val2: Any = if (false) 12345 else "hello world"
+    if (val2 is String) {
+        val len = val2.length()
+        assert(len == 11, "Smart cast String failed")
+    } else {
+        assert(false, "Expected val2 is String")
+    }
+
+    println("testSmartCastFromAny passed")
+}
+
+fun testKotlinTypeInference() {
+    testIfElseInference()
+    testWhenInference()
+    testElvisInference()
+    testCollectionInference()
+    testInheritanceInference()
+    testGenericInference()
+    testSmartCastFromAny()
+    println("All Kotlin type inference tests passed successfully!")
+}
+
+testKotlinTypeInference()

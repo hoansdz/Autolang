@@ -91,6 +91,7 @@ if(EMSCRIPTEN)
     "-fexceptions"
     "--bind"
     "-sALLOW_MEMORY_GROWTH=1"
+    "-sALLOW_TABLE_GROWTH=1"
     "-sINITIAL_MEMORY=10MB"
     "-sASYNCIFY"
     "-sFETCH=1"

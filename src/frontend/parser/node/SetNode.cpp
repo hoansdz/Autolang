@@ -9,6 +9,9 @@
 namespace Autolang {
 
 ExprNode *SetNode::resolve(in_func) {
+	if (op == Lexer::TokenType::EQUAL && detach && detach->kind == NodeType::UNKNOW) {
+		static_cast<UnknowNode *>(detach)->autoDeclare = true;
+	}
 	detach = static_cast<HasClassIdNode *>(detach->resolve(in_data));
 	value = static_cast<HasClassIdNode *>(value->resolve(in_data));
 	if (detach->kind == NodeType::CALL) {
@@ -381,13 +384,24 @@ ExprNode *SetNode::optimize(in_func) {
 				}
 			}
 			if (detachNode->isVal && !isAllowedConstructorInit) {
-				throwError(
-				    "Cannot change " +
-				    compile.classes[detachNode->caller->classId]->getName(
-				        compile) +
-				    "." + context.lexerString[detachNode->nameId] +
-				    " because it's val\nHint: Properties declared with 'val' "
-				    "are immutable and cannot be reassigned.");
+				if (!context.strictMode) {
+					detachNode->isVal = false;
+					if (detachNode->declaration) {
+						detachNode->declaration->isVal = false;
+					}
+					context.warning(
+					    line,
+					    std::string(context.lexerString[detachNode->nameId]) +
+					        " was declared as 'val' but is reassigned; treating as 'var' because strictMode is disabled");
+				} else {
+					throwError(
+					    "Cannot change " +
+					    compile.classes[detachNode->caller->classId]->getName(
+					        compile) +
+					    "." + std::string(context.lexerString[detachNode->nameId]) +
+					    " because it's val\nHint: Properties declared with 'val' "
+					    "are immutable and cannot be reassigned.");
+				}
 			}
 			if (detach->classId == Autolang::DefaultClass::nullClassId) {
 				if (detachNode->classId ==
@@ -399,7 +413,9 @@ ExprNode *SetNode::optimize(in_func) {
 						}
 					}
 					if (detachNode->declaration->classId ==
-					    Autolang::DefaultClass::nullClassId) {
+					    Autolang::DefaultClass::nullClassId &&
+					    (!detachNode->declaration->classDeclaration ||
+					     !detachNode->declaration->classDeclaration->isGeneric)) {
 						if (value->classId ==
 						    Autolang::DefaultClass::nullClassId) {
 							throwError(
@@ -409,7 +425,7 @@ ExprNode *SetNode::optimize(in_func) {
 							    "initialized with null.");
 						}
 						detachNode->declaration->classId = value->classId;
-						if (value->classId == DefaultClass::functionClassId) {
+						if (value->classDeclaration) {
 							detachNode->declaration->classDeclaration =
 							    value->classDeclaration;
 						}
@@ -421,7 +437,7 @@ ExprNode *SetNode::optimize(in_func) {
 							    detachNode->declaration->nullable;
 						}
 						detach->classId = value->classId;
-						if (value->classId == DefaultClass::functionClassId) {
+						if (value->classDeclaration) {
 							detach->classDeclaration = value->classDeclaration;
 						}
 					} else {
@@ -443,9 +459,12 @@ ExprNode *SetNode::optimize(in_func) {
 			// }
 			// Nullable
 			if (value->classId == Autolang::DefaultClass::nullClassId) {
-				if (!detachNode->declaration->nullable) {
+				bool canAcceptNull = detachNode->declaration->declaredNullable ||
+				                     detachNode->declaration->nullable ||
+				                     (detachNode->declaration->classDeclaration && detachNode->declaration->classDeclaration->nullable);
+				if (!canAcceptNull) {
 					throwError(
-					    detachNode->declaration->name +
+					    std::string(detachNode->declaration->name) +
 					    " cannot detach null value, you must declare " +
 					    compile.classes[detachNode->declaration->classId]
 					        ->getName(compile) +
@@ -456,12 +475,14 @@ ExprNode *SetNode::optimize(in_func) {
 					    "?) to allow null assignment.");
 				}
 				if (op != Lexer::TokenType::EQUAL) {
-					throwError(detachNode->declaration->name +
+					throwError(std::string(detachNode->declaration->name) +
 					           " cannot use operator " +
 					           Lexer::Token(0, op).toString(context) +
 					           " with null value\nHint: Compound assignment "
 					           "cannot be used when assigned value is null.");
 				}
+				detachNode->declaration->nullable = true;
+				detachNode->nullable = true;
 				return this;
 			}
 			auto clazz = compile.classes[detachNode->caller->classId];
@@ -485,10 +506,18 @@ ExprNode *SetNode::optimize(in_func) {
 			}
 			if (detach->classId == Autolang::DefaultClass::nullClassId) {
 				if (node->declaration->classId ==
-				        Autolang::DefaultClass::nullClassId &&
-				    value->classId != Autolang::DefaultClass::nullClassId) {
+				    Autolang::DefaultClass::nullClassId &&
+				    (!node->declaration->classDeclaration ||
+				     !node->declaration->classDeclaration->isGeneric)) {
+					if (value->classId == Autolang::DefaultClass::nullClassId) {
+						throwError(
+						    std::string("Ambiguous type inference for variable '") +
+						    std::string(node->declaration->name) +
+						    "'\nHint: Provide an explicit type annotation when "
+						    "declaring variable initialized with null.");
+					}
 					node->declaration->classId = value->classId;
-					if (value->classId == DefaultClass::functionClassId) {
+					if (value->classDeclaration) {
 						node->declaration->classDeclaration =
 						    value->classDeclaration;
 					}
@@ -517,15 +546,19 @@ ExprNode *SetNode::optimize(in_func) {
 					// }
 				}
 				detach->classId = value->classId;
-				if (value->classId == DefaultClass::functionClassId) {
+				if (value->classDeclaration) {
 					detach->classDeclaration = value->classDeclaration;
 				}
 			}
 			// Nullable
 			if (value->classId == Autolang::DefaultClass::nullClassId) {
-				if (!detach->isNullable()) {
+				bool canAcceptNull = node->declaration->declaredNullable ||
+				                     node->declaration->nullable ||
+				                     detach->isNullable() ||
+				                     (node->declaration->classDeclaration && node->declaration->classDeclaration->nullable);
+				if (!canAcceptNull) {
 					throwError(
-					    node->declaration->name +
+					    std::string(node->declaration->name) +
 					    " cannot detach null value, you must declare " +
 					    compile.classes[node->declaration->classId]->getName(
 					        compile) +
@@ -536,12 +569,15 @@ ExprNode *SetNode::optimize(in_func) {
 					    "?) to allow null assignment.");
 				}
 				if (op != Lexer::TokenType::EQUAL) {
-					throwError(node->declaration->name +
+					throwError(std::string(node->declaration->name) +
 					           " cannot use operator " +
 					           Lexer::Token(0, op).toString(context) +
 					           " with null value\nHint: Compound assignment "
 					           "cannot be used when assigned value is null.");
 				}
+				node->declaration->nullable = true;
+				node->nullable = true;
+				detach->setNullable(true);
 				return this;
 			}
 			break;
@@ -575,10 +611,9 @@ ExprNode *SetNode::optimize(in_func) {
 				if (!detach->isNullable() && node->nullable) {
 					if (!(detach->classId == Autolang::DefaultClass::stringClassId &&
 					      op == Lexer::TokenType::PLUS_EQUAL)) {
-						std::string detachName;
-						detachName = detachNode->declaration->name;
-						throwError("Cannot assign nullable variable '" +
-						           node->declaration->name +
+						std::string detachName(detachNode->declaration->name);
+						throwError(std::string("Cannot assign nullable variable '") +
+						           std::string(node->declaration->name) +
 						           "' to non-null variable '" + detachName +
 						           "'\nHint: Use non-null assertion ('!') or check "
 						           "nullability before assignment.");
@@ -599,8 +634,8 @@ ExprNode *SetNode::optimize(in_func) {
 						    static_cast<AccessNode *>(detach)->declaration->name;
 						throwError(
 						    "Cannot assign nullable return value of '" +
-						    context.lexerString[static_cast<CallNode *>(value)
-						                            ->nameId] +
+						    std::string(context.lexerString[static_cast<CallNode *>(value)
+						                            ->nameId]) +
 						    "' to non-null variable '" + detachName +
 						    "'\nHint: Function return type is nullable. Unwrap "
 						    "return value with '!' or declare variable as "
@@ -644,6 +679,13 @@ ExprNode *SetNode::optimize(in_func) {
 					if (detach->classId ==
 					        Autolang::DefaultClass::stringClassId &&
 					    op == Lexer::TokenType::PLUS_EQUAL)
+						return this;
+					if ((op == Lexer::TokenType::PLUS_EQUAL ||
+					     op == Lexer::TokenType::MINUS_EQUAL) &&
+					    (detach->classId == DefaultClass::arrayClassId ||
+					     (compile.classes[detach->classId] &&
+					      compile.classes[detach->classId]->genericBaseClassId ==
+					          DefaultClass::arrayClassId)))
 						return this;
 					break;
 			}
@@ -742,6 +784,53 @@ ExprNode *SetNode::optimize(in_func) {
 	    op == Lexer::TokenType::PLUS_EQUAL) {
 		return this;
 	}
+	bool isDetachArray =
+	    (detach->classId == DefaultClass::arrayClassId ||
+	     (compile.classes[detach->classId] &&
+	      compile.classes[detach->classId]->genericBaseClassId ==
+	          DefaultClass::arrayClassId));
+	if (isDetachArray && (op == Lexer::TokenType::PLUS_EQUAL ||
+	                      op == Lexer::TokenType::MINUS_EQUAL)) {
+		auto detachClassInfo = context.classInfo[detach->classId];
+		if (detachClassInfo && !detachClassInfo->genericTypeId.empty()) {
+			auto elemClassId = *detachClassInfo->genericTypeId[0]->classId;
+			bool isValueArray =
+			    (value->classId == DefaultClass::arrayClassId ||
+			     (compile.classes[value->classId] &&
+			      compile.classes[value->classId]->genericBaseClassId ==
+			          DefaultClass::arrayClassId));
+			if (isValueArray) {
+				auto valueClassInfo = context.classInfo[value->classId];
+				if (valueClassInfo && !valueClassInfo->genericTypeId.empty()) {
+					auto valElemClassId = *valueClassInfo->genericTypeId[0]->classId;
+					if (valElemClassId == elemClassId ||
+					    compile.classes[valElemClassId]->inheritance.get(elemClassId) ||
+					    elemClassId == DefaultClass::anyClassId) {
+						return this;
+					}
+					throwError("Type mismatch: expected 'Array<" +
+					           compile.classes[elemClassId]->getName(compile) +
+					           ">' but found 'Array<" +
+					           compile.classes[valElemClassId]->getName(compile) + ">'");
+				}
+				return this;
+			}
+			if (value->classId == elemClassId ||
+			    compile.classes[value->classId]->inheritance.get(elemClassId) ||
+			    elemClassId == DefaultClass::anyClassId) {
+				return this;
+			}
+			if (elemClassId == DefaultClass::floatClassId &&
+			    value->classId == DefaultClass::intClassId) {
+				return this;
+			}
+			throwError("Type mismatch: expected '" +
+			           compile.classes[elemClassId]->getName(compile) +
+			           "' but found '" + value->getClassName(in_data) +
+			           "'\nHint: Cannot append element of different type to Array.");
+		}
+		return this;
+	}
 	if (detach->isNullable() && value->classId == DefaultClass::nullClassId) {
 		return this;
 	}
@@ -793,8 +882,14 @@ ExprNode *SetNode::optimize(in_func) {
 
 void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	loadOpcodeLine(in_data, bytecodes);
-	if (op == Lexer::TokenType::PLUS_EQUAL &&
-	    detach->classId == DefaultClass::stringClassId) {
+	bool isDetachArray =
+	    (detach->classId == DefaultClass::arrayClassId ||
+	     (compile.classes[detach->classId] &&
+	      compile.classes[detach->classId]->genericBaseClassId ==
+	          DefaultClass::arrayClassId));
+	if ((op == Lexer::TokenType::PLUS_EQUAL ||
+	     op == Lexer::TokenType::MINUS_EQUAL) &&
+	    (detach->classId == DefaultClass::stringClassId || isDetachArray)) {
 		switch (detach->kind) {
 			case NodeType::GET_PROP: {
 				auto n = static_cast<GetPropNode *>(detach);
@@ -807,7 +902,43 @@ void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				break;
 			}
 			default: {
-				throwError("Invalid String operation");
+				throwError("Invalid compound assignment operation");
+			}
+		}
+	}
+	if (detach->kind == NodeType::VAR) {
+		auto varNode = static_cast<VarNode *>(detach);
+		if (varNode->declaration->isCapturedByClosure && !varNode->declaration->isGlobal) {
+			if (op == Lexer::TokenType::PLUS_EQUAL || op == Lexer::TokenType::MINUS_EQUAL ||
+			    op == Lexer::TokenType::STAR_EQUAL || op == Lexer::TokenType::SLASH_EQUAL ||
+			    op == Lexer::TokenType::PERCENT_EQUAL) {
+				varNode->isStore = false;
+				varNode->isGetPointer = false;
+				varNode->putBytecodes(in_data, bytecodes);
+				value->putBytecodes(in_data, bytecodes);
+				switch (op) {
+					case Lexer::TokenType::PLUS_EQUAL:
+						bytecodes.emplace_back(Opcode::PLUS);
+						break;
+					case Lexer::TokenType::MINUS_EQUAL:
+						bytecodes.emplace_back(Opcode::MINUS);
+						break;
+					case Lexer::TokenType::STAR_EQUAL:
+						bytecodes.emplace_back(Opcode::MUL);
+						break;
+					case Lexer::TokenType::SLASH_EQUAL:
+						bytecodes.emplace_back(Opcode::DIVIDE);
+						break;
+					case Lexer::TokenType::PERCENT_EQUAL:
+						bytecodes.emplace_back(Opcode::MOD);
+						break;
+					default:
+						break;
+				}
+				varNode->isStore = true;
+				varNode->isGetPointer = false;
+				varNode->putBytecodes(in_data, bytecodes);
+				return;
 			}
 		}
 	}
@@ -829,6 +960,10 @@ void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	switch (detach->kind) {
 		case NodeType::VAR: {
 			auto detachNode = static_cast<VarNode *>(detach);
+			if (detachNode->declaration->isCapturedByClosure &&
+			    !detachNode->declaration->isGlobal) {
+				break;
+			}
 			switch (value->kind) {
 				case NodeType::VAR: {
 					auto valueNode = static_cast<VarNode *>(value);

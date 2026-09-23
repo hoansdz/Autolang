@@ -29,9 +29,11 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 	auto declaration = &context.tokens[i];
 	bool isVal = declaration->type == Lexer::TokenType::VAL;
 	bool isGlobal = (!context.currentClassId) &&
-	                context.currentFunctionId == context.mainFunctionId;
+	                context.currentFunctionId == context.mainFunctionId &&
+	                !context.currentClosureNode;
 	bool isInFunction = !context.currentClassId ||
-	                    context.currentFunctionId != context.mainFunctionId;
+	                    context.currentFunctionId != context.mainFunctionId ||
+	                    context.currentClosureNode != nullptr;
 	bool isStatic = context.modifierflags & ModifierFlags::MF_STATIC;
 	if (isStatic) {
 		if (!context.currentClassId &&
@@ -58,6 +60,82 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 	}
 	Lexer::TokenType accessModifier = getAndEnsureOneAccessModifier(in_data, i);
 	context.modifierflags = 0;
+	if (nextTokenSameLine(&token, context.tokens, i, declaration->line) &&
+	    expect(token, Lexer::TokenType::LPAREN)) {
+		SmallVector<DeclarationNode *, 8> targets;
+		while (true) {
+			if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
+				--i;
+				throw ParserError(declaration->line,
+				                  "Expected variable name or ')' in destructuring declaration");
+			}
+			if (expect(token, Lexer::TokenType::RPAREN)) {
+				break;
+			}
+			if (expect(token, Lexer::TokenType::IDENTIFIER) || expect(token, Lexer::TokenType::TO)) {
+				if (token->indexData == lexerIdunderscore) {
+					targets.push_back(nullptr);
+				} else {
+					std::string_view varName = context.lexerString[token->indexData];
+					std::string message = context.checkValidDeclarationName(token->indexData);
+					if (!message.empty()) {
+						throw ParserError(token->line, message);
+					}
+					auto targetNode = context.makeDeclarationNode(
+					    in_data, token->line, token->indexData, varName, nullptr, isVal,
+					    isGlobal, true, isInFunction && !isStatic, isInFunction || isStatic);
+					targetNode->tokenIndex = i;
+					targetNode->classId = DefaultClass::nullClassId;
+					targetNode->mustInferenceNullable = true;
+					targetNode->accessModifier = accessModifier;
+					targets.push_back(targetNode);
+				}
+			} else {
+				--i;
+				throw ParserError(context.tokens[i].line,
+				                  "Expected variable name or '_' in destructuring declaration\nHint: Provide a variable name or '_' to ignore");
+			}
+
+			if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
+				--i;
+				throw ParserError(declaration->line,
+				                  "Expected ',' or ')' in destructuring declaration");
+			}
+			if (expect(token, Lexer::TokenType::RPAREN)) {
+				break;
+			}
+			if (!expect(token, Lexer::TokenType::COMMA)) {
+				--i;
+				throw ParserError(context.tokens[i].line,
+				                  "Expected ',' or ')' in destructuring declaration\nHint: Separate destructuring variables with comma: val (a, b) = ...");
+			}
+		}
+
+		if (targets.empty()) {
+			throw ParserError(declaration->line,
+			                  "Destructuring declaration must have at least one variable\nHint: val (a, b) = ...");
+		}
+
+		if (!nextTokenSameLine(&token, context.tokens, i, declaration->line) ||
+		    !expect(token, Lexer::TokenType::EQUAL)) {
+			--i;
+			throw ParserError(declaration->line,
+			                  "Expected '=' after destructuring declaration\nHint: val (a, b) = source");
+		}
+
+		if (!nextToken(&token, context.tokens, i)) {
+			--i;
+			throw ParserError(context.tokens[i].line,
+			                  "Expected expression after '=' in destructuring declaration");
+		}
+		bool lastJustFindStatic = context.justFindStatic;
+		context.justFindStatic = isStatic;
+		HasClassIdNode *sourceExpr = loadExpression(in_data, 0, i);
+		context.justFindStatic = lastJustFindStatic;
+
+		return context.destructurePool.push(firstLine, sourceExpr, std::move(targets));
+	}
+	--i;
 	// Name
 	if (!nextTokenSameLine(&token, context.tokens, i, declaration->line) ||
 	    (!expect(token, Lexer::TokenType::IDENTIFIER) &&
@@ -75,7 +153,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 		}
 	}
 	LexerStringId baseName = token->indexData;
-	std::string &name = context.lexerString[token->indexData];
+	std::string_view name = context.lexerString[token->indexData];
 	if (context.currentClassId) {
 		auto clazz = context.getCurrentClass(in_data);
 		auto classInfo = context.getCurrentClassInfo(in_data);
@@ -101,7 +179,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 		    classInfo->staticMember.find(baseName) !=
 		        classInfo->staticMember.end())
 			throw ParserError(token->line,
-			                  "Declaration: Redefined variable name \"" + name +
+			                  "Declaration: Redefined variable name \"" + std::string(name) +
 			                      "\"\nHint: Choose a unique variable name");
 	}
 	// Sugar syntax val a? = 1
@@ -152,10 +230,10 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 			throw ParserError(
 			    token->line,
 			    std::string("Sugar syntax '") + (isVal ? "val " : "var ") +
-			        name + (nullable ? "?" : "!") +
+			        std::string(name) + (nullable ? "?" : "!") +
 			        "' cannot be combined with an explicit type '" +
 			        classDeclaration->getName(in_data) + "'; use '" +
-			        (isVal ? "val " : "var ") + name + ": " +
+			        (isVal ? "val " : "var ") + std::string(name) + ": " +
 			        classDeclaration->getName(in_data) +
 			        (nullable ? "?" : "!") +
 			        "' instead\nHint: Use either 'val a? = 1' or 'val a: Int? "
@@ -205,9 +283,9 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 		if (!classDeclaration) {
 			throw ParserError(
 			    token->line,
-			    "Variable '" + name +
+			    "Variable '" + std::string(name) +
 			        "' must have an explicit type\nHint: Change to 'val " +
-			        name + ": Type?'");
+			        std::string(name) + ": Type?'");
 		}
 		autogeneratedValue = true;
 		value =
@@ -223,15 +301,15 @@ createNode:;
 			if (context.currentFunctionId == context.mainFunctionId) {
 				declarationName =
 				    context.getCurrentClass(in_data)->getName(compile) + '.' +
-				    name;
+				    std::string(name);
 			} else {
 				declarationName =
 				    context.getCurrentClass(in_data)->getName(compile) + "." +
-				    func->getName(compile) + '.' + name;
+				    func->getName(compile) + '.' + std::string(name);
 			}
 		} else {
 			if (context.currentFunctionId != context.mainFunctionId) {
-				declarationName = func->getName(compile) + '.' + name;
+				declarationName = func->getName(compile) + '.' + std::string(name);
 			} else {
 				declarationName = name;
 			}
@@ -283,7 +361,7 @@ createNode:;
 			auto it = funcInfo->scopes.back().find(baseName);
 			if (it != funcInfo->scopes.back().end())
 				throw ParserError(token->line,
-				                  context.lexerString[baseName] +
+				                  std::string(context.lexerString[baseName]) +
 				                      " already exists\nHint: Rename variable "
 				                      "to avoid scope collision");
 			funcInfo->scopes.back()[baseName] = node;
@@ -341,9 +419,9 @@ createNode:;
 	if (isLateinit && autogeneratedValue) {
 		return nullptr;
 	}
-	return context.setValuePool.push(
-	    firstLine, context.varPool.push(firstLine, node, true, true), value,
-	    false);
+	auto varNode = context.varPool.push(firstLine, node, true, true);
+	varNode->isInitDeclaration = true;
+	return context.setValuePool.push(firstLine, varNode, value, false);
 }
 
 std::vector<ClassDeclaration *> loadListClassDeclaration(in_func, size_t &i,

@@ -17,6 +17,7 @@ static inline bool isSingleParamOperator(LexerStringId nameId) {
 		case lexerIdtimes:
 		case lexerIddiv:
 		case lexerIdrem:
+		case lexerIdcompareTo:
 			return true;
 		default:
 			return false;
@@ -33,6 +34,10 @@ static inline bool isSupportedOperatorName(LexerStringId nameId) {
 		case lexerIdtimes:
 		case lexerIddiv:
 		case lexerIdrem:
+		case lexerIdcompareTo:
+		case lexerIdunaryMinus:
+		case lexerIdunaryPlus:
+		case lexerIdnot:
 			return true;
 		default:
 			return false;
@@ -140,7 +145,7 @@ static void registerExtensionToGenericClass(in_func, ClassId targetClassId,
 			} else {
 				newFunc->returnId = *node->classDeclaration->classId;
 			}
-			if (newFunc->returnId == DefaultClass::functionClassId) {
+			if (node->classDeclaration) {
 				newFuncInfo->returnClass =
 				    node->classDeclaration->copy(in_data);
 			}
@@ -255,7 +260,8 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		}
 	}
 	if (!expect(token, Lexer::TokenType::IDENTIFIER) &&
-	    !expect(token, Lexer::TokenType::TO)) {
+	    !expect(token, Lexer::TokenType::TO) &&
+	    !expect(token, Lexer::TokenType::NOT)) {
 		--i;
 		throw ParserError(
 		    firstLine,
@@ -263,7 +269,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		    "identifier for function name, e.g. 'fun foo()'");
 	}
 	std::optional<LexerStringId> classNameId;
-	LexerStringId nameId = token->indexData;
+	LexerStringId nameId = (token->type == Lexer::TokenType::NOT) ? lexerIdnot : token->indexData;
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 		--i;
 		throw ParserError(firstLine,
@@ -271,7 +277,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		                  "found\nHint: Add '(' to start parameter list");
 	}
 	if (token->type == Lexer::TokenType::LT) {
-		auto classIt = compile.classMap.find(context.lexerString[nameId]);
+		auto classIt = compile.classMap.find(std::string(context.lexerString[nameId]));
 		if (classIt != compile.classMap.end() &&
 		    context.classInfo[classIt->second]->genericData != nullptr) {
 			if (!context.preloadGenericData) {
@@ -346,7 +352,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			--i;
 			throw ParserError(
 			    firstLine, "Expected function name after class name: '" +
-			                   context.lexerString[*classNameId] +
+			                   std::string(context.lexerString[*classNameId]) +
 			                   "' but not found\nHint: Specify member function "
 			                   "name after dot, e.g. 'Class.foo()'");
 		}
@@ -357,9 +363,11 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				    "Generic class extension hasn't supported yet\nHint: "
 				    "Remove generic type arguments from class extension");
 			}
+			case Lexer::TokenType::NOT:
+			case Lexer::TokenType::TO:
 			case Lexer::TokenType::IDENTIFIER: {
 				classNameId = nameId;
-				nameId = token->indexData;
+				nameId = (token->type == Lexer::TokenType::NOT) ? lexerIdnot : token->indexData;
 				functionFlags |= FunctionFlags::FUNC_UNUSABLE;
 				if (!hasStaticFlag) {
 					functionFlags &= ~FunctionFlags::FUNC_IS_STATIC;
@@ -386,11 +394,11 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 					    "function at file scope outside closure");
 				}
 				auto it =
-				    compile.classMap.find(context.lexerString[*classNameId]);
+				    compile.classMap.find(std::string(context.lexerString[*classNameId]));
 				if (it == compile.classMap.end()) {
 					throw ParserError(firstLine,
 					                  "Cannot find class name: '" +
-					                      context.lexerString[*classNameId] +
+					                      std::string(context.lexerString[*classNameId]) +
 					                      "'. Extension must be declared after "
 					                      "class\nHint: Ensure target class is "
 					                      "declared before creating extension");
@@ -437,7 +445,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			default: {
 				throw ParserError(firstLine,
 				                  "Expected function name after class name: '" +
-				                      context.lexerString[*classNameId] +
+				                      std::string(context.lexerString[*classNameId]) +
 				                      "' but not found\nHint: Specify member "
 				                      "function name after dot");
 			}
@@ -514,9 +522,9 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		if (!isSupportedOperatorName(nameId)) {
 			throw ParserError(
 			    firstLine,
-			    "'" + context.lexerString[nameId] +
+			    "'" + std::string(context.lexerString[nameId]) +
 			        "' is not a supported operator function name\nHint: Supported operator "
-			        "function names are 'get', 'set', 'contains', 'plus', 'minus', 'times', 'div', 'rem'");
+			        "function names are 'get', 'set', 'contains', 'plus', 'minus', 'times', 'div', 'rem', 'compareTo', 'unaryMinus', 'unaryPlus', 'not'");
 		}
 	}
 
@@ -560,13 +568,24 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 					    "Define 'set' with index and value parameters, e.g. '@operator fun set(index: Int, value: T)'");
 				}
 				break;
+			case lexerIdunaryMinus:
+			case lexerIdunaryPlus:
+			case lexerIdnot:
+				if (paramCount != 0) {
+					throw ParserError(
+					    firstLine,
+					    "Operator '" + std::string(context.lexerString[nameId]) + "' requires 0 parameters\nHint: "
+					    "Define '" + std::string(context.lexerString[nameId]) + "' without parameters, e.g. '@operator fun " +
+					    std::string(context.lexerString[nameId]) + "(): T'");
+				}
+				break;
 			default:
 				if (isSingleParamOperator(nameId) && paramCount != 1) {
 					throw ParserError(
 					    firstLine,
-					    "Operator '" + context.lexerString[nameId] + "' requires exactly 1 parameter\nHint: "
-					    "Define '" + context.lexerString[nameId] + "' with 1 parameter, e.g. '@operator fun " +
-					    context.lexerString[nameId] + "(other: T)'");
+					    "Operator '" + std::string(context.lexerString[nameId]) + "' requires exactly 1 parameter\nHint: "
+					    "Define '" + std::string(context.lexerString[nameId]) + "' with 1 parameter, e.g. '@operator fun " +
+					    std::string(context.lexerString[nameId]) + "(other: T)'");
 				}
 				break;
 		}
@@ -731,10 +750,10 @@ createFunc:;
 		auto &token =
 		    context.annotationMetadata[AnnotationMetadataIndex::AMI_NATIVE];
 		const auto &name = context.lexerString[token.indexData];
-		auto it = context.mode->nativeFuncMap.find(name);
+		auto it = context.mode->nativeFuncMap.find(std::string(name));
 		if (it == context.mode->nativeFuncMap.end()) {
 			throw ParserError(firstLine,
-			                  "Native function name '" + name +
+			                  std::string("Native function name '") + std::string(name) +
 			                      "' could not be found\nHint: Register native "
 			                      "function binding in host environment");
 		}
@@ -960,10 +979,10 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 			classDeclaration->inputClassId.push_back(nullptr);
 			if (hasItIdentifierAtCurrentBraceLevel(context, context.tokens, i)) {
 				LexerStringId itNameId = context.createLexerStringIfNotExists("it");
-				const std::string &itName = context.lexerString[itNameId];
+				const auto &itName = context.lexerString[itNameId];
 				auto itDeclaration = context.makeDeclarationNode(
 				    in_data, firstLine, itNameId, itName, nullptr, true,
-				    false, true, false, false);
+				    false, false, false, false);
 				parameter->parameters.push_back(itDeclaration);
 			}
 			classDeclaration->line = firstLine;
@@ -1044,18 +1063,18 @@ ReturnNode *loadReturn(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
 	uint32_t firstLine = token->line;
 	auto func = context.getCurrentFunction(in_data);
-	if (!context.currentClosureNode &&
-	    context.currentFunctionId == context.mainFunctionId) {
+	if (context.currentClassId &&
+	    context.currentFunctionId == context.mainFunctionId &&
+	    !context.currentClosureNode) {
 		throw ParserError(
 		    firstLine,
-		    context.currentClassId
-		        ? "'return' cannot be used directly in class body\nHint: Place "
-		          "'return' inside a method body"
-		        : "'return' statement outside of a function\nHint: Place "
-		          "'return' inside a function or closure body");
+		    "'return' cannot be used directly in class body\nHint: Place "
+		    "'return' inside a method body");
 	}
 
-	if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
+	if (!nextTokenSameLine(&token, context.tokens, i, token->line) ||
+	    token->type == Lexer::TokenType::SEMI_COLON ||
+	    token->type == Lexer::TokenType::RBRACE) {
 		--i;
 		if (context.currentClassId) {
 			auto declarartionThis =
@@ -1075,6 +1094,13 @@ ReturnNode *loadReturn(in_func, size_t &i) {
 		throw ParserError(token->line,
 		                  "Cannot return value in constructor\nHint: Use empty "
 		                  "'return' without a return value in constructor");
+	if (!context.currentClosureNode &&
+	    context.currentFunctionId == context.mainFunctionId) {
+		throw ParserError(
+		    token->line,
+		    "Cannot return value from top-level script\nHint: Use empty "
+		    "'return' without a return value");
+	}
 	return context.returnPool.push(firstLine, context.currentFunctionId,
 	                               loadExpression(in_data, 0, i));
 }

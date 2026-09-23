@@ -59,7 +59,9 @@ bool ExprNode::canCast(in_func, ClassDeclaration *from, ClassDeclaration *to) {
 		return true;
 	}
 	if (to->classId != DefaultClass::functionClassId) {
-		return canCast(in_data, from, to);
+		if (!from->classId || !to->classId) return false;
+		if (!to->nullable && from->nullable) return false;
+		return canCast(in_data, *from->classId, *to->classId);
 	}
 	return false;
 }
@@ -78,10 +80,105 @@ bool ExprNode::canCast(in_func, ClassId from, ClassId to) {
 			       from == DefaultClass::boolClassId;
 		}
 		default: {
+			if (from >= compile.classes.size() || !compile.classes[from]) return false;
 			auto clazz = compile.classes[from];
-			return clazz->inheritance.get(to);
+			if (clazz->inheritance.get(to)) return true;
+			if (to < compile.classes.size() && compile.classes[to]) {
+				auto toClazz = compile.classes[to];
+				if (toClazz->genericBaseClassId != 0 &&
+				    clazz->genericBaseClassId == toClazz->genericBaseClassId) {
+					auto infoFrom = context.classInfo[from];
+					auto infoTo = context.classInfo[to];
+					if (infoFrom && infoTo &&
+					    infoFrom->genericTypeId.size() == infoTo->genericTypeId.size()) {
+						bool allMatch = true;
+						for (size_t i = 0; i < infoFrom->genericTypeId.size(); ++i) {
+							auto gFrom = infoFrom->genericTypeId[i];
+							auto gTo = infoTo->genericTypeId[i];
+							if (!gTo->nullable && gFrom->nullable) {
+								allMatch = false;
+								break;
+							}
+							if (!canCast(in_data, *gFrom->classId, *gTo->classId)) {
+								allMatch = false;
+								break;
+							}
+						}
+						if (allMatch) return true;
+					}
+				}
+			}
+			return false;
 		}
 	}
+}
+
+ClassId ExprNode::getCommonSuperType(in_func, ClassId a, ClassId b) {
+	if (a == b) return a;
+	if (a == DefaultClass::nullClassId) return b;
+	if (b == DefaultClass::nullClassId) return a;
+	if (a == DefaultClass::anyClassId || b == DefaultClass::anyClassId) {
+		return DefaultClass::anyClassId;
+	}
+	// Numeric promotion
+	if ((a == DefaultClass::intClassId || a == DefaultClass::boolClassId) &&
+	    b == DefaultClass::floatClassId) {
+		return DefaultClass::floatClassId;
+	}
+	if ((b == DefaultClass::intClassId || b == DefaultClass::boolClassId) &&
+	    a == DefaultClass::floatClassId) {
+		return DefaultClass::floatClassId;
+	}
+	if (a == DefaultClass::boolClassId && b == DefaultClass::intClassId) {
+		return DefaultClass::intClassId;
+	}
+	if (b == DefaultClass::boolClassId && a == DefaultClass::intClassId) {
+		return DefaultClass::intClassId;
+	}
+
+	// Check direct inheritance / covariance
+	if (canCast(in_data, a, b)) {
+		return b;
+	}
+	if (canCast(in_data, b, a)) {
+		return a;
+	}
+
+	// Walk ancestor chains to find lowest common ancestor
+	if (a < compile.classes.size() && compile.classes[a] &&
+	    b < compile.classes.size() && compile.classes[b]) {
+		SmallVector<ClassId, 8> ancestorsA;
+		ClassId cur = a;
+		while (cur != 0 && cur < compile.classes.size() && compile.classes[cur]) {
+			ancestorsA.push_back(cur);
+			cur = compile.classes[cur]->parentId;
+		}
+		cur = b;
+		while (cur != 0 && cur < compile.classes.size() && compile.classes[cur]) {
+			for (auto anc : ancestorsA) {
+				if (cur == anc) {
+					return cur;
+				}
+			}
+			cur = compile.classes[cur]->parentId;
+		}
+	}
+
+	return DefaultClass::anyClassId;
+}
+
+ClassDeclaration *ExprNode::getOrCreateClassDeclaration(in_func, ClassId classId, uint32_t line, bool nullable) {
+	auto decl = context.classDeclarationAllocator.push();
+	decl->classId = classId;
+	if (classId < compile.classes.size() && compile.classes[classId]) {
+		decl->baseClassLexerStringId = context.createLexerStringIfNotExists(compile.classes[classId]->getName(compile));
+	} else {
+		decl->baseClassLexerStringId = context.createLexerStringIfNotExists("Any");
+	}
+	decl->line = line;
+	decl->nullable = nullable;
+	decl->isGeneric = false;
+	return decl;
 }
 
 #define STRINGIFY(x) #x

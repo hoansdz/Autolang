@@ -251,6 +251,16 @@ void AVM::log(Function *currentFunction) {
 				          << posJumpIfFalse << "\n";
 				break;
 			}
+			case Autolang::Opcode::FOR_STRING: {
+				bool isGlobal = bytecodes[i++] == Opcode::STORE_GLOBAL;
+				uint32_t containerPos = get_u32(bytecodes, i);
+				uint32_t pos = get_u32(bytecodes, i);
+				uint32_t posJumpIfFalse = get_u32(bytecodes, i);
+				std::cerr << "FOR_STRING	 " << (isGlobal ? "GLOBAL " : "LOCAL ")
+				          << containerPos << " " << pos << " JUMP_IF_FALSE "
+				          << posJumpIfFalse << "\n";
+				break;
+			}
 			case Autolang::Opcode::FOR_MAP_KEY: {
 				bool isGlobal = bytecodes[i++] == Opcode::STORE_GLOBAL;
 				uint32_t containerPos = get_u32(bytecodes, i);
@@ -289,6 +299,18 @@ void AVM::log(Function *currentFunction) {
 				          << (isLessThan ? "LT" : "LTE") << "\n";
 				break;
 			}
+			case Autolang::Opcode::DUP: {
+				std::cerr << "DUP\n";
+				break;
+			}
+			case Autolang::Opcode::TAKE_IF_CHECK: {
+				std::cerr << "TAKE_IF_CHECK\n";
+				break;
+			}
+			case Autolang::Opcode::TAKE_UNLESS_CHECK: {
+				std::cerr << "TAKE_UNLESS_CHECK\n";
+				break;
+			}
 			case Autolang::Opcode::LOAD_CONST: {
 				auto obj = data.constPool[get_u32(bytecodes, i)];
 				std::cerr << "LOAD_CONST	 "
@@ -309,6 +331,11 @@ void AVM::log(Function *currentFunction) {
 				break;
 			case Autolang::Opcode::UNSAFE_CAST:
 				std::cerr << "UNSAFE_CAST	 "
+				          << data.classes[get_u32(bytecodes, i)]->getName(data)
+				          << "\n";
+				break;
+			case Autolang::Opcode::UNSAFE_CAST_NULLABLE:
+				std::cerr << "UNSAFE_CAST_NULLABLE "
 				          << data.classes[get_u32(bytecodes, i)]->getName(data)
 				          << "\n";
 				break;
@@ -412,6 +439,15 @@ void AVM::log(Function *currentFunction) {
 				break;
 			case Autolang::Opcode::STORE_LOCAL:
 				std::cerr << "STORE_LOCAL	 " << get_u32(bytecodes, i) << "\n";
+				break;
+			case Autolang::Opcode::BOX_LOCAL:
+				std::cerr << "BOX_LOCAL	 " << get_u32(bytecodes, i) << "\n";
+				break;
+			case Autolang::Opcode::BOXED_LOAD_LOCAL:
+				std::cerr << "BOXED_LOAD_LOCAL	 " << get_u32(bytecodes, i) << "\n";
+				break;
+			case Autolang::Opcode::BOXED_STORE_LOCAL:
+				std::cerr << "BOXED_STORE_LOCAL	 " << get_u32(bytecodes, i) << "\n";
 				break;
 				PRINT_DATA_CAL_DATA(GLOBAL_CAL_GLOBAL, globalVariables,
 				                    globalVariables)

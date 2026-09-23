@@ -26,7 +26,7 @@ GenericData *loadGenericParameters(in_func, size_t &i) {
 		if (genericData->findDeclaration(token->indexData)) {
 			throw ParserError(
 			    firstLine,
-			    "Redefined " + genericDeclarationName +
+			    "Redefined " + std::string(genericDeclarationName) +
 			        "\nHint: Use unique generic type parameter names");
 		}
 		Offset id = genericData->genericDeclarations.size();
@@ -111,11 +111,11 @@ ClassId loadClassGenerics(in_func, std::string &name,
 	auto it =
 	    context.defaultClassMap.find(classDeclaration->baseClassLexerStringId);
 	if (it == context.defaultClassMap.end()) {
-		std::string targetName =
-		    context.lexerString[classDeclaration->baseClassLexerStringId];
+		std::string targetName(
+		    context.lexerString[classDeclaration->baseClassLexerStringId]);
 		std::string bestSuggestion;
 		double bestScore = 0.0;
-		auto checkSuggestion = [&](const std::string &candidate) {
+		auto checkSuggestion = [&](std::string_view candidate) {
 			double score = rapidfuzz::fuzz::ratio(targetName, candidate);
 			if (score > bestScore && score >= 60.0) {
 				bestScore = score;
@@ -303,7 +303,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 		switch (node->kind) {
 			case NodeType::UNKNOW: {
 				auto unknowNode = static_cast<UnknowNode *>(node);
-				auto it = context.lexerStringMap.find(name);
+				auto it = context.lexerStringMap.find(std::string_view(name));
 				if (it == context.lexerStringMap.end()) {
 					classDeclaration->throwError(
 					    "Unsolved " + name +
@@ -315,7 +315,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			}
 			case NodeType::CALL: {
 				auto callNode = static_cast<CallNode *>(node);
-				auto it = context.lexerStringMap.find(name);
+				auto it = context.lexerStringMap.find(std::string_view(name));
 				if (it == context.lexerStringMap.end()) {
 					classDeclaration->throwError(
 					    "Unsolved " + name +
@@ -441,7 +441,7 @@ ClassId loadClassGenerics(in_func, std::string &name,
 		auto node = context.makeDeclarationNode(
 		    in_data, declarationNode->line, declarationNode->baseName,
 		    newClass->getName(compile) + "." +
-		        context.lexerString[declarationNode->baseName],
+		        std::string(context.lexerString[declarationNode->baseName]),
 		    declarationNode->classDeclaration, declarationNode->isVal, true,
 		    declarationNode->nullable, false, true);
 		newClassInfo->staticMember[declarationNode->baseName] = node;
@@ -533,17 +533,29 @@ ClassId loadClassGenerics(in_func, std::string &name,
 			// Issue 4: Save and restore currentClassId when creating generic function node
 			auto savedClassId = context.currentClassId;
 			context.currentClassId = newClassId;
+			auto returnClassCopy = createFuncNode->classDeclaration
+			                           ? createFuncNode->classDeclaration->copy(in_data)
+			                           : nullptr;
 			auto newCreateFuncNode = context.newFunctions.push(
 			    createFuncNode->line, createFuncNode->tokenIndex, newClassId,
 			    createFuncNode->nameId == lexerId__CLASS__ ? newNameId
 			                                               : createFuncNode->nameId,
-			    nullptr, paramCopy,
+			    returnClassCopy, paramCopy,
 			    createFuncNode->functionFlags | FunctionFlags::FUNC_SKIP_LOAD);
-			newCreateFuncNode->pushFunction(in_data);
+			if (createFuncNode->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
+				newCreateFuncNode->pushNativeFunction(
+				    in_data, compile.functions[createFuncNode->id]->native);
+			} else {
+				newCreateFuncNode->pushFunction(in_data);
+			}
 			auto newFuncInfo = context.functionInfo[newCreateFuncNode->id];
 			newFuncInfo->genericData = funcInfo->genericData;
 			newFuncInfo->body = funcInfo->body;
-			newCreateFuncNode->classDeclaration = createFuncNode->classDeclaration;
+			newCreateFuncNode->classDeclaration = returnClassCopy;
+			newFuncInfo->returnClass = returnClassCopy;
+			if (returnClassCopy && returnClassCopy->classId) {
+				compile.functions[newCreateFuncNode->id]->returnId = *returnClassCopy->classId;
+			}
 			compile.functions[newCreateFuncNode->id]->maxDeclaration =
 			    compile.functions[createFuncNode->id]->maxDeclaration;
 			newFuncInfo->declaration = funcInfo->declaration;
@@ -563,23 +575,27 @@ ClassId loadClassGenerics(in_func, std::string &name,
 				}
 			}
 
-			for (auto *param : paramCopy->parameters) {
-				if (!param || !param->classDeclaration) continue;
-				auto addClassDeclToGen = [&](auto &self, ClassDeclaration *cd) -> void {
-					if (!cd) return;
-					if (cd->isGenericDeclaration) {
-						for (auto &genDecl : newFuncInfo->genericData->genericDeclarations) {
-							if (cd->baseClassLexerStringId == genDecl->nameId) {
-								genDecl->allClassDeclarations.push_back(cd);
-								break;
-							}
+			auto addClassDeclToGen = [&](auto &self, ClassDeclaration *cd) -> void {
+				if (!cd) return;
+				if (cd->isGenericDeclaration) {
+					for (auto &genDecl : newFuncInfo->genericData->genericDeclarations) {
+						if (cd->baseClassLexerStringId == genDecl->nameId) {
+							genDecl->allClassDeclarations.push_back(cd);
+							break;
 						}
 					}
-					for (auto *child : cd->inputClassId) {
-						self(self, child);
-					}
-				};
+				}
+				for (auto *child : cd->inputClassId) {
+					self(self, child);
+				}
+			};
+
+			for (auto *param : paramCopy->parameters) {
+				if (!param || !param->classDeclaration) continue;
 				addClassDeclToGen(addClassDeclToGen, param->classDeclaration);
+			}
+			if (returnClassCopy) {
+				addClassDeclToGen(addClassDeclToGen, returnClassCopy);
 			}
 
 			newClassInfo->genericFunctionMap[createFuncNode->nameId].push_back(
@@ -618,9 +634,16 @@ ClassId loadClassGenerics(in_func, std::string &name,
 				newFunc->returnId = *createFuncNode->classDeclaration->classId;
 			}
 
-			if (newFunc->returnId == DefaultClass::functionClassId) {
+			if (createFuncNode->classDeclaration) {
 				newFuncInfo->returnClass =
 				    createFuncNode->classDeclaration->copy(in_data);
+				if (createFuncNode->classDeclaration->nullable ||
+				    (newFuncInfo->returnClass && newFuncInfo->returnClass->nullable)) {
+					newFunc->functionFlags |= FunctionFlags::FUNC_RETURN_NULLABLE;
+					newCreateFuncNode->functionFlags |= FunctionFlags::FUNC_RETURN_NULLABLE;
+				}
+				newCreateFuncNode->classDeclaration = newFuncInfo->returnClass;
+				newCreateFuncNode->classDeclaration->classId = newFunc->returnId;
 			}
 			resetClassDeclTree(createFuncNode->classDeclaration);
 		}

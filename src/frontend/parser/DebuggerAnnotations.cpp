@@ -166,7 +166,7 @@ void loadAnnotations(in_func, size_t &i) {
 				               "Provide file path string inside parentheses, "
 				               "e.g. @import(\"path/to/file.atl\")");
 			}
-			std::string path = context.lexerString[token->indexData];
+			std::string path(context.lexerString[token->indexData]);
 			if (path[0] == '.') {
 				std::filesystem::path input = path;
 				std::filesystem::path currentPath;

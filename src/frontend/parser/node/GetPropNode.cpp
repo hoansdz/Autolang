@@ -34,7 +34,7 @@ ExprNode *GetPropNode::resolve(in_func) {
 
 bool GetPropNode::optimizeSkipIfNotFoundMember(in_func) {
 	caller->optimize(in_data);
-	if (caller->isNullable()) {
+	if (caller->isNullable() && caller->kind != NodeType::CLASS_ACCESS) {
 		if (!accessNullable) {
 			throwError(
 			    "You can't use '.' with nullable value, you must use '?.'");
@@ -90,7 +90,7 @@ bool GetPropNode::optimizeSkipIfNotFoundMember(in_func) {
 		declaration = it_->second;
 		if (declaration->accessModifier != Lexer::TokenType::PUBLIC &&
 		    (!contextCallClassId || *contextCallClassId != clazz->id)) {
-			throwError("Cannot access private member name '" + name + "'");
+			throwError("Cannot access private member name '" + std::string(name) + "'");
 		}
 		isStatic = true;
 		isVal = declaration->isVal;
@@ -100,7 +100,7 @@ bool GetPropNode::optimizeSkipIfNotFoundMember(in_func) {
 			classDeclaration = declaration->classDeclaration;
 		}
 	} else if (isStatic) {
-		throwError("Cannot access non-static member '" + name +
+		throwError("Cannot access non-static member '" + std::string(name) +
 		           "' from static context");
 	}
 	if (!isStatic) {
@@ -109,7 +109,7 @@ bool GetPropNode::optimizeSkipIfNotFoundMember(in_func) {
 		isVal = !isInitial && declaration->isVal;
 		if (declaration->accessModifier != Lexer::TokenType::PUBLIC &&
 		    (!contextCallClassId || *contextCallClassId != clazz->id)) {
-			throwError("Cannot access private member name '" + name + "'");
+			throwError("Cannot access private member name '" + std::string(name) + "'");
 		}
 		id = it->second;
 		// for (int i = 0; i<clazz->memberId.size(); ++i) {
@@ -149,7 +149,7 @@ bool GetPropNode::optimizeSkipIfNotFoundMember(in_func) {
 
 ExprNode *GetPropNode::optimize(in_func) {
 	caller = static_cast<HasClassIdNode *>(caller->optimize(in_data));
-	if (caller->isNullable()) {
+	if (caller->isNullable() && caller->kind != NodeType::CLASS_ACCESS) {
 		if (!accessNullable) {
 			throwError(
 			    "You can't use '.' with nullable value, you must use '?.'");
@@ -246,7 +246,7 @@ ExprNode *GetPropNode::optimize(in_func) {
 			std::string bestSuggestion;
 			bool isFunctionSuggestion = false;
 			double bestScore = 0.0;
-			auto checkSuggestion = [&](const std::string &candidate,
+			auto checkSuggestion = [&](std::string_view candidate,
 			                           bool isFunc = false) {
 				double score = rapidfuzz::fuzz::ratio(name, candidate);
 				if (score > bestScore && score >= 60.0) {
@@ -270,12 +270,12 @@ ExprNode *GetPropNode::optimize(in_func) {
 				checkSuggestion(context.lexerString[funcNameId], true);
 			}
 
-			std::string errorMsg = "Cannot find member name '" + name +
+			std::string errorMsg = "Cannot find member name '" + std::string(name) +
 			                       "' in class '" + clazz->getName(compile) +
 			                       "'";
 			if (classInfo->allFunction.find(nameId) !=
 			    classInfo->allFunction.end()) {
-				errorMsg += "\nDid you mean function: '" + name + "()' ?";
+				errorMsg += "\nDid you mean function: '" + std::string(name) + "()' ?";
 			} else if (!bestSuggestion.empty() && bestSuggestion != name) {
 				if (isFunctionSuggestion) {
 					errorMsg += "\nDid you mean function: '" + bestSuggestion +
@@ -303,7 +303,7 @@ ExprNode *GetPropNode::optimize(in_func) {
 		declaration = it_->second;
 		if (declaration->accessModifier != Lexer::TokenType::PUBLIC &&
 		    (!contextCallClassId || *contextCallClassId != clazz->id)) {
-			throwError("Cannot access private member name '" + name + "'");
+			throwError("Cannot access private member name '" + std::string(name) + "'");
 		}
 		isStatic = true;
 		isVal = declaration->isVal;
@@ -313,7 +313,7 @@ ExprNode *GetPropNode::optimize(in_func) {
 			classDeclaration = declaration->classDeclaration;
 		}
 	} else if (isStatic) {
-		throwError("Cannot access non-static member '" + name +
+		throwError("Cannot access non-static member '" + std::string(name) +
 		           "' from static context");
 	}
 	if (!isStatic) {
@@ -322,7 +322,7 @@ ExprNode *GetPropNode::optimize(in_func) {
 		isVal = !isInitial && declaration->isVal;
 		if (declaration->accessModifier != Lexer::TokenType::PUBLIC &&
 		    (!contextCallClassId || *contextCallClassId != clazz->id)) {
-			throwError("Cannot access private member name '" + name + "'");
+			throwError("Cannot access private member name '" + std::string(name) + "'");
 		}
 		id = it->second;
 		// for (int i = 0; i<clazz->memberId.size(); ++i) {
@@ -473,7 +473,7 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		warning(in_data,
 		        "Access static variables: we recommend call " +
 		            compile.classes[caller->classId]->getName(compile) + "." +
-		            context.lexerString[nameId]);
+		            std::string(context.lexerString[nameId]));
 		accessNullable = false;
 	}
 	if (isStore) {

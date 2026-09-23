@@ -1,6 +1,7 @@
 #define AUTOLANG_LIMIT_OPCODE
 // #define NO_INCLUDE_LIBS_HTTP
 #include <Autolang.hpp>
+#include "shared/Profiler.hpp"
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -167,96 +168,30 @@ bool runCorrectnessTest(Autolang::ACompiler &compiler, const char *scriptPath) {
 }
 
 void runBenchmarkReport(const std::chrono::high_resolution_clock::time_point &processStart, const char* scriptPath) {
-	auto t_after_process = std::chrono::high_resolution_clock::now();
-	
-#ifdef _WIN32
-	MemoryInfo baseMem = getMemoryUsage();
-#endif
+	AUTOLANG_PROFILE_START("0. Process Startup");
 
-	auto t_before_init = std::chrono::high_resolution_clock::now();
+	AUTOLANG_PROFILE_MARK("1. Compiler Instantiation");
 	Autolang::ACompiler compiler;
 	compiler.setLimitOpcodeCount(1000000);
 	compiler.setMaxManagedMemory(1024 * 1024);
-	auto t_after_init = std::chrono::high_resolution_clock::now();
 
-	auto t_before_load = std::chrono::high_resolution_clock::now();
+	AUTOLANG_PROFILE_MARK("2. Load Main Source & Libs");
 	compiler.loadMainSource(scriptPath, Autolang::LibraryConfig(false, true, true));
-	auto t_after_load = std::chrono::high_resolution_clock::now();
 
-	auto t_before_compile = std::chrono::high_resolution_clock::now();
+	AUTOLANG_PROFILE_MARK("3. Bytecode Generation");
 	compiler.generateBytecodes();
-	auto t_after_compile = std::chrono::high_resolution_clock::now();
 
-	auto t_before_vm = std::chrono::high_resolution_clock::now();
+	AUTOLANG_PROFILE_MARK("4. VM Execution");
 	compiler.run();
-	auto t_after_vm = std::chrono::high_resolution_clock::now();
 
-#ifdef _WIN32
-	MemoryInfo currentMem = getMemoryUsage();
-#endif
-
-	auto t_before_cleanup = std::chrono::high_resolution_clock::now();
+	AUTOLANG_PROFILE_MARK("5. Cleanup & Refresh");
 	compiler.refresh();
-	auto t_end = std::chrono::high_resolution_clock::now();
 
-	double processStartupUs = std::chrono::duration<double, std::micro>(t_after_process - processStart).count();
-	double compilerInitUs = std::chrono::duration<double, std::micro>(t_after_init - t_before_init).count();
-	double fileIoUs = std::chrono::duration<double, std::micro>(t_after_load - t_before_load).count();
-	double compilationUs = std::chrono::duration<double, std::micro>(t_after_compile - t_before_compile).count();
-	double vmExecutionUs = std::chrono::duration<double, std::micro>(t_after_vm - t_before_vm).count();
-	double harnessCleanupUs = std::chrono::duration<double, std::micro>(t_end - t_before_cleanup).count();
-	double totalUs = std::chrono::duration<double, std::micro>(t_end - processStart).count();
+	AUTOLANG_PROFILE_MARK("6. Completed");
 
-	if (totalUs <= 0.0) totalUs = 1.0;
-
-	std::cout << "\n====================================================================================================\n";
-	std::cout << "AUTOLANG BENCHMARK METRICS REPORT\n";
-	std::cout << "====================================================================================================\n";
-	std::cout << "Environment Spec : Windows 11 | Intel Core i5 12th Gen | 16GB RAM\n";
+	std::cout << "\nEnvironment Spec : Windows 11 | Intel Core i5 12th Gen | 16GB RAM\n";
 	std::cout << "Target Script    : " << scriptPath << "\n";
-	std::cout << "----------------------------------------------------------------------------------------------------\n";
-	std::cout << std::left << std::setw(30) << "Phase Breakdown" << " | "
-	          << std::right << std::setw(18) << "Execution Time (ms)" << " | "
-	          << std::setw(18) << "Execution Time (us)" << " | "
-	          << std::setw(10) << "Share (%)" << "\n";
-	std::cout << "----------------------------------------------------------------------------------------------------\n";
-
-	auto printRow = [&](const std::string &name, double us) {
-		double ms = us / 1000.0;
-		double percent = (us / totalUs) * 100.0;
-		std::cout << std::left << std::setw(30) << name << " | "
-		          << std::right << std::setw(15) << std::fixed << std::setprecision(3) << ms << " ms | "
-		          << std::setw(15) << std::fixed << std::setprecision(1) << us << " us | "
-		          << std::setw(9) << std::fixed << std::setprecision(1) << percent << "%\n";
-	};
-
-	printRow("1. Process Startup", processStartupUs);
-	printRow("2. Compiler Initialization", compilerInitUs);
-	printRow("3. Loading Test Files (I/O)", fileIoUs);
-	printRow("4. Compilation (AST/Bytecode)", compilationUs);
-	printRow("5. VM Execution", vmExecutionUs);
-	printRow("6. Test Harness & Cleanup", harnessCleanupUs);
-	std::cout << "----------------------------------------------------------------------------------------------------\n";
-	std::cout << std::left << std::setw(30) << "TOTAL TIME" << " | "
-	          << std::right << std::setw(15) << std::fixed << std::setprecision(3) << (totalUs / 1000.0) << " ms | "
-	          << std::setw(15) << std::fixed << std::setprecision(1) << totalUs << " us | "
-	          << std::setw(9) << "100.0%\n";
-	std::cout << "----------------------------------------------------------------------------------------------------\n";
-	std::cout << "MEMORY FOOTPRINT:\n";
-#ifdef _WIN32
-	double wsMB = (currentMem.workingSet > baseMem.workingSet ? (currentMem.workingSet - baseMem.workingSet) : currentMem.workingSet) / (1024.0 * 1024.0);
-	double peakWsMB = (currentMem.peakWorkingSet > baseMem.workingSet ? (currentMem.peakWorkingSet - baseMem.workingSet) : currentMem.peakWorkingSet) / (1024.0 * 1024.0);
-	double pbMB = (currentMem.privateBytes > baseMem.privateBytes ? (currentMem.privateBytes - baseMem.privateBytes) : currentMem.privateBytes) / (1024.0 * 1024.0);
-	double peakPbMB = (currentMem.peakPrivateBytes > baseMem.privateBytes ? (currentMem.peakPrivateBytes - baseMem.privateBytes) : currentMem.peakPrivateBytes) / (1024.0 * 1024.0);
-
-	std::cout << "- RAM Working Set (Current): " << std::fixed << std::setprecision(4) << wsMB << " MB (Total: " << (currentMem.workingSet / (1024.0 * 1024.0)) << " MB)\n";
-	std::cout << "- RAM Working Set (Peak)   : " << std::fixed << std::setprecision(4) << peakWsMB << " MB (Total Peak: " << (currentMem.peakWorkingSet / (1024.0 * 1024.0)) << " MB)\n";
-	std::cout << "- RAM Private Bytes (Current): " << std::fixed << std::setprecision(4) << pbMB << " MB (Total: " << (currentMem.privateBytes / (1024.0 * 1024.0)) << " MB)\n";
-	std::cout << "- RAM Private Bytes (Peak)   : " << std::fixed << std::setprecision(4) << peakPbMB << " MB (Total Peak: " << (currentMem.peakPrivateBytes / (1024.0 * 1024.0)) << " MB)\n";
-#else
-	std::cout << "- RAM footprint measurement not available on non-Windows target\n";
-#endif
-	std::cout << "====================================================================================================\n\n";
+	AUTOLANG_PROFILE_REPORT("AUTOLANG BENCHMARK PERFORMANCE & RAM REPORT");
 }
 
 int main(int argc, char *argv[]) {
@@ -268,7 +203,7 @@ int main(int argc, char *argv[]) {
 
 	for (int i = 1; i < argc; ++i) {
 		std::string arg = argv[i];
-		if (arg == "--benchmark" || arg == "benchmark" || arg == "-b") {
+		if (arg == "--benchmark" || arg == "benchmark" || arg == "-b" || arg == "--profile" || arg == "-p") {
 			isBenchmark = true;
 		} else if (arg.length() > 0 && arg[0] != '-') {
 			scriptPath = argv[i];

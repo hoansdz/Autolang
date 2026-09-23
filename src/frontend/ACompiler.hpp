@@ -104,6 +104,11 @@ struct ACompilerConfig {
 	bool addStdMath = true;
 	bool addStdBytes = true;
 	bool addStdDate = true;
+	bool enableKotlinCompat = true;
+	bool strictMode = false;
+	bool showWarnings = false;
+	bool autoCloseBracketsOnEof = true;
+	bool allowImplicitVarDeclaration = true;
 };
 
 class ACompiler {
@@ -195,17 +200,57 @@ class ACompiler {
 		}
 		parserContext.onWarning = onWarning;
 	}
+	inline void setIgnoreForeignImports(bool ignore) {
+		parserContext.ignoreForeignImports = ignore;
+	}
+	inline void setKotlinCompat(bool enable) {
+		parserContext.kotlinCompatEnabled = enable;
+		if (!enable) {
+			parserContext.classAliasMap.erase("kotlin.math");
+		} else {
+			auto it = parserContext.defaultClassMap.find(
+			    parserContext.createLexerStringIfNotExists("Math"));
+			if (it != parserContext.defaultClassMap.end()) {
+				parserContext.classAliasMap[parserContext.stringArena.allocateView("kotlin.math")] = it->second;
+			}
+		}
+	}
+	inline void setStrictMode(bool enable) {
+		parserContext.strictMode = enable;
+		if (enable) {
+			parserContext.autoCloseBracketsOnEof = false;
+			parserContext.allowImplicitVarDeclaration = false;
+		} else {
+			parserContext.autoCloseBracketsOnEof = true;
+			parserContext.allowImplicitVarDeclaration = true;
+		}
+	}
+	inline bool getStrictMode() const {
+		return parserContext.strictMode;
+	}
+	inline void setShowWarnings(bool enable) {
+		parserContext.showWarnings = enable;
+	}
+	inline bool getShowWarnings() const {
+		return parserContext.showWarnings;
+	}
+	inline void setAutoCloseBracketsOnEof(bool enable) {
+		parserContext.autoCloseBracketsOnEof = enable;
+	}
+	inline bool getAutoCloseBracketsOnEof() const {
+		return parserContext.autoCloseBracketsOnEof;
+	}
+	inline void setAllowImplicitVarDeclaration(bool enable) {
+		parserContext.allowImplicitVarDeclaration = enable;
+	}
+	inline bool getAllowImplicitVarDeclaration() const {
+		return parserContext.allowImplicitVarDeclaration;
+	}
 	inline bool hasError() {
 		return state == Autolang::CompilerState::CT_ERROR;
 	}
 	inline bool hasException() {
-		if (vm.callFrames.getSize() == 0) {
-			if (vm.callFrames.objects[0].exception) {
-				return true;
-			}
-			return false;
-		}
-		return false;
+		return exceptionMessage != nullptr;
 	}
 };
 

@@ -55,7 +55,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i, bool mustReturnValue) {
 			    "Provide an exception variable identifier inside catch (e)");
 		}
 		LexerStringId baseName = token->indexData;
-		const std::string &name = context.lexerString[token->indexData];
+		const auto &name = context.lexerString[token->indexData];
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
 			throw ParserError(

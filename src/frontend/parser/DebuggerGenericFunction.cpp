@@ -29,7 +29,7 @@ void loadFunctionGenerics(in_func, std::string &name,
 	if (it == context.genericFunctionMap.end()) {
 		classDeclaration->throwError(
 		    "Bug: Cannot find function " +
-		    context.lexerString[classDeclaration->baseClassLexerStringId] +
+		    std::string(context.lexerString[classDeclaration->baseClassLexerStringId]) +
 		    "\nHint: Ensure generic function is defined before instantiation");
 	}
 	{
@@ -249,7 +249,7 @@ void loadFunctionGenerics(in_func, std::string &name,
 			} else {
 				newFunc->returnId = *createFuncNode->classDeclaration->classId;
 			}
-			if (newFunc->returnId == DefaultClass::functionClassId) {
+			if (createFuncNode->classDeclaration) {
 				newFuncInfo->returnClass =
 				    createFuncNode->classDeclaration->copy(in_data);
 			}
@@ -277,7 +277,7 @@ void loadFunctionGenerics(in_func, std::string &name,
 			auto node = context.makeDeclarationNode(
 			    in_data, declarationNode->line, declarationNode->baseName,
 			    newFunc->getName(compile) +
-			        context.lexerString[declarationNode->baseName],
+			        std::string(context.lexerString[declarationNode->baseName]),
 			    declarationNode->classDeclaration, declarationNode->isVal, true,
 			    declarationNode->nullable, false, true);
 			funcInfo->genericData
@@ -408,7 +408,7 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 	if (it == callerClassInfo->genericFunctionMap.end()) {
 		classDeclaration->throwError(
 		    "Bug: Cannot find member function " +
-		    context.lexerString[baseNameId] +
+		    std::string(context.lexerString[baseNameId]) +
 		    "\nHint: Ensure generic member function is defined before instantiation");
 	}
 
@@ -736,7 +736,7 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 				newFunc->returnId = *resolvedCreateFuncNode->classDeclaration->classId;
 			}
 
-			if (newFunc->returnId == DefaultClass::functionClassId) {
+			if (resolvedCreateFuncNode->classDeclaration) {
 				newFuncInfo->returnClass =
 				    resolvedCreateFuncNode->classDeclaration->copy(in_data);
 			}
@@ -792,7 +792,7 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 			auto node = context.makeDeclarationNode(
 			    in_data, declarationNode->line, declarationNode->baseName,
 			    newFunc->getName(compile) +
-			        context.lexerString[declarationNode->baseName],
+			        std::string(context.lexerString[declarationNode->baseName]),
 			    declarationNode->classDeclaration, declarationNode->isVal, true,
 			    declarationNode->nullable, false, true);
 			funcInfo->genericData

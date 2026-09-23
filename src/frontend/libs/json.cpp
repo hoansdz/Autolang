@@ -3,7 +3,11 @@
 
 #include "json.hpp"
 #include "frontend/ACompiler.hpp"
+#include "backend/libs/array.hpp"
+#include "backend/libs/set.hpp"
+#include "backend/libs/map.hpp"
 #include "shared/DefaultOperator.hpp"
+#include "shared/DefaultFunction.hpp"
 #include <string>
 #include <third_party/nlohmann/json.hpp>
 
@@ -528,6 +532,110 @@ AObject *to_string(NativeFuncInData) {
     return notifier.createString(j_ptr->dump(-1));
 }
 
+static nlohmann::json aObjectToJsonValue(ANotifier &notifier, AObject *obj) {
+    if (!obj || obj == DefaultClass::nullObject || obj->type == DefaultClass::nullClassId) {
+        return nullptr;
+    }
+    if (obj->flags & AObject::Flags::OBJ_IS_ARRAY) {
+        auto arr = obj->array;
+        nlohmann::json jArr = nlohmann::json::array();
+        for (size_t i = 0; i < arr->size; ++i) {
+            if (arr->key == DefaultClass::intClassId) {
+                jArr.push_back(arr->intData[i]);
+            } else if (arr->key == DefaultClass::floatClassId) {
+                jArr.push_back(arr->floatData[i]);
+            } else {
+                jArr.push_back(aObjectToJsonValue(notifier, arr->objData[i]));
+            }
+        }
+        return jArr;
+    }
+    if (obj->flags & AObject::Flags::OBJ_IS_SET) {
+        nlohmann::json jArr = nlohmann::json::array();
+        auto unorderedSetData = static_cast<Libs::set::AUnorderedSet *>(obj->data->data);
+        switch (unorderedSetData->type) {
+            case DefaultClass::intClassId: {
+                auto s = static_cast<Libs::set::IntHashSet *>(unorderedSetData->data);
+                for (auto val : *s) jArr.push_back(val);
+                break;
+            }
+            case DefaultClass::floatClassId: {
+                auto s = static_cast<Libs::set::FloatHashSet *>(unorderedSetData->data);
+                for (auto val : *s) jArr.push_back(val);
+                break;
+            }
+            case DefaultClass::stringClassId: {
+                auto s = static_cast<Libs::set::StringHashSet *>(unorderedSetData->data);
+                for (auto val : *s) jArr.push_back(val->str->data);
+                break;
+            }
+            default: {
+                auto s = static_cast<Libs::set::ObjectHashSet *>(unorderedSetData->data);
+                for (auto val : *s) jArr.push_back(aObjectToJsonValue(notifier, val));
+                break;
+            }
+        }
+        return jArr;
+    }
+    if (obj->flags & AObject::Flags::OBJ_IS_MAP) {
+        nlohmann::json jMap = nlohmann::json::object();
+        auto hashMapData = static_cast<Libs::map::AHashMap *>(obj->data->data);
+        switch (hashMapData->type) {
+            case DefaultClass::stringClassId: {
+                auto m = static_cast<Libs::map::StringHashMap *>(hashMapData->data);
+                for (auto &[k, v] : *m) {
+                    jMap[k->str->data] = aObjectToJsonValue(notifier, v);
+                }
+                break;
+            }
+            default: {
+                auto m = static_cast<Libs::map::ObjectHashMap *>(hashMapData->data);
+                for (auto &[k, v] : *m) {
+                    jMap[DefaultFunction::to_string(notifier, k)] = aObjectToJsonValue(notifier, v);
+                }
+                break;
+            }
+        }
+        return jMap;
+    }
+    switch (obj->type) {
+        case DefaultClass::intClassId:
+            return obj->i;
+        case DefaultClass::floatClassId:
+            return obj->f;
+        case DefaultClass::boolClassId:
+            return static_cast<bool>(obj->b);
+        case DefaultClass::stringClassId:
+            return std::string(obj->str->data, obj->str->size);
+        case DefaultClass::jsonClassId:
+            if (obj->json) return *(obj->json);
+            return nullptr;
+        default: {
+            if (obj->flags & AObject::Flags::OBJ_HAS_MEMBER_DATA) {
+                nlohmann::json jObj = nlohmann::json::object();
+                auto clazz = notifier.vm->data.classes[obj->type];
+                if (clazz && obj->member) {
+                    for (const auto &[memberName, memberPos] : clazz->memberMap) {
+                        if (memberPos < obj->member->size) {
+                            jObj[memberName] = aObjectToJsonValue(notifier, obj->member->data[memberPos]);
+                        }
+                    }
+                }
+                return jObj;
+            }
+            return DefaultFunction::to_string(notifier, obj);
+        }
+    }
+}
+
+AObject *encode_any_to_string(NativeFuncInData) {
+    auto obj = args[0];
+    int64_t indent = (argSize >= 2 && args[1]->type == DefaultClass::intClassId) ? args[1]->i : -1;
+    nlohmann::json j = aObjectToJsonValue(notifier, obj);
+    std::string dumped = (indent >= 0) ? j.dump(static_cast<int>(indent)) : j.dump(-1);
+    return notifier.createString(dumped);
+}
+
 AObject *remove_field(NativeFuncInData) {
     auto j_ptr = args[0]->json;
     const std::string &key = args[1]->str->data;
@@ -767,8 +875,41 @@ void init(ACompiler &compiler) {
     @native("json_to_array_class")
     fun <T> Json.decodeArrayTo(): Array<T>
 
-    static fun Json.encodeToString(json: Json, indent: Int = -1): String = json.stringify(indent)
-    fun encodeToString(json: Json, indent: Int = -1): String = json.stringify(indent)
+    @native("json_encode_to_string")
+    static fun <T> Json.encodeToString(value: Array<T>): String
+
+    @native("json_encode_to_string")
+    static fun <K, V> Json.encodeToString(value: Map<K, V>): String
+
+    @native("json_encode_to_string")
+    static fun <T> Json.encodeToString(value: Set<T>): String
+
+    @native("json_encode_to_string")
+    static fun Json.encodeToString(value: String): String
+
+    @native("json_encode_to_string")
+    static fun Json.encodeToString(value: Int): String
+
+    @native("json_encode_to_string")
+    static fun Json.encodeToString(value: Float): String
+
+    @native("json_encode_to_string")
+    static fun Json.encodeToString(value: Bool): String
+
+    @native("json_encode_to_string")
+    static fun Json.encodeToString(value: Json): String
+
+    @native("json_encode_to_string")
+    static fun Json.encodeToString(value: Any): String
+
+    @native("json_encode_to_string")
+    fun <T> encodeToString(value: Array<T>): String
+
+    @native("json_encode_to_string")
+    fun <K, V> encodeToString(value: Map<K, V>): String
+
+    @native("json_encode_to_string")
+    fun encodeToString(value: Any): String
 
     fun Json.getString(key: String): String = this.get(key).asString()
     fun Json.getInt(key: String): Int = this.get(key).asInt()
@@ -877,6 +1018,7 @@ void init(ACompiler &compiler) {
             {"json_is_int", &json::is_int},
             {"json_is_float", &json::is_float},
             {"json_clone", &json::clone},
+            {"json_encode_to_string", &json::encode_any_to_string},
         }));
 }
 

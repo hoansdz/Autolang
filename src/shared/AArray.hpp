@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <vector>
 
 namespace Autolang {
 
@@ -21,6 +22,7 @@ struct AArray {
 		AObject **objData;
 		void *raw;
 	};
+	std::vector<size_t> sortGroups;
 
 	explicit AArray(ClassId key, uint32_t initialCapacity = 0)
 	    : key(key), size(initialCapacity), maxSize(initialCapacity) {

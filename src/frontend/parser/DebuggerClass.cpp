@@ -65,7 +65,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 		                  "class name, e.g. 'class MyClass'");
 	}
 	LexerStringId nameId = token->indexData;
-	const std::string &name = context.lexerString[nameId];
+	const auto &name = context.lexerString[nameId];
 	{
 		auto it = context.defaultClassMap.find(nameId);
 		if (it != context.defaultClassMap.end()) {
@@ -79,7 +79,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 					       std::to_string(prevClassInfo->line) + ". " + hint;
 				}
 			}
-			throw ParserError(firstLine, "Class " + name +
+			throw ParserError(firstLine, "Class " + std::string(name) +
 			                                 " already exists\nHint: " + hint);
 		}
 	}
@@ -98,7 +98,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 			throw ParserError(
 			    firstLine,
 			    "Cannot declare class with the same name as typealias: '" +
-			        name + "'\nHint: " + hint);
+			        std::string(name) + "'\nHint: " + hint);
 		}
 	}
 
@@ -470,7 +470,7 @@ void loadConstructorBody(in_func, size_t &i, uint32_t firstLine,
 	parameter->defaultValuePos += 1;
 	auto constructor = context.createConstructorPool.push(
 	    firstLine, *context.currentClassId,
-	    context.lexerStringMap[clazz->getName(compile)], parameter, false,
+	    context.createLexerStringIfNotExists(clazz->getName(compile)), parameter, false,
 	    functionFlags);
 	classInfo->secondaryConstructor.push_back(constructor);
 	constructor->pushFunction(in_data);
@@ -488,10 +488,10 @@ void loadConstructorBody(in_func, size_t &i, uint32_t firstLine,
 		    context.annotationMetadata[AnnotationMetadataIndex::AMI_NATIVE];
 		const auto &name = context.lexerString[token.indexData];
 
-		auto it = context.mode->nativeFuncMap.find(name);
+		auto it = context.mode->nativeFuncMap.find(std::string(name));
 		if (it == context.mode->nativeFuncMap.end()) {
 			throw ParserError(firstLine,
-			                  "Native function name '" + name +
+			                  "Native function name '" + std::string(name) +
 			                      "' could not be found\nHint: Register native "
 			                      "function binding in host environment");
 		}

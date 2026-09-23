@@ -161,7 +161,7 @@ class TestFileFeaturesExhaustive {
         metaWriter.write("1234567890")
         metaWriter.close()
         assert(File.getSize(metaPath) == 10)
-        assert(File.getExtension(metaPath) == ".bin")
+        assert(File.getExtension(metaPath) == "bin")
         assert(File.getExtension("no_extension_file") == "")
         File.delete(metaPath)
 
@@ -184,7 +184,7 @@ class TestFileFeaturesExhaustive {
 
         val kFile = File(kPath)
         assert(kFile.name() == "test_kotlin_style.txt")
-        assert(kFile.extension() == ".txt")
+        assert(kFile.extension() == "txt")
         assert(kFile.exists() == true)
         assert(kFile.isFile() == true)
         assert(kFile.size() > 0)

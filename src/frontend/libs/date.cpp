@@ -221,6 +221,47 @@ AObject *is_leap_year(NativeFuncInData) {
 	return notifier.createBool(isLeap);
 }
 
+AObject *diff(NativeFuncInData) {
+	auto h1 = static_cast<ADateHandle *>(args[0]->data->data);
+	auto h2 = static_cast<ADateHandle *>(args[1]->data->data);
+	if (!h1 || !h2) {
+		notifier.throwException("Date instance is null or uninitialized");
+		return nullptr;
+	}
+	return notifier.createInt(h1->timestamp_ms - h2->timestamp_ms);
+}
+
+AObject *is_before(NativeFuncInData) {
+	auto h1 = static_cast<ADateHandle *>(args[0]->data->data);
+	auto h2 = static_cast<ADateHandle *>(args[1]->data->data);
+	if (!h1 || !h2) {
+		notifier.throwException("Date instance is null or uninitialized");
+		return nullptr;
+	}
+	return notifier.createBool(h1->timestamp_ms < h2->timestamp_ms);
+}
+
+AObject *is_after(NativeFuncInData) {
+	auto h1 = static_cast<ADateHandle *>(args[0]->data->data);
+	auto h2 = static_cast<ADateHandle *>(args[1]->data->data);
+	if (!h1 || !h2) {
+		notifier.throwException("Date instance is null or uninitialized");
+		return nullptr;
+	}
+	return notifier.createBool(h1->timestamp_ms > h2->timestamp_ms);
+}
+
+AObject *copy(NativeFuncInData) {
+	auto handle = static_cast<ADateHandle *>(args[0]->data->data);
+	if (!handle) {
+		notifier.throwException("Date instance is null or uninitialized");
+		return nullptr;
+	}
+	ClassId classId = args[0]->type;
+	auto newHandle = new ADateHandle{handle->timestamp_ms};
+	return notifier.createNativeData(classId, newHandle, destroyDate);
+}
+
 void init(ACompiler &compiler) {
 	compiler.registerBuiltInLibrary(
 	    "std/date", R"###(
@@ -234,8 +275,10 @@ class Date {
     @native("date_constructor_ts")
     static fun fromTimestamp(timestamp: Int): Date
 
-    static fun Date(): Date = Date.now()
-    static fun Date(timestamp: Int): Date = Date.fromTimestamp(timestamp)
+    @native("date_constructor_now")
+    static fun Date(): Date
+    @native("date_constructor_ts")
+    static fun Date(timestamp: Int): Date
 
     @native("date_get_year")
     fun getYear(): Int
@@ -317,12 +360,17 @@ class Date {
     fun toDateString(): String = this.format("%Y-%m-%d")
     fun toTimeString(): String = this.format("%H:%M:%S")
 
-    fun diff(other: Date): Int = this.getTime() - other.getTime()
-    fun isBefore(other: Date): Bool = this.getTime() < other.getTime()
-    fun isAfter(other: Date): Bool = this.getTime() > other.getTime()
+    @native("date_diff")
+    fun diff(other: Date): Int
+    @native("date_is_before")
+    fun isBefore(other: Date): Bool
+    @native("date_is_after")
+    fun isAfter(other: Date): Bool
 
-    fun copy(): Date = Date.fromTimestamp(this.getTime())
-    fun clone(): Date = Date.fromTimestamp(this.getTime())
+    @native("date_copy")
+    fun copy(): Date
+    @native("date_copy")
+    fun clone(): Date
 
     @native("date_current_time_millis")
     static fun currentTimeMillis(): Int
@@ -373,6 +421,10 @@ class Date {
 	        {"date_add_minutes", &date::add_minutes},
 	        {"date_add_seconds", &date::add_seconds},
 	        {"date_is_leap_year", &date::is_leap_year},
+	        {"date_diff", &date::diff},
+	        {"date_is_before", &date::is_before},
+	        {"date_is_after", &date::is_after},
+	        {"date_copy", &date::copy},
 	    }));
 }
 

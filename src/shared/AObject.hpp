@@ -48,10 +48,11 @@ struct AObject {
 		OBJ_IS_MAP = 1u << 6,
 		OBJ_HAS_MEMBER_DATA = 1u << 7,
 #ifdef __EMSCRIPTEN__
-		OBJ_IS_JS_OBJECT = 1u << 8
+		OBJ_IS_JS_OBJECT = 1u << 8,
 #elif __PYBIND11__
-		OBJ_IS_PY_OBJECT = 1u << 8
+		OBJ_IS_PY_OBJECT = 1u << 8,
 #endif
+		OBJ_IS_BOX = 1u << 9
 	};
 	ClassId type;
 	uint32_t refCount;
@@ -66,6 +67,7 @@ struct AObject {
 		AString *str;
 		ANativeData *data;
 		ABytes *bytes;
+		AObject *boxedValue;
 #ifndef NO_INCLUDE_LIBS_JSON
 		nlohmann::json *json;
 #endif
@@ -164,6 +166,13 @@ struct AObject {
 // 	assert("what wrong");
 // 	return;
 // }
+		if (flags & Flags::OBJ_IS_BOX) {
+			if (boxedValue && boxedValue->refCount > 0) {
+				--boxedValue->refCount;
+			}
+			flags = AObject::Flags::OBJ_IS_FREE;
+			return;
+		}
 		if (flags & Flags::OBJ_IS_NO_DATA) {
 			flags = AObject::Flags::OBJ_IS_FREE;
 			return;
@@ -194,6 +203,14 @@ struct AObject {
 					}
 				}
 				delete array;
+			}
+			flags = AObject::Flags::OBJ_IS_FREE;
+			return;
+		}
+		if (flags & Flags::OBJ_IS_BOX) {
+			if (boxedValue) {
+				if (boxedValue->refCount > 0)
+					--boxedValue->refCount;
 			}
 			flags = AObject::Flags::OBJ_IS_FREE;
 			return;

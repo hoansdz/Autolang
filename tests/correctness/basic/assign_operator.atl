@@ -91,7 +91,7 @@ fun testArrayIndexAssignOperator() {
 	floatArr[1] -= 0.5
 	assert(floatArr[1] == 2.0)
 
-	val m = <String, Int>{"apples": 5}
+	val m = mapOf("apples" to 5)
 	m["apples"]! += 10
 	assert(m["apples"] == 15)
 	m["apples"]! *= 2

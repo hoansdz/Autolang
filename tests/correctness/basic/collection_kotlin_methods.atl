@@ -23,7 +23,7 @@ fun testArrayKotlinMethods() {
     assert(strMapped[0] == "item_1" && strMapped[2] == "item_3", "map<String> failed")
 
     // 4. mapIndexed<R>()
-    val indexedMapped = numbers.mapIndexed<String>({|x: Int, idx: Int| x + ":" + idx })
+    val indexedMapped = numbers.mapIndexed<String>({|idx: Int, x: Int| x + ":" + idx })
     assert(indexedMapped[0] == "1:0" && indexedMapped[1] == "2:1", "mapIndexed failed")
 
     // 5. first() & firstOrNull() & last() & lastOrNull()
@@ -125,6 +125,26 @@ fun testArrayKotlinMethods() {
     assert(numbers.max() == 3, "max failed")
     assert(numbers.min() == 1, "min failed")
 
+    // 21. getOrNull & getOrElse
+    assert(numbers.getOrNull(0) == 1, "getOrNull(0) failed")
+    assert(numbers.getOrNull(10) == null, "getOrNull(10) failed")
+    assert(numbers.getOrNull(-1) == null, "getOrNull(-1) failed")
+    assert(numbers.getOrElse(10, {|idx: Int| idx * 10 }) == 100, "getOrElse failed")
+
+    // 22. sortedDescending
+    val sortedDesc = numbers.sortedDescending()
+    assert(sortedDesc[0] == 3 && sortedDesc[1] == 2 && sortedDesc[2] == 1, "sortedDescending failed")
+
+    // 23. indexOfFirst & indexOfLast
+    assert(numbers.indexOfFirst({|x: Int| x == 2 }) == 1, "indexOfFirst failed")
+    assert(numbers.indexOfLast({|x: Int| x == 2 }) == 1, "indexOfLast failed")
+
+    // 24. single & singleOrNull
+    val onlyOne = [99]
+    assert(onlyOne.single() == 99, "single failed")
+    assert(onlyOne.singleOrNull() == 99, "singleOrNull failed")
+    assert(numbers.singleOrNull() == null, "singleOrNull on multiple items failed")
+
     // 20. range expression as array
     val rangeArr = 1..10
     assert(rangeArr.size() == 10 && rangeArr[0] == 1 && rangeArr[9] == 10, "rangeArr failed")
@@ -133,10 +153,63 @@ fun testArrayKotlinMethods() {
 
     val untilArr = 1..<5
     assert(untilArr.size() == 4 && untilArr[3] == 4, "untilArr failed")
+
+    // 25. indices & lastIndex
+    val sample = [10, 20, 30]
+    val ind = sample.indices
+    assert(ind.size() == 3, "size failed")
+    assert(ind[0] == 0, "ind[0] failed")
+    assert(ind[2] == 2, "ind[2] failed")
+    assert(sample.indices()[0] == 0, "sample.indices()[0] failed")
+    assert(sample.indices().size() == 3, "sample.indices().size() failed")
+    assert(sample.lastIndex == 2, "sample.lastIndex failed")
+    assert(sample.lastIndex() == 2, "sample.lastIndex() failed")
+
+    val emptyIntArr = <Int>[]
+    assert(emptyIntArr.indices.size() == 0, "emptyIntArr.indices failed")
+    assert(emptyIntArr.lastIndex == -1, "emptyIntArr.lastIndex failed")
+
+    var indexSum = 0
+    for (i in sample.indices) {
+        indexSum += i
+    }
+    assert(indexSum == 3, "for in sample.indices failed")
+
+    val transactions = [120, 150, 210, 80, 240, 300, 350, 90, 420]
+    var anomalyCount = 0
+    var totalSuspiciousAmount = 0
+    var streakLength = 0
+    var streakSum = 0
+
+    for (i in transactions.indices) {
+        val current = transactions[i]
+        if (i == 0) {
+            streakLength = 1
+            streakSum = current
+        } else {
+            val previous = transactions[i - 1]
+            if (current > previous) {
+                streakLength++
+                streakSum += current
+            } else {
+                streakLength = 1
+                streakSum = current
+            }
+        }
+
+        if (streakLength >= 3 && streakSum > 600) {
+            anomalyCount++
+            totalSuspiciousAmount += streakSum
+            streakLength = 0
+            streakSum = 0
+        }
+    }
+    assert(anomalyCount == 1, "anomalyCount failed")
+    assert(totalSuspiciousAmount == 620, "totalSuspiciousAmount failed")
 }
 
 fun testMapKotlinMethods() {
-    val m = <String, Int>{ "a": 1, "b": 2, "c": 3 }
+    val m = mapOf("a" to 1, "b" to 2, "c" to 3)
 
     // 1. contains(key) & has(key)
     assert(m.contains("a") == true, "map.contains failed")
@@ -147,6 +220,12 @@ fun testMapKotlinMethods() {
     // 2. count()
     assert(m.count() == 3, "map.count failed")
 
+    // 3. getOrPut
+    val mPut = mapOf("x" to 10)
+    val existingVal = mPut.getOrPut("x", { 999 })
+    assert(existingVal == 10, "getOrPut existing failed")
+    val newVal = mPut.getOrPut("y", { 20 })
+    assert(newVal == 20 && mPut.get("y") == 20, "getOrPut new failed")
 
     // 4. filter
     val filteredMap = m.filter({|k: String, v: Int| v >= 2 })
@@ -156,7 +235,7 @@ fun testMapKotlinMethods() {
 }
 
 fun testSetKotlinMethods() {
-    val s = <Int>{ 10, 20, 30 }
+    val s = setOf(10, 20, 30)
 
     // 1. includes(val) & count()
     assert(s.includes(10) == true, "set.includes failed")
@@ -168,7 +247,7 @@ fun testSetKotlinMethods() {
     assert(s.contains(f), "set.first failed")
     assert(s.firstOrNull() != null, "set.firstOrNull failed")
 
-    val emptySet = <Int>{}
+    val emptySet = Set<Int>()
     assert(emptySet.firstOrNull() == null, "empty set firstOrNull failed")
 
     // 3. filter
@@ -324,10 +403,114 @@ fun testKotlinCollectionConstructors() {
     assert(m5.size() == 0, "emptyMap<String, Int>() failed")
 }
 
+fun testListOfNotNullAndNumericSuffixes() {
+    val a: Int? = 10
+    val b: Int? = null
+    val c: Int? = 20
+    val list = listOfNotNull(a, b, c)
+    assert(list.size == 2, "listOfNotNull size failed")
+    assert(list[0] == 10, "listOfNotNull[0] failed")
+    assert(list[1] == 20, "listOfNotNull[1] failed")
+
+    val numLong = 0L
+    val numLong2 = 1000L
+    val numFloat = 1.5f
+    val numDouble = 2.5d
+    val numHex = 0xFF
+    val numHexLong = 0x10L
+    val numBin = 0b1010
+    val numBinLong = 0b11L
+    val numOct = 0o755
+    val numUnder = 1_000_000L
+    val numSci = 1.5e2
+    val numSciFloat = 1e3f
+    val numSciNeg = 1e-2
+
+    assert(numLong == 0, "0L failed")
+    assert(numLong2 == 1000, "1000L failed")
+    assert(numFloat == 1.5, "1.5f failed")
+    assert(numDouble == 2.5, "2.5d failed")
+    assert(numHex == 255, "0xFF failed")
+    assert(numHexLong == 16, "0x10L failed")
+    assert(numBin == 10, "0b1010 failed")
+    assert(numBinLong == 3, "0b11L failed")
+    assert(numOct == 493, "0o755 failed")
+    assert(numUnder == 1000000, "1_000_000L failed")
+    assert(numSci == 150.0, "1.5e2 failed")
+    assert(numSciFloat == 1000.0, "1e3f failed")
+    assert(numSciNeg == 0.01, "1e-2 failed")
+}
+
+fun testNewKotlinStdlibMethods() {
+    // Array methods
+    val arr = [1, 2, 3]
+    val arrCloned = arr.toTypedArray()
+    assert(arrCloned.size == 3, "toTypedArray size failed")
+    val mset = arr.toMutableSet()
+    val hset = arr.toHashSet()
+    assert(mset.contains(2) && hset.contains(3), "toMutableSet / toHashSet failed")
+
+    val maxVal = arr.maxOf<Int>({|x: Int| x * 10 })
+    val minVal = arr.minOf<Int>({|x: Int| x * 10 })
+    assert(maxVal == 30, "arr.maxOf failed")
+    assert(minVal == 10, "arr.minOf failed")
+    assert(arr.maxOfOrNull<Int>({|x: Int| x * 2 }) == 6, "arr.maxOfOrNull failed")
+    assert(arr.minOfOrNull<Int>({|x: Int| x * 2 }) == 2, "arr.minOfOrNull failed")
+
+    // Set methods
+    val mySet = setOf(10, 20, 30)
+    val setSorted = mySet.sorted()
+    assert(setSorted[0] == 10 && setSorted[2] == 30, "set.sorted failed")
+    val setSortedDesc = mySet.sortedDescending()
+    assert(setSortedDesc[0] == 30 && setSortedDesc[2] == 10, "set.sortedDescending failed")
+    assert(mySet.sum() == 60, "set.sum failed")
+    assert(mySet.average() == 20.0, "set.average failed")
+    assert(mySet.maxOf<Int>({|x: Int| x + 5 }) == 35, "set.maxOf failed")
+    assert(mySet.minOf<Int>({|x: Int| x + 5 }) == 15, "set.minOf failed")
+    assert(mySet.distinct().size() == 3, "set.distinct failed")
+    val filteredNotSet = mySet.filterNot({|x: Int| x == 20 })
+    assert(filteredNotSet.size() == 2 && !filteredNotSet.contains(20), "set.filterNot failed")
+
+    // setOfNotNull
+    val setWithNulls = setOfNotNull(1, null, 2, null, 3)
+    assert(setWithNulls.size() == 3 && setWithNulls.contains(1) && setWithNulls.contains(3), "setOfNotNull failed")
+
+    // Map methods
+    val myMap = mapOf("x" to 10, "y" to 20)
+    val hmap = myMap.toHashMap()
+    assert(hmap.size() == 2 && hmap["x"] == 10, "toHashMap failed")
+
+    // Char/Int methods
+    val cDigit = '5'
+    val cLetter = 'A'
+    val cLower = 'z'
+    val cSpace = ' '
+    assert(cDigit.isDigit(), "cDigit.isDigit failed")
+    assert(!cDigit.isLetter(), "cDigit.isLetter failed")
+    assert(cLetter.isLetter() && cLetter.isUpperCase(), "cLetter isLetter/isUpperCase failed")
+    assert(cLower.isLetter() && cLower.isLowerCase(), "cLower isLetter/isLowerCase failed")
+    assert(cSpace.isWhitespace(), "cSpace.isWhitespace failed")
+
+    val downToArr = 5.downTo(1)
+    assert(downToArr.size == 5 && downToArr[0] == 5 && downToArr[4] == 1, "downTo failed")
+
+    // String methods
+    val s = "Kotlin123"
+    assert(s.lastIndex() == 8, "s.lastIndex failed")
+    val nonDigits = s.filterNot({|ch: String| ch.isDigit() })
+    assert(nonDigits == "Kotlin", "s.filterNot failed: " + nonDigits)
+    assert("9".isDigit(), "\"9\".isDigit failed")
+    assert("a".isLetter() && "a".isLowerCase(), "\"a\".isLetter failed")
+    assert("Z".isLetter() && "Z".isUpperCase(), "\"Z\".isLetter failed")
+    assert(" ".isWhitespace(), "\" \".isWhitespace failed")
+}
+
 testArrayKotlinMethods()
 testMapKotlinMethods()
 testSetKotlinMethods()
 testCollectionOperators()
 testKotlinCollectionConstructors()
+testListOfNotNullAndNumericSuffixes()
+testNewKotlinStdlibMethods()
 println("All Kotlin collection methods passed successfully!")
 

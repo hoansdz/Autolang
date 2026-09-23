@@ -1,0 +1,122 @@
+class CounterPair(val inc: () -> Int, val get: () -> Int)
+
+fun testRepeatClosure() {
+    var sum = 0
+    repeat(5) { i: Int ->
+        sum = sum + i
+    }
+    assert(sum == 10, "Test 1: repeat closure mutate failed, expected 10, got: " + sum.toString())
+    println("Test 1 passed")
+}
+
+fun testNestedClosure() {
+    var counter = 100
+    val inc = { step: Int ->
+        counter = counter + step
+    }
+    inc(10)
+    assert(counter == 110, "Test 2: simple lambda mutate failed")
+
+    val nested = {
+        val inner = {
+            counter = counter + 5
+        }
+        inner()
+    }
+    nested()
+    assert(counter == 115, "Test 2: nested lambda mutate failed")
+    println("Test 2 passed")
+}
+
+fun testMultipleClosuresSharing() {
+    var balance = 50
+    val deposit = { amount: Int -> balance = balance + amount }
+    val withdraw = { amount: Int -> balance = balance - amount }
+
+    deposit(100)
+    assert(balance == 150, "Test 3: deposit failed")
+    withdraw(30)
+    assert(balance == 120, "Test 3: withdraw failed")
+    println("Test 3 passed")
+}
+
+fun testLocalStringAndFloat() {
+    var text = "Hello"
+    val appendText = { s: String -> text = text + " " + s }
+    appendText("Kotlin")
+    assert(text == "Hello Kotlin", "Test 4: string mutate failed")
+
+    var valFloat = 1.5
+    val addFloat = { f: Float -> valFloat = valFloat + f }
+    addFloat(2.5)
+    assert(valFloat == 4.0, "Test 4: float mutate failed")
+    println("Test 4 passed")
+}
+
+fun makeCounter(): () -> Int {
+    var count = 0
+    return {
+        count = count + 1
+        count
+    }
+}
+
+fun testClosureEscaping() {
+    val c1 = makeCounter()
+    assert(c1() == 1)
+    assert(c1() == 2)
+    assert(c1() == 3)
+
+    val c2 = makeCounter()
+    assert(c2() == 1)
+    assert(c1() == 4)
+    println("Test 5 (closure escaping) passed")
+}
+
+fun makeSharedCounter(): CounterPair {
+    var count = 0
+    val inc = {
+        count = count + 1
+        count
+    }
+    val get = { count }
+    return CounterPair(inc, get)
+}
+
+fun testSharedEscapedClosures() {
+    val pair = makeSharedCounter()
+    assert(pair.get() == 0)
+    assert(pair.inc() == 1)
+    assert(pair.inc() == 2)
+    assert(pair.get() == 2)
+    println("Test 6 (shared escaping) passed")
+}
+
+fun testCompoundOperators() {
+    var x = 100
+    val ops = {
+        x += 50
+        x -= 30
+        x *= 2
+        x /= 4
+        x %= 14
+        x++
+        x--
+    }
+    ops()
+    assert(x == 4)
+    println("Test 7 (compound operators) passed")
+}
+
+fun testClosureMutate() {
+    testRepeatClosure()
+    testNestedClosure()
+    testMultipleClosuresSharing()
+    testLocalStringAndFloat()
+    testClosureEscaping()
+    testSharedEscapedClosures()
+    testCompoundOperators()
+    println("Passed testClosureMutate")
+}
+
+testClosureMutate()

@@ -71,6 +71,25 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerString.emplace_back("times");
 	lexerString.emplace_back("div");
 	lexerString.emplace_back("rem");
+	lexerString.emplace_back("run");
+	lexerString.emplace_back("let");
+	lexerString.emplace_back("also");
+	lexerString.emplace_back("takeIf");
+	lexerString.emplace_back("takeUnless");
+	lexerString.emplace_back("apply");
+	lexerString.emplace_back("with");
+	lexerString.emplace_back("data");
+	lexerString.emplace_back("it");
+	lexerString.emplace_back("_");
+	lexerString.emplace_back("compareTo");
+	lexerString.emplace_back("unaryMinus");
+	lexerString.emplace_back("unaryPlus");
+	lexerString.emplace_back("not");
+	lexerString.emplace_back("listOfNotNull");
+	lexerString.emplace_back("arrayOfNotNull");
+	lexerString.emplace_back("mutableListOfNotNull");
+	lexerString.emplace_back("setOfNotNull");
+	lexerString.emplace_back("mutableSetOfNotNull");
 	/*
 	lexerString.emplace_back("unaryPlus");
 	lexerString.emplace_back("unaryMinus");
@@ -157,6 +176,25 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerStringMap["times"] = lexerIdtimes;
 	lexerStringMap["div"] = lexerIddiv;
 	lexerStringMap["rem"] = lexerIdrem;
+	lexerStringMap["run"] = lexerIdrun;
+	lexerStringMap["let"] = lexerIdlet;
+	lexerStringMap["also"] = lexerIdalso;
+	lexerStringMap["takeIf"] = lexerIdtakeIf;
+	lexerStringMap["takeUnless"] = lexerIdtakeUnless;
+	lexerStringMap["apply"] = lexerIdapply;
+	lexerStringMap["with"] = lexerIdwith;
+	lexerStringMap["data"] = lexerIddata;
+	lexerStringMap["it"] = lexerIdit;
+	lexerStringMap["_"] = lexerIdunderscore;
+	lexerStringMap["compareTo"] = lexerIdcompareTo;
+	lexerStringMap["unaryMinus"] = lexerIdunaryMinus;
+	lexerStringMap["unaryPlus"] = lexerIdunaryPlus;
+	lexerStringMap["not"] = lexerIdnot;
+	lexerStringMap["listOfNotNull"] = lexerIdlistOfNotNull;
+	lexerStringMap["arrayOfNotNull"] = lexerIdarrayOfNotNull;
+	lexerStringMap["mutableListOfNotNull"] = lexerIdmutableListOfNotNull;
+	lexerStringMap["setOfNotNull"] = lexerIdsetOfNotNull;
+	lexerStringMap["mutableSetOfNotNull"] = lexerIdmutableSetOfNotNull;
 	/*
 	lexerStringMap["unaryPlus"] = lexerIdunaryPlus;
 	lexerStringMap["unaryMinus"] = lexerIdunaryMinus;
@@ -372,6 +410,7 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	newDefaultClassesMap.clear();
 	newGenericClassesMap.clear();
 	typealiasMap.clear();
+	classAliasMap.clear();
 
 	hasError = false;
 	canBreakContinue = false;
@@ -383,6 +422,8 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	typealiasStackTrace.clear();
 
 	closureCount = 0;
+	currentClosureNode = nullptr;
+	closureScopes.clear();
 	continuePos = 0;
 	breakPos = 0;
 	jumpIfNullNode = nullptr;
@@ -436,6 +477,7 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	createSetPool.destroy();
 	createMapPool.destroy();
 	pairPool.destroy();
+	destructurePool.destroy();
 	whenNodePool.destroy();
 	functionAccessPool.destroy();
 	classDeclarationAllocator.destroy();
@@ -472,8 +514,10 @@ void ParserContext::warning(uint32_t line, const std::string &message) {
 		(*onWarning)(mes);
 		return;
 	}
-	std::cerr << mode->path << ":" << line << ": Warning " << message
-	          << std::endl;
+	if (showWarnings) {
+		std::cerr << mode->path << ":" << line << ": Warning " << message
+		          << std::endl;
+	}
 }
 
 HasClassIdNode *ParserContext::findDeclaration(in_func, uint32_t line,
@@ -494,7 +538,13 @@ HasClassIdNode *ParserContext::findDeclaration(in_func, uint32_t line,
 				closure_->parameter->parameters.insert(
 				    closure_->parameter->parameters.begin(), node->declaration);
 				closure_->scopes[0][nameId] = node->declaration;
-				closure_->objects.insert(closure_->objects.begin(), node);
+				auto objNode = context.varPool.push(line, node->declaration, false, false);
+				objNode->classId = node->classId;
+				objNode->classDeclaration = node->declaration->classDeclaration;
+				closure_->objects.insert(closure_->objects.begin(), objNode);
+			}
+			if (!node->declaration->isGlobal && !node->declaration->isVal) {
+				node->declaration->isCapturedByClosure = true;
 			}
 			return node;
 		}
@@ -513,7 +563,13 @@ HasClassIdNode *ParserContext::findDeclaration(in_func, uint32_t line,
 					    closure->parameter->parameters.begin(),
 					    node->declaration);
 					closure->scopes[0][nameId] = node->declaration;
-					closure->objects.insert(closure->objects.begin(), node);
+					auto objNode = context.varPool.push(line, node->declaration, false, false);
+					objNode->classId = node->classId;
+					objNode->classDeclaration = node->declaration->classDeclaration;
+					closure->objects.insert(closure->objects.begin(), objNode);
+				}
+				if (!node->declaration->isVal) {
+					node->declaration->isCapturedByClosure = true;
 				}
 				return node;
 			}
@@ -545,15 +601,21 @@ HasClassIdNode *ParserContext::findDeclaration(in_func, uint32_t line,
 isNotStatic:;
 	throw ParserError(
 	    line,
-	    name +
+	    std::string(name) +
 	        " is not static\nHint: Non-static members require an instance to "
 	        "be accessed");
 }
 
 DeclarationNode *ParserContext::makeDeclarationNode(
-    in_func, uint32_t line, LexerStringId baseName, const std::string &name,
+    in_func, uint32_t line, LexerStringId baseName, std::string_view name,
     ClassDeclaration *classDeclaration, bool isVal, bool isGlobal,
     bool nullable, bool addToScope, bool loadId) {
+	std::string_view storedName;
+	if (baseName < context.lexerString.size() && name == context.lexerString[baseName]) {
+		storedName = context.lexerString[baseName];
+	} else {
+		storedName = context.stringArena.allocateView(name);
+	}
 	if (context.currentClosureNode) {
 		if (isGlobal) {
 			throw ParserError(
@@ -568,7 +630,7 @@ DeclarationNode *ParserContext::makeDeclarationNode(
 			if (it != scope.end()) {
 				throw ParserError(
 				    line,
-				    "Redefinition of variable '" + context.lexerString[baseName] +
+				    std::string("Redefinition of variable '") + std::string(context.lexerString[baseName]) +
 				        "'. Previous definition here: " +
 				        it->second->mode->path + ":" +
 				        std::to_string(it->second->line) +
@@ -577,7 +639,7 @@ DeclarationNode *ParserContext::makeDeclarationNode(
 			}
 		}
 		DeclarationNode *node = declarationNodePool.push(
-		    line, context.currentClassId, baseName, name, classDeclaration,
+		    line, context.currentClassId, baseName, storedName, classDeclaration,
 		    isVal, isGlobal, nullable);
 		context.currentClosureNode->newDeclaration.push_back(node);
 		node->classId = Autolang::DefaultClass::nullClassId;
@@ -608,7 +670,7 @@ DeclarationNode *ParserContext::makeDeclarationNode(
 		if (it != scope.end()) {
 			throw ParserError(
 			    line,
-			    "Redefinition of variable '" + context.lexerString[baseName] +
+			    std::string("Redefinition of variable '") + std::string(context.lexerString[baseName]) +
 			        "'. Previous definition here: " + it->second->mode->path +
 			        ":" + std::to_string(it->second->line) +
 			        "\nHint: Use a different variable name or remove duplicate "
@@ -616,7 +678,7 @@ DeclarationNode *ParserContext::makeDeclarationNode(
 		}
 	}
 	DeclarationNode *node =
-	    declarationNodePool.push(line, context.currentClassId, baseName, name,
+	    declarationNodePool.push(line, context.currentClassId, baseName, storedName,
 	                             classDeclaration, isVal, isGlobal, nullable);
 	node->classId = Autolang::DefaultClass::nullClassId;
 	node->id = loadId ? funcInfo->declaration++ : 0;

@@ -14,6 +14,55 @@ fun testWhen() {
 		is Int -> {}
 		else -> assert(false)
 	}
+	val events = ["CREATE", "PAY", "PACK", "VERIFY", "SHIP"]
+	var state = "START"
+	var successCount = 0
+	for (event in events) {
+		when (state) {
+			"START" -> {
+				if (event == "CREATE") {
+					state = "CREATED"
+					successCount++
+				} else {
+					state = "REJECTED"
+					break
+				}
+			}
+			"CREATED" -> {
+				if (event == "PAY") {
+					state = "PAID"
+					successCount++
+				} else {
+					state = "REJECTED"
+					break
+				}
+			}
+			"PAID" -> {
+				if (event == "VERIFY") {
+					state = "VERIFIED"
+					successCount++
+				} else {
+					state = "REJECTED"
+					break
+				}
+			}
+			"VERIFIED" -> {
+				if (event == "PACK") {
+					state = "PACKED"
+					successCount++
+				} else {
+					state = "REJECTED"
+					break
+				}
+			}
+			else -> {
+				state = "REJECTED"
+				break
+			}
+		}
+	}
+	assert(state == "REJECTED" && successCount == 2, "State machine transition failed")
+
 	println("Passed ${__FUNC__}")
 }
 

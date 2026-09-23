@@ -37,8 +37,23 @@ typealias ChainedFloat = MyFloat
 
 // 7. Typealias for function types
 typealias IntToString = (Int) -> String
-typealias BinaryOp = (Int, Int) -> Int
-typealias Pet = Animal
+class PetAnimal() {
+	fun sound(): String {
+		return "Animal sound"
+	}
+}
+
+class PetDog extends PetAnimal {
+	constructor() {
+		super()
+	}
+	@override
+	fun sound(): String {
+		return "Go"
+	}
+}
+
+typealias Pet = PetAnimal
 
 // 8. Multiple typealiases in same file
 typealias Coordinate = Array<Float>
@@ -117,14 +132,17 @@ fun testTypealiasGeneric() {
 	assert(list.size() == 4)
 
 	// Set typealias
-	val set: StringSet = {"a", "b", "c"}
+	val set: StringSet = Set<String>()
+	set.add("a")
+	set.add("b")
+	set.add("c")
 	assert(set is StringSet)
 	assert(set is Set<String>)
 	assert(set.contains("a"))
 	assert(!set.contains("z"))
 
 	// Map typealias
-	val scores: ScoreMap = {"Alice": 95.5, "Bob": 87.0}
+	val scores: ScoreMap = mapOf("Alice" to 95.5, "Bob" to 87.0)
 	assert(scores is ScoreMap)
 	assert(scores is Map<String, Float>)
 	assert(scores.get("Alice") == 95.5)
@@ -178,13 +196,13 @@ fun testTypealiasChaining() {
 }
 
 fun testTypealiasWithInheritance() {
-	val pet: Pet = Dog()
+	val pet: Pet = PetDog()
 	assert(pet is Pet)
-	assert(pet is Animal)
+	assert(pet is PetAnimal)
 	assert(pet.sound() == "Go")
 
 	// Upcast through typealias
-	assert(getPetSound(Dog()) == "Go")
+	assert(getPetSound(PetDog()) == "Go")
 
 	println("Passed ${__FUNC__}")
 }
@@ -276,24 +294,24 @@ fun testBuiltInAIAliases() {
 	assert(ml is Array<Bool>)
 
 	// Map / Dictionary
-	val hm: HashMap<String, Int> = {"x": 1}
+	val hm: HashMap<String, Int> = mapOf("a" to 1)
 	assert(hm is Map<String, Int>)
-	val dict: Dictionary<String, Float> = {"pi": 3.14}
+	val dict: Dictionary<String, Float> = mapOf("pi" to 3.14)
 	assert(dict is Map<String, Float>)
-	val dshort: Dict<String, Bool> = {"ok": true}
+	val dshort: Dict<String, Bool> = mapOf("flag" to true)
 	assert(dshort is Map<String, Bool>)
-	val tm: TreeMap<String, Int> = {"a": 1}
+	val tm: TreeMap<String, Int> = mapOf("count" to 10)
 	assert(tm is Map<String, Int>)
-	val mm: MutableMap<String, String> = {"k": "v"}
+	val mm: MutableMap<String, String> = mapOf("k" to "v")
 	assert(mm is Map<String, String>)
 
 	// Set
-	val hs: HashSet<Int> = {1, 2}
+	val hs: HashSet<Int> = setOf(1, 2, 3)
 	assert(hs is Set<Int>)
-	val ts: TreeSet<String> = {"a"}
-	assert(ts is Set<String>)
-	val ms: MutableSet<Int> = {10}
-	assert(ms is Set<Int>)
+	val ms: MutableSet<String> = setOf("a", "b")
+	assert(ms is Set<String>)
+	val ts: TreeSet<Float> = setOf(1.5, 2.5)
+	assert(ts is Set<Float>)
 
 	// Optional
 	val optNull: Optional<Int> = null
@@ -308,7 +326,7 @@ fun testBuiltInAIAliases() {
 	// Chaining
 	val scores: List<Double> = [1.0, 2.0]
 	assert(scores is Array<Float>)
-	val mapping: Dictionary<String, List<Integer>> = {"nums": [1, 2]}
+	val mapping: Dictionary<String, List<Integer>> = mapOf("k" to [1, 2])
 	assert(mapping is Map<String, Array<Int>>)
 
 	// Lowercase types

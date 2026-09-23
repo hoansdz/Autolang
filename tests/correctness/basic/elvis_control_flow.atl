@@ -1,0 +1,75 @@
+// Test elvis with break
+fun testElvisBreak() {
+    val m = mapOf("a" to 1, "b" to 2)
+    var sum = 0
+    val keys = ["a", "unknown", "b"]
+    for (k in keys) {
+        val v = m[k] ?: break
+        sum += v
+    }
+    assert(sum == 1)
+}
+
+// Test elvis with return
+fun helperReturn(m: Map<String, Int>, key: String): Int {
+    val v = m[key] ?: return -1
+    return v * 2
+}
+
+fun testElvisReturn() {
+    val m = mapOf("x" to 10)
+    assert(helperReturn(m, "x") == 20)
+    assert(helperReturn(m, "y") == -1)
+}
+
+// Test elvis with throw
+fun helperThrow(m: Map<String, Int>, key: String): Int {
+    val v = m[key] ?: throw Exception("Key not found")
+    return v
+}
+
+fun testElvisThrow() {
+    val m = mapOf("ok" to 99)
+    assert(helperThrow(m, "ok") == 99)
+    var caught = false
+    try {
+        helperThrow(m, "missing")
+    } catch (e: Exception) {
+        caught = true
+    }
+    assert(caught)
+}
+
+// Test elvis with continue and kotlin.math.abs
+fun testElvisContinue() {
+    val internal = mapOf("TX101" to 1500, "TX102" to 2400, "TX103" to 3100, "TX104" to 4500, "TX105" to 1200)
+    val gateway = mapOf("TX101" to 1500, "TX102" to 2000, "TX104" to 4500, "TX106" to 900)
+    val keys = listOf("TX101", "TX102", "TX103", "TX104", "TX105")
+
+    var mismatchCount = 0
+    var missingCount = 0
+    var totalRiskAmount = 0
+
+    for (id in keys) {
+        val internalAmt = internal[id] ?: continue
+        val gatewayAmt = gateway[id]
+        if (gatewayAmt != null) {
+            if (internalAmt != gatewayAmt) {
+                mismatchCount++
+                totalRiskAmount += kotlin.math.abs(internalAmt - gatewayAmt)
+            }
+        } else {
+            missingCount++
+            totalRiskAmount += internalAmt
+        }
+    }
+
+    val output = "MISMATCH:$mismatchCount,MISSING:$missingCount,RISK:$totalRiskAmount"
+    assert(output == "MISMATCH:1,MISSING:2,RISK:4700")
+}
+
+testElvisBreak()
+testElvisReturn()
+testElvisThrow()
+testElvisContinue()
+println("Passed testElvisControlFlow")

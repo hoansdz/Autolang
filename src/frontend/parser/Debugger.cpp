@@ -130,6 +130,35 @@ initial:;
 		case Lexer::TokenType::STRING:
 		case Lexer::TokenType::COLON_COLON:
 		case Lexer::TokenType::IDENTIFIER: {
+			if (token->indexData == lexerIddata) {
+				size_t peek = i;
+				Lexer::Token *nextToken = nullptr;
+				if (nextTokenSameLine(&nextToken, context.tokens, peek, token->line) &&
+				    nextToken->type == Lexer::TokenType::CLASS) {
+					i = peek;
+					token = nextToken;
+					if (context.currentClassId) {
+						throw ParserError(token->line,
+						                  "Error: Class declarations are not "
+						                  "allowed inside other class\nHint: Move "
+						                  "class declaration to top-level scope");
+					}
+					if (context.currentFunctionId != context.mainFunctionId) {
+						throw ParserError(token->line,
+						                  "Error: Class declarations are not "
+						                  "allowed inside function\nHint: Move class "
+						                  "declaration to top-level scope");
+					}
+					if (context.currentClosureNode) {
+						throw ParserError(token->line,
+						                  "Error: Class declarations are not "
+						                  "allowed inside closure\nHint: Move class "
+						                  "declaration to top-level scope");
+					}
+					auto node = loadClass(in_data, i);
+					return nullptr;
+				}
+			}
 			if (!isInFunction) {
 				goto err_call_func;
 			}
@@ -462,9 +491,7 @@ initial:;
 			goto initial;
 		}
 		case Lexer::TokenType::SEMI_COLON: {
-			throw ParserError(token->line,
-			                  "Semicolon ';' is not supported in "
-			                  "Autolang\nHint: Remove ';' from your code");
+			return nullptr;
 		}
 		default:
 			throw ParserError(
@@ -547,6 +574,11 @@ bool loadBody(in_func, SmallVector<ExprNode *, 8> &nodes, size_t &i,
 			}
 		}
 	}
+	if (context.autoCloseBracketsOnEof && !context.hasError) {
+		if (createScope)
+			context.getCurrentFunctionInfo(in_data)->popBackScope();
+		return true;
+	}
 	throw ParserError(
 	    firstLine,
 	    "Expected } but not found\nHint: Close the block with a matching '}' "
@@ -558,15 +590,21 @@ void ensureEndline(in_func, size_t &i) {
 		return;
 	Lexer::Token *token = &context.tokens[i];
 	if (nextTokenSameLine(&token, context.tokens, i, token->line)) {
+		bool hadSemicolon = false;
+		while (token->type == Lexer::TokenType::SEMI_COLON) {
+			hadSemicolon = true;
+			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
+				--i;
+				return;
+			}
+		}
 		if (token->type == Lexer::TokenType::RBRACE) {
 			--i;
 			return;
 		}
-		if (token->type == Lexer::TokenType::SEMI_COLON) {
+		if (hadSemicolon) {
 			--i;
-			throw ParserError(context.tokens[i].line,
-			                  "Semicolon ';' is not supported in "
-			                  "Autolang\nHint: Remove ';' from your code");
+			return;
 		}
 		std::string line = token->toString(context);
 		while (nextTokenSameLine(&token, context.tokens, i, token->line)) {
@@ -577,7 +615,7 @@ void ensureEndline(in_func, size_t &i) {
 		throw ParserError(
 		    context.tokens[i].line,
 		    "Multiple commands are not allowed on a single line: " + line +
-		        "\nHint: Separate commands onto distinct lines");
+		        "\nHint: Separate commands onto distinct lines or use ';'");
 	}
 	--i;
 }
@@ -669,8 +707,7 @@ bool hasItIdentifierAtCurrentBraceLevel(const ParserContext &context,
 					              tokens[k - 1].type == Lexer::TokenType::QMARK_DOT)) {
 						break;
 					}
-					if (tokens[k].indexData < context.lexerString.size() &&
-					    context.lexerString[tokens[k].indexData] == "it") {
+					if (tokens[k].indexData == lexerIdit) {
 						return true;
 					}
 				}

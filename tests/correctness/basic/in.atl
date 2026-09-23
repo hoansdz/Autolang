@@ -30,11 +30,10 @@ fun testInExpression() {
 	assert(!(0 in list))
 
 	// in with Set<String>
-	val set = <String> {
-		"Hello everyone",
-		"My name is John",
-		"My name is John",  // duplicates collapsed
-	}
+	val set = Set<String>()
+	set.add("Hello everyone")
+	set.add("My name is John")
+	set.add("My name is John")
 	assert("My name is John" in set)
 	assert("Hello everyone" in set)
 	assert(!("f" in set))

@@ -225,6 +225,9 @@ ExprNode *RuntimeCastNode::optimize(in_func) {
 	    compile.classes[classId]->inheritance.get(value->classId)) {
 		return this;
 	}
+	if (value->classId == DefaultClass::nullClassId && (isSafeCast || isTargetNullable || nullable)) {
+		return this;
+	}
 	throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) + " to " +
 	           compile.classes[classId]->getName(compile) +
 	           ": no inheritance relationship\nHint: Runtime cast 'as' requires source and target types to share an inheritance relationship.");
@@ -235,16 +238,23 @@ void RuntimeCastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	value->putBytecodes(in_data, bytecodes);
 	if (value->classId == classId ||
 	    compile.classes[value->classId]->inheritance.get(classId) ||
-	    classId == DefaultClass::anyClassId) {
+	    classId == DefaultClass::anyClassId ||
+	    (value->classId == DefaultClass::nullClassId && (isSafeCast || isTargetNullable || nullable))) {
 		return;
 	}
-	bytecodes.emplace_back(nullable ? Opcode::SAFE_CAST : Opcode::UNSAFE_CAST);
+	if (isSafeCast) {
+		bytecodes.emplace_back(Opcode::SAFE_CAST);
+	} else if (isTargetNullable || nullable) {
+		bytecodes.emplace_back(Opcode::UNSAFE_CAST_NULLABLE);
+	} else {
+		bytecodes.emplace_back(Opcode::UNSAFE_CAST);
+	}
 	put_opcode_u32(bytecodes, classId);
 }
 
 ExprNode *RuntimeCastNode::copy(in_func) {
 	return context.runtimeCastPool.push(
-	    static_cast<HasClassIdNode *>(value->copy(in_data)), classId, nullable);
+	    static_cast<HasClassIdNode *>(value->copy(in_data)), classId, isSafeCast, isTargetNullable);
 }
 
 RuntimeCastNode::~RuntimeCastNode() { deleteNode(value); }

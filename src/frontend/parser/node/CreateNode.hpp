@@ -14,24 +14,27 @@ namespace Autolang {
 struct DeclarationNode : HasClassIdNode {
 	std::optional<ClassId> contextCallClassId;
 	LexerStringId baseName;
-	std::string name;
+	std::string_view name;
 	DeclarationOffset id;
 	Lexer::TokenType accessModifier = Lexer::TokenType::PUBLIC;
 	bool isGlobal;
 	bool isVal;
 	bool nullable;
+	bool declaredNullable = false;
 	bool mustInferenceNullable = false;
 	bool loaded = false;
 	bool isLateInit = false;
+	bool isCapturedByClosure = false;
 	uint32_t tokenIndex = 0;
 	DeclarationNode(uint32_t line, std::optional<ClassId> contextCallClassId,
-	                LexerStringId baseName, std::string name,
+	                LexerStringId baseName, std::string_view name,
 	                ClassDeclaration *classDeclaration, bool isVal,
 	                bool isGlobal, bool nullable)
 	    : HasClassIdNode(NodeType::DECLARATION, 0, line, classDeclaration),
 	      contextCallClassId(contextCallClassId), baseName(baseName),
-	      name(std::move(name)), isGlobal(isGlobal), isVal(isVal),
-	      nullable(nullable) {}
+	      name(name), isGlobal(isGlobal), isVal(isVal),
+	      nullable(nullable),
+	      declaredNullable(nullable || (classDeclaration && classDeclaration->nullable)) {}
 	ExprNode *optimize(in_func) override;
 	ExprNode *copy(in_func) override;
 	std::string toString(in_func, bool isStatic = false);

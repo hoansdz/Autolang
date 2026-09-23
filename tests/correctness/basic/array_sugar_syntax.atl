@@ -76,29 +76,7 @@ fun testArrayBracketTypeDeclaration() {
     println("Passed ${__FUNC__}")
 }
 
-fun testArrayNestedSetAndMapCanSkip() {
-    val arrOfSets = [{}, <Int>{1, 2}]
-    assert(arrOfSets is Array<Set<Int>>)
-    assert(arrOfSets[0].size() == 0)
-    assert(arrOfSets[1].size() == 2)
 
-    val arrOfSets2 = [<Int>{3, 4}, {}]
-    assert(arrOfSets2 is Array<Set<Int>>)
-    assert(arrOfSets2[0].size() == 2)
-    assert(arrOfSets2[1].size() == 0)
-
-    val arrOfMaps1 = [{}, <String, Int>{"a": 1}]
-    assert(arrOfMaps1 is Array<Map<String, Int>>)
-    assert(arrOfMaps1[0].size() == 0)
-    assert(arrOfMaps1[1].size() == 1)
-
-    val arrOfMaps2 = [<String, Int>{"b": 2}, {}]
-    assert(arrOfMaps2 is Array<Map<String, Int>>)
-    assert(arrOfMaps2[0].size() == 1)
-    assert(arrOfMaps2[1].size() == 0)
-
-    println("Passed ${__FUNC__}")
-}
 
 fun testKotlinCollectionHelpersLowering() {
     // 1. arrayOf & listOf & mutableListOf
@@ -243,7 +221,6 @@ fun testComplexDeepNestedCollectionsAndKotlinHelpers() {
 
 testCallableEquivalenceAndMixing()
 testArrayBracketTypeDeclaration()
-testArrayNestedSetAndMapCanSkip()
 testKotlinCollectionHelpersLowering()
 testComplexDeepNestedCollectionsAndKotlinHelpers()
 

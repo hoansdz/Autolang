@@ -87,10 +87,7 @@ fun testBlockWithCollectionsAndMutations() {
             buffer.add(doubled)
             sum += doubled
         }
-        val metadata = {
-            "count": buffer.length(),
-            "total": sum
-        }
+        val metadata = mapOf("count" to buffer.length(), "total" to sum)
         metadata.get("total")!
     }}
 
@@ -129,15 +126,12 @@ fun testDeeplyNestedBlocksWithExceptionsAndPipelines() {
             when (intermediate) {
                 100 -> {
                     val subVal = if (y > 5) {
-                        val tempMap: Map<String, Int> = {
-                            "alpha": intermediate + y,
-                            "beta": intermediate - y
-                        }
+                        val tempMap = mapOf("alpha" to intermediate + y, "beta" to intermediate - y)
                         tempMap.get("alpha")! * 2
                     } else if (y == 0) {
                         throw Exception("y cannot be zero in deep branch")
                     } else {
-                        val setNums: Set<Int> = {y, y + 1, y + 2}
+                        val setNums = setOf(y, y + 1, y + 2)
                         setNums.size() * 10
                     }
                     subVal + 50

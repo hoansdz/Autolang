@@ -44,14 +44,14 @@ ExprNode *UnknowNode::resolve(in_func) {
 		}
 
 		throwError("Cannot find global variable or function '" +
-		           context.lexerString[nameId] +
+		           std::string(context.lexerString[nameId]) +
 		           "'\nHint: Check symbol spelling or verify whether it is declared in global scope.");
 	}
 
 	{
 		auto it = context.defaultClassMap.find(nameId);
 		if (it != context.defaultClassMap.end()) {
-			auto result = context.classAccessPool.push(line, it->second);
+			auto result = context.classAccessPool.push(line, it->second, this->explicitNullable);
 			return result;
 		}
 	}
@@ -59,7 +59,15 @@ ExprNode *UnknowNode::resolve(in_func) {
 	{
 		auto it = context.typealiasMap.find(nameId);
 		if (it != context.typealiasMap.end()) {
-			auto result = context.classAccessPool.push(line, *(it->second->classDeclaration->classId));
+			auto result = context.classAccessPool.push(line, *(it->second->classDeclaration->classId), this->explicitNullable);
+			return result;
+		}
+	}
+
+	{
+		auto it = context.classAliasMap.find(context.lexerString[nameId]);
+		if (it != context.classAliasMap.end()) {
+			auto result = context.classAccessPool.push(line, it->second, this->explicitNullable);
 			return result;
 		}
 	}
@@ -165,7 +173,32 @@ ExprNode *UnknowNode::resolve(in_func) {
 			}
 		}
 	}
-	throwError("Cannot find variable or symbol '" + context.lexerString[nameId] +
+	{
+		auto funcInfo = context.functionInfo[contextCallFuncId];
+		if (funcInfo) {
+			auto varNode = funcInfo->findDeclaration(in_data, line, nameId, justFindStaticMember);
+			if (varNode) {
+				if (static_cast<AccessNode *>(varNode)->nullable)
+					static_cast<AccessNode *>(varNode)->nullable = nullable;
+				ExprNode::deleteNode(this);
+				return varNode;
+			}
+		}
+	}
+	if (autoDeclare) {
+		std::string_view name = context.lexerString[nameId];
+		bool isGlobal = (contextCallFuncId == context.mainFunctionId && !context.currentClassId);
+		auto declNode = context.makeDeclarationNode(
+		    in_data, line, nameId, name, nullptr, /*isVal=*/false,
+		    isGlobal, /*nullable=*/true, /*addToScope=*/true, /*loadId=*/true);
+		declNode->tokenIndex = tokenIndex;
+		declNode->mustInferenceNullable = true;
+		auto varNode = context.varPool.push(line, declNode, true, true);
+		varNode->isInitDeclaration = true;
+		ExprNode::deleteNode(this);
+		return varNode;
+	}
+	throwError("Cannot find variable or symbol '" + std::string(context.lexerString[nameId]) +
 	           "'\nHint: Check symbol spelling, ensure it is in scope or declared before usage.");
 }
 
@@ -193,9 +226,11 @@ ExprNode *UnknowNode::copy(in_func) {
 			                                    genericDeclaration->classId);
 		}
 	}
-	return context.unknowNodePool.push(line, tokenIndex, context.currentClassId,
-	                                   contextCallFuncId, nameId, nullable,
-	                                   justFindStaticMember, forceGlobal);
+	auto newNode = context.unknowNodePool.push(line, tokenIndex, context.currentClassId,
+	                                           contextCallFuncId, nameId, nullable,
+	                                           justFindStaticMember, forceGlobal);
+	newNode->autoDeclare = autoDeclare;
+	return newNode;
 }
 
 void UnknowNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
@@ -204,7 +239,9 @@ void UnknowNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 
 ExprNode *WhileNode::resolve(in_func) {
 	condition = static_cast<HasClassIdNode *>(condition->resolve(in_data));
+	for (auto &cast : trueCasts) cast.apply();
 	body.resolve(in_data);
+	for (auto &cast : trueCasts) cast.restore();
 	return this;
 }
 
@@ -240,7 +277,9 @@ ExprNode *WhileNode::optimize(in_func) {
 		throwError("Cannot use expression of type '" +
 		           condition->getClassName(in_data) +
 		           "' as a condition, expected 'Bool'\nHint: Ensure the loop condition evaluates to a 'Bool' value.");
+	for (auto &cast : trueCasts) cast.apply();
 	body.optimize(in_data);
+	for (auto &cast : trueCasts) cast.restore();
 	return this;
 }
 
@@ -248,6 +287,7 @@ ExprNode *WhileNode::copy(in_func) {
 	auto newNode = context.whilePool.push(line);
 	newNode->condition =
 	    static_cast<HasClassIdNode *>(condition->copy(in_data));
+	newNode->trueCasts = trueCasts;
 	newNode->body.nodes.reserve(body.nodes.size());
 	for (auto node : body.nodes) {
 		newNode->body.nodes.push_back(node->copy(in_data));
@@ -284,6 +324,9 @@ ExprNode *ReturnNode::resolve(in_func) {
 ExprNode *ReturnNode::optimize(in_func) {
 	if (loaded) {
 		return this;
+	}
+	if (context.currentClosureNode && context.currentClosureNode->funcId) {
+		funcId = *context.currentClosureNode->funcId;
 	}
 	auto func = compile.functions[funcId];
 	auto funcInfo = context.functionInfo[funcId];

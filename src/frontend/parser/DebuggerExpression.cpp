@@ -46,6 +46,11 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 			default:
 				break;
 		};
+		if (left->kind == NodeType::SKIP || left->kind == NodeType::RET ||
+		    left->kind == NodeType::THROW) {
+			--i;
+			return left;
+		}
 		int precedence = getPrecedence(token->type);
 		if (precedence == -1 || precedence < minPrecedence)
 			break;
@@ -64,6 +69,17 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 			    "Provide a valid right operand expression after operator");
 		}
 		HasClassIdNode *right = loadExpression(in_data, precedence + 1, i);
+		if (op == Lexer::TokenType::UNSAFE_CAST ||
+		    op == Lexer::TokenType::SAFE_CAST ||
+		    op == Lexer::TokenType::IS ||
+		    op == Lexer::TokenType::NOT_IS) {
+			if (i + 1 < context.tokens.size() &&
+			    context.tokens[i + 1].line == context.tokens[i].line &&
+			    context.tokens[i + 1].type == Lexer::TokenType::QMARK) {
+				++i;
+				right->setNullable(true);
+			}
+		}
 		switch (op) {
 			case Lexer::TokenType::DOT_DOT_LT: {
 				left = context.rangeNode.push(firstLine, left, right, true);
@@ -146,6 +162,7 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 		case Lexer::TokenType::MINUS_MINUS:
 		case Lexer::TokenType::PLUS:
 		case Lexer::TokenType::EXMARK:
+		case Lexer::TokenType::NOT:
 		case Lexer::TokenType::MINUS: {
 			auto op = token->type;
 			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
@@ -201,24 +218,8 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 					    firstLine, classDeclaration, std::move(list));
 					break;
 				}
-				case Lexer::TokenType::LBRACE: {
-					auto closure = loadClosure(in_data, i);
-					if (inputVecs.size() == 1) {
-						if (!inputVecs[0]->classId.has_value()) {
-							inputVecs[0]->template load<true>(in_data);
-						}
-						if (inputVecs[0]->classId.has_value() &&
-						    *inputVecs[0]->classId == DefaultClass::functionClassId) {
-							closure->inferFrom(in_data, inputVecs[0]);
-						} else {
-							closure->classDeclaration->inputClassId[0] = inputVecs[0];
-						}
-					}
-					node = closure;
-					break;
-				}
 				default: {
-					throw ParserError(firstLine, "Expected '[' or '{' after <Type>");
+					throw ParserError(firstLine, "Expected '[' after <Type>");
 				}
 			}
 			break;
@@ -258,10 +259,33 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 			node = loadTryCatch(in_data, i, true);
 			break;
 		}
+		case Lexer::TokenType::BREAK:
+		case Lexer::TokenType::CONTINUE: {
+			if (!context.canBreakContinue)
+				throw ParserError(
+				    token->line,
+				    "'" + Lexer::Token(0, token->type).toString(context) +
+				        "' only allowed inside a loop\nHint: Move 'break' or "
+				        "'continue' inside a 'for' or 'while' loop");
+			node = context.skipNodePool.push(token->type, token->line);
+			break;
+		}
+		case Lexer::TokenType::RETURN: {
+			node = loadReturn(in_data, i);
+			break;
+		}
+		case Lexer::TokenType::THROW: {
+			node = loadThrow(in_data, i);
+			break;
+		}
 		default:
 			throw ParserError(firstLine, "Expected value but token '" +
 			                                 token->toString(context) +
 			                                 "' found");
+	}
+	if (node->kind == NodeType::SKIP || node->kind == NodeType::RET ||
+	    node->kind == NodeType::THROW) {
+		return node;
 	}
 	bool addOptionalNode = false;
 	while (true) {
@@ -349,13 +373,39 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 					addOptionalNode = true;
 				if (!nextToken(&token, context.tokens, i) ||
 				    (!expect(token, Lexer::TokenType::IDENTIFIER) &&
-				     !expect(token, Lexer::TokenType::TO))) {
+				     !expect(token, Lexer::TokenType::TO) &&
+				     !expect(token, Lexer::TokenType::NOT))) {
 					--i;
 					throw ParserError(
 					    context.tokens[i].line,
 					    "Expected identifier after '.' but not found");
 				}
 				auto temp = loadIdentifier(in_data, i, false);
+				if (node->kind == NodeType::UNKNOW) {
+					std::string_view nodeName =
+					    context.lexerString[static_cast<UnknowNode *>(node)->nameId];
+					std::string propStr = token->toString(context);
+					std::string_view propName = propStr;
+					char combinedBuf[128];
+					std::string_view combined;
+					if (nodeName.length() + 1 + propName.length() < sizeof(combinedBuf)) {
+						memcpy(combinedBuf, nodeName.data(), nodeName.length());
+						combinedBuf[nodeName.length()] = '.';
+						memcpy(combinedBuf + nodeName.length() + 1, propName.data(), propName.length());
+						combined = std::string_view(combinedBuf, nodeName.length() + 1 + propName.length());
+					} else {
+						std::string s = std::string(nodeName) + "." + std::string(propName);
+						combined = context.stringArena.allocateView(s);
+					}
+
+					auto aliasIt = context.classAliasMap.find(combined);
+					if (aliasIt != context.classAliasMap.end()) {
+						ExprNode::deleteNode(temp);
+						ExprNode::deleteNode(node);
+						node = context.classAccessPool.push(token->line, aliasIt->second);
+						break;
+					}
+				}
 				switch (temp->kind) {
 					case NodeType::VAR: {
 						node = context.getPropPool.push(
@@ -419,11 +469,23 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 						auto varNode = static_cast<AccessNode *>(node);
 						if (varNode->declaration) {
 							if (varNode->declaration->isVal) {
-								ExprNode::deleteNode(value);
-								throw ParserError(
-								    token->line,
-								    varNode->declaration->name +
-								        " cannot be changed because it's val");
+								if (!context.strictMode) {
+									varNode->declaration->isVal = false;
+									varNode->isVal = false;
+									if (context.currentClosureNode && !varNode->declaration->isGlobal) {
+										varNode->declaration->isCapturedByClosure = true;
+									}
+									context.warning(
+									    token->line,
+									    std::string(varNode->declaration->name) +
+									        " was declared as 'val' but is reassigned; treating as 'var' because strictMode is disabled");
+								} else {
+									ExprNode::deleteNode(value);
+									throw ParserError(
+									    token->line,
+									    std::string(varNode->declaration->name) +
+									        " cannot be changed because it's val");
+								}
 							}
 						}
 						return context.setValuePool.push(
@@ -525,18 +587,20 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			auto classDeclaration =
 			    loadClassDeclaration(in_data, i, token->line, true);
 			auto funcInfo = context.getCurrentFunctionInfo(in_data);
-			if (!nextToken(&token, context.tokens, i) ||
-			    !expect(token, Lexer::TokenType::LPAREN)) {
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				return nullptr;
+			}
+			bool isTrailingClosure = false;
+			if (expect(token, Lexer::TokenType::LBRACE)) {
+				if (context.allowTrailingClosure) {
+					isTrailingClosure = true;
+				}
+			}
+			if (!isTrailingClosure && !expect(token, Lexer::TokenType::LPAREN)) {
 				bool isGeneric = classDeclaration->isGenerics(in_data);
 				if (!isGeneric) {
 					context.allClassDeclarations.push_back(classDeclaration);
-					// std::cerr << "Created unknownode: "
-					//           << classDeclaration->getName(in_data) << " "
-					//           << classDeclaration->isGenerics(in_data) <<
-					//           "\n";
-					// std::cerr << ParserContext::mode->path << ":" <<
-					// token->line
-					//           << "\n";
 				}
 				--i;
 				auto name = classDeclaration->getName(in_data);
@@ -549,11 +613,6 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 				    context.currentFunctionId, newNameId, true,
 				    context.justFindStaticMember);
 				if (isGeneric) {
-					// std::cerr << "Created unknownode: "
-					//           << classDeclaration->getName(in_data) << "\n";
-					// std::cerr << ParserContext::mode->path << ":" <<
-					// token->line
-					//           << "\n";
 					if (context.currentClassId) {
 						auto classInfo = context.getCurrentClassInfo(in_data);
 						if (classInfo && classInfo->genericData &&
@@ -570,11 +629,29 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 				}
 				return node;
 			}
-			// std::cerr << "Created callnode "
-			//           << classDeclaration->getName(in_data) << "\n";
 			size_t tokenIndex = i;
 			std::vector<LexerStringId> argumentNames;
-			auto arguments = loadListArgument(in_data, i, &argumentNames);
+			std::vector<HasClassIdNode *> arguments;
+			if (isTrailingClosure) {
+				addThisToClosure(in_data, i);
+				auto closureNode = loadClosure(in_data, i);
+				arguments.push_back(closureNode);
+				argumentNames.push_back(0);
+			} else {
+				arguments = loadListArgument(in_data, i, &argumentNames);
+				if (context.allowTrailingClosure && nextToken(&token, context.tokens, i) &&
+				    expect(token, Lexer::TokenType::LBRACE)) {
+					addThisToClosure(in_data, i);
+					auto closureNode = loadClosure(in_data, i);
+					arguments.push_back(closureNode);
+					argumentNames.push_back(0);
+				} else {
+					if (context.allowTrailingClosure) {
+						--i;
+						token = &context.tokens[i];
+					}
+				}
+			}
 			bool isForceNonNull = nextTokenIfMarkNonNull(in_data, i);
 			auto callNode = context.callNodePool.push(
 			    firstLine, tokenIndex, context.currentClassId, nullptr,
@@ -942,26 +1019,88 @@ ConstValueNode *findConstValueNode(in_func, size_t &i, LexerStringId nameId) {
 
 ConstValueNode *loadNumber(in_func, size_t &i) {
 	Lexer::Token *token = &context.tokens[i];
+	std::string_view data = context.lexerString[token->indexData];
+	bool isHex = (data.size() >= 2 && data[0] == '0' && (data[1] == 'x' || data[1] == 'X'));
+	bool isBin = (data.size() >= 2 && data[0] == '0' && (data[1] == 'b' || data[1] == 'B'));
+	bool isOct = (data.size() >= 2 && data[0] == '0' && (data[1] == 'o' || data[1] == 'O'));
+
 	uint32_t type = Autolang::DefaultClass::intClassId;
-	const std::string &data = context.lexerString[token->indexData];
-	const char *s = data.c_str();
-	while (*s) {
-		switch (*s) {
-			case '.':
-			case 'e':
-			case 'E': {
-				type = Autolang::DefaultClass::floatClassId;
-				goto foundFlag;
+	if (!isHex && !isBin && !isOct) {
+		for (char c : data) {
+			switch (c) {
+				case '.':
+				case 'e':
+				case 'E': {
+					type = Autolang::DefaultClass::floatClassId;
+					goto foundFlag;
+				}
 			}
 		}
-		++s;
+		if (!data.empty()) {
+			switch (data.back()) {
+				case 'f':
+				case 'F':
+				case 'd':
+				case 'D':
+					type = Autolang::DefaultClass::floatClassId;
+					break;
+				default:
+					break;
+			}
+		}
 	}
 foundFlag:
-	return type == Autolang::DefaultClass::intClassId
-	           ? context.constValuePool.push(
-	                 token->line, static_cast<int64_t>(std::stoll(data)))
-	           : context.constValuePool.push(
-	                 token->line, static_cast<double>(std::stod(data)));
+	std::string strData(data);
+	try {
+		if (type == Autolang::DefaultClass::floatClassId) {
+			if (!strData.empty()) {
+				switch (strData.back()) {
+					case 'f':
+					case 'F':
+					case 'd':
+					case 'D':
+						strData.pop_back();
+						break;
+					default:
+						break;
+				}
+			}
+			return context.constValuePool.push(token->line, static_cast<double>(std::stod(strData)));
+		} else {
+			while (!strData.empty()) {
+				switch (strData.back()) {
+					case 'l':
+					case 'L':
+					case 'u':
+					case 'U':
+						strData.pop_back();
+						continue;
+					default:
+						break;
+				}
+				break;
+			}
+			if (strData.empty()) {
+				return context.constValuePool.push(token->line, static_cast<int64_t>(0));
+			}
+			if (isHex) {
+				return context.constValuePool.push(token->line, static_cast<int64_t>(std::stoull(strData, nullptr, 16)));
+			}
+			if (isBin) {
+				return context.constValuePool.push(token->line, static_cast<int64_t>(std::stoull(strData.substr(2), nullptr, 2)));
+			}
+			if (isOct) {
+				return context.constValuePool.push(token->line, static_cast<int64_t>(std::stoull(strData.substr(2), nullptr, 8)));
+			}
+			try {
+				return context.constValuePool.push(token->line, static_cast<int64_t>(std::stoll(strData)));
+			} catch (const std::out_of_range &) {
+				return context.constValuePool.push(token->line, static_cast<int64_t>(std::stoull(strData)));
+			}
+		}
+	} catch (const std::exception &) {
+		throw ParserError(token->line, "Invalid numeric literal: " + std::string(data));
+	}
 }
 
 } // namespace Autolang

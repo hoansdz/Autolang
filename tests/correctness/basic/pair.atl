@@ -36,22 +36,16 @@ fun testPair() {
     assert(m2["x"] == 10)
     assert(m2["y"] == 20)
 
-    // 7. Map literal with 'to'
-    val m3 = { "name" to "Alice", "city" to "Hanoi" }
+    // 7. Map creation with 'to' via mapOf
+    val m3 = mapOf("name" to "Alice", "city" to "Hanoi")
     assert(m3.size() == 2)
     assert(m3["name"] == "Alice")
     assert(m3["city"] == "Hanoi")
 
-    // 8. Single entry Map literal with 'to'
-    val m4 = { "only" to 42 }
+    // 8. Single entry Map with 'to'
+    val m4 = mapOf("only" to 42)
     assert(m4.size() == 1)
     assert(m4["only"] == 42)
-
-    // 9. Mixed syntax in map literal: ':' and 'to'
-    val m5 = { "first": 1, "second" to 2 }
-    assert(m5.size() == 2)
-    assert(m5["first"] == 1)
-    assert(m5["second"] == 2)
 
     // 10. Iterating over map with destructuring
     var count = 0
@@ -59,6 +53,18 @@ fun testPair() {
         count = count + v
     }
     assert(count == 6)
+
+    // 11. Triple and tripleOf
+    val t1 = tripleOf("status", 200, true)
+    assert(t1.first == "status")
+    assert(t1.second == 200)
+    assert(t1.third == true)
+    assert(t1.toString() == "(status, 200, true)")
+
+    val t2 = Triple<Int, String, Float>(1, "one", 1.5)
+    assert(t2.first == 1)
+    assert(t2.second == "one")
+    assert(t2.third == 1.5)
 
     println("Passed testPair")
 }

@@ -401,6 +401,7 @@ resumeCallFrame:;
 			dispatchTable[Autolang::Opcode::CALL_DATA_CONTRUCTOR] =
 			    &&do_CALL_DATA_CONTRUCTOR;
 			dispatchTable[Autolang::Opcode::FOR_LIST] = &&do_FOR_LIST;
+			dispatchTable[Autolang::Opcode::FOR_STRING] = &&do_FOR_STRING;
 			dispatchTable[Autolang::Opcode::FOR_SET] = &&do_FOR_SET;
 			dispatchTable[Autolang::Opcode::FOR_MAP_KEY] = &&do_FOR_MAP_KEY;
 			dispatchTable[Autolang::Opcode::FOR_MAP_KEY_VALUE] =
@@ -409,6 +410,9 @@ resumeCallFrame:;
 			dispatchTable[Autolang::Opcode::NOT_IN_RANGE] = &&do_NOT_IN_RANGE;
 			dispatchTable[Autolang::Opcode::CREATE_RANGE_ARRAY] =
 			    &&do_CREATE_RANGE_ARRAY;
+			dispatchTable[Autolang::Opcode::DUP] = &&do_DUP;
+			dispatchTable[Autolang::Opcode::TAKE_IF_CHECK] = &&do_TAKE_IF_CHECK;
+			dispatchTable[Autolang::Opcode::TAKE_UNLESS_CHECK] = &&do_TAKE_UNLESS_CHECK;
 			dispatchTable[Autolang::Opcode::ADD_FINALLY_BLOCK] =
 			    &&do_ADD_FINALLY_BLOCK;
 			dispatchTable[Autolang::Opcode::REMOVE_FINALLY] =
@@ -439,6 +443,11 @@ resumeCallFrame:;
 			dispatchTable[Autolang::Opcode::STORE_GLOBAL] = &&do_STORE_GLOBAL;
 			dispatchTable[Autolang::Opcode::LOAD_LOCAL] = &&do_LOAD_LOCAL;
 			dispatchTable[Autolang::Opcode::STORE_LOCAL] = &&do_STORE_LOCAL;
+			dispatchTable[Autolang::Opcode::BOX_LOCAL] = &&do_BOX_LOCAL;
+			dispatchTable[Autolang::Opcode::BOXED_LOAD_LOCAL] =
+			    &&do_BOXED_LOAD_LOCAL;
+			dispatchTable[Autolang::Opcode::BOXED_STORE_LOCAL] =
+			    &&do_BOXED_STORE_LOCAL;
 			dispatchTable[Autolang::Opcode::LOCAL_LOAD_MEMBER] =
 			    &&do_LOCAL_LOAD_MEMBER;
 			dispatchTable[Autolang::Opcode::GLOBAL_LOAD_MEMBER] =
@@ -484,6 +493,8 @@ resumeCallFrame:;
 			dispatchTable[Autolang::Opcode::NOT_IS] = &&do_NOT_IS;
 			dispatchTable[Autolang::Opcode::SAFE_CAST] = &&do_SAFE_CAST;
 			dispatchTable[Autolang::Opcode::UNSAFE_CAST] = &&do_UNSAFE_CAST;
+			dispatchTable[Autolang::Opcode::UNSAFE_CAST_NULLABLE] =
+			    &&do_UNSAFE_CAST_NULLABLE;
 			dispatchTable[Autolang::Opcode::WAIT_INPUT] = &&do_WAIT_INPUT;
 			dispatchTable[Autolang::Opcode::LOAD_EXCEPTION] =
 			    &&do_LOAD_EXCEPTION;
@@ -823,6 +834,46 @@ resumeCallFrame:;
 			DISPATCH();
 		}
 		*container = getElement(newIndex);
+		(*container)->retain();
+		ip += 4;
+		DISPATCH();
+	}
+
+	do_FOR_STRING: {
+		AObject *strObj = stack.pop();
+		bool isGlobal = bytecodes[ip++] == Opcode::STORE_GLOBAL;
+		AObject **iterator;
+		AObject **container;
+		if (isGlobal) {
+			container = &globalVariables[get_u32(bytecodes, ip)];
+			iterator = &globalVariables[get_u32(bytecodes, ip)];
+		} else {
+			container = &stackAllocator[get_u32(bytecodes, ip)];
+			iterator = &stackAllocator[get_u32(bytecodes, ip)];
+		}
+		AString *str = (strObj && strObj->type == DefaultClass::stringClassId) ? strObj->str : nullptr;
+		uint32_t strLen = str ? str->size : 0;
+		if (*iterator == DefaultClass::nullObject) {
+			if (strLen == 0) {
+				ip = get_u32(bytecodes, ip);
+				DISPATCH();
+			}
+			*iterator = data.manager.createIntObject(0);
+			*container = notifier->createString(AString::from(str->data[0]));
+			(*container)->retain();
+			ip += 4;
+			DISPATCH();
+		}
+		data.manager.release(*container);
+		*container = nullptr;
+		uint32_t newIndex = ++(*iterator)->i;
+		if (newIndex >= strLen) {
+			data.manager.release(*iterator);
+			*iterator = nullptr;
+			ip = get_u32(bytecodes, ip);
+			DISPATCH();
+		}
+		*container = notifier->createString(AString::from(str->data[newIndex]));
 		(*container)->retain();
 		ip += 4;
 		DISPATCH();
@@ -1480,6 +1531,37 @@ resumeCallFrame:;
 		DISPATCH();
 	}
 
+	do_DUP: {
+		auto top = stack.top();
+		top->retain();
+		stack.push(top);
+		DISPATCH();
+	}
+
+	do_TAKE_IF_CHECK: {
+		auto cond = stack.pop();
+		bool ok = cond->b;
+		data.manager.release(cond);
+		if (!ok) {
+			auto val = stack.pop();
+			data.manager.release(val);
+			stack.push(Autolang::DefaultClass::nullObject);
+		}
+		DISPATCH();
+	}
+
+	do_TAKE_UNLESS_CHECK: {
+		auto cond = stack.pop();
+		bool ok = cond->b;
+		data.manager.release(cond);
+		if (ok) {
+			auto val = stack.pop();
+			data.manager.release(val);
+			stack.push(Autolang::DefaultClass::nullObject);
+		}
+		DISPATCH();
+	}
+
 	do_LOAD_CONST: {
 		stack.push(getConstObject(get_u32(bytecodes, ip)));
 		// std::cerr<<stack.top()<<" created\n";
@@ -1655,6 +1737,50 @@ resumeCallFrame:;
 		//           data.classes[obj->type]->getName(compile) <<
 		//           "\n";
 		stackAllocator.set(data.manager, pos, obj);
+		DISPATCH();
+	}
+
+	do_BOX_LOCAL: {
+		auto obj = stack.pop();
+		uint32_t pos = get_u32(bytecodes, ip);
+		auto box = notifier->createBox(obj);
+		box->retain();
+		if (obj) notifier->release(obj);
+		stackAllocator.set(data.manager, pos, box);
+		DISPATCH();
+	}
+
+	do_BOXED_LOAD_LOCAL: {
+		uint32_t pos = get_u32(bytecodes, ip);
+		AObject *box = stackAllocator[pos];
+		if (box && (box->flags & AObject::Flags::OBJ_IS_BOX)) {
+			AObject *inner = box->boxedValue;
+			if (inner) {
+				inner->retain();
+				stack.push(inner);
+			} else {
+				stack.push(notifier->getNullObject());
+			}
+		} else if (box) {
+			box->retain();
+			stack.push(box);
+		}
+		DISPATCH();
+	}
+
+	do_BOXED_STORE_LOCAL: {
+		auto obj = stack.pop();
+		uint32_t pos = get_u32(bytecodes, ip);
+		AObject *box = stackAllocator[pos];
+		if (box && (box->flags & AObject::Flags::OBJ_IS_BOX)) {
+			auto old = box->boxedValue;
+			box->boxedValue = obj;
+			if (obj) obj->retain();
+			if (old) data.manager.release(old);
+		} else {
+			stackAllocator.set(data.manager, pos, obj);
+		}
+		if (obj) notifier->release(obj);
 		DISPATCH();
 	}
 		DATA_STORE_DATA(LOCAL_STORE_LOCAL, stackAllocator, stackAllocator)
@@ -2060,6 +2186,21 @@ resumeCallFrame:;
 		auto obj = stack.top();
 		uint32_t classId = get_u32(bytecodes, ip);
 		if (obj->type == classId ||
+		    data.classes[obj->type]->inheritance.get(classId)) {
+			DISPATCH();
+		}
+		notifier->throwException("Cannot cast '" +
+		                         notifier->getClassName(obj->type) + "' to '" +
+		                         notifier->getClassName(classId) + "'");
+		data.manager.release(stack.pop());
+		goto resumeCallFrame;
+	}
+
+	do_UNSAFE_CAST_NULLABLE: {
+		auto obj = stack.top();
+		uint32_t classId = get_u32(bytecodes, ip);
+		if (obj->type == DefaultClass::nullClassId ||
+		    obj->type == classId ||
 		    data.classes[obj->type]->inheritance.get(classId)) {
 			DISPATCH();
 		}

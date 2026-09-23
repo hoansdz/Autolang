@@ -2,6 +2,8 @@
 #define LIBS_SET_CPP
 
 #include "set.hpp"
+#include "array.hpp"
+#include "map.hpp"
 #include "backend/vm/ANotifier.hpp"
 #include "frontend/ACompiler.hpp"
 #include "shared/DefaultClass.hpp"
@@ -307,7 +309,7 @@ AObject *for_each(NativeFuncInData) {
 
 AObject *to_array(NativeFuncInData) {
 	auto unorderedSetData = static_cast<AUnorderedSet *>(args[0]->data->data);
-	auto newArr = notifier.createArray(notifier.callFrame->func->returnId);
+	auto newArr = notifier.createArray(notifier.callFrame->func->returnId, unorderedSetData->type);
 
 	switch (unorderedSetData->type) {
 		case DefaultClass::intClassId: {
@@ -1026,6 +1028,292 @@ AObject *none_fn(NativeFuncInData) {
 		}
 	}
 	return notifier.createBool(true);
+}
+
+AObject *is_not_empty(NativeFuncInData) {
+	auto unorderedSetData = static_cast<AUnorderedSet *>(args[0]->data->data);
+	bool empty = false;
+	switch (unorderedSetData->type) {
+		case DefaultClass::intClassId:
+			empty = static_cast<IntHashSet *>(unorderedSetData->data)->empty();
+			break;
+		case DefaultClass::floatClassId:
+			empty = static_cast<FloatHashSet *>(unorderedSetData->data)->empty();
+			break;
+		case DefaultClass::stringClassId:
+			empty = static_cast<StringHashSet *>(unorderedSetData->data)->empty();
+			break;
+		default:
+			empty = static_cast<ObjectHashSet *>(unorderedSetData->data)->empty();
+			break;
+	}
+	return notifier.createBool(!empty);
+}
+
+AObject *plus_element(NativeFuncInData) {
+	auto res = clone(notifier, args, 1);
+	if (!res) return nullptr;
+	AObject *addArgs[2] = {res, args[1]};
+	add(notifier, addArgs, 2);
+	return res;
+}
+
+AObject *minus_element(NativeFuncInData) {
+	auto res = clone(notifier, args, 1);
+	if (!res) return nullptr;
+	AObject *rmArgs[2] = {res, args[1]};
+	remove(notifier, rmArgs, 2);
+	return res;
+}
+
+static inline AObject *setToArrayHelper(ANotifier &notifier, AObject *setObj) {
+	auto unorderedSetData = static_cast<AUnorderedSet *>(setObj->data->data);
+	auto newArr = notifier.createArray(DefaultClass::anyClassId, unorderedSetData->type);
+
+	switch (unorderedSetData->type) {
+		case DefaultClass::intClassId: {
+			auto s = static_cast<IntHashSet *>(unorderedSetData->data);
+			for (int64_t value : *s) {
+				notifier.arrayAdd(newArr, notifier.createInt(value));
+			}
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			auto s = static_cast<FloatHashSet *>(unorderedSetData->data);
+			for (double value : *s) {
+				notifier.arrayAdd(newArr, notifier.createFloat(value));
+			}
+			break;
+		}
+		case DefaultClass::stringClassId: {
+			auto s = static_cast<StringHashSet *>(unorderedSetData->data);
+			for (AObject *value : *s) {
+				notifier.arrayAdd(newArr, value);
+			}
+			break;
+		}
+		default: {
+			auto s = static_cast<ObjectHashSet *>(unorderedSetData->data);
+			for (AObject *value : *s) {
+				notifier.arrayAdd(newArr, value);
+			}
+			break;
+		}
+	}
+	return newArr;
+}
+
+static inline AObject *getArrayItem(ANotifier &notifier, AArray *array, size_t index) {
+	if (array->key == DefaultClass::intClassId) {
+		return notifier.createInt(array->intData[index]);
+	} else if (array->key == DefaultClass::floatClassId) {
+		return notifier.createFloat(array->floatData[index]);
+	} else {
+		return array->objData[index];
+	}
+}
+
+static inline void getElementsFromCollection(ANotifier &notifier, AObject *collection, std::vector<AObject *> &outList) {
+	if (!collection) return;
+	if (collection->flags & AObject::Flags::OBJ_IS_ARRAY) {
+		auto array = collection->array;
+		for (size_t i = 0; i < array->size; ++i) {
+			outList.push_back(getArrayItem(notifier, array, i));
+		}
+	} else if (collection->flags & AObject::Flags::OBJ_IS_SET) {
+		auto unorderedSetData = static_cast<AUnorderedSet *>(collection->data->data);
+		switch (unorderedSetData->type) {
+			case DefaultClass::intClassId: {
+				auto s = static_cast<IntHashSet *>(unorderedSetData->data);
+				for (int64_t val : *s) {
+					outList.push_back(notifier.createInt(val));
+				}
+				break;
+			}
+			case DefaultClass::floatClassId: {
+				auto s = static_cast<FloatHashSet *>(unorderedSetData->data);
+				for (double val : *s) {
+					outList.push_back(notifier.createFloat(val));
+				}
+				break;
+			}
+			case DefaultClass::stringClassId: {
+				auto s = static_cast<StringHashSet *>(unorderedSetData->data);
+				for (AObject *val : *s) {
+					outList.push_back(val);
+				}
+				break;
+			}
+			default: {
+				auto s = static_cast<ObjectHashSet *>(unorderedSetData->data);
+				for (AObject *val : *s) {
+					outList.push_back(val);
+				}
+				break;
+			}
+		}
+	}
+}
+
+AObject *subtract(NativeFuncInData) {
+	return difference(notifier, args, argSize);
+}
+
+AObject *join_to_string(NativeFuncInData) {
+	auto arr = setToArrayHelper(notifier, args[0]);
+	arr->retain();
+	std::vector<AObject *> arrArgs(argSize);
+	arrArgs[0] = arr;
+	for (size_t i = 1; i < argSize; ++i) {
+		arrArgs[i] = args[i];
+	}
+	auto res = array::join_to_string(notifier, arrArgs.data(), argSize);
+	notifier.release(arr);
+	return res;
+}
+
+AObject *contains_all(NativeFuncInData) {
+	std::vector<AObject *> elems;
+	getElementsFromCollection(notifier, args[1], elems);
+	for (auto elem : elems) {
+		AObject *cArgs[2] = {args[0], elem};
+		auto res = contains(notifier, cArgs, 2);
+		bool found = (res == notifier.getTrueObject());
+		notifier.release(res);
+		if (!found) {
+			return notifier.createBool(false);
+		}
+	}
+	return notifier.createBool(true);
+}
+
+AObject *add_all(NativeFuncInData) {
+	std::vector<AObject *> elems;
+	getElementsFromCollection(notifier, args[1], elems);
+	auto oldSize = size(notifier, args, 1)->i;
+	for (auto elem : elems) {
+		AObject *aArgs[2] = {args[0], elem};
+		add(notifier, aArgs, 2);
+		if (notifier.hasException()) return nullptr;
+	}
+	auto newSize = size(notifier, args, 1)->i;
+	return notifier.createBool(newSize > oldSize);
+}
+
+AObject *remove_all(NativeFuncInData) {
+	if (args[1]->type == DefaultClass::functionClassId) {
+		auto arr = setToArrayHelper(notifier, args[0]);
+		arr->retain();
+		auto array = arr->array;
+		bool modified = false;
+		for (size_t i = 0; i < array->size; ++i) {
+			auto item = getArrayItem(notifier, array, i);
+			item->retain();
+			auto res = notifier.callFunctionObject(args[1], item);
+			if (notifier.hasException()) {
+				notifier.release(item);
+				notifier.release(arr);
+				return nullptr;
+			}
+			if (res == notifier.getTrueObject()) {
+				AObject *rArgs[2] = {args[0], item};
+				remove(notifier, rArgs, 2);
+				modified = true;
+			}
+			notifier.release(res);
+			notifier.release(item);
+		}
+		notifier.release(arr);
+		return notifier.createBool(modified);
+	}
+
+	std::vector<AObject *> elems;
+	getElementsFromCollection(notifier, args[1], elems);
+	auto oldSize = size(notifier, args, 1)->i;
+	for (auto elem : elems) {
+		AObject *rArgs[2] = {args[0], elem};
+		remove(notifier, rArgs, 2);
+	}
+	auto newSize = size(notifier, args, 1)->i;
+	return notifier.createBool(newSize < oldSize);
+}
+
+AObject *retain_all(NativeFuncInData) {
+	std::vector<AObject *> otherElems;
+	getElementsFromCollection(notifier, args[1], otherElems);
+	auto arr = setToArrayHelper(notifier, args[0]);
+	arr->retain();
+	auto array = arr->array;
+	auto oldSize = size(notifier, args, 1)->i;
+	for (size_t i = 0; i < array->size; ++i) {
+		auto item = getArrayItem(notifier, array, i);
+		bool inOther = false;
+		for (auto o : otherElems) {
+			if (DefaultFunction::op_eqeq(item, o)) {
+				inOther = true;
+				break;
+			}
+		}
+		if (!inOther) {
+			AObject *rArgs[2] = {args[0], item};
+			remove(notifier, rArgs, 2);
+		}
+	}
+	notifier.release(arr);
+	auto newSize = size(notifier, args, 1)->i;
+	return notifier.createBool(newSize < oldSize);
+}
+
+AObject *count_fn(NativeFuncInData) {
+	auto arr = setToArrayHelper(notifier, args[0]);
+	arr->retain();
+	AObject *cArgs[2] = {arr, args[1]};
+	auto res = array::count_fn(notifier, cArgs, 2);
+	notifier.release(arr);
+	return res;
+}
+
+AObject *sum_of(NativeFuncInData) {
+	auto arr = setToArrayHelper(notifier, args[0]);
+	arr->retain();
+	AObject *cArgs[2] = {arr, args[1]};
+	auto res = array::sum_of(notifier, cArgs, 2);
+	notifier.release(arr);
+	return res;
+}
+
+AObject *max_or_null(NativeFuncInData) {
+	auto arr = setToArrayHelper(notifier, args[0]);
+	arr->retain();
+	auto res = array::max_or_null(notifier, &arr, 1);
+	notifier.release(arr);
+	return res;
+}
+
+AObject *min_or_null(NativeFuncInData) {
+	auto arr = setToArrayHelper(notifier, args[0]);
+	arr->retain();
+	auto res = array::min_or_null(notifier, &arr, 1);
+	notifier.release(arr);
+	return res;
+}
+
+AObject *group_by(NativeFuncInData) {
+	auto arr = setToArrayHelper(notifier, args[0]);
+	arr->retain();
+	AObject *cArgs[2] = {arr, args[1]};
+	auto res = array::group_by(notifier, cArgs, 2);
+	notifier.release(arr);
+	return res;
+}
+
+AObject *associate_by(NativeFuncInData) {
+	auto arr = setToArrayHelper(notifier, args[0]);
+	arr->retain();
+	AObject *cArgs[2] = {arr, args[1]};
+	auto res = array::associate_by(notifier, cArgs, 2);
+	notifier.release(arr);
+	return res;
 }
 
 } // namespace set

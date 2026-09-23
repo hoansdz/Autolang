@@ -79,6 +79,10 @@ void loadListGenericDeclarationType(in_func, size_t &i, uint32_t line,
                                     bool allowReturnVoid,
                                     std::vector<ClassDeclaration *> &inputVecs,
                                     bool &isGeneric);
+HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
+                                        NodeType canBeNodeType);
+HasClassIdNode *loadSet(in_func, size_t &i, HasClassIdNode *firstExpression);
+HasClassIdNode *loadMap(in_func, size_t &i, HasClassIdNode *firstExpression);
 void loadTypealias(in_func, size_t &i);
 HasClassIdNode *parsePrimary(in_func, size_t &i);
 HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i);

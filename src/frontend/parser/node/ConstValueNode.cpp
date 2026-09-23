@@ -37,6 +37,9 @@ void ConstValueNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 		bytecodes.emplace_back(obj->b ? Opcode::LOAD_TRUE : LOAD_FALSE);
 		return;
 	}
+	if (id == UINT32_MAX) {
+		this->optimize(in_data);
+	}
 	bytecodes.emplace_back(isLoadPrimary ? Opcode::LOAD_CONST_PRIMARY
 	                                     : Opcode::LOAD_CONST);
 	put_opcode_u32(bytecodes, id);

@@ -79,6 +79,18 @@ AObject *format(NativeFuncInData) {
 	return notifier.createString(std::string(buffer));
 }
 
+AObject *measure_time_millis(NativeFuncInData) {
+	auto funcObject = args[0];
+	auto start = std::chrono::steady_clock::now();
+	(void)notifier.callFunctionObject(funcObject);
+	if (notifier.hasException()) {
+		return nullptr;
+	}
+	auto end = std::chrono::steady_clock::now();
+	auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+	return notifier.createInt(static_cast<int64_t>(ms));
+}
+
 void init(ACompiler &compiler) {
 	compiler.registerBuiltInLibrary("std/time", R"###(
 @no_constructor
@@ -107,21 +119,15 @@ class Time {
     @native("time_format")
     static fun format(timestamp: Int, pattern: String = "%Y-%m-%d %H:%M:%S"): String
 
-    static fun measureTimeMillis(block: () -> Void): Int {
-        val start = Time.now()
-        block()
-        return Time.now() - start
-    }
+    @native("time_measure_time_millis")
+    static fun measureTimeMillis(block: () -> Void): Int
 }
 
 @native("time_sleep")
 fun sleep(ms: Int)
 
-fun measureTimeMillis(block: () -> Void): Int {
-    val start = Time.now()
-    block()
-    return Time.now() - start
-}
+@native("time_measure_time_millis")
+fun measureTimeMillis(block: () -> Void): Int
     )###",
 	                                LibraryConfig(),
 	                                ANativeMap({
@@ -130,6 +136,7 @@ fun measureTimeMillis(block: () -> Void): Int {
 	                                    {"now_nanos", &now_nanos},
 	                                    {"time_sleep", &sleep_ms},
 	                                    {"time_format", &format},
+	                                    {"time_measure_time_millis", &measure_time_millis},
 	                                }));
 }
 

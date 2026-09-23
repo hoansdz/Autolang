@@ -58,6 +58,17 @@ fun testStringFeatures() {
     assert(parts[1] == "two")
     assert(parts[2] == "three")
 
+    // 7. Kotlin String helpers: take, drop, removePrefix, removeSuffix, reversed
+    val sKt = "KotlinAutoLang"
+    assert(sKt.take(6) == "Kotlin")
+    assert(sKt.takeLast(4) == "Lang")
+    assert(sKt.drop(6) == "AutoLang")
+    assert(sKt.dropLast(4) == "KotlinAuto")
+    assert(sKt.removePrefix("Kotlin") == "AutoLang")
+    assert(sKt.removeSuffix("Lang") == "KotlinAuto")
+    assert("radar".reversed() == "radar")
+    assert("hello".reversed() == "olleh")
+
     println("Passed ${__FUNC__}")
 }
 

@@ -1,0 +1,159 @@
+@import("std/math")
+@import("std/regex")
+@import("std/json")
+@import("std/bytes")
+
+fun testString() {
+    val s = "Hello World"
+    assert(s.indexOf("world", 0, true) == 6, "String.indexOf ignoreCase failed")
+    assert(s.indexOf("WORLD", 0, false) == -1, "String.indexOf caseSensitive failed")
+    assert(s.contains("WORLD", true) == true, "String.contains ignoreCase failed")
+    assert(s.startsWith("world", 6, true) == true, "String.startsWith ignoreCase failed")
+    assert(s.endsWith("WORLD", true) == true, "String.endsWith ignoreCase failed")
+
+    val rep = s.replace("world", "Kotlin", true)
+    assert(rep == "Hello Kotlin", "String.replace ignoreCase failed")
+
+    val trimmed = "  abc  ".trimStart()
+    assert(trimmed == "abc  ", "String.trimStart failed")
+    val trimmedE = "  abc  ".trimEnd()
+    assert(trimmedE == "  abc", "String.trimEnd failed")
+
+    val firstChar = "hello".replaceFirstChar({ c: String -> c.uppercase() })
+    assert(firstChar == "Hello", "String.replaceFirstChar failed")
+
+    val tw = "123abc456".takeWhile({ c: String -> c != "a" && c != "b" && c != "c" })
+    assert(tw == "123", "String.takeWhile failed")
+
+    val dw = "123abc456".dropWhile({ c: String -> c != "a" && c != "b" && c != "c" })
+    assert(dw == "abc456", "String.dropWhile failed")
+
+    println("testString passed")
+}
+
+fun testArray() {
+    val arr = [10, 20, 30, 40, 20]
+    val rmSuccess = arr.remove(20)
+    assert(rmSuccess == true, "Array.remove element failed")
+    assert(arr.size() == 4, "Array.size after remove failed")
+    assert(arr.get(1) == 30, "Array element position after remove failed")
+
+    val popped = arr.removeAt(0)
+    assert(popped == 10, "Array.removeAt failed")
+    assert(arr.size() == 3, "Array.size after removeAt failed")
+
+    val toAdd = [50, 60]
+    arr.addAll(toAdd)
+    assert(arr.size() == 5, "Array.addAll failed")
+    assert(arr.containsAll([30, 50]) == true, "Array.containsAll failed")
+
+    val nums = [1, 2, 3, 4, 5]
+    val win = nums.windowed(3, 1, false)
+    assert(win.size() == 3, "Array.windowed failed")
+
+    val parts = nums.partition({ x: Int -> x % 2 == 0 })
+    assert(parts.first.size() == 2, "Array.partition evens failed")
+    assert(parts.second.size() == 3, "Array.partition odds failed")
+
+    val firstEven = nums.first({ x: Int -> x % 2 == 0 })
+    assert(firstEven == 2, "Array.first predicate failed")
+
+    val jStr = nums.joinToString("-", "[", "]", 3, "...")
+    assert(jStr == "[1-2-3-...]", "Array.joinToString failed: " + jStr)
+
+    println("testArray passed")
+}
+
+fun testSet() {
+    val s1 = setOf(1, 2, 3, 4)
+    val s2 = setOf(3, 4, 5)
+    val diff = s1.subtract(s2)
+    assert(diff.contains(1) && diff.contains(2), "Set.subtract failed")
+    assert(!diff.contains(3), "Set.subtract retains unwanted element")
+
+    val sum = s1.sumOf({ x: Int -> x * 10 })
+    assert(sum == 100, "Set.sumOf failed")
+
+    val maxVal = s1.maxOrNull()
+    assert(maxVal! == 4, "Set.maxOrNull failed")
+
+    println("testSet passed")
+}
+
+fun testMap() {
+    val m = mapOf("a" to 1, "b" to 2, "c" to 3)
+    val anyGt2 = m.any({ k, v -> v > 2 })
+    assert(anyGt2 == true, "Map.any failed")
+
+    val allGt0 = m.all({ k, v -> v > 0 })
+    assert(allGt0 == true, "Map.all failed")
+
+    val rmPair = m.remove("a", 1)
+    assert(rmPair == true, "Map.remove pair failed")
+    assert(!m.containsKey("a"), "Map still contains removed key")
+
+    val ent = m.entries()
+    assert(ent.size() == 2, "Map.entries failed")
+
+    println("testMap passed")
+}
+
+fun testPairAndAny() {
+    val p = 10 to "apple"
+    assert(p.first == 10 && p.second == "apple", "infix to operator failed")
+    val list = p.toList()
+    assert(list.size() == 2, "Pair.toList failed")
+
+    println("testPairAndAny passed")
+}
+
+fun testMath() {
+    assert(PI > 3.14 && PI < 3.15, "Math PI constant failed")
+    assert(E > 2.71 && E < 2.72, "Math E constant failed")
+
+    val r = round(3.6)
+    assert(r == 4.0, "Math.round failed")
+
+    val ri = roundToInt(3.6)
+    assert(ri == 4, "Math.roundToInt failed")
+
+    println("testMath passed")
+}
+
+fun testRegex() {
+    val re = Regex("\\d+")
+    assert(re.matchEntire("12345") == true, "Regex.matchEntire failed")
+    assert(re.matchEntire("123a") == false, "Regex.matchEntire should be false")
+
+    val found = re.find("abc 123 def 456", 7)
+    assert(found == "456", "Regex.find with startIndex failed")
+
+    val rep = re.replace("10 apples and 20 oranges", { m: String ->
+        (m.toInt() * 2).toString()
+    })
+    assert(rep == "20 apples and 40 oranges", "Regex.replace with transform failed")
+
+    println("testRegex passed")
+}
+
+fun testJson() {
+    val arr: Array<Int> = [1, 2, 3]
+    val jsonStr = Json.encodeToString(arr)
+    assert(jsonStr == "[1,2,3]", "Json.encodeToString failed: " + jsonStr)
+
+    println("testJson passed")
+}
+
+fun testKotlinStandardization() {
+    testString()
+    testArray()
+    testSet()
+    testMap()
+    testPairAndAny()
+    testMath()
+    testRegex()
+    testJson()
+    println("ALL KOTLIN STANDARDIZATION TESTS PASSED SUCCESSFULLY!")
+}
+
+testKotlinStandardization()

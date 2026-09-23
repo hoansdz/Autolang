@@ -149,100 +149,6 @@ enum TokenType : uint8_t {
 	INVALID
 };
 
-static const HashMap<std::string, TokenType> CAST = {
-    {"to", TokenType::TO},
-    {"var", TokenType::VAR},
-    {"val", TokenType::VAL},
-	{"let", TokenType::VAL},
-	{"const", TokenType::VAL},
-    {"not", TokenType::NOT},
-    {"while", TokenType::WHILE},
-    {"if", TokenType::IF},
-    {"else", TokenType::ELSE},
-    {"and", TokenType::AND_AND},
-    {"for", TokenType::FOR},
-    {"in", TokenType::IN_},
-    {"or", TokenType::OR_OR},
-    {"fun", TokenType::FUNC},
-    {"return", TokenType::RETURN},
-    {"continue", TokenType::CONTINUE},
-    {"break", TokenType::BREAK},
-    {"try", TokenType::TRY},
-    {"catch", TokenType::CATCH},
-    {"finally", TokenType::FINALLY},
-    {"throw", TokenType::THROW},
-    {"class", TokenType::CLASS},
-    {"static", TokenType::STATIC},
-    {"private", TokenType::PRIVATE},
-    {"public", TokenType::PUBLIC},
-    {"protected", TokenType::PROTECTED},
-    {"constructor", TokenType::CONSTRUCTOR},
-    {"extends", TokenType::EXTENDS},
-    {"native", TokenType::NATIVE},
-#ifdef __EMSCRIPTEN__
-    {"js_object", TokenType::JS_OBJECT},
-#elif __PYBIND11__
-    {"py_object", TokenType::PY_OBJECT},
-#endif
-    {"override", TokenType::OVERRIDE},
-    {"no_override", TokenType::NO_OVERRIDE},
-    {"no_constructor", TokenType::NO_CONSTRUCTOR},
-    {"no_extends", TokenType::NO_EXTENDS},
-    {"native_data", TokenType::NATIVE_DATA},
-    {"import", TokenType::IMPORT},
-    {"is", TokenType::IS},
-    {"!is", TokenType::NOT_IS},
-    {"!in", TokenType::NOT_IN},
-    {"as", TokenType::UNSAFE_CAST},
-    {"wait_input", TokenType::WAIT_INPUT},
-    {"lateinit", TokenType::LATEINIT},
-    {"enum", TokenType::ENUM},
-    {"const", TokenType::CONST},
-    {"when", TokenType::WHEN},
-	{"typealias", TokenType::TYPEALIAS},
-	{"operator", TokenType::OPERATOR},
-	{"implicit", TokenType::IMPLICIT},
-	{"until", TokenType::DOT_DOT_LT},
-
-    {"/*", TokenType::START_COMMENT},
-    {"&", TokenType::AND},
-    {"|", TokenType::OR},
-    {"&&", TokenType::AND_AND},
-    {"||", TokenType::OR_OR},
-    {"//", TokenType::COMMENT_SINGLE_LINE},
-    {"?", TokenType::QMARK},
-    {"?.", TokenType::QMARK_DOT},
-    {"??", TokenType::QMARK_QMARK},
-	{"?:", TokenType::QMARK_QMARK},
-    {"!", TokenType::EXMARK},
-    {".", TokenType::DOT},
-    {"..", TokenType::DOT_DOT},
-    {"..<", TokenType::DOT_DOT_LT},
-    {"+", TokenType::PLUS},
-    {"++", TokenType::PLUS_PLUS},
-    {"-", TokenType::MINUS},
-    {"--", TokenType::MINUS_MINUS},
-    {"*", TokenType::STAR},
-    {"/", TokenType::SLASH},
-    {"%", TokenType::PERCENT},
-    {"+=", TokenType::PLUS_EQUAL},
-    {"-=", TokenType::MINUS_EQUAL},
-    {"*=", TokenType::STAR_EQUAL},
-    {"/=", TokenType::SLASH_EQUAL},
-    {"%=", TokenType::PERCENT_EQUAL},
-    {"=", TokenType::EQUAL},
-    {"<", TokenType::LT},
-    {">", TokenType::GT},
-    {"==", TokenType::EQEQ},
-    {"!=", TokenType::NOTEQ},
-    {"===", TokenType::EQEQEQ},
-    {"!==", TokenType::NOTEQEQ},
-    {">=", TokenType::GTE},
-    {"<=", TokenType::LTE},
-    {"->", TokenType::MINUS_GT},
-	{"=>", TokenType::MINUS_GT},
-};
-
 struct Token {
 	uint32_t line;
 	LexerStringId indexData;
@@ -306,22 +212,25 @@ struct Context {
 	}
 };
 
-inline bool nextLine(Context &context, const char *lines, uint32_t &i);
-inline bool isOperator(char chr);
-inline bool isEndOfLine(Context &context, uint32_t i);
+inline bool isEndOfLine(Context &context, uint32_t i) { return i >= context.lineSize; }
+bool nextLine(Context &context, const char *lines, uint32_t &i);
+bool isOperator(char chr);
 void loadFile(ParserContext *mainContext, LibraryData *library);
 void load(ParserContext *mainContext, LibraryData *library,
           std::vector<Offset> *importOffset);
 template <bool addLParen, bool isChar, bool isRawString>
-inline void loadQuote(Context &context, uint32_t &i);
+void loadQuote(Context &context, uint32_t &i);
 std::string loadIdentifier(Context &context, uint32_t &i);
+std::string_view loadIdentifierView(Context &context, uint32_t &i);
 std::string loadNumber(Context &context, uint32_t &i);
-inline TokenType loadOp(Context &context, uint32_t &i);
-inline bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i);
-inline void pushAndEnsureBracket(Context &context, uint32_t &i);
-inline void pushIdentifier(Context &context, uint32_t &i);
-inline uint32_t pushLexerString(Context &context, std::string &&str);
-inline char getCloseBracket(char chr);
+TokenType loadOp(Context &context, uint32_t &i);
+bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i);
+void pushAndEnsureBracket(Context &context, uint32_t &i);
+void pushIdentifier(Context &context, uint32_t &i);
+uint32_t pushLexerString(Context &context, std::string &&str);
+uint32_t pushLexerString(Context &context, std::string_view str);
+uint32_t pushLexerString(Context &context, const char *str);
+char getCloseBracket(char chr);
 
 } // namespace Lexer
 } // namespace Autolang

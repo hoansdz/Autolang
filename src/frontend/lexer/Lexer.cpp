@@ -14,7 +14,71 @@
 namespace Autolang {
 namespace Lexer {
 
-bool isEndOfLine(Context &context, uint32_t i) { return i >= context.lineSize; }
+struct TransparentStringHash {
+	using is_transparent = void;
+	using is_avalanching = void;
+	uint64_t operator()(std::string_view sv) const noexcept {
+		return ankerl::unordered_dense::detail::wyhash::hash(sv.data(), sv.size());
+	}
+	uint64_t operator()(const std::string &s) const noexcept {
+		return ankerl::unordered_dense::detail::wyhash::hash(s.data(), s.size());
+	}
+	uint64_t operator()(const char *s) const noexcept {
+		return ankerl::unordered_dense::detail::wyhash::hash(s, std::strlen(s));
+	}
+};
+
+static const ankerl::unordered_dense::map<std::string, TokenType, TransparentStringHash, std::equal_to<>> KEYWORDS = {
+    {"to", TokenType::TO},
+    {"var", TokenType::VAR},
+    {"val", TokenType::VAL},
+    {"const", TokenType::CONST},
+    {"not", TokenType::NOT},
+    {"while", TokenType::WHILE},
+    {"if", TokenType::IF},
+    {"else", TokenType::ELSE},
+    {"and", TokenType::AND_AND},
+    {"for", TokenType::FOR},
+    {"in", TokenType::IN_},
+    {"or", TokenType::OR_OR},
+    {"fun", TokenType::FUNC},
+    {"return", TokenType::RETURN},
+    {"continue", TokenType::CONTINUE},
+    {"break", TokenType::BREAK},
+    {"try", TokenType::TRY},
+    {"catch", TokenType::CATCH},
+    {"finally", TokenType::FINALLY},
+    {"throw", TokenType::THROW},
+    {"class", TokenType::CLASS},
+    {"static", TokenType::STATIC},
+    {"private", TokenType::PRIVATE},
+    {"public", TokenType::PUBLIC},
+    {"protected", TokenType::PROTECTED},
+    {"constructor", TokenType::CONSTRUCTOR},
+    {"extends", TokenType::EXTENDS},
+    {"native", TokenType::NATIVE},
+#ifdef __EMSCRIPTEN__
+    {"js_object", TokenType::JS_OBJECT},
+#elif __PYBIND11__
+    {"py_object", TokenType::PY_OBJECT},
+#endif
+    {"override", TokenType::OVERRIDE},
+    {"no_override", TokenType::NO_OVERRIDE},
+    {"no_constructor", TokenType::NO_CONSTRUCTOR},
+    {"no_extends", TokenType::NO_EXTENDS},
+    {"native_data", TokenType::NATIVE_DATA},
+    {"import", TokenType::IMPORT},
+    {"is", TokenType::IS},
+    {"as", TokenType::UNSAFE_CAST},
+    {"wait_input", TokenType::WAIT_INPUT},
+    {"lateinit", TokenType::LATEINIT},
+    {"enum", TokenType::ENUM},
+    {"when", TokenType::WHEN},
+    {"typealias", TokenType::TYPEALIAS},
+    {"operator", TokenType::OPERATOR},
+    {"implicit", TokenType::IMPLICIT},
+    {"until", TokenType::DOT_DOT_LT},
+};
 
 void loadFile(ParserContext *mainContext, LibraryData *library) {
 	std::ifstream file(library->path, std::ios::binary | std::ios::ate);
@@ -237,6 +301,12 @@ start:;
 		return;
 	}
 	if (!nextLine(context, context.library->rawData.data(), i)) {
+		if (context.mainContext && context.mainContext->autoCloseBracketsOnEof) {
+			if (!context.bracketStack.empty() && context.bracketStack.back() == chr) {
+				context.bracketStack.pop_back();
+			}
+			return;
+		}
 		throw LexerError(firstLine, std::string("Expected '") +
 		                                getCloseBracket(chr) +
 		                                "' but not found\nHint: Close bracket with '" +
@@ -247,62 +317,131 @@ start:;
 
 TokenType loadOp(Context &context, uint32_t &i) {
 	char first = context.line[i++];
-	if (first == '!' && !isEndOfLine(context, i)) {
-		if (context.line[i] == 'i' && !isEndOfLine(context, i + 1)) {
-			if (context.line[i + 1] == 's' && (isEndOfLine(context, i + 2) || (!std::isalnum((unsigned char)context.line[i + 2]) && context.line[i + 2] != '_'))) {
-				i += 2;
-				return TokenType::NOT_IS;
+	switch (first) {
+		case '+':
+			if (!isEndOfLine(context, i)) {
+				if (context.line[i] == '+') { ++i; return TokenType::PLUS_PLUS; }
+				if (context.line[i] == '=') { ++i; return TokenType::PLUS_EQUAL; }
 			}
-			if (context.line[i + 1] == 'n' && (isEndOfLine(context, i + 2) || (!std::isalnum((unsigned char)context.line[i + 2]) && context.line[i + 2] != '_'))) {
-				i += 2;
-				return TokenType::NOT_IN;
+			return TokenType::PLUS;
+		case '-':
+			if (!isEndOfLine(context, i)) {
+				if (context.line[i] == '-') { ++i; return TokenType::MINUS_MINUS; }
+				if (context.line[i] == '=') { ++i; return TokenType::MINUS_EQUAL; }
+				if (context.line[i] == '>') { ++i; return TokenType::MINUS_GT; }
 			}
-		}
+			return TokenType::MINUS;
+		case '*':
+			if (!isEndOfLine(context, i) && context.line[i] == '=') {
+				++i; return TokenType::STAR_EQUAL;
+			}
+			return TokenType::STAR;
+		case '/':
+			if (!isEndOfLine(context, i)) {
+				if (context.line[i] == '/') { ++i; return TokenType::COMMENT_SINGLE_LINE; }
+				if (context.line[i] == '*') { ++i; return TokenType::START_COMMENT; }
+				if (context.line[i] == '=') { ++i; return TokenType::SLASH_EQUAL; }
+			}
+			return TokenType::SLASH;
+		case '%':
+			if (!isEndOfLine(context, i) && context.line[i] == '=') {
+				++i; return TokenType::PERCENT_EQUAL;
+			}
+			return TokenType::PERCENT;
+		case '=':
+			if (!isEndOfLine(context, i)) {
+				if (context.line[i] == '=') {
+					++i;
+					if (!isEndOfLine(context, i) && context.line[i] == '=') {
+						++i; return TokenType::EQEQEQ;
+					}
+					return TokenType::EQEQ;
+				}
+				if (context.line[i] == '>') { ++i; return TokenType::MINUS_GT; }
+			}
+			return TokenType::EQUAL;
+		case '!':
+			if (!isEndOfLine(context, i)) {
+				if (context.line[i] == 'i' && !isEndOfLine(context, i + 1)) {
+					if (context.line[i + 1] == 's' && (isEndOfLine(context, i + 2) || (!std::isalnum((unsigned char)context.line[i + 2]) && context.line[i + 2] != '_'))) {
+						i += 2;
+						return TokenType::NOT_IS;
+					}
+					if (context.line[i + 1] == 'n' && (isEndOfLine(context, i + 2) || (!std::isalnum((unsigned char)context.line[i + 2]) && context.line[i + 2] != '_'))) {
+						i += 2;
+						return TokenType::NOT_IN;
+					}
+				}
+				if (context.line[i] == '=') {
+					++i;
+					if (!isEndOfLine(context, i) && context.line[i] == '=') {
+						++i; return TokenType::NOTEQEQ;
+					}
+					return TokenType::NOTEQ;
+				}
+			}
+			return TokenType::EXMARK;
+		case '<':
+			if (!isEndOfLine(context, i) && context.line[i] == '=') {
+				++i; return TokenType::LTE;
+			}
+			return TokenType::LT;
+		case '>':
+			if (!isEndOfLine(context, i) && context.line[i] == '=') {
+				++i; return TokenType::GTE;
+			}
+			return TokenType::GT;
+		case '&':
+			if (!isEndOfLine(context, i) && context.line[i] == '&') {
+				++i; return TokenType::AND_AND;
+			}
+			return TokenType::AND;
+		case '|':
+			if (!isEndOfLine(context, i) && context.line[i] == '|') {
+				++i; return TokenType::OR_OR;
+			}
+			return TokenType::OR;
+		case '?':
+			if (!isEndOfLine(context, i)) {
+				if (context.line[i] == '.') { ++i; return TokenType::QMARK_DOT; }
+				if (context.line[i] == '?') { ++i; return TokenType::QMARK_QMARK; }
+				if (context.line[i] == ':') { ++i; return TokenType::QMARK_QMARK; }
+			}
+			return TokenType::QMARK;
+		case '.':
+			if (!isEndOfLine(context, i) && context.line[i] == '.') {
+				++i;
+				if (!isEndOfLine(context, i) && context.line[i] == '<') {
+					++i; return TokenType::DOT_DOT_LT;
+				}
+				return TokenType::DOT_DOT;
+			}
+			return TokenType::DOT;
+		case ':':
+			if (!isEndOfLine(context, i) && context.line[i] == ':') {
+				++i; return TokenType::COLON_COLON;
+			}
+			return TokenType::COLON;
+		default:
+			throw LexerError(context.linePos, std::string("Cannot find operator: ") + first + "\nHint: Check operator syntax");
 	}
-	if (isEndOfLine(context, i) || !isOperator(context.line[i])) {
-	loadFirst:;
-		std::string str = {first};
-		auto it = CAST.find(str);
-		if (it == CAST.end())
-			throw LexerError(context.linePos, "Cannot find operator: " + str + "\nHint: Check operator syntax");
-		return it->second;
-	}
-	char second = context.line[i++];
-	if (isEndOfLine(context, i) || second == '/' ||
-	    !isOperator(context.line[i])) {
-	loadSecond:;
-		std::string str = {first, second};
-		auto it = CAST.find(str);
-		if (it == CAST.end()) {
-			--i;
-			goto loadFirst;
-		}
-		return it->second;
-	}
-	char third = context.line[i++];
-	std::string str = {first, second, third};
-	auto it = CAST.find(str);
-	if (it == CAST.end()) {
-		--i;
-		goto loadSecond;
-	}
-	return it->second;
 }
 
 void pushIdentifier(Context &context, uint32_t &i) {
-	std::string identifier = loadIdentifier(context, i);
-	auto it = CAST.find(identifier);
-	if (it == CAST.end()) {
+	std::string_view identifier = loadIdentifierView(context, i);
+	auto it = KEYWORDS.find(identifier);
+	if (it == KEYWORDS.end()) {
 		context.tokens.emplace_back(
 		    context.linePos, TokenType::IDENTIFIER,
-		    pushLexerString(context, std::move(identifier)));
+		    pushLexerString(context, identifier));
 		return;
 	}
 	switch (it->second) {
+		case TokenType::NOT:
 		case TokenType::TO: {
 			context.tokens.emplace_back(
-			    context.linePos, TokenType::TO,
-			    pushLexerString(context, std::move(identifier)));
+			    context.linePos, it->second,
+			    pushLexerString(context, identifier));
 			return;
 		}
 		ESTIMATE_CASE_ADD(CLASS, classes)
@@ -329,8 +468,29 @@ void pushIdentifier(Context &context, uint32_t &i) {
 		case TokenType::IMPORT: {
 			if (context.tokens.empty() ||
 			    context.tokens.back().type != TokenType::AT_SIGN) {
-				throw LexerError(context.linePos,
-				                 "import must have @ in prefix\nHint: Write '@import' instead of 'import'");
+				if (!context.mainContext || !context.mainContext->ignoreForeignImports) {
+					throw LexerError(context.linePos,
+					                 "import must have @ in prefix\nHint: Write '@import' instead of 'import'");
+				}
+				size_t start = i;
+				while (start < context.lineSize && (context.line[start] == ' ' || context.line[start] == '\t')) {
+					start++;
+				}
+				size_t end = start;
+				while (end < context.lineSize && context.line[end] != ';' && context.line[end] != '\r' && context.line[end] != '\n') {
+					end++;
+				}
+				std::string restOfLine = std::string(context.line + start, end - start);
+				while (!restOfLine.empty() && (restOfLine.back() == ' ' || restOfLine.back() == '\t')) {
+					restOfLine.pop_back();
+				}
+				std::string fullImport = "import" + (restOfLine.empty() ? "" : " " + restOfLine);
+				if (context.mainContext) {
+					context.mainContext->warning(context.linePos,
+					    "Foreign import statement '" + fullImport + "' is ignored. AutoLang uses '@import(\"path\")' to import modules.");
+				}
+				i = (end < context.lineSize && context.line[end] == ';') ? (uint32_t)(end + 1) : (uint32_t)context.lineSize;
+				return;
 			}
 			// if (!context.mode->allowImportOtherFile) {
 			// 	throw LexerError(context.linePos, "@import isn't allowed here");
@@ -366,367 +526,22 @@ void pushIdentifier(Context &context, uint32_t &i) {
 	context.tokens.emplace_back(context.linePos, it->second);
 }
 
-std::string loadIdentifier(Context &context, uint32_t &i) {
+std::string_view loadIdentifierView(Context &context, uint32_t &i) {
 	for (; !isEndOfLine(context, i); ++i) {
 		char chr = context.line[i];
-		if (std::isblank(chr))
+		if (std::isblank(static_cast<unsigned char>(chr)))
 			break;
-		if (std::isalnum(chr) || chr == '_') {
+		if (std::isalnum(static_cast<unsigned char>(chr)) || chr == '_') {
 			continue;
 		}
 		break;
 	}
-	return std::string(context.line + context.pos, i - context.pos);
+	return std::string_view(context.line + context.pos, i - context.pos);
 }
 
-std::string loadNumber(Context &context, uint32_t &i) {
-	bool hasDot = false;
-	bool hasUnderscore = false;
-	bool scientific = false;
-	char chr;
-	for (; !isEndOfLine(context, i); ++i) {
-		chr = context.line[i];
-		switch (chr) {
-			case 'e':
-			case 'E': {
-				if (scientific)
-					throw LexerError(context.linePos,
-					                 "Unknown value: " +
- 					                     std::string(context.line + context.pos,
- 					                                 i - context.pos) +
-					                     "\nHint: Format scientific notation as '1e10' or '1.5e-3'");
-				scientific = true;
-				if (isEndOfLine(context, ++i)) {
-					--i;
-					goto ended;
-				}
-				chr = context.line[i];
-				if (std::isdigit(chr)) {
-					continue;
-				}
-				if (chr == '+' || chr == '-') {
-					if (isEndOfLine(context, ++i)) {
-						--i;
-						goto ended;
-					}
-					chr = context.line[i];
-					if (!std::isdigit(chr)) {
-						std::string num = std::string(
-						    context.line + context.pos, i - context.pos);
-						throw LexerError(context.linePos,
-						                 std::string("Expected digit after ") +
-						                     num + " but '" + chr +
-						                     "' was found\nHint: Provide a digit after exponent sign");
-					}
-					continue;
-				}
-				std::string num =
-				    std::string(context.line + context.pos, i - context.pos);
-				throw LexerError(
-				    context.linePos,
-				    std::string("Expected digit after exponent '") + num +
-				        "' but '" + chr + "' was found, did you mean " + num +
-				        "0 ?\nHint: Add a digit after exponent 'e' or 'E'");
-			}
-			case '_': {
-				hasUnderscore = true;
-				if (isEndOfLine(context, ++i)) {
-					--i;
-					goto ended;
-				}
-				chr = context.line[i];
-				if (!std::isdigit(chr)) {
-					std::string num = std::string(context.line + context.pos,
-					                              i - context.pos - 1);
-					throw LexerError(
-					    context.linePos,
-					    std::string("Expected digit after ") + num + "_ but '" +
-					        chr + "' was found, did you mean " + num + " ?\nHint: Do not end numeric separator '_' without trailing digits");
-				}
-				continue;
-			}
-			case '.': {
-				if (scientific) {
-					std::string num = std::string(context.line + context.pos,
-					                              i - context.pos);
-					throw LexerError(context.linePos,
- 					                 "Expected integer exponent after " + num +
- 					                     ", but '.' was found\nHint: Scientific exponent must be an integer");
-				}
-				if (hasDot) {
-					std::string num = std::string(context.line + context.pos,
-					                              i - context.pos);
-					throw LexerError(context.linePos,
-					                 "Expected digit after " + num +
- 					                     " but '.' was found, did you mean " +
- 					                     num + "0 ?\nHint: Remove extra decimal point '.'");
-				}
-				if (isEndOfLine(context, ++i) ||
-				    !std::isdigit(context.line[i])) {
-					--i;
-					goto ended;
-				}
-				hasDot = true;
-				continue;
-			}
-			default:
-				break;
-		}
-		if (std::isdigit(chr)) {
-			continue;
-		}
-		if (std::isalpha(chr)) {
-			throw LexerError(
-			    context.linePos,
-			    std::string("Unexpected character '") + chr +
-			        "' after numeric literal: " +
-			        std::string(context.line + context.pos, i - context.pos) +
-			        chr + "\nHint: Separate number from identifier with space or operator");
-		}
-		break;
-	}
-ended:;
-	if (hasUnderscore) {
-		std::string newStr;
-		size_t size = i - context.pos;
-		newStr.reserve(size);
-		auto pos = context.line + context.pos;
-		for (int j = 0; j < size; ++j) {
-			char chr = pos[j];
-			if (chr == '_')
-				continue;
-			newStr += chr;
-		}
-		return newStr;
-	}
-	return std::string(context.line + context.pos, i - context.pos);
+std::string loadIdentifier(Context &context, uint32_t &i) {
+	return std::string(loadIdentifierView(context, i));
 }
-
-template <bool addLParen, bool isChar, bool isRawString>
-void loadQuote(Context &context, uint32_t &i) {
-	constexpr char quote = isChar ? '\'' : '\"';
-	bool isSpecialCase = false;
-	std::string newStr;
-	char chr;
-back:;
-	for (; !isEndOfLine(context, i); ++i) {
-		chr = context.line[i];
-		if (!isSpecialCase) {
-			switch (chr) {
-				case '\\': {
-					if constexpr (!isRawString) {
-						isSpecialCase = true;
-					} else {
-						newStr += '\\';
-					}
-					continue;
-				}
-				//("Hello ${value + value} ${value}")
-				case '$': {
-					if (isEndOfLine(context, ++i)) {
-						if constexpr (isRawString) {
-							newStr += '$';
-							break;
-						}
-						throw LexerError(context.linePos,
-						                 std::string("Expected '") + quote +
-						                     "' but not found\nHint: Close string literal with '" + quote + "'");
-					}
-					if constexpr (isChar) {
-						throw LexerError(context.linePos,
-						                 "Invalid char literal: interpolation "
- 						                 "is not allowed\nHint: Char literal '...' cannot contain '${...}' string interpolation");
-						return;
-					}
-					auto linePos = context.linePos;
-					chr = context.line[i];
-					if (chr != '{') {
-						if (!std::isalpha(chr) && chr != '_') {
-							--i;
-							chr = context.line[i];
-							break;
-						}
-						if constexpr (addLParen) {
-							context.tokens.emplace_back(linePos,
-							                            TokenType::LPAREN);
-						}
-						context.tokens.emplace_back(
-						    linePos, TokenType::STRING,
-						    pushLexerString(context, std::move(newStr)));
-						context.tokens.emplace_back(linePos,
- 						                            TokenType::PLUS);
-						context.pos = i;
-						pushIdentifier(context, i);
-						if (context.line[i] == quote) {
-							if constexpr (!isRawString) {
-								++i;
-								if constexpr (addLParen) {
-									context.tokens.emplace_back(
-									    linePos, TokenType::RPAREN);
-								}
-								return;
-							} else {
-								if (!isEndOfLine(context, i + 2) &&
-								    context.line[i + 1] == '\"' &&
-								    context.line[i + 2] == '\"') {
-									i += 3;
-									if constexpr (addLParen) {
-										context.tokens.emplace_back(
-										    linePos, TokenType::RPAREN);
-									}
-									return;
-								}
-							}
-						}
-						context.tokens.emplace_back(linePos, TokenType::PLUS);
-						loadQuote<false, isChar, isRawString>(context, i);
-						if constexpr (addLParen) {
-							context.tokens.emplace_back(linePos,
-							                            TokenType::RPAREN);
-						}
-						return;
-					}
-					if constexpr (addLParen) {
-						context.tokens.emplace_back(linePos, TokenType::LPAREN);
-					}
-					context.tokens.emplace_back(
-					    linePos, TokenType::STRING,
-					    pushLexerString(context, std::move(newStr)));
-					context.tokens.emplace_back(linePos, TokenType::PLUS);
-					// '{' => '(' to support "Hello ${a}"  => ("Hello" + (a))
-					// instead of ("Hello" + {a})
-					uint32_t bracketReplacePos = context.tokens.size();
-					pushAndEnsureBracket(context, i);
-					context.tokens[bracketReplacePos].type = TokenType::LPAREN;
-					context.tokens.back().type = TokenType::RPAREN;
-					if constexpr (!isRawString) {
-						if (isEndOfLine(context, i)) {
-							throw LexerError(linePos,
-							                 std::string("Expected '") + quote +
-							                     "' but not found\nHint: Close string literal with '" + quote + "'");
-						}
-						if (context.line[i] == quote) {
-							++i;
-							if constexpr (addLParen) {
-								context.tokens.emplace_back(linePos,
-								                            TokenType::RPAREN);
-							}
-							return;
-						}
-					} else {
-						if (!isEndOfLine(context, i + 2) &&
-						    context.line[i] == '\"' &&
-						    context.line[i + 1] == '\"' &&
-						    context.line[i + 2] == '\"') {
-							i += 3;
-							if constexpr (addLParen) {
-								context.tokens.emplace_back(linePos,
-								                            TokenType::RPAREN);
-							}
-							return;
-						}
-					}
-
-					context.tokens.emplace_back(linePos, TokenType::PLUS);
-					loadQuote<false, isChar, isRawString>(context, i);
-					if constexpr (addLParen) {
-						context.tokens.emplace_back(linePos,
-						                            TokenType::RPAREN);
-					}
-					return;
-				}
-			}
-			if (chr == quote) {
-				++i;
-				if constexpr (isChar) {
-					switch (newStr.size()) {
-						case 0: {
-							context.tokens.emplace_back(
-							    context.linePos, TokenType::NUMBER,
-							    pushLexerString(context, "0"));
-							return;
-						}
-						case 1: {
-							uint8_t value = newStr[0];
-							context.tokens.emplace_back(
-							    context.linePos, TokenType::NUMBER,
-							    pushLexerString(context,
-							                    std::to_string(value)));
-							return;
-						}
-						default: {
-							throw LexerError(
-							    context.linePos,
-							    "Invalid char literal: expected "
-							    "exactly 1 Unicode code point, got " +
-							        std::to_string(newStr.size()) + "\nHint: Char literal must contain exactly one character, use \"...\" for strings");
-						}
-					}
-				}
-				if constexpr (!isRawString) {
-					context.tokens.emplace_back(
-					    context.linePos, TokenType::STRING,
-					    pushLexerString(context, std::move(newStr)));
-					return;
-				} else {
-					if (!isEndOfLine(context, i + 1) &&
-					    context.line[i] == '\"' &&
-					    context.line[i + 1] == '\"') {
-						i += 2;
-						context.tokens.emplace_back(
-						    context.linePos, TokenType::STRING,
-						    pushLexerString(context, std::move(newStr)));
-						return;
-					}
-					newStr += '\"';
-					newStr += context.line[i];
-					continue;
-				}
-			}
-			newStr += chr;
-			continue;
-		}
-		switch (chr) {
-			case 'n':
-				newStr += '\n';
-				break;
-			case 't':
-				newStr += '\t';
-				break;
-			case '\\':
-				newStr += '\\';
-				break;
-			case '\'':
-				newStr += '\'';
-				break;
-			case '\"':
-				newStr += '\"';
-				break;
-			case 'r':
-				newStr += '\r';
-				break;
-			case '0':
-				newStr += '\0';
-				break;
-			default:
-				throw LexerError(context.linePos,
-				                 std::string("Unknown escape sequence '\\") +
-				                     chr + "'\nHint: Use valid escape sequence such as \\n, \\t, \\\\, \\', \\\", \\r, \\0");
-		}
-		isSpecialCase = false;
-	}
-	if constexpr (isRawString) {
-		if (!nextLine(context, ParserContext::mode->rawData.data(), i)) {
-			throw LexerError(context.linePos,
-			                 std::string("Expected '\"\"\"' but not found\nHint: Close multiline raw string with '\"\"\"'"));
-		}
-		newStr += '\n';
-		goto back;
-	}
-	throw LexerError(context.linePos,
-	                 std::string("Expected '") + quote + "' but not found\nHint: Close string literal with '" + quote + "'");
-}
-
 
 bool isOperator(char chr) {
 	switch (chr) {
@@ -751,134 +566,24 @@ bool isOperator(char chr) {
 	}
 }
 
-std::string Token::toString(ParserContext &context) {
-	switch (type) {
-		case TokenType::VAR:
-			return "var";
-		case TokenType::VAL:
-			return "val";
-		case TokenType::FUNC:
-			return "func";
-		case TokenType::IF:
-			return "if";
-		case TokenType::FOR:
-			return "for";
-		case TokenType::WHILE:
-			return "while";
-		case TokenType::CONTINUE:
-			return "continue";
-		case TokenType::IN_:
-			return "in";
-		case TokenType::QMARK:
-			return "?";
-		case TokenType::QMARK_DOT:
-			return "?.";
-		case TokenType::QMARK_QMARK:
-			return "?:";
-		case TokenType::EXMARK:
-			return "!";
-		case TokenType::AT_SIGN:
-			return "@";
-		case TokenType::RETURN:
-			return "return";
-		case TokenType::AND_AND:
-			return "and";
-		case TokenType::OR_OR:
-			return "or";
-		case TokenType::NOT:
-			return "not";
-		case TokenType::DOT:
-			return ".";
-		case TokenType::DOT_DOT:
-			return "..";
-		case TokenType::COMMA:
-			return ",";
-		case TokenType::SEMI_COLON:
-			return ";";
-		case TokenType::COLON:
-			return ":";
-		case TokenType::COLON_COLON:
-			return "::";
-		case TokenType::EQUAL:
-			return "=";
-		case TokenType::LPAREN:
-			return "(";
-		case TokenType::RPAREN:
-			return ")";
-		case TokenType::LBRACKET:
-			return "[";
-		case TokenType::RBRACKET:
-			return "]";
-		case TokenType::LBRACE:
-			return "{";
-		case TokenType::RBRACE:
-			return "}";
-		case TokenType::PLUS:
-			return "+";
-		case TokenType::PLUS_PLUS:
-			return "++";
-		case TokenType::PLUS_EQUAL:
-			return "+=";
-		case TokenType::MINUS:
-			return "-";
-		case TokenType::MINUS_MINUS:
-			return "--";
-		case TokenType::MINUS_EQUAL:
-			return "-=";
-		case TokenType::STAR:
-			return "*";
-		case TokenType::STAR_EQUAL:
-			return "*=";
-		case TokenType::SLASH:
-			return "/";
-		case TokenType::SLASH_EQUAL:
-			return "/=";
-		case TokenType::PERCENT:
-			return "%";
-		case TokenType::PERCENT_EQUAL:
-			return "%=";
-		case TokenType::STRING:
-			return "\"" + context.lexerString[indexData] + "\"";
-		case TokenType::EQEQ:
-			return "==";
-		case TokenType::NOTEQ:
-			return "!=";
-		case TokenType::EQEQEQ:
-			return "===";
-		case TokenType::NOTEQEQ:
-			return "!==";
-		case TokenType::LT:
-			return "<";
-		case TokenType::GT:
-			return ">";
-		case TokenType::LTE:
-			return "<=";
-		case TokenType::GTE:
-			return ">=";
-		case TokenType::END_IMPORT:
-			return "END_IMPORT";
-		case TokenType::IDENTIFIER:
-			return context.lexerString[indexData];
-		case TokenType::NUMBER:
-			return context.lexerString[indexData];
-		default:
-			for (auto &pair : CAST) {
-				if (pair.second == type)
-					return pair.first;
-			}
-			return "UNKNOW";
-	}
-}
-
-uint32_t pushLexerString(Context &context, std::string &&str) {
+uint32_t pushLexerString(Context &context, std::string_view str) {
 	auto it = context.mainContext->lexerStringMap.find(str);
 	if (it == context.mainContext->lexerStringMap.end()) {
-		uint32_t id = context.mainContext->lexerString.size();
-		context.mainContext->lexerStringMap[str] = id;
-		context.mainContext->lexerString.push_back(std::move(str));
+		uint32_t id = static_cast<uint32_t>(context.mainContext->lexerString.size());
+		std::string_view arenaStr = context.mainContext->stringArena.allocateView(str);
+		context.mainContext->lexerStringMap[arenaStr] = id;
+		context.mainContext->lexerString.push_back(arenaStr);
 		return id;
 	}
 	return it->second;
+}
+
+uint32_t pushLexerString(Context &context, std::string &&str) {
+	return pushLexerString(context, std::string_view(str));
+}
+
+uint32_t pushLexerString(Context &context, const char *str) {
+	return pushLexerString(context, std::string_view(str));
 }
 
 bool nextLine(Context &context, const char *lines, uint32_t &i) {

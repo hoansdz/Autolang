@@ -1,0 +1,230 @@
+#include "frontend/lexer/Lexer.hpp"
+#include "frontend/parser/ParserContext.hpp"
+
+namespace Autolang {
+namespace Lexer {
+
+static const HashMap<std::string, TokenType> CAST = {
+    {"to", TokenType::TO},
+    {"var", TokenType::VAR},
+    {"val", TokenType::VAL},
+    {"const", TokenType::CONST},
+    {"not", TokenType::NOT},
+    {"while", TokenType::WHILE},
+    {"if", TokenType::IF},
+    {"else", TokenType::ELSE},
+    {"and", TokenType::AND_AND},
+    {"for", TokenType::FOR},
+    {"in", TokenType::IN_},
+    {"or", TokenType::OR_OR},
+    {"fun", TokenType::FUNC},
+    {"return", TokenType::RETURN},
+    {"continue", TokenType::CONTINUE},
+    {"break", TokenType::BREAK},
+    {"try", TokenType::TRY},
+    {"catch", TokenType::CATCH},
+    {"finally", TokenType::FINALLY},
+    {"throw", TokenType::THROW},
+    {"class", TokenType::CLASS},
+    {"static", TokenType::STATIC},
+    {"private", TokenType::PRIVATE},
+    {"public", TokenType::PUBLIC},
+    {"protected", TokenType::PROTECTED},
+    {"constructor", TokenType::CONSTRUCTOR},
+    {"extends", TokenType::EXTENDS},
+    {"native", TokenType::NATIVE},
+#ifdef __EMSCRIPTEN__
+    {"js_object", TokenType::JS_OBJECT},
+#elif __PYBIND11__
+    {"py_object", TokenType::PY_OBJECT},
+#endif
+    {"override", TokenType::OVERRIDE},
+    {"no_override", TokenType::NO_OVERRIDE},
+    {"no_constructor", TokenType::NO_CONSTRUCTOR},
+    {"no_extends", TokenType::NO_EXTENDS},
+    {"native_data", TokenType::NATIVE_DATA},
+    {"import", TokenType::IMPORT},
+    {"is", TokenType::IS},
+    {"!is", TokenType::NOT_IS},
+    {"!in", TokenType::NOT_IN},
+    {"as", TokenType::UNSAFE_CAST},
+    {"wait_input", TokenType::WAIT_INPUT},
+    {"lateinit", TokenType::LATEINIT},
+    {"enum", TokenType::ENUM},
+    {"when", TokenType::WHEN},
+    {"typealias", TokenType::TYPEALIAS},
+    {"operator", TokenType::OPERATOR},
+    {"implicit", TokenType::IMPLICIT},
+    {"until", TokenType::DOT_DOT_LT},
+
+    {"/*", TokenType::START_COMMENT},
+    {"&", TokenType::AND},
+    {"|", TokenType::OR},
+    {"&&", TokenType::AND_AND},
+    {"||", TokenType::OR_OR},
+    {"//", TokenType::COMMENT_SINGLE_LINE},
+    {"?", TokenType::QMARK},
+    {"?.", TokenType::QMARK_DOT},
+    {"??", TokenType::QMARK_QMARK},
+    {"?:", TokenType::QMARK_QMARK},
+    {"!", TokenType::EXMARK},
+    {".", TokenType::DOT},
+    {"..", TokenType::DOT_DOT},
+    {"..<", TokenType::DOT_DOT_LT},
+    {"+", TokenType::PLUS},
+    {"++", TokenType::PLUS_PLUS},
+    {"+=", TokenType::PLUS_EQUAL},
+    {"-", TokenType::MINUS},
+    {"--", TokenType::MINUS_MINUS},
+    {"-=", TokenType::MINUS_EQUAL},
+    {"*", TokenType::STAR},
+    {"*=", TokenType::STAR_EQUAL},
+    {"/", TokenType::SLASH},
+    {"/=", TokenType::SLASH_EQUAL},
+    {"%", TokenType::PERCENT},
+    {"%=", TokenType::PERCENT_EQUAL},
+    {"=", TokenType::EQUAL},
+    {"==", TokenType::EQEQ},
+    {"===", TokenType::EQEQEQ},
+    {"!=", TokenType::NOTEQ},
+    {"!==", TokenType::NOTEQEQ},
+    {"<", TokenType::LT},
+    {"<=", TokenType::LTE},
+    {">", TokenType::GT},
+    {">=", TokenType::GTE},
+    {"(", TokenType::LPAREN},
+    {")", TokenType::RPAREN},
+    {"[", TokenType::LBRACKET},
+    {"]", TokenType::RBRACKET},
+    {"{", TokenType::LBRACE},
+    {"}", TokenType::RBRACE},
+    {",", TokenType::COMMA},
+    {";", TokenType::SEMI_COLON},
+    {":", TokenType::COLON},
+    {"::", TokenType::COLON_COLON},
+    {"->", TokenType::MINUS_GT},
+    {"=>", TokenType::MINUS_GT},
+    {"@", TokenType::AT_SIGN},
+};
+
+std::string Token::toString(ParserContext &context) {
+	switch (type) {
+		case TokenType::VAR:
+			return "var";
+		case TokenType::VAL:
+			return "val";
+		case TokenType::FUNC:
+			return "func";
+		case TokenType::IF:
+			return "if";
+		case TokenType::FOR:
+			return "for";
+		case TokenType::WHILE:
+			return "while";
+		case TokenType::CONTINUE:
+			return "continue";
+		case TokenType::IN_:
+			return "in";
+		case TokenType::QMARK:
+			return "?";
+		case TokenType::QMARK_DOT:
+			return "?.";
+		case TokenType::QMARK_QMARK:
+			return "?:";
+		case TokenType::EXMARK:
+			return "!";
+		case TokenType::AT_SIGN:
+			return "@";
+		case TokenType::RETURN:
+			return "return";
+		case TokenType::AND_AND:
+			return "and";
+		case TokenType::OR_OR:
+			return "or";
+		case TokenType::NOT:
+			return "not";
+		case TokenType::DOT:
+			return ".";
+		case TokenType::DOT_DOT:
+			return "..";
+		case TokenType::COMMA:
+			return ",";
+		case TokenType::SEMI_COLON:
+			return ";";
+		case TokenType::COLON:
+			return ":";
+		case TokenType::COLON_COLON:
+			return "::";
+		case TokenType::EQUAL:
+			return "=";
+		case TokenType::LPAREN:
+			return "(";
+		case TokenType::RPAREN:
+			return ")";
+		case TokenType::LBRACKET:
+			return "[";
+		case TokenType::RBRACKET:
+			return "]";
+		case TokenType::LBRACE:
+			return "{";
+		case TokenType::RBRACE:
+			return "}";
+		case TokenType::PLUS:
+			return "+";
+		case TokenType::PLUS_PLUS:
+			return "++";
+		case TokenType::PLUS_EQUAL:
+			return "+=";
+		case TokenType::MINUS:
+			return "-";
+		case TokenType::MINUS_MINUS:
+			return "--";
+		case TokenType::MINUS_EQUAL:
+			return "-=";
+		case TokenType::STAR:
+			return "*";
+		case TokenType::STAR_EQUAL:
+			return "*=";
+		case TokenType::SLASH:
+			return "/";
+		case TokenType::SLASH_EQUAL:
+			return "/=";
+		case TokenType::PERCENT:
+			return "%";
+		case TokenType::PERCENT_EQUAL:
+			return "%=";
+		case TokenType::STRING:
+			return std::string("\"") + std::string(context.lexerString[indexData]) + "\"";
+		case TokenType::EQEQ:
+			return "==";
+		case TokenType::NOTEQ:
+			return "!=";
+		case TokenType::EQEQEQ:
+			return "===";
+		case TokenType::NOTEQEQ:
+			return "!==";
+		case TokenType::LT:
+			return "<";
+		case TokenType::GT:
+			return ">";
+		case TokenType::LTE:
+			return "<=";
+		case TokenType::GTE:
+			return ">=";
+		case TokenType::END_IMPORT:
+			return "END_IMPORT";
+		case TokenType::IDENTIFIER:
+			return std::string(context.lexerString[indexData]);
+		case TokenType::NUMBER:
+			return std::string(context.lexerString[indexData]);
+		default:
+			for (auto &pair : CAST) {
+				if (pair.second == type)
+					return pair.first;
+			}
+			return "UNKNOW";
+	}
+}
+
+} // namespace Lexer
+} // namespace Autolang

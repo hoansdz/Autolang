@@ -10,6 +10,7 @@
 #include "frontend/parser/node/CreateNode.hpp"
 #include "frontend/structure/NonReallocatePool.hpp"
 #include "shared/ChunkArena.hpp"
+#include "shared/StringArena.hpp"
 #include <array>
 #include <vector>
 
@@ -120,6 +121,25 @@ constexpr LexerStringId lexerIdminus = 50;
 constexpr LexerStringId lexerIdtimes = 51;
 constexpr LexerStringId lexerIddiv = 52;
 constexpr LexerStringId lexerIdrem = 53;
+constexpr LexerStringId lexerIdrun = 54;
+constexpr LexerStringId lexerIdlet = 55;
+constexpr LexerStringId lexerIdalso = 56;
+constexpr LexerStringId lexerIdtakeIf = 57;
+constexpr LexerStringId lexerIdtakeUnless = 58;
+constexpr LexerStringId lexerIdapply = 59;
+constexpr LexerStringId lexerIdwith = 60;
+constexpr LexerStringId lexerIddata = 61;
+constexpr LexerStringId lexerIdit = 62;
+constexpr LexerStringId lexerIdunderscore = 63;
+constexpr LexerStringId lexerIdcompareTo = 64;
+constexpr LexerStringId lexerIdunaryMinus = 65;
+constexpr LexerStringId lexerIdunaryPlus = 66;
+constexpr LexerStringId lexerIdnot = 67;
+constexpr LexerStringId lexerIdlistOfNotNull = 68;
+constexpr LexerStringId lexerIdarrayOfNotNull = 69;
+constexpr LexerStringId lexerIdmutableListOfNotNull = 70;
+constexpr LexerStringId lexerIdsetOfNotNull = 71;
+constexpr LexerStringId lexerIdmutableSetOfNotNull = 72;
 /*
 constexpr LexerStringId lexerIdunaryPlus = 24;   // +a
 constexpr LexerStringId lexerIdunaryMinus = 25;  // -a
@@ -156,13 +176,13 @@ using GenericCaller = ClassDeclaration;
 struct ParserContext {
 	FunctionEvent *onError = nullptr;
 	FunctionEvent *onWarning = nullptr;
-	// Optimize ram because reuse std::string instead of new std::string in
-	// lexer
-	std::vector<std::string> lexerString;
-	HashMap<std::string, LexerStringId> lexerStringMap;
+	// StringArena dedicated for compiler strings (lexer tokens, declaration names)
+	StringArena stringArena;
+	std::vector<std::string_view> lexerString;
+	HashMap<std::string_view, LexerStringId> lexerStringMap;
 
-	std::vector<std::string> stdLexerString;
-	HashMap<std::string, LexerStringId> stdLexerStringMap;
+	std::vector<std::string_view> stdLexerString;
+	HashMap<std::string_view, LexerStringId> stdLexerStringMap;
 
 	Lexer::Context *mainLexerContext;
 	HashMap<std::string, LibraryData *> importMap;
@@ -204,6 +224,7 @@ struct ParserContext {
 	HashMap<LexerStringId, ClassId> defaultClassMap;
 
 	HashMap<LexerStringId, TypealiasData *> typealiasMap;
+	HashMap<std::string_view, ClassId> classAliasMap;
 
 	HashMap<ClassId, CreateClassNode *> newDefaultClassesMap;
 	HashMap<ClassId, CreateClassNode *> newGenericClassesMap;
@@ -213,6 +234,12 @@ struct ParserContext {
 	bool hasError = false;
 	bool canBreakContinue = false;
 	bool allowTrailingClosure = true;
+	bool ignoreForeignImports = true;
+	bool kotlinCompatEnabled = true;
+	bool strictMode = false;
+	bool showWarnings = false;
+	bool autoCloseBracketsOnEof = true;
+	bool allowImplicitVarDeclaration = true;
 	// Be used when it is static keywords, example static val a = ...
 	bool justFindStatic = false;
 	bool justFindStaticMember = false;
@@ -276,6 +303,7 @@ struct ParserContext {
 	ChunkArena<CreateSetNode, 16> createSetPool;
 	ChunkArena<CreateMapNode, 16> createMapPool;
 	ChunkArena<PairNode, 32> pairPool;
+	ChunkArena<DestructureNode, 32> destructurePool;
 	ChunkArena<WhenNode, 16> whenNodePool;
 	ChunkArena<FunctionAccessNode, 8> functionAccessPool;
 	ChunkArena<CreateClosureNode, 32> createClosurePool;
@@ -352,7 +380,7 @@ struct ParserContext {
 			case lexerId__FILE__:
 			case lexerId__CLASS__:
 			case lexerId__FUNC__: {
-				return lexerString[nameId] + " is magic const value";
+				return std::string(lexerString[nameId]) + " is magic const value";
 			}
 		}
 		return "";
@@ -380,18 +408,19 @@ struct ParserContext {
 	HasClassIdNode *findDeclaration(in_func, uint32_t line,
 	                                LexerStringId nameId, bool inGlobal);
 	DeclarationNode *makeDeclarationNode(
-	    in_func, uint32_t line, LexerStringId baseName, const std::string &name,
+	    in_func, uint32_t line, LexerStringId baseName, std::string_view name,
 	    ClassDeclaration *classDeclaration, bool isVal, bool isGlobal,
 	    bool nullable, bool addToScope = true, bool loadId = true);
 	inline size_t getBoolConstValuePosition(bool b) { return b ? 1 : 2; }
-	inline LexerStringId createLexerStringIfNotExists(const std::string &str) {
+	inline LexerStringId createLexerStringIfNotExists(std::string_view str) {
 		auto it = lexerStringMap.find(str);
 		if (it != lexerStringMap.end()) {
 			return it->second;
 		}
-		LexerStringId id = lexerString.size();
-		lexerStringMap[str] = id;
-		lexerString.push_back(str);
+		LexerStringId id = static_cast<LexerStringId>(lexerString.size());
+		std::string_view arenaStr = stringArena.allocateView(str);
+		lexerStringMap[arenaStr] = id;
+		lexerString.push_back(arenaStr);
 		return id;
 	}
 	~ParserContext();

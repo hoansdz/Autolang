@@ -1,0 +1,111 @@
+import kotlin.math.min
+import kotlin.math.*
+
+class Item(val name: String, val price: Int, val weight: Float, val category: String)
+
+fun testKotlinAdvancedStdlib() {
+    // 1. String.replaceFirst
+    val str = "apple banana apple cherry"
+    check(str.replaceFirst("apple", "orange") == "orange banana apple cherry", "replaceFirst failed")
+    check(str.replaceFirst("missing", "orange") == str, "replaceFirst missing failed")
+
+    val items = [
+        Item("Banana", 10, 1.5, "fruit"),
+        Item("Avocado", 50, 2.0, "fruit"),
+        Item("Apple", 30, 0.8, "fruit"),
+        Item("Carrot", 20, 1.2, "veggie")
+    ]
+
+    // 2. Array.sortedBy (Int and Float supported)
+    val byPrice = items.sortedBy({|x: Item| x.price })
+    check(byPrice.get(0).name == "Banana" && byPrice.get(3).name == "Avocado", "sortedBy Int failed")
+
+    val byWeight = items.sortedBy({|x: Item| x.weight })
+    check(byWeight.get(0).name == "Apple" && byWeight.get(3).name == "Avocado", "sortedBy Float failed")
+
+    // 3. Array.sortedByDescending
+    val byPriceDesc = items.sortedByDescending({|x: Item| x.price })
+    check(byPriceDesc.get(0).name == "Avocado" && byPriceDesc.get(3).name == "Banana", "sortedByDescending Int failed")
+
+    // 4. Array.minByOrNull & maxByOrNull
+    val cheapest = items.minByOrNull({|x: Item| x.price })
+    check(cheapest?.name == "Banana", "minByOrNull failed")
+
+    val mostExpensive = items.maxByOrNull({|x: Item| x.price })
+    check(mostExpensive?.name == "Avocado", "maxByOrNull failed")
+
+    val emptyArr = <Item>[]
+    check(emptyArr.minByOrNull({|x: Item| x.price }) == null, "minByOrNull empty failed")
+    check(emptyArr.maxByOrNull({|x: Item| x.price }) == null, "maxByOrNull empty failed")
+
+    // 5. Array.distinctBy
+    val distinctCats = items.distinctBy({|x: Item| x.category })
+    check(distinctCats.size() == 2, "distinctBy size failed")
+    check(distinctCats.get(0).category == "fruit" && distinctCats.get(1).category == "veggie", "distinctBy content failed")
+
+    // 6. Array.groupBy
+    val grouped = items.groupBy({|x: Item| x.category })
+    check(grouped.size() == 2, "groupBy size failed")
+    val fruitGroup = grouped.get("fruit")
+    check(fruitGroup?.size() == 3, "groupBy fruit size failed")
+    val veggieGroup = grouped.get("veggie")
+    check(veggieGroup?.size() == 1, "groupBy veggie size failed")
+
+    // 7. Array.associateBy
+    val itemMap = items.associateBy({|x: Item| x.name })
+    check(itemMap.size() == 4, "associateBy size failed")
+    check(itemMap.get("Carrot")?.price == 20, "associateBy item failed")
+
+    // 8. Map.mapValues & Map.mapKeys
+    val scores = mapOf("math" to 80, "physics" to 90)
+    val boosted = scores.mapValues({|v: Int| v + 5 })
+    check(boosted.get("math") == 85 && boosted.get("physics") == 95, "mapValues failed")
+
+    val upperScores = scores.mapKeys({|k: String| k.toUpperCase() })
+    check(upperScores.get("MATH") == 80 && upperScores.get("PHYSICS") == 90, "mapKeys failed")
+
+    // 9. Foreign import and math calculation
+    val amount = 8500.0
+    val fee1 = min(amount, 1000.0) * 0.03
+    val fee2 = if (amount > 1000.0) min(amount - 1000.0, 4000.0) * 0.02 else 0.0
+    val fee3 = if (amount > 5000.0) (amount - 5000.0) * 0.01 else 0.0
+    var baseFee = fee1 + fee2 + fee3
+    check(baseFee == (30.0 + 80.0 + 35.0), "baseFee failed")
+    check(baseFee.toInt() == 145, "baseFee toInt failed")
+    check(baseFee.roundToInt() == 145, "roundToInt failed")
+    check(baseFee.roundToLong() == 145, "roundToLong failed")
+
+    // 10. Kotlin math methods on Float and Int
+    val fVal = 145.6
+    check(fVal.roundToInt() == 146, "fVal roundToInt failed")
+    check(fVal.floor() == 145.0, "fVal floor failed")
+    check(fVal.ceil() == 146.0, "fVal ceil failed")
+    check(fVal.truncate() == 145.0, "fVal truncate failed")
+    check((-15.5).abs() == 15.5, "abs float failed")
+    check((-15).abs() == 15, "abs int failed")
+    check((-15.5).absoluteValue() == 15.5, "absoluteValue float failed")
+    check((-15).absoluteValue() == 15, "absoluteValue int failed")
+    check((10.0).sign() == 1.0, "sign float failed")
+    check((-5).sign() == -1, "sign int failed")
+    check((16.0).sqrt() == 4.0, "sqrt float failed")
+    check(2.pow(3) == 8, "pow int failed")
+    check((10.0).isFinite() == true, "isFinite failed")
+    check((10.0).isNaN() == false, "isNaN failed")
+    check(hypot(3.0, 4.0) == 5.0, "hypot failed")
+    check(cbrt(27.0) == 3.0, "cbrt failed")
+    check((27.0).cbrt() == 3.0, "float cbrt failed")
+    check(expm1(0.0) == 0.0, "expm1 failed")
+    check(ln1p(0.0) == 0.0, "ln1p failed")
+    check(Math.log(8.0, 2.0) == 3.0, "log base failed")
+    check((-10.0).withSign(1.0) == 10.0, "float withSign failed")
+    check((10.0).withSign(-1.0) == -10.0, "float withSign negative failed")
+    check((-10).withSign(1) == 10, "int withSign failed")
+    check((10).withSign(-1) == -10, "int withSign negative failed")
+    check((1.0).nextUp() > 1.0, "nextUp failed")
+    check((1.0).nextDown() < 1.0, "nextDown failed")
+    check((1.0).ulp() > 0.0, "ulp failed")
+
+    println("ALL KOTLIN ADVANCED STDLIB TESTS PASSED")
+}
+
+testKotlinAdvancedStdlib()

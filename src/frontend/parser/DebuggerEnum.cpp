@@ -43,7 +43,7 @@ inline void loadEnumBody(in_func, size_t &i, CreateClassNode *node,
 				if (it != classInfo->constValue.end()) {
 					throw ParserError(
 					    token->line,
-					    "Duplicate value " + context.lexerString[token->indexData] +
+					    "Duplicate value " + std::string(context.lexerString[token->indexData]) +
 					        "\nHint: Ensure each enum member name is unique");
 				}
 				Offset id = compile.registerEnumConstPool(node->classId);
@@ -119,7 +119,7 @@ void loadEnum(in_func, size_t &i) {
 		    "enum name after 'enum'");
 	}
 	LexerStringId nameId = token->indexData;
-	const std::string &name = context.lexerString[nameId];
+	std::string_view name = context.lexerString[nameId];
 
 	auto it = context.defaultClassMap.find(nameId);
 	if (it != context.defaultClassMap.end()) {
@@ -133,7 +133,7 @@ void loadEnum(in_func, size_t &i) {
 		}
 		throw ParserError(
 		    firstLine,
-		    "Class " + name + " already exists\nHint: " + hint);
+		    "Class " + std::string(name) + " already exists\nHint: " + hint);
 	}
 
 	auto node = context.newClasses.push(firstLine, nameId,

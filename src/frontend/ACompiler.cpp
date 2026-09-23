@@ -8,6 +8,7 @@
 #include "frontend/libs/time.hpp"
 #include "frontend/libs/vm.hpp"
 #include "shared/DefaultFunction.hpp"
+#include "shared/Profiler.hpp"
 
 #ifndef NO_INCLUDE_LIBS_FILE
 #include "frontend/libs/file.hpp"
@@ -197,6 +198,7 @@ ACompiler::registerBuiltInLibrary(const char *path, const char *data,
 }
 
 void ACompiler::loadBuiltInFunctions() {
+	AUTOLANG_PROFILE_MARK("Compile: Load Built-in Stdlib Start");
 	for (auto *library : builtInLibraries) {
 		if (!library->lexerContext.tokens.empty())
 			continue;
@@ -208,6 +210,7 @@ void ACompiler::loadBuiltInFunctions() {
 	loadedBuiltIn = true;
 	parserContext.stdLexerString = parserContext.lexerString;
 	parserContext.stdLexerStringMap = parserContext.lexerStringMap;
+	AUTOLANG_PROFILE_MARK("Compile: Built-in Stdlib Done");
 }
 
 void ACompiler::loadMainSource(const char *path, LibraryConfig config,
@@ -276,6 +279,7 @@ void ACompiler::loadMainSource(LibraryData *library) {
 	}
 	library->rawData = autoImportStr + library->rawData;
 
+	AUTOLANG_PROFILE_MARK("Compile: Main Source Lexer Start");
 	std::vector<Offset> importOffset;
 	lexerData(in_data, *this, library, &importOffset);
 	library->rawData.clear();
@@ -304,6 +308,7 @@ void ACompiler::loadMainSource(LibraryData *library) {
 		context.currentFunctionId = context.mainFunctionId;
 		return;
 	}
+	AUTOLANG_PROFILE_MARK("Compile: Main & Imports Tokenized");
 
 	auto &newEstimate = mainSource->lexerContext.estimate;
 
@@ -428,7 +433,7 @@ void ACompiler::generateBytecodes() {
 	// }
 	// std::cerr<<"\n";
 
-	// auto startParserTime = std::chrono::high_resolution_clock::now();
+	AUTOLANG_PROFILE_MARK("Compile: AST Construction Start");
 	context.currentAllOpcodeLine = &compile.allOpcodeLines;
 	context.currentTokenPos = 0;
 	size_t &i = context.currentTokenPos;
@@ -500,6 +505,8 @@ void ACompiler::generateBytecodes() {
 		state = CompilerState::CT_ERROR;
 		return;
 	}
+
+	AUTOLANG_PROFILE_MARK("Compile: AST Nodes Created");
 
 	{
 		LexerStringId mainNameId = context.createLexerStringIfNotExists("main");
@@ -910,6 +917,7 @@ void ACompiler::generateBytecodes() {
 		return;
 	}
 
+	AUTOLANG_PROFILE_MARK("Compile: Bytecodes Generated");
 	state = CompilerState::CT_BYTECODE_READY;
 }
 
@@ -930,6 +938,7 @@ void ACompiler::run() {
 			    "Source is analyzed but bytecode not generated. "
 			    "Call generateBytecodes() before running.");
 	}
+	AUTOLANG_PROFILE_MARK("Runtime: VM Execution Start");
 	vm.start();
 	if (exceptionMessage) {
 		delete[] exceptionMessage;
@@ -944,6 +953,7 @@ void ACompiler::run() {
 		exceptionMessage = nullptr;
 	}
 	vm.restart();
+	AUTOLANG_PROFILE_MARK("Runtime: VM Execution Finished");
 }
 
 #ifdef AUTOLANG_LIMIT_OPCODE
@@ -1036,6 +1046,7 @@ void ACompiler::setFileBasePath(const std::string &path) {
 #endif
 
 void ACompiler::refresh() {
+	AUTOLANG_PROFILE_MARK("Cleanup: Refresh Start");
 	parserContext.refresh(vm.data);
 	freeData(vm.data, parserContext);
 	if (mainSource) {
@@ -1065,10 +1076,16 @@ void ACompiler::refresh() {
 		delete[] vm.globalVariables;
 		vm.globalVariables = nullptr;
 	}
+	AUTOLANG_PROFILE_MARK("Cleanup: Refresh Finished");
 }
 
 ACompiler::ACompiler(ACompilerConfig config) {
 	// auto startCompiler = std::chrono::high_resolution_clock::now();
+	parserContext.kotlinCompatEnabled = config.enableKotlinCompat;
+	parserContext.strictMode = config.strictMode;
+	parserContext.showWarnings = config.showWarnings;
+	parserContext.autoCloseBracketsOnEof = config.autoCloseBracketsOnEof;
+	parserContext.allowImplicitVarDeclaration = config.allowImplicitVarDeclaration;
 
 	Autolang::Libs::stdlib::init(*this);
 	Autolang::DefaultClass::init(*this);

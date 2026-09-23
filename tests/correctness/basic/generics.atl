@@ -92,11 +92,13 @@ fun <T> wrapInArray(item: T): Array<T> {
 }
 
 fun <T> wrapInSet(item: T): Set<T> {
-	return {item}
+	val s = Set<T>()
+	s.add(item)
+	return s
 }
 
 fun <K, V> wrapInMap(key: K, value: V): Map<K, V> {
-	return {key: value}
+	return mapOf(key to value)
 }
 
 fun <T> identityFunc(x: T): T = x
@@ -139,7 +141,9 @@ class DeepHolder<T>(val root: DeepNode<T>)
 
 // Chained nested generic functions
 fun <A> nestStep1(x: A): Array<A> = [x]
-fun <B> nestStep2(x: Array<B>): Map<String, Array<B>> = {"data": x}
+fun <B> nestStep2(x: Array<B>): Map<String, Array<B>> {
+	return mapOf("data" to x)
+}
 fun <C> nestStep3(x: Map<String, Array<C>>): GenericPair<String, Map<String, Array<C>>> {
 	return GenericPair<String, Map<String, Array<C>>>("nested", x)
 }
@@ -164,7 +168,7 @@ fun <T> flattenMatrix(matrix: Array<Array<T>>): Array<T> {
 }
 
 fun <K, V> createNestedMap(k: K, v: V): Map<K, Array<V>> {
-	return {k: [v]}
+	return mapOf(k to [v])
 }
 
 fun <A, B, C> combinePairs(p1: GenericPair<A, B>, p2: GenericPair<B, C>): GenericTriple<A, B, C> {

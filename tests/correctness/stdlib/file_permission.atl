@@ -185,10 +185,10 @@ fun testFilePermissionRecursion() {
 }
 
 fun testFilePermissionNestedCollections() {
-    val pathCatalog = {
-        "ok": ["short_path_1.txt", String("m", 512)],
-        "overflow": [String("n", 513), String("o", 550), String("p", 1000)]
-    }
+    val pathCatalog = mapOf(
+        "ok" to ["short_path_1.txt", String("m", 512)],
+        "overflow" to [String("n", 513), String("o", 550), String("p", 1000)]
+    )
 
     var okSeen = 0
     var overflowBlocked = 0

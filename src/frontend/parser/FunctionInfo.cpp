@@ -15,7 +15,7 @@ AccessNode *Scopes::findDeclaration(in_func, uint32_t line,
 		if (it == scope.end())
 			continue;
 		if (isStatic && i != 0 && !it->second->isGlobal)
-			throw ParserError(line, it->second->name +
+			throw ParserError(line, std::string(it->second->name) +
 			                            " is not static\nHint: Non-static "
 			                            "local variables cannot be "
 			                            "accessed in a static context");
@@ -65,12 +65,14 @@ std::string FunctionInfo::toString(in_func) {
 			result += ", ";
 		}
 		if (declaration->classDeclaration) {
-			result += declaration->name + " : " +
-			          declaration->classDeclaration->getName<true>(in_data);
+			result += declaration->name;
+			result += " : ";
+			result += declaration->classDeclaration->getName<true>(in_data);
 		} else if (declaration->classId < compile.classes.size() &&
 		           compile.classes[declaration->classId]) {
 			if (!declaration->name.empty()) {
-				result += declaration->name + " : ";
+				result += declaration->name;
+				result += " : ";
 			}
 			result += compile.classes[declaration->classId]->getName(compile);
 		}

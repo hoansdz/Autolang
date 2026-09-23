@@ -35,8 +35,10 @@ ExprNode *WhenNode::optimize(in_func) {
 		ifNode = static_cast<IfNode *>(ifNode->optimize(in_data));
 		classId = ifNode->classId;
 		nullable = ifNode->nullable;
-		if (classId == DefaultClass::functionClassId) {
+		if (ifNode->classDeclaration) {
 			classDeclaration = ifNode->classDeclaration;
+		} else if (classId == DefaultClass::anyClassId || (!classDeclaration && classId != DefaultClass::nullClassId)) {
+			classDeclaration = ExprNode::getOrCreateClassDeclaration(in_data, classId, line, nullable);
 		}
 	}
 	return this;

@@ -76,7 +76,11 @@ WhileNode *loadWhile(in_func, size_t &i) {
 		    "Expected body after while statement\nHint: Provide a loop body "
 		    "enclosed in '{ ... }' after while (...)");
 	}
+	SmallVector<SmartCastInfo, 2> dummy;
+	extractSmartCasts(in_data, node->condition, node->trueCasts, dummy);
+	for (auto &cast : node->trueCasts) cast.apply();
 	loadBody<false>(in_data, node->body.nodes, i);
+	for (auto &cast : node->trueCasts) cast.restore();
 	return node;
 }
 
@@ -132,57 +136,116 @@ ExprNode *loadFor(in_func, size_t &i) {
 			    "variable after 'for ((', e.g. for ((k, v) in ...)");
 		}
 	}
-	if (!expect(token, Lexer::TokenType::IDENTIFIER) &&
-	    !expect(token, Lexer::TokenType::TO)) {
-		--i;
-		throw ParserError(
-		    context.tokens[i].line,
-		    "Expected identifier as loop variable in for statement\nHint: Loop "
-		    "variable name must be a valid identifier");
-	}
-	auto baseName = token->indexData;
-	const std::string &name = context.lexerString[token->indexData];
-	VarNode *declaration;
-	context.getCurrentFunctionInfo(in_data)->scopes.emplace_back();
-	// Create temp declaration
-	auto declarationNode = context.makeDeclarationNode(
-	    in_data, token->line, baseName, name, nullptr, true,
-	    context.currentFunctionId == context.mainFunctionId, false, true, true);
-	declarationNode->classId = Autolang::DefaultClass::nullClassId;
-	declaration =
-	    context.varPool.push(firstLine, declarationNode, false, false);
+	VarNode *declaration = nullptr;
 	VarNode *declarationValue = nullptr;
-	if (nextToken(&token, context.tokens, i)) {
-		if (expect(token, Lexer::TokenType::COMMA)) {
-			if (!nextToken(&token, context.tokens, i) ||
-			    (!expect(token, Lexer::TokenType::IDENTIFIER) &&
-			     !expect(token, Lexer::TokenType::TO))) {
+	std::vector<DeclarationNode *> destructureTargets;
+
+	context.getCurrentFunctionInfo(in_data)->scopes.emplace_back();
+
+	if (isDestructuring) {
+		while (true) {
+			if ((expect(token, Lexer::TokenType::IDENTIFIER) ||
+			     expect(token, Lexer::TokenType::TO)) &&
+			    token->indexData == lexerIdunderscore) {
+				destructureTargets.push_back(nullptr);
+			} else if (expect(token, Lexer::TokenType::IDENTIFIER) ||
+			           expect(token, Lexer::TokenType::TO)) {
+				auto baseName = token->indexData;
+				const auto &name = context.lexerString[token->indexData];
+				auto decl = context.makeDeclarationNode(
+				    in_data, token->line, baseName, name, nullptr, true,
+				    context.currentFunctionId == context.mainFunctionId &&
+				        !context.currentClosureNode,
+				    false, true, true);
+				decl->classId = Autolang::DefaultClass::nullClassId;
+				destructureTargets.push_back(decl);
+			} else {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "Expected identifier as second loop variable in for statement\nHint: "
-				    "Provide a value variable name after comma: for (key, value in map)");
+				    "Expected variable name or '_' in destructuring loop variables\nHint: "
+				    "Provide variable names or '_' to ignore, e.g. for ((a, b, c) in ...)");
 			}
-			auto baseNameVal = token->indexData;
-			const std::string &nameVal = context.lexerString[token->indexData];
-			auto declarationValNode = context.makeDeclarationNode(
-			    in_data, token->line, baseNameVal, nameVal, nullptr, true,
-			    context.currentFunctionId == context.mainFunctionId, false, true, true);
-			declarationValNode->classId = Autolang::DefaultClass::nullClassId;
-			declarationValue =
-			    context.varPool.push(token->line, declarationValNode, false, false);
-		} else {
-			--i;
+
+			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
+				--i;
+				throw ParserError(
+				    token->line,
+				    "Expected ',' or ')' in destructuring loop variables\nHint: "
+				    "Separate variables with comma and close with ')'");
+			}
+
+			if (expect(token, Lexer::TokenType::RPAREN)) {
+				break;
+			}
+			if (!expect(token, Lexer::TokenType::COMMA)) {
+				--i;
+				throw ParserError(
+				    context.tokens[i].line,
+				    "Expected ',' or ')' after destructuring loop variable\nHint: "
+				    "Separate variables with comma: for ((a, b, c) in ...)");
+			}
+			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
+				--i;
+				throw ParserError(
+				    token->line,
+				    "Expected variable name after comma in destructuring loop variables");
+			}
 		}
-	}
-	if (isDestructuring) {
-		if (!nextToken(&token, context.tokens, i) ||
-		    !expect(token, Lexer::TokenType::RPAREN)) {
+
+		auto elementDecl = context.makeDeclarationNode(
+		    in_data, firstLine,
+		    context.createLexerStringIfNotExists(".loop_item"), ".loop_item",
+		    nullptr, true,
+		    context.currentFunctionId == context.mainFunctionId &&
+		        !context.currentClosureNode,
+		    false, true, true);
+		elementDecl->classId = Autolang::DefaultClass::nullClassId;
+		declaration = context.varPool.push(firstLine, elementDecl, false, false);
+	} else {
+		if (!expect(token, Lexer::TokenType::IDENTIFIER) &&
+		    !expect(token, Lexer::TokenType::TO)) {
 			--i;
 			throw ParserError(
 			    context.tokens[i].line,
-			    "Expected ')' after destructuring loop variables in for statement\nHint: "
-			    "Close the destructuring declaration with ')' before 'in': for ((k, v) in map)");
+			    "Expected identifier as loop variable in for statement\nHint: Loop "
+			    "variable name must be a valid identifier");
+		}
+		auto baseName = token->indexData;
+		const auto &name = context.lexerString[token->indexData];
+		auto declarationNode = context.makeDeclarationNode(
+		    in_data, token->line, baseName, name, nullptr, true,
+		    context.currentFunctionId == context.mainFunctionId &&
+		        !context.currentClosureNode,
+		    false, true, true);
+		declarationNode->classId = Autolang::DefaultClass::nullClassId;
+		declaration =
+		    context.varPool.push(firstLine, declarationNode, false, false);
+
+		if (nextToken(&token, context.tokens, i)) {
+			if (expect(token, Lexer::TokenType::COMMA)) {
+				if (!nextToken(&token, context.tokens, i) ||
+				    (!expect(token, Lexer::TokenType::IDENTIFIER) &&
+				     !expect(token, Lexer::TokenType::TO))) {
+					--i;
+					throw ParserError(
+					    context.tokens[i].line,
+					    "Expected identifier as second loop variable in for statement\nHint: "
+					    "Provide a value variable name after comma: for (key, value in map)");
+				}
+				auto baseNameVal = token->indexData;
+				const auto &nameVal = context.lexerString[token->indexData];
+				auto declarationValNode = context.makeDeclarationNode(
+				    in_data, token->line, baseNameVal, nameVal, nullptr, true,
+				    context.currentFunctionId == context.mainFunctionId &&
+				        !context.currentClosureNode,
+				    false, true, true);
+				declarationValNode->classId = Autolang::DefaultClass::nullClassId;
+				declarationValue =
+				    context.varPool.push(token->line, declarationValNode, false, false);
+			} else {
+				--i;
+			}
 		}
 	}
 	if (!nextToken(&token, context.tokens, i) ||
@@ -211,7 +274,9 @@ ExprNode *loadFor(in_func, size_t &i) {
 		auto declarationNode = context.makeDeclarationNode(
 		    in_data, token->line,
 		    context.createLexerStringIfNotExists(".iterator"), ".iterator",
-		    nullptr, true, context.currentFunctionId == context.mainFunctionId,
+		    nullptr, true,
+		    context.currentFunctionId == context.mainFunctionId &&
+		        !context.currentClosureNode,
 		    false, true, true);
 		declarationNode->classId = Autolang::DefaultClass::intClassId;
 		iteratorNode =
@@ -220,7 +285,9 @@ ExprNode *loadFor(in_func, size_t &i) {
 			auto collectionDecl = context.makeDeclarationNode(
 			    in_data, token->line,
 			    context.createLexerStringIfNotExists(".collection"), ".collection",
-			    nullptr, true, context.currentFunctionId == context.mainFunctionId,
+			    nullptr, true,
+			    context.currentFunctionId == context.mainFunctionId &&
+			        !context.currentClosureNode,
 			    false, false, true);
 			collectionDecl->classId = Autolang::DefaultClass::nullClassId;
 			collectionNode =
@@ -245,7 +312,7 @@ ExprNode *loadFor(in_func, size_t &i) {
 		    "enclosed in '{ ... }' after for (...)");
 	}
 	auto node =
-	    context.forPool.push(firstLine, declaration, data, iteratorNode, declarationValue, collectionNode);
+	    context.forPool.push(firstLine, declaration, data, iteratorNode, declarationValue, collectionNode, destructureTargets);
 	loadBody<false>(in_data, node->body.nodes, i, false);
 	context.getCurrentFunctionInfo(in_data)->popBackScope();
 	return node;

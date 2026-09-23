@@ -71,7 +71,9 @@ static bool matchAndBindType(in_func, ClassDeclaration *paramDecl, HasClassIdNod
 					it->second = concreteDecl;
 					return true;
 				}
-				return false;
+				ClassId commonId = ExprNode::getCommonSuperType(in_data, prevId, currId);
+				it->second = ExprNode::getOrCreateClassDeclaration(in_data, commonId, concreteDecl->line, false);
+				return true;
 			}
 			return true;
 		} else {
@@ -81,6 +83,11 @@ static bool matchAndBindType(in_func, ClassDeclaration *paramDecl, HasClassIdNod
 	}
 
 	if (!paramDecl->inputClassId.empty()) {
+		if (argNode && argNode->kind == NodeType::CREATE_CLOSURE) {
+			auto *closure = static_cast<CreateClosureNode *>(argNode);
+			closure->tryInferReturnType(in_data, paramDecl);
+		}
+
 		const std::vector<ClassDeclaration *> *argArgs = nullptr;
 		std::vector<ClassDeclaration *> fallbackArgs;
 
@@ -171,6 +178,33 @@ ExprNode *CallNode::resolve(in_func) {
 			checkNameId = inputGenericArguments->baseClassLexerStringId;
 		}
 		switch (checkNameId) {
+			case lexerIdrun: {
+				if (funcObject) break;
+				if (arguments.size() != 1) {
+					throwError(
+					    "Invalid call: run expects 1 argument (closure), but " +
+					    std::to_string(arguments.size()) +
+					    " were provided\nHint: Use run { ... }");
+				}
+				funcObject = arguments[0];
+				arguments.clear();
+				nameId = 0;
+				return this->resolve(in_data);
+			}
+			case lexerIdwith: {
+				if (arguments.size() != 2) {
+					throwError(
+					    "Invalid call: with expects 2 arguments (receiver, closure), but " +
+					    std::to_string(arguments.size()) +
+					    " were provided\nHint: Use with(receiver) { ... }");
+				}
+				caller = static_cast<HasClassIdNode *>(arguments[0]);
+				nameId = lexerIdlet;
+				auto closure = arguments[1];
+				arguments.clear();
+				arguments.push_back(closure);
+				return this->resolve(in_data);
+			}
 			case lexerIdInt: {
 				if (arguments.size() != 1) {
 					throwError(
@@ -244,15 +278,20 @@ ExprNode *CallNode::resolve(in_func) {
 			case lexerIdbooleanArrayOf:
 			case lexerIdstringArrayOf:
 			case lexerIdlongArrayOf:
-			case lexerIdbyteArrayOf: {
+			case lexerIdbyteArrayOf:
+			case lexerIdlistOfNotNull:
+			case lexerIdarrayOfNotNull:
+			case lexerIdmutableListOfNotNull:
+			case lexerIdsetOfNotNull:
+			case lexerIdmutableSetOfNotNull: {
 				if (funcObject)
 					break;
 				if ((nameId == lexerIdemptyArray || nameId == lexerIdemptyList) && !arguments.empty()) {
-					throwError("Invalid call: " + context.lexerString[nameId] +
+					throwError("Invalid call: " + std::string(context.lexerString[nameId]) +
 					           " expects 0 arguments, but " +
 					           std::to_string(arguments.size()) +
 					           " were provided\nHint: " +
-					           context.lexerString[nameId] +
+					           std::string(context.lexerString[nameId]) +
 					           "() takes no arguments.");
 				}
 				std::vector<HasClassIdNode *> vals;
@@ -263,18 +302,48 @@ ExprNode *CallNode::resolve(in_func) {
 				auto arrayNode = context.createArrayPool.push(
 				    line, inputGenericArguments, std::move(vals));
 				arguments.clear();
-				return arrayNode->resolve(in_data);
+				auto resolvedArray = arrayNode->resolve(in_data);
+				switch (nameId) {
+					case lexerIdlistOfNotNull:
+					case lexerIdarrayOfNotNull:
+					case lexerIdmutableListOfNotNull: {
+						auto filterCall = context.callNodePool.push(
+						    line, tokenIndex, context.currentClassId,
+						    static_cast<HasClassIdNode *>(resolvedArray),
+						    context.createLexerStringIfNotExists("filterNotNull"),
+						    std::vector<HasClassIdNode *>{}, false, false, false);
+						return filterCall->resolve(in_data);
+					}
+					case lexerIdsetOfNotNull:
+					case lexerIdmutableSetOfNotNull: {
+						auto filterCall = context.callNodePool.push(
+						    line, tokenIndex, context.currentClassId,
+						    static_cast<HasClassIdNode *>(resolvedArray),
+						    context.createLexerStringIfNotExists("filterNotNull"),
+						    std::vector<HasClassIdNode *>{}, false, false, false);
+						auto resolvedFilter = filterCall->resolve(in_data);
+						auto toSetCall = context.callNodePool.push(
+						    line, tokenIndex, context.currentClassId,
+						    static_cast<HasClassIdNode *>(resolvedFilter),
+						    context.createLexerStringIfNotExists("toSet"),
+						    std::vector<HasClassIdNode *>{}, false, false, false);
+						return toSetCall->resolve(in_data);
+					}
+					default:
+						break;
+				}
+				return resolvedArray;
 			}
 			case lexerIdemptyArray:
 			case lexerIdemptyList: {
 				if (funcObject)
 					break;
 				if (!arguments.empty()) {
-					throwError("Invalid call: " + context.lexerString[nameId] +
+					throwError("Invalid call: " + std::string(context.lexerString[nameId]) +
 					           " expects 0 arguments, but " +
 					           std::to_string(arguments.size()) +
 					           " were provided\nHint: " +
-					           context.lexerString[nameId] +
+					           std::string(context.lexerString[nameId]) +
 					           "() takes no arguments.");
 				}
 				auto arrayNode = context.createArrayPool.push(
@@ -442,13 +511,18 @@ ExprNode *CallNode::optimize(in_func) {
 			case lexerIdbooleanArrayOf:
 			case lexerIdstringArrayOf:
 			case lexerIdlongArrayOf:
-			case lexerIdbyteArrayOf: {
+			case lexerIdbyteArrayOf:
+			case lexerIdlistOfNotNull:
+			case lexerIdarrayOfNotNull:
+			case lexerIdmutableListOfNotNull:
+			case lexerIdsetOfNotNull:
+			case lexerIdmutableSetOfNotNull: {
 				if ((nameId == lexerIdemptyArray || nameId == lexerIdemptyList) && !arguments.empty()) {
-					throwError("Invalid call: " + context.lexerString[nameId] +
+					throwError("Invalid call: " + std::string(context.lexerString[nameId]) +
 					           " expects 0 arguments, but " +
 					           std::to_string(arguments.size()) +
 					           " were provided\nHint: " +
-					           context.lexerString[nameId] +
+					           std::string(context.lexerString[nameId]) +
 					           "() takes no arguments.");
 				}
 				std::vector<HasClassIdNode *> vals;
@@ -459,16 +533,45 @@ ExprNode *CallNode::optimize(in_func) {
 				auto arrayNode = context.createArrayPool.push(
 				    line, inputGenericArguments, std::move(vals));
 				arguments.clear();
-				return arrayNode->optimize(in_data);
+				auto resolvedArray = arrayNode->resolve(in_data);
+				switch (checkNameId) {
+					case lexerIdlistOfNotNull:
+					case lexerIdarrayOfNotNull:
+					case lexerIdmutableListOfNotNull: {
+						auto filterCall = context.callNodePool.push(
+						    line, tokenIndex, context.currentClassId,
+						    static_cast<HasClassIdNode *>(resolvedArray),
+						    context.createLexerStringIfNotExists("filterNotNull"),
+						    std::vector<HasClassIdNode *>{}, false, false, false);
+						return filterCall->optimize(in_data);
+					}
+					case lexerIdsetOfNotNull:
+					case lexerIdmutableSetOfNotNull: {
+						auto filterCall = context.callNodePool.push(
+						    line, tokenIndex, context.currentClassId,
+						    static_cast<HasClassIdNode *>(resolvedArray),
+						    context.createLexerStringIfNotExists("filterNotNull"),
+						    std::vector<HasClassIdNode *>{}, false, false, false);
+						auto toSetCall = context.callNodePool.push(
+						    line, tokenIndex, context.currentClassId,
+						    static_cast<HasClassIdNode *>(filterCall),
+						    context.createLexerStringIfNotExists("toSet"),
+						    std::vector<HasClassIdNode *>{}, false, false, false);
+						return toSetCall->optimize(in_data);
+					}
+					default:
+						break;
+				}
+				return resolvedArray->optimize(in_data);
 			}
 			case lexerIdemptyArray:
 			case lexerIdemptyList: {
 				if (!arguments.empty()) {
-					throwError("Invalid call: " + context.lexerString[nameId] +
+					throwError("Invalid call: " + std::string(context.lexerString[nameId]) +
 					           " expects 0 arguments, but " +
 					           std::to_string(arguments.size()) +
 					           " were provided\nHint: " +
-					           context.lexerString[nameId] +
+					           std::string(context.lexerString[nameId]) +
 					           "() takes no arguments.");
 				}
 				auto arrayNode = context.createArrayPool.push(
@@ -576,15 +679,15 @@ ExprNode *CallNode::optimize(in_func) {
 					return mapNode->optimize(in_data);
 				}
 				throwError(
-				    "Invalid call: " + context.lexerString[nameId] +
+				    "Invalid call: " + std::string(context.lexerString[nameId]) +
 				    " expects Pair arguments (e.g., key to value), an even number of arguments (key, value pairs), or "
 				    "a single Map, but " +
 				    std::to_string(arguments.size()) +
 				    " arguments were provided\nHint: Pass Pair arguments "
 				    "(e.g., " +
-				    context.lexerString[nameId] +
+				    std::string(context.lexerString[nameId]) +
 				    "(k1 to v1, k2 to v2)), key-value pairs (" +
-				    context.lexerString[nameId] +
+				    std::string(context.lexerString[nameId]) +
 				    "(k1, v1, k2, v2)) or a map literal.");
 			}
 			default:
@@ -604,6 +707,15 @@ ExprNode *CallNode::optimize(in_func) {
 				           "class type.");
 			}
 			case NodeType::CALL: {
+				auto callNode = static_cast<CallNode *>(argument);
+				auto rootCall = callNode;
+				while (rootCall->caller && rootCall->caller->kind == NodeType::CALL) {
+					rootCall = static_cast<CallNode *>(rootCall->caller);
+				}
+				if (caller && !rootCall->inputGenericArguments &&
+				    context.genericFunctionMap.find(rootCall->nameId) != context.genericFunctionMap.end()) {
+					break;
+				}
 				argument = static_cast<HasClassIdNode *>(argument->optimize(in_data));
 				arguments[i] = argument;
 				if (argument->classId == Autolang::DefaultClass::voidClassId) {
@@ -637,12 +749,12 @@ ExprNode *CallNode::optimize(in_func) {
 		}
 	}
 
-	std::string name = context.lexerString[nameId];
+	std::string name(context.lexerString[nameId]);
 
 	if (caller) {
 		// Caller.funcName() => Class.funcName()
 		caller = static_cast<HasClassIdNode *>(caller->optimize(in_data));
-		if (caller->isNullable()) {
+		if (caller->isNullable() && caller->kind != NodeType::CLASS_ACCESS) {
 			if (!accessNullable) {
 				throwError("You can't use '.' with nullable value, you must "
 				           "use '?.'\nHint: Use safe navigation operator '?.' "
@@ -662,6 +774,9 @@ ExprNode *CallNode::optimize(in_func) {
 				auto node = static_cast<VarNode *>(caller);
 				node->isStore = false;
 				node->classId = node->declaration->classId;
+				if (node->declaration->classDeclaration) {
+					node->classDeclaration = node->declaration->classDeclaration;
+				}
 				break;
 			}
 			case NodeType::GET_PROP:
@@ -671,6 +786,98 @@ ExprNode *CallNode::optimize(in_func) {
 				break;
 			default:
 				break;
+		}
+
+		ClassDeclaration *callerDecl = caller->classDeclaration;
+		if (!callerDecl && caller->kind == NodeType::VAR && static_cast<VarNode *>(caller)->declaration) {
+			callerDecl = static_cast<VarNode *>(caller)->declaration->classDeclaration;
+		}
+
+		if (callerDecl && !callerDecl->inputClassId.empty()) {
+			for (size_t a = 0; a < arguments.size(); ++a) {
+				if (arguments[a]->kind == NodeType::CALL) {
+					auto callNode = static_cast<CallNode *>(arguments[a]);
+					auto rootCall = callNode;
+					while (rootCall->caller && rootCall->caller->kind == NodeType::CALL) {
+						rootCall = static_cast<CallNode *>(rootCall->caller);
+					}
+					auto git = context.genericFunctionMap.find(rootCall->nameId);
+					if (git != context.genericFunctionMap.end() && !git->second.empty() &&
+					    !rootCall->inputGenericArguments) {
+						auto inferredDecl = context.classDeclarationAllocator.push();
+						inferredDecl->baseClassLexerStringId = rootCall->nameId;
+						inferredDecl->isGeneric = true;
+						inferredDecl->isGenericDeclaration = false;
+						inferredDecl->inputClassId.push_back(callerDecl->inputClassId[0]);
+						std::string specializedName = inferredDecl->getName(in_data);
+						LexerStringId specializedNameId = context.createLexerStringIfNotExists(specializedName);
+						loadFunctionGenerics(in_data, specializedName, inferredDecl);
+						rootCall->inputGenericArguments = inferredDecl;
+						rootCall->nameId = specializedNameId;
+						arguments[a] = static_cast<HasClassIdNode *>(callNode->optimize(in_data));
+					}
+				}
+			}
+		}
+
+		if (nameId == lexerIdlet || nameId == lexerIdalso || nameId == lexerIdapply ||
+		    nameId == lexerIdtakeIf || nameId == lexerIdtakeUnless ||
+		    (nameId == lexerIdrun && !arguments.empty())) {
+			if (arguments.size() != 1) {
+				throwError("Invalid call: " + std::string(context.lexerString[nameId]) +
+				           " expects 1 argument (closure), but " +
+				           std::to_string(arguments.size()) + " were provided\nHint: Use obj." +
+				           std::string(context.lexerString[nameId]) + " { ... }");
+			}
+			auto arg = arguments[0];
+			if (arg->kind == NodeType::CREATE_CLOSURE) {
+				auto closureNode = static_cast<CreateClosureNode *>(arg);
+				if (closureNode->parameter->parameters.size() == 1) {
+					auto paramDecl = context.classDeclarationAllocator.push();
+					if (caller->classDeclaration) {
+						*paramDecl = *caller->classDeclaration;
+					} else {
+						paramDecl->classId = caller->classId;
+						paramDecl->baseClassLexerStringId =
+						    context.createLexerStringIfNotExists(
+						        compile.classes[caller->classId]->getName(compile));
+					}
+					if (accessNullable) {
+						paramDecl->nullable = false;
+					}
+					if (closureNode->classDeclaration->inputClassId.size() > 1) {
+						closureNode->classDeclaration->inputClassId[1] = paramDecl;
+					}
+					auto currentParam = closureNode->parameter->parameters[0];
+					currentParam->classDeclaration = paramDecl;
+					currentParam->classId = *paramDecl->classId;
+					currentParam->nullable = paramDecl->nullable;
+					closureNode->mustInfer = false;
+				}
+			}
+			funcObject = static_cast<HasClassIdNode *>(arg->optimize(in_data));
+			arguments.clear();
+			if (nameId == lexerIdalso || nameId == lexerIdapply) {
+				classId = caller->classId;
+				classDeclaration = caller->classDeclaration;
+				nullable = caller->isNullable() || accessNullable;
+			} else if (nameId == lexerIdtakeIf || nameId == lexerIdtakeUnless) {
+				classId = caller->classId;
+				classDeclaration = caller->classDeclaration;
+				nullable = true;
+			} else if (funcObject->classDeclaration &&
+			           !funcObject->classDeclaration->inputClassId.empty() &&
+			           funcObject->classDeclaration->inputClassId[0] &&
+			           funcObject->classDeclaration->inputClassId[0]->classId) {
+				classId = *funcObject->classDeclaration->inputClassId[0]->classId;
+				classDeclaration = funcObject->classDeclaration->inputClassId[0];
+				nullable = classDeclaration->nullable || accessNullable;
+			} else {
+				classId = funcObject->classId;
+				classDeclaration = funcObject->classDeclaration;
+				nullable = funcObject->isNullable() || accessNullable;
+			}
+			return this;
 		}
 
 		auto callerClassInfo = context.classInfo[caller->classId];
@@ -823,15 +1030,20 @@ ExprNode *CallNode::optimize(in_func) {
 					auto it = callerClassInfo->allFunction.find(nameId);
 					if (inputGenericArguments) {
 						LexerStringId baseNameId = inputGenericArguments->baseClassLexerStringId;
+						bool foundGenericMember = false;
 						auto git = callerClassInfo->genericFunctionMap.find(baseNameId);
-						if (git == callerClassInfo->genericFunctionMap.end()) {
+						if (git != callerClassInfo->genericFunctionMap.end()) {
+							foundGenericMember = true;
+						} else {
 							auto callerClass = compile.classes[*contextCallClassId];
 							if (callerClass && callerClass->genericBaseClassId != 0) {
 								auto baseClassInfo = context.classInfo[callerClass->genericBaseClassId];
-								git = baseClassInfo->genericFunctionMap.find(baseNameId);
+								if (baseClassInfo->genericFunctionMap.find(baseNameId) != baseClassInfo->genericFunctionMap.end()) {
+									foundGenericMember = true;
+								}
 							}
 						}
-						if (git != callerClassInfo->genericFunctionMap.end()) {
+						if (foundGenericMember) {
 							loadMemberFunctionGenerics(
 							    in_data, *contextCallClassId, name,
 							    inputGenericArguments,
@@ -1105,10 +1317,10 @@ ExprNode *CallNode::optimize(in_func) {
 			}
 		}
 
-		std::string targetName = context.lexerString[nameId];
+		std::string targetName(context.lexerString[nameId]);
 		std::string bestSuggestion;
 		double bestScore = 0.0;
-		auto checkSuggestion = [&](const std::string &candidate) {
+		auto checkSuggestion = [&](std::string_view candidate) {
 			double score = rapidfuzz::fuzz::ratio(targetName, candidate);
 			if (score > bestScore && score >= 60.0) {
 				bestScore = score;
@@ -1243,8 +1455,14 @@ ExprNode *CallNode::optimize(in_func) {
 	auto func = compile.functions[funcId];
 	auto funcInfo = context.functionInfo[funcId];
 	classId = first.func->returnId;
-	if (func->returnId == DefaultClass::functionClassId) {
+	if (funcInfo->returnClass) {
 		classDeclaration = funcInfo->returnClass;
+		nullable = funcInfo->returnClass->nullable;
+	} else {
+		nullable = (classId == DefaultClass::nullClassId);
+	}
+	if (isForceNonNull) {
+		nullable = false;
 	}
 	{
 		bool hasNamed = false;
@@ -1325,7 +1543,7 @@ ExprNode *CallNode::optimize(in_func) {
 					    std::to_string(i) +
 					    ": "
 					    "expected non-null, but argument could be null"
-					    "\nHint: Use '!' to assert or '?\?' to fallback.");
+					    "\nHint: Use '!' to assert or '??' to fallback.");
 				}
 				throwError("Error: Nullability mismatch at parameter " +
 				           std::to_string(i) +
@@ -1451,6 +1669,7 @@ ExprNode *CallNode::optimize(in_func) {
 					break;
 			}
 			if (argument->classId != funcExpectClassId &&
+			    funcExpectClassId != DefaultClass::anyClassId &&
 			    !compile.classes[argument->classId]->inheritance.get(funcExpectClassId)) {
 				auto converted = tryImplicitConversion(in_data, funcExpectClassId, argument, line);
 				if (converted) {
@@ -1592,7 +1811,7 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 	nullable = funcObject->classDeclaration->nullable;
 
 	if (inputClass.size() - 1 != arguments.size()) {
-		throwError("Object " + context.lexerString[nameId] + ": " +
+		throwError("Object " + std::string(context.lexerString[nameId]) + ": " +
 		           funcObject->classDeclaration->getName(in_data) +
 		           " expects " + std::to_string(inputClass.size() - 1) +
 		           " argument but " + std::to_string(arguments.size()) +
@@ -1742,8 +1961,8 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 				break;
 			}
 			default: {
-				if (compile.classes[inputClassId]->inheritance.get(
-				        funcExpectClassId)) {
+				if (funcExpectClassId == DefaultClass::anyClassId ||
+				    compile.classes[inputClassId]->inheritance.get(funcExpectClassId)) {
 					continue;
 				}
 				break;
@@ -1772,7 +1991,7 @@ err:;
 			break;
 	}
 	auto argumentClassId = argument->classId;
-	throwError("Object " + context.lexerString[nameId] + ": At argument " +
+	throwError("Object " + std::string(context.lexerString[nameId]) + ": At argument " +
 	           std::to_string(j) + " expected " +
 	           compile.classes[*inputClass[j + 1]->classId]->getName(compile) +
 	           " but " + compile.classes[argumentClassId]->getName(compile) +
@@ -1915,8 +2134,8 @@ bool CallNode::match(in_func, MatchOverload &match,
 						break;
 					}
 					default: {
-						if (compile.classes[inputClassId]->inheritance.get(
-						        funcExpectClassId)) {
+						if (funcExpectClassId == DefaultClass::anyClassId ||
+						    compile.classes[inputClassId]->inheritance.get(funcExpectClassId)) {
 							++match.score;
 							continue;
 						}
@@ -2068,8 +2287,8 @@ bool CallNode::match(in_func, MatchOverload &match,
 						break;
 					}
 					default: {
-						if (compile.classes[inputClassId]->inheritance.get(
-						        funcExpectClassId)) {
+						if (funcExpectClassId == DefaultClass::anyClassId ||
+						    compile.classes[inputClassId]->inheritance.get(funcExpectClassId)) {
 							++match.score;
 							continue;
 						}
@@ -2094,11 +2313,44 @@ bool CallNode::match(in_func, MatchOverload &match,
 void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	loadOpcodeLine(in_data, bytecodes);
 	if (funcObject) {
+		if (caller) {
+			caller->putBytecodes(in_data, bytecodes);
+			if (accessNullable) {
+				assert(context.jumpIfNullNode != nullptr);
+				bytecodes.emplace_back(context.jumpIfNullNode->returnNullIfNull
+				                           ? Opcode::JUMP_AND_SET_IF_NULL
+				                           : Opcode::JUMP_AND_DELETE_IF_NULL);
+				jumpIfNullPos = bytecodes.size() - context.currentBytecodePos;
+				put_opcode_u32(bytecodes, 0);
+			}
+			if (nameId == lexerIdalso || nameId == lexerIdapply || nameId == lexerIdtakeIf || nameId == lexerIdtakeUnless) {
+				bytecodes.emplace_back(Opcode::DUP);
+			}
+		}
 		for (auto argument : arguments) {
 			argument->putBytecodes(in_data, bytecodes);
 		}
 		funcObject->putBytecodes(in_data, bytecodes);
 		bytecodes.emplace_back(Opcode::CALL_FUNCTION_OBJECT);
+		if (caller) {
+			if (nameId == lexerIdalso || nameId == lexerIdapply) {
+				bool isVoid = false;
+				if (funcObject->classDeclaration && !funcObject->classDeclaration->inputClassId.empty() &&
+				    funcObject->classDeclaration->inputClassId[0] &&
+				    funcObject->classDeclaration->inputClassId[0]->classId) {
+					isVoid = (*funcObject->classDeclaration->inputClassId[0]->classId == DefaultClass::voidClassId);
+				} else {
+					isVoid = (funcObject->classId == DefaultClass::voidClassId);
+				}
+				if (!isVoid) {
+					bytecodes.emplace_back(Opcode::POP);
+				}
+			} else if (nameId == lexerIdtakeIf) {
+				bytecodes.emplace_back(Opcode::TAKE_IF_CHECK);
+			} else if (nameId == lexerIdtakeUnless) {
+				bytecodes.emplace_back(Opcode::TAKE_UNLESS_CHECK);
+			}
+		}
 		return;
 	}
 
@@ -2181,6 +2433,9 @@ void CallNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 void CallNode::rewrite(in_func, uint8_t *bytecodes) {
 	for (auto argument : arguments) {
 		argument->rewrite(in_data, bytecodes);
+	}
+	if (funcObject) {
+		funcObject->rewrite(in_data, bytecodes);
 	}
 	if (context.jumpIfNullNode && caller) {
 		caller->rewrite(in_data, bytecodes);

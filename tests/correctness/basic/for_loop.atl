@@ -46,6 +46,43 @@ fun testForLoop() {
 	}
 	assert(sumItems == 150)
 
+	// Loop over string
+	val expr = "{[()]}"
+	var collected = ""
+	for (ch in expr) {
+		collected += ch
+	}
+	assert(collected == "{[()]}")
+
+	// Empty string loop
+	var emptyCount = 0
+	for (ch in "") {
+		emptyCount += 1
+	}
+	assert(emptyCount == 0)
+
+	// Bracket validation test using string loop
+	val stack = <String>[]
+	var isValid = true
+	for (ch in expr) {
+		if (ch == "(" || ch == "[" || ch == "{") {
+			stack.add(ch)
+		} else if (ch == ")" || ch == "]" || ch == "}") {
+			if (stack.isEmpty()) {
+				isValid = false
+				break
+			}
+			val top = stack.removeAt(stack.size - 1)
+			if ((ch == ")" && top != "(") ||
+				(ch == "]" && top != "[") ||
+				(ch == "}" && top != "{")) {
+				isValid = false
+				break
+			}
+		}
+	}
+	assert(isValid && stack.isEmpty())
+
 	println("Passed ${__FUNC__}")
 }
 

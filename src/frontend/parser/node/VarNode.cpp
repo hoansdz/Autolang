@@ -6,6 +6,18 @@
 
 namespace Autolang {
 
+ExprNode *VarNode::resolve(in_func) {
+	if (declaration) {
+		classId = declaration->classId;
+		isVal = declaration->isVal;
+		classDeclaration = declaration->classDeclaration;
+		if (nullable) {
+			nullable = declaration->nullable;
+		}
+	}
+	return this;
+}
+
 ExprNode *VarNode::optimize(in_func) {
 	// std::cerr << "loaded " << declaration->getName(compile) << " "
 	//           << compile.classes[declaration->classId]->getName(compile) <<
@@ -60,8 +72,16 @@ bool VarNode::isStaticValue() { return declaration && declaration->isGlobal; }
 void VarNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	loadOpcodeLine(in_data, bytecodes);
 	if (isStore) {
-		bytecodes.emplace_back(declaration->isGlobal ? Opcode::STORE_GLOBAL
-		                                             : Opcode::STORE_LOCAL);
+		if (declaration->isCapturedByClosure && !declaration->isGlobal) {
+			if (isInitDeclaration) {
+				bytecodes.emplace_back(Opcode::BOX_LOCAL);
+			} else {
+				bytecodes.emplace_back(Opcode::BOXED_STORE_LOCAL);
+			}
+		} else {
+			bytecodes.emplace_back(declaration->isGlobal ? Opcode::STORE_GLOBAL
+			                                             : Opcode::STORE_LOCAL);
+		}
 		put_opcode_u32(bytecodes, declaration->id);
 	} else {
 		if (isGetPointer) {
@@ -70,14 +90,18 @@ void VarNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			                           : Opcode::GET_POINTER_LOCAL);
 			put_opcode_u32(bytecodes, declaration->id);
 		} else {
-			bytecodes.emplace_back(declaration->isGlobal ? Opcode::LOAD_GLOBAL
-			                                             : Opcode::LOAD_LOCAL);
+			if (declaration->isCapturedByClosure && !declaration->isGlobal && !isCaptureRawBox) {
+				bytecodes.emplace_back(Opcode::BOXED_LOAD_LOCAL);
+			} else {
+				bytecodes.emplace_back(declaration->isGlobal ? Opcode::LOAD_GLOBAL
+				                                             : Opcode::LOAD_LOCAL);
+			}
 			put_opcode_u32(bytecodes, declaration->id);
 		}
 		if (isForceNonNull) {
 			bytecodes.push_back(Opcode::CHECK_FORCE_NON_NULL);
 		}
-		if (cloneable && !isGetPointer) {
+		if (cloneable && !isGetPointer && !declaration->isCapturedByClosure) {
 			bytecodes.emplace_back(Opcode::CLONE);
 		}
 	}

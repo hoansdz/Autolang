@@ -51,8 +51,8 @@ ExprNode *CreateClosureNode::optimize(in_func) {
 			auto currentParameter =
 			    parameter->parameters[parameter->parameters.size() + i -
 			                          classDeclaration->inputClassId.size()];
-			throwError("Cannot infer type for parameter: '" +
-			           currentParameter->name +
+			throwError(std::string("Cannot infer type for parameter: '") +
+			           std::string(currentParameter->name) +
 			           "'\nNote: Inference failed because the closure lacks an "
 			           "explicit "
 			           "type and no expected context was found.\nHint: Annotate parameter types explicitly (e.g. (x: Int) => ...) or pass/assign the closure to a typed target.");
@@ -82,11 +82,39 @@ ExprNode *CreateClosureNode::optimize(in_func) {
 	}
 	auto lastClosureNode = context.currentClosureNode;
 	context.currentClosureNode = this;
+	if (!classDeclaration->inputClassId.empty() && classDeclaration->inputClassId[0] &&
+	    classDeclaration->inputClassId[0]->classId) {
+		func->returnId = *classDeclaration->inputClassId[0]->classId;
+	}
 	funcInfo->body.resolve(in_data);
 	funcInfo->body.optimize(in_data);
 	context.currentClosureNode = lastClosureNode;
 	context.mustReturnValueNode = lastMustReturnValueNode;
-	func->returnId = *classDeclaration->inputClassId[0]->classId;
+	if (!classDeclaration->inputClassId.empty() && classDeclaration->inputClassId[0] &&
+	    classDeclaration->inputClassId[0]->classId) {
+		func->returnId = *classDeclaration->inputClassId[0]->classId;
+	} else if (!funcInfo->body.nodes.empty()) {
+		auto *lastNode = static_cast<HasClassIdNode *>(funcInfo->body.nodes.back());
+		if (lastNode && lastNode->classId != DefaultClass::voidClassId) {
+			func->returnId = lastNode->classId;
+			if (classDeclaration->inputClassId.empty()) {
+				classDeclaration->inputClassId.push_back(nullptr);
+			}
+			if (classDeclaration->inputClassId[0] == nullptr) {
+				if (lastNode->classDeclaration) {
+					classDeclaration->inputClassId[0] = lastNode->classDeclaration;
+				} else {
+					auto retDecl = context.classDeclarationAllocator.push();
+					retDecl->classId = lastNode->classId;
+					retDecl->nullable = lastNode->isNullable();
+					retDecl->baseClassLexerStringId =
+					    context.createLexerStringIfNotExists(
+					        compile.classes[lastNode->classId]->getName(compile));
+					classDeclaration->inputClassId[0] = retDecl;
+				}
+			}
+		}
+	}
 	if (func->returnId != DefaultClass::voidClassId) {
 	}
 	// std::cerr<<funcId<<"\n";
@@ -105,7 +133,9 @@ void CreateClosureNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	for (auto obj : objects) {
 		switch (obj->kind) {
 			case NodeType::VAR: {
-				static_cast<VarNode *>(obj)->isStore = false;
+				auto vn = static_cast<VarNode *>(obj);
+				vn->isStore = false;
+				vn->isCaptureRawBox = true;
 				break;
 			}
 			case NodeType::GET_PROP: {
@@ -181,12 +211,20 @@ void CreateClosureNode::inferFrom(in_func, ClassDeclaration *from) {
 	for (int i = 0; i < classDeclaration->inputClassId.size(); ++i) {
 		auto fromClass = classDeclaration->inputClassId[i];
 		auto toClass = from->inputClassId[i];
-		if (fromClass) {
+		if (toClass && !toClass->classId) {
+			toClass->template load<true>(in_data);
+		}
+		if (fromClass && !fromClass->classId) {
+			fromClass->template load<true>(in_data);
+		}
+		if (fromClass && toClass) {
+			if (fromClass->classId && toClass->classId && *fromClass->classId == *toClass->classId) {
+				continue;
+			}
 			if (!fromClass->isSame(toClass)) {
 				if (i == 0) {
 					if (canCast(in_data, fromClass, toClass)) {
-						classDeclaration->inputClassId[0] =
-						    toClass->inputClassId[0];
+						classDeclaration->inputClassId[0] = toClass;
 						continue;
 					}
 					throwError("Cannot cast '" + fromClass->getName(in_data) +
@@ -197,7 +235,7 @@ void CreateClosureNode::inferFrom(in_func, ClassDeclaration *from) {
 				    parameter
 				        ->parameters[parameter->parameters.size() + i -
  				                     classDeclaration->inputClassId.size()];
-				throwError("Parameter '" + currentParameter->name +
+				throwError(std::string("Parameter '") + std::string(currentParameter->name) +
 				           "' expected type '" + toClass->getName(in_data) +
 				           "' but '" + fromClass->getName(in_data) +
 				           "' found\nHint: Align the parameter type in the closure with the expected parameter type of the target signature.");
@@ -266,6 +304,44 @@ ExprNode *CreateClosureNode::copy(in_func) {
 	}
 	context.allClosureNode.push_back(newNode);
 	return newNode;
+}
+
+bool CreateClosureNode::tryInferReturnType(in_func, ClassDeclaration *expectedFuncType) {
+	if (!classDeclaration || classDeclaration->inputClassId.empty()) return false;
+	if (classDeclaration->inputClassId[0] && classDeclaration->inputClassId[0]->classId.has_value()) {
+		return true;
+	}
+	if (expectedFuncType && expectedFuncType->inputClassId.size() == classDeclaration->inputClassId.size()) {
+		for (size_t p = 0; p < parameter->parameters.size(); ++p) {
+			auto *param = parameter->parameters[p];
+			if (!param) continue;
+			if (!param->classDeclaration || !param->classDeclaration->classId.has_value()) {
+				if (p + 1 < expectedFuncType->inputClassId.size()) {
+					auto *expectedParamType = expectedFuncType->inputClassId[p + 1];
+					if (expectedParamType && expectedParamType->classId.has_value()) {
+						param->classDeclaration = expectedParamType;
+						param->classId = *expectedParamType->classId;
+						param->nullable = expectedParamType->nullable;
+						if (p + 1 < classDeclaration->inputClassId.size()) {
+							classDeclaration->inputClassId[p + 1] = expectedParamType;
+						}
+					}
+				}
+			}
+		}
+	}
+	for (auto *param : parameter->parameters) {
+		if (!param) return false;
+		if (!param->classDeclaration) return false;
+		if (!param->classDeclaration->classId.has_value()) {
+			param->classDeclaration->template load<false>(in_data);
+			if (!param->classDeclaration->classId.has_value()) return false;
+		}
+		param->classId = *param->classDeclaration->classId;
+	}
+	mustInfer = false;
+	this->optimize(in_data);
+	return classDeclaration->inputClassId[0] && classDeclaration->inputClassId[0]->classId.has_value();
 }
 
 } // namespace Autolang

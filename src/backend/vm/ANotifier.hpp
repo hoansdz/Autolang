@@ -57,6 +57,14 @@ class ANotifier {
 		obj->type = classId;
 		return obj;
 	}
+	[[nodiscard]] inline AObject *createBox(AObject *val) {
+		auto obj = vm->data.manager.getEmptyObject();
+		obj->flags = AObject::Flags::OBJ_IS_BOX;
+		obj->type = DefaultClass::anyClassId;
+		obj->boxedValue = val;
+		if (val) val->retain();
+		return obj;
+	}
 	[[nodiscard]] inline AObject *createBytes(uint32_t size) {
 		return vm->data.manager.getBytes(size);
 	}

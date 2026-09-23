@@ -207,12 +207,25 @@ ExprNode *UnaryNode::optimize(in_func) {
 					classId = DefaultClass::floatClassId;
 					return this;
 				}
-				default:
+				default: {
+					auto callerClassInfo = context.classInfo[value->classId];
+					if (callerClassInfo &&
+					    callerClassInfo->allFunction.find(lexerIdunaryPlus) !=
+					        callerClassInfo->allFunction.end()) {
+						auto *callNode = context.callNodePool.push(
+						    line, 0, value->classId, value, lexerIdunaryPlus,
+						    std::vector<HasClassIdNode *>{}, false,
+						    value->isNullable(), false);
+						value = nullptr;
+						callNode->resolve(in_data);
+						return callNode->optimize(in_data);
+					}
 					throwError(
 					    "Cannot convert type '" +
 					    compile.classes[value->classId]->getName(compile) +
 					    "' to numeric type\nHint: Unary '+' operator requires "
-					    "operand of type Int, Float, or Bool.");
+					    "operand of type Int, Float, or Bool, or an 'operator fun unaryPlus()' method.");
+				}
 			}
 		}
 		case Lexer::TokenType::MINUS: {
@@ -226,12 +239,25 @@ ExprNode *UnaryNode::optimize(in_func) {
 					classId = DefaultClass::floatClassId;
 					return this;
 				}
-				default:
+				default: {
+					auto callerClassInfo = context.classInfo[value->classId];
+					if (callerClassInfo &&
+					    callerClassInfo->allFunction.find(lexerIdunaryMinus) !=
+					        callerClassInfo->allFunction.end()) {
+						auto *callNode = context.callNodePool.push(
+						    line, 0, value->classId, value, lexerIdunaryMinus,
+						    std::vector<HasClassIdNode *>{}, false,
+						    value->isNullable(), false);
+						value = nullptr;
+						callNode->resolve(in_data);
+						return callNode->optimize(in_data);
+					}
 					throwError(
 					    "Cannot convert type '" +
 					    compile.classes[value->classId]->getName(compile) +
 					    "' to numeric type\nHint: Unary '-' operator requires "
-					    "operand of type Int, Float, or Bool.");
+					    "operand of type Int, Float, or Bool, or an 'operator fun unaryMinus()' method.");
+				}
 			}
 		}
 		case Lexer::TokenType::NOT: {
@@ -239,10 +265,22 @@ ExprNode *UnaryNode::optimize(in_func) {
 				classId = DefaultClass::boolClassId;
 				return this;
 			}
+			auto callerClassInfo = context.classInfo[value->classId];
+			if (callerClassInfo &&
+			    callerClassInfo->allFunction.find(lexerIdnot) !=
+			        callerClassInfo->allFunction.end()) {
+				auto *callNode = context.callNodePool.push(
+				    line, 0, value->classId, value, lexerIdnot,
+				    std::vector<HasClassIdNode *>{}, false,
+				    value->isNullable(), false);
+				value = nullptr;
+				callNode->resolve(in_data);
+				return callNode->optimize(in_data);
+			}
 			throwError("Cannot convert type '" +
 			           compile.classes[value->classId]->getName(compile) +
 			           "' to Bool\nHint: Logical NOT '!' operator requires a "
-			           "Bool operand.");
+			           "Bool operand, or an 'operator fun not()' method.");
 		}
 		case Lexer::TokenType::PLUS_PLUS: {
 			switch (value->classId) {
@@ -298,6 +336,11 @@ void UnaryNode::putOptimizedBytecodes(in_func,
 	switch (value->kind) {
 		case NodeType::VAR: {
 			auto node = static_cast<VarNode *>(value);
+			if (node->declaration->isCapturedByClosure && !node->declaration->isGlobal) {
+				value->putBytecodes(in_data, bytecodes);
+				bytecodes.emplace_back(normal);
+				return;
+			}
 			if (node->declaration->isGlobal) {
 				bytecodes.emplace_back(global);
 				put_opcode_u32(bytecodes, node->declaration->id);

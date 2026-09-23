@@ -26,6 +26,12 @@ AObject *get_all_files(NativeFuncInData);
 AObject *get_name(NativeFuncInData);
 AObject *get_size(NativeFuncInData);
 AObject *get_last_modified(NativeFuncInData);
+AObject *read_bytes(NativeFuncInData);
+AObject *static_read_bytes(NativeFuncInData);
+AObject *write_bytes(NativeFuncInData);
+AObject *static_write_bytes(NativeFuncInData);
+AObject *copy_to(NativeFuncInData);
+AObject *copy_recursively(NativeFuncInData);
 
 
 } // namespace file
