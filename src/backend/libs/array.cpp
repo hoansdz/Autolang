@@ -11,7 +11,6 @@
 #include <limits>
 #include <string>
 #include <string_view>
-#include <unordered_set>
 #include "backend/libs/set.hpp"
 #include "backend/libs/map.hpp"
 
@@ -605,26 +604,39 @@ AObject *sort_default(NativeFuncInData) {
 		}
 		default: {
 			if (array->objData && array->size > 1 && array->objData[0]) {
-				if (array->objData[0]->type == DefaultClass::intClassId) {
-					std::stable_sort(array->objData, array->objData + array->size,
-					                 [](AObject *a, AObject *b) {
-						                 if (!a || !b) return a != nullptr;
-						                 return a->i < b->i;
-					                 });
-				} else if (array->objData[0]->type == DefaultClass::floatClassId) {
-					std::stable_sort(array->objData, array->objData + array->size,
-					                 [](AObject *a, AObject *b) {
-						                 if (!a || !b) return a != nullptr;
-						                 return a->f < b->f;
-					                 });
-				} else if (array->objData[0]->type == DefaultClass::stringClassId) {
-					std::stable_sort(array->objData, array->objData + array->size,
-					                 [](AObject *a, AObject *b) {
-						                 if (!a || !b) return a != nullptr;
-						                 auto sa = std::string_view(a->str->data, a->str->size);
-						                 auto sb = std::string_view(b->str->data, b->str->size);
-						                 return sa < sb;
-					                 });
+				switch (array->objData[0]->type) {
+					case DefaultClass::charClassId:
+						std::stable_sort(array->objData, array->objData + array->size,
+						                 [](AObject *a, AObject *b) {
+							                 if (!a || !b) return a != nullptr;
+							                 return a->chr < b->chr;
+						                 });
+						break;
+					case DefaultClass::intClassId:
+						std::stable_sort(array->objData, array->objData + array->size,
+						                 [](AObject *a, AObject *b) {
+							                 if (!a || !b) return a != nullptr;
+							                 return a->i < b->i;
+						                 });
+						break;
+					case DefaultClass::floatClassId:
+						std::stable_sort(array->objData, array->objData + array->size,
+						                 [](AObject *a, AObject *b) {
+							                 if (!a || !b) return a != nullptr;
+							                 return a->f < b->f;
+						                 });
+						break;
+					case DefaultClass::stringClassId:
+						std::stable_sort(array->objData, array->objData + array->size,
+						                 [](AObject *a, AObject *b) {
+							                 if (!a || !b) return a != nullptr;
+							                 auto sa = std::string_view(a->str->data, a->str->size);
+							                 auto sb = std::string_view(b->str->data, b->str->size);
+							                 return sa < sb;
+						                 });
+						break;
+					default:
+						break;
 				}
 			}
 			break;
@@ -672,6 +684,7 @@ AObject *slice(NativeFuncInData) {
 			break;
 		}
 		default: {
+			newArr->array->size = 0;
 			for (int64_t i = from; i < to; ++i) {
 				notifier.arrayAdd(newArr, array->objData[i]);
 			}
@@ -707,6 +720,7 @@ AObject *reversed(NativeFuncInData) {
 			break;
 		}
 		default: {
+			newArr->array->size = 0;
 			for (int64_t i = len - 1; i >= 0; --i) {
 				notifier.arrayAdd(newArr, array->objData[i]);
 			}
@@ -767,6 +781,15 @@ AObject *size(NativeFuncInData) {
 
 AObject *is_empty(NativeFuncInData) {
 	auto obj = args[0];
+	return notifier.createBool(obj->array->size == 0);
+}
+
+AObject *is_null_or_empty(NativeFuncInData) {
+	if (argSize == 0 || !args[0] || args[0]->type == DefaultClass::nullClassId) {
+		return notifier.createBool(true);
+	}
+	auto obj = args[0];
+	if (!obj->array) return notifier.createBool(true);
 	return notifier.createBool(obj->array->size == 0);
 }
 
@@ -1027,8 +1050,8 @@ AObject *join_to_string(NativeFuncInData) {
 		if (count > 0) result += separator;
 
 		auto item = getItem(notifier, array, i);
+		item->retain();
 		if (transform) {
-			item->retain();
 			auto transformed = notifier.callFunctionObject(transform, item);
 			notifier.release(item);
 			if (notifier.hasException()) return nullptr;
@@ -1096,26 +1119,39 @@ AObject *sorted(NativeFuncInData) {
 			break;
 		default: {
 			if (array->objData && array->size > 1 && array->objData[0]) {
-				if (array->objData[0]->type == DefaultClass::intClassId) {
-					std::stable_sort(array->objData, array->objData + array->size,
-					                 [](AObject *a, AObject *b) {
-						                 if (!a || !b) return a != nullptr;
-						                 return a->i < b->i;
-					                 });
-				} else if (array->objData[0]->type == DefaultClass::floatClassId) {
-					std::stable_sort(array->objData, array->objData + array->size,
-					                 [](AObject *a, AObject *b) {
-						                 if (!a || !b) return a != nullptr;
-						                 return a->f < b->f;
-					                 });
-				} else if (array->objData[0]->type == DefaultClass::stringClassId) {
-					std::stable_sort(array->objData, array->objData + array->size,
-					                 [](AObject *a, AObject *b) {
-						                 if (!a || !b) return a != nullptr;
-						                 auto sa = std::string_view(a->str->data, a->str->size);
-						                 auto sb = std::string_view(b->str->data, b->str->size);
-						                 return sa < sb;
-					                 });
+				switch (array->objData[0]->type) {
+					case DefaultClass::charClassId:
+						std::stable_sort(array->objData, array->objData + array->size,
+						                 [](AObject *a, AObject *b) {
+							                 if (!a || !b) return a != nullptr;
+							                 return a->chr > b->chr;
+						                 });
+						break;
+					case DefaultClass::intClassId:
+						std::stable_sort(array->objData, array->objData + array->size,
+						                 [](AObject *a, AObject *b) {
+							                 if (!a || !b) return a != nullptr;
+							                 return a->i > b->i;
+						                 });
+						break;
+					case DefaultClass::floatClassId:
+						std::stable_sort(array->objData, array->objData + array->size,
+						                 [](AObject *a, AObject *b) {
+							                 if (!a || !b) return a != nullptr;
+							                 return a->f > b->f;
+						                 });
+						break;
+					case DefaultClass::stringClassId:
+						std::stable_sort(array->objData, array->objData + array->size,
+						                 [](AObject *a, AObject *b) {
+							                 if (!a || !b) return a != nullptr;
+							                 auto sa = std::string_view(a->str->data, a->str->size);
+							                 auto sb = std::string_view(b->str->data, b->str->size);
+							                 return sa > sb;
+						                 });
+						break;
+					default:
+						break;
 				}
 			}
 			break;
@@ -1608,12 +1644,21 @@ AObject *sum(NativeFuncInData) {
 	for (size_t i = 0; i < array->size; ++i) {
 		AObject *item = getItem(notifier, array, i);
 		if (!item) continue;
-		if (item->type == DefaultClass::floatClassId) {
-			hasFloat = true;
-			floatSum += item->f;
-		} else if (item->type == DefaultClass::intClassId) {
-			intSum += item->i;
-			floatSum += static_cast<double>(item->i);
+		switch (item->type) {
+			case DefaultClass::floatClassId:
+				hasFloat = true;
+				floatSum += item->f;
+				break;
+			case DefaultClass::intClassId:
+				intSum += item->i;
+				floatSum += static_cast<double>(item->i);
+				break;
+			case DefaultClass::charClassId:
+				intSum += static_cast<int64_t>(item->chr);
+				floatSum += static_cast<double>(item->chr);
+				break;
+			default:
+				break;
 		}
 	}
 	if (hasFloat) {
@@ -1648,21 +1693,36 @@ AObject *average(NativeFuncInData) {
 	auto array = arr->array;
 	if (array->size == 0) return notifier.createFloat(0.0);
 	double sum = 0.0;
-	if (array->key == DefaultClass::intClassId) {
-		for (size_t i = 0; i < array->size; ++i) {
-			sum += static_cast<double>(array->intData[i]);
-		}
-	} else if (array->key == DefaultClass::floatClassId) {
-		for (size_t i = 0; i < array->size; ++i) {
-			sum += array->floatData[i];
-		}
-	} else {
-		for (size_t i = 0; i < array->size; ++i) {
-			AObject *item = getItem(notifier, array, i);
-			if (!item) continue;
-			if (item->type == DefaultClass::floatClassId) sum += item->f;
-			else if (item->type == DefaultClass::intClassId) sum += static_cast<double>(item->i);
-		}
+	switch (array->key) {
+		case DefaultClass::intClassId:
+			for (size_t i = 0; i < array->size; ++i) {
+				sum += static_cast<double>(array->intData[i]);
+			}
+			break;
+		case DefaultClass::floatClassId:
+			for (size_t i = 0; i < array->size; ++i) {
+				sum += array->floatData[i];
+			}
+			break;
+		default:
+			for (size_t i = 0; i < array->size; ++i) {
+				AObject *item = getItem(notifier, array, i);
+				if (!item) continue;
+				switch (item->type) {
+					case DefaultClass::floatClassId:
+						sum += item->f;
+						break;
+					case DefaultClass::intClassId:
+						sum += static_cast<double>(item->i);
+						break;
+					case DefaultClass::charClassId:
+						sum += static_cast<double>(item->chr);
+						break;
+					default:
+						break;
+				}
+			}
+			break;
 	}
 	return notifier.createFloat(sum / static_cast<double>(array->size));
 }
@@ -1673,39 +1733,52 @@ AObject *max_or_null(NativeFuncInData) {
 	if (array->size == 0) return notifier.createNull();
 
 	size_t bestIdx = 0;
-	if (array->key == DefaultClass::intClassId) {
-		int64_t maxVal = array->intData[0];
-		for (size_t i = 1; i < array->size; ++i) {
-			if (array->intData[i] > maxVal) {
-				maxVal = array->intData[i];
-				bestIdx = i;
-			}
-		}
-		return notifier.createInt(maxVal);
-	} else if (array->key == DefaultClass::floatClassId) {
-		double maxVal = array->floatData[0];
-		for (size_t i = 1; i < array->size; ++i) {
-			if (array->floatData[i] > maxVal) {
-				maxVal = array->floatData[i];
-				bestIdx = i;
-			}
-		}
-		return notifier.createFloat(maxVal);
-	} else {
-		for (size_t i = 1; i < array->size; ++i) {
-			AObject *best = getItem(notifier, array, bestIdx);
-			AObject *cur = getItem(notifier, array, i);
-			if (cur && best) {
-				if (cur->type == DefaultClass::intClassId && best->type == DefaultClass::intClassId) {
-					if (cur->i > best->i) bestIdx = i;
-				} else if (cur->type == DefaultClass::floatClassId && best->type == DefaultClass::floatClassId) {
-					if (cur->f > best->f) bestIdx = i;
-				} else if (cur->type == DefaultClass::stringClassId && best->type == DefaultClass::stringClassId) {
-					if (std::string_view(cur->str->data, cur->str->size) > std::string_view(best->str->data, best->str->size)) bestIdx = i;
+	switch (array->key) {
+		case DefaultClass::intClassId: {
+			int64_t maxVal = array->intData[0];
+			for (size_t i = 1; i < array->size; ++i) {
+				if (array->intData[i] > maxVal) {
+					maxVal = array->intData[i];
+					bestIdx = i;
 				}
 			}
+			return notifier.createInt(maxVal);
 		}
-		return returnArrayItem(notifier, array, bestIdx);
+		case DefaultClass::floatClassId: {
+			double maxVal = array->floatData[0];
+			for (size_t i = 1; i < array->size; ++i) {
+				if (array->floatData[i] > maxVal) {
+					maxVal = array->floatData[i];
+					bestIdx = i;
+				}
+			}
+			return notifier.createFloat(maxVal);
+		}
+		default: {
+			for (size_t i = 1; i < array->size; ++i) {
+				AObject *best = getItem(notifier, array, bestIdx);
+				AObject *cur = getItem(notifier, array, i);
+				if (cur && best && cur->type == best->type) {
+					switch (cur->type) {
+						case DefaultClass::charClassId:
+							if (cur->chr > best->chr) bestIdx = i;
+							break;
+						case DefaultClass::intClassId:
+							if (cur->i > best->i) bestIdx = i;
+							break;
+						case DefaultClass::floatClassId:
+							if (cur->f > best->f) bestIdx = i;
+							break;
+						case DefaultClass::stringClassId:
+							if (std::string_view(cur->str->data, cur->str->size) > std::string_view(best->str->data, best->str->size)) bestIdx = i;
+							break;
+						default:
+							break;
+					}
+				}
+			}
+			return returnArrayItem(notifier, array, bestIdx);
+		}
 	}
 }
 
@@ -1715,39 +1788,52 @@ AObject *min_or_null(NativeFuncInData) {
 	if (array->size == 0) return notifier.createNull();
 
 	size_t bestIdx = 0;
-	if (array->key == DefaultClass::intClassId) {
-		int64_t minVal = array->intData[0];
-		for (size_t i = 1; i < array->size; ++i) {
-			if (array->intData[i] < minVal) {
-				minVal = array->intData[i];
-				bestIdx = i;
-			}
-		}
-		return notifier.createInt(minVal);
-	} else if (array->key == DefaultClass::floatClassId) {
-		double minVal = array->floatData[0];
-		for (size_t i = 1; i < array->size; ++i) {
-			if (array->floatData[i] < minVal) {
-				minVal = array->floatData[i];
-				bestIdx = i;
-			}
-		}
-		return notifier.createFloat(minVal);
-	} else {
-		for (size_t i = 1; i < array->size; ++i) {
-			AObject *best = getItem(notifier, array, bestIdx);
-			AObject *cur = getItem(notifier, array, i);
-			if (cur && best) {
-				if (cur->type == DefaultClass::intClassId && best->type == DefaultClass::intClassId) {
-					if (cur->i < best->i) bestIdx = i;
-				} else if (cur->type == DefaultClass::floatClassId && best->type == DefaultClass::floatClassId) {
-					if (cur->f < best->f) bestIdx = i;
-				} else if (cur->type == DefaultClass::stringClassId && best->type == DefaultClass::stringClassId) {
-					if (std::string_view(cur->str->data, cur->str->size) < std::string_view(best->str->data, best->str->size)) bestIdx = i;
+	switch (array->key) {
+		case DefaultClass::intClassId: {
+			int64_t minVal = array->intData[0];
+			for (size_t i = 1; i < array->size; ++i) {
+				if (array->intData[i] < minVal) {
+					minVal = array->intData[i];
+					bestIdx = i;
 				}
 			}
+			return notifier.createInt(minVal);
 		}
-		return returnArrayItem(notifier, array, bestIdx);
+		case DefaultClass::floatClassId: {
+			double minVal = array->floatData[0];
+			for (size_t i = 1; i < array->size; ++i) {
+				if (array->floatData[i] < minVal) {
+					minVal = array->floatData[i];
+					bestIdx = i;
+				}
+			}
+			return notifier.createFloat(minVal);
+		}
+		default: {
+			for (size_t i = 1; i < array->size; ++i) {
+				AObject *best = getItem(notifier, array, bestIdx);
+				AObject *cur = getItem(notifier, array, i);
+				if (cur && best && cur->type == best->type) {
+					switch (cur->type) {
+						case DefaultClass::charClassId:
+							if (cur->chr < best->chr) bestIdx = i;
+							break;
+						case DefaultClass::intClassId:
+							if (cur->i < best->i) bestIdx = i;
+							break;
+						case DefaultClass::floatClassId:
+							if (cur->f < best->f) bestIdx = i;
+							break;
+						case DefaultClass::stringClassId:
+							if (std::string_view(cur->str->data, cur->str->size) < std::string_view(best->str->data, best->str->size)) bestIdx = i;
+							break;
+						default:
+							break;
+					}
+				}
+			}
+			return returnArrayItem(notifier, array, bestIdx);
+		}
 	}
 }
 
@@ -1775,6 +1861,7 @@ AObject *plus(NativeFuncInData) {
 				newArr->array->size = totalLen;
 				break;
 			default:
+				newArr->array->size = 0;
 				for (size_t i = 0; i < len1; ++i) {
 					notifier.arrayAdd(newArr, a1->objData[i]);
 				}
@@ -1799,6 +1886,7 @@ AObject *plus(NativeFuncInData) {
 				newArr->array->size = len1 + 1;
 				break;
 			default:
+				newArr->array->size = 0;
 				for (size_t i = 0; i < len1; ++i) {
 					notifier.arrayAdd(newArr, a1->objData[i]);
 				}
@@ -1819,7 +1907,7 @@ AObject *minus(NativeFuncInData) {
 		auto a2 = arg2->array;
 		switch (a1->key) {
 			case DefaultClass::intClassId: {
-				std::unordered_set<int64_t> s2(a2->intData, a2->intData + a2->size);
+				HashSet<int64_t> s2(a2->intData, a2->intData + a2->size);
 				for (size_t i = 0; i < a1->size; ++i) {
 					if (s2.find(a1->intData[i]) == s2.end()) {
 						notifier.arrayAdd(newArr, notifier.createInt(a1->intData[i]));
@@ -1828,7 +1916,7 @@ AObject *minus(NativeFuncInData) {
 				break;
 			}
 			case DefaultClass::floatClassId: {
-				std::unordered_set<double> s2(a2->floatData, a2->floatData + a2->size);
+				HashSet<double> s2(a2->floatData, a2->floatData + a2->size);
 				for (size_t i = 0; i < a1->size; ++i) {
 					if (s2.find(a1->floatData[i]) == s2.end()) {
 						notifier.arrayAdd(newArr, notifier.createFloat(a1->floatData[i]));
@@ -1982,7 +2070,7 @@ AObject *distinct(NativeFuncInData) {
 
 	switch (array->key) {
 		case DefaultClass::intClassId: {
-			std::unordered_set<int64_t> seen;
+			HashSet<int64_t> seen;
 			for (size_t i = 0; i < array->size; ++i) {
 				if (seen.insert(array->intData[i]).second) {
 					notifier.arrayAdd(newArr, notifier.createInt(array->intData[i]));
@@ -1991,7 +2079,7 @@ AObject *distinct(NativeFuncInData) {
 			break;
 		}
 		case DefaultClass::floatClassId: {
-			std::unordered_set<double> seen;
+			HashSet<double> seen;
 			for (size_t i = 0; i < array->size; ++i) {
 				if (seen.insert(array->floatData[i]).second) {
 					notifier.arrayAdd(newArr, notifier.createFloat(array->floatData[i]));
@@ -2169,12 +2257,17 @@ AObject *sum_of(NativeFuncInData) {
 			return nullptr;
 		}
 		if (res) {
-			if (res->type == DefaultClass::floatClassId) {
+			switch (res->type) {
+			case DefaultClass::floatClassId:
 				hasFloat = true;
 				totalFloat += res->f;
-			} else if (res->type == DefaultClass::intClassId) {
+				break;
+			case DefaultClass::intClassId:
 				totalInt += res->i;
 				totalFloat += static_cast<double>(res->i);
+				break;
+			default:
+				break;
 			}
 			notifier.release(res);
 		}
@@ -2236,26 +2329,39 @@ AObject *sorted_descending(NativeFuncInData) {
 			break;
 		default: {
 			if (array->objData && array->size > 1 && array->objData[0]) {
-				if (array->objData[0]->type == DefaultClass::intClassId) {
-					std::stable_sort(array->objData, array->objData + array->size,
-					                 [](AObject *a, AObject *b) {
-						                 if (!a || !b) return b != nullptr;
-						                 return a->i > b->i;
-					                 });
-				} else if (array->objData[0]->type == DefaultClass::floatClassId) {
-					std::stable_sort(array->objData, array->objData + array->size,
-					                 [](AObject *a, AObject *b) {
-						                 if (!a || !b) return b != nullptr;
-						                 return a->f > b->f;
-					                 });
-				} else if (array->objData[0]->type == DefaultClass::stringClassId) {
-					std::stable_sort(array->objData, array->objData + array->size,
-					                 [](AObject *a, AObject *b) {
-						                 if (!a || !b) return b != nullptr;
-						                 auto sa = std::string_view(a->str->data, a->str->size);
-						                 auto sb = std::string_view(b->str->data, b->str->size);
-						                 return sa > sb;
-					                 });
+				switch (array->objData[0]->type) {
+					case DefaultClass::charClassId:
+						std::stable_sort(array->objData, array->objData + array->size,
+						                 [](AObject *a, AObject *b) {
+							                 if (!a || !b) return b != nullptr;
+							                 return a->chr > b->chr;
+						                 });
+						break;
+					case DefaultClass::intClassId:
+						std::stable_sort(array->objData, array->objData + array->size,
+						                 [](AObject *a, AObject *b) {
+							                 if (!a || !b) return b != nullptr;
+							                 return a->i > b->i;
+						                 });
+						break;
+					case DefaultClass::floatClassId:
+						std::stable_sort(array->objData, array->objData + array->size,
+						                 [](AObject *a, AObject *b) {
+							                 if (!a || !b) return b != nullptr;
+							                 return a->f > b->f;
+						                 });
+						break;
+					case DefaultClass::stringClassId:
+						std::stable_sort(array->objData, array->objData + array->size,
+						                 [](AObject *a, AObject *b) {
+							                 if (!a || !b) return b != nullptr;
+							                 auto sa = std::string_view(a->str->data, a->str->size);
+							                 auto sb = std::string_view(b->str->data, b->str->size);
+							                 return sa > sb;
+						                 });
+						break;
+					default:
+						break;
 				}
 			}
 			break;
@@ -2321,8 +2427,24 @@ inline int compareAnyObjects(ANotifier &notifier, AObject *a, AObject *b) {
 	if (!a || a == DefaultClass::nullObject) return -1;
 	if (!b || b == DefaultClass::nullObject) return 1;
 
-	if (a->type == DefaultClass::intClassId && b->type == DefaultClass::intClassId) {
-		return (a->i < b->i) ? -1 : ((a->i > b->i) ? 1 : 0);
+	if (a->type == b->type) {
+		switch (a->type) {
+			case DefaultClass::charClassId:
+				return (a->chr < b->chr) ? -1 : ((a->chr > b->chr) ? 1 : 0);
+			case DefaultClass::intClassId:
+				return (a->i < b->i) ? -1 : ((a->i > b->i) ? 1 : 0);
+			case DefaultClass::floatClassId:
+				return (a->f < b->f) ? -1 : ((a->f > b->f) ? 1 : 0);
+			case DefaultClass::stringClassId: {
+				std::string_view sa(a->str->data, a->str->size);
+				std::string_view sb(b->str->data, b->str->size);
+				return (sa < sb) ? -1 : ((sa > sb) ? 1 : 0);
+			}
+			case DefaultClass::boolClassId:
+				return (a->b < b->b) ? -1 : ((a->b > b->b) ? 1 : 0);
+			default:
+				break;
+		}
 	}
 	if ((a->type == DefaultClass::intClassId || a->type == DefaultClass::floatClassId) &&
 	    (b->type == DefaultClass::intClassId || b->type == DefaultClass::floatClassId)) {
@@ -2330,20 +2452,38 @@ inline int compareAnyObjects(ANotifier &notifier, AObject *a, AObject *b) {
 		double fb = (b->type == DefaultClass::intClassId) ? static_cast<double>(b->i) : b->f;
 		return (fa < fb) ? -1 : ((fa > fb) ? 1 : 0);
 	}
-	if (a->type == DefaultClass::stringClassId && b->type == DefaultClass::stringClassId) {
-		std::string_view sa(a->str->data, a->str->size);
-		std::string_view sb(b->str->data, b->str->size);
-		return (sa < sb) ? -1 : ((sa > sb) ? 1 : 0);
-	}
-	if (a->type == DefaultClass::boolClassId && b->type == DefaultClass::boolClassId) {
-		return (a->b < b->b) ? -1 : ((a->b > b->b) ? 1 : 0);
-	}
 	std::string sa = DefaultFunction::to_string(notifier, a);
 	std::string sb = DefaultFunction::to_string(notifier, b);
 	return (sa < sb) ? -1 : ((sa > sb) ? 1 : 0);
 }
 
-static std::unordered_map<AArray *, std::vector<double>> lastSortScores;
+static inline double getNumericScore(AObject *res) {
+	if (!res) return 0.0;
+	switch (res->type) {
+		case DefaultClass::charClassId:
+			return static_cast<double>(res->chr);
+		case DefaultClass::intClassId:
+			return static_cast<double>(res->i);
+		case DefaultClass::floatClassId:
+			return res->f;
+		default:
+			return 0.0;
+	}
+}
+
+static inline bool isNegativeResult(AObject *res) {
+	if (!res) return false;
+	switch (res->type) {
+		case DefaultClass::intClassId:
+			return res->i < 0;
+		case DefaultClass::floatClassId:
+			return res->f < 0;
+		default:
+			return false;
+	}
+}
+
+static HashMap<AArray *, std::vector<double>> lastSortScores;
 
 AObject *sorted_by(NativeFuncInData) {
 	auto arr = args[0];
@@ -2372,9 +2512,11 @@ AObject *sorted_by(NativeFuncInData) {
 	if (lastSortScores.size() > 256) lastSortScores.clear();
 	std::vector<double> finalScores(array->size);
 	for (size_t i = 0; i < scored.size(); ++i) {
-		if (scored[i].first->type == DefaultClass::intClassId) finalScores[i] = static_cast<double>(scored[i].first->i);
-		else if (scored[i].first->type == DefaultClass::floatClassId) finalScores[i] = scored[i].first->f;
-		else finalScores[i] = static_cast<double>(i);
+		if (scored[i].first->type == DefaultClass::intClassId || scored[i].first->type == DefaultClass::floatClassId || scored[i].first->type == DefaultClass::charClassId) {
+			finalScores[i] = getNumericScore(scored[i].first);
+		} else {
+			finalScores[i] = static_cast<double>(i);
+		}
 		notifier.release(scored[i].first);
 		auto item = getItem(notifier, array, scored[i].second);
 		notifier.arrayAdd(newArr, item);
@@ -2411,9 +2553,11 @@ AObject *sorted_by_descending(NativeFuncInData) {
 	if (lastSortScores.size() > 256) lastSortScores.clear();
 	std::vector<double> finalScores(array->size);
 	for (size_t i = 0; i < scored.size(); ++i) {
-		if (scored[i].first->type == DefaultClass::intClassId) finalScores[i] = static_cast<double>(scored[i].first->i);
-		else if (scored[i].first->type == DefaultClass::floatClassId) finalScores[i] = scored[i].first->f;
-		else finalScores[i] = static_cast<double>(i);
+		if (scored[i].first->type == DefaultClass::intClassId || scored[i].first->type == DefaultClass::floatClassId || scored[i].first->type == DefaultClass::charClassId) {
+			finalScores[i] = getNumericScore(scored[i].first);
+		} else {
+			finalScores[i] = static_cast<double>(i);
+		}
 		notifier.release(scored[i].first);
 		auto item = getItem(notifier, array, scored[i].second);
 		notifier.arrayAdd(newArr, item);
@@ -2455,8 +2599,7 @@ AObject *then_by(NativeFuncInData) {
 		if (notifier.hasException()) return nullptr;
 		double score = 0.0;
 		if (res) {
-			if (res->type == DefaultClass::intClassId) score = static_cast<double>(res->i);
-			else if (res->type == DefaultClass::floatClassId) score = res->f;
+			score = getNumericScore(res);
 			notifier.release(res);
 		}
 		items[i] = {prevScores[i], score, i};
@@ -2513,8 +2656,7 @@ AObject *then_by_descending(NativeFuncInData) {
 		if (notifier.hasException()) return nullptr;
 		double score = 0.0;
 		if (res) {
-			if (res->type == DefaultClass::intClassId) score = static_cast<double>(res->i);
-			else if (res->type == DefaultClass::floatClassId) score = res->f;
+			score = getNumericScore(res);
 			notifier.release(res);
 		}
 		items[i] = {prevScores[i], score, i};
@@ -2587,8 +2729,7 @@ AObject *sorted_with(NativeFuncInData) {
 				}
 				double scoreA = 0.0;
 				if (resA) {
-					if (resA->type == DefaultClass::intClassId) scoreA = static_cast<double>(resA->i);
-					else if (resA->type == DefaultClass::floatClassId) scoreA = resA->f;
+					scoreA = getNumericScore(resA);
 					notifier.release(resA);
 				}
 
@@ -2602,8 +2743,7 @@ AObject *sorted_with(NativeFuncInData) {
 				}
 				double scoreB = 0.0;
 				if (resB) {
-					if (resB->type == DefaultClass::intClassId) scoreB = static_cast<double>(resB->i);
-					else if (resB->type == DefaultClass::floatClassId) scoreB = resB->f;
+					scoreB = getNumericScore(resB);
 					notifier.release(resB);
 				}
 
@@ -2635,8 +2775,7 @@ AObject *sorted_with(NativeFuncInData) {
 			}
 			bool less = false;
 			if (res) {
-				if (res->type == DefaultClass::intClassId) less = res->i < 0;
-				else if (res->type == DefaultClass::floatClassId) less = res->f < 0;
+				less = isNegativeResult(res);
 				notifier.release(res);
 			}
 			return less;
@@ -2697,8 +2836,7 @@ AObject *sort_with(NativeFuncInData) {
 				}
 				double scoreA = 0.0;
 				if (resA) {
-					if (resA->type == DefaultClass::intClassId) scoreA = static_cast<double>(resA->i);
-					else if (resA->type == DefaultClass::floatClassId) scoreA = resA->f;
+					scoreA = getNumericScore(resA);
 					notifier.release(resA);
 				}
 
@@ -2712,8 +2850,7 @@ AObject *sort_with(NativeFuncInData) {
 				}
 				double scoreB = 0.0;
 				if (resB) {
-					if (resB->type == DefaultClass::intClassId) scoreB = static_cast<double>(resB->i);
-					else if (resB->type == DefaultClass::floatClassId) scoreB = resB->f;
+					scoreB = getNumericScore(resB);
 					notifier.release(resB);
 				}
 
@@ -2745,8 +2882,7 @@ AObject *sort_with(NativeFuncInData) {
 			}
 			bool less = false;
 			if (res) {
-				if (res->type == DefaultClass::intClassId) less = res->i < 0;
-				else if (res->type == DefaultClass::floatClassId) less = res->f < 0;
+				less = isNegativeResult(res);
 				notifier.release(res);
 			}
 			return less;
@@ -2863,9 +2999,9 @@ AObject *distinct_by(NativeFuncInData) {
 	auto newArr = notifier.createArray(returnId, elemKey);
 	if (array->size == 0) return newArr;
 
-	std::unordered_set<std::string> seenStrings;
-	std::unordered_set<int64_t> seenInts;
-	std::unordered_set<double> seenFloats;
+	HashSet<std::string> seenStrings;
+	HashSet<int64_t> seenInts;
+	HashSet<double> seenFloats;
 
 	for (size_t i = 0; i < array->size; ++i) {
 		auto item = getItem(notifier, array, i);
@@ -2877,14 +3013,22 @@ AObject *distinct_by(NativeFuncInData) {
 		}
 		bool alreadySeen = false;
 		if (k) {
-			if (k->type == DefaultClass::intClassId) {
-				alreadySeen = !seenInts.insert(k->i).second;
-			} else if (k->type == DefaultClass::floatClassId) {
-				alreadySeen = !seenFloats.insert(k->f).second;
-			} else if (k->type == DefaultClass::stringClassId) {
-				alreadySeen = !seenStrings.insert(std::string(k->str->data, k->str->size)).second;
-			} else {
-				alreadySeen = !seenStrings.insert(DefaultFunction::to_string(notifier, k)).second;
+			switch (k->type) {
+				case DefaultClass::charClassId:
+					alreadySeen = !seenInts.insert(static_cast<int64_t>(k->chr)).second;
+					break;
+				case DefaultClass::intClassId:
+					alreadySeen = !seenInts.insert(k->i).second;
+					break;
+				case DefaultClass::floatClassId:
+					alreadySeen = !seenFloats.insert(k->f).second;
+					break;
+				case DefaultClass::stringClassId:
+					alreadySeen = !seenStrings.insert(std::string(k->str->data, k->str->size)).second;
+					break;
+				default:
+					alreadySeen = !seenStrings.insert(DefaultFunction::to_string(notifier, k)).second;
+					break;
 			}
 			notifier.release(k);
 		}
@@ -3271,24 +3415,131 @@ AObject *zip(NativeFuncInData) {
 		item2->retain();
 		pairObj->member->data[1] = item2;
 		notifier.arrayAdd(newArr, pairObj);
-		notifier.release(item1);
-		notifier.release(item2);
-		notifier.release(pairObj);
 	}
 	return newArr;
 }
 
-static inline ClassId findPairClassId(ANotifier &notifier) {
-	for (ClassId c = 0; c < notifier.vm->data.classes.size(); ++c) {
-		auto clazz = notifier.vm->data.classes[c];
-		if (clazz) {
-			auto name = clazz->getName(notifier.vm->data);
-			if (name == "Pair" || name.rfind("Pair<", 0) == 0) {
-				return c;
-			}
-		}
+AObject *with_index(NativeFuncInData) {
+	auto arr = args[0];
+	auto array = arr->array;
+	ClassId itemClassId = (argSize >= 2 && args[1]->type == DefaultClass::intClassId)
+	    ? static_cast<ClassId>(args[1]->i)
+	    : getArrayGenericKey(notifier, notifier.callFrame->func->returnId);
+	ClassId returnId = notifier.callFrame->func->returnId;
+	auto newArr = notifier.createArray(returnId, itemClassId);
+	for (size_t i = 0; i < array->size; ++i) {
+		auto item = getItem(notifier, array, i);
+		auto idxObj = notifier.createInt(i);
+		idxObj->retain();
+		auto indexedObj = notifier.createMemberObject(itemClassId, 2);
+		indexedObj->member->data[0] = idxObj;
+		item->retain();
+		indexedObj->member->data[1] = item;
+		notifier.arrayAdd(newArr, indexedObj);
 	}
-	return DefaultClass::anyClassId;
+	return newArr;
+}
+
+AObject *zip_with_next(NativeFuncInData) {
+	auto arr = args[0];
+	auto array = arr->array;
+	ClassId pairClassId = (argSize >= 2 && args[1]->type == DefaultClass::intClassId)
+	    ? static_cast<ClassId>(args[1]->i)
+	    : getArrayGenericKey(notifier, notifier.callFrame->func->returnId);
+	ClassId returnId = notifier.callFrame->func->returnId;
+	auto newArr = notifier.createArray(returnId, pairClassId);
+	if (array->size < 2) return newArr;
+
+	for (size_t i = 0; i < array->size - 1; ++i) {
+		auto item1 = getItem(notifier, array, i);
+		auto item2 = getItem(notifier, array, i + 1);
+		auto pairObj = notifier.createMemberObject(pairClassId, 2);
+		item1->retain();
+		pairObj->member->data[0] = item1;
+		item2->retain();
+		pairObj->member->data[1] = item2;
+		notifier.arrayAdd(newArr, pairObj);
+	}
+	return newArr;
+}
+
+AObject *zip_with_next_transform(NativeFuncInData) {
+	auto arr = args[0];
+	auto func = args[1];
+	auto array = arr->array;
+	ClassId returnId = notifier.callFrame->func->returnId;
+	ClassId elemClassId = getArrayGenericKey(notifier, returnId);
+	auto newArr = notifier.createArray(returnId, elemClassId);
+	if (array->size < 2) return newArr;
+
+	for (size_t i = 0; i < array->size - 1; ++i) {
+		auto item1 = getItem(notifier, array, i);
+		auto item2 = getItem(notifier, array, i + 1);
+		auto res = notifier.callFunctionObject(func, item1, item2);
+		notifier.release(item1);
+		notifier.release(item2);
+		if (notifier.hasException()) return nullptr;
+		notifier.arrayAdd(newArr, res);
+		notifier.release(res);
+	}
+	return newArr;
+}
+
+AObject *running_fold(NativeFuncInData) {
+	auto arr = args[0];
+	auto initial = args[1];
+	auto func = args[2];
+	auto array = arr->array;
+	ClassId returnId = notifier.callFrame->func->returnId;
+	ClassId elemClassId = getArrayGenericKey(notifier, returnId);
+	auto newArr = notifier.createArray(returnId, elemClassId);
+	notifier.arrayAdd(newArr, initial);
+	AObject *acc = initial;
+	acc->retain();
+	for (size_t i = 0; i < array->size; ++i) {
+		auto item = getItem(notifier, array, i);
+		item->retain();
+		auto nextAcc = notifier.callFunctionObject(func, acc, item);
+		notifier.release(acc);
+		notifier.release(item);
+		if (notifier.hasException()) {
+			return nullptr;
+		}
+		notifier.arrayAdd(newArr, nextAcc);
+		acc = nextAcc;
+		acc->retain();
+	}
+	notifier.release(acc);
+	return newArr;
+}
+
+AObject *running_reduce(NativeFuncInData) {
+	auto arr = args[0];
+	auto func = args[1];
+	auto array = arr->array;
+	ClassId returnId = notifier.callFrame->func->returnId;
+	ClassId elemClassId = getArrayGenericKey(notifier, returnId);
+	auto newArr = notifier.createArray(returnId, elemClassId);
+	if (array->size == 0) return newArr;
+	auto first = getItem(notifier, array, 0);
+	notifier.arrayAdd(newArr, first);
+	AObject *acc = first;
+	acc->retain();
+	for (size_t i = 1; i < array->size; ++i) {
+		auto item = getItem(notifier, array, i);
+		item->retain();
+		auto nextAcc = notifier.callFunctionObject(func, acc, item);
+		notifier.release(acc);
+		notifier.release(item);
+		if (notifier.hasException()) {
+			return nullptr;
+		}
+		notifier.arrayAdd(newArr, nextAcc);
+		acc = nextAcc;
+		acc->retain();
+	}
+	notifier.release(acc);
+	return newArr;
 }
 
 AObject *unzip(NativeFuncInData) {
@@ -3301,8 +3552,10 @@ AObject *unzip(NativeFuncInData) {
 	ClassId secondArrId = (returnClazz && returnClazz->genericType.size > 1)
 	    ? notifier.vm->data.allGenericType[returnClazz->genericType.offset + 1] : arr->type;
 
-	auto firstArr = notifier.createArray(firstArrId, DefaultClass::anyClassId);
-	auto secondArr = notifier.createArray(secondArrId, DefaultClass::anyClassId);
+	ClassId firstElemKey = getArrayGenericKey(notifier, firstArrId);
+	ClassId secondElemKey = getArrayGenericKey(notifier, secondArrId);
+	auto firstArr = notifier.createArray(firstArrId, firstElemKey);
+	auto secondArr = notifier.createArray(secondArrId, secondElemKey);
 
 	for (size_t i = 0; i < array->size; ++i) {
 		auto pairObj = getItem(notifier, array, i);
@@ -3313,10 +3566,9 @@ AObject *unzip(NativeFuncInData) {
 		notifier.release(pairObj);
 	}
 
-	ClassId pairId = returnId;
-	if (pairId == DefaultClass::anyClassId) {
-		pairId = findPairClassId(notifier);
-	}
+	ClassId pairId = (argSize >= 2 && args[1]->type == DefaultClass::intClassId)
+	    ? static_cast<ClassId>(args[1]->i)
+	    : returnId;
 	auto pairResult = notifier.createMemberObject(pairId, 2);
 	firstArr->retain();
 	pairResult->member->data[0] = firstArr;
@@ -3351,14 +3603,11 @@ AObject *windowed(NativeFuncInData) {
 		if (winLen < static_cast<size_t>(size) && !partialWindows) {
 			break;
 		}
-		auto winArr = notifier.createArray(elemArrId, array->key);
-		for (size_t j = 0; j < winLen; ++j) {
-			auto item = getItem(notifier, array, i + j);
-			notifier.arrayAdd(winArr, item);
-			notifier.release(item);
-		}
+		AObject *fromObj = notifier.createInt(i);
+		AObject *toObj = notifier.createInt(i + winLen);
+		AObject *sliceArgs[3] = {arr, fromObj, toObj};
+		auto winArr = slice(notifier, sliceArgs, 3);
 		notifier.arrayAdd(resultArr, winArr);
-		notifier.release(winArr);
 	}
 	return resultArr;
 }
@@ -3395,9 +3644,6 @@ AObject *partition(NativeFuncInData) {
 	}
 
 	ClassId pairId = returnId;
-	if (pairId == DefaultClass::anyClassId) {
-		pairId = findPairClassId(notifier);
-	}
 	auto pairObj = notifier.createMemberObject(pairId, 2);
 	firstArr->retain();
 	pairObj->member->data[0] = firstArr;
@@ -3667,6 +3913,46 @@ AObject *indices(NativeFuncInData) {
 	return newArr;
 }
 
+AObject *step(NativeFuncInData) {
+	auto arr = args[0];
+	auto array = arr->array;
+	int64_t stp = args[1]->i;
+	if (stp <= 0) {
+		notifier.throwException("Step must be positive, was " + std::to_string(stp));
+		return nullptr;
+	}
+	int64_t len = static_cast<int64_t>(array->size);
+	if (len == 0) {
+		return notifier.createArray(arr->type, array->key);
+	}
+	int64_t count = (len + stp - 1) / stp;
+	auto newArr = notifier.createArray(arr->type, array->key, static_cast<uint32_t>(count));
+	switch (array->key) {
+		case DefaultClass::intClassId: {
+			for (int64_t i = 0, dst = 0; i < len; i += stp, ++dst) {
+				newArr->array->intData[dst] = array->intData[i];
+			}
+			newArr->array->size = count;
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			for (int64_t i = 0, dst = 0; i < len; i += stp, ++dst) {
+				newArr->array->floatData[dst] = array->floatData[i];
+			}
+			newArr->array->size = count;
+			break;
+		}
+		default: {
+			newArr->array->size = 0;
+			for (int64_t i = 0; i < len; i += stp) {
+				notifier.arrayAdd(newArr, array->objData[i]);
+			}
+			break;
+		}
+	}
+	return newArr;
+}
+
 AObject *on_each(NativeFuncInData) {
 	auto arr = args[0];
 	auto funcObject = args[1];
@@ -3696,6 +3982,427 @@ AObject *on_each_indexed(NativeFuncInData) {
 		if (notifier.hasException()) return nullptr;
 	}
 	return arr;
+}
+
+AObject *arr_new(NativeFuncInData) {
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
+	ClassId elemKey = DefaultClass::anyClassId;
+	if (returnId < notifier.vm->data.classes.size()) {
+		auto rClazz = notifier.vm->data.classes[returnId];
+		if (rClazz && rClazz->genericType.size > 0) {
+			elemKey = notifier.vm->data.allGenericType[rClazz->genericType.offset];
+		}
+	}
+	return notifier.createArray(returnId, elemKey);
+}
+
+AObject *max_of(NativeFuncInData) {
+	AObject *cArgs[2] = {args[0], args[1]};
+	auto mapped = map(notifier, cArgs, 2);
+	if (!mapped) return nullptr;
+	mapped->retain();
+	auto res = max_or_null(notifier, &mapped, 1);
+	notifier.release(mapped);
+	return res;
+}
+
+AObject *min_of(NativeFuncInData) {
+	AObject *cArgs[2] = {args[0], args[1]};
+	auto mapped = map(notifier, cArgs, 2);
+	if (!mapped) return nullptr;
+	mapped->retain();
+	auto res = min_or_null(notifier, &mapped, 1);
+	notifier.release(mapped);
+	return res;
+}
+
+AObject *zip_transform(NativeFuncInData) {
+	auto arr = args[0];
+	auto other = args[1];
+	auto transform = args[2];
+	auto array1 = arr->array;
+	auto array2 = other->array;
+	ClassId returnId = notifier.callFrame->func->returnId;
+	ClassId elemClassId = getArrayGenericKey(notifier, returnId);
+	auto newArr = notifier.createArray(returnId, elemClassId);
+	size_t minLen = std::min(array1->size, array2->size);
+	for (size_t i = 0; i < minLen; ++i) {
+		auto item1 = getItem(notifier, array1, i);
+		auto item2 = getItem(notifier, array2, i);
+		auto res = notifier.callFunctionObject(transform, item1, item2);
+		notifier.release(item1);
+		notifier.release(item2);
+		if (notifier.hasException()) return nullptr;
+		notifier.arrayAdd(newArr, res);
+		notifier.release(res);
+	}
+	return newArr;
+}
+
+AObject *chunked_transform(NativeFuncInData) {
+	auto arr = args[0];
+	auto array = arr->array;
+	int64_t chunkSize = args[1]->i;
+	auto transform = args[2];
+	ClassId returnId = notifier.callFrame->func->returnId;
+	ClassId elemClassId = getArrayGenericKey(notifier, returnId);
+	auto result = notifier.createArray(returnId, elemClassId);
+	if (chunkSize <= 0) {
+		notifier.throwException("Array.chunked: size must be greater than 0");
+		return nullptr;
+	}
+	int64_t sz = static_cast<int64_t>(array->size);
+	int64_t i = 0;
+	while (i < sz) {
+		int64_t end = std::min(i + chunkSize, sz);
+		AObject *fromObj = notifier.createInt(i);
+		AObject *toObj = notifier.createInt(end);
+		AObject *sliceArgs[3] = {arr, fromObj, toObj};
+		auto chunk = slice(notifier, sliceArgs, 3);
+		chunk->retain();
+		auto res = notifier.callFunctionObject(transform, chunk);
+		notifier.release(chunk);
+		if (notifier.hasException()) return nullptr;
+		notifier.arrayAdd(result, res);
+		notifier.release(res);
+		i = end;
+	}
+	return result;
+}
+
+AObject *windowed_transform(NativeFuncInData) {
+	auto arr = args[0];
+	auto array = arr->array;
+	int64_t size = args[1]->i;
+	int64_t step = (argSize >= 3 && args[2]->type == DefaultClass::intClassId) ? args[2]->i : 1;
+	bool partialWindows = (argSize >= 4 && args[3]->type == DefaultClass::boolClassId) ? args[3]->b : false;
+	auto transform = args[argSize - 1];
+
+	if (size <= 0) {
+		notifier.throwException("Array.windowed: size must be greater than 0");
+		return nullptr;
+	}
+	if (step <= 0) {
+		notifier.throwException("Array.windowed: step must be greater than 0");
+		return nullptr;
+	}
+
+	ClassId returnId = notifier.callFrame->func->returnId;
+	ClassId elemClassId = getArrayGenericKey(notifier, returnId);
+	auto resultArr = notifier.createArray(returnId, elemClassId);
+
+	for (size_t i = 0; i < array->size; i += step) {
+		size_t winLen = std::min<size_t>(size, array->size - i);
+		if (winLen < static_cast<size_t>(size) && !partialWindows) {
+			break;
+		}
+		AObject *fromObj = notifier.createInt(i);
+		AObject *toObj = notifier.createInt(i + winLen);
+		AObject *sliceArgs[3] = {arr, fromObj, toObj};
+		auto winArr = slice(notifier, sliceArgs, 3);
+		winArr->retain();
+		auto res = notifier.callFunctionObject(transform, winArr);
+		notifier.release(winArr);
+		if (notifier.hasException()) return nullptr;
+		notifier.arrayAdd(resultArr, res);
+		notifier.release(res);
+	}
+	return resultArr;
+}
+
+AObject *flat_map_indexed(NativeFuncInData) {
+	auto arr = args[0];
+	auto func = args[1];
+	auto array = arr->array;
+	ClassId returnId = notifier.callFrame->func->returnId;
+	ClassId elemClassId = getArrayGenericKey(notifier, returnId);
+	auto newArr = notifier.createArray(returnId, elemClassId);
+
+	for (size_t i = 0; i < array->size; ++i) {
+		auto item = getItem(notifier, array, i);
+		auto idxObj = notifier.createInt(static_cast<int64_t>(i));
+		auto innerList = notifier.callFunctionObject(func, idxObj, item);
+		notifier.release(item);
+		if (notifier.hasException()) return nullptr;
+		if (innerList && (innerList->flags & AObject::Flags::OBJ_IS_ARRAY)) {
+			auto innerArray = innerList->array;
+			for (size_t j = 0; j < innerArray->size; ++j) {
+				auto innerItem = getItem(notifier, innerArray, j);
+				notifier.arrayAdd(newArr, innerItem);
+				notifier.release(innerItem);
+			}
+		}
+		notifier.release(innerList);
+	}
+	return newArr;
+}
+
+AObject *fold_indexed(NativeFuncInData) {
+	auto arr = args[0];
+	auto initial = args[1];
+	auto func = args[2];
+	auto array = arr->array;
+	AObject *acc = initial;
+	acc->retain();
+	for (size_t i = 0; i < array->size; ++i) {
+		auto item = getItem(notifier, array, i);
+		item->retain();
+		auto idxObj = notifier.createInt(static_cast<int64_t>(i));
+		auto nextAcc = notifier.callFunctionObject(func, idxObj, acc, item);
+		notifier.release(acc);
+		notifier.release(item);
+		if (notifier.hasException()) return nullptr;
+		acc = nextAcc;
+	}
+	if (acc && !(acc->flags & AObject::Flags::OBJ_IS_CONST)) {
+		--acc->refCount;
+	}
+	return acc;
+}
+
+AObject *reduce_indexed(NativeFuncInData) {
+	auto arr = args[0];
+	auto func = args[1];
+	auto array = arr->array;
+	if (array->size == 0) {
+		notifier.throwException("UnsupportedOperationException: Empty array can't be reduced.");
+		return nullptr;
+	}
+	AObject *acc = getItem(notifier, array, 0);
+	acc->retain();
+	for (size_t i = 1; i < array->size; ++i) {
+		auto item = getItem(notifier, array, i);
+		item->retain();
+		auto idxObj = notifier.createInt(static_cast<int64_t>(i));
+		auto nextAcc = notifier.callFunctionObject(func, idxObj, acc, item);
+		notifier.release(acc);
+		notifier.release(item);
+		if (notifier.hasException()) return nullptr;
+		acc = nextAcc;
+	}
+	if (acc && !(acc->flags & AObject::Flags::OBJ_IS_CONST)) {
+		--acc->refCount;
+	}
+	return acc;
+}
+
+AObject *running_fold_indexed(NativeFuncInData) {
+	auto arr = args[0];
+	auto initial = args[1];
+	auto func = args[2];
+	auto array = arr->array;
+	ClassId returnId = notifier.callFrame->func->returnId;
+	ClassId elemClassId = getArrayGenericKey(notifier, returnId);
+	auto newArr = notifier.createArray(returnId, elemClassId);
+	notifier.arrayAdd(newArr, initial);
+	AObject *acc = initial;
+	acc->retain();
+	for (size_t i = 0; i < array->size; ++i) {
+		auto item = getItem(notifier, array, i);
+		item->retain();
+		auto idxObj = notifier.createInt(static_cast<int64_t>(i));
+		auto nextAcc = notifier.callFunctionObject(func, idxObj, acc, item);
+		notifier.release(acc);
+		notifier.release(item);
+		if (notifier.hasException()) return nullptr;
+		notifier.arrayAdd(newArr, nextAcc);
+		acc = nextAcc;
+		acc->retain();
+	}
+	notifier.release(acc);
+	return newArr;
+}
+
+AObject *running_reduce_indexed(NativeFuncInData) {
+	auto arr = args[0];
+	auto func = args[1];
+	auto array = arr->array;
+	ClassId returnId = notifier.callFrame->func->returnId;
+	ClassId elemClassId = getArrayGenericKey(notifier, returnId);
+	auto newArr = notifier.createArray(returnId, elemClassId);
+	if (array->size == 0) return newArr;
+	auto first = getItem(notifier, array, 0);
+	notifier.arrayAdd(newArr, first);
+	AObject *acc = first;
+	acc->retain();
+	for (size_t i = 1; i < array->size; ++i) {
+		auto item = getItem(notifier, array, i);
+		item->retain();
+		auto idxObj = notifier.createInt(static_cast<int64_t>(i));
+		auto nextAcc = notifier.callFunctionObject(func, idxObj, acc, item);
+		notifier.release(acc);
+		notifier.release(item);
+		if (notifier.hasException()) return nullptr;
+		notifier.arrayAdd(newArr, nextAcc);
+		acc = nextAcc;
+		acc->retain();
+	}
+	notifier.release(acc);
+	return newArr;
+}
+
+AObject *random_elem(NativeFuncInData) {
+	auto arr = args[0];
+	auto array = arr->array;
+	if (array->size == 0) {
+		notifier.throwException("NoSuchElementException: Array is empty.");
+		return nullptr;
+	}
+	size_t idx = static_cast<size_t>(rand()) % array->size;
+	return getItem(notifier, array, idx);
+}
+
+AObject *random_or_null(NativeFuncInData) {
+	auto arr = args[0];
+	auto array = arr->array;
+	if (array->size == 0) {
+		return notifier.getNullObject();
+	}
+	size_t idx = static_cast<size_t>(rand()) % array->size;
+	return getItem(notifier, array, idx);
+}
+
+AObject *first_not_null_of(NativeFuncInData) {
+	auto arr = args[0];
+	auto transform = args[1];
+	auto array = arr->array;
+	for (size_t i = 0; i < array->size; ++i) {
+		auto item = getItem(notifier, array, i);
+		item->retain();
+		auto res = notifier.callFunctionObject(transform, item);
+		notifier.release(item);
+		if (notifier.hasException()) return nullptr;
+		if (res && res != DefaultClass::nullObject) {
+			return res;
+		}
+		notifier.release(res);
+	}
+	notifier.throwException("NoSuchElementException: No element of the array was transformed to a non-null value.");
+	return nullptr;
+}
+
+AObject *first_not_null_of_or_null(NativeFuncInData) {
+	auto arr = args[0];
+	auto transform = args[1];
+	auto array = arr->array;
+	for (size_t i = 0; i < array->size; ++i) {
+		auto item = getItem(notifier, array, i);
+		item->retain();
+		auto res = notifier.callFunctionObject(transform, item);
+		notifier.release(item);
+		if (notifier.hasException()) return nullptr;
+		if (res && res != DefaultClass::nullObject) {
+			return res;
+		}
+		notifier.release(res);
+	}
+	return notifier.getNullObject();
+}
+
+AObject *if_empty(NativeFuncInData) {
+	auto arr = args[0];
+	auto defaultValue = args[1];
+	auto array = arr->array;
+	if (array->size == 0) {
+		return notifier.callFunctionObject(defaultValue);
+	}
+	arr->retain();
+	return arr;
+}
+
+AObject *filter_to(NativeFuncInData) {
+	auto arr = args[0];
+	auto dest = args[1];
+	auto predicate = args[2];
+	auto array = arr->array;
+	for (size_t i = 0; i < array->size; ++i) {
+		auto item = getItem(notifier, array, i);
+		item->retain();
+		auto res = notifier.callFunctionObject(predicate, item);
+		if (notifier.hasException()) {
+			notifier.release(item);
+			return nullptr;
+		}
+		if (res && res->b) {
+			notifier.arrayAdd(dest, item);
+		}
+		notifier.release(res);
+		notifier.release(item);
+	}
+	dest->retain();
+	return dest;
+}
+
+AObject *map_to(NativeFuncInData) {
+	auto arr = args[0];
+	auto dest = args[1];
+	auto transform = args[2];
+	auto array = arr->array;
+	for (size_t i = 0; i < array->size; ++i) {
+		auto item = getItem(notifier, array, i);
+		item->retain();
+		auto res = notifier.callFunctionObject(transform, item);
+		notifier.release(item);
+		if (notifier.hasException()) return nullptr;
+		notifier.arrayAdd(dest, res);
+		notifier.release(res);
+	}
+	dest->retain();
+	return dest;
+}
+
+AObject *binary_search(NativeFuncInData) {
+	auto arr = args[0];
+	auto target = args[1];
+	auto array = arr->array;
+	int64_t low = 0;
+	int64_t high = static_cast<int64_t>(array->size) - 1;
+
+	while (low <= high) {
+		int64_t mid = (low + high) / 2;
+		auto midVal = getItem(notifier, array, mid);
+		int cmp = compareAnyObjects(notifier, midVal, target);
+		notifier.release(midVal);
+
+		if (cmp < 0) {
+			low = mid + 1;
+		} else if (cmp > 0) {
+			high = mid - 1;
+		} else {
+			return notifier.createInt(mid);
+		}
+	}
+	return notifier.createInt(-(low + 1));
+}
+
+AObject *arr_intersect(NativeFuncInData) {
+	AObject *s1 = to_set(notifier, &args[0], 1);
+	AObject *s2 = to_set(notifier, &args[1], 1);
+	AObject *intersectArgs[2] = {s1, s2};
+	auto res = set::intersect(notifier, intersectArgs, 2);
+	notifier.release(s1);
+	notifier.release(s2);
+	return res;
+}
+
+AObject *arr_union(NativeFuncInData) {
+	AObject *s1 = to_set(notifier, &args[0], 1);
+	AObject *s2 = to_set(notifier, &args[1], 1);
+	AObject *unionArgs[2] = {s1, s2};
+	auto res = set::set_union(notifier, unionArgs, 2);
+	notifier.release(s1);
+	notifier.release(s2);
+	return res;
+}
+
+AObject *arr_subtract(NativeFuncInData) {
+	AObject *s1 = to_set(notifier, &args[0], 1);
+	AObject *s2 = to_set(notifier, &args[1], 1);
+	AObject *subArgs[2] = {s1, s2};
+	auto res = set::subtract(notifier, subArgs, 2);
+	notifier.release(s1);
+	notifier.release(s2);
+	return res;
 }
 
 } // namespace array

@@ -5,6 +5,7 @@
 #include "shared/AString.hpp"
 #include "shared/DefaultClass.hpp"
 #include "shared/default_functions/ConversionFunctions.hpp"
+#include <algorithm>
 #include <cstring>
 #include <string>
 #include <string_view>
@@ -84,7 +85,7 @@ inline AObject *str_get(NativeFuncInData) {
 		return nullptr;
 	}
 
-	return notifier.createString(AString::from(str->data[pos]));
+	return notifier.createChar(static_cast<uint8_t>(str->data[pos]));
 }
 
 inline bool char_equals_ignore_case(char a, char b) {
@@ -138,8 +139,12 @@ inline size_t str_rfind_case(std::string_view full, std::string_view target, siz
 }
 
 inline std::string_view str_arg_view(AObject *obj, std::string &buf) {
+	if (obj->type == DefaultClass::charClassId) {
+		buf = AString::codePointToUtf8(static_cast<uint32_t>(obj->chr));
+		return std::string_view(buf);
+	}
 	if (obj->type == DefaultClass::intClassId) {
-		buf = std::string(1, static_cast<char>(obj->i));
+		buf = AString::codePointToUtf8(static_cast<uint32_t>(obj->i));
 		return std::string_view(buf);
 	}
 	return std::string_view(obj->str->data, obj->str->size);
@@ -152,13 +157,18 @@ inline AObject *str_starts_with(NativeFuncInData) {
 	int64_t startIndex = 0;
 	bool ignoreCase = false;
 	if (argSize >= 3) {
-		if (args[2]->type == DefaultClass::intClassId) {
-			startIndex = args[2]->i;
-			if (argSize >= 4 && args[3]->type == DefaultClass::boolClassId) {
-				ignoreCase = args[3]->b;
-			}
-		} else if (args[2]->type == DefaultClass::boolClassId) {
-			ignoreCase = args[2]->b;
+		switch (args[2]->type) {
+			case DefaultClass::intClassId:
+				startIndex = args[2]->i;
+				if (argSize >= 4 && args[3]->type == DefaultClass::boolClassId) {
+					ignoreCase = args[3]->b;
+				}
+				break;
+			case DefaultClass::boolClassId:
+				ignoreCase = args[2]->b;
+				break;
+			default:
+				break;
 		}
 	}
 	if (startIndex < 0 || static_cast<size_t>(startIndex) + prefix.size() > str.size()) {
@@ -192,14 +202,20 @@ inline AObject *str_last_index_of(NativeFuncInData) {
 	size_t startPos = std::string_view::npos;
 	bool ignoreCase = false;
 	if (argSize >= 3) {
-		if (args[2]->type == DefaultClass::intClassId) {
-			int64_t s = args[2]->i;
-			if (s >= 0) startPos = static_cast<size_t>(s);
-			if (argSize >= 4 && args[3]->type == DefaultClass::boolClassId) {
-				ignoreCase = args[3]->b;
+		switch (args[2]->type) {
+			case DefaultClass::intClassId: {
+				int64_t s = args[2]->i;
+				if (s >= 0) startPos = static_cast<size_t>(s);
+				if (argSize >= 4 && args[3]->type == DefaultClass::boolClassId) {
+					ignoreCase = args[3]->b;
+				}
+				break;
 			}
-		} else if (args[2]->type == DefaultClass::boolClassId) {
-			ignoreCase = args[2]->b;
+			case DefaultClass::boolClassId:
+				ignoreCase = args[2]->b;
+				break;
+			default:
+				break;
 		}
 	}
 	auto pos = str_rfind_case(full, target, startPos, ignoreCase);
@@ -290,7 +306,7 @@ inline AObject *str_char_at(NativeFuncInData) {
 		return nullptr;
 	}
 
-	return notifier.createInt(str->data[pos]);
+	return notifier.createChar(static_cast<uint8_t>(str->data[pos]));
 }
 
 inline AObject *str_contains(NativeFuncInData) {
@@ -310,13 +326,18 @@ inline AObject *str_index_of(NativeFuncInData) {
 	int64_t startIndex = 0;
 	bool ignoreCase = false;
 	if (argSize >= 3) {
-		if (args[2]->type == DefaultClass::intClassId) {
-			startIndex = args[2]->i;
-			if (argSize >= 4 && args[3]->type == DefaultClass::boolClassId) {
-				ignoreCase = args[3]->b;
-			}
-		} else if (args[2]->type == DefaultClass::boolClassId) {
-			ignoreCase = args[2]->b;
+		switch (args[2]->type) {
+			case DefaultClass::intClassId:
+				startIndex = args[2]->i;
+				if (argSize >= 4 && args[3]->type == DefaultClass::boolClassId) {
+					ignoreCase = args[3]->b;
+				}
+				break;
+			case DefaultClass::boolClassId:
+				ignoreCase = args[2]->b;
+				break;
+			default:
+				break;
 		}
 	}
 	if (startIndex < 0) startIndex = 0;
@@ -340,18 +361,23 @@ inline AObject *str_split(NativeFuncInData) {
 	int64_t limit = 0;
 	bool ignoreCase = false;
 	if (argSize >= 3) {
-		if (args[2]->type == DefaultClass::intClassId) {
-			limit = args[2]->i;
-			if (argSize >= 4 && args[3]->type == DefaultClass::boolClassId) {
-				ignoreCase = args[3]->b;
-			}
-		} else if (args[2]->type == DefaultClass::boolClassId) {
-			ignoreCase = args[2]->b;
+		switch (args[2]->type) {
+			case DefaultClass::intClassId:
+				limit = args[2]->i;
+				if (argSize >= 4 && args[3]->type == DefaultClass::boolClassId) {
+					ignoreCase = args[3]->b;
+				}
+				break;
+			case DefaultClass::boolClassId:
+				ignoreCase = args[2]->b;
+				break;
+			default:
+				break;
 		}
 	}
 	ClassId classId = notifier.callFrame->func->returnId;
 
-	AObject *arrayObj = notifier.createArray(classId);
+	AObject *arrayObj = notifier.createArray(classId, DefaultClass::stringClassId);
 
 	if (delim.empty()) {
 		notifier.arrayAdd(arrayObj,
@@ -454,6 +480,33 @@ inline AObject *str_is_not_blank(NativeFuncInData) {
 	return DefaultClass::falseObject;
 }
 
+inline AObject *str_is_null_or_empty(NativeFuncInData) {
+	if (argSize == 0 || !args[0] || args[0]->type == DefaultClass::nullClassId) {
+		return DefaultClass::trueObject;
+	}
+	if (args[0]->type == DefaultClass::stringClassId && args[0]->str) {
+		return args[0]->str->size == 0 ? DefaultClass::trueObject : DefaultClass::falseObject;
+	}
+	return DefaultClass::falseObject;
+}
+
+inline AObject *str_is_null_or_blank(NativeFuncInData) {
+	if (argSize == 0 || !args[0] || args[0]->type == DefaultClass::nullClassId) {
+		return DefaultClass::trueObject;
+	}
+	if (args[0]->type == DefaultClass::stringClassId && args[0]->str) {
+		AString *str = args[0]->str;
+		for (size_t i = 0; i < str->size; ++i) {
+			char c = str->data[i];
+			if (c != ' ' && c != '\t' && c != '\r' && c != '\n') {
+				return DefaultClass::falseObject;
+			}
+		}
+		return DefaultClass::trueObject;
+	}
+	return DefaultClass::falseObject;
+}
+
 inline AObject *str_substring_range(NativeFuncInData) {
 	AString *str = args[0]->str;
 	int64_t len = static_cast<int64_t>(str->size);
@@ -473,7 +526,7 @@ inline AObject *str_lines(NativeFuncInData) {
 	AString *str = args[0]->str;
 	std::string_view sv(str->data, str->size);
 	ClassId classId = notifier.callFrame->func->returnId;
-	AObject *arrayObj = notifier.createArray(classId);
+	AObject *arrayObj = notifier.createArray(classId, DefaultClass::stringClassId);
 
 	size_t start = 0;
 	for (size_t i = 0; i < sv.size(); ++i) {
@@ -498,8 +551,8 @@ inline AObject *str_lines(NativeFuncInData) {
 inline AObject *str_pad_start(NativeFuncInData) {
 	AString *str = args[0]->str;
 	int64_t targetLen = args[1]->i;
-	std::string_view padChar = (argSize >= 3 && args[2] && args[2]->type == DefaultClass::stringClassId) 
-		? std::string_view(args[2]->str->data, args[2]->str->size) : " ";
+	std::string buf;
+	std::string_view padChar = (argSize >= 3 && args[2]) ? str_arg_view(args[2], buf) : " ";
 	if (padChar.empty()) padChar = " ";
 	if (static_cast<int64_t>(str->size) >= targetLen) {
 		return notifier.createString(AString::copy(str));
@@ -520,8 +573,8 @@ inline AObject *str_pad_start(NativeFuncInData) {
 inline AObject *str_pad_end(NativeFuncInData) {
 	AString *str = args[0]->str;
 	int64_t targetLen = args[1]->i;
-	std::string_view padChar = (argSize >= 3 && args[2] && args[2]->type == DefaultClass::stringClassId) 
-		? std::string_view(args[2]->str->data, args[2]->str->size) : " ";
+	std::string buf;
+	std::string_view padChar = (argSize >= 3 && args[2]) ? str_arg_view(args[2], buf) : " ";
 	if (padChar.empty()) padChar = " ";
 	if (static_cast<int64_t>(str->size) >= targetLen) {
 		return notifier.createString(AString::copy(str));
@@ -598,18 +651,20 @@ inline AObject *str_drop_last(NativeFuncInData) {
 
 inline AObject *str_remove_prefix(NativeFuncInData) {
 	AString *str = args[0]->str;
-	AString *prefix = args[1]->str;
-	if (prefix->size <= str->size && std::memcmp(str->data, prefix->data, prefix->size) == 0) {
-		return notifier.createString(std::string(str->data + prefix->size, str->size - prefix->size));
+	std::string buf;
+	std::string_view prefix = str_arg_view(args[1], buf);
+	if (prefix.size() <= str->size && std::memcmp(str->data, prefix.data(), prefix.size()) == 0) {
+		return notifier.createString(std::string(str->data + prefix.size(), str->size - prefix.size()));
 	}
 	return notifier.createString(AString::copy(str));
 }
 
 inline AObject *str_remove_suffix(NativeFuncInData) {
 	AString *str = args[0]->str;
-	AString *suffix = args[1]->str;
-	if (suffix->size <= str->size && std::memcmp(str->data + str->size - suffix->size, suffix->data, suffix->size) == 0) {
-		return notifier.createString(std::string(str->data, str->size - suffix->size));
+	std::string buf;
+	std::string_view suffix = str_arg_view(args[1], buf);
+	if (suffix.size() <= str->size && std::memcmp(str->data + str->size - suffix.size(), suffix.data(), suffix.size()) == 0) {
+		return notifier.createString(std::string(str->data, str->size - suffix.size()));
 	}
 	return notifier.createString(AString::copy(str));
 }
@@ -650,13 +705,18 @@ inline AObject *str_substring_before(NativeFuncInData) {
 	bool ignoreCase = false;
 	AObject *missingVal = nullptr;
 	if (argSize >= 3) {
-		if (args[2]->type == DefaultClass::stringClassId) {
-			missingVal = args[2];
-			if (argSize >= 4 && args[3]->type == DefaultClass::boolClassId) {
-				ignoreCase = args[3]->b;
-			}
-		} else if (args[2]->type == DefaultClass::boolClassId) {
-			ignoreCase = args[2]->b;
+		switch (args[2]->type) {
+			case DefaultClass::stringClassId:
+				missingVal = args[2];
+				if (argSize >= 4 && args[3]->type == DefaultClass::boolClassId) {
+					ignoreCase = args[3]->b;
+				}
+				break;
+			case DefaultClass::boolClassId:
+				ignoreCase = args[2]->b;
+				break;
+			default:
+				break;
 		}
 	}
 	auto pos = str_find_case(full, delim, 0, ignoreCase);
@@ -676,13 +736,18 @@ inline AObject *str_substring_after(NativeFuncInData) {
 	bool ignoreCase = false;
 	AObject *missingVal = nullptr;
 	if (argSize >= 3) {
-		if (args[2]->type == DefaultClass::stringClassId) {
-			missingVal = args[2];
-			if (argSize >= 4 && args[3]->type == DefaultClass::boolClassId) {
-				ignoreCase = args[3]->b;
-			}
-		} else if (args[2]->type == DefaultClass::boolClassId) {
-			ignoreCase = args[2]->b;
+		switch (args[2]->type) {
+			case DefaultClass::stringClassId:
+				missingVal = args[2];
+				if (argSize >= 4 && args[3]->type == DefaultClass::boolClassId) {
+					ignoreCase = args[3]->b;
+				}
+				break;
+			case DefaultClass::boolClassId:
+				ignoreCase = args[2]->b;
+				break;
+			default:
+				break;
 		}
 	}
 	auto pos = str_find_case(full, delim, 0, ignoreCase);
@@ -702,13 +767,18 @@ inline AObject *str_substring_before_last(NativeFuncInData) {
 	bool ignoreCase = false;
 	AObject *missingVal = nullptr;
 	if (argSize >= 3) {
-		if (args[2]->type == DefaultClass::stringClassId) {
-			missingVal = args[2];
-			if (argSize >= 4 && args[3]->type == DefaultClass::boolClassId) {
-				ignoreCase = args[3]->b;
-			}
-		} else if (args[2]->type == DefaultClass::boolClassId) {
-			ignoreCase = args[2]->b;
+		switch (args[2]->type) {
+			case DefaultClass::stringClassId:
+				missingVal = args[2];
+				if (argSize >= 4 && args[3]->type == DefaultClass::boolClassId) {
+					ignoreCase = args[3]->b;
+				}
+				break;
+			case DefaultClass::boolClassId:
+				ignoreCase = args[2]->b;
+				break;
+			default:
+				break;
 		}
 	}
 	auto pos = str_rfind_case(full, delim, std::string_view::npos, ignoreCase);
@@ -728,13 +798,18 @@ inline AObject *str_substring_after_last(NativeFuncInData) {
 	bool ignoreCase = false;
 	AObject *missingVal = nullptr;
 	if (argSize >= 3) {
-		if (args[2]->type == DefaultClass::stringClassId) {
-			missingVal = args[2];
-			if (argSize >= 4 && args[3]->type == DefaultClass::boolClassId) {
-				ignoreCase = args[3]->b;
-			}
-		} else if (args[2]->type == DefaultClass::boolClassId) {
-			ignoreCase = args[2]->b;
+		switch (args[2]->type) {
+			case DefaultClass::stringClassId:
+				missingVal = args[2];
+				if (argSize >= 4 && args[3]->type == DefaultClass::boolClassId) {
+					ignoreCase = args[3]->b;
+				}
+				break;
+			case DefaultClass::boolClassId:
+				ignoreCase = args[2]->b;
+				break;
+			default:
+				break;
 		}
 	}
 	auto pos = str_rfind_case(full, delim, std::string_view::npos, ignoreCase);
@@ -759,6 +834,88 @@ inline AObject *str_trim_end(NativeFuncInData) {
 	size_t end = s.find_last_not_of(" \n\r\t");
 	if (end == std::string::npos) return notifier.createString("");
 	return notifier.createString(s.substr(0, end + 1));
+}
+
+inline AObject *str_trim_end_char(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	std::string target = AString::codePointToUtf8(args[1]->chr);
+	if (target.empty() || s.empty()) return args[0];
+	size_t end = s.size();
+	size_t tlen = target.size();
+	while (end >= tlen && s.compare(end - tlen, tlen, target) == 0) {
+		end -= tlen;
+	}
+	return notifier.createString(s.substr(0, end));
+}
+
+inline AObject *str_trim_start_char(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	std::string target = AString::codePointToUtf8(args[1]->chr);
+	if (target.empty() || s.empty()) return args[0];
+	size_t start = 0;
+	size_t tlen = target.size();
+	while (start + tlen <= s.size() && s.compare(start, tlen, target) == 0) {
+		start += tlen;
+	}
+	return notifier.createString(s.substr(start));
+}
+
+inline AObject *str_trim_char(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	std::string target = AString::codePointToUtf8(args[1]->chr);
+	if (target.empty() || s.empty()) return args[0];
+	size_t start = 0;
+	size_t tlen = target.size();
+	while (start + tlen <= s.size() && s.compare(start, tlen, target) == 0) {
+		start += tlen;
+	}
+	size_t end = s.size();
+	while (end >= start + tlen && s.compare(end - tlen, tlen, target) == 0) {
+		end -= tlen;
+	}
+	return notifier.createString(s.substr(start, end - start));
+}
+
+inline AObject *str_trim_end_str(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	const std::string &chars = args[1]->str->data;
+	if (chars.empty() || s.empty()) return args[0];
+	size_t end = s.find_last_not_of(chars);
+	if (end == std::string::npos) return notifier.createString("");
+	return notifier.createString(s.substr(0, end + 1));
+}
+
+inline AObject *str_trim_start_str(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	const std::string &chars = args[1]->str->data;
+	if (chars.empty() || s.empty()) return args[0];
+	size_t start = s.find_first_not_of(chars);
+	if (start == std::string::npos) return notifier.createString("");
+	return notifier.createString(s.substr(start));
+}
+
+inline AObject *str_trim_str(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	const std::string &chars = args[1]->str->data;
+	if (chars.empty() || s.empty()) return args[0];
+	size_t start = s.find_first_not_of(chars);
+	if (start == std::string::npos) return notifier.createString("");
+	size_t end = s.find_last_not_of(chars);
+	return notifier.createString(s.substr(start, end - start + 1));
+}
+
+inline AObject *str_step(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	int64_t stp = args[1]->i;
+	if (stp <= 0) {
+		notifier.throwException("Step must be positive, was " + std::to_string(stp));
+		return nullptr;
+	}
+	std::string res;
+	for (size_t i = 0; i < s.size(); i += stp) {
+		res += s[i];
+	}
+	return notifier.createString(res);
 }
 
 inline AObject *str_trim_indent(NativeFuncInData) {
@@ -854,7 +1011,7 @@ inline AObject *str_trim_margin(NativeFuncInData) {
 inline AObject *str_replace_first_char(NativeFuncInData) {
 	AString *str = args[0]->str;
 	if (str->size == 0) return notifier.createString(AString::copy(str));
-	AObject *firstChar = notifier.createString(std::string(1, str->data[0]));
+	AObject *firstChar = notifier.createChar(static_cast<uint8_t>(str->data[0]));
 	firstChar->retain();
 	AObject *res = notifier.callFunctionObject(args[1], firstChar);
 	notifier.release(firstChar);
@@ -868,7 +1025,7 @@ inline AObject *str_take_while(NativeFuncInData) {
 	AString *str = args[0]->str;
 	size_t count = 0;
 	for (size_t i = 0; i < str->size; ++i) {
-		AObject *ch = notifier.createString(std::string(1, str->data[i]));
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
 		ch->retain();
 		AObject *res = notifier.callFunctionObject(args[1], ch);
 		notifier.release(ch);
@@ -883,7 +1040,7 @@ inline AObject *str_drop_while(NativeFuncInData) {
 	AString *str = args[0]->str;
 	size_t start = 0;
 	for (size_t i = 0; i < str->size; ++i) {
-		AObject *ch = notifier.createString(std::string(1, str->data[i]));
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
 		ch->retain();
 		AObject *res = notifier.callFunctionObject(args[1], ch);
 		notifier.release(ch);
@@ -902,7 +1059,7 @@ inline AObject *str_filter(NativeFuncInData) {
 	std::string result;
 	result.reserve(str->size);
 	for (size_t i = 0; i < str->size; ++i) {
-		AObject *ch = notifier.createString(std::string(1, str->data[i]));
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
 		ch->retain();
 		AObject *res = notifier.callFunctionObject(args[1], ch);
 		notifier.release(ch);
@@ -919,7 +1076,7 @@ inline AObject *str_filter_not(NativeFuncInData) {
 	std::string result;
 	result.reserve(str->size);
 	for (size_t i = 0; i < str->size; ++i) {
-		AObject *ch = notifier.createString(std::string(1, str->data[i]));
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
 		ch->retain();
 		AObject *res = notifier.callFunctionObject(args[1], ch);
 		notifier.release(ch);
@@ -929,6 +1086,1194 @@ inline AObject *str_filter_not(NativeFuncInData) {
 		}
 	}
 	return notifier.createString(result);
+}
+
+inline AObject *str_chunked(NativeFuncInData) {
+	AString *str = args[0]->str;
+	int64_t size = args[1]->i;
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
+	AObject *newArr = notifier.createArray(returnId, DefaultClass::stringClassId);
+	if (size <= 0) return newArr;
+	int64_t len = static_cast<int64_t>(str->size);
+	for (int64_t i = 0; i < len; i += size) {
+		int64_t subLen = (i + size > len) ? (len - i) : size;
+		std::string sub(str->data + i, subLen);
+		AObject *subStr = notifier.createString(sub);
+		notifier.arrayAdd(newArr, subStr);
+	}
+	return newArr;
+}
+
+inline AObject *str_zip_with_next(NativeFuncInData) {
+	AString *str = args[0]->str;
+	ClassId pairClassId = (argSize >= 2 && args[1]->type == DefaultClass::intClassId)
+	    ? static_cast<ClassId>(args[1]->i)
+	    : DefaultClass::anyClassId;
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
+	AObject *newArr = notifier.createArray(returnId, pairClassId);
+	int64_t len = static_cast<int64_t>(str->size);
+	if (len < 2) return newArr;
+	for (int64_t i = 0; i < len - 1; ++i) {
+		AObject *s1 = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		AObject *s2 = notifier.createChar(static_cast<uint8_t>(str->data[i + 1]));
+		AObject *pairObj = notifier.createMemberObject(pairClassId, 2);
+		s1->retain();
+		pairObj->member->data[0] = s1;
+		s2->retain();
+		pairObj->member->data[1] = s2;
+		notifier.arrayAdd(newArr, pairObj);
+	}
+	return newArr;
+}
+
+inline AObject *str_zip_with_next_transform(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AObject *func = args[1];
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
+	AObject *newArr = notifier.createArray(returnId, DefaultClass::anyClassId);
+	int64_t len = static_cast<int64_t>(str->size);
+	if (len < 2) return newArr;
+	for (int64_t i = 0; i < len - 1; ++i) {
+		AObject *s1 = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		AObject *s2 = notifier.createChar(static_cast<uint8_t>(str->data[i + 1]));
+		s1->retain();
+		s2->retain();
+		AObject *res = notifier.callFunctionObject(func, s1, s2);
+		notifier.release(s1);
+		notifier.release(s2);
+		if (notifier.hasException()) return nullptr;
+		if (res) notifier.arrayAdd(newArr, res);
+	}
+	return newArr;
+}
+
+inline AObject *int_to_char_string(NativeFuncInData) {
+	char c = static_cast<char>(args[0]->i);
+	return notifier.createString(AString::from(c));
+}
+
+inline AObject *str_region_matches(NativeFuncInData) {
+	AString *str = args[0]->str;
+	int64_t thisOffset = args[1]->i;
+	AString *other = args[2]->str;
+	int64_t otherOffset = args[3]->i;
+	int64_t length = args[4]->i;
+	bool ignoreCase = (argSize >= 6 && args[5]->type == DefaultClass::boolClassId) ? args[5]->b : false;
+
+	if (thisOffset < 0 || otherOffset < 0 || length < 0 ||
+	    static_cast<size_t>(thisOffset + length) > str->size ||
+	    static_cast<size_t>(otherOffset + length) > other->size) {
+		return notifier.createBool(false);
+	}
+
+	if (!ignoreCase) {
+		bool match = (std::memcmp(str->data + thisOffset, other->data + otherOffset, length) == 0);
+		return notifier.createBool(match);
+	} else {
+		for (int64_t i = 0; i < length; ++i) {
+			if (!char_equals_ignore_case(str->data[thisOffset + i], other->data[otherOffset + i])) {
+				return notifier.createBool(false);
+			}
+		}
+		return notifier.createBool(true);
+	}
+}
+
+inline AObject *str_compare_to(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AString *other = args[1]->str;
+	bool ignoreCase = (argSize >= 3 && args[2]->type == DefaultClass::boolClassId) ? args[2]->b : false;
+
+	size_t minLen = std::min(str->size, other->size);
+	for (size_t i = 0; i < minLen; ++i) {
+		unsigned char c1 = static_cast<unsigned char>(str->data[i]);
+		unsigned char c2 = static_cast<unsigned char>(other->data[i]);
+		if (ignoreCase) {
+			c1 = std::tolower(c1);
+			c2 = std::tolower(c2);
+		}
+		if (c1 != c2) {
+			return notifier.createInt(c1 < c2 ? -1 : 1);
+		}
+	}
+	if (str->size < other->size) return notifier.createInt(-1);
+	if (str->size > other->size) return notifier.createInt(1);
+	return notifier.createInt(0);
+}
+
+inline AObject *str_common_prefix_with(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AString *other = args[1]->str;
+	bool ignoreCase = (argSize >= 3 && args[2]->type == DefaultClass::boolClassId) ? args[2]->b : false;
+
+	size_t minLen = std::min(str->size, other->size);
+	size_t matchLen = 0;
+	while (matchLen < minLen) {
+		bool match = ignoreCase 
+			? char_equals_ignore_case(str->data[matchLen], other->data[matchLen])
+			: (str->data[matchLen] == other->data[matchLen]);
+		if (!match) break;
+		++matchLen;
+	}
+	return notifier.createString(std::string(str->data, matchLen));
+}
+
+inline AObject *str_common_suffix_with(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AString *other = args[1]->str;
+	bool ignoreCase = (argSize >= 3 && args[2]->type == DefaultClass::boolClassId) ? args[2]->b : false;
+
+	size_t minLen = std::min(str->size, other->size);
+	size_t matchLen = 0;
+	while (matchLen < minLen) {
+		char c1 = str->data[str->size - 1 - matchLen];
+		char c2 = other->data[other->size - 1 - matchLen];
+		bool match = ignoreCase ? char_equals_ignore_case(c1, c2) : (c1 == c2);
+		if (!match) break;
+		++matchLen;
+	}
+	return notifier.createString(std::string(str->data + str->size - matchLen, matchLen));
+}
+
+inline AObject *str_map(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AObject *func = args[1];
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
+	AObject *newArr = notifier.createArray(returnId, DefaultClass::anyClassId);
+	int64_t len = static_cast<int64_t>(str->size);
+	for (int64_t i = 0; i < len; ++i) {
+		AObject *s = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		s->retain();
+		AObject *res = notifier.callFunctionObject(func, s);
+		notifier.release(s);
+		if (notifier.hasException()) return nullptr;
+		if (res) notifier.arrayAdd(newArr, res);
+	}
+	return newArr;
+}
+
+inline AObject *str_map_indexed(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AObject *func = args[1];
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
+	AObject *newArr = notifier.createArray(returnId, DefaultClass::anyClassId);
+	int64_t len = static_cast<int64_t>(str->size);
+	for (int64_t i = 0; i < len; ++i) {
+		AObject *idxObj = notifier.createInt(i);
+		AObject *s = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		idxObj->retain();
+		s->retain();
+		AObject *res = notifier.callFunctionObject(func, idxObj, s);
+		notifier.release(idxObj);
+		notifier.release(s);
+		if (notifier.hasException()) return nullptr;
+		if (res) notifier.arrayAdd(newArr, res);
+	}
+	return newArr;
+}
+
+inline AObject *str_fold(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AObject *accumulator = args[1];
+	AObject *func = args[2];
+	AObject *acc = accumulator;
+	acc->retain();
+	int64_t len = static_cast<int64_t>(str->size);
+	for (int64_t i = 0; i < len; ++i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		ch->retain();
+		AObject *nextAcc = notifier.callFunctionObject(func, acc, ch);
+		notifier.release(ch);
+		notifier.release(acc);
+		if (notifier.hasException()) {
+			return nullptr;
+		}
+		acc = nextAcc;
+	}
+	if (acc && !(acc->flags & AObject::Flags::OBJ_IS_CONST)) {
+		--acc->refCount;
+	}
+	return acc;
+}
+
+inline AObject *str_reduce(NativeFuncInData) {
+	AString *str = args[0]->str;
+	int64_t len = static_cast<int64_t>(str->size);
+	if (len == 0) {
+		notifier.throwException("UnsupportedOperationException: Empty string cannot be reduced.");
+		return nullptr;
+	}
+	AObject *func = args[1];
+	AObject *acc = notifier.createString(std::string(1, str->data[0]));
+	acc->retain();
+	for (int64_t i = 1; i < len; ++i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		ch->retain();
+		AObject *nextAcc = notifier.callFunctionObject(func, acc, ch);
+		notifier.release(ch);
+		notifier.release(acc);
+		if (notifier.hasException()) {
+			return nullptr;
+		}
+		acc = nextAcc;
+	}
+	if (acc && !(acc->flags & AObject::Flags::OBJ_IS_CONST)) {
+		--acc->refCount;
+	}
+	return acc;
+}
+
+inline AObject *str_running_fold(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AObject *initial = args[1];
+	AObject *func = args[2];
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
+	ClassId elemClassId = DefaultClass::anyClassId;
+	auto newArr = notifier.createArray(returnId, elemClassId);
+	notifier.arrayAdd(newArr, initial);
+	AObject *acc = initial;
+	acc->retain();
+	int64_t len = static_cast<int64_t>(str->size);
+	for (int64_t i = 0; i < len; ++i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		ch->retain();
+		AObject *nextAcc = notifier.callFunctionObject(func, acc, ch);
+		notifier.release(acc);
+		notifier.release(ch);
+		if (notifier.hasException()) {
+			return nullptr;
+		}
+		notifier.arrayAdd(newArr, nextAcc);
+		acc = nextAcc;
+		acc->retain();
+	}
+	notifier.release(acc);
+	return newArr;
+}
+
+inline AObject *str_running_reduce(NativeFuncInData) {
+	AString *str = args[0]->str;
+	int64_t len = static_cast<int64_t>(str->size);
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
+	ClassId elemClassId = DefaultClass::stringClassId;
+	auto newArr = notifier.createArray(returnId, elemClassId);
+	if (len == 0) return newArr;
+	AObject *func = args[1];
+	AObject *first = notifier.createString(std::string(1, str->data[0]));
+	notifier.arrayAdd(newArr, first);
+	AObject *acc = first;
+	acc->retain();
+	for (int64_t i = 1; i < len; ++i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		ch->retain();
+		AObject *nextAcc = notifier.callFunctionObject(func, acc, ch);
+		notifier.release(acc);
+		notifier.release(ch);
+		if (notifier.hasException()) {
+			return nullptr;
+		}
+		notifier.arrayAdd(newArr, nextAcc);
+		acc = nextAcc;
+		acc->retain();
+	}
+	notifier.release(acc);
+	return newArr;
+}
+
+inline AObject *str_first(NativeFuncInData) {
+	AString *str = args[0]->str;
+	if (str->size == 0) {
+		notifier.throwException("NoSuchElementException: Char sequence is empty.");
+		return nullptr;
+	}
+	return notifier.createChar(static_cast<uint8_t>(str->data[0]));
+}
+
+inline AObject *str_last(NativeFuncInData) {
+	AString *str = args[0]->str;
+	if (str->size == 0) {
+		notifier.throwException("NoSuchElementException: Char sequence is empty.");
+		return nullptr;
+	}
+	return notifier.createChar(static_cast<uint8_t>(str->data[str->size - 1]));
+}
+
+inline AObject *str_first_or_null(NativeFuncInData) {
+	AString *str = args[0]->str;
+	if (str->size == 0) {
+		return DefaultClass::nullObject;
+	}
+	return notifier.createChar(static_cast<uint8_t>(str->data[0]));
+}
+
+inline AObject *str_last_or_null(NativeFuncInData) {
+	AString *str = args[0]->str;
+	if (str->size == 0) {
+		return DefaultClass::nullObject;
+	}
+	return notifier.createChar(static_cast<uint8_t>(str->data[str->size - 1]));
+}
+
+inline AObject *str_last_index(NativeFuncInData) {
+	return notifier.createInt(static_cast<int64_t>(args[0]->str->size) - 1);
+}
+
+inline AObject *str_is_digit(NativeFuncInData) {
+	AString *str = args[0]->str;
+	if (str->size == 0) return notifier.createBool(false);
+	unsigned char c = static_cast<unsigned char>(str->data[0]);
+	return notifier.createBool(c >= '0' && c <= '9');
+}
+
+inline AObject *str_is_letter(NativeFuncInData) {
+	AString *str = args[0]->str;
+	if (str->size == 0) return notifier.createBool(false);
+	unsigned char c = static_cast<unsigned char>(str->data[0]);
+	return notifier.createBool((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'));
+}
+
+inline AObject *str_is_letter_or_digit(NativeFuncInData) {
+	AString *str = args[0]->str;
+	if (str->size == 0) return notifier.createBool(false);
+	unsigned char c = static_cast<unsigned char>(str->data[0]);
+	return notifier.createBool((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'));
+}
+
+inline AObject *str_is_whitespace(NativeFuncInData) {
+	AString *str = args[0]->str;
+	if (str->size == 0) return notifier.createBool(false);
+	unsigned char c = static_cast<unsigned char>(str->data[0]);
+	return notifier.createBool(c == ' ' || c == '\t' || c == '\n' || c == '\r');
+}
+
+inline AObject *str_is_uppercase(NativeFuncInData) {
+	AString *str = args[0]->str;
+	if (str->size == 0) return notifier.createBool(false);
+	unsigned char c = static_cast<unsigned char>(str->data[0]);
+	return notifier.createBool(c >= 'A' && c <= 'Z');
+}
+
+inline AObject *str_is_lowercase(NativeFuncInData) {
+	AString *str = args[0]->str;
+	if (str->size == 0) return notifier.createBool(false);
+	unsigned char c = static_cast<unsigned char>(str->data[0]);
+	return notifier.createBool(c >= 'a' && c <= 'z');
+}
+
+inline AObject *str_content_equals(NativeFuncInData) {
+	AString *s1 = args[0]->str;
+	AString *s2 = args[1]->str;
+	if (s1->size != s2->size) return notifier.createBool(false);
+	return notifier.createBool(memcmp(s1->data, s2->data, s1->size) == 0);
+}
+
+inline AObject *str_remove_surrounding(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	const std::string &prefix = args[1]->str->data;
+	const std::string &suffix = args[2]->str->data;
+	if (s.size() >= prefix.size() + suffix.size() &&
+	    s.rfind(prefix, 0) == 0 &&
+	    s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0) {
+		return notifier.createString(s.substr(prefix.size(), s.size() - prefix.size() - suffix.size()));
+	}
+	return notifier.createString(AString::copy(args[0]->str));
+}
+
+inline AObject *str_remove_surrounding_single(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	const std::string &del = args[1]->str->data;
+	if (s.size() >= del.size() * 2 &&
+	    s.rfind(del, 0) == 0 &&
+	    s.compare(s.size() - del.size(), del.size(), del) == 0) {
+		return notifier.createString(s.substr(del.size(), s.size() - del.size() * 2));
+	}
+	return notifier.createString(AString::copy(args[0]->str));
+}
+
+inline AObject *str_remove_surrounding_char(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	std::string prefix = AString::codePointToUtf8(args[1]->chr);
+	std::string suffix = AString::codePointToUtf8(args[2]->chr);
+	if (s.size() >= prefix.size() + suffix.size() &&
+	    s.rfind(prefix, 0) == 0 &&
+	    s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0) {
+		return notifier.createString(s.substr(prefix.size(), s.size() - prefix.size() - suffix.size()));
+	}
+	return notifier.createString(AString::copy(args[0]->str));
+}
+
+inline AObject *str_remove_surrounding_char_single(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	std::string del = AString::codePointToUtf8(args[1]->chr);
+	if (s.size() >= del.size() * 2 &&
+	    s.rfind(del, 0) == 0 &&
+	    s.compare(s.size() - del.size(), del.size(), del) == 0) {
+		return notifier.createString(s.substr(del.size(), s.size() - del.size() * 2));
+	}
+	return notifier.createString(AString::copy(args[0]->str));
+}
+
+inline AObject *str_remove_range(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	int64_t start = args[1]->i;
+	int64_t end = args[2]->i;
+	if (start < 0 || end < start || static_cast<size_t>(end) > s.size()) {
+		notifier.throwException("Index out of range");
+		return nullptr;
+	}
+	std::string res = s.substr(0, start) + s.substr(end);
+	return notifier.createString(res);
+}
+
+inline AObject *str_replace_range(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	int64_t start = args[1]->i;
+	int64_t end = args[2]->i;
+	const std::string &repl = args[3]->str->data;
+	if (start < 0 || end < start || static_cast<size_t>(end) > s.size()) {
+		notifier.throwException("Index out of range");
+		return nullptr;
+	}
+	std::string res = s.substr(0, start) + repl + s.substr(end);
+	return notifier.createString(res);
+}
+
+inline AObject *str_indices(NativeFuncInData) {
+	AString *str = args[0]->str;
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
+	auto arr = notifier.createArray(returnId, DefaultClass::intClassId);
+	int64_t len = static_cast<int64_t>(str->size);
+	for (int64_t i = 0; i < len; ++i) {
+		notifier.arrayAdd(arr, notifier.createInt(i));
+	}
+	return arr;
+}
+
+inline AObject *str_any_fn(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AObject *predicate = args[1];
+	int64_t len = static_cast<int64_t>(str->size);
+	for (int64_t i = 0; i < len; ++i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		ch->retain();
+		auto res = notifier.callFunctionObject(predicate, ch);
+		notifier.release(ch);
+		if (notifier.hasException()) return nullptr;
+		if (res == DefaultClass::trueObject) return DefaultClass::trueObject;
+	}
+	return DefaultClass::falseObject;
+}
+
+inline AObject *str_all_fn(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AObject *predicate = args[1];
+	int64_t len = static_cast<int64_t>(str->size);
+	for (int64_t i = 0; i < len; ++i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		ch->retain();
+		auto res = notifier.callFunctionObject(predicate, ch);
+		notifier.release(ch);
+		if (notifier.hasException()) return nullptr;
+		if (res != DefaultClass::trueObject) return DefaultClass::falseObject;
+	}
+	return DefaultClass::trueObject;
+}
+
+inline AObject *str_none_fn(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AObject *predicate = args[1];
+	int64_t len = static_cast<int64_t>(str->size);
+	for (int64_t i = 0; i < len; ++i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		ch->retain();
+		auto res = notifier.callFunctionObject(predicate, ch);
+		notifier.release(ch);
+		if (notifier.hasException()) return nullptr;
+		if (res == DefaultClass::trueObject) return DefaultClass::falseObject;
+	}
+	return DefaultClass::trueObject;
+}
+
+inline AObject *str_count_fn(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AObject *predicate = args[1];
+	int64_t len = static_cast<int64_t>(str->size);
+	int64_t count = 0;
+	for (int64_t i = 0; i < len; ++i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		ch->retain();
+		auto res = notifier.callFunctionObject(predicate, ch);
+		notifier.release(ch);
+		if (notifier.hasException()) return nullptr;
+		if (res == DefaultClass::trueObject) ++count;
+	}
+	return notifier.createInt(count);
+}
+
+inline AObject *str_index_of_first(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AObject *predicate = args[1];
+	int64_t len = static_cast<int64_t>(str->size);
+	for (int64_t i = 0; i < len; ++i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		ch->retain();
+		auto res = notifier.callFunctionObject(predicate, ch);
+		notifier.release(ch);
+		if (notifier.hasException()) return nullptr;
+		if (res == DefaultClass::trueObject) return notifier.createInt(i);
+	}
+	return notifier.createInt(-1);
+}
+
+inline AObject *str_index_of_last(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AObject *predicate = args[1];
+	int64_t len = static_cast<int64_t>(str->size);
+	for (int64_t i = len - 1; i >= 0; --i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		ch->retain();
+		auto res = notifier.callFunctionObject(predicate, ch);
+		notifier.release(ch);
+		if (notifier.hasException()) return nullptr;
+		if (res == DefaultClass::trueObject) return notifier.createInt(i);
+	}
+	return notifier.createInt(-1);
+}
+
+inline AObject *str_first_fn(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AObject *predicate = args[1];
+	int64_t len = static_cast<int64_t>(str->size);
+	for (int64_t i = 0; i < len; ++i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		ch->retain();
+		auto res = notifier.callFunctionObject(predicate, ch);
+		if (notifier.hasException()) {
+			notifier.release(ch);
+			if (res) notifier.release(res);
+			return nullptr;
+		}
+		bool matched = (res == DefaultClass::trueObject);
+		if (res) notifier.release(res);
+		notifier.release(ch);
+		if (matched) {
+			return notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		}
+	}
+	notifier.throwException("NoSuchElementException: String contains no character matching the predicate.");
+	return nullptr;
+}
+
+inline AObject *str_last_fn(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AObject *predicate = args[1];
+	int64_t len = static_cast<int64_t>(str->size);
+	for (int64_t i = len - 1; i >= 0; --i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		ch->retain();
+		auto res = notifier.callFunctionObject(predicate, ch);
+		if (notifier.hasException()) {
+			notifier.release(ch);
+			if (res) notifier.release(res);
+			return nullptr;
+		}
+		bool matched = (res == DefaultClass::trueObject);
+		if (res) notifier.release(res);
+		notifier.release(ch);
+		if (matched) {
+			return notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		}
+	}
+	notifier.throwException("NoSuchElementException: String contains no character matching the predicate.");
+	return nullptr;
+}
+
+inline AObject *str_first_or_null_fn(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AObject *predicate = args[1];
+	int64_t len = static_cast<int64_t>(str->size);
+	for (int64_t i = 0; i < len; ++i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		ch->retain();
+		auto res = notifier.callFunctionObject(predicate, ch);
+		if (notifier.hasException()) {
+			notifier.release(ch);
+			if (res) notifier.release(res);
+			return nullptr;
+		}
+		bool matched = (res == DefaultClass::trueObject);
+		if (res) notifier.release(res);
+		notifier.release(ch);
+		if (matched) {
+			return notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		}
+	}
+	return DefaultClass::nullObject;
+}
+
+inline AObject *str_last_or_null_fn(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AObject *predicate = args[1];
+	int64_t len = static_cast<int64_t>(str->size);
+	for (int64_t i = len - 1; i >= 0; --i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		ch->retain();
+		auto res = notifier.callFunctionObject(predicate, ch);
+		if (notifier.hasException()) {
+			notifier.release(ch);
+			if (res) notifier.release(res);
+			return nullptr;
+		}
+		bool matched = (res == DefaultClass::trueObject);
+		if (res) notifier.release(res);
+		notifier.release(ch);
+		if (matched) {
+			return notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		}
+	}
+	return DefaultClass::nullObject;
+}
+
+inline AObject *str_for_each(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AObject *action = args[1];
+	int64_t len = static_cast<int64_t>(str->size);
+	for (int64_t i = 0; i < len; ++i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		ch->retain();
+		auto ret = notifier.callFunctionObject(action, ch);
+		if (ret) notifier.release(ret);
+		notifier.release(ch);
+		if (notifier.hasException()) return nullptr;
+	}
+	return nullptr;
+}
+
+inline AObject *str_for_each_indexed(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AObject *action = args[1];
+	int64_t len = static_cast<int64_t>(str->size);
+	for (int64_t i = 0; i < len; ++i) {
+		AObject *idx = notifier.createInt(i);
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		idx->retain();
+		ch->retain();
+		auto ret = notifier.callFunctionObject(action, idx, ch);
+		if (ret) notifier.release(ret);
+		notifier.release(idx);
+		notifier.release(ch);
+		if (notifier.hasException()) return nullptr;
+	}
+	return nullptr;
+}
+
+inline AObject *str_on_each(NativeFuncInData) {
+	str_for_each(notifier, args, argSize);
+	if (notifier.hasException()) return nullptr;
+	return args[0];
+}
+
+inline AObject *str_on_each_indexed(NativeFuncInData) {
+	str_for_each_indexed(notifier, args, argSize);
+	if (notifier.hasException()) return nullptr;
+	return args[0];
+}
+
+inline AObject *str_filter_indexed(NativeFuncInData) {
+	AString *str = args[0]->str;
+	AObject *predicate = args[1];
+	int64_t len = static_cast<int64_t>(str->size);
+	std::string res;
+	for (int64_t i = 0; i < len; ++i) {
+		AObject *idx = notifier.createInt(i);
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		idx->retain();
+		ch->retain();
+		auto match = notifier.callFunctionObject(predicate, idx, ch);
+		notifier.release(idx);
+		notifier.release(ch);
+		if (notifier.hasException()) return nullptr;
+		if (match == DefaultClass::trueObject) {
+			res += str->data[i];
+		}
+	}
+	return notifier.createString(res);
+}
+
+inline AObject *str_take_last_while(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	AObject *predicate = args[1];
+	int64_t len = static_cast<int64_t>(s.size());
+	for (int64_t i = len - 1; i >= 0; --i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(s[i]));
+		ch->retain();
+		auto match = notifier.callFunctionObject(predicate, ch);
+		notifier.release(ch);
+		if (notifier.hasException()) return nullptr;
+		if (match != DefaultClass::trueObject) {
+			return notifier.createString(s.substr(i + 1));
+		}
+	}
+	return notifier.createString(AString::copy(args[0]->str));
+}
+
+inline AObject *str_drop_last_while(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	AObject *predicate = args[1];
+	int64_t len = static_cast<int64_t>(s.size());
+	for (int64_t i = len - 1; i >= 0; --i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(s[i]));
+		ch->retain();
+		auto match = notifier.callFunctionObject(predicate, ch);
+		notifier.release(ch);
+		if (notifier.hasException()) return nullptr;
+		if (match != DefaultClass::trueObject) {
+			return notifier.createString(s.substr(0, i + 1));
+		}
+	}
+	return notifier.createString("");
+}
+
+inline AObject *str_windowed(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	int64_t size = args[1]->i;
+	int64_t step = argSize > 2 ? args[2]->i : 1;
+	bool partial = argSize > 3 ? (args[3] == DefaultClass::trueObject) : false;
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
+	auto arr = notifier.createArray(returnId, DefaultClass::stringClassId);
+	int64_t len = static_cast<int64_t>(s.size());
+	if (size <= 0 || step <= 0) return arr;
+	for (int64_t i = 0; i < len; i += step) {
+		int64_t end = i + size;
+		if (end <= len) {
+			notifier.arrayAdd(arr, notifier.createString(s.substr(i, size)));
+		} else if (partial) {
+			notifier.arrayAdd(arr, notifier.createString(s.substr(i)));
+		} else {
+			break;
+		}
+	}
+	return arr;
+}
+
+inline AObject *str_to_list(NativeFuncInData) {
+	AString *str = args[0]->str;
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
+	auto arr = notifier.createArray(returnId, DefaultClass::charClassId);
+	int64_t len = static_cast<int64_t>(str->size);
+	for (int64_t i = 0; i < len; ++i) {
+		notifier.arrayAdd(arr, notifier.createChar(static_cast<uint8_t>(str->data[i])));
+	}
+	return arr;
+}
+
+inline AObject *str_trim_start_fn(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	AObject *predicate = args[1];
+	int64_t len = static_cast<int64_t>(s.size());
+	for (int64_t i = 0; i < len; ++i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(s[i]));
+		ch->retain();
+		auto match = notifier.callFunctionObject(predicate, ch);
+		notifier.release(ch);
+		if (notifier.hasException()) return nullptr;
+		if (match != DefaultClass::trueObject) {
+			return notifier.createString(s.substr(i));
+		}
+	}
+	return notifier.createString("");
+}
+
+inline AObject *str_trim_end_fn(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	AObject *predicate = args[1];
+	int64_t len = static_cast<int64_t>(s.size());
+	for (int64_t i = len - 1; i >= 0; --i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(s[i]));
+		ch->retain();
+		auto match = notifier.callFunctionObject(predicate, ch);
+		notifier.release(ch);
+		if (notifier.hasException()) return nullptr;
+		if (match != DefaultClass::trueObject) {
+			return notifier.createString(s.substr(0, i + 1));
+		}
+	}
+	return notifier.createString("");
+}
+
+inline AObject *str_trim_fn(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	AObject *predicate = args[1];
+	int64_t len = static_cast<int64_t>(s.size());
+	int64_t start = 0;
+	while (start < len) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(s[start]));
+		ch->retain();
+		auto match = notifier.callFunctionObject(predicate, ch);
+		notifier.release(ch);
+		if (notifier.hasException()) return nullptr;
+		if (match != DefaultClass::trueObject) break;
+		++start;
+	}
+	if (start == len) return notifier.createString("");
+	int64_t end = len - 1;
+	while (end >= start) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(s[end]));
+		ch->retain();
+		auto match = notifier.callFunctionObject(predicate, ch);
+		notifier.release(ch);
+		if (notifier.hasException()) return nullptr;
+		if (match != DefaultClass::trueObject) break;
+		--end;
+	}
+	return notifier.createString(s.substr(start, end - start + 1));
+}
+
+inline AObject *build_list(NativeFuncInData) {
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
+	ClassId elemKey = DefaultClass::anyClassId;
+	if (returnId < notifier.vm->data.classes.size()) {
+		auto rClazz = notifier.vm->data.classes[returnId];
+		if (rClazz && rClazz->genericType.size > 0) {
+			elemKey = notifier.vm->data.allGenericType[rClazz->genericType.offset];
+		}
+	}
+	auto list = notifier.createArray(returnId, elemKey);
+	auto action = args[0];
+	list->retain();
+	auto ret = notifier.callFunctionObject(action, list);
+	--list->refCount;
+	if (ret) notifier.release(ret);
+	return list;
+}
+
+inline AObject *build_map(NativeFuncInData) {
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::mapClassId;
+	ClassId keyKey = DefaultClass::anyClassId;
+	if (returnId < notifier.vm->data.classes.size()) {
+		auto rClazz = notifier.vm->data.classes[returnId];
+		if (rClazz && rClazz->genericType.size >= 2) {
+			keyKey = notifier.vm->data.allGenericType[rClazz->genericType.offset];
+		}
+	}
+	auto map = Libs::map::constructor(notifier, returnId, keyKey);
+	map->flags |= AObject::Flags::OBJ_IS_MAP;
+	auto action = args[0];
+	map->retain();
+	auto ret = notifier.callFunctionObject(action, map);
+	--map->refCount;
+	if (ret) notifier.release(ret);
+	return map;
+}
+
+inline AObject *build_set(NativeFuncInData) {
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::setClassId;
+	ClassId elemKey = DefaultClass::anyClassId;
+	if (returnId < notifier.vm->data.classes.size()) {
+		auto rClazz = notifier.vm->data.classes[returnId];
+		if (rClazz && rClazz->genericType.size > 0) {
+			elemKey = notifier.vm->data.allGenericType[rClazz->genericType.offset];
+		}
+	}
+	auto set = Libs::set::constructor(notifier, returnId, elemKey);
+	set->flags |= AObject::Flags::OBJ_IS_SET;
+	auto action = args[0];
+	set->retain();
+	auto ret = notifier.callFunctionObject(action, set);
+	--set->refCount;
+	if (ret) notifier.release(ret);
+	return set;
+}
+
+inline AObject *string_builder_append(NativeFuncInData) {
+	auto self = args[0];
+	auto val = args[1];
+	std::string addStr;
+	if (val == nullptr || val == DefaultClass::nullObject) {
+		addStr = "null";
+	} else {
+		addStr = to_string(notifier, val);
+	}
+	auto curContent = self->member->data[0];
+	std::string newStr = std::string(curContent->str->data) + addStr;
+	auto newContent = notifier.createString(newStr);
+	newContent->retain();
+	notifier.release(self->member->data[0]);
+	self->member->data[0] = newContent;
+	return self;
+}
+
+inline AObject *string_builder_append_line(NativeFuncInData) {
+	auto self = args[0];
+	std::string addStr;
+	if (argSize > 1 && args[1] != nullptr && args[1] != DefaultClass::nullObject) {
+		addStr = to_string(notifier, args[1]);
+	}
+	addStr += "\n";
+	auto curContent = self->member->data[0];
+	std::string newStr = std::string(curContent->str->data) + addStr;
+	auto newContent = notifier.createString(newStr);
+	newContent->retain();
+	notifier.release(self->member->data[0]);
+	self->member->data[0] = newContent;
+	return self;
+}
+
+inline AObject *string_builder_length(NativeFuncInData) {
+	auto self = args[0];
+	auto curContent = self->member->data[0];
+	return notifier.createInt(curContent->str->size);
+}
+
+inline AObject *string_builder_clear(NativeFuncInData) {
+	auto self = args[0];
+	auto emptyStr = notifier.createString("");
+	emptyStr->retain();
+	notifier.release(self->member->data[0]);
+	self->member->data[0] = emptyStr;
+	return self;
+}
+
+inline AObject *string_builder_to_string(NativeFuncInData) {
+	auto self = args[0];
+	return self->member->data[0];
+}
+
+inline AObject *build_string(NativeFuncInData) {
+	auto action = args[0];
+	ClassId sbId = 0;
+	for (ClassId i = 0; i < notifier.vm->data.classes.size(); ++i) {
+		if (notifier.getClassName(i) == "StringBuilder") {
+			sbId = i;
+			break;
+		}
+	}
+	auto sb = notifier.createMemberObject(sbId, 1);
+	auto emptyStr = notifier.createString("");
+	emptyStr->retain();
+	sb->member->data[0] = emptyStr;
+	sb->retain();
+	auto ret = notifier.callFunctionObject(action, sb);
+	if (ret) notifier.release(ret);
+	auto res = sb->member->data[0];
+	res->retain();
+	notifier.release(sb);
+	--res->refCount;
+	return res;
+}
+
+inline AObject *str_partition(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	AObject *predicate = args[1];
+	int64_t len = static_cast<int64_t>(s.size());
+	std::string first;
+	std::string second;
+	for (int64_t i = 0; i < len; ++i) {
+		AObject *ch = notifier.createChar(static_cast<uint8_t>(s[i]));
+		ch->retain();
+		auto match = notifier.callFunctionObject(predicate, ch);
+		notifier.release(ch);
+		if (notifier.hasException()) return nullptr;
+		if (match == DefaultClass::trueObject) {
+			first += s[i];
+		} else {
+			second += s[i];
+		}
+	}
+	ClassId pairId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : 0;
+	if (pairId < DefaultClass::builtInObjectSize || pairId >= notifier.vm->data.classes.size() || notifier.vm->data.classes[pairId]->memberMap.empty()) {
+		auto it = notifier.vm->data.classMap.find("Pair");
+		if (it != notifier.vm->data.classMap.end()) pairId = it->second;
+	}
+	auto pairObj = notifier.createMemberObject(pairId, 2);
+	auto fStr = notifier.createString(first);
+	auto sStr = notifier.createString(second);
+	pairObj->member->data[0] = fStr;
+	pairObj->member->data[1] = sStr;
+	fStr->retain();
+	sStr->retain();
+	return pairObj;
+}
+
+inline AObject *str_zip(NativeFuncInData) {
+	const std::string &s1 = args[0]->str->data;
+	const std::string &s2 = args[1]->str->data;
+	size_t minLen = std::min(s1.size(), s2.size());
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
+	ClassId pairId = 0;
+	if (returnId < notifier.vm->data.classes.size()) {
+		auto rClazz = notifier.vm->data.classes[returnId];
+		if (rClazz && rClazz->genericType.size > 0) {
+			pairId = notifier.vm->data.allGenericType[rClazz->genericType.offset];
+		}
+	}
+	if (pairId < DefaultClass::builtInObjectSize || pairId >= notifier.vm->data.classes.size() || notifier.vm->data.classes[pairId]->memberMap.empty()) {
+		auto it = notifier.vm->data.classMap.find("Pair");
+		if (it != notifier.vm->data.classMap.end()) pairId = it->second;
+	}
+	auto arr = notifier.createArray(returnId, pairId);
+	for (size_t i = 0; i < minLen; ++i) {
+		auto pairObj = notifier.createMemberObject(pairId, 2);
+		auto c1 = notifier.createChar(static_cast<uint8_t>(s1[i]));
+		auto c2 = notifier.createChar(static_cast<uint8_t>(s2[i]));
+		pairObj->member->data[0] = c1;
+		pairObj->member->data[1] = c2;
+		c1->retain();
+		c2->retain();
+		notifier.arrayAdd(arr, pairObj);
+	}
+	return arr;
+}
+
+inline AObject *str_zip_transform(NativeFuncInData) {
+	const std::string &s1 = args[0]->str->data;
+	const std::string &s2 = args[1]->str->data;
+	AObject *transform = args[2];
+	size_t minLen = std::min(s1.size(), s2.size());
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
+	ClassId elemKey = DefaultClass::anyClassId;
+	if (returnId < notifier.vm->data.classes.size()) {
+		auto rClazz = notifier.vm->data.classes[returnId];
+		if (rClazz && rClazz->genericType.size > 0) {
+			elemKey = notifier.vm->data.allGenericType[rClazz->genericType.offset];
+		}
+	}
+	auto arr = notifier.createArray(returnId, elemKey);
+	for (size_t i = 0; i < minLen; ++i) {
+		auto c1 = notifier.createChar(static_cast<uint8_t>(s1[i]));
+		auto c2 = notifier.createChar(static_cast<uint8_t>(s2[i]));
+		c1->retain();
+		c2->retain();
+		auto res = notifier.callFunctionObject(transform, c1, c2);
+		notifier.release(c1);
+		notifier.release(c2);
+		if (notifier.hasException()) return nullptr;
+		notifier.arrayAdd(arr, res);
+	}
+	return arr;
+}
+
+inline AObject *str_associate(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	AObject *transform = args[1];
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::mapClassId;
+	ClassId keyKey = DefaultClass::anyClassId;
+	if (returnId < notifier.vm->data.classes.size()) {
+		auto rClazz = notifier.vm->data.classes[returnId];
+		if (rClazz && rClazz->genericType.size >= 2) {
+			keyKey = notifier.vm->data.allGenericType[rClazz->genericType.offset];
+		}
+	}
+	auto map = Libs::map::constructor(notifier, returnId, keyKey);
+	map->flags |= AObject::Flags::OBJ_IS_MAP;
+	int64_t len = static_cast<int64_t>(s.size());
+	for (int64_t i = 0; i < len; ++i) {
+		auto ch = notifier.createChar(static_cast<uint8_t>(s[i]));
+		ch->retain();
+		auto pair = notifier.callFunctionObject(transform, ch);
+		notifier.release(ch);
+		if (notifier.hasException()) return nullptr;
+		if (pair && (pair->flags & AObject::Flags::OBJ_HAS_MEMBER_DATA) && pair->member && pair->member->size >= 2) {
+			AObject *setArgs[3] = {map, pair->member->data[0], pair->member->data[1]};
+			Libs::map::set(notifier, setArgs, 3);
+		}
+	}
+	return map;
+}
+
+inline AObject *str_associate_by(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	AObject *keySelector = args[1];
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::mapClassId;
+	ClassId keyKey = DefaultClass::anyClassId;
+	if (returnId < notifier.vm->data.classes.size()) {
+		auto rClazz = notifier.vm->data.classes[returnId];
+		if (rClazz && rClazz->genericType.size >= 2) {
+			keyKey = notifier.vm->data.allGenericType[rClazz->genericType.offset];
+		}
+	}
+	auto map = Libs::map::constructor(notifier, returnId, keyKey);
+	map->flags |= AObject::Flags::OBJ_IS_MAP;
+	int64_t len = static_cast<int64_t>(s.size());
+	for (int64_t i = 0; i < len; ++i) {
+		auto ch = notifier.createChar(static_cast<uint8_t>(s[i]));
+		ch->retain();
+		auto key = notifier.callFunctionObject(keySelector, ch);
+		if (notifier.hasException()) {
+			notifier.release(ch);
+			return nullptr;
+		}
+		AObject *setArgs[3] = {map, key, ch};
+		Libs::map::set(notifier, setArgs, 3);
+		notifier.release(ch);
+	}
+	return map;
+}
+
+inline AObject *str_associate_with(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	AObject *valueSelector = args[1];
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::mapClassId;
+	ClassId keyKey = DefaultClass::charClassId;
+	if (returnId < notifier.vm->data.classes.size()) {
+		auto rClazz = notifier.vm->data.classes[returnId];
+		if (rClazz && rClazz->genericType.size >= 2) {
+			keyKey = notifier.vm->data.allGenericType[rClazz->genericType.offset];
+		}
+	}
+	auto map = Libs::map::constructor(notifier, returnId, keyKey);
+	map->flags |= AObject::Flags::OBJ_IS_MAP;
+	int64_t len = static_cast<int64_t>(s.size());
+	for (int64_t i = 0; i < len; ++i) {
+		auto ch = notifier.createChar(static_cast<uint8_t>(s[i]));
+		ch->retain();
+		auto val = notifier.callFunctionObject(valueSelector, ch);
+		if (notifier.hasException()) {
+			notifier.release(ch);
+			return nullptr;
+		}
+		AObject *setArgs[3] = {map, ch, val};
+		Libs::map::set(notifier, setArgs, 3);
+		notifier.release(ch);
+	}
+	return map;
+}
+
+inline AObject *str_group_by(NativeFuncInData) {
+	const std::string &s = args[0]->str->data;
+	AObject *keySelector = args[1];
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::mapClassId;
+	ClassId keyKey = DefaultClass::anyClassId;
+	if (returnId < notifier.vm->data.classes.size()) {
+		auto rClazz = notifier.vm->data.classes[returnId];
+		if (rClazz && rClazz->genericType.size >= 2) {
+			keyKey = notifier.vm->data.allGenericType[rClazz->genericType.offset];
+		}
+	}
+	auto map = Libs::map::constructor(notifier, returnId, keyKey);
+	map->flags |= AObject::Flags::OBJ_IS_MAP;
+	int64_t len = static_cast<int64_t>(s.size());
+	for (int64_t i = 0; i < len; ++i) {
+		auto ch = notifier.createChar(static_cast<uint8_t>(s[i]));
+		ch->retain();
+		auto key = notifier.callFunctionObject(keySelector, ch);
+		if (notifier.hasException()) {
+			notifier.release(ch);
+			return nullptr;
+		}
+		AObject *getArgs[2] = {map, key};
+		auto existingArr = Libs::map::get(notifier, getArgs, 2);
+		if (!existingArr || existingArr == DefaultClass::nullObject) {
+			auto newArr = notifier.createArray(DefaultClass::arrayClassId, DefaultClass::charClassId);
+			notifier.arrayAdd(newArr, ch);
+			AObject *setArgs[3] = {map, key, newArr};
+			Libs::map::set(notifier, setArgs, 3);
+		} else {
+			notifier.arrayAdd(existingArr, ch);
+		}
+		notifier.release(ch);
+	}
+	return map;
 }
 
 } // namespace DefaultFunction

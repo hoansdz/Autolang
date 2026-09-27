@@ -200,6 +200,26 @@ void CreateClosureNode::inferFrom(in_func, ClassDeclaration *from) {
 		throwError("Cannot cast Function to '" + from->getName(in_data) +
 		           "'\nHint: Closures can only be assigned or cast to Function or compatible signature types.");
 	}
+	if (canImplicitIt && parameter->parameters.empty() &&
+	    classDeclaration->inputClassId.size() == 1 && from->inputClassId.size() == 2) {
+		for (auto decl : newDeclaration) {
+			decl->id += 1;
+		}
+		LexerStringId itNameId = context.createLexerStringIfNotExists("it");
+		const auto &itName = context.lexerString[itNameId];
+		auto itDeclaration = context.makeDeclarationNode(
+		    in_data, line, itNameId, itName, from->inputClassId[1], true,
+		    false, false, false, false);
+		itDeclaration->id = 0;
+		parameter->parameters.push_back(itDeclaration);
+		classDeclaration->inputClassId.push_back(from->inputClassId[1]);
+		auto &scope = scopes.back();
+		scope[itNameId] = itDeclaration;
+		declarationCount++;
+		maxDeclaration++;
+		parameterCountFirstTime++;
+		canImplicitIt = false;
+	}
 	// if (canCast(classDeclaration))
 	if (classDeclaration->inputClassId.size() != from->inputClassId.size()) {
 		throwError("Closure expects " +
@@ -277,10 +297,14 @@ ExprNode *CreateClosureNode::copy(in_func) {
 	}
 	newNode->objects = std::move(newObjects);
 	newNode->classDeclaration = classDeclaration->copy(in_data);
-	for (size_t p = 0; p < newParam->parameters.size(); ++p) {
-		if (p + 1 < newNode->classDeclaration->inputClassId.size()) {
-			newNode->classDeclaration->inputClassId[p + 1] =
-			    newParam->parameters[p]->classDeclaration;
+	if (newParam->parameters.size() + 1 >= newNode->classDeclaration->inputClassId.size()) {
+		size_t offset = newParam->parameters.size() + 1 - newNode->classDeclaration->inputClassId.size();
+		for (size_t i = 1; i < newNode->classDeclaration->inputClassId.size(); ++i) {
+			size_t p = offset + i - 1;
+			if (p < newParam->parameters.size()) {
+				newNode->classDeclaration->inputClassId[i] =
+				    newParam->parameters[p]->classDeclaration;
+			}
 		}
 	}
 	newNode->scopes = scopes;
@@ -308,31 +332,40 @@ ExprNode *CreateClosureNode::copy(in_func) {
 
 bool CreateClosureNode::tryInferReturnType(in_func, ClassDeclaration *expectedFuncType) {
 	if (!classDeclaration || classDeclaration->inputClassId.empty()) return false;
-	if (classDeclaration->inputClassId[0] && classDeclaration->inputClassId[0]->classId.has_value()) {
+	if (classDeclaration->inputClassId[0] && classDeclaration->inputClassId[0]->classId.has_value() &&
+	    *classDeclaration->inputClassId[0]->classId != DefaultClass::nullClassId) {
 		return true;
 	}
 	if (expectedFuncType && expectedFuncType->inputClassId.size() == classDeclaration->inputClassId.size()) {
-		for (size_t p = 0; p < parameter->parameters.size(); ++p) {
-			auto *param = parameter->parameters[p];
-			if (!param) continue;
-			if (!param->classDeclaration || !param->classDeclaration->classId.has_value()) {
-				if (p + 1 < expectedFuncType->inputClassId.size()) {
-					auto *expectedParamType = expectedFuncType->inputClassId[p + 1];
+		if (parameter->parameters.size() + 1 >= classDeclaration->inputClassId.size()) {
+			size_t offset = parameter->parameters.size() + 1 - classDeclaration->inputClassId.size();
+			for (size_t i = 1; i < classDeclaration->inputClassId.size(); ++i) {
+				size_t paramIndex = offset + i - 1;
+				if (paramIndex >= parameter->parameters.size()) break;
+				auto *param = parameter->parameters[paramIndex];
+				if (!param) continue;
+				if (!param->classDeclaration || !param->classDeclaration->classId.has_value()) {
+					auto *expectedParamType = expectedFuncType->inputClassId[i];
 					if (expectedParamType && expectedParamType->classId.has_value()) {
 						param->classDeclaration = expectedParamType;
 						param->classId = *expectedParamType->classId;
 						param->nullable = expectedParamType->nullable;
-						if (p + 1 < classDeclaration->inputClassId.size()) {
-							classDeclaration->inputClassId[p + 1] = expectedParamType;
-						}
+						classDeclaration->inputClassId[i] = expectedParamType;
 					}
 				}
 			}
 		}
 	}
-	for (auto *param : parameter->parameters) {
+	for (size_t p = 0; p < parameter->parameters.size(); ++p) {
+		auto *param = parameter->parameters[p];
 		if (!param) return false;
-		if (!param->classDeclaration) return false;
+		if (!param->classDeclaration) {
+			if (param->classId != DefaultClass::nullClassId) {
+				param->classDeclaration = ExprNode::getOrCreateClassDeclaration(in_data, param->classId, param->line, param->nullable);
+			} else {
+				return false;
+			}
+		}
 		if (!param->classDeclaration->classId.has_value()) {
 			param->classDeclaration->template load<false>(in_data);
 			if (!param->classDeclaration->classId.has_value()) return false;
@@ -341,7 +374,8 @@ bool CreateClosureNode::tryInferReturnType(in_func, ClassDeclaration *expectedFu
 	}
 	mustInfer = false;
 	this->optimize(in_data);
-	return classDeclaration->inputClassId[0] && classDeclaration->inputClassId[0]->classId.has_value();
+	return classDeclaration->inputClassId[0] && classDeclaration->inputClassId[0]->classId.has_value() &&
+	       *classDeclaration->inputClassId[0]->classId != DefaultClass::nullClassId;
 }
 
 } // namespace Autolang

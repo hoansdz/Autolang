@@ -215,6 +215,7 @@ enum Opcode : uint8_t {
 	BOXED_STORE_LOCAL,
 	UNSAFE_CAST_NULLABLE,
 	FOR_STRING,
+	TO_CHAR,
 };
 
 }

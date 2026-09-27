@@ -267,6 +267,22 @@ ExprNode *loadFor(in_func, size_t &i) {
 	if (!hasOuterParen) context.allowTrailingClosure = false;
 	HasClassIdNode *data = loadExpression(in_data, 0, i);
 	context.allowTrailingClosure = prevAllowTrailingClosure;
+	if (nextTokenSameLine(&token, context.tokens, i, firstLine)) {
+		if (expect(token, Lexer::TokenType::IDENTIFIER) &&
+		    token->indexData == lexerIdstep) {
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(context.tokens[i].line, "Expected step expression after 'step'");
+			}
+			HasClassIdNode *stepExpr = loadExpression(in_data, 0, i);
+			data = context.callNodePool.push(
+			    token->line, i, data->classId, data, lexerIdstep,
+			    std::vector<HasClassIdNode *>{stepExpr}, false,
+			    data->isNullable(), false);
+		} else {
+			--i;
+		}
+	}
 	VarNode *iteratorNode = nullptr;
 	VarNode *collectionNode = nullptr;
 	if (data->kind != NodeType::RANGE) {

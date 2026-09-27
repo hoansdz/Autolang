@@ -140,6 +140,16 @@ constexpr LexerStringId lexerIdarrayOfNotNull = 69;
 constexpr LexerStringId lexerIdmutableListOfNotNull = 70;
 constexpr LexerStringId lexerIdsetOfNotNull = 71;
 constexpr LexerStringId lexerIdmutableSetOfNotNull = 72;
+constexpr LexerStringId lexerIdChar = 73;
+constexpr LexerStringId lexerIdkey = 74;
+constexpr LexerStringId lexerIdvalue = 75;
+constexpr LexerStringId lexerIdentry = 76;
+constexpr LexerStringId lexerIdstep = 77;
+constexpr LexerStringId lexerIddownTo = 78;
+constexpr LexerStringId lexerIdisNullOrEmpty = 79;
+constexpr LexerStringId lexerIdisNullOrBlank = 80;
+constexpr LexerStringId lexerIdisNotNullOrEmpty = 81;
+constexpr LexerStringId lexerIdisNotNullOrBlank = 82;
 /*
 constexpr LexerStringId lexerIdunaryPlus = 24;   // +a
 constexpr LexerStringId lexerIdunaryMinus = 25;  // -a
@@ -176,6 +186,7 @@ using GenericCaller = ClassDeclaration;
 struct ParserContext {
 	FunctionEvent *onError = nullptr;
 	FunctionEvent *onWarning = nullptr;
+	std::string lastErrorMessage;
 	// StringArena dedicated for compiler strings (lexer tokens, declaration names)
 	StringArena stringArena;
 	std::vector<std::string_view> lexerString;
@@ -316,6 +327,7 @@ struct ParserContext {
 	static LibraryData *mode;
 
 	HashMap<int64_t, Offset> constIntMap;
+	HashMap<uint32_t, Offset> constCharMap;
 	HashMap<double, Offset> constFloatMap;
 	HashMap<AString *, Offset, AString::Hash, AString::Equal> constStringMap;
 

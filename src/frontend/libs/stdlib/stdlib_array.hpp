@@ -7,7 +7,8 @@ inline constexpr const char* STDLIB_ARRAY_SOURCE_STR = R"###(
 @no_extends
 class Array<T> {
 
-	static fun __CLASS__(): Array<T> = <T>[]
+	@native("arr_new")
+	static fun __CLASS__(): Array<T>
 
 	@native("arr_add")
 	fun add(value: T)
@@ -59,6 +60,9 @@ class Array<T> {
 
 	@native("arr_is_empty")
 	fun is_empty(): Bool
+
+	@native("arr_is_null_or_empty")
+	fun Array<T>?.isNullOrEmpty(): Bool
 
 	@native("arr_get")
 	fun get(index: Int): T
@@ -291,7 +295,7 @@ class Array<T> {
 	fun dropWhile(predicate: (T) -> Bool): Array<T>
 
 	@native("arr_chunked")
-	fun chunked(size: Int): Array<Any>
+	fun chunked(size: Int): Array<Array<T>>
 
 	@native("arr_to_set")
 	fun toSet(): Set<T>
@@ -354,13 +358,13 @@ class Array<T> {
 	fun sortedWith(comparator: (T, T) -> Int): Array<T>
 
 	@native("arr_sorted_with")
-	fun sortedWith(comparator: Any): Array<T>
+	fun sortedWith(comparator: Comparator<T>): Array<T>
 
 	@native("arr_sort_with")
 	fun sortWith(comparator: (T, T) -> Int)
 
 	@native("arr_sort_with")
-	fun sortWith(comparator: Any)
+	fun sortWith(comparator: Comparator<T>)
 
 	@native("arr_min_by_or_null")
 	fun <R> minByOrNull(selector: (T) -> R): T?
@@ -374,13 +378,17 @@ class Array<T> {
 	@native("arr_max_by_or_null")
 	fun <R> maxBy(selector: (T) -> R): T?
 
-	fun <R> maxOf(selector: (T) -> R): R = this.map<R>(selector).max()
+	@native("arr_max_of")
+	fun <R> maxOf(selector: (T) -> R): R
 
-	fun <R> minOf(selector: (T) -> R): R = this.map<R>(selector).min()
+	@native("arr_min_of")
+	fun <R> minOf(selector: (T) -> R): R
 
-	fun <R> maxOfOrNull(selector: (T) -> R): R? = this.map<R>(selector).maxOrNull()
+	@native("arr_max_of")
+	fun <R> maxOfOrNull(selector: (T) -> R): R?
 
-	fun <R> minOfOrNull(selector: (T) -> R): R? = this.map<R>(selector).minOrNull()
+	@native("arr_min_of")
+	fun <R> minOfOrNull(selector: (T) -> R): R?
 
 	@native("arr_distinct_by")
 	fun <K> distinctBy(selector: (T) -> K): Array<T>
@@ -389,7 +397,7 @@ class Array<T> {
 	fun shuffled(): Array<T>
 
 	@native("arr_flatten")
-	fun flatten(): Array<Any>
+	fun flatten(): T
 
 	@native("arr_group_by")
 	fun <K> groupBy(keySelector: (T) -> K): Map<K, Array<T>>
@@ -398,16 +406,16 @@ class Array<T> {
 	fun <K> associateBy(keySelector: (T) -> K): Map<K, T>
 
 	@native("arr_flat_map")
-	fun flatMap(transform: (T) -> Any): Array<Any>
+	fun <R> flatMap(transform: (T) -> Array<R>): Array<R>
 
 	@native("arr_zip")
-	fun zip(other: Array<Any>): Array<Any>
+	fun <R> zip(other: Array<R>): Array<Pair<T, R>>
 
 	@native("arr_unzip")
-	fun unzip(): Any
+	fun <A, B> unzip(): Pair<Array<A>, Array<B>>
 
 	@native("arr_windowed")
-	fun windowed(size: Int, step: Int = 1, partialWindows: Bool = false): Array<Any>
+	fun windowed(size: Int, step: Int = 1, partialWindows: Bool = false): Array<Array<T>>
 
 	@native("arr_partition")
 	fun partition(predicate: (T) -> Bool): Pair<Array<T>, Array<T>>
@@ -419,10 +427,10 @@ class Array<T> {
 	fun <V> associateWith(valueSelector: (T) -> V): Map<T, V>
 
 	@native("arr_map_not_null")
-	fun <R> mapNotNull(transform: (T) -> Any): Array<R>
+	fun <R> mapNotNull(transform: (T) -> R?): Array<R>
 
 	@native("arr_map_indexed_not_null")
-	fun <R> mapIndexedNotNull(transform: (Int, T) -> Any): Array<R>
+	fun <R> mapIndexedNotNull(transform: (Int, T) -> R?): Array<R>
 
 	@native("arr_filter_indexed")
 	fun filterIndexed(predicate: (Int, T) -> Bool): Array<T>
@@ -445,8 +453,95 @@ class Array<T> {
 	@native("arr_indices")
 	fun indices(): Array<Int>
 
+	@native("arr_step")
+	fun step(step: Int): Array<T>
+
 	@native("arr_last_index")
 	fun lastIndex(): Int
+
+	@native("arr_with_index")
+	fun withIndex(indexedValueClassId: Int = getClassId(IndexedValue<T>)): Array<IndexedValue<T>>
+
+	@native("arr_zip_with_next")
+	fun zipWithNext(pairClassId: Int = getClassId(Pair<T, T>)): Array<Pair<T, T>>
+
+	@native("arr_zip_with_next_transform")
+	fun <R> zipWithNext(transform: (T, T) -> R): Array<R>
+
+	@native("arr_running_fold")
+	fun <R> runningFold(initial: R, operation: (R, T) -> R): Array<R>
+
+	@native("arr_running_fold")
+	fun <R> scan(initial: R, operation: (R, T) -> R): Array<R>
+
+	@native("arr_running_reduce")
+	fun runningReduce(operation: (T, T) -> T): Array<T>
+
+	@native("arr_zip_transform")
+	fun <R, V> zip(other: Array<R>, transform: (T, R) -> V): Array<V>
+
+	@native("arr_chunked_transform")
+	fun <R> chunked(size: Int, transform: (Array<T>) -> R): Array<R>
+
+	@native("arr_windowed_transform")
+	fun <R> windowed(size: Int, transform: (Array<T>) -> R): Array<R>
+
+	@native("arr_windowed_transform")
+	fun <R> windowed(size: Int, step: Int, transform: (Array<T>) -> R): Array<R>
+
+	@native("arr_windowed_transform")
+	fun <R> windowed(size: Int, step: Int, partialWindows: Bool, transform: (Array<T>) -> R): Array<R>
+
+	@native("arr_flat_map_indexed")
+	fun <R> flatMapIndexed(transform: (Int, T) -> Array<R>): Array<R>
+
+	@native("arr_fold_indexed")
+	fun <R> foldIndexed(initial: R, operation: (Int, R, T) -> R): R
+
+	@native("arr_reduce_indexed")
+	fun reduceIndexed(operation: (Int, T, T) -> T): T
+
+	@native("arr_running_fold_indexed")
+	fun <R> runningFoldIndexed(initial: R, operation: (Int, R, T) -> R): Array<R>
+
+	@native("arr_running_fold_indexed")
+	fun <R> scanIndexed(initial: R, operation: (Int, R, T) -> R): Array<R>
+
+	@native("arr_running_reduce_indexed")
+	fun runningReduceIndexed(operation: (Int, T, T) -> T): Array<T>
+
+	@native("arr_random")
+	fun random(): T
+
+	@native("arr_random_or_null")
+	fun randomOrNull(): T?
+
+	@native("arr_first_not_null_of")
+	fun <R> firstNotNullOf(transform: (T) -> R?): R
+
+	@native("arr_first_not_null_of_or_null")
+	fun <R> firstNotNullOfOrNull(transform: (T) -> R?): R?
+
+	@native("arr_if_empty")
+	fun ifEmpty(defaultValue: () -> Array<T>): Array<T>
+
+	@native("arr_filter_to")
+	fun filterTo(destination: Array<T>, predicate: (T) -> Bool): Array<T>
+
+	@native("arr_map_to")
+	fun <R> mapTo(destination: Array<R>, transform: (T) -> R): Array<R>
+
+	@native("arr_binary_search")
+	fun binarySearch(element: T): Int
+
+	@native("arr_intersect")
+	fun intersect(other: Array<T>): Set<T>
+
+	@native("arr_union")
+	fun union(other: Array<T>): Set<T>
+
+	@native("arr_subtract")
+	fun subtract(other: Array<T>): Set<T>
 }
 )###";
 

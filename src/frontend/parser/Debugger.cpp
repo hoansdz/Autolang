@@ -128,6 +128,7 @@ initial:;
 		case Lexer::TokenType::LBRACKET:
 		case Lexer::TokenType::NUMBER:
 		case Lexer::TokenType::STRING:
+		case Lexer::TokenType::CHAR:
 		case Lexer::TokenType::COLON_COLON:
 		case Lexer::TokenType::IDENTIFIER: {
 			if (token->indexData == lexerIddata) {

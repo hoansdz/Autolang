@@ -265,10 +265,15 @@ void CreateSetNode::optimizeAndInferenceType(in_func) {
 					continue;
 				}
 				case DefaultClass::boolClassId: {
-					if (*valueMustBeClassId == DefaultClass::intClassId) {
-						value = context.castPool.push(value, DefaultClass::intClassId);
-					} else if (*valueMustBeClassId == DefaultClass::floatClassId) {
-						value = context.castPool.push(value, DefaultClass::floatClassId);
+					switch (*valueMustBeClassId) {
+						case DefaultClass::intClassId:
+							value = context.castPool.push(value, DefaultClass::intClassId);
+							break;
+						case DefaultClass::floatClassId:
+							value = context.castPool.push(value, DefaultClass::floatClassId);
+							break;
+						default:
+							break;
 					}
 					continue;
 				}

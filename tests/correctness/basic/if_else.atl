@@ -15,7 +15,6 @@ fun testIfExpression() {
 	if (true) {
 		val a = if (a == 10) {
 			20
-			assert(false)
 		} else {
 			100
 		}

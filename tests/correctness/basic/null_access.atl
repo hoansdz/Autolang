@@ -24,6 +24,16 @@ fun testNullAccess() {
 	val f2 = (null ?? 2)
 	assert(f2 == 2)
 
+	// Chained Elvis
+	val n1: Int? = null
+	val n2: Int? = null
+	val n3: Int? = 55
+	val chained1 = n1 ?: n2 ?: n3 ?: 99
+	assert(chained1 == 55)
+
+	val chained2 = n1 ?: n2 ?: 100
+	assert(chained2 == 100)
+
 	println("Passed ${__FUNC__}")
 }
 

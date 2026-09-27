@@ -35,6 +35,7 @@ enum TokenType : uint8_t {
 	NUMBER,
 	STRING,
 	IDENTIFIER,
+	CHAR,
 
 	START_COMMENT,
 

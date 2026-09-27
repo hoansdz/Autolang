@@ -27,11 +27,11 @@ fun testStringFeatures() {
 
     // 3. Accessors
     val s4 = "abcdef"
-    assert(s4.get(0) == "a")
-    assert(s4.get(2) == "c")
-    assert(s4.get(-1) == "f") // Negative index support
-    assert(s4.charAt(0) == 97) // 'a' ASCII is 97
-    assert(s4.charAt(1) == 98) // 'b' ASCII is 98
+    assert(s4.get(0) == 'a')
+    assert(s4.get(2) == 'c')
+    assert(s4.get(-1) == 'f') // Negative index support
+    assert(s4.charAt(0) == 'a')
+    assert(s4.charAt(1) == 'b')
 
     // 4. Substring
     assert(s4.substr(2) == "cdef")
@@ -68,6 +68,115 @@ fun testStringFeatures() {
     assert(sKt.removeSuffix("Lang") == "KotlinAuto")
     assert("radar".reversed() == "radar")
     assert("hello".reversed() == "olleh")
+
+    // 8. String edge cases
+    assert("".reversed() == "")
+    assert("a".reversed() == "a")
+    assert("test".repeat(0) == "")
+    assert("test".repeat(1) == "test")
+    assert("".repeat(5) == "")
+
+    assert("hello".padStart(3, "0") == "hello")
+    assert("".padStart(3, "0") == "000")
+    assert("hello".padEnd(3, "0") == "hello")
+    assert("".padEnd(3, "0") == "000")
+
+    assert("hello".startsWith("") == true)
+    assert("hello".endsWith("") == true)
+
+    assert("abc".replace("missing", "xyz") == "abc")
+    assert("abc".replace("abc", "") == "")
+
+    // 9. Kotlin String matching & comparison
+    assert("Hello World".regionMatches(6, "World!", 0, 5) == true)
+    assert("Hello World".regionMatches(6, "WORLD!", 0, 5, true) == true)
+    assert("Hello World".regionMatches(6, "WORLD!", 0, 5, false) == false)
+    assert("abc".compareTo("abc") == 0)
+    assert("abc".compareTo("abd") < 0)
+    assert("abd".compareTo("abc") > 0)
+    assert("abc".compareTo("ABC", true) == 0)
+    assert("Kotlin".commonPrefixWith("Kottak") == "Kot")
+    assert("Kotlin".commonSuffixWith("Berlin") == "lin")
+    assert("test".contentEquals("test") == true)
+    assert("test".contentEquals("other") == false)
+
+    // 10. Kotlin Surrounding & Range
+    assert("[hello]".removeSurrounding("[", "]") == "hello")
+    assert("\"hello\"".removeSurrounding("\"") == "hello")
+    assert("'hello'".removeSurrounding('\'', '\'') == "hello")
+    assert("abcdef".removeRange(2, 4) == "abef")
+    assert("abcdef".replaceRange(2, 4, "123") == "ab123ef")
+
+    // 11. Kotlin Predicates & Search
+    assert("12345".all { it.isDigit() } == true)
+    assert("12a45".all { it.isDigit() } == false)
+    assert("abc".any { it == 'b' } == true)
+    assert("abc".none { it == 'z' } == true)
+    assert("ab12cd".count { it.isDigit() } == 2)
+    assert("ab12cd3".indexOfFirst { it.isDigit() } == 2)
+    assert("ab12cd3".indexOfLast { it.isDigit() } == 6)
+    assert("ab12cd".first { it.isDigit() } == '1')
+    assert("ab12cd".last { it.isDigit() } == '2')
+    assert("abc".firstOrNull { it.isDigit() } == null)
+    assert("abc".find { it == 'b' } == 'b')
+
+    // 12. Kotlin Functional Transformations
+    val mapped = "abc".map<String> { it.uppercase() }
+    assert(mapped.size() == 3)
+    assert(mapped[0] == "A" && mapped[1] == "B" && mapped[2] == "C")
+
+    val mappedIdx = "abc".mapIndexed<String> { idx, ch -> ch + idx.toString() }
+    assert(mappedIdx[0] == "a0" && mappedIdx[1] == "b1" && mappedIdx[2] == "c2")
+
+    val filteredIdx = "abcdef".filterIndexed { idx, ch -> idx % 2 == 0 }
+    assert(filteredIdx == "ace")
+
+    assert("12345".takeLastWhile { it.digitToInt() > 3 } == "45")
+    assert("12345".dropLastWhile { it.digitToInt() > 3 } == "123")
+
+    val folded = "123".fold<Int>(0) { acc, ch -> acc + ch.digitToInt() }
+    assert(folded == 6)
+
+    val reduced = "abc".reduce { acc, ch -> acc + "-" + ch }
+    assert(reduced == "a-b-c")
+
+    val rFold = "12".runningFold<String>("0") { acc, ch -> acc + ch }
+    assert(rFold.size() == 3 && rFold[0] == "0" && rFold[1] == "01" && rFold[2] == "012")
+
+    val rRed = "abc".runningReduce { acc, ch -> acc + ch }
+    assert(rRed.size() == 3 && rRed[0] == "a" && rRed[1] == "ab" && rRed[2] == "abc")
+
+    // 13. Kotlin Collections & Grouping
+    val zipped = "ab".zip("12")
+    assert(zipped.size() == 2)
+    assert(zipped[0].first == 'a' && zipped[0].second == '1')
+
+    val (p1, p2) = "a1b2c3".partition { it.isDigit() }
+    assert(p1 == "123" && p2 == "abc")
+
+    val charList = "xyz".toList()
+    assert(charList.size() == 3 && charList[0] == 'x' && charList[2] == 'z')
+
+    val windows = "abcdef".windowed(3, 2)
+    assert(windows.size() == 2 && windows[0] == "abc" && windows[1] == "cde")
+
+    val idxs = "abc".indices()
+    assert(idxs.size() == 3 && idxs[0] == 0 && idxs[2] == 2)
+
+    // 14. Kotlin Char
+    val chCode = 'a'
+    assert(chCode.toString() == "a")
+    assert(chCode.code() == 97)
+    assert(chCode.uppercaseChar() == 'A')
+    assert('A'.lowercaseChar() == 'a')
+    assert('9'.digitToInt() == 9)
+    assert('x'.digitToIntOrNull() == null)
+
+    // 15. Pad and Prefix with Char
+    assert("7".padStart(3, '0') == "007")
+    assert("7".padEnd(3, '0') == "700")
+    assert("hello".removePrefix('h') == "ello")
+    assert("hello".removeSuffix('o') == "hell")
 
     println("Passed ${__FUNC__}")
 }

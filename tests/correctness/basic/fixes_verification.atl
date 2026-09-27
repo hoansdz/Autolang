@@ -1,0 +1,45 @@
+fun main() {
+    // 1. Int.MIN_VALUE and Int.MAX_VALUE
+    val minVal = Int.MIN_VALUE
+    val maxVal = Int.MAX_VALUE
+    assert(minVal == -2147483648, "Int.MIN_VALUE failed")
+    assert(maxVal == 2147483647, "Int.MAX_VALUE failed")
+
+    // 2. step in for loop
+    val arr = [10, 20, 30, 40, 50]
+    var sumIndices = 0
+    for (i in arr.indices step 2) {
+        sumIndices += i
+    }
+    assert(sumIndices == 6, "step with indices failed")
+
+    var sumRange = 0
+    for (i in 0..10 step 2) {
+        sumRange += i
+    }
+    assert(sumRange == 30, "step with range failed")
+
+    // 3. trimEnd with Char and String
+    val s = "apple,banana,cherry,,,"
+    val trimmed = s.trimEnd(',')
+    assert(trimmed == "apple,banana,cherry", "trimEnd char failed")
+    val trimmedStr = "apple,banana,cherry...".trimEnd(".")
+    assert(trimmedStr == "apple,banana,cherry", "trimEnd str failed")
+
+    // 4. Block return value in branching expression (Task C97)
+    val fruits = ["apple", "banana", "apricot", "cherry", "avocado"]
+    var count = 0
+    val modifiedFruits = fruits.map { fruit ->
+        if (fruit.startsWith("a")) {
+            count++
+            "FRUIT"
+        } else {
+            fruit
+        }
+    }
+    assert(count == 3, "count must be 3")
+    val joined = modifiedFruits.joinToString("|")
+    assert(joined == "FRUIT|banana|FRUIT|cherry|FRUIT", "modifiedFruits failed: " + joined)
+
+    println("ALL_TESTS_PASSED")
+}

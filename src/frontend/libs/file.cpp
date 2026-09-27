@@ -842,6 +842,55 @@ AObject *delete_recursively(NativeFuncInData) {
 	return notifier.createBool(count > 0 && !ec);
 }
 
+AObject *resolve_string(NativeFuncInData) {
+	std::string base = extractPath(args[0]);
+	std::string rel = std::string(args[1]->str->data, args[1]->str->size);
+	std::string combined = base + "/" + rel;
+	ClassId fileClassId = args[0]->type;
+	auto handle = new AFileHandle{nullptr, resolveFilePath(combined, notifier)};
+	return notifier.createNativeData(fileClassId, handle, destroyFile);
+}
+
+AObject *resolve_file(NativeFuncInData) {
+	std::string base = extractPath(args[0]);
+	std::string rel = extractPath(args[1]);
+	std::string combined = base + "/" + rel;
+	ClassId fileClassId = args[0]->type;
+	auto handle = new AFileHandle{nullptr, resolveFilePath(combined, notifier)};
+	return notifier.createNativeData(fileClassId, handle, destroyFile);
+}
+
+AObject *resolve_sibling(NativeFuncInData) {
+	std::string path = extractPath(args[0]);
+	std::filesystem::path p(path);
+	std::string parent = p.parent_path().string();
+	std::string rel = std::string(args[1]->str->data, args[1]->str->size);
+	std::string resultPath = parent.empty() ? rel : (parent + "/" + rel);
+	ClassId fileClassId = args[0]->type;
+	auto handle = new AFileHandle{nullptr, resolveFilePath(resultPath, notifier)};
+	return notifier.createNativeData(fileClassId, handle, destroyFile);
+}
+
+AObject *list(NativeFuncInData) {
+	return get_all_files(notifier, args, 1);
+}
+
+AObject *list_files(NativeFuncInData) {
+	auto allFiles = get_all_files(notifier, args, 1);
+	if (!allFiles) return nullptr;
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
+	ClassId fileClassId = args[0]->type;
+	auto res = notifier.createArray(returnId, fileClassId);
+	for (size_t i = 0; i < allFiles->array->size; ++i) {
+		auto item = allFiles->array->objData[i];
+		std::string filePath = std::string(item->str->data, item->str->size);
+		auto handle = new AFileHandle{nullptr, filePath};
+		auto fileObj = notifier.createNativeData(fileClassId, handle, destroyFile);
+		notifier.arrayAdd(res, fileObj);
+	}
+	return res;
+}
+
 void init(ACompiler &compiler) {
 	compiler.registerBuiltInLibrary(
 	    "std/file", R"###(
@@ -955,13 +1004,12 @@ class File {
     @native("file_is_file")
     fun isFile(): Bool
 
-    fun resolve(relative: String): File = File(this.getPath() + "/" + relative)
-    fun resolve(relative: File): File = File(this.getPath() + "/" + relative.getPath())
-    fun resolveSibling(relative: String): File {
-        val p = this.getParent()
-        if (p.length() == 0) return File(relative)
-        return File(p + "/" + relative)
-    }
+    @native("file_resolve_string")
+    fun resolve(relative: String): File
+    @native("file_resolve_file")
+    fun resolve(relative: File): File
+    @native("file_resolve_sibling")
+    fun resolveSibling(relative: String): File
 
     @native("file_static_write_text")
     fun writeText(text: String)
@@ -1029,15 +1077,10 @@ class File {
     @native("file_get_all_files")
     static fun getAllFiles(dirPath: String): Array<String>
 
-    fun list(): Array<String> = File.getAllFiles(this.getPath())
-    fun listFiles(): Array<File> {
-        val arr = File.getAllFiles(this.getPath())
-        val res = <File>[]
-        for (f in arr) {
-            res.add(File(f))
-        }
-        return res
-    }
+    @native("file_list")
+    fun list(): Array<String>
+    @native("file_list_files")
+    fun listFiles(): Array<File>
 
     @native("file_get_name")
     static fun getName(path: String): String
@@ -1137,6 +1180,11 @@ fun appendFile(path: String, text: String)
 	        {"file_static_write_bytes", &file::static_write_bytes},
 	        {"file_copy_to", &file::copy_to},
 	        {"file_copy_recursively", &file::copy_recursively},
+	        {"file_resolve_string", &file::resolve_string},
+	        {"file_resolve_file", &file::resolve_file},
+	        {"file_resolve_sibling", &file::resolve_sibling},
+	        {"file_list", &file::list},
+	        {"file_list_files", &file::list_files},
 	    }));
 }
 

@@ -1,6 +1,7 @@
 #include "frontend/lexer/Lexer.hpp"
 #include "frontend/ACompiler.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "shared/AString.hpp"
 
 namespace Autolang {
 namespace Lexer {
@@ -512,29 +513,22 @@ back:;
 			if (chr == quote) {
 				++i;
 				if constexpr (isChar) {
-					switch (newStr.size()) {
-						case 0: {
-							context.tokens.emplace_back(
-							    context.linePos, TokenType::NUMBER,
-							    pushLexerString(context, "0"));
-							return;
-						}
-						case 1: {
-							uint8_t value = newStr[0];
-							context.tokens.emplace_back(
-							    context.linePos, TokenType::NUMBER,
-							    pushLexerString(context,
-							                    std::to_string(value)));
-							return;
-						}
-						default: {
-							throw LexerError(
-							    context.linePos,
-							    "Invalid char literal: expected "
-							    "exactly 1 Unicode code point, got " +
-							        std::to_string(newStr.size()) + "\nHint: Char literal must contain exactly one character, use \"...\" for strings");
-						}
+					if (newStr.empty()) {
+						throw LexerError(context.linePos, "Empty character literal ''\nHint: Char literal must contain exactly one character");
 					}
+					size_t idx = 0;
+					AString::utf8ToCodePoint(newStr, idx);
+					if (idx < newStr.size()) {
+						throw LexerError(
+						    context.linePos,
+						    "Invalid char literal: expected "
+						    "exactly 1 Unicode code point, got " +
+						        std::to_string(newStr.size()) + "\nHint: Char literal must contain exactly one character, use \"...\" for strings");
+					}
+					context.tokens.emplace_back(
+					    context.linePos, TokenType::CHAR,
+					    pushLexerString(context, newStr));
+					return;
 				}
 				if constexpr (!isRawString) {
 					context.tokens.emplace_back(

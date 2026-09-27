@@ -35,6 +35,9 @@ class Map<K, V> {
 	@native("map_is_empty")
     fun is_empty(): Bool
 
+	@native("map_is_null_or_empty")
+    fun Map<K, V>?.isNullOrEmpty(): Bool
+
     @native("map_contains_key")
     fun containsKey(key: K): Bool
 
@@ -138,13 +141,13 @@ class Map<K, V> {
 	fun <R> mapKeys(transform: (K) -> R): Map<R, V>
 
 	@native("map_plus_pair")
-	fun plus(pair: Any): Map<K, V>
+	fun plus(pair: Pair<K, V>): Map<K, V>
 
 	@native("map_entries")
-	fun entries(): Array<Any>
+	fun entries(): Array<MapEntry<K, V>>
 
 	@native("map_to_list")
-	fun toList(): Array<Any>
+	fun toList(): Array<Pair<K, V>>
 
 	@native("map_put_all")
 	fun putAll(from: Map<K, V>)
@@ -164,4 +167,15 @@ class Map<K, V> {
 	@native("map_filter_not")
 	fun filterNot(predicate: (K, V) -> Bool): Map<K, V>
 }
+
+class MapEntry<K, V>(val key: K, val value: V) {
+	@native("tuple_first")
+	fun component1(): K
+	@native("tuple_second")
+	fun component2(): V
+	@native("map_entry_to_string")
+	fun toString(): String
+}
+
+typealias Entry<K, V> = MapEntry<K, V>
 )###";

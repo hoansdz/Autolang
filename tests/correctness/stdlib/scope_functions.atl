@@ -66,3 +66,26 @@ assert(s1 == "fallback", "safe-call chain null")
 val validStr: String? = "0987654321"
 val s2 = validStr?.takeIf { it -> it.length >= 10 }?.let { it -> it } ?: "fallback"
 assert(s2 == "0987654321", "safe-call chain non-null")
+
+// 10. takeIf / takeUnless edge cases with 0, empty string, and false
+val zeroVal = 0.takeIf { it == 0 }
+assert(zeroVal != null && zeroVal == 0, "takeIf with 0")
+
+val emptyStrVal = "".takeIf { it.isEmpty() }
+assert(emptyStrVal != null && emptyStrVal == "", "takeIf with empty string")
+
+val falseVal = false.takeIf { !it }
+assert(falseVal != null && falseVal == false, "takeIf with false")
+
+val zeroUnless = 0.takeUnless { it != 0 }
+assert(zeroUnless != null && zeroUnless == 0, "takeUnless with 0")
+
+// 11. Nullable receiver safe calls
+val nVal: Int? = null
+val nLet = nVal?.let { it -> it * 2 }
+assert(nLet == null, "let on null")
+
+val nRun = nullStr?.run { it -> it + "suffix" }
+assert(nRun == null, "run on null")
+
+println("Passed scope_functions")

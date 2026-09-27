@@ -115,6 +115,33 @@ fun testArrayFeaturesExhaustive() {
     val foldVal = a.fold<Int>(10, {|acc: Int, v: Int| acc + v })
     assert(foldVal == 50)
 
+    // Edge cases: slice, reversed, and plus
+    val emptyArr = <Int>[]
+    val sliceEmpty = emptyArr.slice(0, 0)
+    assert(sliceEmpty.size() == 0)
+
+    val sliceZero = a.slice(2, 2)
+    assert(sliceZero.size() == 0)
+
+    val revEmpty = emptyArr.reversed()
+    assert(revEmpty.size() == 0)
+
+    val singleArr = [42]
+    val revSingle = singleArr.reversed()
+    assert(revSingle.size() == 1 && revSingle[0] == 42)
+
+    val plusEmptyBoth = emptyArr + emptyArr
+    assert(plusEmptyBoth.size() == 0)
+
+    val plusEmptyLeft = emptyArr + [1, 2]
+    assert(plusEmptyLeft.size() == 2 && plusEmptyLeft[0] == 1 && plusEmptyLeft[1] == 2)
+
+    val plusEmptyRight = [1, 2] + emptyArr
+    assert(plusEmptyRight.size() == 2 && plusEmptyRight[0] == 1 && plusEmptyRight[1] == 2)
+
+    val plusElement = [1, 2] + 3
+    assert(plusElement.size() == 3 && plusElement[2] == 3)
+
     // 13. Clean up test
     a.clear()
     assert(a.isEmpty() == true)

@@ -97,6 +97,7 @@ struct CompiledProgram {
 	    HashMap<AString *, uint32_t, AString::Hash, AString::Equal> &map,
 	    AString *value);
 	Offset registerEnumConstPool(ClassId classId); // Enum
+	Offset registerCharConstPool(HashMap<uint32_t, uint32_t> &map, uint32_t value);
 	template <typename T>
 	Offset registerConstPool(HashMap<T, uint32_t> &map, T value);
 	~CompiledProgram();

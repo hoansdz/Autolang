@@ -15,14 +15,16 @@ class Pair<A, B>(val first: A, val second: B) {
 	@native("pair_to_list")
 	fun toList(): Array<Any>
 
-	fun component1(): A = this.first
-	fun component2(): B = this.second
-	fun copy(first: A = this.first, second: B = this.second): Pair<A, B> = Pair<A, B>(first, second)
+	@native("tuple_first")
+	fun component1(): A
+	@native("tuple_second")
+	fun component2(): B
+	@native("pair_copy")
+	fun copy(first: A = this.first, second: B = this.second): Pair<A, B>
 }
 
-fun <A, B> pairOf(first: A, second: B): Pair<A, B> {
-	return Pair<A, B>(first, second)
-}
+@native("pair_of")
+fun <A, B> pairOf(first: A, second: B): Pair<A, B>
 
 class Triple<A, B, C>(val first: A, val second: B, val third: C) {
 	@native("triple_to_string")
@@ -31,90 +33,67 @@ class Triple<A, B, C>(val first: A, val second: B, val third: C) {
 	@native("triple_to_list")
 	fun toList(): Array<Any>
 
-	fun component1(): A = this.first
-	fun component2(): B = this.second
-	fun component3(): C = this.third
-	fun copy(first: A = this.first, second: B = this.second, third: C = this.third): Triple<A, B, C> = Triple<A, B, C>(first, second, third)
+	@native("tuple_first")
+	fun component1(): A
+	@native("tuple_second")
+	fun component2(): B
+	@native("tuple_third")
+	fun component3(): C
+	@native("triple_copy")
+	fun copy(first: A = this.first, second: B = this.second, third: C = this.third): Triple<A, B, C>
 }
 
-fun <A, B, C> tripleOf(first: A, second: B, third: C): Triple<A, B, C> {
-	return Triple<A, B, C>(first, second, third)
+@native("triple_of")
+fun <A, B, C> tripleOf(first: A, second: B, third: C): Triple<A, B, C>
+
+class IndexedValue<T>(val index: Int, val value: T) {
+	@native("tuple_first")
+	fun component1(): Int
+	@native("tuple_second")
+	fun component2(): T
+	@native("indexed_value_to_string")
+	fun toString(): String
 }
+
+@native("indexed_value_of")
+fun <T> indexedValueOf(index: Int, value: T): IndexedValue<T>
 
 class Comparator<T>(val selectors: Array<Any>, val directions: Array<Int>) {
-	fun thenBy(selector: (T) -> Float): Comparator<T> {
-		this.selectors.add(selector)
-		this.directions.add(1)
-		return this
-	}
+	@native("comparator_then_by")
+	fun thenBy(selector: (T) -> Float): Comparator<T>
 
-	fun thenByDescending(selector: (T) -> Float): Comparator<T> {
-		this.selectors.add(selector)
-		this.directions.add(-1)
-		return this
-	}
+	@native("comparator_then_by_descending")
+	fun thenByDescending(selector: (T) -> Float): Comparator<T>
 }
 
-fun <T> compareBy(selector: (T) -> Float): Comparator<T> {
-	val selectors: Array<Any> = <Any>[]
-	selectors.add(selector)
-	val dirs: Array<Int> = <Int>[]
-	dirs.add(1)
-	return Comparator<T>(selectors, dirs)
-}
+@native("compare_by_1")
+fun <T> compareBy(selector: (T) -> Float): Comparator<T>
 
-fun <T> compareBy(s1: (T) -> Float, s2: (T) -> Float): Comparator<T> {
-	val selectors: Array<Any> = <Any>[]
-	selectors.add(s1)
-	selectors.add(s2)
-	val dirs: Array<Int> = <Int>[]
-	dirs.add(1)
-	dirs.add(1)
-	return Comparator<T>(selectors, dirs)
-}
+@native("compare_by_2")
+fun <T> compareBy(s1: (T) -> Float, s2: (T) -> Float): Comparator<T>
 
-fun <T> compareBy(s1: (T) -> Float, s2: (T) -> Float, s3: (T) -> Float): Comparator<T> {
-	val selectors: Array<Any> = <Any>[]
-	selectors.add(s1)
-	selectors.add(s2)
-	selectors.add(s3)
-	val dirs: Array<Int> = <Int>[]
-	dirs.add(1)
-	dirs.add(1)
-	dirs.add(1)
-	return Comparator<T>(selectors, dirs)
-}
+@native("compare_by_3")
+fun <T> compareBy(s1: (T) -> Float, s2: (T) -> Float, s3: (T) -> Float): Comparator<T>
 
-fun <T> compareBy(s1: (T) -> Float, s2: (T) -> Float, s3: (T) -> Float, s4: (T) -> Float): Comparator<T> {
-	val selectors: Array<Any> = <Any>[]
-	selectors.add(s1)
-	selectors.add(s2)
-	selectors.add(s3)
-	selectors.add(s4)
-	val dirs: Array<Int> = <Int>[]
-	dirs.add(1)
-	dirs.add(1)
-	dirs.add(1)
-	dirs.add(1)
-	return Comparator<T>(selectors, dirs)
-}
+@native("compare_by_4")
+fun <T> compareBy(s1: (T) -> Float, s2: (T) -> Float, s3: (T) -> Float, s4: (T) -> Float): Comparator<T>
 
-fun <T> compareByDescending(selector: (T) -> Float): Comparator<T> {
-	val selectors: Array<Any> = <Any>[]
-	selectors.add(selector)
-	val dirs: Array<Int> = <Int>[]
-	dirs.add(-1)
-	return Comparator<T>(selectors, dirs)
-}
+@native("compare_by_descending")
+fun <T> compareByDescending(selector: (T) -> Float): Comparator<T>
 
 class Ref<T>(var value: T) {
 	@native("to_string")
 	fun toString(): String
 }
 
-fun <T> ref(value: T): Ref<T> = Ref(value)
-fun intRef(value: Int): Ref<Int> = Ref(value)
-fun floatRef(value: Float): Ref<Float> = Ref(value)
-fun booleanRef(value: Bool): Ref<Bool> = Ref(value)
-fun stringRef(value: String): Ref<String> = Ref(value)
+@native("ref_create")
+fun <T> ref(value: T): Ref<T>
+@native("ref_create")
+fun intRef(value: Int): Ref<Int>
+@native("ref_create")
+fun floatRef(value: Float): Ref<Float>
+@native("ref_create")
+fun booleanRef(value: Bool): Ref<Bool>
+@native("ref_create")
+fun stringRef(value: String): Ref<String>
 )###";

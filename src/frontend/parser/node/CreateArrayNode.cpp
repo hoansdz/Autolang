@@ -41,18 +41,24 @@ ExprNode *CreateArrayNode::optimize(in_func) {
 	auto genericType = classInfo->genericTypeId[0];
 	auto valueMustBeClassId = *genericType->classId;
 	for (auto *&value : values) {
-		if (value->kind == NodeType::CREATE_ARRAY) {
+		switch (value->kind) {
+		case NodeType::CREATE_ARRAY:
 			if (compile.classes[valueMustBeClassId]->genericBaseClassId == DefaultClass::arrayClassId) {
 				static_cast<HasClassIdNode *>(value)->classId = valueMustBeClassId;
 			}
-		} else if (value->kind == NodeType::CREATE_SET) {
+			break;
+		case NodeType::CREATE_SET:
 			if (compile.classes[valueMustBeClassId]->genericBaseClassId == DefaultClass::setClassId) {
 				static_cast<HasClassIdNode *>(value)->classId = valueMustBeClassId;
 			}
-		} else if (value->kind == NodeType::CREATE_MAP) {
+			break;
+		case NodeType::CREATE_MAP:
 			if (compile.classes[valueMustBeClassId]->genericBaseClassId == DefaultClass::mapClassId) {
 				static_cast<HasClassIdNode *>(value)->classId = valueMustBeClassId;
 			}
+			break;
+		default:
+			break;
 		}
 		value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 		if (value->classId == valueMustBeClassId) {
@@ -257,10 +263,15 @@ void CreateArrayNode::optimizeAndInferenceType(in_func) {
 					continue;
 				}
 				case DefaultClass::boolClassId: {
-					if (*valueMustBeClassId == DefaultClass::intClassId) {
-						value = context.castPool.push(value, DefaultClass::intClassId);
-					} else if (*valueMustBeClassId == DefaultClass::floatClassId) {
-						value = context.castPool.push(value, DefaultClass::floatClassId);
+					switch (*valueMustBeClassId) {
+						case DefaultClass::intClassId:
+							value = context.castPool.push(value, DefaultClass::intClassId);
+							break;
+						case DefaultClass::floatClassId:
+							value = context.castPool.push(value, DefaultClass::floatClassId);
+							break;
+						default:
+							break;
 					}
 					continue;
 				}

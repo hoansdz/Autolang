@@ -1,6 +1,7 @@
 #define AUTOLANG_LIMIT_OPCODE
 // #define NO_INCLUDE_LIBS_HTTP
 #include <Autolang.hpp>
+#include "backend/vm/ANotifier.hpp"
 #include "shared/Profiler.hpp"
 #include <chrono>
 #include <filesystem>
@@ -143,11 +144,14 @@ void printMemoryUsage(const MemoryInfo &base, const MemoryInfo &current) {
 #endif
 
 bool runCorrectnessTest(Autolang::ACompiler &compiler, const char *scriptPath) {
+	const char *targetScript = (scriptPath != nullptr && scriptPath[0] != '\0')
+	    ? scriptPath
+	    : "./tests/testCorrectness.atl";
 	try {
 #ifdef _WIN32
 		MemoryInfo baseMem = getMemoryUsage();
 #endif
-		if (!compiler.compile(scriptPath, Autolang::LibraryConfig(false, true, true))) {
+		if (!compiler.compile(targetScript, Autolang::LibraryConfig(false, true, true))) {
 			compiler.refresh();
 			return false;
 		}
@@ -197,32 +201,112 @@ void runBenchmarkReport(const std::chrono::high_resolution_clock::time_point &pr
 	AUTOLANG_PROFILE_REPORT("AUTOLANG BENCHMARK PERFORMANCE & RAM REPORT");
 }
 
+void printHelp(const char *programName) {
+	std::cout << "AutoLang Programming Language\n"
+	          << "Usage:\n"
+	          << "  " << programName << " [options] [script.atl]\n"
+	          << "  " << programName << " [options] -e \"<code>\"\n"
+	          << "  " << programName << " [options] --test\n\n"
+	          << "Options:\n"
+	          << "  -h, --help             Show this help message and exit\n"
+	          << "  -v, --version          Show version information and exit\n"
+	          << "  -e, --eval <code>      Execute inline source code directly\n"
+	          << "  -s, --strict           Enable strict compilation mode\n"
+	          << "  -b, --benchmark        Run with benchmark performance and memory profiling\n"
+	          << "      --test             Run the full correctness and rule test suite\n\n"
+	          << "Examples:\n"
+	          << "  " << programName << " script.atl\n"
+	          << "  " << programName << " -e 'println(\"Hello, World!\")'\n"
+	          << "  " << programName << " -b script.atl\n"
+	          << "  " << programName << " --test\n";
+}
+
+void printVersion() {
+	std::cout << "AutoLang 1.0.0 (C++17)\n";
+}
+
 int main(int argc, char *argv[]) {
 	auto processStart = std::chrono::high_resolution_clock::now();
 
 	bool isBenchmark = false;
-	const char* scriptPath = "./tests/testCorrectness.atl";
-	bool isSingleCustomScript = false;
+	bool isStrict = false;
+	bool isRunTests = false;
+	std::string evalCode;
+	bool hasEvalCode = false;
+	const char* scriptPath = nullptr;
 
 	for (int i = 1; i < argc; ++i) {
 		std::string arg = argv[i];
-		if (arg == "--benchmark" || arg == "benchmark" || arg == "-b" || arg == "--profile" || arg == "-p") {
+		if (arg == "-h" || arg == "--help" || arg == "help") {
+			printHelp(argv[0]);
+			return 0;
+		} else if (arg == "-v" || arg == "--version" || arg == "version") {
+			printVersion();
+			return 0;
+		} else if (arg == "-e" || arg == "--eval") {
+			if (i + 1 < argc) {
+				evalCode = argv[++i];
+				hasEvalCode = true;
+			} else {
+				std::cerr << "Error: Option '" << arg << "' requires an argument.\n";
+				return 1;
+			}
+		} else if (arg == "-s" || arg == "--strict") {
+			isStrict = true;
+		} else if (arg == "--benchmark" || arg == "benchmark" || arg == "-b" || arg == "--profile" || arg == "-p") {
 			isBenchmark = true;
+		} else if (arg == "--test" || arg == "test") {
+			isRunTests = true;
 		} else if (arg.length() > 0 && arg[0] != '-') {
-			scriptPath = argv[i];
-			isSingleCustomScript = true;
+			if (arg == "run" && i + 1 < argc && argv[i + 1][0] != '-') {
+				scriptPath = argv[++i];
+			} else {
+				scriptPath = argv[i];
+			}
+		} else {
+			std::cerr << "Unknown option: '" << arg << "'\nUse '--help' to view available options.\n";
+			return 1;
 		}
 	}
 
-	if (isBenchmark) {
-		runBenchmarkReport(processStart, scriptPath);
+	if (hasEvalCode) {
+		Autolang::ACompiler evalCompiler;
+		evalCompiler.setLimitOpcodeCount(1000000);
+		evalCompiler.setMaxManagedMemory(1024 * 1024);
+		if (isStrict) {
+			evalCompiler.setStrictMode(true);
+		}
+		bool success = evalCompiler.runSource(evalCode);
+		if (!success) {
+			if (!evalCompiler.getLastError().empty()) {
+				std::cerr << evalCompiler.getLastError() << '\n';
+			} else if (evalCompiler.exceptionMessage) {
+				std::cerr << "Uncaught exception: " << evalCompiler.exceptionMessage << '\n';
+			} else {
+				std::cerr << "Execution failed.\n";
+			}
+			return 1;
+		}
 		return 0;
 	}
 
-	if (isSingleCustomScript) {
+	if (scriptPath != nullptr) {
+		if (!std::filesystem::exists(scriptPath)) {
+			std::cerr << "Error: File not found: '" << scriptPath << "'\n";
+			return 1;
+		}
+
+		if (isBenchmark) {
+			runBenchmarkReport(processStart, scriptPath);
+			return 0;
+		}
+
 		Autolang::ACompiler customCompiler;
 		customCompiler.setLimitOpcodeCount(1000000);
 		customCompiler.setMaxManagedMemory(1024 * 1024);
+		if (isStrict) {
+			customCompiler.setStrictMode(true);
+		}
 		try {
 			if (!customCompiler.compile(scriptPath, Autolang::LibraryConfig(false, true, true))) {
 				std::cerr << "Compilation failed: " << scriptPath << '\n';
@@ -244,6 +328,11 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
+	if (isBenchmark) {
+		runBenchmarkReport(processStart, "./tests/testCorrectness.atl");
+		return 0;
+	}
+
 	// Full test suite execution: Correctness + CompileTime Rules + Runtime Rules
 	Autolang::ACompiler sharedCompiler;
 	sharedCompiler.setLimitOpcodeCount(1000000);
@@ -252,10 +341,43 @@ int main(int argc, char *argv[]) {
 	bool correctnessPassed = runCorrectnessTest(sharedCompiler, scriptPath);
 
 	// Set silent error handler when transitioning to rule violation tests
-	sharedCompiler.setOnError(new Autolang::FunctionEvent([](std::string_view) {}));
+	sharedCompiler.setOnError([](std::string_view) {});
 
 	size_t passedCount = correctnessPassed ? 1 : 0;
 	size_t totalCount = 1;
+
+	// Verify new ergonomic compiler APIs
+	{
+		totalCount++;
+		Autolang::ACompiler apiCompiler;
+		std::string capturedError;
+		apiCompiler.setOnError([&](std::string_view err) {
+			capturedError = std::string(err);
+		});
+		bool compileFail = apiCompiler.compileSource("val a: Int = \"invalid string\"");
+		bool errorRecorded = !compileFail && !apiCompiler.getLastError().empty() && !capturedError.empty();
+
+		apiCompiler.reset();
+		bool ran = apiCompiler.runSource("val x = 10 + 20");
+
+		apiCompiler.reset();
+		int hostCalled = 0;
+		apiCompiler.registerFunction("hostAdd", [&](NativeFuncInData) -> Autolang::AObject* {
+			hostCalled++;
+			return notifier.createInt(100);
+		});
+		bool hostRan = apiCompiler.runSource("@native(\"hostAdd\") fun hostAdd(): Int\nval res = hostAdd()");
+
+		if (errorRecorded && ran && hostRan && hostCalled == 1) {
+			passedCount++;
+			std::cout << "Passed testCompilerConvenienceApi\n";
+		} else {
+			std::cerr << "Failed testCompilerConvenienceApi: errorRecorded=" << errorRecorded
+			          << " ran=" << ran << " hostRan=" << hostRan << " hostCalled=" << hostCalled
+			          << " exception=" << apiCompiler.getException()
+			          << " lastError=" << apiCompiler.getLastError() << "\n";
+		}
+	}
 
 	totalCount += AutolangTests::runAllCompileTimeRules(sharedCompiler, "tests/rule/compile_time", passedCount);
 	totalCount += AutolangTests::runAllRuntimeRules(sharedCompiler, "tests/rule/runtime", passedCount);

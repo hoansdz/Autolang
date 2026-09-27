@@ -140,6 +140,19 @@ fun testForMap() {
 	}
 	assert(kotlinKeyCount == 2)
 
+	// Edge cases: empty map iteration
+	val emptyM = mapOf<String, Int>()
+	var emptyIterCount = 0
+	for ((k, v) in emptyM) {
+		emptyIterCount += 1
+	}
+	assert(emptyIterCount == 0)
+
+	for (k in emptyM) {
+		emptyIterCount += 1
+	}
+	assert(emptyIterCount == 0)
+
 	println("Passed ${__FUNC__}")
 }
 

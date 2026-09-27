@@ -63,6 +63,40 @@ fun testWhen() {
 	}
 	assert(state == "REJECTED" && successCount == 2, "State machine transition failed")
 
+	// 1. When as expression returning a value
+	val num = 2
+	val strNum = when (num) {
+		1 -> "one"
+		2 -> "two"
+		else -> "other"
+	}
+	assert(strNum == "two")
+
+	// 2. When without subject (evaluating boolean conditions)
+	val score = 85
+	val grade = when {
+		score >= 90 -> "A"
+		score >= 80 -> "B"
+		else -> "C"
+	}
+	assert(grade == "B")
+
+	// 3. When with !in range
+	val valX = 15
+	val rangeCheck = when (valX) {
+		!in 1..10 -> "outside"
+		else -> "inside"
+	}
+	assert(rangeCheck == "outside")
+
+	// 4. When with !is type check
+	val valY: Any = 123
+	val typeCheck = when (valY) {
+		!is String -> "not string"
+		else -> "is string"
+	}
+	assert(typeCheck == "not string")
+
 	println("Passed ${__FUNC__}")
 }
 

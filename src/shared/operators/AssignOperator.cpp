@@ -18,85 +18,110 @@ AObject *plus_eq(NativeFuncInData) {
 	notifier.vm->pointerClassId = 0;
 
 	if (ptr != nullptr) {
-		if (ptrClassId == Autolang::DefaultClass::intClassId) {
-			auto valPtr = static_cast<int64_t *>(ptr);
-			switch (obj2->type) {
-				case Autolang::DefaultClass::intClassId:
-					*valPtr += obj2->i;
-					if (obj1) obj1->i = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::floatClassId:
-					*valPtr += static_cast<int64_t>(obj2->f);
-					if (obj1) obj1->i = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::boolClassId:
-					*valPtr += obj2->b;
-					if (obj1) obj1->i = *valPtr;
-					return nullptr;
-				default:
-					break;
-			}
-		} else if (ptrClassId == Autolang::DefaultClass::floatClassId) {
-			auto valPtr = static_cast<double *>(ptr);
-			switch (obj2->type) {
-				case Autolang::DefaultClass::intClassId:
-					*valPtr += obj2->i;
-					if (obj1) obj1->f = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::floatClassId:
-					*valPtr += obj2->f;
-					if (obj1) obj1->f = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::boolClassId:
-					*valPtr += obj2->b;
-					if (obj1) obj1->f = *valPtr;
-					return nullptr;
-				default:
-					break;
-			}
-		} else if (ptrClassId == Autolang::DefaultClass::stringClassId) {
-			AString *resStr = nullptr;
-			switch (obj2->type) {
-				case Autolang::DefaultClass::intClassId:
-					resStr = (*obj1->str) + obj2->i;
-					break;
-				case Autolang::DefaultClass::floatClassId:
-					resStr = (*obj1->str) + obj2->f;
-					break;
-				case Autolang::DefaultClass::boolClassId:
-					resStr = (*obj1->str) + (obj2->b ? "true" : "false");
-					break;
-				case Autolang::DefaultClass::stringClassId:
-					resStr = (*obj1->str) + obj2->str;
-					break;
-				case Autolang::DefaultClass::nullClassId:
-					resStr = (*obj1->str) + "null";
-					break;
-				default: {
-					std::string s = to_string(notifier, obj2);
-					if (notifier.hasException())
+		switch (ptrClassId) {
+			case Autolang::DefaultClass::intClassId: {
+				auto valPtr = static_cast<int64_t *>(ptr);
+				switch (obj2->type) {
+					case Autolang::DefaultClass::intClassId:
+						*valPtr += obj2->i;
+						if (obj1) obj1->i = *valPtr;
 						return nullptr;
-					resStr = (*obj1->str) + s.c_str();
-					break;
+					case Autolang::DefaultClass::floatClassId:
+						*valPtr += static_cast<int64_t>(obj2->f);
+						if (obj1) obj1->i = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::boolClassId:
+						*valPtr += obj2->b;
+						if (obj1) obj1->i = *valPtr;
+						return nullptr;
+					default:
+						break;
 				}
+				break;
 			}
-			if (resStr) {
-				auto oldObj = obj1;
-				auto newStrObj = notifier.createString(resStr);
-				newStrObj->retain();
-				(*static_cast<AObject **>(ptr)) = newStrObj;
-				notifier.release(oldObj);
-				return nullptr;
+			case Autolang::DefaultClass::charClassId: {
+				auto valPtr = static_cast<AChar *>(ptr);
+				if (obj2->type == Autolang::DefaultClass::intClassId) {
+					*valPtr = static_cast<AChar>(*valPtr + obj2->i);
+					if (obj1) obj1->chr = *valPtr;
+					return nullptr;
+				}
+				break;
 			}
-		} else if (ptrClassId == Autolang::DefaultClass::arrayClassId ||
-		           (obj1 && (obj1->flags & AObject::Flags::OBJ_IS_ARRAY))) {
-			AObject *newArrObj = Libs::array::plus(notifier, args, argSize);
-			if (newArrObj) {
-				auto oldObj = obj1;
-				newArrObj->retain();
-				(*static_cast<AObject **>(ptr)) = newArrObj;
-				notifier.release(oldObj);
-				return nullptr;
+			case Autolang::DefaultClass::floatClassId: {
+				auto valPtr = static_cast<double *>(ptr);
+				switch (obj2->type) {
+					case Autolang::DefaultClass::intClassId:
+						*valPtr += obj2->i;
+						if (obj1) obj1->f = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::floatClassId:
+						*valPtr += obj2->f;
+						if (obj1) obj1->f = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::boolClassId:
+						*valPtr += obj2->b;
+						if (obj1) obj1->f = *valPtr;
+						return nullptr;
+					default:
+						break;
+				}
+				break;
+			}
+			case Autolang::DefaultClass::stringClassId: {
+				AString *resStr = nullptr;
+				switch (obj2->type) {
+					case Autolang::DefaultClass::intClassId:
+						resStr = (*obj1->str) + obj2->i;
+						break;
+					case Autolang::DefaultClass::charClassId: {
+						std::string s = to_string(notifier, obj2);
+						resStr = (*obj1->str) + s.c_str();
+						break;
+					}
+					case Autolang::DefaultClass::floatClassId:
+						resStr = (*obj1->str) + obj2->f;
+						break;
+					case Autolang::DefaultClass::boolClassId:
+						resStr = (*obj1->str) + (obj2->b ? "true" : "false");
+						break;
+					case Autolang::DefaultClass::stringClassId:
+						resStr = (*obj1->str) + obj2->str;
+						break;
+					case Autolang::DefaultClass::nullClassId:
+						resStr = (*obj1->str) + "null";
+						break;
+					default: {
+						std::string s = to_string(notifier, obj2);
+						if (notifier.hasException())
+							return nullptr;
+						resStr = (*obj1->str) + s.c_str();
+						break;
+					}
+				}
+				if (resStr) {
+					auto oldObj = obj1;
+					auto newStrObj = notifier.createString(resStr);
+					newStrObj->retain();
+					(*static_cast<AObject **>(ptr)) = newStrObj;
+					notifier.release(oldObj);
+					return nullptr;
+				}
+				break;
+			}
+			default: {
+				if (ptrClassId == Autolang::DefaultClass::arrayClassId ||
+				    (obj1 && (obj1->flags & AObject::Flags::OBJ_IS_ARRAY))) {
+					AObject *newArrObj = Libs::array::plus(notifier, args, argSize);
+					if (newArrObj) {
+						auto oldObj = obj1;
+						newArrObj->retain();
+						(*static_cast<AObject **>(ptr)) = newArrObj;
+						notifier.release(oldObj);
+						return nullptr;
+					}
+				}
+				break;
 			}
 		}
 	}
@@ -115,6 +140,13 @@ AObject *plus_eq(NativeFuncInData) {
 					return nullptr;
 				default:
 					break;
+			}
+			break;
+		}
+		case Autolang::DefaultClass::charClassId: {
+			if (obj2->type == Autolang::DefaultClass::intClassId) {
+				obj1->chr = static_cast<AChar>(obj1->chr + obj2->i);
+				return nullptr;
 			}
 			break;
 		}
@@ -140,6 +172,11 @@ AObject *plus_eq(NativeFuncInData) {
 				case Autolang::DefaultClass::intClassId:
 					resStr = (*obj1->str) + obj2->i;
 					break;
+				case Autolang::DefaultClass::charClassId: {
+					std::string s = to_string(notifier, obj2);
+					resStr = (*obj1->str) + s.c_str();
+					break;
+				}
 				case Autolang::DefaultClass::floatClassId:
 					resStr = (*obj1->str) + obj2->f;
 					break;
@@ -204,51 +241,69 @@ AObject *minus_eq(NativeFuncInData) {
 	notifier.vm->pointerClassId = 0;
 
 	if (ptr != nullptr) {
-		if (ptrClassId == Autolang::DefaultClass::intClassId) {
-			auto valPtr = static_cast<int64_t *>(ptr);
-			switch (obj2->type) {
-				case Autolang::DefaultClass::intClassId:
-					*valPtr -= obj2->i;
-					if (obj1) obj1->i = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::floatClassId:
-					*valPtr -= static_cast<int64_t>(obj2->f);
-					if (obj1) obj1->i = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::boolClassId:
-					*valPtr -= obj2->b;
-					if (obj1) obj1->i = *valPtr;
-					return nullptr;
-				default:
-					break;
+		switch (ptrClassId) {
+			case Autolang::DefaultClass::intClassId: {
+				auto valPtr = static_cast<int64_t *>(ptr);
+				switch (obj2->type) {
+					case Autolang::DefaultClass::intClassId:
+						*valPtr -= obj2->i;
+						if (obj1) obj1->i = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::floatClassId:
+						*valPtr -= static_cast<int64_t>(obj2->f);
+						if (obj1) obj1->i = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::boolClassId:
+						*valPtr -= obj2->b;
+						if (obj1) obj1->i = *valPtr;
+						return nullptr;
+					default:
+						break;
+				}
+				break;
 			}
-		} else if (ptrClassId == Autolang::DefaultClass::floatClassId) {
-			auto valPtr = static_cast<double *>(ptr);
-			switch (obj2->type) {
-				case Autolang::DefaultClass::intClassId:
-					*valPtr -= obj2->i;
-					if (obj1) obj1->f = *valPtr;
+			case Autolang::DefaultClass::charClassId: {
+				auto valPtr = static_cast<AChar *>(ptr);
+				if (obj2->type == Autolang::DefaultClass::intClassId) {
+					*valPtr = static_cast<AChar>(*valPtr - obj2->i);
+					if (obj1) obj1->chr = *valPtr;
 					return nullptr;
-				case Autolang::DefaultClass::floatClassId:
-					*valPtr -= obj2->f;
-					if (obj1) obj1->f = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::boolClassId:
-					*valPtr -= obj2->b;
-					if (obj1) obj1->f = *valPtr;
-					return nullptr;
-				default:
-					break;
+				}
+				break;
 			}
-		} else if (ptrClassId == Autolang::DefaultClass::arrayClassId ||
-		           (obj1 && (obj1->flags & AObject::Flags::OBJ_IS_ARRAY))) {
-			AObject *newArrObj = Libs::array::minus(notifier, args, argSize);
-			if (newArrObj) {
-				auto oldObj = obj1;
-				newArrObj->retain();
-				(*static_cast<AObject **>(ptr)) = newArrObj;
-				notifier.release(oldObj);
-				return nullptr;
+			case Autolang::DefaultClass::floatClassId: {
+				auto valPtr = static_cast<double *>(ptr);
+				switch (obj2->type) {
+					case Autolang::DefaultClass::intClassId:
+						*valPtr -= obj2->i;
+						if (obj1) obj1->f = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::floatClassId:
+						*valPtr -= obj2->f;
+						if (obj1) obj1->f = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::boolClassId:
+						*valPtr -= obj2->b;
+						if (obj1) obj1->f = *valPtr;
+						return nullptr;
+					default:
+						break;
+				}
+				break;
+			}
+			default: {
+				if (ptrClassId == Autolang::DefaultClass::arrayClassId ||
+				    (obj1 && (obj1->flags & AObject::Flags::OBJ_IS_ARRAY))) {
+					AObject *newArrObj = Libs::array::minus(notifier, args, argSize);
+					if (newArrObj) {
+						auto oldObj = obj1;
+						newArrObj->retain();
+						(*static_cast<AObject **>(ptr)) = newArrObj;
+						notifier.release(oldObj);
+						return nullptr;
+					}
+				}
+				break;
 			}
 		}
 	}
@@ -267,6 +322,13 @@ AObject *minus_eq(NativeFuncInData) {
 					return nullptr;
 				default:
 					break;
+			}
+			break;
+		}
+		case Autolang::DefaultClass::charClassId: {
+			if (obj2->type == Autolang::DefaultClass::intClassId) {
+				obj1->chr = static_cast<AChar>(obj1->chr - obj2->i);
+				return nullptr;
 			}
 			break;
 		}
@@ -318,42 +380,49 @@ AObject *mul_eq(NativeFuncInData) {
 	notifier.vm->pointerClassId = 0;
 
 	if (ptr != nullptr) {
-		if (ptrClassId == Autolang::DefaultClass::intClassId) {
-			auto valPtr = static_cast<int64_t *>(ptr);
-			switch (obj2->type) {
-				case Autolang::DefaultClass::intClassId:
-					*valPtr *= obj2->i;
-					if (obj1) obj1->i = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::floatClassId:
-					*valPtr = static_cast<int64_t>(*valPtr * obj2->f);
-					if (obj1) obj1->i = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::boolClassId:
-					*valPtr *= obj2->b;
-					if (obj1) obj1->i = *valPtr;
-					return nullptr;
-				default:
-					break;
+		switch (ptrClassId) {
+			case Autolang::DefaultClass::intClassId: {
+				auto valPtr = static_cast<int64_t *>(ptr);
+				switch (obj2->type) {
+					case Autolang::DefaultClass::intClassId:
+						*valPtr *= obj2->i;
+						if (obj1) obj1->i = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::floatClassId:
+						*valPtr = static_cast<int64_t>(*valPtr * obj2->f);
+						if (obj1) obj1->i = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::boolClassId:
+						*valPtr *= obj2->b;
+						if (obj1) obj1->i = *valPtr;
+						return nullptr;
+					default:
+						break;
+				}
+				break;
 			}
-		} else if (ptrClassId == Autolang::DefaultClass::floatClassId) {
-			auto valPtr = static_cast<double *>(ptr);
-			switch (obj2->type) {
-				case Autolang::DefaultClass::intClassId:
-					*valPtr *= obj2->i;
-					if (obj1) obj1->f = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::floatClassId:
-					*valPtr *= obj2->f;
-					if (obj1) obj1->f = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::boolClassId:
-					*valPtr *= obj2->b;
-					if (obj1) obj1->f = *valPtr;
-					return nullptr;
-				default:
-					break;
+			case Autolang::DefaultClass::floatClassId: {
+				auto valPtr = static_cast<double *>(ptr);
+				switch (obj2->type) {
+					case Autolang::DefaultClass::intClassId:
+						*valPtr *= obj2->i;
+						if (obj1) obj1->f = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::floatClassId:
+						*valPtr *= obj2->f;
+						if (obj1) obj1->f = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::boolClassId:
+						*valPtr *= obj2->b;
+						if (obj1) obj1->f = *valPtr;
+						return nullptr;
+					default:
+						break;
+				}
+				break;
 			}
+			default:
+				break;
 		}
 	}
 
@@ -409,54 +478,61 @@ AObject *divide_eq(NativeFuncInData) {
 	notifier.vm->pointerClassId = 0;
 
 	if (ptr != nullptr) {
-		if (ptrClassId == Autolang::DefaultClass::intClassId) {
-			auto valPtr = static_cast<int64_t *>(ptr);
-			switch (obj2->type) {
-				case Autolang::DefaultClass::intClassId:
-					if (obj2->i == 0)
-						goto divideByZero;
-					*valPtr /= obj2->i;
-					if (obj1) obj1->i = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::floatClassId:
-					if (obj2->f == 0)
-						goto divideByZero;
-					*valPtr = static_cast<int64_t>(*valPtr / obj2->f);
-					if (obj1) obj1->i = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::boolClassId:
-					if (obj2->b == false)
-						goto divideByZero;
-					*valPtr /= obj2->b;
-					if (obj1) obj1->i = *valPtr;
-					return nullptr;
-				default:
-					break;
+		switch (ptrClassId) {
+			case Autolang::DefaultClass::intClassId: {
+				auto valPtr = static_cast<int64_t *>(ptr);
+				switch (obj2->type) {
+					case Autolang::DefaultClass::intClassId:
+						if (obj2->i == 0)
+							goto divideByZero;
+						*valPtr /= obj2->i;
+						if (obj1) obj1->i = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::floatClassId:
+						if (obj2->f == 0)
+							goto divideByZero;
+						*valPtr = static_cast<int64_t>(*valPtr / obj2->f);
+						if (obj1) obj1->i = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::boolClassId:
+						if (obj2->b == false)
+							goto divideByZero;
+						*valPtr /= obj2->b;
+						if (obj1) obj1->i = *valPtr;
+						return nullptr;
+					default:
+						break;
+				}
+				break;
 			}
-		} else if (ptrClassId == Autolang::DefaultClass::floatClassId) {
-			auto valPtr = static_cast<double *>(ptr);
-			switch (obj2->type) {
-				case Autolang::DefaultClass::intClassId:
-					if (obj2->i == 0)
-						goto divideByZero;
-					*valPtr /= obj2->i;
-					if (obj1) obj1->f = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::floatClassId:
-					if (obj2->f == 0)
-						goto divideByZero;
-					*valPtr /= obj2->f;
-					if (obj1) obj1->f = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::boolClassId:
-					if (obj2->b == false)
-						goto divideByZero;
-					*valPtr /= obj2->b;
-					if (obj1) obj1->f = *valPtr;
-					return nullptr;
-				default:
-					break;
+			case Autolang::DefaultClass::floatClassId: {
+				auto valPtr = static_cast<double *>(ptr);
+				switch (obj2->type) {
+					case Autolang::DefaultClass::intClassId:
+						if (obj2->i == 0)
+							goto divideByZero;
+						*valPtr /= obj2->i;
+						if (obj1) obj1->f = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::floatClassId:
+						if (obj2->f == 0)
+							goto divideByZero;
+						*valPtr /= obj2->f;
+						if (obj1) obj1->f = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::boolClassId:
+						if (obj2->b == false)
+							goto divideByZero;
+						*valPtr /= obj2->b;
+						if (obj1) obj1->f = *valPtr;
+						return nullptr;
+					default:
+						break;
+				}
+				break;
 			}
+			default:
+				break;
 		}
 	}
 
@@ -528,50 +604,57 @@ AObject *mod_eq(NativeFuncInData) {
 	notifier.vm->pointerClassId = 0;
 
 	if (ptr != nullptr) {
-		if (ptrClassId == Autolang::DefaultClass::intClassId) {
-			auto valPtr = static_cast<int64_t *>(ptr);
-			switch (obj2->type) {
-				case Autolang::DefaultClass::intClassId:
-					if (obj2->i == 0)
-						goto divideByZero;
-					*valPtr %= obj2->i;
-					if (obj1) obj1->i = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::floatClassId:
-					if (obj2->f == 0)
-						goto divideByZero;
-					*valPtr = static_cast<int64_t>(std::fmod(*valPtr, obj2->f));
-					if (obj1) obj1->i = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::boolClassId:
-					if (obj2->b == false)
-						goto divideByZero;
-					return nullptr;
-				default:
-					break;
+		switch (ptrClassId) {
+			case Autolang::DefaultClass::intClassId: {
+				auto valPtr = static_cast<int64_t *>(ptr);
+				switch (obj2->type) {
+					case Autolang::DefaultClass::intClassId:
+						if (obj2->i == 0)
+							goto divideByZero;
+						*valPtr %= obj2->i;
+						if (obj1) obj1->i = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::floatClassId:
+						if (obj2->f == 0)
+							goto divideByZero;
+						*valPtr = static_cast<int64_t>(std::fmod(*valPtr, obj2->f));
+						if (obj1) obj1->i = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::boolClassId:
+						if (obj2->b == false)
+							goto divideByZero;
+						return nullptr;
+					default:
+						break;
+				}
+				break;
 			}
-		} else if (ptrClassId == Autolang::DefaultClass::floatClassId) {
-			auto valPtr = static_cast<double *>(ptr);
-			switch (obj2->type) {
-				case Autolang::DefaultClass::intClassId:
-					if (obj2->i == 0)
-						goto divideByZero;
-					*valPtr = std::fmod(*valPtr, obj2->i);
-					if (obj1) obj1->f = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::floatClassId:
-					if (obj2->f == 0)
-						goto divideByZero;
-					*valPtr = std::fmod(*valPtr, obj2->f);
-					if (obj1) obj1->f = *valPtr;
-					return nullptr;
-				case Autolang::DefaultClass::boolClassId:
-					if (obj2->b == false)
-						goto divideByZero;
-					return nullptr;
-				default:
-					break;
+			case Autolang::DefaultClass::floatClassId: {
+				auto valPtr = static_cast<double *>(ptr);
+				switch (obj2->type) {
+					case Autolang::DefaultClass::intClassId:
+						if (obj2->i == 0)
+							goto divideByZero;
+						*valPtr = std::fmod(*valPtr, obj2->i);
+						if (obj1) obj1->f = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::floatClassId:
+						if (obj2->f == 0)
+							goto divideByZero;
+						*valPtr = std::fmod(*valPtr, obj2->f);
+						if (obj1) obj1->f = *valPtr;
+						return nullptr;
+					case Autolang::DefaultClass::boolClassId:
+						if (obj2->b == false)
+							goto divideByZero;
+						return nullptr;
+					default:
+						break;
+				}
+				break;
 			}
+			default:
+				break;
 		}
 	}
 
@@ -635,6 +718,9 @@ divideByZero:;
 AObject *plus_plus(NativeFuncInData) {
 	auto obj = args[0];
 	switch (obj->type) {
+		case Autolang::DefaultClass::charClassId:
+			++obj->chr;
+			return obj;
 		case Autolang::DefaultClass::intClassId:
 			++obj->i;
 			return obj;
@@ -653,6 +739,9 @@ AObject *plus_plus(NativeFuncInData) {
 AObject *minus_minus(NativeFuncInData) {
 	auto obj = args[0];
 	switch (obj->type) {
+		case Autolang::DefaultClass::charClassId:
+			--obj->chr;
+			return obj;
 		case Autolang::DefaultClass::intClassId:
 			--obj->i;
 			return obj;

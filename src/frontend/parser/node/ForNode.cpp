@@ -6,6 +6,100 @@
 
 namespace Autolang {
 
+static bool checkUsesMapEntryProps(ExprNode *node, DeclarationNode *decl, ParserContext &context) {
+	if (!node || !decl) return false;
+	switch (node->kind) {
+		case NodeType::GET_PROP: {
+			auto prop = static_cast<GetPropNode *>(node);
+			if (prop->caller) {
+				if (prop->caller->kind == NodeType::VAR) {
+					auto v = static_cast<VarNode *>(prop->caller);
+					if (v->declaration == decl) {
+						if (prop->nameId == lexerIdkey || prop->nameId == lexerIdvalue) return true;
+					}
+				}
+				if (checkUsesMapEntryProps(prop->caller, decl, context)) return true;
+			}
+			return false;
+		}
+		case NodeType::BLOCK: {
+			auto block = static_cast<BlockNode *>(node);
+			for (auto *child : block->nodes) {
+				if (checkUsesMapEntryProps(child, decl, context)) return true;
+			}
+			return false;
+		}
+		case NodeType::IF: {
+			auto ifNode = static_cast<IfNode *>(node);
+			if (checkUsesMapEntryProps(ifNode->condition, decl, context)) return true;
+			if (checkUsesMapEntryProps(&ifNode->ifTrue, decl, context)) return true;
+			if (ifNode->ifFalse && checkUsesMapEntryProps(ifNode->ifFalse, decl, context)) return true;
+			return false;
+		}
+		case NodeType::SET: {
+			auto setNode = static_cast<SetNode *>(node);
+			if (checkUsesMapEntryProps(setNode->detach, decl, context)) return true;
+			if (checkUsesMapEntryProps(setNode->value, decl, context)) return true;
+			return false;
+		}
+		case NodeType::BINARY: {
+			auto bin = static_cast<BinaryNode *>(node);
+			if (checkUsesMapEntryProps(bin->left, decl, context)) return true;
+			if (checkUsesMapEntryProps(bin->right, decl, context)) return true;
+			return false;
+		}
+		case NodeType::UNARY: {
+			auto un = static_cast<UnaryNode *>(node);
+			if (checkUsesMapEntryProps(un->value, decl, context)) return true;
+			return false;
+		}
+		case NodeType::CALL: {
+			auto call = static_cast<CallNode *>(node);
+			if (checkUsesMapEntryProps(call->caller, decl, context)) return true;
+			for (auto *arg : call->arguments) {
+				if (checkUsesMapEntryProps(arg, decl, context)) return true;
+			}
+			return false;
+		}
+		case NodeType::FOR: {
+			auto forNode = static_cast<ForNode *>(node);
+			if (checkUsesMapEntryProps(forNode->data, decl, context)) return true;
+			if (checkUsesMapEntryProps(&forNode->body, decl, context)) return true;
+			return false;
+		}
+		case NodeType::WHEN: {
+			auto whenNode = static_cast<WhenNode *>(node);
+			if (checkUsesMapEntryProps(whenNode->value, decl, context)) return true;
+			if (checkUsesMapEntryProps(whenNode->ifNode, decl, context)) return true;
+			return false;
+		}
+		case NodeType::CAST:
+		case NodeType::RUNTIME_CAST: {
+			auto cast = static_cast<CastNode *>(node);
+			if (checkUsesMapEntryProps(cast->value, decl, context)) return true;
+			return false;
+		}
+		case NodeType::NULL_COALESCING: {
+			auto nc = static_cast<NullCoalescingNode *>(node);
+			if (checkUsesMapEntryProps(nc->left, decl, context)) return true;
+			if (checkUsesMapEntryProps(nc->right, decl, context)) return true;
+			return false;
+		}
+		case NodeType::OPTIONAL_ACCESS: {
+			auto opt = static_cast<OptionalAccessNode *>(node);
+			if (checkUsesMapEntryProps(opt->value, decl, context)) return true;
+			return false;
+		}
+		case NodeType::RET: {
+			auto ret = static_cast<ReturnNode *>(node);
+			if (checkUsesMapEntryProps(ret->value, decl, context)) return true;
+			return false;
+		}
+		default:
+			return false;
+	}
+}
+
 ExprNode *ForNode::resolve(in_func) {
 	// detach = static_cast<VarNode *>(detach->resolve(in_data));
 	// switch (detach->kind) {
@@ -119,6 +213,7 @@ ExprNode *ForNode::optimize(in_func) {
 			}
 			auto clazz = compile.classes[data->classId];
 			auto baseClassId = clazz->genericBaseClassId;
+handleCollectionArray:
 			switch (baseClassId) {
 				case DefaultClass::setClassId:
 				case DefaultClass::arrayClassId: {
@@ -241,6 +336,18 @@ ExprNode *ForNode::optimize(in_func) {
 							throwError("Cannot destructure " + std::to_string(destructureTargets.size()) +
 							           " variables from Map\nHint: Map only supports 1 or 2 loop variables: for (key in map) or for ((key, value) in map)");
 						}
+					} else if (detachValue == nullptr &&
+					           (checkUsesMapEntryProps(&body, detach->declaration, context) ||
+					            detach->declaration->baseName == lexerIdentry)) {
+						auto entriesCall = context.callNodePool.push(
+						    line, 0, context.currentClassId, data,
+						    context.createLexerStringIfNotExists("entries"),
+						    std::vector<HasClassIdNode *>(), false, false, false);
+						data = static_cast<HasClassIdNode *>(entriesCall->optimize(in_data));
+						clazz = compile.classes[data->classId];
+						classInfo = context.classInfo[data->classId];
+						baseClassId = clazz->genericBaseClassId;
+						goto handleCollectionArray;
 					}
 					auto keyType = classInfo->genericTypeId[0];
 					ClassId keyTarget = *keyType->classId;

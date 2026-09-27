@@ -110,7 +110,7 @@ ExprNode *CreateFuncNode::optimize(in_func) {
 	const auto &name = context.lexerString[nameId];
 	auto func = compile.functions[id];
 	auto funcInfo = context.functionInfo[id];
-	if (classDeclaration) {
+	if (classDeclaration && !(functionFlags & FunctionFlags::FUNC_SKIP_LOAD)) {
 		if (!classDeclaration->classId) {
 			classDeclaration->template load<true>(in_data);
 		}

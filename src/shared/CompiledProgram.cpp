@@ -136,6 +136,21 @@ Offset CompiledProgram::registerEnumConstPool(ClassId classId) {
 	return id;
 }
 
+Offset CompiledProgram::registerCharConstPool(HashMap<uint32_t, uint32_t> &map, uint32_t value) {
+	auto it = map.find(value);
+	if (it != map.end()) {
+		return it->second;
+	}
+	uint32_t id = constPool.size();
+	map[value] = id;
+	auto *obj = constObjectAllocator.push(DefaultClass::charClassId);
+	obj->refCount = Autolang::DefaultClass::refCountForGlobal;
+	obj->flags = AObject::Flags::OBJ_IS_CONST;
+	obj->chr = static_cast<AChar>(value);
+	constPool.push_back(obj);
+	return id;
+}
+
 template <typename T>
 Offset CompiledProgram::registerConstPool(HashMap<T, uint32_t> &map, T value) {
 	auto it = map.find(value);

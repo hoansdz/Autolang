@@ -341,6 +341,7 @@ struct ConstValueNode : HasClassIdNode {
 	union {
 		std::string *str;
 		int64_t i;
+		AChar chr;
 		double f;
 		AObject *obj;
 	};
@@ -353,6 +354,10 @@ struct ConstValueNode : HasClassIdNode {
 	    : HasClassIdNode(NodeType::CONST_VAL,
 	                     Autolang::DefaultClass::intClassId, line),
 	      i(i) {}
+	ConstValueNode(uint32_t line, AChar c)
+	    : HasClassIdNode(NodeType::CONST_VAL,
+	                     Autolang::DefaultClass::charClassId, line),
+	      chr(c) {}
 	ConstValueNode(uint32_t line, double f)
 	    : HasClassIdNode(NodeType::CONST_VAL,
 	                     Autolang::DefaultClass::floatClassId, line),
@@ -791,6 +796,7 @@ struct CreateClosureNode : HasClassIdNode {
 	uint32_t maxDeclaration;
 	uint32_t parameterCountFirstTime;
 	bool mustInfer = false;
+	bool canImplicitIt = false;
 	CreateClosureNode(uint32_t line, Parameter *parameter)
 	    : HasClassIdNode(NodeType::CREATE_CLOSURE,
 	                     DefaultClass::functionClassId, line),

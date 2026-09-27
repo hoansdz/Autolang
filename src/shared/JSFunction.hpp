@@ -179,22 +179,26 @@ inline val aobjectToJs(ANotifier &notifier, AObject *obj) {
 			if (obj->flags & AObject::Flags::OBJ_IS_ARRAY) {
 				val arr = val::array();
 				auto array = obj->array;
-				if (array->key == DefaultClass::intClassId) {
-					for (size_t i = 0; i < array->size; ++i) {
-						arr.call<void>("push", array->intData[i]);
-					}
-				} else if (array->key == DefaultClass::floatClassId) {
-					for (size_t i = 0; i < array->size; ++i) {
-						arr.call<void>("push", array->floatData[i]);
-					}
-				} else {
-					for (size_t i = 0; i < array->size; ++i) {
-						arr.call<void>(
-						    "push",
-						    aobjectToJs(notifier, array->objData[i]));
-						if (notifier.hasException())
-							return val::undefined();
-					}
+				switch (array->key) {
+					case DefaultClass::intClassId:
+						for (size_t i = 0; i < array->size; ++i) {
+							arr.call<void>("push", array->intData[i]);
+						}
+						break;
+					case DefaultClass::floatClassId:
+						for (size_t i = 0; i < array->size; ++i) {
+							arr.call<void>("push", array->floatData[i]);
+						}
+						break;
+					default:
+						for (size_t i = 0; i < array->size; ++i) {
+							arr.call<void>(
+							    "push",
+							    aobjectToJs(notifier, array->objData[i]));
+							if (notifier.hasException())
+								return val::undefined();
+						}
+						break;
 				}
 				return arr;
 			}

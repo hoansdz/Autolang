@@ -194,6 +194,11 @@ ExprNode *UnknowNode::resolve(in_func) {
 	if (autoDeclare) {
 		std::string_view name = context.lexerString[nameId];
 		bool isGlobal = (contextCallFuncId == context.mainFunctionId && !context.currentClassId);
+		auto func = isGlobal ? context.getMainFunction(in_data) : context.getCurrentFunction(in_data);
+		auto funcInfo = isGlobal ? context.getMainFunctionInfo(in_data) : context.getCurrentFunctionInfo(in_data);
+		if (func && funcInfo && funcInfo->declaration < func->maxDeclaration) {
+			funcInfo->declaration = func->maxDeclaration;
+		}
 		auto declNode = context.makeDeclarationNode(
 		    in_data, line, nameId, name, nullptr, /*isVal=*/false,
 		    isGlobal, /*nullable=*/true, /*addToScope=*/true, /*loadId=*/true);
@@ -307,10 +312,10 @@ ExprNode *ReturnNode::resolve(in_func) {
 	}
 	if (value) {
 		auto func = compile.functions[funcId];
+		value = static_cast<HasClassIdNode *>(value->resolve(in_data));
 		if (func->returnId == DefaultClass::voidClassId) {
 			return this;
 		}
-		value = static_cast<HasClassIdNode *>(value->resolve(in_data));
 		if (func->returnId == DefaultClass::nullClassId) {
 			return this;
 		}

@@ -109,7 +109,7 @@ void loadFunctionGenerics(in_func, std::string &name,
 				newClassDeclaration->classId = inputClassId;
 				newClassDeclaration->nullable = inputClass->nullable;
 				newClassDeclaration->line = genericDeclaration->line;
-				if (inputClassId == DefaultClass::functionClassId) {
+				if (!inputClass->inputClassId.empty()) {
 					newClassDeclaration->inputClassId.reserve(
 					    inputClass->inputClassId.size());
 					for (auto classDeclaration : inputClass->inputClassId) {
@@ -268,6 +268,9 @@ void loadFunctionGenerics(in_func, std::string &name,
 		}
 
 		for (auto &[declarationNode, value] : funcInfo->reflectDeclarationMap) {
+			if (declarationNode && declarationNode->classDeclaration) {
+				resetClassDeclTree(declarationNode->classDeclaration);
+			}
 			newFuncInfo->reflectDeclarationMap[declarationNode] =
 			    static_cast<DeclarationNode *>(declarationNode->copy(in_data));
 		}
@@ -322,9 +325,11 @@ void loadFunctionGenerics(in_func, std::string &name,
 		for (auto *node : funcInfo->body.nodes) {
 			newFuncInfo->body.nodes.push_back(node->copy(in_data));
 		}
-		if (funcInfo->inferenceNode) {
+		if (funcInfo->inferenceNode && !createFuncNode->classDeclaration) {
 			newFuncInfo->inferenceNode =
 			    static_cast<ReturnNode *>(newFuncInfo->body.nodes[0]);
+			newFuncInfo->inferenceNode->loaded = false;
+			newFunc->returnId = DefaultClass::nullClassId;
 			context.mustInferenceFunctionType.push_back(newFunc->id);
 		}
 		context.newPositionOfStaticDeclaration =
@@ -341,6 +346,12 @@ void loadFunctionGenerics(in_func, std::string &name,
 				cdSnap.cd->nullable = cdSnap.nullable;
 				cdSnap.cd->baseClassLexerStringId = cdSnap.baseClassLexerStringId;
 				cdSnap.cd->inputClassId = cdSnap.inputClassId;
+			}
+		}
+
+		for (auto &[declarationNode, value] : funcInfo->reflectDeclarationMap) {
+			if (declarationNode && declarationNode->classDeclaration) {
+				resetClassDeclTree(declarationNode->classDeclaration);
 			}
 		}
 
@@ -415,6 +426,13 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 	auto &allCreateFuncNode = it->second;
 
 	for (auto createFuncNode : allCreateFuncNode) {
+		auto origFuncInfo = context.functionInfo[createFuncNode->id];
+		if (origFuncInfo->genericData &&
+		    origFuncInfo->genericData->genericDeclarations.size() !=
+		        classDeclaration->inputClassId.size()) {
+			continue;
+		}
+
 		auto resolvedCreateFuncNode = createFuncNode;
 		FunctionId resolvedFuncId = createFuncNode->id;
 		auto resolvedFunc = compile.functions[resolvedFuncId];
@@ -432,7 +450,10 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 						auto baseFuncInfo = context.functionInfo[baseFuncNode->id];
 						if (baseFuncInfo->genericData &&
 						    baseFuncInfo->genericData->genericDeclarations.size() ==
-						        classDeclaration->inputClassId.size()) {
+						        classDeclaration->inputClassId.size() &&
+						    (!baseFuncNode->parameter || !createFuncNode->parameter ||
+						     baseFuncNode->parameter->parameters.size() ==
+						         createFuncNode->parameter->parameters.size())) {
 							resolvedCreateFuncNode = baseFuncNode;
 							resolvedFuncId = baseFuncNode->id;
 							resolvedFunc = compile.functions[resolvedFuncId];
@@ -545,7 +566,7 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 				newClassDeclaration->classId = inputClassId;
 				newClassDeclaration->nullable = inputClass->nullable;
 				newClassDeclaration->line = genericDeclaration->line;
-				if (inputClassId == DefaultClass::functionClassId) {
+				if (!inputClass->inputClassId.empty()) {
 					newClassDeclaration->inputClassId.reserve(
 					    inputClass->inputClassId.size());
 					for (auto inputChildDecl : inputClass->inputClassId) {
@@ -644,12 +665,28 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 		for (auto *param : paramCopy->parameters) {
 			if (param && param->classDeclaration) {
 				substituteGenerics(substituteGenerics, param->classDeclaration);
+				resetClassDeclTree(param->classDeclaration);
+				if (!param->classDeclaration->classId) {
+					param->classDeclaration->template load<true>(in_data);
+				}
+				if (param->classDeclaration->classId) {
+					param->classId = *param->classDeclaration->classId;
+				}
+			}
+		}
+
+		ClassDeclaration *returnClassCopy = nullptr;
+		if (resolvedCreateFuncNode->classDeclaration) {
+			resetClassDeclTree(resolvedCreateFuncNode->classDeclaration);
+			returnClassCopy = resolvedCreateFuncNode->classDeclaration->copy(in_data);
+			if (returnClassCopy) {
+				substituteGenerics(substituteGenerics, returnClassCopy);
 			}
 		}
 
 		auto newCreateFuncNode = context.newFunctions.push(
 		    resolvedCreateFuncNode->line, resolvedCreateFuncNode->tokenIndex,
-		    callerClassId, nameId, nullptr,
+		    callerClassId, nameId, returnClassCopy,
 		    paramCopy, functionFlags);
 
 		if (resolvedCreateFuncNode->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
@@ -721,26 +758,22 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 			classDeclarationNode->isFunction = false;
 		}
 
-		if (resolvedCreateFuncNode->classDeclaration) {
-			resetClassDeclTree(resolvedCreateFuncNode->classDeclaration);
+		if (returnClassCopy) {
+			resetClassDeclTree(returnClassCopy);
 
-			if (!resolvedCreateFuncNode->classDeclaration->classId) {
-				resolvedCreateFuncNode->classDeclaration->template load<true>(in_data);
-				if (!resolvedCreateFuncNode->classDeclaration->classId) {
+			if (!returnClassCopy->classId) {
+				returnClassCopy->template load<true>(in_data);
+				if (!returnClassCopy->classId) {
 					classDeclaration->throwError(
 					    "Bug: Cannot resolve return type of generic function\nHint: "
 					    "Ensure generic function return type is valid and resolved");
 				}
-				newFunc->returnId = *resolvedCreateFuncNode->classDeclaration->classId;
+				newFunc->returnId = *returnClassCopy->classId;
 			} else {
-				newFunc->returnId = *resolvedCreateFuncNode->classDeclaration->classId;
+				newFunc->returnId = *returnClassCopy->classId;
 			}
 
-			if (resolvedCreateFuncNode->classDeclaration) {
-				newFuncInfo->returnClass =
-				    resolvedCreateFuncNode->classDeclaration->copy(in_data);
-			}
-			resetClassDeclTree(resolvedCreateFuncNode->classDeclaration);
+			newFuncInfo->returnClass = returnClassCopy;
 		}
 
 		newFuncInfo->reflectDeclarationMap.reserve(
@@ -777,6 +810,9 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 		}
 
 		for (auto &[declarationNode, value] : funcInfo->reflectDeclarationMap) {
+			if (declarationNode && declarationNode->classDeclaration) {
+				resetClassDeclTree(declarationNode->classDeclaration);
+			}
 			newFuncInfo->reflectDeclarationMap[declarationNode] =
 			    static_cast<DeclarationNode *>(declarationNode->copy(in_data));
 		}
@@ -831,9 +867,11 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 		for (auto *node : funcInfo->body.nodes) {
 			newFuncInfo->body.nodes.push_back(node->copy(in_data));
 		}
-		if (funcInfo->inferenceNode) {
+		if (funcInfo->inferenceNode && !resolvedCreateFuncNode->classDeclaration) {
 			newFuncInfo->inferenceNode =
 			    static_cast<ReturnNode *>(newFuncInfo->body.nodes[0]);
+			newFuncInfo->inferenceNode->loaded = false;
+			newFunc->returnId = DefaultClass::nullClassId;
 			context.mustInferenceFunctionType.push_back(newFunc->id);
 		}
 		context.newPositionOfStaticDeclaration =
@@ -868,6 +906,12 @@ void loadMemberFunctionGenerics(in_func, ClassId callerClassId,
 				cdSnap.cd->nullable = cdSnap.nullable;
 				cdSnap.cd->baseClassLexerStringId = cdSnap.baseClassLexerStringId;
 				cdSnap.cd->inputClassId = cdSnap.inputClassId;
+			}
+		}
+
+		for (auto &[declarationNode, value] : funcInfo->reflectDeclarationMap) {
+			if (declarationNode && declarationNode->classDeclaration) {
+				resetClassDeclTree(declarationNode->classDeclaration);
 			}
 		}
 

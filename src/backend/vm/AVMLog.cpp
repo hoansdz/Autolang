@@ -720,6 +720,7 @@ void AVM::log(Function *currentFunction) {
 				PRINT_BYTECODE_1_uint32(ADD_FINALLY_BLOCK);
 				BYTECODE_PRINT_SINGLE(REMOVE_FINALLY)
 				BYTECODE_PRINT_SINGLE(END_FINALLY)
+				BYTECODE_PRINT_SINGLE(TO_CHAR)
 			default:
 				throw std::runtime_error("Bytecode not defined " +
 				                         std::to_string(b));

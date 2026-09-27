@@ -213,7 +213,7 @@ class CompilerWrapper {
 						} else {
 							auto it = compiler.builtInLibrariesMap.find(stdPath);
 							if (it != compiler.builtInLibrariesMap.end() && it->second < compiler.builtInLibraries.size()) {
-								compiler.autoImportMap[stdPath] = compiler.builtInLibraries[it->second];
+								compiler.autoImportMap[stdPath] = compiler.builtInLibraries[it->second].get();
 							}
 						}
 					}

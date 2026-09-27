@@ -7,6 +7,7 @@
 #include "frontend/parser/ParserContext.hpp"
 #include "shared/ANativeFunctionData.hpp"
 #include <iostream>
+#include <memory>
 
 namespace Autolang {
 
@@ -62,29 +63,21 @@ struct LibraryData {
 	    : path(std::move(path)), nativeFuncMap(std::move(nativeFuncMap)),
 	      flags(flags) {}
 	~LibraryData() {
+#if defined(__EMSCRIPTEN__) || defined(__PYBIND11__)
 		for (auto &[k, v] : nativeFuncMap) {
-			switch (v.type) {
-				case ANativeFunctionType::FUNC: {
-					break;
-				}
-				case ANativeFunctionType::LAMBDA: {
-					delete v.nativeLambda;
-					break;
-				}
-				default: {
 #ifdef __EMSCRIPTEN__
-					if (flags & IS_JS_BRIDGE) {
-						delete v.jsFunction;
-					}
-#elif __PYBIND11__
-					if (flags & IS_PY_BRIDGE) {
-						delete v.pyFunction;
-					}
-#endif
-					break;
-				}
+			if ((flags & IS_JS_BRIDGE) && v.type == ANativeFunctionType::JS_FUNCTION && v.jsFunction) {
+				delete v.jsFunction;
+				v.jsFunction = nullptr;
 			}
+#elif __PYBIND11__
+			if ((flags & IS_PY_BRIDGE) && v.type == ANativeFunctionType::PY_FUNCTION && v.pyFunction) {
+				delete v.pyFunction;
+				v.pyFunction = nullptr;
+			}
+#endif
 		}
+#endif
 	}
 };
 
@@ -122,11 +115,12 @@ class ACompiler {
 
 	const char* exceptionMessage = nullptr;
 
-	std::vector<LibraryData *> generatedLibraries;
-	std::vector<LibraryData *> builtInLibraries;
+	std::vector<std::unique_ptr<LibraryData>> generatedLibraries;
+	std::vector<std::unique_ptr<LibraryData>> builtInLibraries;
 	HashMap<std::string, LibraryData *> autoImportMap;
 	HashMap<std::string, Offset> generatedLibraryMap;
 	HashMap<std::string, Offset> builtInLibrariesMap;
+	ANativeMap globalNativeMap;
 	// Add built in library
 	void loadSource(LibraryData *library);
 	void lexerTextToToken(LibraryData *library);
@@ -145,6 +139,8 @@ class ACompiler {
 	~ACompiler();
 	inline Autolang::CompilerState getState() { return state; }
 	void refresh();
+	inline void reset() { refresh(); }
+
 	LibraryData *
 	registerBuiltInLibrary(const char *path,
 	                       LibraryConfig config = LibraryConfig(),
@@ -153,6 +149,41 @@ class ACompiler {
 	registerBuiltInLibrary(const char *path, const char *data,
 	                       LibraryConfig config = LibraryConfig(),
 	                       const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP);
+
+	inline LibraryData *
+	registerBuiltInLibrary(const std::string &path,
+	                       LibraryConfig config = LibraryConfig(),
+	                       const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP) {
+		return registerBuiltInLibrary(path.c_str(), config, nativeFuncMap);
+	}
+	inline LibraryData *
+	registerBuiltInLibrary(const std::string &path, const std::string &data,
+	                       LibraryConfig config = LibraryConfig(),
+	                       const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP) {
+		return registerBuiltInLibrary(path.c_str(), data.c_str(), config, nativeFuncMap);
+	}
+
+	inline void registerFunction(const std::string &name, ANativeFunction func) {
+		globalNativeMap[name] = ANativeFunctionData(func);
+	}
+	inline void registerFunction(const std::string &name, ANativeLambdaFunction func) {
+		globalNativeMap[name] = ANativeFunctionData(std::move(func));
+	}
+	inline void clearRegisteredFunctions() {
+		globalNativeMap.clear();
+	}
+	inline bool registerLibraryFunction(const std::string &libraryPath,
+	                                    const std::string &functionName,
+	                                    ANativeLambdaFunction func) {
+		auto it = builtInLibrariesMap.find(libraryPath);
+		if (it != builtInLibrariesMap.end()) {
+			builtInLibraries[it->second]->nativeFuncMap[functionName] =
+			    ANativeFunctionData(std::move(func));
+			return true;
+		}
+		return false;
+	}
+
 	void loadBuiltInFunctions();
 	void generateBytecodes();
 	void run();
@@ -166,6 +197,27 @@ class ACompiler {
 	bool compile(const char *path, const char *data,
 	             LibraryConfig config = LibraryConfig(),
 	             const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP);
+
+	inline bool runSource(const std::string &source, const std::string &path = "main.atl",
+	                      LibraryConfig config = LibraryConfig(),
+	                      const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP) {
+		return compileAndRun(path.c_str(), source.c_str(), config, nativeFuncMap);
+	}
+	inline bool runFile(const std::string &path,
+	                    LibraryConfig config = LibraryConfig(),
+	                    const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP) {
+		return compileAndRun(path.c_str(), config, nativeFuncMap);
+	}
+	inline bool compileSource(const std::string &source, const std::string &path = "main.atl",
+	                         LibraryConfig config = LibraryConfig(),
+	                         const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP) {
+		return compile(path.c_str(), source.c_str(), config, nativeFuncMap);
+	}
+	inline bool compileFile(const std::string &path,
+	                       LibraryConfig config = LibraryConfig(),
+	                       const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP) {
+		return compile(path.c_str(), config, nativeFuncMap);
+	}
 
 #ifdef AUTOLANG_LIMIT_OPCODE
 	void setLimitOpcodeCount(uint32_t limitOpcodeCount);
@@ -188,17 +240,41 @@ class ACompiler {
 	void setFileBasePath(const std::string &path);
 #endif
 
+	inline void setOnError(std::function<void(std::string_view)> onErrorCallback) {
+		if (parserContext.onError) {
+			delete parserContext.onError;
+		}
+		parserContext.onError = new FunctionEvent(std::move(onErrorCallback));
+	}
 	inline void setOnError(FunctionEvent *onError) {
 		if (parserContext.onError) {
 			delete parserContext.onError;
 		}
 		parserContext.onError = onError;
 	}
+	inline void setOnWarning(std::function<void(std::string_view)> onWarningCallback) {
+		if (parserContext.onWarning) {
+			delete parserContext.onWarning;
+		}
+		parserContext.onWarning = new FunctionEvent(std::move(onWarningCallback));
+	}
 	inline void setOnWarning(FunctionEvent *onWarning) {
 		if (parserContext.onWarning) {
 			delete parserContext.onWarning;
 		}
 		parserContext.onWarning = onWarning;
+	}
+	inline const std::string &getLastError() const {
+		return parserContext.lastErrorMessage;
+	}
+	inline void clearLastError() {
+		parserContext.lastErrorMessage.clear();
+	}
+	inline const char *getExceptionMessage() const {
+		return exceptionMessage;
+	}
+	inline std::string getException() const {
+		return exceptionMessage ? exceptionMessage : "";
 	}
 	inline void setIgnoreForeignImports(bool ignore) {
 		parserContext.ignoreForeignImports = ignore;

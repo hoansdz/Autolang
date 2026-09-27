@@ -12,14 +12,21 @@ static DeclarationNode *extractAssignmentTarget(in_func, ExprNode *node, bool &o
 	auto setNode = static_cast<SetNode *>(node);
 	if (!setNode->detach || !setNode->value) return nullptr;
 	DeclarationNode *decl = nullptr;
-	if (setNode->detach->kind == NodeType::VAR || setNode->detach->kind == NodeType::GET_PROP) {
+	switch (setNode->detach->kind) {
+	case NodeType::VAR:
+	case NodeType::GET_PROP:
 		decl = static_cast<AccessNode *>(setNode->detach)->declaration;
-	} else if (setNode->detach->kind == NodeType::UNKNOW) {
+		break;
+	case NodeType::UNKNOW: {
 		auto unknow = static_cast<UnknowNode *>(setNode->detach);
 		auto found = context.findDeclaration(in_data, unknow->line, unknow->nameId, true);
 		if (found && (found->kind == NodeType::VAR || found->kind == NodeType::GET_PROP)) {
 			decl = static_cast<AccessNode *>(found)->declaration;
 		}
+		break;
+	}
+	default:
+		break;
 	}
 	if (!decl) return nullptr;
 	outIsNonNull = !setNode->value->isNullable();
@@ -449,6 +456,9 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 				if (isStatic) {
 					isStatic = n->isStaticValue();
 				}
+				if (n->classDeclaration) {
+					newClassDeclaration = n->classDeclaration;
+				}
 			}
 			break;
 		}
@@ -478,6 +488,9 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 				}
 				if (isStatic) {
 					isStatic = n->isStaticValue();
+				}
+				if (n->classDeclaration) {
+					newClassDeclaration = n->classDeclaration;
 				}
 			}
 			break;
@@ -665,8 +678,12 @@ void BlockNode::loadClassAndOptimize(in_func) {
 	SmallVector<SmartCastInfo, 4> activeGuardCasts;
 	for (size_t i = 0; i < nodes.size(); ++i) {
 		auto *&node = nodes[i];
-		loadClassNode(in_data, node, currentClassId, nullable, isStatic,
-		              hasValue, newClassDeclaration);
+		if (i < nodes.size() - 1) {
+			node = node->optimize(in_data);
+		} else {
+			loadClassNode(in_data, node, currentClassId, nullable, isStatic,
+			              hasValue, newClassDeclaration);
+		}
 		checkAndApplyGuardCasts(in_data, node, activeGuardCasts);
 	}
 	for (auto it = activeGuardCasts.rbegin(); it != activeGuardCasts.rend(); ++it) {
@@ -918,9 +935,7 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	if (context.mustReturnValueNode) {
 		for (size_t i = 0; i < nodes.size(); ++i) {
 			auto *node = nodes[i];
-			if (i < nodes.size() - 1 &&
-			    context.mustReturnValueNode->kind != NodeType::IF &&
-			    context.mustReturnValueNode->kind != NodeType::TRY_CATCH) {
+			if (i < nodes.size() - 1) {
 				node->putBytecodesIfMustBeCalled(in_data, bytecodes);
 				continue;
 			}

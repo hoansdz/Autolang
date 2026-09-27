@@ -37,7 +37,7 @@ LibraryData *ACompiler::requestImport(LibraryData *currentLibrary,
 	{
 		auto it = builtInLibrariesMap.find(std::string(path));
 		if (it != builtInLibrariesMap.end()) {
-			return builtInLibraries[it->second];
+			return builtInLibraries[it->second].get();
 		}
 	}
 
@@ -72,22 +72,23 @@ LibraryData *ACompiler::requestImport(LibraryData *currentLibrary,
 	{
 		auto it = generatedLibraryMap.find(libPath);
 		if (it != generatedLibraryMap.end()) {
-			return generatedLibraries[it->second];
+			return generatedLibraries[it->second].get();
 		}
 	}
 	// std::cerr << "START    " << input << "\n"
 	//           << currentPath << "\n"
 	//           << resolved << "\n";
-	LibraryData *library = new LibraryData(
+	auto library = std::make_unique<LibraryData>(
 	    libPath, 0,
 	    currentLibrary ? currentLibrary->nativeFuncMap : EMPTY_NATIVE_MAP);
+	LibraryData *libPtr = library.get();
 	generatedLibraryMap[libPath] = generatedLibraries.size();
-	generatedLibraries.push_back(library);
+	generatedLibraries.push_back(std::move(library));
 	if (currentLibrary) {
-		library->flags = currentLibrary->flags;
+		libPtr->flags = currentLibrary->flags;
 	}
-	Lexer::loadFile(&parserContext, library);
-	return library;
+	Lexer::loadFile(&parserContext, libPtr);
+	return libPtr;
 #endif
 }
 
@@ -158,14 +159,15 @@ ACompiler::registerBuiltInLibrary(const char *path, LibraryConfig config,
 		flags |= LibraryFlags::ALLOW_NON_NULL_ASSERTION;
 	}
 	uint32_t libraryOffset = builtInLibraries.size();
-	auto lib = new LibraryData(path, flags, nativeFuncMap);
-	builtInLibraries.push_back(lib);
+	auto lib = std::make_unique<LibraryData>(path, flags, nativeFuncMap);
+	LibraryData *libPtr = lib.get();
+	builtInLibraries.push_back(std::move(lib));
 	builtInLibrariesMap[path] = libraryOffset;
-	Lexer::loadFile(&parserContext, lib);
+	Lexer::loadFile(&parserContext, libPtr);
 	if (config.autoImport) {
-		autoImportMap[path] = lib;
+		autoImportMap[path] = libPtr;
 	}
-	return lib;
+	return libPtr;
 }
 
 LibraryData *
@@ -187,22 +189,23 @@ ACompiler::registerBuiltInLibrary(const char *path, const char *data,
 		flags |= LibraryFlags::ALLOW_NON_NULL_ASSERTION;
 	}
 	uint32_t libraryOffset = builtInLibraries.size();
-	auto lib = new LibraryData(path, flags, nativeFuncMap);
-	lib->rawData = data;
-	builtInLibraries.push_back(lib);
+	auto lib = std::make_unique<LibraryData>(path, flags, nativeFuncMap);
+	LibraryData *libPtr = lib.get();
+	libPtr->rawData = data;
+	builtInLibraries.push_back(std::move(lib));
 	builtInLibrariesMap[path] = libraryOffset;
 	if (config.autoImport) {
-		autoImportMap[path] = lib;
+		autoImportMap[path] = libPtr;
 	}
-	return lib;
+	return libPtr;
 }
 
 void ACompiler::loadBuiltInFunctions() {
 	AUTOLANG_PROFILE_MARK("Compile: Load Built-in Stdlib Start");
-	for (auto *library : builtInLibraries) {
+	for (auto &library : builtInLibraries) {
 		if (!library->lexerContext.tokens.empty())
 			continue;
-		lexerTextToToken(library);
+		lexerTextToToken(library.get());
 		library->lexerContext.bracketStack.clear();
 		library->lexerContext.bracketStack.shrink_to_fit();
 	}
@@ -229,7 +232,14 @@ void ACompiler::loadMainSource(const char *path, LibraryConfig config,
 		    "file exists at specified relative path.");
 	}
 	parserContext.importMap[library->path] = library;
-	library->nativeFuncMap = nativeFuncMap;
+	if (globalNativeMap.empty()) {
+		library->nativeFuncMap = nativeFuncMap;
+	} else {
+		library->nativeFuncMap = globalNativeMap;
+		for (const auto &p : nativeFuncMap) {
+			library->nativeFuncMap[p.first] = p.second;
+		}
+	}
 	if (config.allowLateinitKeyword) {
 		library->flags |= LibraryFlags::ALLOW_LATEINIT_KEYWORD;
 	}
@@ -245,18 +255,23 @@ void ACompiler::loadMainSource(const char *path, const char *data,
 	if (!loadedBuiltIn) {
 		loadBuiltInFunctions();
 	}
-	LibraryData *library = new LibraryData(path, 0, nativeFuncMap);
-	parserContext.importMap[path] = library;
-	library->rawData = data;
+	ANativeMap effectiveMap = globalNativeMap;
+	for (const auto &p : nativeFuncMap) {
+		effectiveMap[p.first] = p.second;
+	}
+	auto library = std::make_unique<LibraryData>(path, 0, std::move(effectiveMap));
+	LibraryData *libPtr = library.get();
+	parserContext.importMap[path] = libPtr;
+	libPtr->rawData = data;
 	generatedLibraryMap[path] = generatedLibraries.size();
-	generatedLibraries.push_back(library);
+	generatedLibraries.push_back(std::move(library));
 	if (config.allowLateinitKeyword) {
-		library->flags |= LibraryFlags::ALLOW_LATEINIT_KEYWORD;
+		libPtr->flags |= LibraryFlags::ALLOW_LATEINIT_KEYWORD;
 	}
 	if (config.allowNonNullAssertion) {
-		library->flags |= LibraryFlags::ALLOW_NON_NULL_ASSERTION;
+		libPtr->flags |= LibraryFlags::ALLOW_NON_NULL_ASSERTION;
 	}
-	loadMainSource(library);
+	loadMainSource(libPtr);
 }
 
 void ACompiler::loadMainSource(LibraryData *library) {
@@ -655,7 +670,7 @@ void ACompiler::generateBytecodes() {
 		}
 
 		printDebug("Start put bytecodes constructor");
-		std::unordered_set<FunctionId> emittedConstructors;
+		HashSet<FunctionId> emittedConstructors;
 		auto emitConstructors = [&]() {
 			for (size_t i = 0; i < context.newClasses.getSize(); ++i) {
 				auto *node = context.newClasses[i];
@@ -752,6 +767,12 @@ void ACompiler::generateBytecodes() {
 				continue;
 			}
 			if (!funcInfo->inferenceNode->loaded) {
+				auto lastFuncId = context.currentFunctionId;
+				auto lastClassId = context.currentClassId;
+				context.gotoFunction(id);
+				if (funcInfo->clazz) {
+					context.currentClassId = funcInfo->clazz->id;
+				}
 				funcInfo->inferenceNode->resolve(in_data);
 				funcInfo->inferenceNode->optimize(in_data);
 				funcInfo->inferenceNode->loaded = true;
@@ -759,6 +780,8 @@ void ACompiler::generateBytecodes() {
 				    DefaultClass::voidClassId) {
 					funcInfo->body.nodes[0] = funcInfo->inferenceNode->value;
 				}
+				context.gotoFunction(lastFuncId);
+				context.currentClassId = lastClassId;
 			}
 		}
 
@@ -858,7 +881,7 @@ void ACompiler::generateBytecodes() {
 		}
 
 		printDebug("Put member data to classes");
-		std::unordered_set<ClassId> processedClassMembers;
+		HashSet<ClassId> processedClassMembers;
 		for (size_t i = 0; i < context.newClasses.getSize(); ++i) {
 			auto *node = context.newClasses[i];
 			auto clazz = compile.classes[node->classId];
@@ -1053,9 +1076,6 @@ void ACompiler::refresh() {
 		mainSource->lexerContext.refresh();
 		mainSource = nullptr;
 	}
-	for (auto *lib : generatedLibraries) {
-		delete lib;
-	}
 	generatedLibraryMap.clear();
 	generatedLibraries.clear();
 	vm.data.destroy();
@@ -1156,12 +1176,6 @@ ACompiler::~ACompiler() {
 		mainSource->lexerContext.refresh();
 	}
 	vm.data.destroy();
-	for (auto library : generatedLibraries) {
-		delete library;
-	}
-	for (auto library : builtInLibraries) {
-		delete library;
-	}
 	if (exceptionMessage) {
 		delete[] exceptionMessage;
 	}

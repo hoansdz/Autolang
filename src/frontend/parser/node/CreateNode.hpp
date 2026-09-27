@@ -4,6 +4,7 @@
 #include "frontend/parser/ClassDeclaration.hpp"
 #include "frontend/parser/Parameter.hpp"
 #include "frontend/parser/node/Node.hpp"
+#include "shared/DefaultClass.hpp"
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -30,7 +31,7 @@ struct DeclarationNode : HasClassIdNode {
 	                LexerStringId baseName, std::string_view name,
 	                ClassDeclaration *classDeclaration, bool isVal,
 	                bool isGlobal, bool nullable)
-	    : HasClassIdNode(NodeType::DECLARATION, 0, line, classDeclaration),
+	    : HasClassIdNode(NodeType::DECLARATION, DefaultClass::nullClassId, line, classDeclaration),
 	      contextCallClassId(contextCallClassId), baseName(baseName),
 	      name(name), isGlobal(isGlobal), isVal(isVal),
 	      nullable(nullable),

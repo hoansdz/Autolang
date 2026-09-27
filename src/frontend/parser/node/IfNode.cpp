@@ -126,7 +126,8 @@ void extractSmartCasts(in_func, HasClassIdNode *cond,
                        SmallVector<SmartCastInfo, 2> &trueCasts,
                        SmallVector<SmartCastInfo, 2> &falseCasts) {
 	if (!cond) return;
-	if (cond->kind == NodeType::BINARY) {
+	switch (cond->kind) {
+	case NodeType::BINARY: {
 		auto binary = static_cast<BinaryNode *>(cond);
 		if (binary->op == Lexer::TokenType::AND_AND || binary->op == Lexer::TokenType::AND) {
 			SmallVector<SmartCastInfo, 2> dummy1, dummy2;
@@ -178,12 +179,38 @@ void extractSmartCasts(in_func, HasClassIdNode *cond,
 			}
 			return;
 		}
-	} else if (cond->kind == NodeType::UNARY) {
+		break;
+	}
+	case NodeType::UNARY: {
 		auto unary = static_cast<UnaryNode *>(cond);
 		if (unary->op == Lexer::TokenType::EXMARK || unary->op == Lexer::TokenType::NOT) {
 			extractSmartCasts(in_data, unary->value, falseCasts, trueCasts);
 			return;
 		}
+		break;
+	}
+	case NodeType::CALL: {
+		auto call = static_cast<CallNode *>(cond);
+		if (call->nameId != 0) {
+			if (call->nameId == lexerIdisNullOrEmpty || call->nameId == lexerIdisNullOrBlank) {
+				auto decl = extractDeclaration(in_data, call->caller);
+				if (decl) {
+					addSmartCast(falseCasts, decl, false);
+				}
+				return;
+			}
+			if (call->nameId == lexerIdisNotNullOrEmpty || call->nameId == lexerIdisNotNullOrBlank) {
+				auto decl = extractDeclaration(in_data, call->caller);
+				if (decl) {
+					addSmartCast(trueCasts, decl, false);
+				}
+				return;
+			}
+		}
+		break;
+	}
+	default:
+		break;
 	}
 }
 

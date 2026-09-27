@@ -83,6 +83,35 @@ fun testForLoop() {
 	}
 	assert(isValid && stack.isEmpty())
 
+	// Edge case: until keyword in for loop
+	var untilSum = 0
+	for (i in 0 until 5) {
+		untilSum += i
+	}
+	assert(untilSum == 10) // 0 + 1 + 2 + 3 + 4
+
+	// Edge case: inverted range 5..1 does not execute
+	var invertedCount = 0
+	for (i in 5..1) {
+		invertedCount += 1
+	}
+	assert(invertedCount == 0)
+
+	// Edge case: empty array loop does not execute
+	var emptyArrLoopCount = 0
+	for (item in <Int>[]) {
+		emptyArrLoopCount += 1
+	}
+	assert(emptyArrLoopCount == 0)
+
+	// Edge case: empty set loop does not execute
+	var emptySetLoopCount = 0
+	val emptySetObj = Set<Int>()
+	for (elem in emptySetObj) {
+		emptySetLoopCount += 1
+	}
+	assert(emptySetLoopCount == 0)
+
 	println("Passed ${__FUNC__}")
 }
 

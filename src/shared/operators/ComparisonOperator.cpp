@@ -49,6 +49,12 @@ AObject *op_eqeq(NativeFuncInData) {
 			}
 			break;
 		}
+		case Autolang::DefaultClass::charClassId: {
+			if (obj2->type == Autolang::DefaultClass::charClassId) {
+				return notifier.createBool(obj1->chr == obj2->chr);
+			}
+			break;
+		}
 		case Autolang::DefaultClass::stringClassId: {
 			if (obj2->type == Autolang::DefaultClass::stringClassId) {
 				return notifier.createBool(*obj1->str == obj2->str);
@@ -99,6 +105,12 @@ bool op_eqeq(AObject *obj1, AObject *obj2) {
 					return obj1->b == obj2->b;
 				default:
 					break;
+			}
+			break;
+		}
+		case Autolang::DefaultClass::charClassId: {
+			if (obj2->type == Autolang::DefaultClass::charClassId) {
+				return obj1->chr == obj2->chr;
 			}
 			break;
 		}
@@ -158,6 +170,12 @@ AObject *op_not_eq(NativeFuncInData) {
 			}
 			break;
 		}
+		case Autolang::DefaultClass::charClassId: {
+			if (obj2->type == Autolang::DefaultClass::charClassId) {
+				return notifier.createBool(obj1->chr != obj2->chr);
+			}
+			break;
+		}
 		case Autolang::DefaultClass::stringClassId: {
 			if (obj2->type == Autolang::DefaultClass::stringClassId) {
 				return notifier.createBool(*obj1->str != obj2->str);
@@ -210,6 +228,12 @@ AObject *op_less_than(NativeFuncInData) {
 					return notifier.createBool(obj1->b < obj2->b);
 				default:
 					break;
+			}
+			break;
+		}
+		case Autolang::DefaultClass::charClassId: {
+			if (obj2->type == Autolang::DefaultClass::charClassId) {
+				return notifier.createBool(obj1->chr < obj2->chr);
 			}
 			break;
 		}
@@ -266,6 +290,12 @@ AObject *op_greater_than(NativeFuncInData) {
 			}
 			break;
 		}
+		case Autolang::DefaultClass::charClassId: {
+			if (obj2->type == Autolang::DefaultClass::charClassId) {
+				return notifier.createBool(obj1->chr > obj2->chr);
+			}
+			break;
+		}
 		default:
 			break;
 	}
@@ -319,6 +349,12 @@ AObject *op_less_than_eq(NativeFuncInData) {
 			}
 			break;
 		}
+		case Autolang::DefaultClass::charClassId: {
+			if (obj2->type == Autolang::DefaultClass::charClassId) {
+				return notifier.createBool(obj1->chr <= obj2->chr);
+			}
+			break;
+		}
 		default:
 			break;
 	}
@@ -369,6 +405,12 @@ AObject *op_greater_than_eq(NativeFuncInData) {
 					return notifier.createBool(obj1->b >= obj2->b);
 				default:
 					break;
+			}
+			break;
+		}
+		case Autolang::DefaultClass::charClassId: {
+			if (obj2->type == Autolang::DefaultClass::charClassId) {
+				return notifier.createBool(obj1->chr >= obj2->chr);
 			}
 			break;
 		}

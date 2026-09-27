@@ -16,8 +16,8 @@ using namespace pybind11;
 namespace Autolang {
 
 enum ANativeFunctionType : uint8_t {
-	FUNC,
-	LAMBDA,
+	LAMBDA = 0,
+	FUNC = 0,
 #ifdef __EMSCRIPTEN__
 	JS_FUNCTION,
 #elif __PYBIND11__
@@ -27,21 +27,18 @@ enum ANativeFunctionType : uint8_t {
 
 struct ANativeFunctionData {
 	ANativeFunctionType type;
-	union {
-		ANativeFunction native;
-		ANativeLambdaFunction *nativeLambda;
+	ANativeLambdaFunction nativeLambda;
 #ifdef __EMSCRIPTEN__
-		val *jsFunction;
+	val *jsFunction = nullptr;
 #elif __PYBIND11__
-		object *pyFunction;
+	object *pyFunction = nullptr;
 #endif
-	};
-	ANativeFunctionData() : type(ANativeFunctionType::FUNC), native(nullptr) {}
+	ANativeFunctionData() : type(ANativeFunctionType::LAMBDA), nativeLambda(nullptr) {}
 	ANativeFunctionData(ANativeFunction native)
-	    : type(ANativeFunctionType::FUNC), native(native) {}
+	    : type(ANativeFunctionType::LAMBDA), nativeLambda(native) {}
 	ANativeFunctionData(ANativeLambdaFunction nativeLambda)
 	    : type(ANativeFunctionType::LAMBDA),
-	      nativeLambda(new ANativeLambdaFunction(nativeLambda)) {}
+	      nativeLambda(std::move(nativeLambda)) {}
 #ifdef __EMSCRIPTEN__
 	ANativeFunctionData(val *jsFunction)
 	    : type(ANativeFunctionType::JS_FUNCTION), jsFunction(jsFunction) {}

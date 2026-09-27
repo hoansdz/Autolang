@@ -13,6 +13,9 @@ ExprNode *ConstValueNode::optimize(in_func) {
 		case Autolang::DefaultClass::intClassId:
 			id = compile.registerConstPool<int64_t>(context.constIntMap, i);
 			return this;
+		case Autolang::DefaultClass::charClassId:
+			id = compile.registerCharConstPool(context.constCharMap, static_cast<uint32_t>(chr));
+			return this;
 		case Autolang::DefaultClass::floatClassId:
 			id = compile.registerConstPool<double>(context.constFloatMap, f);
 			return this;

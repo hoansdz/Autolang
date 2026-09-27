@@ -17,6 +17,8 @@ AObject *plus(NativeFuncInData) {
 			switch (obj2->type) {
 				case Autolang::DefaultClass::intClassId:
 					return notifier.createInt((obj1->i) + (obj2->i));
+				case Autolang::DefaultClass::charClassId:
+					return notifier.createChar(static_cast<AChar>((obj1->i) + (obj2->chr)));
 				case Autolang::DefaultClass::floatClassId:
 					return notifier.createFloat((obj1->i) + (obj2->f));
 				case Autolang::DefaultClass::boolClassId:
@@ -24,6 +26,23 @@ AObject *plus(NativeFuncInData) {
 				case Autolang::DefaultClass::stringClassId:
 					return notifier.createString(
 					    AString::plus((obj1->i), (obj2->str)));
+				default:
+					break;
+			}
+			break;
+		}
+		case Autolang::DefaultClass::charClassId: {
+			switch (obj2->type) {
+				case Autolang::DefaultClass::charClassId: {
+					std::string s1 = to_string(notifier, obj1);
+					std::string s2 = to_string(notifier, obj2);
+					return notifier.createString(s1 + s2);
+				}
+				case Autolang::DefaultClass::intClassId:
+					return notifier.createChar(static_cast<AChar>((obj1->chr) + (obj2->i)));
+				case Autolang::DefaultClass::stringClassId:
+					return notifier.createString(
+					    AString::plus(to_string(notifier, obj1).c_str(), obj2->str));
 				default:
 					break;
 			}
@@ -65,6 +84,8 @@ AObject *plus(NativeFuncInData) {
 			switch (obj2->type) {
 				case Autolang::DefaultClass::intClassId:
 					return notifier.createString((*obj1->str) + (obj2->i));
+				case Autolang::DefaultClass::charClassId:
+					return notifier.createString((*obj1->str) + to_string(notifier, obj2).c_str());
 				case Autolang::DefaultClass::floatClassId:
 					return notifier.createString((*obj1->str) + (obj2->f));
 				case Autolang::DefaultClass::boolClassId:
@@ -117,6 +138,17 @@ AObject *minus(NativeFuncInData) {
 					return notifier.createFloat((obj1->i) - (obj2->f));
 				case Autolang::DefaultClass::boolClassId:
 					return notifier.createInt((obj1->i) - (obj2->b));
+				default:
+					break;
+			}
+			break;
+		}
+		case Autolang::DefaultClass::charClassId: {
+			switch (obj2->type) {
+				case Autolang::DefaultClass::charClassId:
+					return notifier.createInt(static_cast<int64_t>(obj1->chr) - static_cast<int64_t>(obj2->chr));
+				case Autolang::DefaultClass::intClassId:
+					return notifier.createChar(static_cast<AChar>((obj1->chr) - (obj2->i)));
 				default:
 					break;
 			}

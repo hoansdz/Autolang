@@ -44,6 +44,7 @@ AObject *constructor(NativeFuncInData);
 AObject *remove(NativeFuncInData);
 AObject *size(NativeFuncInData);
 AObject *is_empty(NativeFuncInData);
+AObject *is_null_or_empty(NativeFuncInData);
 AObject *contains_key(NativeFuncInData);
 AObject *for_each(NativeFuncInData);
 AObject *keys(NativeFuncInData);

@@ -68,8 +68,27 @@ fun testElvisContinue() {
     assert(output == "MISMATCH:1,MISSING:2,RISK:4700")
 }
 
+fun getNullableHelper(mode: Int): Int? = if (mode == 1) 42 else null
+
+fun testElvisComplexExpressions() {
+    val m = mapOf("val" to 25)
+    val computed = (m["val"] ?: 0) + 75
+    assert(computed == 100)
+
+    val missingComputed = (m["missing"] ?: 5) * 2
+    assert(missingComputed == 10)
+
+    val nullBool: Bool? = null
+    val flag1 = (nullBool ?: false) || true
+    assert(flag1 == true)
+
+    val resChained = (getNullableHelper(2) ?: getNullableHelper(1) ?: 0) * 2
+    assert(resChained == 84)
+}
+
 testElvisBreak()
 testElvisReturn()
 testElvisThrow()
 testElvisContinue()
+testElvisComplexExpressions()
 println("Passed testElvisControlFlow")

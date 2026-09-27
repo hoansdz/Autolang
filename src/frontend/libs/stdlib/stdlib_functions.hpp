@@ -88,9 +88,8 @@ typealias Long = Int
 // Boolean
 typealias Boolean = Bool
 
-// Character (AutoLang converts 'c' to Int via ASCII code)
-typealias Char = Int
-typealias Character = Int
+// Character
+typealias Character = Char
 
 // String aliases
 typealias Str = String
@@ -149,7 +148,7 @@ typealias float = Float
 typealias double = Float
 typealias bool = Bool
 typealias boolean = Bool
-typealias char = Int
+typealias char = Char
 typealias string = String
 typealias any = Any
 typealias object = Any
@@ -164,8 +163,10 @@ typealias FloatArray = Array<Float>
 typealias DoubleArray = Array<Float>
 typealias BooleanArray = Array<Bool>
 typealias ByteArray = Array<Int>
-typealias CharArray = Array<Int>
+typealias CharArray = Array<Char>
 typealias LongArray = Array<Int>
+
+typealias charArrayOf = Array<Char>
 
 // Small numeric types (Kotlin)
 typealias Byte = Int
@@ -183,4 +184,66 @@ typealias IntRef = Ref<Int>
 typealias FloatRef = Ref<Float>
 typealias BooleanRef = Ref<Bool>
 typealias StringRef = Ref<String>
+
+// Scope builders (Kotlin)
+@native("build_list")
+fun <T> buildList(builderAction: (Array<T>) -> Void): Array<T>
+
+@native("build_map")
+fun <K, V> buildMap(builderAction: (Map<K, V>) -> Void): Map<K, V>
+
+@native("build_set")
+fun <T> buildSet(builderAction: (Set<T>) -> Void): Set<T>
+
+class StringBuilder(var content: String = "") {
+	@native("string_builder_append")
+	fun append(value: Any?): StringBuilder
+	@native("string_builder_append_line")
+	fun appendLine(value: Any? = ""): StringBuilder
+	@native("string_builder_length")
+	fun length(): Int
+	@native("string_builder_clear")
+	fun clear(): StringBuilder
+	@native("string_builder_to_string")
+	fun toString(): String
+}
+
+@native("build_string")
+fun buildString(builderAction: (StringBuilder) -> Void): String
+
+@native("str_partition")
+fun String.partition(predicate: (Char) -> Bool): Pair<String, String>
+
+@native("str_zip")
+fun String.zip(other: String): Array<Pair<Char, Char>>
+
+@native("str_zip_transform")
+fun <R> String.zip(other: String, transform: (Char, Char) -> R): Array<R>
+
+@native("str_associate")
+fun <K, V> String.associate(transform: (Char) -> Pair<K, V>): Map<K, V>
+
+@native("str_associate_by")
+fun <K> String.associateBy(keySelector: (Char) -> K): Map<K, Char>
+
+@native("str_associate_with")
+fun <V> String.associateWith(valueSelector: (Char) -> V): Map<Char, V>
+
+@native("str_group_by")
+fun <K> String.groupBy(keySelector: (Char) -> K): Map<K, Array<Char>>
+
+@native("str_map")
+fun <R> String.map(transform: (Char) -> R): Array<R>
+
+@native("str_map_indexed")
+fun <R> String.mapIndexed(transform: (Int, Char) -> R): Array<R>
+
+@native("str_fold")
+fun <R> String.fold(initial: R, operation: (R, Char) -> R): R
+
+@native("str_running_fold")
+fun <R> String.runningFold(initial: R, operation: (R, Char) -> R): Array<R>
+
+@native("str_running_fold")
+fun <R> String.scan(initial: R, operation: (R, Char) -> R): Array<R>
 )###";

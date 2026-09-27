@@ -497,12 +497,151 @@ fun testNewKotlinStdlibMethods() {
     // String methods
     val s = "Kotlin123"
     assert(s.lastIndex() == 8, "s.lastIndex failed")
-    val nonDigits = s.filterNot({|ch: String| ch.isDigit() })
+    val nonDigits = s.filterNot({|ch: Char| ch.isDigit() })
     assert(nonDigits == "Kotlin", "s.filterNot failed: " + nonDigits)
     assert("9".isDigit(), "\"9\".isDigit failed")
     assert("a".isLetter() && "a".isLowerCase(), "\"a\".isLetter failed")
     assert("Z".isLetter() && "Z".isUpperCase(), "\"Z\".isLetter failed")
     assert(" ".isWhitespace(), "\" \".isWhitespace failed")
+}
+
+fun testCollectionEdgeCases() {
+    // 1. findLast
+    val findArr = [1, 2, 4, 6, 7]
+    val lastEven = findArr.findLast({|x: Int| x % 2 == 0 })
+    assert(lastEven == 6, "findLast match")
+    val noneFound = findArr.findLast({|x: Int| x > 100 })
+    assert(noneFound == null, "findLast no match")
+
+    // 2. take / takeLast edge cases
+    val baseArr = [10, 20, 30]
+    assert(baseArr.take(0).size == 0, "take 0")
+    assert(baseArr.take(10).size == 3, "take beyond size")
+    assert(baseArr.takeLast(0).size == 0, "takeLast 0")
+    val tl2 = baseArr.takeLast(2)
+    assert(tl2.size == 2 && tl2[0] == 20 && tl2[1] == 30, "takeLast 2")
+    assert(baseArr.takeLast(10).size == 3, "takeLast beyond size")
+
+    // 3. drop / dropLast edge cases
+    assert(baseArr.drop(0).size == 3, "drop 0")
+    assert(baseArr.drop(10).size == 0, "drop beyond size")
+    assert(baseArr.dropLast(0).size == 3, "dropLast 0")
+    val dl2 = baseArr.dropLast(2)
+    assert(dl2.size == 1 && dl2[0] == 10, "dropLast 2")
+    assert(baseArr.dropLast(10).size == 0, "dropLast beyond size")
+
+    // 4. flatten edge cases
+    val empty2D = <Array<Int>>[]
+    assert(empty2D.flatten().size == 0, "flatten empty 2D")
+    val nestedEmpty = [<Int>[], <Int>[]]
+    assert(nestedEmpty.flatten().size == 0, "flatten nested empty")
+    val matrix = [[1, 2, 3], [4, 5, 6]]
+    val flatMatrix = matrix.flatten()
+    assert(flatMatrix.size == 6, "flatten matrix size")
+    assert(flatMatrix[0] + 10 == 11, "flatten matrix typed calculation")
+
+    // 5. distinct edge cases
+    val emptyD = <Int>[].distinct()
+    assert(emptyD.size == 0, "distinct on empty")
+    val allSame = [7, 7, 7, 7].distinct()
+    assert(allSame.size == 1 && allSame[0] == 7, "distinct all identical")
+
+    // 6. associate and groupBy on empty array
+    val emptyStrArr = <String>[]
+    val assocEmpty = emptyStrArr.associate({|s: String| s to s.length() })
+    assert(assocEmpty.size == 0, "associate empty")
+
+    val emptyIntArr = <Int>[]
+    val groupEmpty = emptyIntArr.groupBy({|n: Int| n % 2 })
+    assert(groupEmpty.size == 0, "groupBy empty")
+
+    println("Passed testCollectionEdgeCases")
+}
+
+fun testNewKotlinArrayMethods() {
+    // 1. zip with transform
+    val z = [1, 2, 3].zip(["a", "b", "c"], {|n: Int, s: String| s + n })
+    assert(z.size == 3 && z[0] == "a1" && z[1] == "b2" && z[2] == "c3", "zip transform failed")
+
+    // 2. chunked with transform
+    val ch = [1, 2, 3, 4, 5].chunked(2, {|sub: Array<Int>| sub.sum() })
+    assert(ch.size == 3 && ch[0] == 3 && ch[1] == 7 && ch[2] == 5, "chunked transform failed")
+
+    // 3. windowed with transform
+    val win = [1, 2, 3, 4].windowed(2, {|sub: Array<Int>| sub[0] + sub[1] })
+    assert(win.size == 3 && win[0] == 3 && win[1] == 5 && win[2] == 7, "windowed transform failed")
+    val winStep = [1, 2, 3, 4, 5].windowed(2, 2, {|sub: Array<Int>| sub.sum() })
+    assert(winStep.size == 2 && winStep[0] == 3 && winStep[1] == 7, "windowed step transform failed")
+    val winPart = [1, 2, 3, 4, 5].windowed(2, 2, true, {|sub: Array<Int>| sub.sum() })
+    assert(winPart.size == 3 && winPart[0] == 3 && winPart[1] == 7 && winPart[2] == 5, "windowed partial transform failed")
+
+    // 4. flatMapIndexed
+    val fmi = [10, 20].flatMapIndexed({|idx: Int, x: Int| [idx, x] })
+    assert(fmi.size == 4 && fmi[0] == 0 && fmi[1] == 10 && fmi[2] == 1 && fmi[3] == 20, "flatMapIndexed failed")
+
+    // 5. foldIndexed
+    val fi = [1, 2, 3].foldIndexed(0, {|idx: Int, acc: Int, x: Int| acc + idx + x })
+    assert(fi == 9, "foldIndexed failed")
+
+    // 6. reduceIndexed
+    val ri = [10, 20, 30].reduceIndexed({|idx: Int, acc: Int, x: Int| acc + x * idx })
+    assert(ri == 90, "reduceIndexed failed")
+
+    // 7. runningFoldIndexed & scanIndexed
+    val rfi = [10, 20].runningFoldIndexed(0, {|idx: Int, acc: Int, x: Int| acc + x + idx })
+    assert(rfi.size == 3 && rfi[0] == 0 && rfi[1] == 10 && rfi[2] == 31, "runningFoldIndexed failed")
+    val si = [10, 20].scanIndexed(0, {|idx: Int, acc: Int, x: Int| acc + x + idx })
+    assert(si.size == 3 && si[0] == 0 && si[1] == 10 && si[2] == 31, "scanIndexed failed")
+
+    // 8. runningReduceIndexed
+    val rri = [10, 20, 30].runningReduceIndexed({|idx: Int, acc: Int, x: Int| acc + x * idx })
+    assert(rri.size == 3 && rri[0] == 10 && rri[1] == 30 && rri[2] == 90, "runningReduceIndexed failed")
+
+    // 9. random & randomOrNull
+    val singleArr = [42]
+    assert(singleArr.random() == 42, "random failed")
+    assert(singleArr.randomOrNull() == 42, "randomOrNull failed")
+    val emptyArr = <Int>[]
+    assert(emptyArr.randomOrNull() == null, "empty randomOrNull failed")
+
+    // 10. firstNotNullOf & firstNotNullOfOrNull
+    val fn = ["a", "123", "b"].firstNotNullOf({|s: String| if (s == "123") 123 else null })
+    assert(fn == 123, "firstNotNullOf failed")
+    val fnn = ["a", "b"].firstNotNullOfOrNull({|s: String| if (s == "123") 123 else null })
+    assert(fnn == null, "firstNotNullOfOrNull failed")
+
+    // 11. ifEmpty
+    val ie1 = <Int>[].ifEmpty({ [99] })
+    assert(ie1.size == 1 && ie1[0] == 99, "ifEmpty on empty failed")
+    val ie2 = [1, 2].ifEmpty({ [99] })
+    assert(ie2.size == 2 && ie2[0] == 1 && ie2[1] == 2, "ifEmpty on non-empty failed")
+
+    // 12. filterTo
+    val destF = <Int>[]
+    [1, 2, 3, 4].filterTo(destF, {|x: Int| x % 2 == 0 })
+    assert(destF.size == 2 && destF[0] == 2 && destF[1] == 4, "filterTo failed")
+
+    // 13. mapTo
+    val destM = <String>[]
+    [1, 2].mapTo(destM, {|x: Int| "n" + x })
+    assert(destM.size == 2 && destM[0] == "n1" && destM[1] == "n2", "mapTo failed")
+
+    // 14. binarySearch
+    val sortedArr = [10, 20, 30, 40, 50]
+    assert(sortedArr.binarySearch(10) == 0, "binarySearch 10")
+    assert(sortedArr.binarySearch(30) == 2, "binarySearch 30")
+    assert(sortedArr.binarySearch(50) == 4, "binarySearch 50")
+    assert(sortedArr.binarySearch(25) < 0, "binarySearch 25")
+
+    // 15. intersect, union, subtract
+    val setInter = [1, 2, 3].intersect([2, 3, 4])
+    assert(setInter.size == 2 && setInter.contains(2) && setInter.contains(3), "intersect failed")
+    val setUni = [1, 2].union([2, 3])
+    assert(setUni.size == 3 && setUni.contains(1) && setUni.contains(2) && setUni.contains(3), "union failed")
+    val setSub = [1, 2, 3].subtract([2, 3, 4])
+    assert(setSub.size == 1 && setSub.contains(1), "subtract failed")
+
+    println("Passed testNewKotlinArrayMethods")
 }
 
 testArrayKotlinMethods()
@@ -512,5 +651,7 @@ testCollectionOperators()
 testKotlinCollectionConstructors()
 testListOfNotNullAndNumericSuffixes()
 testNewKotlinStdlibMethods()
+testCollectionEdgeCases()
+testNewKotlinArrayMethods()
 println("All Kotlin collection methods passed successfully!")
 

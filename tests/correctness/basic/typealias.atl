@@ -268,12 +268,12 @@ fun testBuiltInAIAliases() {
 	val b: Boolean = true
 	assert(b is Bool)
 
-	// Character (Char = Int in AutoLang)
+	// Character
 	val c: Char = 'a'
-	assert(c is Int)
-	assert(c == 97)
+	assert(c is Char)
+	assert(c.code() == 97)
 	val ch: Character = 'Z'
-	assert(ch is Int)
+	assert(ch is Char)
 
 	// String
 	val s: Str = "Hello"
@@ -339,7 +339,7 @@ fun testBuiltInAIAliases() {
 	val lcBoolean: boolean = true
 	assert(lcBool is Bool && lcBoolean is Bool)
 	val lcChar: char = 'x'
-	assert(lcChar is Int)
+	assert(lcChar is Char)
 	val lcStr: string = "test"
 	assert(lcStr is String)
 	/*val lcList: list<int> = [1, 2, 3]
@@ -363,7 +363,7 @@ fun testBuiltInAIAliases() {
 	val bya: ByteArray = [1, 2]
 	assert(bya is Array<Int>)
 	val ca: CharArray = ['a', 'b']
-	assert(ca is Array<Int>)
+	assert(ca is Array<Char>)
 	val la: LongArray = [1, 2]
 	assert(la is Array<Int>)
 

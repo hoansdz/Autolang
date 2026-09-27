@@ -180,7 +180,8 @@ ExprNode *DeclarationNode::copy(in_func) {
 	}
 	ClassDeclaration *newClassDecl = classDeclaration;
 	if (classDeclaration && classDeclaration->isGeneric) {
-		newClassDecl = classDeclaration->copy(in_data);
+		resetClassDeclTree(classDeclaration);
+		newClassDecl = classDeclaration->copy(in_data, false);
 	}
 	auto newNode = context.declarationNodePool.push(
 	    line, context.currentClassId, baseName, name, newClassDecl, isVal,
@@ -199,7 +200,8 @@ ExprNode *DeclarationNode::copy(in_func) {
 	}
 	newNode->tokenIndex = tokenIndex;
 
-	if (newClassDecl) {
+	bool isUnresolvedGeneric = newClassDecl && hasUnresolvedGenericDecl(newClassDecl);
+	if (newClassDecl && !isUnresolvedGeneric) {
 		if (!newClassDecl->classId) {
 			newClassDecl->template load<false>(in_data);
 			if (!newClassDecl->classId) {
@@ -227,9 +229,19 @@ ExprNode *DeclarationNode::copy(in_func) {
 		}
 		// newNode->mustInferenceNullable = classDeclaration->mustInference;
 		newNode->nullable = newClassDecl->nullable;
-
+	} else if (newClassDecl) {
+		if (newClassDecl->classId && *newClassDecl->classId != DefaultClass::nullClassId) {
+			newNode->classId = *newClassDecl->classId;
+		} else if (classId) {
+			newNode->classId = classId;
+		}
+		newNode->nullable = newClassDecl->nullable;
 	} else {
-		newNode->classId = classId;
+		newNode->classId = DefaultClass::nullClassId;
+		newNode->nullable = false;
+	}
+	if (classDeclaration && classDeclaration->isGeneric) {
+		resetClassDeclTree(classDeclaration);
 	}
 	return newNode;
 }

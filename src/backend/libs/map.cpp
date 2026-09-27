@@ -84,6 +84,16 @@ AObject *is_empty(NativeFuncInData) {
 	return notifier.createBool(empty);
 }
 
+AObject *is_null_or_empty(NativeFuncInData) {
+	if (argSize == 0 || !args[0] || args[0]->type == DefaultClass::nullClassId) {
+		return notifier.createBool(true);
+	}
+	if (!args[0]->data || !args[0]->data->data) {
+		return notifier.createBool(true);
+	}
+	return is_empty(notifier, args, argSize);
+}
+
 AObject *contains_key(NativeFuncInData) {
 	auto hashMapData = static_cast<AHashMap *>(args[0]->data->data);
 	AObject *key = args[1];
@@ -1492,7 +1502,7 @@ static inline AObject *mapToPairsArray(ANotifier &notifier, AObject *mapObj, Cla
 			auto clazz = notifier.vm->data.classes[c];
 			if (clazz) {
 				auto name = clazz->getName(notifier.vm->data);
-				if (name == "Pair" || name.rfind("Pair<", 0) == 0) {
+				if (name == "MapEntry" || name.rfind("MapEntry<", 0) == 0 || name == "Pair" || name.rfind("Pair<", 0) == 0) {
 					pairClassId = c;
 					break;
 				}
@@ -1508,7 +1518,6 @@ static inline AObject *mapToPairsArray(ANotifier &notifier, AObject *mapObj, Cla
 		v->retain();
 		pairObj->member->data[1] = v;
 		notifier.arrayAdd(newArr, pairObj);
-		notifier.release(pairObj);
 	};
 
 	switch (hashMapData->type) {

@@ -1,0 +1,88 @@
+fun testCharType() {
+    // 1. First-class type checks
+    val c: Char = 'a'
+    assert(c is Char, "c is Char")
+    assert(c !is Int, "c is not Int")
+    assert(c !is String, "c is not String")
+
+    // 2. Conversion methods
+    assert(c.toString() == "a", "c.toString() == \"a\"")
+    assert(c.code() == 97, "c.code() == 97")
+    assert(c.toInt() == 97, "c.toInt() == 97")
+    assert(c.toChar() == 'a', "c.toChar() == 'a'")
+    assert(97.toChar() == 'a', "97.toChar() == 'a'")
+    assert(Char(97) == 'a', "Char(97) == 'a'")
+
+    // 3. Comparisons
+    assert('a' == 'a', "Char equality")
+    assert('a' != 'b', "Char inequality")
+    assert('a' < 'b', "Char less than")
+    assert('b' > 'a', "Char greater than")
+    assert('a' <= 'a', "Char less than or equal")
+    assert('b' >= 'a', "Char greater than or equal")
+
+    // 4. Arithmetic operators
+    assert('a' + 1 == 'b', "'a' + 1 == 'b'")
+    assert(1 + 'a' == 'b', "1 + 'a' == 'b'")
+    assert('b' - 'a' == 1, "'b' - 'a' == 1")
+    assert('c' - 1 == 'b', "'c' - 1 == 'b'")
+    assert('a' + 'b' == "ab", "'a' + 'b' == \"ab\"")
+    assert("Prefix " + 'X' == "Prefix X", "String + Char")
+    assert('X' + " Suffix" == "X Suffix", "Char + String")
+
+    // 5. Increment, decrement, and compound assign
+    var mutChar = 'a'
+    mutChar++
+    assert(mutChar == 'b', "mutChar++")
+    mutChar--
+    assert(mutChar == 'a', "mutChar--")
+    mutChar += 2
+    assert(mutChar == 'c', "mutChar += 2")
+    mutChar -= 1
+    assert(mutChar == 'b', "mutChar -= 1")
+
+    // 6. Character inspection methods
+    assert('5'.isDigit() == true, "'5'.isDigit()")
+    assert('a'.isDigit() == false, "'a'.isDigit() == false")
+    assert('a'.isLetter() == true, "'a'.isLetter()")
+    assert('1'.isLetter() == false, "'1'.isLetter() == false")
+    assert('a'.isLetterOrDigit() == true, "'a'.isLetterOrDigit()")
+    assert('#'.isLetterOrDigit() == false, "'#'.isLetterOrDigit() == false")
+    assert('a'.isLowerCase() == true, "'a'.isLowerCase()")
+    assert('A'.isUpperCase() == true, "'A'.isUpperCase()")
+    assert(' '.isWhitespace() == true, "' '.isWhitespace()")
+    assert('\n'.isWhitespace() == true, "'\\n'.isWhitespace()")
+    assert('\t'.isWhitespace() == true, "'\\t'.isWhitespace()")
+
+    assert('5'.digitToInt() == 5, "'5'.digitToInt()")
+    assert('x'.digitToIntOrNull() == null, "'x'.digitToIntOrNull() == null")
+    assert('9'.digitToIntOrNull() == 9, "'9'.digitToIntOrNull() == 9")
+
+    assert('a'.uppercaseChar() == 'A', "'a'.uppercaseChar()")
+    assert('A'.lowercaseChar() == 'a', "'A'.lowercaseChar()")
+    assert('a'.uppercase() == "A", "'a'.uppercase()")
+    assert('A'.lowercase() == "a", "'A'.lowercase()")
+
+    // 7. String indexing and accessor methods return Char
+    val str = "Kotlin"
+    val firstChar: Char = str[0]
+    assert(firstChar == 'K', "str[0] == 'K'")
+    assert(str.charAt(1) == 'o', "str.charAt(1) == 'o'")
+    assert(str.get(2) == 't', "str.get(2) == 't'")
+    assert(str.first() == 'K', "str.first() == 'K'")
+    assert(str.last() == 'n', "str.last() == 'n'")
+
+    // 8. Collections of Char
+    val charArr: Array<Char> = ['x', 'y', 'z']
+    assert(charArr.size == 3, "charArr.size == 3")
+    assert(charArr[0] == 'x', "charArr[0] == 'x'")
+    assert(charArr[2] == 'z', "charArr[2] == 'z'")
+
+    val charAliased: CharArray = ['A', 'B']
+    assert(charAliased is Array<Char>, "CharArray is Array<Char>")
+    assert(charAliased[1] == 'B', "charAliased[1] == 'B'")
+
+    println("Passed testCharType")
+}
+
+testCharType()

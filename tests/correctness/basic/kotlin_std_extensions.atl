@@ -1,0 +1,415 @@
+fun testWithIndex() {
+    val items = listOf("a", "b", "c")
+    val indexed = items.withIndex()
+    assert(indexed.size == 3)
+    assert(indexed[0].index == 0)
+    assert(indexed[0].value == "a")
+    assert(indexed[1].index == 1)
+    assert(indexed[1].value == "b")
+    assert(indexed[2].index == 2)
+    assert(indexed[2].value == "c")
+
+    var sumIdx = 0
+    var concatVal = ""
+    for (iv in items.withIndex()) {
+        sumIdx += iv.index
+        concatVal += iv.value
+    }
+    assert(sumIdx == 3)
+    assert(concatVal == "abc")
+
+    // Edge cases: empty list and single element
+    val emptyList = listOf<String>()
+    assert(emptyList.withIndex().size == 0)
+
+    val singleList = listOf("single")
+    val singleIndexed = singleList.withIndex()
+    assert(singleIndexed.size == 1)
+    assert(singleIndexed[0].index == 0 && singleIndexed[0].value == "single")
+
+    // Destructuring in loop over withIndex
+    var dIdxSum = 0
+    var dValConcat = ""
+    for ((idx, v) in items.withIndex()) {
+        dIdxSum += idx
+        dValConcat += v
+    }
+    assert(dIdxSum == 3)
+    assert(dValConcat == "abc")
+
+    // Destructuring in loop over array of pairs
+    val pairItems = [1 to "one", 2 to "two", 3 to "three"]
+    var pairKeySum = 0
+    var pairValConcat = ""
+    for ((num, str) in pairItems) {
+        pairKeySum += num
+        pairValConcat += str
+    }
+    assert(pairKeySum == 6)
+    assert(pairValConcat == "onetwothree")
+
+    println("Passed testWithIndex")
+}
+
+fun testZipWithNext() {
+    val numbers = listOf(1, 2, 4, 7)
+    val pairs = numbers.zipWithNext()
+    assert(pairs.size == 3)
+    assert(pairs[0].first == 1 && pairs[0].second == 2)
+    assert(pairs[1].first == 2 && pairs[1].second == 4)
+    assert(pairs[2].first == 4 && pairs[2].second == 7)
+
+    val diffs = numbers.zipWithNext { a, b -> b - a }
+    assert(diffs.size == 3)
+    assert(diffs[0] == 1)
+    assert(diffs[1] == 2)
+    assert(diffs[2] == 3)
+
+    // Edge cases: single element and empty list
+    val single = listOf(42)
+    assert(single.zipWithNext().size == 0)
+    assert(single.zipWithNext { a, b -> a + b }.size == 0)
+
+    val emptyNums = listOf<Int>()
+    assert(emptyNums.zipWithNext().size == 0)
+    assert(emptyNums.zipWithNext { a, b -> a + b }.size == 0)
+
+    // Edge cases for String zipWithNext
+    assert("".zipWithNext().size == 0)
+    assert("x".zipWithNext().size == 0)
+    assert("".zipWithNext<String> { a, b -> a + b }.size == 0)
+    assert("x".zipWithNext<String> { a, b -> a + b }.size == 0)
+
+    println("Passed testZipWithNext")
+}
+
+fun testRunningFoldAndReduce() {
+    val nums = listOf(1, 2, 3, 4)
+    val running = nums.runningFold(0) { acc: Int, x: Int -> acc + x }
+    assert(running.size == 5)
+    assert(running[0] == 0)
+    assert(running[1] == 1)
+    assert(running[2] == 3)
+    assert(running[3] == 6)
+    assert(running[4] == 10)
+
+    val scanned = nums.scan(10) { acc: Int, x: Int -> acc + x }
+    assert(scanned.size == 5)
+    assert(scanned[0] == 10)
+    assert(scanned[1] == 11)
+    assert(scanned[2] == 13)
+    assert(scanned[3] == 16)
+    assert(scanned[4] == 20)
+
+    val reduced = nums.runningReduce { acc, x -> acc * x }
+    assert(reduced.size == 4)
+    assert(reduced[0] == 1)
+    assert(reduced[1] == 2)
+    assert(reduced[2] == 6)
+    assert(reduced[3] == 24)
+
+    // Edge cases: empty list on runningFold returns [initial]
+    val emptyList = listOf<Int>()
+    val rfEmpty = emptyList.runningFold(99) { acc: Int, x: Int -> acc + x }
+    assert(rfEmpty.size == 1 && rfEmpty[0] == 99)
+
+    // Edge cases: runningFold with different accumulator type
+    val rfDiffType = listOf(1, 2, 3).runningFold("start") { acc: String, x: Int -> acc + "_" + x }
+    assert(rfDiffType.size == 4)
+    assert(rfDiffType[0] == "start")
+    assert(rfDiffType[1] == "start_1")
+    assert(rfDiffType[3] == "start_1_2_3")
+
+    // Edge cases: runningReduce on empty list returns empty list
+    val rrEmpty = emptyList.runningReduce { acc, x -> acc + x }
+    assert(rrEmpty.size == 0)
+
+    // Edge cases: runningReduce on single element returns [single]
+    val rrSingle = listOf(55).runningReduce { acc, x -> acc + x }
+    assert(rrSingle.size == 1 && rrSingle[0] == 55)
+
+    println("Passed testRunningFoldAndReduce")
+}
+
+fun testScopeBuilders() {
+    val list = buildList<Int> {
+        it.add(10)
+        it.add(20)
+        it.add(30)
+    }
+    assert(list.size == 3)
+    assert(list[0] == 10 && list[1] == 20 && list[2] == 30)
+
+    val map = buildMap<String, Int> {
+        it.put("k1", 100)
+        it.put("k2", 200)
+    }
+    assert(map.size == 2)
+    assert(map["k1"] == 100)
+    assert(map["k2"] == 200)
+
+    val set = buildSet<Int> {
+        it.add(1)
+        it.add(2)
+        it.add(1)
+    }
+    assert(set.size == 2)
+    assert(set.contains(1))
+    assert(set.contains(2))
+
+    val str = buildString {
+        it.append("hello")
+        it.append(" ")
+        it.append("world")
+    }
+    assert(str == "hello world")
+
+    // Edge cases: empty builders
+    val emptyBList = buildList<Int> { it -> }
+    assert(emptyBList.size == 0)
+
+    val emptyBMap = buildMap<String, Int> { it -> }
+    assert(emptyBMap.size == 0)
+
+    val emptyBSet = buildSet<Int> { it -> }
+    assert(emptyBSet.size == 0)
+
+    val emptyBStr = buildString { it -> }
+    assert(emptyBStr == "")
+
+    val multiList = buildList<String> { it ->
+        it.add("first")
+        it.add("second")
+    }
+    assert(multiList.size == 2 && multiList[0] == "first" && multiList[1] == "second")
+
+    println("Passed testScopeBuilders")
+}
+
+fun testStringExtensions() {
+    val s = "abcdefg"
+    val chunks = s.chunked(3)
+    assert(chunks.size == 3)
+    assert(chunks[0] == "abc")
+    assert(chunks[1] == "def")
+    assert(chunks[2] == "g")
+
+    // Edge cases for chunked
+    val chunkBig = s.chunked(20)
+    assert(chunkBig.size == 1 && chunkBig[0] == "abcdefg")
+
+    val chunkOne = s.chunked(1)
+    assert(chunkOne.size == 7 && chunkOne[0] == "a" && chunkOne[6] == "g")
+
+    val chunkEmpty = "".chunked(3)
+    assert(chunkEmpty.size == 0)
+
+    val chunkZero = s.chunked(0)
+    assert(chunkZero.size == 0)
+
+    val strPairs = "abc".zipWithNext()
+    assert(strPairs.size == 2)
+    assert(strPairs[0].first == 'a' && strPairs[0].second == 'b')
+    assert(strPairs[1].first == 'b' && strPairs[1].second == 'c')
+
+    val pairsMerged = "1234".zipWithNext<String> { a, b -> a + b }
+    assert(pairsMerged.size == 3)
+    assert(pairsMerged[0] == "12")
+    assert(pairsMerged[1] == "23")
+    assert(pairsMerged[2] == "34")
+
+    val nullStr: String? = null
+    assert(nullStr.isNullOrEmpty())
+    assert(nullStr.isNullOrBlank())
+
+    val emptyStr: String? = ""
+    assert(emptyStr.isNullOrEmpty())
+    assert(emptyStr.isNullOrBlank())
+
+    val blankStr: String? = "   \t\n"
+    assert(!blankStr.isNullOrEmpty())
+    assert(blankStr.isNullOrBlank())
+
+    val filledStr: String? = "hello"
+    assert(!filledStr.isNullOrEmpty())
+    assert(!filledStr.isNullOrBlank())
+
+    // Smart casting with negated isNullOrEmpty and isNullOrBlank
+    if (!filledStr.isNullOrEmpty()) {
+        assert(filledStr.length() == 5)
+    } else {
+        assert(false)
+    }
+
+    if (!filledStr.isNullOrBlank()) {
+        assert(filledStr.length() == 5)
+    } else {
+        assert(false)
+    }
+
+    var verifiedOutput = ""
+    if (filledStr.isNullOrEmpty()) {
+        verifiedOutput = "EMPTY"
+    } else {
+        verifiedOutput = "VERIFIED_" + filledStr + "_" + filledStr.length().toString()
+    }
+    assert(verifiedOutput == "VERIFIED_hello_5")
+
+    var nullOutput = ""
+    if (nullStr.isNullOrEmpty()) {
+        nullOutput = "Anonymous"
+    } else {
+        nullOutput = nullStr
+    }
+    assert(nullOutput == "Anonymous")
+
+    val dateStr = "2024-05-15"
+    val dateReversed = dateStr.split("-").reversed().joinToString(".")
+    assert(dateReversed == "15.05.2024")
+
+    val emailStr = "user@domain.com"
+    val emailDomain = emailStr.split("@")[1]
+    assert(emailDomain == "domain.com")
+
+    println("Passed testStringExtensions")
+}
+
+fun testTakeIfAndTakeUnless() {
+    val x = 42
+    val res1 = x.takeIf { it -> it > 40 }
+    assert(res1 == 42)
+
+    val res2 = x.takeIf { it -> it < 40 }
+    assert(res2 == null)
+
+    val res3 = x.takeUnless { it -> it < 40 }
+    assert(res3 == 42)
+
+    val res4 = x.takeUnless { it -> it > 40 }
+    assert(res4 == null)
+    println("Passed testTakeIfAndTakeUnless")
+}
+
+fun fetchTestPage(page: Int): String? = if (page < 3) "content" else null
+
+fun testNullableReassignmentInLoop() {
+    var page = 1
+    var count = 0
+    var pageContent = fetchTestPage(page)
+
+    while (pageContent != null) {
+        count += 1
+        page += 1
+        pageContent = fetchTestPage(page)
+    }
+
+    assert(count == 2)
+    println("Passed testNullableReassignmentInLoop")
+}
+
+fun testUnzip() {
+    val pairs = [1 to "a", 2 to "b", 3 to "c"]
+    val unzipped = pairs.unzip()
+    val firstArr = unzipped.first
+    val secondArr = unzipped.second
+    assert(firstArr.size == 3)
+    assert(secondArr.size == 3)
+    assert(firstArr[0] == 1 && firstArr[1] == 2 && firstArr[2] == 3)
+    assert(secondArr[0] == "a" && secondArr[1] == "b" && secondArr[2] == "c")
+    assert(firstArr[0] + 10 == 11)
+
+    // Edge cases: empty array and single pair
+    val emptyPairs = <Pair<Int, String>>[]
+    val emptyUnzipped = emptyPairs.unzip()
+    assert(emptyUnzipped.first.size == 0)
+    assert(emptyUnzipped.second.size == 0)
+
+    val singlePair = [99 to "single"]
+    val singleUnzipped = singlePair.unzip()
+    val singleFirst = singleUnzipped.first
+    val singleSecond = singleUnzipped.second
+    assert(singleFirst.size == 1 && singleFirst[0] == 99)
+    assert(singleSecond.size == 1 && singleSecond[0] == "single")
+
+    println("Passed testUnzip")
+}
+
+fun testPartition() {
+    val numbers = listOf(1, 2, 3, 4, 5, 6)
+    val partitioned = numbers.partition { it % 2 == 0 }
+    val pFirst = partitioned.first
+    val pSecond = partitioned.second
+    assert(pFirst.size == 3)
+    assert(pSecond.size == 3)
+    assert(pFirst[0] == 2 && pFirst[1] == 4 && pFirst[2] == 6)
+    assert(pSecond[0] == 1 && pSecond[1] == 3 && pSecond[2] == 5)
+
+    // Edge cases: empty list, all match, none match
+    val emptyList = listOf<Int>()
+    val pEmpty = emptyList.partition { it > 0 }
+    assert(pEmpty.first.size == 0)
+    assert(pEmpty.second.size == 0)
+
+    val allMatch = listOf(2, 4, 6).partition { it % 2 == 0 }
+    assert(allMatch.first.size == 3 && allMatch.second.size == 0)
+
+    val noneMatch = listOf(1, 3, 5).partition { it % 2 == 0 }
+    assert(noneMatch.first.size == 0 && noneMatch.second.size == 3)
+
+    println("Passed testPartition")
+}
+
+fun testCollectionIsNullOrEmpty() {
+    // Array
+    val nullArr: Array<Int>? = null
+    assert(nullArr.isNullOrEmpty())
+
+    val emptyArr: Array<Int>? = []
+    assert(emptyArr.isNullOrEmpty())
+
+    val filledArr: Array<Int>? = [1, 2]
+    assert(!filledArr.isNullOrEmpty())
+
+    // Smart cast on Array
+    if (!filledArr.isNullOrEmpty()) {
+        assert(filledArr.size == 2)
+        assert(filledArr[0] == 1)
+    } else {
+        assert(false)
+    }
+
+    // Map
+    val nullMap: Map<String, Int>? = null
+    assert(nullMap.isNullOrEmpty())
+
+    val emptyMap: Map<String, Int>? = mapOf()
+    assert(emptyMap.isNullOrEmpty())
+
+    val filledMap: Map<String, Int>? = mapOf("key" to 42)
+    assert(!filledMap.isNullOrEmpty())
+
+    // Set
+    val nullSet: Set<Int>? = null
+    assert(nullSet.isNullOrEmpty())
+
+    val emptySet: Set<Int>? = setOf()
+    assert(emptySet.isNullOrEmpty())
+
+    val filledSet: Set<Int>? = setOf(10, 20)
+    assert(!filledSet.isNullOrEmpty())
+
+    println("Passed testCollectionIsNullOrEmpty")
+}
+
+testWithIndex()
+testZipWithNext()
+testRunningFoldAndReduce()
+testScopeBuilders()
+testStringExtensions()
+testTakeIfAndTakeUnless()
+testNullableReassignmentInLoop()
+testUnzip()
+testPartition()
+testCollectionIsNullOrEmpty()
+println("All Kotlin standard library extensions passed successfully!")
+

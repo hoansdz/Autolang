@@ -425,10 +425,15 @@ void CreateMapNode::optimizeAndInferenceType(in_func) {
 					break;
 				}
 				case DefaultClass::boolClassId: {
-					if (*keyMustBeClassId == DefaultClass::intClassId) {
-						key = context.castPool.push(key, DefaultClass::intClassId);
-					} else if (*keyMustBeClassId == DefaultClass::floatClassId) {
-						key = context.castPool.push(key, DefaultClass::floatClassId);
+					switch (*keyMustBeClassId) {
+						case DefaultClass::intClassId:
+							key = context.castPool.push(key, DefaultClass::intClassId);
+							break;
+						case DefaultClass::floatClassId:
+							key = context.castPool.push(key, DefaultClass::floatClassId);
+							break;
+						default:
+							break;
 					}
 					break;
 				}
@@ -466,10 +471,15 @@ void CreateMapNode::optimizeAndInferenceType(in_func) {
 					break;
 				}
 				case DefaultClass::boolClassId: {
-					if (*valueMustBeClassId == DefaultClass::intClassId) {
-						value = context.castPool.push(value, DefaultClass::intClassId);
-					} else if (*valueMustBeClassId == DefaultClass::floatClassId) {
-						value = context.castPool.push(value, DefaultClass::floatClassId);
+					switch (*valueMustBeClassId) {
+						case DefaultClass::intClassId:
+							value = context.castPool.push(value, DefaultClass::intClassId);
+							break;
+						case DefaultClass::floatClassId:
+							value = context.castPool.push(value, DefaultClass::floatClassId);
+							break;
+						default:
+							break;
 					}
 					break;
 				}

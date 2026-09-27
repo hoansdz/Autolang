@@ -12,11 +12,11 @@ namespace Autolang {
 
 AObject *ANativeFunctionData::operator()(NativeFuncInData) {
 	switch (type) {
-		case FUNC: {
-			return native(notifier, args, argSize);
-		}
 		case LAMBDA: {
-			return (*nativeLambda)(notifier, args, argSize);
+			if (nativeLambda) {
+				return nativeLambda(notifier, args, argSize);
+			}
+			return nullptr;
 		}
 #ifdef __EMSCRIPTEN__
 		case JS_FUNCTION: {

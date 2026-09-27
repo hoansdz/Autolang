@@ -51,7 +51,24 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 			--i;
 			return left;
 		}
-		int precedence = getPrecedence(token->type);
+		bool isCustomInfix = false;
+		LexerStringId infixMethodId = 0;
+		int precedence = -1;
+		if (token->type == Lexer::TokenType::IDENTIFIER &&
+		    firstLine == token->line) {
+			if (token->indexData == lexerIdstep) {
+				isCustomInfix = true;
+				infixMethodId = lexerIdstep;
+				precedence = 8;
+			} else if (token->indexData == lexerIddownTo) {
+				isCustomInfix = true;
+				infixMethodId = lexerIddownTo;
+				precedence = 9;
+			}
+		}
+		if (!isCustomInfix) {
+			precedence = getPrecedence(token->type);
+		}
 		if (precedence == -1 || precedence < minPrecedence)
 			break;
 		Lexer::TokenType op = token->type;
@@ -69,6 +86,13 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 			    "Provide a valid right operand expression after operator");
 		}
 		HasClassIdNode *right = loadExpression(in_data, precedence + 1, i);
+		if (isCustomInfix) {
+			left = context.callNodePool.push(
+			    firstLine, tokenIndex, left->classId, left, infixMethodId,
+			    std::vector<HasClassIdNode *>{right}, false,
+			    left->isNullable(), false);
+			continue;
+		}
 		if (op == Lexer::TokenType::UNSAFE_CAST ||
 		    op == Lexer::TokenType::SAFE_CAST ||
 		    op == Lexer::TokenType::IS ||
@@ -183,6 +207,17 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 		case Lexer::TokenType::STRING: {
 			node = context.constValuePool.push(
 			    firstLine, context.lexerString[token->indexData]);
+			break;
+		}
+		case Lexer::TokenType::CHAR: {
+			std::string_view data = context.lexerString[token->indexData];
+			size_t idx = 0;
+			uint32_t codePoint = 0;
+			if (!data.empty()) {
+				codePoint = AString::utf8ToCodePoint(data, idx);
+			}
+			node = context.constValuePool.push(
+			    firstLine, static_cast<char32_t>(codePoint));
 			break;
 		}
 		case Lexer::TokenType::LT: {
@@ -717,6 +752,21 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 					}
 					return context.castPool.push(arguments[0],
 					                             DefaultClass::intClassId);
+				}
+				case lexerIdChar: {
+					if (!argumentNames.empty() && argumentNames[0] != 0) {
+						throw ParserError(firstLine,
+						                  "Invalid call: Char does not support named arguments");
+					}
+					if (arguments.size() != 1) {
+						throw ParserError(firstLine,
+						                  "Invalid call: Char expects 1 "
+						                  "argument, but " +
+						                      std::to_string(arguments.size()) +
+						                      " were provided");
+					}
+					return context.castPool.push(arguments[0],
+					                             DefaultClass::charClassId);
 				}
 				case lexerIdFloat: {
 					if (!argumentNames.empty() && argumentNames[0] != 0) {

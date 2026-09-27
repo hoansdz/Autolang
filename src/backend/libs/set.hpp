@@ -40,6 +40,7 @@ AObject *constructor(NativeFuncInData);
 AObject *remove(NativeFuncInData);
 AObject *size(NativeFuncInData);
 AObject *is_empty(NativeFuncInData);
+AObject *is_null_or_empty(NativeFuncInData);
 AObject *set_union(NativeFuncInData);
 AObject *intersect(NativeFuncInData);
 AObject *difference(NativeFuncInData);
@@ -74,6 +75,14 @@ AObject *max_or_null(NativeFuncInData);
 AObject *min_or_null(NativeFuncInData);
 AObject *group_by(NativeFuncInData);
 AObject *associate_by(NativeFuncInData);
+AObject *sorted(NativeFuncInData);
+AObject *sorted_descending(NativeFuncInData);
+AObject *sum(NativeFuncInData);
+AObject *average(NativeFuncInData);
+AObject *filter_not(NativeFuncInData);
+AObject *filter_not_null(NativeFuncInData);
+AObject *max_of(NativeFuncInData);
+AObject *min_of(NativeFuncInData);
 std::string to_string(ANotifier &notifier, AObject *obj);
 } // namespace set
 } // namespace Libs

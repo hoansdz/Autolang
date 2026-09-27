@@ -90,6 +90,16 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerString.emplace_back("mutableListOfNotNull");
 	lexerString.emplace_back("setOfNotNull");
 	lexerString.emplace_back("mutableSetOfNotNull");
+	lexerString.emplace_back("Char");
+	lexerString.emplace_back("key");
+	lexerString.emplace_back("value");
+	lexerString.emplace_back("entry");
+	lexerString.emplace_back("step");
+	lexerString.emplace_back("downTo");
+	lexerString.emplace_back("isNullOrEmpty");
+	lexerString.emplace_back("isNullOrBlank");
+	lexerString.emplace_back("isNotNullOrEmpty");
+	lexerString.emplace_back("isNotNullOrBlank");
 	/*
 	lexerString.emplace_back("unaryPlus");
 	lexerString.emplace_back("unaryMinus");
@@ -195,6 +205,16 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerStringMap["mutableListOfNotNull"] = lexerIdmutableListOfNotNull;
 	lexerStringMap["setOfNotNull"] = lexerIdsetOfNotNull;
 	lexerStringMap["mutableSetOfNotNull"] = lexerIdmutableSetOfNotNull;
+	lexerStringMap["Char"] = lexerIdChar;
+	lexerStringMap["key"] = lexerIdkey;
+	lexerStringMap["value"] = lexerIdvalue;
+	lexerStringMap["entry"] = lexerIdentry;
+	lexerStringMap["step"] = lexerIdstep;
+	lexerStringMap["downTo"] = lexerIddownTo;
+	lexerStringMap["isNullOrEmpty"] = lexerIdisNullOrEmpty;
+	lexerStringMap["isNullOrBlank"] = lexerIdisNullOrBlank;
+	lexerStringMap["isNotNullOrEmpty"] = lexerIdisNotNullOrEmpty;
+	lexerStringMap["isNotNullOrBlank"] = lexerIdisNotNullOrBlank;
 	/*
 	lexerStringMap["unaryPlus"] = lexerIdunaryPlus;
 	lexerStringMap["unaryMinus"] = lexerIdunaryMinus;
@@ -236,7 +256,21 @@ void ParserContext::init(CompiledProgram &compile) {
 		using namespace Autolang::DefaultClass;
 		using TT = Autolang::Lexer::TokenType;
 		binaryOpResultType = {
-		    // int, float, bool
+		    // int, float, bool, char
+		    {makeTuple(charClassId, charClassId, (uint8_t)TT::EQEQ), boolClassId},
+		    {makeTuple(charClassId, charClassId, (uint8_t)TT::NOTEQ), boolClassId},
+		    {makeTuple(charClassId, charClassId, (uint8_t)TT::LT), boolClassId},
+		    {makeTuple(charClassId, charClassId, (uint8_t)TT::GT), boolClassId},
+		    {makeTuple(charClassId, charClassId, (uint8_t)TT::LTE), boolClassId},
+		    {makeTuple(charClassId, charClassId, (uint8_t)TT::GTE), boolClassId},
+		    {makeTuple(charClassId, charClassId, (uint8_t)TT::MINUS), intClassId},
+		    {makeTuple(charClassId, charClassId, (uint8_t)TT::PLUS), stringClassId},
+		    {makeTuple(charClassId, intClassId, (uint8_t)TT::PLUS), charClassId},
+		    {makeTuple(charClassId, intClassId, (uint8_t)TT::MINUS), charClassId},
+		    {makeTuple(intClassId, charClassId, (uint8_t)TT::PLUS), charClassId},
+		    {makeTuple(charClassId, stringClassId, (uint8_t)TT::PLUS), stringClassId},
+		    {makeTuple(stringClassId, charClassId, (uint8_t)TT::PLUS), stringClassId},
+
 		    {makeTuple(intClassId, intClassId, (uint8_t)TT::PLUS), intClassId},
 		    {makeTuple(intClassId, intClassId, (uint8_t)TT::MINUS), intClassId},
 		    {makeTuple(intClassId, intClassId, (uint8_t)TT::STAR), intClassId},
@@ -488,23 +522,26 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	currentClassId = std::nullopt;
 
 	constIntMap.clear();
+	constCharMap.clear();
 	constFloatMap.clear();
 	for (auto [str, _] : constStringMap) {
 		delete str;
 	}
 	constStringMap.clear();
+	lastErrorMessage.clear();
 	lexerString = stdLexerString;
 	lexerStringMap = stdLexerStringMap;
 }
 
 void ParserContext::logError(uint32_t line, const std::string &message) {
+	std::string mes =
+	    (mode ? mode->path : "") + ":" + std::to_string(line) + ": " + message;
+	lastErrorMessage = mes;
 	if (onError) {
-		std::string mes =
-		    mode->path + ":" + std::to_string(line) + ": " + message;
 		(*onError)(mes);
 		return;
 	}
-	std::cerr << mode->path << ":" << line << ": " << message << std::endl;
+	std::cerr << mes << std::endl;
 }
 
 void ParserContext::warning(uint32_t line, const std::string &message) {

@@ -13,6 +13,7 @@ ExprNode *CastNode::resolve(in_func) {
 	if (value->classId == classId) {
 		switch (classId) {
 			case Autolang::DefaultClass::intClassId:
+			case Autolang::DefaultClass::charClassId:
 			case Autolang::DefaultClass::floatClassId: {
 				break;
 			}
@@ -49,6 +50,16 @@ ExprNode *CastNode::resolve(in_func) {
 						value = nullptr;
 						ExprNode::deleteNode(this);
 						return result;
+					}
+					case Autolang::DefaultClass::charClassId: {
+						if (node->classId == Autolang::DefaultClass::intClassId) {
+							auto result = context.constValuePool.push(
+							    node->line, static_cast<char32_t>(node->i));
+							value = nullptr;
+							ExprNode::deleteNode(this);
+							return result;
+						}
+						break;
 					}
 					default:
 						break;
@@ -138,6 +149,18 @@ ExprNode *CastNode::optimize(in_func) {
 			}
 			break;
 		}
+		case Autolang::DefaultClass::charClassId: {
+			switch (value->classId) {
+				case Autolang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::charClassId: {
+					return this;
+				}
+				default: {
+					goto errCast;
+				}
+			}
+			break;
+		}
 		default:
 			// Extended class
 			if (compile.classes[classId]->inheritance.get(value->classId) ||
@@ -193,6 +216,18 @@ void CastNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				}
 				default: {
 					throwError("Internal Compiler Error: Unsupported source type for Float cast\nHint: The source expression type cannot be converted to Float.");
+				}
+			}
+		}
+		case Autolang::DefaultClass::charClassId: {
+			switch (value->classId) {
+				case Autolang::DefaultClass::intClassId:
+				case Autolang::DefaultClass::charClassId: {
+					bytecodes.emplace_back(Opcode::TO_CHAR);
+					return;
+				}
+				default: {
+					throwError("Internal Compiler Error: Unsupported source type for Char cast\nHint: The source expression type cannot be converted to Char.");
 				}
 			}
 		}

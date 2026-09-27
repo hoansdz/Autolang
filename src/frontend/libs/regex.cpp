@@ -200,11 +200,81 @@ AObject *split(NativeFuncInData) {
 	return newArr;
 }
 
+AObject *create_regex_direct(NativeFuncInData) {
+	const std::string &pattern = args[0]->str->data;
+	int64_t options = (argSize >= 2 && args[1]->type == DefaultClass::intClassId) ? args[1]->i : 0;
+	ClassId classId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : 0;
+	if (classId == 0 || classId >= notifier.vm->data.classes.size()) {
+		auto it = notifier.vm->data.classMap.find("Regex");
+		if (it != notifier.vm->data.classMap.end()) classId = it->second;
+	}
+	std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
+	if (options & 1) flags |= std::regex_constants::icase;
+	try {
+		auto handle = new ARegexHandle{std::regex(pattern, flags), pattern};
+		notifier.addManagedMemory(128);
+		return notifier.createNativeData(classId, handle, destroyRegex);
+	} catch (const std::regex_error &e) {
+		notifier.throwException(std::string("Invalid Regex Pattern: ") + e.what());
+		return nullptr;
+	}
+}
+
+AObject *static_is_match(NativeFuncInData) {
+	const std::string &pattern = args[0]->str->data;
+	const std::string &text = args[1]->str->data;
+	try {
+		return notifier.createBool(std::regex_search(text, std::regex(pattern)));
+	} catch (const std::regex_error &e) {
+		notifier.throwException(std::string("Invalid Regex Pattern: ") + e.what());
+		return nullptr;
+	}
+}
+
+AObject *static_replace(NativeFuncInData) {
+	const std::string &pattern = args[0]->str->data;
+	const std::string &text = args[1]->str->data;
+	const std::string &replacement = args[2]->str->data;
+	try {
+		std::string result = std::regex_replace(text, std::regex(pattern), replacement);
+		return notifier.createString(result);
+	} catch (const std::regex_error &e) {
+		notifier.throwException(std::string("Invalid Regex Pattern: ") + e.what());
+		return nullptr;
+	}
+}
+
+AObject *static_split(NativeFuncInData) {
+	AObject *regexObj = create_regex_direct(notifier, args, 1);
+	if (!regexObj) return nullptr;
+	regexObj->retain();
+	AObject *splitArgs[3] = {regexObj, args[1], argSize >= 3 ? args[2] : nullptr};
+	auto res = regex::split(notifier, splitArgs, argSize >= 3 ? 3 : 2);
+	notifier.release(regexObj);
+	return res;
+}
+
+AObject *str_regex_matches(NativeFuncInData) {
+	AObject *swappedArgs[2] = {args[1], args[0]};
+	return regex::is_match(notifier, swappedArgs, 2);
+}
+
+AObject *str_regex_replace(NativeFuncInData) {
+	AObject *swappedArgs[3] = {args[1], args[0], args[2]};
+	return regex::replace(notifier, swappedArgs, 3);
+}
+
+AObject *str_regex_split(NativeFuncInData) {
+	AObject *swappedArgs[3] = {args[1], args[0], argSize >= 3 ? args[2] : nullptr};
+	return regex::split(notifier, swappedArgs, argSize >= 3 ? 3 : 2);
+}
+
 void init(ACompiler &compiler) {
 	auto nativeMap = ANativeMap();
-	nativeMap.reserve(10);
+	nativeMap.reserve(20);
 
 	nativeMap.emplace("regex_constructor", &regex::constructor);
+	nativeMap.emplace("regex_create_direct", &regex::create_regex_direct);
 	nativeMap.emplace("regex_get_pattern", &regex::get_pattern);
 	nativeMap.emplace("regex_is_match", &regex::is_match);
 	nativeMap.emplace("regex_match_entire", &regex::match_entire);
@@ -213,6 +283,12 @@ void init(ACompiler &compiler) {
 	nativeMap.emplace("regex_replace", &regex::replace);
 	nativeMap.emplace("regex_replace_eval", &regex::replace_eval);
 	nativeMap.emplace("regex_split", &regex::split);
+	nativeMap.emplace("regex_static_is_match", &regex::static_is_match);
+	nativeMap.emplace("regex_static_replace", &regex::static_replace);
+	nativeMap.emplace("regex_static_split", &regex::static_split);
+	nativeMap.emplace("str_regex_matches", &regex::str_regex_matches);
+	nativeMap.emplace("str_regex_replace", &regex::str_regex_replace);
+	nativeMap.emplace("str_regex_split", &regex::str_regex_split);
 
 	compiler.registerBuiltInLibrary("std/regex", R"###(
 @no_constructor
@@ -222,9 +298,12 @@ class Regex {
     @native("regex_constructor")
     private static fun _create(classId: Int, pattern: String, options: Int = 0): Regex
     
-    static fun Regex(pattern: String, options: Int = 0): Regex = _create(getClassId(Regex), pattern, options)
-    static fun compile(pattern: String, options: Int = 0): Regex = _create(getClassId(Regex), pattern, options)
-    static fun from(pattern: String, options: Int = 0): Regex = _create(getClassId(Regex), pattern, options)
+    @native("regex_create_direct")
+    static fun Regex(pattern: String, options: Int = 0): Regex
+    @native("regex_create_direct")
+    static fun compile(pattern: String, options: Int = 0): Regex
+    @native("regex_create_direct")
+    static fun from(pattern: String, options: Int = 0): Regex
 
     @native("regex_get_pattern")
     fun pattern(): String
@@ -247,7 +326,8 @@ class Regex {
     @native("regex_is_match")
     fun match(text: String): Bool
 
-    fun containsMatchIn(text: String): Bool = this.isMatch(text)
+    @native("regex_is_match")
+    fun containsMatchIn(text: String): Bool
 
     @native("regex_find")
     fun find(text: String, startIndex: Int = 0): String
@@ -279,15 +359,23 @@ class Regex {
     @native("regex_split")
     fun split(text: String, limit: Int = 0, arrayClassId: Int = getClassId(Array<String>)): Array<String>
 
-    static fun isMatch(pattern: String, text: String): Bool = Regex.compile(pattern).isMatch(text)
-    static fun replace(pattern: String, text: String, replacement: String): String = Regex.compile(pattern).replace(text, replacement)
-    static fun split(pattern: String, text: String, limit: Int = 0): Array<String> = Regex.compile(pattern).split(text, limit)
+    @native("regex_static_is_match")
+    static fun isMatch(pattern: String, text: String): Bool
+    @native("regex_static_replace")
+    static fun replace(pattern: String, text: String, replacement: String): String
+    @native("regex_static_split")
+    static fun split(pattern: String, text: String, limit: Int = 0): Array<String>
 }
-fun String.toRegex(options: Int = 0): Regex = Regex.compile(this, options)
-fun String.matches(regex: Regex): Bool = regex.matches(this)
-fun String.replace(regex: Regex, replacement: String): String = regex.replace(this, replacement)
-fun String.split(regex: Regex, limit: Int = 0): Array<String> = regex.split(this, limit)
-fun String.contains(regex: Regex): Bool = regex.isMatch(this)
+@native("regex_create_direct")
+fun String.toRegex(options: Int = 0): Regex
+@native("str_regex_matches")
+fun String.matches(regex: Regex): Bool
+@native("str_regex_replace")
+fun String.replace(regex: Regex, replacement: String): String
+@native("str_regex_split")
+fun String.split(regex: Regex, limit: Int = 0): Array<String>
+@native("str_regex_matches")
+fun String.contains(regex: Regex): Bool
     )###",
 	                                LibraryConfig(), std::move(nativeMap));
 }

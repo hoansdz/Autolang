@@ -78,24 +78,26 @@ inline bool canImplicitConvert(in_func, ClassId targetClassId, HasClassIdNode *v
 				if (value->classId == DefaultClass::nullClassId) {
 					auto expectedGenericBase =
 					    compile.classes[expectedClassId]->genericBaseClassId;
-					if (value->kind == NodeType::CREATE_MAP &&
-					    expectedGenericBase == DefaultClass::mapClassId) {
-						return true;
-					}
-					if (value->kind == NodeType::CREATE_ARRAY &&
-					    expectedGenericBase == DefaultClass::arrayClassId) {
-						return true;
-					}
-					if (value->kind == NodeType::CREATE_SET) {
-						auto setNode = static_cast<CreateSetNode *>(value);
-						if (setNode->values.empty()) {
-							if (expectedGenericBase == DefaultClass::mapClassId ||
-							    expectedGenericBase == DefaultClass::setClassId) {
-								return true;
-							}
-						} else if (expectedGenericBase == DefaultClass::setClassId) {
+					switch (expectedGenericBase) {
+					case DefaultClass::mapClassId:
+						if (value->kind == NodeType::CREATE_MAP ||
+						    (value->kind == NodeType::CREATE_SET &&
+						     static_cast<CreateSetNode *>(value)->values.empty())) {
 							return true;
 						}
+						break;
+					case DefaultClass::arrayClassId:
+						if (value->kind == NodeType::CREATE_ARRAY) {
+							return true;
+						}
+						break;
+					case DefaultClass::setClassId:
+						if (value->kind == NodeType::CREATE_SET) {
+							return true;
+						}
+						break;
+					default:
+						break;
 					}
 				}
 			}
@@ -194,22 +196,26 @@ inline HasClassIdNode *tryImplicitConversion(in_func, ClassId targetClassId,
 				} else if (value->classId == DefaultClass::nullClassId) {
 					auto expectedGenericBase =
 					    compile.classes[expectedClassId]->genericBaseClassId;
-					if (value->kind == NodeType::CREATE_MAP &&
-					    expectedGenericBase == DefaultClass::mapClassId) {
-						matched = true;
-					} else if (value->kind == NodeType::CREATE_ARRAY &&
-					           expectedGenericBase == DefaultClass::arrayClassId) {
-						matched = true;
-					} else if (value->kind == NodeType::CREATE_SET) {
-						auto setNode = static_cast<CreateSetNode *>(value);
-						if (setNode->values.empty()) {
-							if (expectedGenericBase == DefaultClass::mapClassId ||
-							    expectedGenericBase == DefaultClass::setClassId) {
-								matched = true;
-							}
-						} else if (expectedGenericBase == DefaultClass::setClassId) {
+					switch (expectedGenericBase) {
+					case DefaultClass::mapClassId:
+						if (value->kind == NodeType::CREATE_MAP ||
+						    (value->kind == NodeType::CREATE_SET &&
+						     static_cast<CreateSetNode *>(value)->values.empty())) {
 							matched = true;
 						}
+						break;
+					case DefaultClass::arrayClassId:
+						if (value->kind == NodeType::CREATE_ARRAY) {
+							matched = true;
+						}
+						break;
+					case DefaultClass::setClassId:
+						if (value->kind == NodeType::CREATE_SET) {
+							matched = true;
+						}
+						break;
+					default:
+						break;
 					}
 				}
 
@@ -225,15 +231,18 @@ inline HasClassIdNode *tryImplicitConversion(in_func, ClassId targetClassId,
 		// 0-arg match
 		if (func->argSize == 1 && bestFuncId == UINT32_MAX) {
 			bool isEmptyColl = false;
-			if (value->kind == NodeType::CREATE_SET &&
-			    static_cast<CreateSetNode *>(value)->values.empty()) {
-				isEmptyColl = true;
-			} else if (value->kind == NodeType::CREATE_MAP &&
-			           static_cast<CreateMapNode *>(value)->values.empty()) {
-				isEmptyColl = true;
-			} else if (value->kind == NodeType::CREATE_ARRAY &&
-			           static_cast<CreateArrayNode *>(value)->values.empty()) {
-				isEmptyColl = true;
+			switch (value->kind) {
+			case NodeType::CREATE_SET:
+				isEmptyColl = static_cast<CreateSetNode *>(value)->values.empty();
+				break;
+			case NodeType::CREATE_MAP:
+				isEmptyColl = static_cast<CreateMapNode *>(value)->values.empty();
+				break;
+			case NodeType::CREATE_ARRAY:
+				isEmptyColl = static_cast<CreateArrayNode *>(value)->values.empty();
+				break;
+			default:
+				break;
 			}
 			if (isEmptyColl) {
 				bestFuncId = funcId;

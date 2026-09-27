@@ -6,6 +6,9 @@ inline constexpr const char* STDLIB_PRIMITIVES_SOURCE_STR = R"###(
 @no_extends
 @no_constructor
 class Int {
+	static val MIN_VALUE: Int = -2147483648
+	static val MAX_VALUE: Int = 2147483647
+
 	@native("to_string")
 	fun toString(): String
 
@@ -51,34 +54,61 @@ class Int {
 	@native("int_inv")
 	fun inv(): Int
 
-	fun toFloat(): Float = this
-	fun toDouble(): Float = this
-	fun toInt(): Int = this
-	fun toLong(): Int = this
-	fun toChar(): Int = this
-	fun toByte(): Int = this
-	fun toShort(): Int = this
+	@native("str_to_float")
+	fun toFloat(): Float
+	@native("str_to_float")
+	fun toDouble(): Float
+	@native("identity")
+	fun toInt(): Int
+	@native("identity")
+	fun toLong(): Int
+	@native("int_to_char")
+	fun toChar(): Char
+	@native("identity")
+	fun toByte(): Int
+	@native("identity")
+	fun toShort(): Int
 
-	fun isDigit(): Bool = this >= 48 && this <= 57
-	fun isLetter(): Bool = (this >= 65 && this <= 90) || (this >= 97 && this <= 122)
-	fun isLetterOrDigit(): Bool = (this >= 48 && this <= 57) || (this >= 65 && this <= 90) || (this >= 97 && this <= 122)
-	fun isWhitespace(): Bool = this == 32 || this == 9 || this == 10 || this == 13
-	fun isUpperCase(): Bool = this >= 65 && this <= 90
-	fun isLowerCase(): Bool = this >= 97 && this <= 122
+	@native("int_to_char_string")
+	fun toCharString(): String
 
-	fun downTo(to: Int): Array<Int> {
-		val res: Array<Int> = <Int>[]
-		var curr = this
-		while (curr >= to) {
-			res.add(curr)
-			curr = curr - 1
-		}
-		return res
-	}
+	@native("int_is_digit")
+	fun isDigit(): Bool
+	@native("int_is_letter")
+	fun isLetter(): Bool
+	@native("int_is_letter_or_digit")
+	fun isLetterOrDigit(): Bool
+	@native("int_is_whitespace")
+	fun isWhitespace(): Bool
+	@native("int_is_uppercase")
+	fun isUpperCase(): Bool
+	@native("int_is_lowercase")
+	fun isLowerCase(): Bool
+
+	@native("int_digit_to_int")
+	fun digitToInt(): Int
+
+	@native("int_digit_to_int_or_null")
+	fun digitToIntOrNull(): Int?
+
+	@native("int_uppercase_char")
+	fun uppercaseChar(): Int
+	@native("int_lowercase_char")
+	fun lowercaseChar(): Int
+	@native("int_uppercase_string")
+	fun uppercase(): String
+	@native("int_lowercase_string")
+	fun lowercase(): String
+
+	@native("int_down_to")
+	fun downTo(to: Int): Array<Int>
 }
 @no_extends
 @no_constructor
 class Float {
+	static val MIN_VALUE: Float = 1.4e-45
+	static val MAX_VALUE: Float = 3.4028235e+38
+
 	@native("to_string")
 	fun toString(): String
 
@@ -154,19 +184,75 @@ class Float {
 	@native("float_with_sign")
 	fun withSign(sign: Int): Float
 
-	fun toInt(): Int = this
-	fun toLong(): Int = this
-	fun toFloat(): Float = this
-	fun toDouble(): Float = this
-	fun toChar(): Int = this
-	fun toByte(): Int = this
-	fun toShort(): Int = this
+	@native("float_round_to_int")
+	fun toInt(): Int
+	@native("float_round_to_long")
+	fun toLong(): Int
+	@native("identity")
+	fun toFloat(): Float
+	@native("identity")
+	fun toDouble(): Float
+	@native("float_round_to_int")
+	fun toChar(): Int
+	@native("float_round_to_int")
+	fun toByte(): Int
+	@native("float_round_to_int")
+	fun toShort(): Int
 }
 @no_extends
 @no_constructor
 class Bool {
 	@native("to_string")
 	fun toString(): String
+}
+@no_extends
+@no_constructor
+class Char {
+	@native("char_to_string")
+	fun toString(): String
+
+	@native("char_code")
+	fun code(): Int
+
+	@native("char_code")
+	fun toInt(): Int
+	@native("identity")
+	fun toChar(): Char
+
+	@native("char_is_digit")
+	fun isDigit(): Bool
+	@native("char_is_letter")
+	fun isLetter(): Bool
+	@native("char_is_letter_or_digit")
+	fun isLetterOrDigit(): Bool
+	@native("char_is_whitespace")
+	fun isWhitespace(): Bool
+	@native("char_is_uppercase")
+	fun isUpperCase(): Bool
+	@native("char_is_lowercase")
+	fun isLowerCase(): Bool
+
+	@native("char_digit_to_int")
+	fun digitToInt(): Int
+
+	@native("char_digit_to_int_or_null")
+	fun digitToIntOrNull(): Int?
+
+	@native("char_uppercase_char")
+	fun uppercaseChar(): Char
+
+	@native("char_lowercase_char")
+	fun lowercaseChar(): Char
+
+	@native("char_uppercase_string")
+	fun uppercase(): String
+	@native("char_lowercase_string")
+	fun lowercase(): String
+
+	@native("char_compare_to")
+	fun compareTo(other: Char): Int
+	@native("char_equals")
+	fun equals(other: Char): Bool
 }
 )###";
 

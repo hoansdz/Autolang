@@ -59,6 +59,49 @@ public:
 		return new AString(str, static_cast<uint32_t>(val.size()));
 	}
 
+	inline static std::string codePointToUtf8(uint32_t cp) {
+		std::string out;
+		if (cp <= 0x7F) {
+			out.push_back(static_cast<char>(cp));
+		} else if (cp <= 0x7FF) {
+			out.push_back(static_cast<char>(0xC0 | ((cp >> 6) & 0x1F)));
+			out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+		} else if (cp <= 0xFFFF) {
+			out.push_back(static_cast<char>(0xE0 | ((cp >> 12) & 0x0F)));
+			out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+			out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+		} else if (cp <= 0x10FFFF) {
+			out.push_back(static_cast<char>(0xF0 | ((cp >> 18) & 0x07)));
+			out.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
+			out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+			out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+		}
+		return out;
+	}
+
+	inline static uint32_t utf8ToCodePoint(std::string_view sv, size_t &idx) {
+		if (idx >= sv.size()) return 0;
+		unsigned char c = static_cast<unsigned char>(sv[idx]);
+		if (c < 0x80) {
+			idx += 1;
+			return c;
+		} else if ((c >> 5) == 0x06 && idx + 1 < sv.size()) {
+			uint32_t cp = ((c & 0x1F) << 6) | (static_cast<unsigned char>(sv[idx + 1]) & 0x3F);
+			idx += 2;
+			return cp;
+		} else if ((c >> 4) == 0x0E && idx + 2 < sv.size()) {
+			uint32_t cp = ((c & 0x0F) << 12) | ((static_cast<unsigned char>(sv[idx + 1]) & 0x3F) << 6) | (static_cast<unsigned char>(sv[idx + 2]) & 0x3F);
+			idx += 3;
+			return cp;
+		} else if ((c >> 3) == 0x1E && idx + 3 < sv.size()) {
+			uint32_t cp = ((c & 0x07) << 18) | ((static_cast<unsigned char>(sv[idx + 1]) & 0x3F) << 12) | ((static_cast<unsigned char>(sv[idx + 2]) & 0x3F) << 6) | (static_cast<unsigned char>(sv[idx + 3]) & 0x3F);
+			idx += 4;
+			return cp;
+		}
+		idx += 1;
+		return c;
+	}
+
 	inline static AString *copy(AString *other) {
 		char *newStr = new char[other->size + 1];
 		memcpy(newStr, other->data, other->size + 1);

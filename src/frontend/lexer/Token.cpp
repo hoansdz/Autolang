@@ -217,6 +217,8 @@ std::string Token::toString(ParserContext &context) {
 			return std::string(context.lexerString[indexData]);
 		case TokenType::NUMBER:
 			return std::string(context.lexerString[indexData]);
+		case TokenType::CHAR:
+			return std::string("'") + std::string(context.lexerString[indexData]) + "'";
 		default:
 			for (auto &pair : CAST) {
 				if (pair.second == type)

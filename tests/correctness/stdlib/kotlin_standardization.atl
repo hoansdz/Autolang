@@ -19,13 +19,13 @@ fun testString() {
     val trimmedE = "  abc  ".trimEnd()
     assert(trimmedE == "  abc", "String.trimEnd failed")
 
-    val firstChar = "hello".replaceFirstChar({ c: String -> c.uppercase() })
+    val firstChar = "hello".replaceFirstChar({ c: Char -> c.uppercase() })
     assert(firstChar == "Hello", "String.replaceFirstChar failed")
 
-    val tw = "123abc456".takeWhile({ c: String -> c != "a" && c != "b" && c != "c" })
+    val tw = "123abc456".takeWhile({ c: Char -> c != 'a' && c != 'b' && c != 'c' })
     assert(tw == "123", "String.takeWhile failed")
 
-    val dw = "123abc456".dropWhile({ c: String -> c != "a" && c != "b" && c != "c" })
+    val dw = "123abc456".dropWhile({ c: Char -> c != 'a' && c != 'b' && c != 'c' })
     assert(dw == "abc456", "String.dropWhile failed")
 
     println("testString passed")

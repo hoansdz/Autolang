@@ -55,12 +55,14 @@ struct ClassDeclaration {
 		return static_cast<int64_t>(hash);
 	}
 	template <bool addNullable = false> std::string getName(in_func);
-	ClassDeclaration *copy(in_func);
+	ClassDeclaration *copy(in_func, bool eagerLoad = true, int depth = 0);
 	bool isSame(ClassDeclaration *classDeclaration);
 	bool isMatch(ClassDeclaration *classDeclaration);
 	ClassDeclaration();
 	[[noreturn]] void throwError(std::string message);
 };
+
+bool hasUnresolvedGenericDecl(ClassDeclaration *cd, int depth = 0);
 
 } // namespace Autolang
 

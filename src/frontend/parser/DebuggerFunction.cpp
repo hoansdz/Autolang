@@ -162,10 +162,11 @@ static void registerExtensionToGenericClass(in_func, ClassId targetClassId,
 		for (auto *bodyNode : funcInfo->body.nodes) {
 			newFuncInfo->body.nodes.push_back(bodyNode->copy(in_data));
 		}
-		if (funcInfo->inferenceNode) {
+		if (funcInfo->inferenceNode && !node->classDeclaration) {
 			newFuncInfo->inferenceNode =
 			    static_cast<ReturnNode *>(newFuncInfo->body.nodes[0]);
 			newFuncInfo->inferenceNode->loaded = false;
+			newFunc->returnId = DefaultClass::nullClassId;
 			context.mustInferenceFunctionType.push_back(newFunc->id);
 		}
 		context.gotoFunction(lastCurrentFunctionId);
@@ -268,6 +269,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		    "Expected name after 'fun' but not found\nHint: Provide a valid "
 		    "identifier for function name, e.g. 'fun foo()'");
 	}
+	std::optional<ClassId> initialClassId = context.currentClassId;
 	std::optional<LexerStringId> classNameId;
 	LexerStringId nameId = (token->type == Lexer::TokenType::NOT) ? lexerIdnot : token->indexData;
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
@@ -276,6 +278,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		                  "Expected '(' after function name but not "
 		                  "found\nHint: Add '(' to start parameter list");
 	}
+	bool isNullableReceiver = false;
 	if (token->type == Lexer::TokenType::LT) {
 		auto classIt = compile.classMap.find(std::string(context.lexerString[nameId]));
 		if (classIt != compile.classMap.end() &&
@@ -303,7 +306,17 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			}
 		}
 	}
-	if (token->type != Lexer::TokenType::DOT && context.currentClassId &&
+	if (token->type == Lexer::TokenType::QMARK_DOT) {
+		isNullableReceiver = true;
+	} else if (token->type == Lexer::TokenType::QMARK) {
+		if (nextTokenSameLine(&token, context.tokens, i, firstLine) &&
+		    token->type == Lexer::TokenType::DOT) {
+			isNullableReceiver = true;
+		} else {
+			--i;
+		}
+	}
+	if (token->type != Lexer::TokenType::DOT && !isNullableReceiver && context.currentClassId &&
 	    !hasStaticFlag) {
 		auto clazz = context.getCurrentClass(in_data);
 		if (!(clazz->classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR) &&
@@ -347,12 +360,12 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			return nullptr;
 		}
 	}
-	if (token->type == Lexer::TokenType::DOT) {
+	if (token->type == Lexer::TokenType::DOT || isNullableReceiver) {
 		if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 			--i;
 			throw ParserError(
 			    firstLine, "Expected function name after class name: '" +
-			                   std::string(context.lexerString[*classNameId]) +
+			                   std::string(context.lexerString[nameId]) +
 			                   "' but not found\nHint: Specify member function "
 			                   "name after dot, e.g. 'Class.foo()'");
 		}
@@ -369,15 +382,25 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				classNameId = nameId;
 				nameId = (token->type == Lexer::TokenType::NOT) ? lexerIdnot : token->indexData;
 				functionFlags |= FunctionFlags::FUNC_UNUSABLE;
+				if (isNullableReceiver) {
+					functionFlags |= FunctionFlags::FUNC_NULLABLE_RECEIVER;
+				}
 				if (!hasStaticFlag) {
 					functionFlags &= ~FunctionFlags::FUNC_IS_STATIC;
 				}
 				if (context.currentClassId) {
-					throw ParserError(
-					    token->line,
-					    "Error: Extension function are not "
-					    "allowed inside class\nHint: Declare extension "
-					    "function at file scope outside class");
+					auto itCurrent =
+					    compile.classMap.find(std::string(context.lexerString[*classNameId]));
+					if (itCurrent != compile.classMap.end() &&
+					    itCurrent->second == *context.currentClassId) {
+						functionFlags &= ~FunctionFlags::FUNC_UNUSABLE;
+					} else {
+						throw ParserError(
+						    token->line,
+						    "Error: Extension function are not "
+						    "allowed inside class\nHint: Declare extension "
+						    "function at file scope outside class");
+					}
 				}
 				if (context.currentFunctionId != context.mainFunctionId) {
 					throw ParserError(
@@ -715,9 +738,11 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			if (context.isInGeneric)
 				context.isInGeneric = false;
 			if (classNameId) {
-				if (context.currentClassId) {
+				if (!initialClassId.has_value() && context.currentClassId) {
 					registerExtensionToGenericClass(in_data, *context.currentClassId, node);
 					context.currentClassId = std::nullopt;
+				} else {
+					context.currentClassId = initialClassId;
 				}
 			}
 			return node;
@@ -783,9 +808,11 @@ createFunc:;
 		if (context.isInGeneric)
 			context.isInGeneric = false;
 		if (classNameId) {
-			if (context.currentClassId) {
+			if (!initialClassId.has_value() && context.currentClassId) {
 				registerExtensionToGenericClass(in_data, *context.currentClassId, node);
 				context.currentClassId = std::nullopt;
+			} else {
+				context.currentClassId = initialClassId;
 			}
 		}
 		return node;
@@ -878,15 +905,17 @@ createFunc:;
 		if (context.isInGeneric)
 			context.isInGeneric = false;
 		if (classNameId) {
-			context.currentClassId = std::nullopt;
+			context.currentClassId = initialClassId;
 		}
 		throw err;
 	}
 
 	if (classNameId) {
-		if (context.currentClassId) {
+		if (!initialClassId.has_value() && context.currentClassId) {
 			registerExtensionToGenericClass(in_data, *context.currentClassId, node);
 			context.currentClassId = std::nullopt;
+		} else {
+			context.currentClassId = initialClassId;
 		}
 	}
 	return node;
@@ -906,6 +935,7 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 	classDeclaration->baseClassLexerStringId = lexerIdFunction;
 	classDeclaration->nullable = false;
 	bool loadedLBrace = true;
+	bool canImplicitIt = false;
 	if constexpr (hasParams) {
 		if (token->type == Lexer::TokenType::OR) {
 			parameter = loadListDeclaration<Autolang::Lexer::OR, false, false>(
@@ -984,6 +1014,8 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 				    in_data, firstLine, itNameId, itName, nullptr, true,
 				    false, false, false, false);
 				parameter->parameters.push_back(itDeclaration);
+			} else {
+				canImplicitIt = true;
 			}
 			classDeclaration->line = firstLine;
 			loadedLBrace = true;
@@ -1016,6 +1048,7 @@ createClosure:;
 	auto createClosureNode =
 	    context.createClosurePool.push(firstLine, parameter);
 	createClosureNode->classDeclaration = classDeclaration;
+	createClosureNode->canImplicitIt = canImplicitIt;
 
 	for (auto declaration : parameter->parameters) {
 		classDeclaration->inputClassId.push_back(declaration->classDeclaration);

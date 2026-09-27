@@ -185,6 +185,12 @@ namespace Autolang {
 			data.manager.release(obj1);                                        \
 		}                                                                      \
 		switch (obj2->type) {                                                  \
+			case DefaultClass::charClassId: {                                  \
+				auto newValue = notifier->createChar(obj2->chr);               \
+				newValue->retain();                                            \
+				obj1 = newValue;                                               \
+				break;                                                         \
+			}                                                                  \
 			case DefaultClass::intClassId: {                                   \
 				auto newValue = notifier->createInt(obj2->i);                  \
 				newValue->retain();                                            \
@@ -2284,6 +2290,14 @@ resumeCallFrame:;
 	do_CLONE: {
 		auto value = stack.top();
 		switch (value->type) {
+			case DefaultClass::charClassId: {
+				auto newValue = notifier->createChar(value->chr);
+				newValue->retain();
+				stack.pop();
+				notifier->release(value);
+				stack.push(newValue);
+				break;
+			}
 			case DefaultClass::intClassId: {
 				auto newValue = notifier->createInt(value->i);
 				newValue->retain();

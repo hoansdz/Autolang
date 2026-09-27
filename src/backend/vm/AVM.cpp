@@ -166,6 +166,17 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 	if (currentCallFrame->func->functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 		auto obj = (*currentCallFrame->func->native)(
 		    *notifier, stackAllocator.currentPtr, argumentCount);
+		if (currentCallFrame->exception) {
+			stackAllocator.clear(data.manager, currentCallFrame->fromStackAllocator,
+			                     stackAllocator.getTop() +
+			                         currentCallFrame->func->maxDeclaration - 1);
+			return false;
+		}
+		if constexpr (hasValue) {
+			if (obj) {
+				obj->retain();
+			}
+		}
 		// std::cerr << currentCallFrame->fromStackAllocator << " & "
 		//           << stackAllocator.getTop() +
 		//                  currentCallFrame->func->maxDeclaration - 1
@@ -173,19 +184,7 @@ bool AVM::callFunction(CallFrame *&currentCallFrame, Function *currentFunction,
 		stackAllocator.clear(data.manager, currentCallFrame->fromStackAllocator,
 		                     stackAllocator.getTop() +
 		                         currentCallFrame->func->maxDeclaration - 1);
-		if (currentCallFrame->exception) {
-			// stackAllocator.clear(
-			//     data.manager, currentCallFrame->fromStackAllocator,
-			//     stackAllocator.getTop() +
-			//     currentCallFrame->func->maxDeclaration -
-			//         1);
-			// stackAllocator.freeTo(callFrames.objects[callFrames.getSize() -
-			// 2]
-			//                           .fromStackAllocator);
-			return false;
-		}
 		if constexpr (hasValue) {
-			obj->retain();
 			stack.push(obj);
 		}
 		// std::cerr << currentCallFrame->fromStackAllocator << " "

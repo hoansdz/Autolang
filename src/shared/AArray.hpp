@@ -22,17 +22,20 @@ struct AArray {
 		AObject **objData;
 		void *raw;
 	};
-	std::vector<size_t> sortGroups;
 
 	explicit AArray(ClassId key, uint32_t initialCapacity = 0)
 	    : key(key), size(initialCapacity), maxSize(initialCapacity) {
 		if (initialCapacity > 0) {
-			if (key == DefaultClass::intClassId) {
-				intData = new int64_t[initialCapacity]{};
-			} else if (key == DefaultClass::floatClassId) {
-				floatData = new double[initialCapacity]{};
-			} else {
-				objData = new AObject *[initialCapacity]{};
+			switch (key) {
+				case DefaultClass::intClassId:
+					intData = new int64_t[initialCapacity]{};
+					break;
+				case DefaultClass::floatClassId:
+					floatData = new double[initialCapacity]{};
+					break;
+				default:
+					objData = new AObject *[initialCapacity]{};
+					break;
 			}
 		} else {
 			raw = nullptr;
@@ -44,41 +47,52 @@ struct AArray {
 
 	~AArray() {
 		if (raw) {
-			if (key == DefaultClass::intClassId) {
-				delete[] intData;
-			} else if (key == DefaultClass::floatClassId) {
-				delete[] floatData;
-			} else {
-				delete[] objData;
+			switch (key) {
+				case DefaultClass::intClassId:
+					delete[] intData;
+					break;
+				case DefaultClass::floatClassId:
+					delete[] floatData;
+					break;
+				default:
+					delete[] objData;
+					break;
 			}
 		}
 	}
 
 	void reallocate(uint32_t newCapacity) {
-		if (key == DefaultClass::intClassId) {
-			int64_t *newData = new int64_t[newCapacity]{};
-			if (intData && size > 0) {
-				std::copy(intData, intData + std::min(size, newCapacity),
-				          newData);
+		switch (key) {
+			case DefaultClass::intClassId: {
+				int64_t *newData = new int64_t[newCapacity]{};
+				if (intData && size > 0) {
+					std::copy(intData, intData + std::min(size, newCapacity),
+					          newData);
+				}
+				delete[] intData;
+				intData = newData;
+				break;
 			}
-			delete[] intData;
-			intData = newData;
-		} else if (key == DefaultClass::floatClassId) {
-			double *newData = new double[newCapacity]{};
-			if (floatData && size > 0) {
-				std::copy(floatData, floatData + std::min(size, newCapacity),
-				          newData);
+			case DefaultClass::floatClassId: {
+				double *newData = new double[newCapacity]{};
+				if (floatData && size > 0) {
+					std::copy(floatData, floatData + std::min(size, newCapacity),
+					          newData);
+				}
+				delete[] floatData;
+				floatData = newData;
+				break;
 			}
-			delete[] floatData;
-			floatData = newData;
-		} else {
-			AObject **newData = new AObject *[newCapacity]{};
-			if (objData && size > 0) {
-				std::copy(objData, objData + std::min(size, newCapacity),
-				          newData);
+			default: {
+				AObject **newData = new AObject *[newCapacity]{};
+				if (objData && size > 0) {
+					std::copy(objData, objData + std::min(size, newCapacity),
+					          newData);
+				}
+				delete[] objData;
+				objData = newData;
+				break;
 			}
-			delete[] objData;
-			objData = newData;
 		}
 		maxSize = newCapacity;
 	}

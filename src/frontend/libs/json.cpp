@@ -539,14 +539,22 @@ static nlohmann::json aObjectToJsonValue(ANotifier &notifier, AObject *obj) {
     if (obj->flags & AObject::Flags::OBJ_IS_ARRAY) {
         auto arr = obj->array;
         nlohmann::json jArr = nlohmann::json::array();
-        for (size_t i = 0; i < arr->size; ++i) {
-            if (arr->key == DefaultClass::intClassId) {
-                jArr.push_back(arr->intData[i]);
-            } else if (arr->key == DefaultClass::floatClassId) {
-                jArr.push_back(arr->floatData[i]);
-            } else {
-                jArr.push_back(aObjectToJsonValue(notifier, arr->objData[i]));
-            }
+        switch (arr->key) {
+            case DefaultClass::intClassId:
+                for (size_t i = 0; i < arr->size; ++i) {
+                    jArr.push_back(arr->intData[i]);
+                }
+                break;
+            case DefaultClass::floatClassId:
+                for (size_t i = 0; i < arr->size; ++i) {
+                    jArr.push_back(arr->floatData[i]);
+                }
+                break;
+            default:
+                for (size_t i = 0; i < arr->size; ++i) {
+                    jArr.push_back(aObjectToJsonValue(notifier, arr->objData[i]));
+                }
+                break;
         }
         return jArr;
     }

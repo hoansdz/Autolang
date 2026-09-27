@@ -88,7 +88,7 @@ fun testKotlinStdlib() {
     if (lastTwo.length() != 2 || lastTwo[0] != 4 || lastTwo[1] != 5) {
         error("takeLast failed")
     }
-    val chunks: Array<Any> = nums.chunked(2)
+    val chunks: Array<Array<Int>> = nums.chunked(2)
     if (chunks.length() != 3) {
         error("chunked failed")
     }

@@ -18,7 +18,7 @@ void ClassDeclaration::throwError(std::string message) {
 	throw ParserError(line, message);
 }
 
-static bool hasUnresolvedGenericDecl(ClassDeclaration *cd, int depth = 0) {
+bool hasUnresolvedGenericDecl(ClassDeclaration *cd, int depth) {
 	if (!cd || depth > 16) return false;
 	if (cd->isGenericDeclaration &&
 	    (!cd->classId || *cd->classId == DefaultClass::nullClassId)) {
@@ -69,16 +69,19 @@ bool ClassDeclaration::isMatch(ClassDeclaration *classDeclaration) {
 	// return true;
 }
 
-ClassDeclaration *ClassDeclaration::copy(in_func) {
+ClassDeclaration *ClassDeclaration::copy(in_func, bool eagerLoad, int depth) {
+	if (depth > 20) {
+		return this;
+	}
 	if (baseClassLexerStringId == lexerIdVoid) {
 		classId = DefaultClass::voidClassId;
 		return this;
 	}
-	bool isUnresolvedGeneric = isGenericDeclaration || hasUnresolvedGenericDecl(this);
-	if (!classId && !isUnresolvedGeneric) {
+	bool isUnresolvedGeneric = hasUnresolvedGenericDecl(this);
+	if (!classId && !isUnresolvedGeneric && !isGeneric && eagerLoad) {
 		load<true>(in_data);
 	}
-	if (!classId && !isUnresolvedGeneric) {
+	if (!classId && !isUnresolvedGeneric && !isGeneric && eagerLoad) {
 		std::cerr << getName(in_data) << "\n";
 		throwError(
 		    "Cannot copy class declaration because class not exists\nHint: "
@@ -99,14 +102,10 @@ ClassDeclaration *ClassDeclaration::copy(in_func) {
 		newClassDeclaration->inputClassId.reserve(inputClassId.size());
 		for (auto *inputClass : inputClassId) {
 			newClassDeclaration->inputClassId.push_back(
-			    inputClass ? inputClass->copy(in_data) : nullptr);
+			    inputClass ? inputClass->copy(in_data, eagerLoad, depth + 1) : nullptr);
 		}
 	}
-	if (isGeneric && !isGenericDeclaration && classId != DefaultClass::functionClassId) {
-		newClassDeclaration->classId = std::nullopt;
-	} else {
-		newClassDeclaration->classId = classId;
-	}
+	newClassDeclaration->classId = classId;
 	newClassDeclaration->isFunction = isFunction;
 	return newClassDeclaration;
 }
@@ -157,7 +156,7 @@ void ClassDeclaration::onLoadTypealias(in_func, TypealiasData *typealias) {
 						newClassDeclaration->classId = inputClassId;
 						newClassDeclaration->nullable = inputClass->nullable;
 						newClassDeclaration->line = genericDeclaration->line;
-						if (inputClassId == DefaultClass::functionClassId) {
+						if (!inputClass->inputClassId.empty()) {
 							newClassDeclaration->inputClassId.reserve(
 							    inputClass->inputClassId.size());
 							for (auto classDeclaration :

@@ -433,6 +433,8 @@ ExprNode *SetNode::optimize(in_func) {
 						if (detachNode->declaration->mustInferenceNullable) {
 							detachNode->declaration->nullable =
 							    value->isNullable();
+							detachNode->declaration->declaredNullable =
+							    value->isNullable();
 							detachNode->nullable =
 							    detachNode->declaration->nullable;
 						}
@@ -520,10 +522,15 @@ ExprNode *SetNode::optimize(in_func) {
 					if (value->classDeclaration) {
 						node->declaration->classDeclaration =
 						    value->classDeclaration;
+					} else if (value->classId != Autolang::DefaultClass::nullClassId) {
+						node->declaration->classDeclaration =
+						    ExprNode::getOrCreateClassDeclaration(in_data, value->classId, node->line, value->isNullable());
 					}
 					// Marked non null won't run example val a! = 1
 					if (node->declaration->mustInferenceNullable) {
 						node->declaration->nullable = value->isNullable();
+						node->declaration->declaredNullable =
+						    value->isNullable();
 						node->nullable = node->declaration->nullable;
 						// std::cerr << "Set " <<
 						// node->declaration->getName(compile) << " is "
@@ -588,6 +595,19 @@ ExprNode *SetNode::optimize(in_func) {
 		}
 	}
 
+	bool detachAllowsNullable = detach->isNullable();
+	DeclarationNode *detachDecl = nullptr;
+	if (detach->kind == NodeType::VAR || detach->kind == NodeType::GET_PROP) {
+		detachDecl = static_cast<AccessNode *>(detach)->declaration;
+		if (detachDecl) {
+			if (detachDecl->declaredNullable ||
+			    detachDecl->nullable ||
+			    (detachDecl->classDeclaration && detachDecl->classDeclaration->nullable)) {
+				detachAllowsNullable = true;
+			}
+		}
+	}
+
 	{
 		auto value = this->value;
 	changedValue:;
@@ -608,7 +628,7 @@ ExprNode *SetNode::optimize(in_func) {
 			case NodeType::GET_PROP: {
 				auto node = static_cast<AccessNode *>(value);
 				auto detachNode = static_cast<AccessNode *>(detach);
-				if (!detach->isNullable() && node->nullable) {
+				if (!detachAllowsNullable && node->nullable) {
 					if (!(detach->classId == Autolang::DefaultClass::stringClassId &&
 					      op == Lexer::TokenType::PLUS_EQUAL)) {
 						std::string detachName(detachNode->declaration->name);
@@ -625,7 +645,7 @@ ExprNode *SetNode::optimize(in_func) {
 				break;
 			}
 			case NodeType::CALL: {
-				if (!detach->isNullable() &&
+				if (!detachAllowsNullable &&
 				    static_cast<CallNode *>(value)->nullable) {
 					if (!(detach->classId == Autolang::DefaultClass::stringClassId &&
 					      op == Lexer::TokenType::PLUS_EQUAL)) {
@@ -649,7 +669,7 @@ ExprNode *SetNode::optimize(in_func) {
 		}
 	}
 
-	if (detach->isNullable()) {
+	if (detachAllowsNullable) {
 		if (op != Lexer::TokenType::EQUAL) {
 			throwError(
 			    "Cannot use operator '" +
@@ -666,6 +686,14 @@ ExprNode *SetNode::optimize(in_func) {
 			           compile.classes[detach->classId]->getName(compile) +
 			           "'\nHint: Target variable is non-nullable. Unwrap assigned "
 			           "value using '!' or declare target as nullable.");
+		}
+	}
+
+	if (detachDecl && value->isNullable()) {
+		detachDecl->nullable = true;
+		detach->setNullable(true);
+		if (detach->kind == NodeType::VAR || detach->kind == NodeType::GET_PROP) {
+			static_cast<AccessNode *>(detach)->nullable = true;
 		}
 	}
 
@@ -728,6 +756,13 @@ ExprNode *SetNode::optimize(in_func) {
 		return this;
 	}
 	switch (detach->classId) {
+		case Autolang::DefaultClass::charClassId: {
+			if ((op == Lexer::TokenType::PLUS_EQUAL || op == Lexer::TokenType::MINUS_EQUAL) &&
+			    value->classId == Autolang::DefaultClass::intClassId) {
+				return this;
+			}
+			break;
+		}
 		case Autolang::DefaultClass::intClassId: {
 			switch (value->classId) {
 				case Autolang::DefaultClass::floatClassId: {

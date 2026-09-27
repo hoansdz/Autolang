@@ -21,6 +21,9 @@ class ANotifier {
 	[[nodiscard]] inline AObject *createInt(int64_t value) {
 		return vm->data.manager.createIntObject(value);
 	}
+	[[nodiscard]] inline AObject *createChar(AChar value) {
+		return vm->data.manager.createCharObject(value);
+	}
 	[[nodiscard]] inline AObject *createFloat(double value) {
 		return vm->data.manager.createFloatObject(value);
 	}

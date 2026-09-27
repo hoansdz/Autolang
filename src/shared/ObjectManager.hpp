@@ -123,6 +123,7 @@ class ObjectManager {
 		}
 		switch (obj->type) {
 			case Autolang::DefaultClass::intClassId:
+			case Autolang::DefaultClass::charClassId:
 			case Autolang::DefaultClass::floatClassId: {
 				obj->flags = AObject::Flags::OBJ_IS_FREE;
 				return;
@@ -294,6 +295,12 @@ class ObjectManager {
 	inline AObject *create(double f) { return get(f); }
 	inline AObject *create(AString *str) { return get(str); }
 	inline AObject *createIntObject(int64_t i) { return get(i); }
+	inline AObject *createCharObject(AChar c) {
+		AObject *obj = areaAllocator.getObject();
+		obj->type = DefaultClass::charClassId;
+		obj->chr = c;
+		return obj;
+	}
 	inline AObject *createFloatObject(double f) { return get(f); }
 	inline AObject *createStringObject(AString *str) { return get(str); }
 	inline AObject *createString(int64_t i) { return get(AString::from(i)); }

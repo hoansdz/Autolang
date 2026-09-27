@@ -260,6 +260,16 @@ AObject *is_empty(NativeFuncInData) {
 	return notifier.createBool(empty);
 }
 
+AObject *is_null_or_empty(NativeFuncInData) {
+	if (argSize == 0 || !args[0] || args[0]->type == DefaultClass::nullClassId) {
+		return notifier.createBool(true);
+	}
+	if (!args[0]->data || !args[0]->data->data) {
+		return notifier.createBool(true);
+	}
+	return is_empty(notifier, args, argSize);
+}
+
 AObject *for_each(NativeFuncInData) {
 	auto unorderedSetData = static_cast<AUnorderedSet *>(args[0]->data->data);
 	auto funcObject = args[1];
@@ -1104,12 +1114,13 @@ static inline AObject *setToArrayHelper(ANotifier &notifier, AObject *setObj) {
 }
 
 static inline AObject *getArrayItem(ANotifier &notifier, AArray *array, size_t index) {
-	if (array->key == DefaultClass::intClassId) {
-		return notifier.createInt(array->intData[index]);
-	} else if (array->key == DefaultClass::floatClassId) {
-		return notifier.createFloat(array->floatData[index]);
-	} else {
-		return array->objData[index];
+	switch (array->key) {
+		case DefaultClass::intClassId:
+			return notifier.createInt(array->intData[index]);
+		case DefaultClass::floatClassId:
+			return notifier.createFloat(array->floatData[index]);
+		default:
+			return array->objData[index];
 	}
 }
 
@@ -1313,6 +1324,89 @@ AObject *associate_by(NativeFuncInData) {
 	AObject *cArgs[2] = {arr, args[1]};
 	auto res = array::associate_by(notifier, cArgs, 2);
 	notifier.release(arr);
+	return res;
+}
+
+AObject *sorted(NativeFuncInData) {
+	auto arr = setToArrayHelper(notifier, args[0]);
+	arr->retain();
+	auto res = array::sorted(notifier, &arr, 1);
+	notifier.release(arr);
+	return res;
+}
+
+AObject *sorted_descending(NativeFuncInData) {
+	auto arr = setToArrayHelper(notifier, args[0]);
+	arr->retain();
+	auto res = array::sorted_descending(notifier, &arr, 1);
+	notifier.release(arr);
+	return res;
+}
+
+AObject *sum(NativeFuncInData) {
+	auto arr = setToArrayHelper(notifier, args[0]);
+	arr->retain();
+	auto res = array::sum(notifier, &arr, 1);
+	notifier.release(arr);
+	return res;
+}
+
+AObject *average(NativeFuncInData) {
+	auto arr = setToArrayHelper(notifier, args[0]);
+	arr->retain();
+	auto res = array::average(notifier, &arr, 1);
+	notifier.release(arr);
+	return res;
+}
+
+AObject *filter_not(NativeFuncInData) {
+	auto arr = setToArrayHelper(notifier, args[0]);
+	arr->retain();
+	AObject *cArgs[2] = {arr, args[1]};
+	auto filteredArr = array::filter_not(notifier, cArgs, 2);
+	notifier.release(arr);
+	if (!filteredArr) return nullptr;
+	filteredArr->retain();
+	auto res = array::to_set(notifier, &filteredArr, 1);
+	notifier.release(filteredArr);
+	return res;
+}
+
+AObject *filter_not_null(NativeFuncInData) {
+	auto arr = setToArrayHelper(notifier, args[0]);
+	arr->retain();
+	auto filteredArr = array::filter_not_null(notifier, &arr, 1);
+	notifier.release(arr);
+	if (!filteredArr) return nullptr;
+	filteredArr->retain();
+	auto res = array::to_set(notifier, &filteredArr, 1);
+	notifier.release(filteredArr);
+	return res;
+}
+
+AObject *max_of(NativeFuncInData) {
+	auto arr = setToArrayHelper(notifier, args[0]);
+	arr->retain();
+	AObject *cArgs[2] = {arr, args[1]};
+	auto mapped = array::map(notifier, cArgs, 2);
+	notifier.release(arr);
+	if (!mapped) return nullptr;
+	mapped->retain();
+	auto res = array::max_or_null(notifier, &mapped, 1);
+	notifier.release(mapped);
+	return res;
+}
+
+AObject *min_of(NativeFuncInData) {
+	auto arr = setToArrayHelper(notifier, args[0]);
+	arr->retain();
+	AObject *cArgs[2] = {arr, args[1]};
+	auto mapped = array::map(notifier, cArgs, 2);
+	notifier.release(arr);
+	if (!mapped) return nullptr;
+	mapped->retain();
+	auto res = array::min_or_null(notifier, &mapped, 1);
+	notifier.release(mapped);
 	return res;
 }
 

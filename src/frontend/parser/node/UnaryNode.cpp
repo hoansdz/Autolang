@@ -284,6 +284,10 @@ ExprNode *UnaryNode::optimize(in_func) {
 		}
 		case Lexer::TokenType::PLUS_PLUS: {
 			switch (value->classId) {
+				case DefaultClass::charClassId: {
+					classId = DefaultClass::charClassId;
+					return this;
+				}
 				case DefaultClass::intClassId: {
 					classId = DefaultClass::intClassId;
 					return this;
@@ -301,6 +305,10 @@ ExprNode *UnaryNode::optimize(in_func) {
 		}
 		case Lexer::TokenType::MINUS_MINUS: {
 			switch (value->classId) {
+				case DefaultClass::charClassId: {
+					classId = DefaultClass::charClassId;
+					return this;
+				}
 				case DefaultClass::intClassId: {
 					classId = DefaultClass::intClassId;
 					return this;

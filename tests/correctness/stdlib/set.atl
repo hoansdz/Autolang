@@ -144,6 +144,15 @@ fun testAllSetFeatures() {
     assert(emptySet.any() == false)
     assert(emptySet.none() == true)
 
+    // Edge cases: remove non-existent element and operations on empty set
+    val sizeBefore = originalSet.size()
+    originalSet.remove(9999)
+    assert(originalSet.size() == sizeBefore, "remove non-existent element preserves size")
+    assert(emptySet.contains(42) == false, "contains on empty set")
+    assert(emptySet.filter {|v: Int| true }.size == 0, "filter on empty set")
+    assert(originalSet.filter {|v: Int| false }.size == 0, "filter all out")
+    assert(emptySet.map<Int>({|v: Int| v * 2 }).size == 0, "map on empty set")
+
     println("Passed ${__FUNC__}")
 }
 

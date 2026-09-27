@@ -113,16 +113,45 @@ static bool matchAndBindType(in_func, ClassDeclaration *paramDecl, HasClassIdNod
 				}
 			}
 			return true;
+		} else if (argNode && argNode->kind == NodeType::CREATE_CLOSURE && paramDecl->inputClassId.size() == 2) {
+			auto closure = static_cast<CreateClosureNode *>(argNode);
+			if (closure->canImplicitIt && closure->parameter->parameters.empty() && argArgs && argArgs->size() == 1) {
+				if (matchAndBindType(in_data, paramDecl->inputClassId[0], nullptr, (*argArgs)[0], bindings, genericData)) {
+					return true;
+				}
+			}
 		}
 	}
 
 	return true;
 }
 
+static ClassDeclaration *buildClassDeclarationFromClassId(in_func, ClassId classId, uint32_t line) {
+	auto decl = ExprNode::getOrCreateClassDeclaration(in_data, classId, line, false);
+	if (classId < compile.classes.size() && compile.classes[classId]) {
+		auto clazz = compile.classes[classId];
+		if (clazz->genericType.size > 0) {
+			decl->isGeneric = true;
+			if (clazz->genericBaseClassId != 0 && clazz->genericBaseClassId < compile.classes.size()) {
+				decl->baseClassLexerStringId = context.createLexerStringIfNotExists(
+				    compile.classes[clazz->genericBaseClassId]->getName(compile));
+			}
+			decl->inputClassId.reserve(clazz->genericType.size);
+			for (size_t i = 0; i < clazz->genericType.size; ++i) {
+				ClassId subId = compile.allGenericType[clazz->genericType.offset + i];
+				decl->inputClassId.push_back(buildClassDeclarationFromClassId(in_data, subId, line));
+			}
+		}
+	}
+	return decl;
+}
+
 static ClassDeclaration *tryInferGenericArguments(in_func, GenericData *genericData,
                                                   Parameter *parameter,
                                                   const SmallVector<HasClassIdNode *, 4> &arguments,
-                                                  size_t skip, LexerStringId baseNameId) {
+                                                  size_t skip, LexerStringId baseNameId,
+                                                  HasClassIdNode *caller = nullptr,
+                                                  ClassId callerClassId = DefaultClass::nullClassId) {
 	if (!genericData || !parameter) return nullptr;
 	size_t numArgs = arguments.size();
 	size_t numParams = parameter->parameters.size();
@@ -135,6 +164,27 @@ static ClassDeclaration *tryInferGenericArguments(in_func, GenericData *genericD
 		auto argNode = arguments[j];
 		if (!matchAndBindType(in_data, paramNode->classDeclaration, argNode, nullptr, bindings, genericData)) {
 			return nullptr;
+		}
+	}
+
+	ClassId resolvedCallerClassId = caller ? caller->classId : callerClassId;
+	if (resolvedCallerClassId != DefaultClass::nullClassId && resolvedCallerClassId < compile.classes.size()) {
+		auto callerClass = compile.classes[resolvedCallerClassId];
+		if (callerClass && callerClass->genericType.size > 0) {
+			ClassId elemClassId = compile.allGenericType[callerClass->genericType.offset];
+			if (elemClassId < compile.classes.size()) {
+				auto elemClass = compile.classes[elemClassId];
+				if (elemClass && elemClass->genericType.size == genericData->genericDeclarations.size()) {
+					for (size_t k = 0; k < genericData->genericDeclarations.size(); ++k) {
+						auto *genDecl = genericData->genericDeclarations[k];
+						if (bindings.find(genDecl->nameId) == bindings.end()) {
+							ClassId typeArgId = compile.allGenericType[elemClass->genericType.offset + k];
+							uint32_t line = caller ? caller->line : 0;
+							bindings[genDecl->nameId] = buildClassDeclarationFromClassId(in_data, typeArgId, line);
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -216,6 +266,20 @@ ExprNode *CallNode::resolve(in_func) {
 				}
 				auto result = context.castPool.push(arguments[0],
 				                                    DefaultClass::intClassId);
+				arguments.clear();
+				return result;
+			}
+			case lexerIdChar: {
+				if (arguments.size() != 1) {
+					throwError(
+					    "Invalid call: Char expects 1 "
+					    "argument, but " +
+					    std::to_string(arguments.size()) +
+					    " were provided\nHint: Pass exactly one argument to "
+					    "convert to Char (e.g., Char(value)).");
+				}
+				auto result = context.castPool.push(arguments[0],
+				                                    DefaultClass::charClassId);
 				arguments.clear();
 				return result;
 			}
@@ -751,14 +815,13 @@ ExprNode *CallNode::optimize(in_func) {
 
 	std::string name(context.lexerString[nameId]);
 
+	bool mustCheckNullableDot = false;
 	if (caller) {
 		// Caller.funcName() => Class.funcName()
 		caller = static_cast<HasClassIdNode *>(caller->optimize(in_data));
 		if (caller->isNullable() && caller->kind != NodeType::CLASS_ACCESS) {
 			if (!accessNullable) {
-				throwError("You can't use '.' with nullable value, you must "
-				           "use '?.'\nHint: Use safe navigation operator '?.' "
-				           "when accessing members of a nullable object.");
+				mustCheckNullableDot = true;
 			}
 		} else {
 			if (accessNullable) {
@@ -944,7 +1007,7 @@ ExprNode *CallNode::optimize(in_func) {
 								size_t skip = (candidateNode->functionFlags & FunctionFlags::FUNC_IS_STATIC) ? 0 : 1;
 								auto inferredDecl = tryInferGenericArguments(
 								    in_data, candidateInfo->genericData,
-								    candidateNode->parameter, arguments, skip, nameId);
+								    candidateNode->parameter, arguments, skip, nameId, caller, caller->classId);
 								if (inferredDecl) {
 									std::string specializedName = inferredDecl->getName(in_data);
 									LexerStringId specializedNameId = context.createLexerStringIfNotExists(specializedName);
@@ -1070,7 +1133,7 @@ ExprNode *CallNode::optimize(in_func) {
 										size_t skip = (candidateNode->functionFlags & FunctionFlags::FUNC_IS_STATIC) ? 0 : 1;
 										auto inferredDecl = tryInferGenericArguments(
 										    in_data, candidateInfo->genericData,
-										    candidateNode->parameter, arguments, skip, nameId);
+										    candidateNode->parameter, arguments, skip, nameId, caller, *contextCallClassId);
 										if (inferredDecl) {
 											std::string specializedName = inferredDecl->getName(in_data);
 											LexerStringId specializedNameId = context.createLexerStringIfNotExists(specializedName);
@@ -1431,6 +1494,11 @@ ExprNode *CallNode::optimize(in_func) {
 			            "and declared or imported in current scope.";
 		}
 
+		if (mustCheckNullableDot) {
+			throwError("You can't use '.' with nullable value, you must "
+			           "use '?.'\nHint: Use safe navigation operator '?.' "
+			           "when accessing members of a nullable object.");
+		}
 		throwError(errorMsg);
 	}
 	if (ambitiousCall) {
@@ -1454,6 +1522,19 @@ ExprNode *CallNode::optimize(in_func) {
 	funcId = first.id;
 	auto func = compile.functions[funcId];
 	auto funcInfo = context.functionInfo[funcId];
+	if (mustCheckNullableDot) {
+		if (!(func->functionFlags & FunctionFlags::FUNC_NULLABLE_RECEIVER)) {
+			throwError("You can't use '.' with nullable value, you must "
+			           "use '?.'\nHint: Use safe navigation operator '?.' "
+			           "when accessing members of a nullable object.");
+		}
+	}
+	if (funcInfo->returnClass && !funcInfo->returnClass->classId) {
+		funcInfo->returnClass->template load<true>(in_data);
+		if (funcInfo->returnClass->classId) {
+			first.func->returnId = *funcInfo->returnClass->classId;
+		}
+	}
 	classId = first.func->returnId;
 	if (funcInfo->returnClass) {
 		classDeclaration = funcInfo->returnClass;
@@ -2056,9 +2137,18 @@ bool CallNode::match(in_func, MatchOverload &match,
 							//                  ->classDeclaration
 							//           << " " << arguments[j]->getNodeType() <<
 							//           "\n";
-							if (!funcInfo->parameter->parameters[j + skip]
-							         ->classDeclaration->isMatch(
-							             arguments[j]->classDeclaration)) {
+							auto expectedDecl = funcInfo->parameter->parameters[j + skip]
+							                        ->classDeclaration;
+							bool matched = expectedDecl->isMatch(
+							    arguments[j]->classDeclaration);
+							if (!matched && arguments[j]->kind == NodeType::CREATE_CLOSURE) {
+								auto closure = static_cast<CreateClosureNode *>(arguments[j]);
+								if (closure->canImplicitIt && closure->parameter->parameters.empty() &&
+								    expectedDecl->inputClassId.size() == 2) {
+									matched = true;
+								}
+							}
+							if (!matched) {
 								goto finished;
 							}
 						} else {
@@ -2211,9 +2301,18 @@ bool CallNode::match(in_func, MatchOverload &match,
 				if (funcExpectClassId == inputClassId) {
 					if (funcExpectClassId == DefaultClass::functionClassId) {
 						if (argNode->kind != NodeType::FUNCTION_ACCESS) {
-							if (!funcInfo->parameter->parameters[p + skip]
-							         ->classDeclaration->isMatch(
-							             argNode->classDeclaration)) {
+							auto expectedDecl = funcInfo->parameter->parameters[p + skip]
+							                        ->classDeclaration;
+							bool matched = expectedDecl->isMatch(
+							    argNode->classDeclaration);
+							if (!matched && argNode->kind == NodeType::CREATE_CLOSURE) {
+								auto closure = static_cast<CreateClosureNode *>(argNode);
+								if (closure->canImplicitIt && closure->parameter->parameters.empty() &&
+								    expectedDecl->inputClassId.size() == 2) {
+									matched = true;
+								}
+							}
+							if (!matched) {
 								goto finished;
 							}
 						}

@@ -114,6 +114,12 @@ namespace Autolang {
 			data.manager.release(obj1);                                        \
 		}                                                                      \
 		switch (obj2->type) {                                                  \
+			case DefaultClass::charClassId: {                                  \
+				auto newValue = notifier->createChar(obj2->i);                 \
+				newValue->retain();                                            \
+				obj1 = newValue;                                               \
+				break;                                                         \
+			}                                                                  \
 			case DefaultClass::intClassId: {                                   \
 				auto newValue = notifier->createInt(obj2->i);                  \
 				newValue->retain();                                            \
@@ -1862,6 +1868,14 @@ resumeCallFrame:;
 				case Autolang::Opcode::CLONE: {
 					auto value = stack.top();
 					switch (value->type) {
+						case DefaultClass::charClassId: {
+							auto newValue = notifier->createChar(value->i);
+							newValue->retain();
+							stack.pop();
+							notifier->release(value);
+							stack.push(newValue);
+							break;
+						}
 						case DefaultClass::intClassId: {
 							auto newValue = notifier->createInt(value->i);
 							newValue->retain();
@@ -1903,6 +1917,11 @@ resumeCallFrame:;
 						goto resumeCallFrame;
 					break;
 				}
+				case Autolang::Opcode::TO_CHAR: {
+					if (!operate<Autolang::DefaultFunction::to_char, 1>())
+						goto resumeCallFrame;
+					break;
+				}
 				case Autolang::Opcode::FAST_PLUS_PLUS: {
 					++stack.top()->i;
 					break;
@@ -1910,6 +1929,10 @@ resumeCallFrame:;
 				case Autolang::Opcode::PLUS_PLUS_VALUE: {
 					auto obj = stack.top();
 					switch (obj->type) {
+						case DefaultClass::charClassId: {
+							++obj->chr;
+							break;
+						}
 						case DefaultClass::intClassId: {
 							++obj->i;
 							break;
@@ -1930,6 +1953,10 @@ resumeCallFrame:;
 				case Autolang::Opcode::MINUS_MINUS_VALUE: {
 					auto obj = stack.top();
 					switch (obj->type) {
+						case DefaultClass::charClassId: {
+							--obj->chr;
+							break;
+						}
 						case DefaultClass::intClassId: {
 							--obj->i;
 							break;
@@ -1950,6 +1977,13 @@ resumeCallFrame:;
 				case Autolang::Opcode::VALUE_PLUS_PLUS: {
 					auto obj = stack.top();
 					switch (obj->type) {
+						case DefaultClass::charClassId: {
+							auto newObj = notifier->createChar(obj->chr++);
+							notifier->release(obj);
+							stack.top() = newObj;
+							newObj->retain();
+							break;
+						}
 						case DefaultClass::intClassId: {
 							auto newObj = notifier->createInt(obj->i++);
 							notifier->release(obj);
@@ -1976,6 +2010,13 @@ resumeCallFrame:;
 				case Autolang::Opcode::VALUE_MINUS_MINUS: {
 					auto obj = stack.top();
 					switch (obj->type) {
+						case DefaultClass::charClassId: {
+							auto newObj = notifier->createChar(obj->chr--);
+							notifier->release(obj);
+							stack.top() = newObj;
+							newObj->retain();
+							break;
+						}
 						case DefaultClass::intClassId: {
 							auto newObj = notifier->createInt(obj->i--);
 							notifier->release(obj);
@@ -2217,26 +2258,44 @@ resumeCallFrame:;
 					AObject *slotObj = *targetRef;
 					if (slotObj) {
 						pointerClassId = slotObj->type;
-						if (pointerClassId == DefaultClass::intClassId) {
-							if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
-								auto newObj = notifier->createInt(slotObj->i);
-								newObj->retain();
-								notifier->release(slotObj);
-								*targetRef = newObj;
-								slotObj = newObj;
+						switch (pointerClassId) {
+							case DefaultClass::intClassId: {
+								if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+									auto newObj = notifier->createInt(slotObj->i);
+									newObj->retain();
+									notifier->release(slotObj);
+									*targetRef = newObj;
+									slotObj = newObj;
+								}
+								pointerVariable = &(slotObj->i);
+								break;
 							}
-							pointerVariable = &(slotObj->i);
-						} else if (pointerClassId == DefaultClass::floatClassId) {
-							if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
-								auto newObj = notifier->createFloat(slotObj->f);
-								newObj->retain();
-								notifier->release(slotObj);
-								*targetRef = newObj;
-								slotObj = newObj;
+							case DefaultClass::charClassId: {
+								if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+									auto newObj = notifier->createChar(slotObj->chr);
+									newObj->retain();
+									notifier->release(slotObj);
+									*targetRef = newObj;
+									slotObj = newObj;
+								}
+								pointerVariable = &(slotObj->chr);
+								break;
 							}
-							pointerVariable = &(slotObj->f);
-						} else {
-							pointerVariable = targetRef;
+							case DefaultClass::floatClassId: {
+								if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+									auto newObj = notifier->createFloat(slotObj->f);
+									newObj->retain();
+									notifier->release(slotObj);
+									*targetRef = newObj;
+									slotObj = newObj;
+								}
+								pointerVariable = &(slotObj->f);
+								break;
+							}
+							default: {
+								pointerVariable = targetRef;
+								break;
+							}
 						}
 						stack.push(slotObj);
 						slotObj->retain();
@@ -2252,26 +2311,44 @@ resumeCallFrame:;
 					AObject *slotObj = *targetRef;
 					if (slotObj) {
 						pointerClassId = slotObj->type;
-						if (pointerClassId == DefaultClass::intClassId) {
-							if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
-								auto newObj = notifier->createInt(slotObj->i);
-								newObj->retain();
-								notifier->release(slotObj);
-								*targetRef = newObj;
-								slotObj = newObj;
+						switch (pointerClassId) {
+							case DefaultClass::intClassId: {
+								if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+									auto newObj = notifier->createInt(slotObj->i);
+									newObj->retain();
+									notifier->release(slotObj);
+									*targetRef = newObj;
+									slotObj = newObj;
+								}
+								pointerVariable = &(slotObj->i);
+								break;
 							}
-							pointerVariable = &(slotObj->i);
-						} else if (pointerClassId == DefaultClass::floatClassId) {
-							if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
-								auto newObj = notifier->createFloat(slotObj->f);
-								newObj->retain();
-								notifier->release(slotObj);
-								*targetRef = newObj;
-								slotObj = newObj;
+							case DefaultClass::charClassId: {
+								if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+									auto newObj = notifier->createChar(slotObj->chr);
+									newObj->retain();
+									notifier->release(slotObj);
+									*targetRef = newObj;
+									slotObj = newObj;
+								}
+								pointerVariable = &(slotObj->chr);
+								break;
 							}
-							pointerVariable = &(slotObj->f);
-						} else {
-							pointerVariable = targetRef;
+							case DefaultClass::floatClassId: {
+								if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+									auto newObj = notifier->createFloat(slotObj->f);
+									newObj->retain();
+									notifier->release(slotObj);
+									*targetRef = newObj;
+									slotObj = newObj;
+								}
+								pointerVariable = &(slotObj->f);
+								break;
+							}
+							default: {
+								pointerVariable = targetRef;
+								break;
+							}
 						}
 						stack.push(slotObj);
 						slotObj->retain();
@@ -2288,26 +2365,44 @@ resumeCallFrame:;
 					AObject *slotObj = *targetRef;
 					if (slotObj) {
 						pointerClassId = slotObj->type;
-						if (pointerClassId == DefaultClass::intClassId) {
-							if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
-								auto newObj = notifier->createInt(slotObj->i);
-								newObj->retain();
-								notifier->release(slotObj);
-								*targetRef = newObj;
-								slotObj = newObj;
+						switch (pointerClassId) {
+							case DefaultClass::intClassId: {
+								if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+									auto newObj = notifier->createInt(slotObj->i);
+									newObj->retain();
+									notifier->release(slotObj);
+									*targetRef = newObj;
+									slotObj = newObj;
+								}
+								pointerVariable = &(slotObj->i);
+								break;
 							}
-							pointerVariable = &(slotObj->i);
-						} else if (pointerClassId == DefaultClass::floatClassId) {
-							if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
-								auto newObj = notifier->createFloat(slotObj->f);
-								newObj->retain();
-								notifier->release(slotObj);
-								*targetRef = newObj;
-								slotObj = newObj;
+							case DefaultClass::charClassId: {
+								if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+									auto newObj = notifier->createChar(slotObj->chr);
+									newObj->retain();
+									notifier->release(slotObj);
+									*targetRef = newObj;
+									slotObj = newObj;
+								}
+								pointerVariable = &(slotObj->chr);
+								break;
 							}
-							pointerVariable = &(slotObj->f);
-						} else {
-							pointerVariable = targetRef;
+							case DefaultClass::floatClassId: {
+								if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+									auto newObj = notifier->createFloat(slotObj->f);
+									newObj->retain();
+									notifier->release(slotObj);
+									*targetRef = newObj;
+									slotObj = newObj;
+								}
+								pointerVariable = &(slotObj->f);
+								break;
+							}
+							default: {
+								pointerVariable = targetRef;
+								break;
+							}
 						}
 						stack.push(slotObj);
 						slotObj->retain();
@@ -2325,26 +2420,44 @@ resumeCallFrame:;
 					AObject *slotObj = *targetRef;
 					if (slotObj) {
 						pointerClassId = slotObj->type;
-						if (pointerClassId == DefaultClass::intClassId) {
-							if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
-								auto newObj = notifier->createInt(slotObj->i);
-								newObj->retain();
-								notifier->release(slotObj);
-								*targetRef = newObj;
-								slotObj = newObj;
+						switch (pointerClassId) {
+							case DefaultClass::intClassId: {
+								if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+									auto newObj = notifier->createInt(slotObj->i);
+									newObj->retain();
+									notifier->release(slotObj);
+									*targetRef = newObj;
+									slotObj = newObj;
+								}
+								pointerVariable = &(slotObj->i);
+								break;
 							}
-							pointerVariable = &(slotObj->i);
-						} else if (pointerClassId == DefaultClass::floatClassId) {
-							if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
-								auto newObj = notifier->createFloat(slotObj->f);
-								newObj->retain();
-								notifier->release(slotObj);
-								*targetRef = newObj;
-								slotObj = newObj;
+							case DefaultClass::charClassId: {
+								if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+									auto newObj = notifier->createChar(slotObj->chr);
+									newObj->retain();
+									notifier->release(slotObj);
+									*targetRef = newObj;
+									slotObj = newObj;
+								}
+								pointerVariable = &(slotObj->chr);
+								break;
 							}
-							pointerVariable = &(slotObj->f);
-						} else {
-							pointerVariable = targetRef;
+							case DefaultClass::floatClassId: {
+								if ((slotObj->flags & AObject::Flags::OBJ_IS_CONST) || slotObj->refCount > 1) {
+									auto newObj = notifier->createFloat(slotObj->f);
+									newObj->retain();
+									notifier->release(slotObj);
+									*targetRef = newObj;
+									slotObj = newObj;
+								}
+								pointerVariable = &(slotObj->f);
+								break;
+							}
+							default: {
+								pointerVariable = targetRef;
+								break;
+							}
 						}
 						stack.push(slotObj);
 						slotObj->retain();

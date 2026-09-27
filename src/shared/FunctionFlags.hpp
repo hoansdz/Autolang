@@ -22,7 +22,8 @@ enum FunctionFlags : uint32_t {
 	FUNC_SKIP_LOAD = 1u << 13,
 	FUNC_UNUSABLE = 1u << 14,
 	FUNC_IS_OPERATOR = 1u << 15,
-	FUNC_IS_IMPLICIT = 1u << 16
+	FUNC_IS_IMPLICIT = 1u << 16,
+	FUNC_NULLABLE_RECEIVER = 1u << 17
 };
 
 }

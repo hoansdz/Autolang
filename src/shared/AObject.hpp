@@ -37,6 +37,8 @@ struct ABytes {
 	    : capacity(capacity), size(size), data(data) {}
 };
 
+using AChar = char32_t;
+
 struct AObject {
 	enum Flags : uint32_t {
 		OBJ_IS_FREE = 1u << 0,
@@ -59,6 +61,7 @@ struct AObject {
 	uint32_t flags = 0;
 	union {
 		int64_t i;
+		AChar chr;
 		double f;
 		uint8_t b;
 		FunctionObject *function;
@@ -105,6 +108,7 @@ struct AObject {
 		}
 		switch (type) {
 			case Autolang::DefaultClass::intClassId:
+			case Autolang::DefaultClass::charClassId:
 			case Autolang::DefaultClass::floatClassId: {
 				flags = AObject::Flags::OBJ_IS_FREE;
 				return;

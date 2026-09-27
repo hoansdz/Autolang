@@ -55,6 +55,9 @@ class Set<T> {
 	@native("set_is_empty")
     fun is_empty(): Bool
 
+	@native("set_is_null_or_empty")
+    fun Set<T>?.isNullOrEmpty(): Bool
+
     @native("set_for_each")
     fun forEach(fn: (T) -> Void)
 
@@ -125,11 +128,14 @@ class Set<T> {
 	@native("set_filter")
 	fun filter(fn: (T) -> Bool): Set<T>
 
-	fun filterNot(predicate: (T) -> Bool): Set<T> = this.toArray().filterNot(predicate).toSet()
+	@native("set_filter_not")
+	fun filterNot(predicate: (T) -> Bool): Set<T>
 
-	fun filterNotNull(): Set<T> = this.toArray().filterNotNull().toSet()
+	@native("set_filter_not_null")
+	fun filterNotNull(): Set<T>
 
-	fun distinct(): Set<T> = this
+	@native("identity")
+	fun distinct(): Set<T>
 
 	@native("set_map")
 	fun <R> map(fn: (T) -> R): Array<R>
@@ -194,21 +200,29 @@ class Set<T> {
 	@native("set_min_or_null")
 	fun min(): T
 
-	fun sorted(): Array<T> = this.toArray().sorted()
+	@native("set_sorted")
+	fun sorted(): Array<T>
 
-	fun sortedDescending(): Array<T> = this.toArray().sortedDescending()
+	@native("set_sorted_descending")
+	fun sortedDescending(): Array<T>
 
-	fun sum(): Int = this.toArray().sum()
+	@native("set_sum")
+	fun sum(): Int
 
-	fun average(): Float = this.toArray().average()
+	@native("set_average")
+	fun average(): Float
 
-	fun <R> maxOf(selector: (T) -> R): R = this.map<R>(selector).max()
+	@native("set_max_of")
+	fun <R> maxOf(selector: (T) -> R): R
 
-	fun <R> minOf(selector: (T) -> R): R = this.map<R>(selector).min()
+	@native("set_min_of")
+	fun <R> minOf(selector: (T) -> R): R
 
-	fun <R> maxOfOrNull(selector: (T) -> R): R? = this.map<R>(selector).maxOrNull()
+	@native("set_max_of_or_null")
+	fun <R> maxOfOrNull(selector: (T) -> R): R?
 
-	fun <R> minOfOrNull(selector: (T) -> R): R? = this.map<R>(selector).minOrNull()
+	@native("set_min_of_or_null")
+	fun <R> minOfOrNull(selector: (T) -> R): R?
 
 	@native("set_group_by")
 	fun <K> groupBy(keySelector: (T) -> K): Map<K, Array<T>>
