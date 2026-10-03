@@ -554,96 +554,57 @@ void init(Autolang::ACompiler &compiler) {
 	nativeMap.emplace("truncate", &Math::trunc);
 
 	std::string mathSource = R"###(
-val PI: Float = 3.141592653589793
-val E: Float  = 2.718281828459045
+@native("roundToInt") static fun Math.roundToInt(value: Float): Int
+@native("roundToLong") static fun Math.roundToLong(value: Float): Int
+@native("trunc") static fun Math.trunc(value: Float): Int
+@native("truncate") static fun Math.truncate(value: Float): Int
+@native("exp") static fun Math.exp(value: Float): Float
+@native("log") static fun Math.log(value: Float): Float
+@native("ln") static fun Math.ln(value: Float): Float
+@native("log2") static fun Math.log2(value: Float): Float
+@native("log10") static fun Math.log10(value: Float): Float
 
-@no_constructor
-class Math {
-	static val PI: Float = 3.141592653589793
-	static val E: Float  = 2.718281828459045
+@native("sin") static fun Math.sin(value: Float): Float
+@native("sin") static fun Math.sin(value: Int): Float
+@native("cos") static fun Math.cos(value: Float): Float
+@native("cos") static fun Math.cos(value: Int): Float
+@native("tan") static fun Math.tan(value: Float): Float
+@native("tan") static fun Math.tan(value: Int): Float
 
-	@native("round") static fun round(value: Float): Float
-	@native("roundToInt") static fun roundToInt(value: Float): Int
-	@native("roundToLong") static fun roundToLong(value: Float): Int
-	@native("floor") static fun floor(value: Float): Int
-	@native("ceil")  static fun ceil(value: Float): Int
-	@native("trunc") static fun trunc(value: Float): Int
-	@native("truncate") static fun truncate(value: Float): Int
-	
-	@native("abs") static fun abs(value: Int): Int
-	@native("abs") static fun abs(value: Float): Float
-	@native("sign") static fun sign(value: Int): Int
-	@native("sign") static fun sign(value: Float): Float
+@native("asin") static fun Math.asin(value: Float): Float
+@native("acos") static fun Math.acos(value: Float): Float
+@native("atan") static fun Math.atan(value: Float): Float
+@native("atan2") static fun Math.atan2(y: Float, x: Float): Float
 
-	@native("pow") static fun pow(base: Float, exp_: Float): Float
-	@native("pow") static fun pow(base: Int, exp_: Int): Int
+@native("sinh") static fun Math.sinh(value: Float): Float
+@native("cosh") static fun Math.cosh(value: Float): Float
+@native("tanh") static fun Math.tanh(value: Float): Float
+@native("asinh") static fun Math.asinh(value: Float): Float
+@native("acosh") static fun Math.acosh(value: Float): Float
+@native("atanh") static fun Math.atanh(value: Float): Float
 
-	@native("sqrt") static fun sqrt(value: Float): Float
-	@native("sqrt") static fun sqrt(value: Int): Float
+@native("hypot") static fun Math.hypot(x: Float, y: Float): Float
+@native("ieee_rem") static fun Math.IEEErem(x: Float, y: Float): Float
+@native("cbrt") static fun Math.cbrt(value: Float): Float
+@native("cbrt") static fun Math.cbrt(value: Int): Float
+@native("expm1") static fun Math.expm1(value: Float): Float
+@native("ln1p") static fun Math.ln1p(value: Float): Float
+@native("log_base") static fun Math.log(value: Float, base: Float): Float
+@native("with_sign") static fun Math.withSign(value: Float, sign: Float): Float
+@native("next_up") static fun Math.nextUp(value: Float): Float
+@native("next_down") static fun Math.nextDown(value: Float): Float
+@native("next_after") static fun Math.nextAfter(value: Float, direction: Float): Float
+@native("ulp") static fun Math.ulp(value: Float): Float
 
-	@native("exp") static fun exp(value: Float): Float
-	@native("log") static fun log(value: Float): Float
-	@native("ln") static fun ln(value: Float): Float
-	@native("log2") static fun log2(value: Float): Float
-	@native("log10") static fun log10(value: Float): Float
+@native("fmod") static fun Math.fmod(num1: Float, num2: Float): Float
+@native("random") static fun Math.random(): Float
+@native("random") static fun Math.random(minValue: Int, maxValue: Int): Int
+@native("random") static fun Math.random(minValue: Float, maxValue: Float): Float
 
-	@native("sin") static fun sin(value: Float): Float
-	@native("sin") static fun sin(value: Int): Float
-	@native("cos") static fun cos(value: Float): Float
-	@native("cos") static fun cos(value: Int): Float
-	@native("tan") static fun tan(value: Float): Float
-	@native("tan") static fun tan(value: Int): Float
-
-	@native("asin") static fun asin(value: Float): Float
-	@native("acos") static fun acos(value: Float): Float
-	@native("atan") static fun atan(value: Float): Float
-	@native("atan2") static fun atan2(y: Float, x: Float): Float
-
-	@native("sinh") static fun sinh(value: Float): Float
-	@native("cosh") static fun cosh(value: Float): Float
-	@native("tanh") static fun tanh(value: Float): Float
-	@native("asinh") static fun asinh(value: Float): Float
-	@native("acosh") static fun acosh(value: Float): Float
-	@native("atanh") static fun atanh(value: Float): Float
-
-	@native("hypot") static fun hypot(x: Float, y: Float): Float
-	@native("ieee_rem") static fun IEEErem(x: Float, y: Float): Float
-	@native("cbrt") static fun cbrt(value: Float): Float
-	@native("cbrt") static fun cbrt(value: Int): Float
-	@native("expm1") static fun expm1(value: Float): Float
-	@native("ln1p") static fun ln1p(value: Float): Float
-	@native("log_base") static fun log(value: Float, base: Float): Float
-	@native("with_sign") static fun withSign(value: Float, sign: Float): Float
-	@native("next_up") static fun nextUp(value: Float): Float
-	@native("next_down") static fun nextDown(value: Float): Float
-	@native("next_after") static fun nextAfter(value: Float, direction: Float): Float
-	@native("ulp") static fun ulp(value: Float): Float
-
-	@native("fmod") static fun fmod(num1: Float, num2: Float): Float
-	@native("min") static fun min(a: Int, b: Int): Int
-	@native("min") static fun min(a: Float, b: Float): Float
-
-	@native("max") static fun max(a: Int, b: Int): Int
-	@native("max") static fun max(a: Float, b: Float): Float
-
-	@native("random") static fun random(): Float
-	@native("random") static fun random(minValue: Int, maxValue: Int): Int
-	@native("random") static fun random(minValue: Float, maxValue: Float): Float
-}
-
-@native("round") fun round(value: Float): Float
 @native("roundToInt") fun roundToInt(value: Float): Int
 @native("roundToLong") fun roundToLong(value: Float): Int
-@native("floor") fun floor(value: Float): Int
-@native("ceil")  fun ceil(value: Float): Int
 @native("trunc") fun trunc(value: Float): Int
 @native("truncate") fun truncate(value: Float): Int
-@native("abs") fun abs(value: Int): Int
-@native("abs") fun abs(value: Float): Float
-@native("sign") fun sign(value: Int): Int
-@native("sign") fun sign(value: Float): Float
-@native("sqrt") fun sqrt(value: Float): Float
-@native("sqrt") fun sqrt(value: Int): Float
 @native("cbrt") fun cbrt(value: Float): Float
 @native("cbrt") fun cbrt(value: Int): Float
 @native("exp") fun exp(value: Float): Float
@@ -675,16 +636,12 @@ class Math {
 @native("next_down") fun nextDown(value: Float): Float
 @native("next_after") fun nextAfter(value: Float, direction: Float): Float
 @native("ulp") fun ulp(value: Float): Float
-@native("min") fun min(a: Int, b: Int): Int
-@native("min") fun min(a: Float, b: Float): Float
-@native("max") fun max(a: Int, b: Int): Int
-@native("max") fun max(a: Float, b: Float): Float
     )###";
 	if (compiler.parserContext.kotlinCompatEnabled) {
 		mathSource += "\ntypealias kotlin.math = Math\n";
 	}
 	compiler.registerBuiltInLibrary("std/math", mathSource.c_str(),
-	                                LibraryConfig(true), std::move(nativeMap));
+	                                LibraryConfig(false), std::move(nativeMap));
 }
 
 } // namespace Math

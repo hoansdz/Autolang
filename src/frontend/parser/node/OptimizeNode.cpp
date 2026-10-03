@@ -82,8 +82,7 @@ ConstValueNode *plus(in_func, ConstValueNode *left, ConstValueNode *right) {
 				case Autolang::DefaultClass::stringClassId:
 					return context.constValuePool.push(
 					    left->line,
-					    std::to_string(left->i) +
-					        *static_cast<std::string *>(right->str));
+					    std::to_string(left->i) + *static_cast<std::string *>(right->str));
 				default:
 					break;
 			}
@@ -100,8 +99,7 @@ ConstValueNode *plus(in_func, ConstValueNode *left, ConstValueNode *right) {
 				case Autolang::DefaultClass::stringClassId:
 					return context.constValuePool.push(
 					    left->line,
-					    std::to_string(left->f) +
-					        *static_cast<std::string *>(right->str));
+					    std::to_string(left->f) + *static_cast<std::string *>(right->str));
 				default:
 					break;
 			}
@@ -139,7 +137,7 @@ ConstValueNode *plus(in_func, ConstValueNode *left, ConstValueNode *right) {
 			if (right->classId == Autolang::DefaultClass::stringClassId) {
 				return context.constValuePool.push(
 				    left->line,
-				    std::string("null") + *static_cast<std::string *>(right->str));
+				    "null" + *static_cast<std::string *>(right->str));
 			}
 			break;
 		}
@@ -147,8 +145,7 @@ ConstValueNode *plus(in_func, ConstValueNode *left, ConstValueNode *right) {
 			if (right->classId == Autolang::DefaultClass::stringClassId) {
 				return context.constValuePool.push(
 				    left->line,
-				    std::string(left->obj->b ? "true" : "false") +
-				        *static_cast<std::string *>(right->str));
+				    (left->obj->b ? "true" : "false") + *static_cast<std::string *>(right->str));
 			}
 			break;
 		}

@@ -121,6 +121,18 @@ HasClassIdNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 			    "Expected body to open with '{' after 'when' but not found\nHint: "
 			    "Open the when body with '{' after when (...)");
 		}
+	} else if (!expect(token, Lexer::TokenType::LBRACE)) {
+		bool prevAllowTrailingClosure = context.allowTrailingClosure;
+		context.allowTrailingClosure = false;
+		value = loadExpression(in_data, 0, i);
+		context.allowTrailingClosure = prevAllowTrailingClosure;
+		if (!nextToken(&token, context.tokens, i)) {
+			--i;
+			throw ParserError(
+			    firstLine,
+			    "Expected body to open with '{' after 'when' but not found\nHint: "
+			    "Open the when body with '{' after when expression");
+		}
 	}
 	if (!expect(token, Lexer::TokenType::LBRACE)) {
 		--i;

@@ -214,6 +214,34 @@ inline AObject *check_not_null(NativeFuncInData) {
 	return args[0];
 }
 
+inline AObject *range(NativeFuncInData) {
+	int64_t start = 0;
+	int64_t stop = 0;
+	int64_t step = 1;
+	if (argSize == 1) {
+		stop = args[0]->i;
+	} else if (argSize == 2) {
+		start = args[0]->i;
+		stop = args[1]->i;
+	} else if (argSize >= 3) {
+		start = args[0]->i;
+		stop = args[1]->i;
+		step = args[2]->i;
+	}
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
+	auto arr = notifier.createArray(returnId, DefaultClass::intClassId);
+	if (step > 0) {
+		for (int64_t curr = start; curr < stop; curr += step) {
+			notifier.arrayAdd(arr, notifier.createInt(curr));
+		}
+	} else if (step < 0) {
+		for (int64_t curr = start; curr > stop; curr += step) {
+			notifier.arrayAdd(arr, notifier.createInt(curr));
+		}
+	}
+	return arr;
+}
+
 } // namespace DefaultFunction
 } // namespace Autolang
 

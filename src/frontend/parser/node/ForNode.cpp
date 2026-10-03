@@ -254,41 +254,71 @@ handleCollectionArray:
 					if (!destructureTargets.empty()) {
 						auto elemClass = compile.classes[target];
 						auto elemInfo = context.classInfo[target];
-						std::vector<LexerStringId> propNames;
-						for (auto *memberDecl : elemInfo->member) {
-							if (memberDecl) {
-								propNames.push_back(memberDecl->baseName);
-							}
-						}
-						if (destructureTargets.size() > propNames.size()) {
-							throwError("Destructuring declaration has " + std::to_string(destructureTargets.size()) +
-							           " variables, but type '" + elemClass->getName(compile) +
-							           "' only has " + std::to_string(propNames.size()) +
-							           " properties\nHint: Check number of destructured variables");
-						}
-						size_t insertIdx = 0;
-						for (size_t k = 0; k < destructureTargets.size(); ++k) {
-							auto *targetDecl = destructureTargets[k];
-							if (!targetDecl) {
-								continue;
-							}
-							LexerStringId propId = propNames[k];
-							auto *varElem = context.varPool.push(line, detach->declaration, false, false);
-							auto *getProp = context.getPropPool.push(
-							    line, nullptr, context.currentClassId, varElem, propId, false, false, false);
-							auto *optimizedProp = static_cast<HasClassIdNode *>(getProp->optimize(in_data));
+						bool isArrayElem = (target == DefaultClass::arrayClassId ||
+						                    elemClass->genericBaseClassId == DefaultClass::arrayClassId);
+						if (isArrayElem) {
+							size_t insertIdx = 0;
+							for (size_t k = 0; k < destructureTargets.size(); ++k) {
+								auto *targetDecl = destructureTargets[k];
+								if (!targetDecl) {
+									continue;
+								}
+								auto *varElem = context.varPool.push(line, detach->declaration, false, false);
+								auto *constIndex = context.constValuePool.push(line, (int64_t)k);
+								auto *callGet = context.callNodePool.push(
+								    line, 0, context.currentClassId, varElem,
+								    lexerIdLRBRACKET, std::vector<HasClassIdNode *>{constIndex},
+								    false, false, false);
+								auto *optimizedProp = static_cast<HasClassIdNode *>(callGet->optimize(in_data));
 
-							targetDecl->classId = optimizedProp->classId;
-							targetDecl->nullable = optimizedProp->isNullable();
-							targetDecl->classDeclaration = optimizedProp->classDeclaration;
+								targetDecl->classId = optimizedProp->classId;
+								targetDecl->nullable = optimizedProp->isNullable();
+								targetDecl->classDeclaration = optimizedProp->classDeclaration;
 
-							auto *varTarget = context.varPool.push(line, targetDecl, true, true);
-							auto *setValue = context.setValuePool.push(line, varTarget, optimizedProp, false);
-							auto *optSet = setValue->optimize(in_data);
-							body.nodes.insert(body.nodes.begin() + insertIdx, optSet);
-							insertIdx++;
+								auto *varTarget = context.varPool.push(line, targetDecl, true, true);
+								auto *setValue = context.setValuePool.push(line, varTarget, optimizedProp, false);
+								auto *optSet = setValue->optimize(in_data);
+								body.nodes.insert(body.nodes.begin() + insertIdx, optSet);
+								insertIdx++;
+							}
+							destructureTargets.clear();
+						} else {
+							std::vector<LexerStringId> propNames;
+							for (auto *memberDecl : elemInfo->member) {
+								if (memberDecl) {
+									propNames.push_back(memberDecl->baseName);
+								}
+							}
+							if (destructureTargets.size() > propNames.size()) {
+								throwError("Destructuring declaration has " + std::to_string(destructureTargets.size()) +
+								           " variables, but type '" + elemClass->getName(compile) +
+								           "' only has " + std::to_string(propNames.size()) +
+								           " properties\nHint: Check number of destructured variables");
+							}
+							size_t insertIdx = 0;
+							for (size_t k = 0; k < destructureTargets.size(); ++k) {
+								auto *targetDecl = destructureTargets[k];
+								if (!targetDecl) {
+									continue;
+								}
+								LexerStringId propId = propNames[k];
+								auto *varElem = context.varPool.push(line, detach->declaration, false, false);
+								auto *getProp = context.getPropPool.push(
+								    line, nullptr, context.currentClassId, varElem, propId, false, false, false);
+								auto *optimizedProp = static_cast<HasClassIdNode *>(getProp->optimize(in_data));
+
+								targetDecl->classId = optimizedProp->classId;
+								targetDecl->nullable = optimizedProp->isNullable();
+								targetDecl->classDeclaration = optimizedProp->classDeclaration;
+
+								auto *varTarget = context.varPool.push(line, targetDecl, true, true);
+								auto *setValue = context.setValuePool.push(line, varTarget, optimizedProp, false);
+								auto *optSet = setValue->optimize(in_data);
+								body.nodes.insert(body.nodes.begin() + insertIdx, optSet);
+								insertIdx++;
+							}
+							destructureTargets.clear();
 						}
-						destructureTargets.clear();
 					}
 					break;
 				}

@@ -97,6 +97,54 @@ fun testWhen() {
 	}
 	assert(typeCheck == "not string")
 
+	// 5. When subject without parentheses
+	val targetVal = 2
+	val matched = when targetVal {
+		1 -> "one"
+		2 -> "two"
+		else -> "other"
+	}
+	assert(matched == "two", "when targetVal without parens failed")
+
+	var sideEffect = 0
+	when targetVal + 1 {
+		3 -> sideEffect = 30
+		else -> sideEffect = -1
+	}
+	assert(sideEffect == 30, "when expr without parens failed")
+
+	// 6. When subject with Any type and range check
+	val inputData: Any = 42
+	val classification = when (inputData) {
+		in 1..10   -> "Single-digit range"
+		!in 0..100 -> "Out-of-bounds number"
+		is Int     -> "Valid integer value"
+		!is String -> "Non-string object"
+		else       -> "Other"
+	}
+	assert(classification == "Valid integer value", "when Any range/is matching failed")
+
+	val fiveAny: Any = 5
+	val rangeFive = when fiveAny {
+		in 1..10 -> "in_range"
+		else     -> "out_range"
+	}
+	assert(rangeFive == "in_range", "when Any in 1..10 failed")
+
+	val outAny: Any = 200
+	val rangeOut = when outAny {
+		!in 0..100 -> "out_range"
+		else       -> "in_range"
+	}
+	assert(rangeOut == "out_range", "when Any !in 0..100 failed")
+
+	// 7. toBinaryString testing
+	assert(42.toBinaryString() == "101010", "42.toBinaryString() failed")
+	assert(Int.toBinaryString(42) == "101010", "Int.toBinaryString(42) failed")
+	assert(toBinaryString(42) == "101010", "toBinaryString(42) failed")
+	assert(0.toBinaryString() == "0", "0.toBinaryString() failed")
+	assert(7.toBinaryString() == "111", "7.toBinaryString() failed")
+
 	println("Passed ${__FUNC__}")
 }
 

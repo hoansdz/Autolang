@@ -1130,7 +1130,9 @@ resumeCallFrame:;
 					auto obj1 = stack.pop();
 					auto obj = stack.pop();
 					bool isLessThan = bytecodes[i++];
-					if (isLessThan) {
+					if (obj->type != Autolang::DefaultClass::intClassId) {
+						stack.push(notifier->createBool(false));
+					} else if (isLessThan) {
 						stack.push(notifier->createBool(obj->i >= obj1->i &&
 						                                obj->i < obj2->i));
 					} else {
@@ -1147,7 +1149,9 @@ resumeCallFrame:;
 					auto obj1 = stack.pop();
 					auto obj = stack.pop();
 					bool isLessThan = bytecodes[i++];
-					if (isLessThan) {
+					if (obj->type != Autolang::DefaultClass::intClassId) {
+						stack.push(notifier->createBool(true));
+					} else if (isLessThan) {
 						stack.push(notifier->createBool(!(obj->i >= obj1->i &&
 						                                  obj->i < obj2->i)));
 					} else {

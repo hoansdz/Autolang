@@ -261,6 +261,8 @@ fun testBuiltInAIAliases() {
 	assert(n is Float)
 	val ig: Integer = 42
 	assert(ig is Int)
+	assert(Integer.parseInt("99") == 99)
+	assert(Int.parseInt("123") == 123)
 	val l: Long = 100
 	assert(l is Int)
 

@@ -67,6 +67,12 @@ class Array<T> {
 	@native("arr_get")
 	fun get(index: Int): T
 
+	@native("arr_slice_indices")
+	operator fun get(indices: Array<Int>): Array<T>
+
+	@native("arr_slice_indices")
+	fun slice(indices: Array<Int>): Array<T>
+
 	@native("arr_get")
 	fun at(index: Int): T
 
@@ -129,6 +135,12 @@ class Array<T> {
 	@native("arr_clone")
 	fun toTypedArray(): Array<T>
 
+	@native("arr_clone")
+	fun asSequence(): Array<T>
+
+	@native("arr_clone")
+	fun asIterable(): Array<T>
+
 	@native("arr_sorted")
 	fun sorted(): Array<T>
 
@@ -174,8 +186,26 @@ class Array<T> {
 	@native("arr_join_to_string")
 	fun joinToString(separator: String = ", ", prefix: String = "", postfix: String = "", limit: Int = -1, truncated: String = "..."): String
 
+	@native("arr_join_to_string")
+	fun joinToString(transform: (T) -> Any?): String
+
+	@native("arr_join_to_string")
+	fun joinToString(separator: String, transform: (T) -> Any?): String
+
+	@native("arr_join_to_string")
+	fun joinToString(separator: String, prefix: String, postfix: String, transform: (T) -> Any?): String
+
+	@native("arr_join_to_string")
+	fun joinToString(separator: String, prefix: String, postfix: String, limit: Int, truncated: String, transform: (T) -> Any?): String
+
+	@native("arr_join_to_string")
+	fun join(separator: String = ", "): String
+
 	@native("arr_reversed")
 	fun reversed(): Array<T>
+
+	@native("arr_reverse")
+	fun reverse(): Array<T>
 
 	@native("arr_take")
 	fun take(n: Int): Array<T>
@@ -196,19 +226,28 @@ class Array<T> {
 	fun sum(): Int
 
 	@native("arr_sum_of")
+	fun <R> sum(selector: (T) -> R): R
+
+	@native("arr_sum_of")
 	fun <R> sumOf(selector: (T) -> R): R
+
+	@native("arr_sum_of")
+	fun sumBy(selector: (T) -> Int): Int
+
+	@native("arr_sum_of")
+	fun sumByDouble(selector: (T) -> Float): Float
 
 	@native("arr_plus")
 	operator fun plus(other: Array<T>): Array<T>
 
 	@native("arr_plus")
-	fun plus(element: T): Array<T>
+	operator fun plus(element: T): Array<T>
 
 	@native("arr_plus")
 	fun plusElement(element: T): Array<T>
 
 	@native("arr_minus")
-	fun minus(element: T): Array<T>
+	operator fun minus(element: T): Array<T>
 
 	@native("arr_minus")
 	fun minusElement(element: T): Array<T>
@@ -462,6 +501,9 @@ class Array<T> {
 	@native("arr_with_index")
 	fun withIndex(indexedValueClassId: Int = getClassId(IndexedValue<T>)): Array<IndexedValue<T>>
 
+	@native("arr_with_index")
+	fun enumerate(indexedValueClassId: Int = getClassId(IndexedValue<T>)): Array<IndexedValue<T>>
+
 	@native("arr_zip_with_next")
 	fun zipWithNext(pairClassId: Int = getClassId(Pair<T, T>)): Array<Pair<T, T>>
 
@@ -542,6 +584,36 @@ class Array<T> {
 
 	@native("arr_subtract")
 	fun subtract(other: Array<T>): Set<T>
+
+	@native("arr_shift")
+	fun shift(): T?
+
+	@native("arr_unshift")
+	fun unshift(value: T)
+
+	@native("arr_plus")
+	fun concat(other: Array<T>): Array<T>
+
+	@native("arr_plus")
+	fun concat(element: T): Array<T>
+
+	@native("arr_any_fn")
+	fun some(predicate: (T) -> Bool): Bool
+
+	@native("arr_all_fn")
+	fun every(predicate: (T) -> Bool): Bool
+
+	@native("arr_index_of_first")
+	fun findIndex(predicate: (T) -> Bool): Int
+
+	@native("arr_flatten")
+	fun flat(): T
+
+	@native("arr_add_all")
+	fun extend(elements: Array<T>): Bool
+
+	@native("arr_count_element")
+	fun count(element: T): Int
 }
 )###";
 

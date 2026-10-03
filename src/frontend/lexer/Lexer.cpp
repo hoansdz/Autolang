@@ -32,15 +32,19 @@ static const ankerl::unordered_dense::map<std::string, TokenType, TransparentStr
     {"to", TokenType::TO},
     {"var", TokenType::VAR},
     {"val", TokenType::VAL},
-    {"const", TokenType::CONST},
+    {"let", TokenType::VAL},
+    {"const", TokenType::VAL},
     {"not", TokenType::NOT},
+    {"NOT", TokenType::NOT},
     {"while", TokenType::WHILE},
     {"if", TokenType::IF},
     {"else", TokenType::ELSE},
     {"and", TokenType::AND_AND},
+    {"AND", TokenType::AND_AND},
     {"for", TokenType::FOR},
     {"in", TokenType::IN_},
     {"or", TokenType::OR_OR},
+    {"OR", TokenType::OR_OR},
     {"fun", TokenType::FUNC},
     {"return", TokenType::RETURN},
     {"continue", TokenType::CONTINUE},
@@ -444,10 +448,16 @@ void pushIdentifier(Context &context, uint32_t &i) {
 			    pushLexerString(context, identifier));
 			return;
 		}
-		ESTIMATE_CASE_ADD(CLASS, classes)
-		// ESTIMATE_CASE_ADD(FUNC, functions)
-		// ESTIMATE_CASE_ADD(CONSTRUCTOR, constructorNode)
-		ESTIMATE_CASE_ADD(VAL, declaration)
+		case TokenType::VAL: {
+			if (identifier == "let") {
+				context.tokens.emplace_back(
+				    context.linePos, it->second,
+				    pushLexerString(context, identifier));
+				return;
+			}
+			++context.estimate.declaration;
+			break;
+		}
 		ESTIMATE_CASE_ADD(VAR, declaration)
 		// ESTIMATE_CASE_ADD(IF, ifNode)
 		// ESTIMATE_CASE_ADD(WHILE, whileNode)

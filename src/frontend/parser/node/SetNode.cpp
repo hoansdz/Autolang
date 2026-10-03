@@ -384,7 +384,11 @@ ExprNode *SetNode::optimize(in_func) {
 				}
 			}
 			if (detachNode->isVal && !isAllowedConstructorInit) {
-				if (!context.strictMode) {
+				if (detachNode->declaration && !detachNode->declaration->hasInitialValue) {
+					detachNode->declaration->hasInitialValue = true;
+					detachNode->isVal = false;
+					detachNode->declaration->isVal = false;
+				} else if (!context.strictMode) {
 					detachNode->isVal = false;
 					if (detachNode->declaration) {
 						detachNode->declaration->isVal = false;
@@ -617,11 +621,8 @@ ExprNode *SetNode::optimize(in_func) {
 				goto changedValue;
 			}
 			case NodeType::CONST_VAL: {
-				if (op != Lexer::TokenType::EQUAL ||
-				    static_cast<AccessNode *>(detach)->isVal) {
-					// Optimize call primary instead of copies
-					static_cast<ConstValueNode *>(value)->isLoadPrimary = true;
-				}
+				// Variables must always own their independent memory slot (clone instead of sharing constPool)
+				// Never mark isLoadPrimary for assignment targets to prevent modifying const pool values.
 				break;
 			}
 			case NodeType::VAR:
@@ -766,6 +767,22 @@ ExprNode *SetNode::optimize(in_func) {
 		case Autolang::DefaultClass::intClassId: {
 			switch (value->classId) {
 				case Autolang::DefaultClass::floatClassId: {
+					if (!context.strictMode) {
+						if (op == Lexer::TokenType::EQUAL) {
+							if (value->kind == Autolang::NodeType::CONST_VAL) {
+								value = toInt(in_data,
+								              static_cast<ConstValueNode *>(value));
+								value = static_cast<HasClassIdNode *>(value->optimize(in_data));
+								return this;
+							} else {
+								value = context.castPool.push(
+								    value, Autolang::DefaultClass::intClassId);
+								return this;
+							}
+						} else {
+							return this;
+						}
+					}
 					throwError(
 					    "Cannot cast 'Float' to 'Int'\nHint: Implicit "
 					    "truncation from "
@@ -869,7 +886,9 @@ ExprNode *SetNode::optimize(in_func) {
 	if (detach->isNullable() && value->classId == DefaultClass::nullClassId) {
 		return this;
 	}
-	if (compile.classes[value->classId]->inheritance.get(detach->classId)) {
+	if (value->classId == DefaultClass::anyClassId ||
+	    detach->classId == DefaultClass::anyClassId ||
+	    compile.classes[value->classId]->inheritance.get(detach->classId)) {
 		return this;
 	}
 	switch (detach->kind) {
@@ -970,6 +989,10 @@ void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					default:
 						break;
 				}
+				if (varNode->classId == Autolang::DefaultClass::intClassId &&
+				    value->classId == Autolang::DefaultClass::floatClassId) {
+					bytecodes.emplace_back(Opcode::FLOAT_TO_INT);
+				}
 				varNode->isStore = true;
 				varNode->isGetPointer = false;
 				varNode->putBytecodes(in_data, bytecodes);
@@ -1035,16 +1058,10 @@ void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 				}
 				case NodeType::CONST_VAL: {
 					auto valueNode = static_cast<ConstValueNode *>(value);
-					if (valueNode->isLoadPrimary) {
-						bytecodes.emplace_back(detachNode->declaration->isGlobal
-						                           ? Opcode::GLOBAL_STORE_CONST
-						                           : Opcode::LOCAL_STORE_CONST);
-					} else {
-						bytecodes.emplace_back(
-						    detachNode->declaration->isGlobal
-						        ? Opcode::GLOBAL_STORE_CONST_CLONE
-						        : Opcode::LOCAL_STORE_CONST_CLONE);
-					}
+					bytecodes.emplace_back(
+					    detachNode->declaration->isGlobal
+					        ? Opcode::GLOBAL_STORE_CONST_CLONE
+					        : Opcode::LOCAL_STORE_CONST_CLONE);
 					put_opcode_u32(bytecodes, detachNode->declaration->id);
 					put_opcode_u32(bytecodes, valueNode->id);
 					return;

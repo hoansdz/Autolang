@@ -53,3 +53,4 @@ err*.txt
 
 # Local build instructions
 cach_build.md
+build_wasm.ps1

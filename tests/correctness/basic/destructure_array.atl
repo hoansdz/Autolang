@@ -1,0 +1,50 @@
+fun testArrayDestructuring() {
+    // 1. Basic array destructuring with val
+    val arr = [10, 20, 30]
+    val (first, second, third) = arr
+    assert(first == 10)
+    assert(second == 20)
+    assert(third == 30)
+
+    // 2. Destructuring result of string split
+    val input = "k1=v1,k2=v2"
+    val pairs = input.split(",")
+    var foundValue = ""
+    for (pair in pairs) {
+        val (key, value) = pair.split("=")
+        if (key == "k2") {
+            foundValue = value
+        }
+    }
+    assert(foundValue == "v2")
+
+    // 3. Destructuring with wildcard '_' to ignore elements
+    val (k, _) = "alpha=beta".split("=")
+    assert(k == "alpha")
+
+    val (_, middle, _) = [100, 200, 300]
+    assert(middle == 200)
+
+    // 4. Nested array destructuring in for loops
+    val matrix = [["a", "1"], ["b", "2"], ["c", "3"]]
+    var concatKeys = ""
+    var sumValues = 0
+    for ((charKey, numVal) in matrix) {
+        concatKeys += charKey
+        sumValues += numVal.toInt()
+    }
+    assert(concatKeys == "abc")
+    assert(sumValues == 6)
+
+    // 5. Destructuring with var
+    val numList = [1, 2]
+    var (vx, vy) = numList
+    assert(vx == 1)
+    assert(vy == 2)
+    vx = 99
+    assert(vx == 99)
+
+    println("Passed ${__FUNC__}")
+}
+
+testArrayDestructuring()

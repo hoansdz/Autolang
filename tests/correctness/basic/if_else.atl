@@ -75,6 +75,36 @@ fun testIfExpression() {
 	}
 	assert(category == "double digit")
 
+	// If without parentheses tests
+	val condFalse = false
+	var ifNoParenPassed = false
+	if !condFalse {
+		ifNoParenPassed = true
+	}
+	assert(ifNoParenPassed, "if !condFalse without parens failed")
+
+	val val1 = 10
+	val val2 = 20
+	var logicPassed = false
+	if val1 > 0 && val2 == 20 {
+		logicPassed = true
+	}
+	assert(logicPassed, "if with logical and without parens failed")
+
+	var singleLineIf = 0
+	if val1 == 10 singleLineIf = 100
+	assert(singleLineIf == 100, "single line if without parens failed")
+
+	var elseIfNoParen = 0
+	if val1 == 99 {
+		elseIfNoParen = 1
+	} else if !condFalse {
+		elseIfNoParen = 2
+	} else {
+		elseIfNoParen = 3
+	}
+	assert(elseIfNoParen == 2, "else if without parens failed")
+
 	println("Passed ${__FUNC__}")
 }
 

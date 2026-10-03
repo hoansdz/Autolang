@@ -96,18 +96,44 @@ void NullCoalescingNode::putBytecodes(in_func,
 	} else {
 		left->putBytecodes(in_data, bytecodes);
 	}
-	bytecodes.emplace_back(Opcode::JUMP_AND_DELETE_IF_NULL);
-	uint32_t rCheckAndJumpPos = bytecodes.size() - context.currentBytecodePos;
-	put_opcode_u32(bytecodes, 0);
+	bool isLeftVoid = (left->classId == DefaultClass::voidClassId);
+	uint32_t rCheckAndJumpPos = 0;
+	if (!isLeftVoid) {
+		bytecodes.emplace_back(Opcode::JUMP_AND_DELETE_IF_NULL);
+		rCheckAndJumpPos = bytecodes.size() - context.currentBytecodePos;
+		put_opcode_u32(bytecodes, 0);
+	}
 	bytecodes.emplace_back(Opcode::JUMP);
 	uint32_t rJumpIfNonNullPos = bytecodes.size() - context.currentBytecodePos;
 	put_opcode_u32(bytecodes, 0);
 	jumpIfNullPos = bytecodes.size() - context.currentBytecodePos;
 	context.jumpIfNullNode = lastJumpIfNullNode;
-	right->putBytecodes(in_data, bytecodes);
+	if (right->kind == NodeType::BLOCK) {
+		auto block = static_cast<BlockNode *>(right);
+		bool rightEndsEarly = false;
+		if (!block->nodes.empty()) {
+			auto lastKind = block->nodes.back()->kind;
+			rightEndsEarly = (lastKind == NodeType::SKIP || lastKind == NodeType::RET || lastKind == NodeType::THROW);
+		}
+		if (rightEndsEarly) {
+			block->putBytecodes(in_data, bytecodes);
+		} else {
+			for (size_t idx = 0; idx < block->nodes.size(); ++idx) {
+				if (idx + 1 < block->nodes.size()) {
+					block->nodes[idx]->putBytecodesIfMustBeCalled(in_data, bytecodes);
+				} else {
+					block->nodes[idx]->putBytecodes(in_data, bytecodes);
+				}
+			}
+		}
+	} else {
+		right->putBytecodes(in_data, bytecodes);
+	}
 
-	rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
-	                   rCheckAndJumpPos, jumpIfNullPos);
+	if (!isLeftVoid) {
+		rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
+		                   rCheckAndJumpPos, jumpIfNullPos);
+	}
 	rewrite_opcode_u32(bytecodes.data() + context.currentBytecodePos,
 	                   rJumpIfNonNullPos,
 	                   bytecodes.size() - context.currentBytecodePos);

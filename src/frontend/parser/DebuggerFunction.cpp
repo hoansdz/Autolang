@@ -1078,6 +1078,26 @@ createClosure:;
 		}
 	}
 
+	for (auto &item : parameter->destructurePatterns) {
+		for (auto *target : item.targets) {
+			if (target) {
+				target->id = createClosureNode->declarationCount++;
+				if (createClosureNode->declarationCount > createClosureNode->maxDeclaration) {
+					createClosureNode->maxDeclaration = createClosureNode->declarationCount;
+				}
+				createClosureNode->newDeclaration.push_back(target);
+				auto &scope = createClosureNode->scopes.back();
+				scope[target->baseName] = target;
+			}
+		}
+	}
+
+	for (auto &item : parameter->destructurePatterns) {
+		auto *varSource = context.varPool.push(firstLine, item.source, false, false);
+		auto *destructNode = context.destructurePool.push(firstLine, varSource, item.targets);
+		createClosureNode->body.nodes.push_back(destructNode);
+	}
+
 	auto lastCurrentClosureNode = context.currentClosureNode;
 	context.currentClosureNode = createClosureNode;
 	context.closureScopes.push_back(createClosureNode);

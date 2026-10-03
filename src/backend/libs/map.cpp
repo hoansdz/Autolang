@@ -1303,11 +1303,35 @@ AObject *map_values(NativeFuncInData) {
 	auto newMapData = static_cast<AHashMap *>(newObj->data->data);
 
 	bool expectsTwo = false;
+	bool expectsEntry = false;
+	ClassId entryClassId = DefaultClass::nullClassId;
 	if (transform->type == DefaultClass::functionClassId && transform->function && transform->function->function) {
 		if (transform->function->function->argSize >= 2) {
 			expectsTwo = true;
+		} else if (transform->function->function->argSize == 1 && transform->function->function->args) {
+			ClassId pId = transform->function->function->args[0];
+			if (pId < notifier.vm->data.classes.size() && notifier.vm->data.classes[pId]) {
+				auto name = notifier.vm->data.classes[pId]->getName(notifier.vm->data);
+				if (name == "MapEntry" || name.rfind("MapEntry<", 0) == 0 ||
+				    name == "Pair" || name.rfind("Pair<", 0) == 0) {
+					expectsEntry = true;
+					entryClassId = pId;
+				}
+			}
 		}
 	}
+
+	auto callWithEntry = [&](AObject *keyObj, AObject *valObj) -> AObject* {
+		auto entryObj = notifier.createMemberObject(entryClassId, 2);
+		keyObj->retain();
+		entryObj->member->data[0] = keyObj;
+		valObj->retain();
+		entryObj->member->data[1] = valObj;
+		entryObj->retain();
+		auto res = notifier.callFunctionObject(transform, entryObj);
+		notifier.release(entryObj);
+		return res;
+	};
 
 	switch (hashMapData->type) {
 		case DefaultClass::intClassId: {
@@ -1320,6 +1344,11 @@ AObject *map_values(NativeFuncInData) {
 					auto keyObj = notifier.createInt(k);
 					keyObj->retain();
 					newV = notifier.callFunctionObject(transform, keyObj, v);
+					notifier.release(keyObj);
+				} else if (expectsEntry) {
+					auto keyObj = notifier.createInt(k);
+					keyObj->retain();
+					newV = callWithEntry(keyObj, v);
 					notifier.release(keyObj);
 				} else {
 					newV = notifier.callFunctionObject(transform, v);
@@ -1342,6 +1371,11 @@ AObject *map_values(NativeFuncInData) {
 					keyObj->retain();
 					newV = notifier.callFunctionObject(transform, keyObj, v);
 					notifier.release(keyObj);
+				} else if (expectsEntry) {
+					auto keyObj = notifier.createFloat(k);
+					keyObj->retain();
+					newV = callWithEntry(keyObj, v);
+					notifier.release(keyObj);
 				} else {
 					newV = notifier.callFunctionObject(transform, v);
 				}
@@ -1358,7 +1392,8 @@ AObject *map_values(NativeFuncInData) {
 			for (auto &[k, v] : *m1) {
 				v->retain();
 				auto newV = expectsTwo ? notifier.callFunctionObject(transform, k, v)
-				                       : notifier.callFunctionObject(transform, v);
+				                       : (expectsEntry ? callWithEntry(k, v)
+				                                       : notifier.callFunctionObject(transform, v));
 				notifier.release(v);
 				if (notifier.hasException()) return nullptr;
 				k->retain();
@@ -1373,7 +1408,8 @@ AObject *map_values(NativeFuncInData) {
 			for (auto &[k, v] : *m1) {
 				v->retain();
 				auto newV = expectsTwo ? notifier.callFunctionObject(transform, k, v)
-				                       : notifier.callFunctionObject(transform, v);
+				                       : (expectsEntry ? callWithEntry(k, v)
+				                                       : notifier.callFunctionObject(transform, v));
 				notifier.release(v);
 				if (notifier.hasException()) return nullptr;
 				k->retain();
@@ -1406,11 +1442,35 @@ AObject *map_keys(NativeFuncInData) {
 	newObj->flags |= AObject::Flags::OBJ_IS_MAP;
 
 	bool expectsTwo = false;
+	bool expectsEntry = false;
+	ClassId entryClassId = DefaultClass::nullClassId;
 	if (transform->type == DefaultClass::functionClassId && transform->function && transform->function->function) {
 		if (transform->function->function->argSize >= 2) {
 			expectsTwo = true;
+		} else if (transform->function->function->argSize == 1 && transform->function->function->args) {
+			ClassId pId = transform->function->function->args[0];
+			if (pId < notifier.vm->data.classes.size() && notifier.vm->data.classes[pId]) {
+				auto name = notifier.vm->data.classes[pId]->getName(notifier.vm->data);
+				if (name == "MapEntry" || name.rfind("MapEntry<", 0) == 0 ||
+				    name == "Pair" || name.rfind("Pair<", 0) == 0) {
+					expectsEntry = true;
+					entryClassId = pId;
+				}
+			}
 		}
 	}
+
+	auto callWithEntry = [&](AObject *keyObj, AObject *valObj) -> AObject* {
+		auto entryObj = notifier.createMemberObject(entryClassId, 2);
+		keyObj->retain();
+		entryObj->member->data[0] = keyObj;
+		valObj->retain();
+		entryObj->member->data[1] = valObj;
+		entryObj->retain();
+		auto res = notifier.callFunctionObject(transform, entryObj);
+		notifier.release(entryObj);
+		return res;
+	};
 
 	auto setIntoNew = [&](AObject *newK, AObject *v) {
 		AObject *sArgs[3] = {newObj, newK, v};
@@ -1424,7 +1484,8 @@ AObject *map_keys(NativeFuncInData) {
 				auto keyObj = notifier.createInt(k);
 				keyObj->retain();
 				auto newK = expectsTwo ? notifier.callFunctionObject(transform, keyObj, v)
-				                       : notifier.callFunctionObject(transform, keyObj);
+				                       : (expectsEntry ? callWithEntry(keyObj, v)
+				                                       : notifier.callFunctionObject(transform, keyObj));
 				notifier.release(keyObj);
 				if (notifier.hasException()) return nullptr;
 				setIntoNew(newK, v);
@@ -1438,7 +1499,8 @@ AObject *map_keys(NativeFuncInData) {
 				auto keyObj = notifier.createFloat(k);
 				keyObj->retain();
 				auto newK = expectsTwo ? notifier.callFunctionObject(transform, keyObj, v)
-				                       : notifier.callFunctionObject(transform, keyObj);
+				                       : (expectsEntry ? callWithEntry(keyObj, v)
+				                                       : notifier.callFunctionObject(transform, keyObj));
 				notifier.release(keyObj);
 				if (notifier.hasException()) return nullptr;
 				setIntoNew(newK, v);
@@ -1450,7 +1512,8 @@ AObject *map_keys(NativeFuncInData) {
 			auto m1 = static_cast<StringHashMap *>(hashMapData->data);
 			for (auto &[k, v] : *m1) {
 				auto newK = expectsTwo ? notifier.callFunctionObject(transform, k, v)
-				                       : notifier.callFunctionObject(transform, k);
+				                       : (expectsEntry ? callWithEntry(k, v)
+				                                       : notifier.callFunctionObject(transform, k));
 				if (notifier.hasException()) return nullptr;
 				setIntoNew(newK, v);
 				notifier.release(newK);
@@ -1461,7 +1524,8 @@ AObject *map_keys(NativeFuncInData) {
 			auto m1 = static_cast<ObjectHashMap *>(hashMapData->data);
 			for (auto &[k, v] : *m1) {
 				auto newK = expectsTwo ? notifier.callFunctionObject(transform, k, v)
-				                       : notifier.callFunctionObject(transform, k);
+				                       : (expectsEntry ? callWithEntry(k, v)
+				                                       : notifier.callFunctionObject(transform, k));
 				if (notifier.hasException()) return nullptr;
 				setIntoNew(newK, v);
 				notifier.release(newK);
@@ -1470,6 +1534,129 @@ AObject *map_keys(NativeFuncInData) {
 		}
 	}
 	return newObj;
+}
+
+AObject *map(NativeFuncInData) {
+	auto mapObj = args[0];
+	auto transform = args[1];
+	auto hashMapData = static_cast<AHashMap *>(mapObj->data->data);
+	ClassId returnId = notifier.callFrame->func->returnId;
+	ClassId elemKey = DefaultClass::anyClassId;
+	if (returnId < notifier.vm->data.classes.size()) {
+		auto rClazz = notifier.vm->data.classes[returnId];
+		if (rClazz && rClazz->genericType.size > 0) {
+			elemKey = notifier.vm->data.allGenericType[rClazz->genericType.offset];
+		}
+	}
+	auto newArr = notifier.createArray(returnId, elemKey);
+
+	bool expectsTwo = false;
+	bool expectsEntry = false;
+	ClassId entryClassId = DefaultClass::nullClassId;
+	if (transform->type == DefaultClass::functionClassId && transform->function && transform->function->function) {
+		if (transform->function->function->argSize >= 2) {
+			expectsTwo = true;
+		} else if (transform->function->function->argSize == 1 && transform->function->function->args) {
+			ClassId pId = transform->function->function->args[0];
+			if (pId < notifier.vm->data.classes.size() && notifier.vm->data.classes[pId]) {
+				auto name = notifier.vm->data.classes[pId]->getName(notifier.vm->data);
+				if (name == "MapEntry" || name.rfind("MapEntry<", 0) == 0 ||
+				    name == "Pair" || name.rfind("Pair<", 0) == 0) {
+					expectsEntry = true;
+					entryClassId = pId;
+				}
+			}
+		}
+	}
+
+	if (!expectsTwo && entryClassId == DefaultClass::nullClassId) {
+		for (ClassId c = 0; c < notifier.vm->data.classes.size(); ++c) {
+			auto clazz = notifier.vm->data.classes[c];
+			if (clazz) {
+				auto name = clazz->getName(notifier.vm->data);
+				if (name == "MapEntry" || name.rfind("MapEntry<", 0) == 0 || name == "Pair" || name.rfind("Pair<", 0) == 0) {
+					entryClassId = c;
+					expectsEntry = true;
+					break;
+				}
+			}
+		}
+	}
+
+	auto callWithEntry = [&](AObject *keyObj, AObject *valObj) -> AObject* {
+		auto entryObj = notifier.createMemberObject(entryClassId, 2);
+		keyObj->retain();
+		entryObj->member->data[0] = keyObj;
+		valObj->retain();
+		entryObj->member->data[1] = valObj;
+		entryObj->retain();
+		auto res = notifier.callFunctionObject(transform, entryObj);
+		notifier.release(entryObj);
+		return res;
+	};
+
+	auto doTransform = [&](AObject *keyObj, AObject *valObj) -> AObject* {
+		if (expectsTwo) {
+			keyObj->retain();
+			valObj->retain();
+			auto res = notifier.callFunctionObject(transform, keyObj, valObj);
+			notifier.release(keyObj);
+			notifier.release(valObj);
+			return res;
+		} else {
+			return callWithEntry(keyObj, valObj);
+		}
+	};
+
+	switch (hashMapData->type) {
+		case DefaultClass::intClassId: {
+			auto m1 = static_cast<IntHashMap *>(hashMapData->data);
+			for (auto &[k, v] : *m1) {
+				auto keyObj = notifier.createInt(k);
+				keyObj->retain();
+				auto res = doTransform(keyObj, v);
+				notifier.release(keyObj);
+				if (notifier.hasException()) return nullptr;
+				notifier.arrayAdd(newArr, res);
+				notifier.release(res);
+			}
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			auto m1 = static_cast<FloatHashMap *>(hashMapData->data);
+			for (auto &[k, v] : *m1) {
+				auto keyObj = notifier.createFloat(k);
+				keyObj->retain();
+				auto res = doTransform(keyObj, v);
+				notifier.release(keyObj);
+				if (notifier.hasException()) return nullptr;
+				notifier.arrayAdd(newArr, res);
+				notifier.release(res);
+			}
+			break;
+		}
+		case DefaultClass::stringClassId: {
+			auto m1 = static_cast<StringHashMap *>(hashMapData->data);
+			for (auto &[k, v] : *m1) {
+				auto res = doTransform(k, v);
+				if (notifier.hasException()) return nullptr;
+				notifier.arrayAdd(newArr, res);
+				notifier.release(res);
+			}
+			break;
+		}
+		default: {
+			auto m1 = static_cast<ObjectHashMap *>(hashMapData->data);
+			for (auto &[k, v] : *m1) {
+				auto res = doTransform(k, v);
+				if (notifier.hasException()) return nullptr;
+				notifier.arrayAdd(newArr, res);
+				notifier.release(res);
+			}
+			break;
+		}
+	}
+	return newArr;
 }
 
 AObject *plus_pair(NativeFuncInData) {

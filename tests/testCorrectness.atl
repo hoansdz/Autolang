@@ -48,6 +48,9 @@
 @import("./correctness/basic/class_alias.atl")
 @import("./correctness/basic/semicolon.atl")
 @import("./correctness/basic/char_type.atl")
+@import("./correctness/basic/destructure_array.atl")
+@import("./correctness/basic/destructure_lambda_and_map.atl")
+@import("./correctness/basic/advanced_deferred_and_destructuring.atl")
 
 @import("./correctness/stdlib/array.atl")
 @import("./correctness/stdlib/set.atl")
@@ -67,3 +70,4 @@
 @import("./correctness/stdlib/native_optimizations.atl")
 @import("./correctness/stdlib/kotlin_stdlib.atl")
 @import("./correctness/stdlib/kotlin_standardization.atl")
+@import("./test_stdlib_new_features.atl")

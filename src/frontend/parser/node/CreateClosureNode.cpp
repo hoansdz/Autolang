@@ -346,11 +346,19 @@ bool CreateClosureNode::tryInferReturnType(in_func, ClassDeclaration *expectedFu
 				if (!param) continue;
 				if (!param->classDeclaration || !param->classDeclaration->classId.has_value()) {
 					auto *expectedParamType = expectedFuncType->inputClassId[i];
-					if (expectedParamType && expectedParamType->classId.has_value()) {
-						param->classDeclaration = expectedParamType;
-						param->classId = *expectedParamType->classId;
-						param->nullable = expectedParamType->nullable;
-						classDeclaration->inputClassId[i] = expectedParamType;
+					if (expectedParamType) {
+						if (!expectedParamType->classId.has_value()) {
+							expectedParamType->template load<false>(in_data);
+							if (!expectedParamType->classId.has_value()) {
+								expectedParamType->template load<true>(in_data);
+							}
+						}
+						if (expectedParamType->classId.has_value()) {
+							param->classDeclaration = expectedParamType;
+							param->classId = *expectedParamType->classId;
+							param->nullable = expectedParamType->nullable;
+							classDeclaration->inputClassId[i] = expectedParamType;
+						}
 					}
 				}
 			}
@@ -368,6 +376,9 @@ bool CreateClosureNode::tryInferReturnType(in_func, ClassDeclaration *expectedFu
 		}
 		if (!param->classDeclaration->classId.has_value()) {
 			param->classDeclaration->template load<false>(in_data);
+			if (!param->classDeclaration->classId.has_value()) {
+				param->classDeclaration->template load<true>(in_data);
+			}
 			if (!param->classDeclaration->classId.has_value()) return false;
 		}
 		param->classId = *param->classDeclaration->classId;

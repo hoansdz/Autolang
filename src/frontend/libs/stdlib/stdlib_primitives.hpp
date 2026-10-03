@@ -6,11 +6,41 @@ inline constexpr const char* STDLIB_PRIMITIVES_SOURCE_STR = R"###(
 @no_extends
 @no_constructor
 class Int {
-	static val MIN_VALUE: Int = -2147483648
-	static val MAX_VALUE: Int = 2147483647
+	static val MIN_VALUE: Int = -9223372036854775808
+	static val MAX_VALUE: Int = 9223372036854775807
+
+	@native("str_to_int")
+	static fun parseInt(s: String): Int
+
+	@native("str_to_int_or_null")
+	static fun parseIntOrNull(s: String): Int?
+
+	@native("str_to_int")
+	static fun parseLong(s: String): Int
+
+	@native("str_to_int_or_null")
+	static fun parseLongOrNull(s: String): Int?
+
+	@native("str_to_int")
+	static fun parseByte(s: String): Int
+
+	@native("str_to_int")
+	static fun parseShort(s: String): Int
+
+	@native("str_to_int")
+	static fun parse(s: String): Int
+
+	@native("str_to_int_or_null")
+	static fun parseOrNull(s: String): Int?
 
 	@native("to_string")
 	fun toString(): String
+
+	@native("int_to_binary_string")
+	fun toBinaryString(): String
+
+	@native("int_to_binary_string")
+	static fun toBinaryString(n: Int): String
 
 	@native("int_coerce_in")
 	fun coerceIn(minimumValue: Int, maximumValue: Int): Int
@@ -68,6 +98,12 @@ class Int {
 	fun toByte(): Int
 	@native("identity")
 	fun toShort(): Int
+	@native("identity")
+	fun floor(): Int
+	@native("identity")
+	fun ceil(): Int
+	@native("identity")
+	fun round(): Int
 
 	@native("int_to_char_string")
 	fun toCharString(): String
@@ -108,6 +144,24 @@ class Int {
 class Float {
 	static val MIN_VALUE: Float = 1.4e-45
 	static val MAX_VALUE: Float = 3.4028235e+38
+
+	@native("str_to_float")
+	static fun parseFloat(s: String): Float
+
+	@native("str_to_float_or_null")
+	static fun parseFloatOrNull(s: String): Float?
+
+	@native("str_to_float")
+	static fun parseDouble(s: String): Float
+
+	@native("str_to_float_or_null")
+	static fun parseDoubleOrNull(s: String): Float?
+
+	@native("str_to_float")
+	static fun parse(s: String): Float
+
+	@native("str_to_float_or_null")
+	static fun parseOrNull(s: String): Float?
 
 	@native("to_string")
 	fun toString(): String
@@ -202,12 +256,36 @@ class Float {
 @no_extends
 @no_constructor
 class Bool {
+	@native("str_to_bool")
+	static fun parse(s: String): Bool
+
+	@native("str_to_bool")
+	static fun parseBool(s: String): Bool
+
+	@native("str_to_bool")
+	static fun parseBoolean(s: String): Bool
+
+	@native("str_to_bool_or_null")
+	static fun parseOrNull(s: String): Bool?
+
+	@native("str_to_bool_or_null")
+	static fun parseBoolOrNull(s: String): Bool?
+
+	@native("str_to_bool_or_null")
+	static fun parseBooleanOrNull(s: String): Bool?
+
 	@native("to_string")
 	fun toString(): String
 }
 @no_extends
 @no_constructor
 class Char {
+	@native("str_to_char")
+	static fun parse(s: String): Char
+
+	@native("str_to_char_or_null")
+	static fun parseOrNull(s: String): Char?
+
 	@native("char_to_string")
 	fun toString(): String
 

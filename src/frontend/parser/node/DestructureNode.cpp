@@ -28,54 +28,90 @@ ExprNode *DestructureNode::optimize(in_func) {
 	auto *clazz = compile.classes[srcClassId];
 	auto *classInfo = context.classInfo[srcClassId];
 
-	std::string tempName = "__destruct_" + std::to_string(line) + "_" + std::to_string((uintptr_t)this);
-	LexerStringId tempNameId = context.createLexerStringIfNotExists(tempName);
-	bool isGlobal = context.currentFunctionId == context.mainFunctionId &&
-	                !context.currentClosureNode;
-	auto *tempDecl = context.makeDeclarationNode(
-	    in_data, line, tempNameId, context.lexerString[tempNameId], nullptr,
-	    true, isGlobal, sourceExpr->isNullable(), !isGlobal, true);
-	tempDecl->classId = srcClassId;
-	tempDecl->nullable = sourceExpr->isNullable();
-	tempDecl->classDeclaration = sourceExpr->classDeclaration;
-
-	auto *setTemp = context.setValuePool.push(
-	    line, context.varPool.push(line, tempDecl, true, true), sourceExpr, false);
-	innerBlock.nodes.push_back(setTemp);
-
-	std::vector<LexerStringId> propNames;
-	for (auto *memberDecl : classInfo->member) {
-		if (memberDecl) {
-			propNames.push_back(memberDecl->baseName);
-		}
-	}
-	std::string className = clazz->getName(compile);
-
-	if (targets.size() > propNames.size()) {
-		throwError("Destructuring declaration has " + std::to_string(targets.size()) +
-		           " variables, but type '" + std::string(className) +
-		           "' only has " + std::to_string(propNames.size()) +
-		           " properties\nHint: Check number of destructured variables");
+	DeclarationNode *effectiveDecl = tempDecl;
+	bool isVarSource = (sourceExpr->kind == NodeType::VAR);
+	if (isVarSource) {
+		effectiveDecl = static_cast<VarNode *>(sourceExpr)->declaration;
+	} else if (!effectiveDecl) {
+		std::string tempName = "__destruct_" + std::to_string(line) + "_" + std::to_string((uintptr_t)this);
+		LexerStringId tempNameId = context.createLexerStringIfNotExists(tempName);
+		bool isGlobal = context.currentFunctionId == context.mainFunctionId &&
+		                !context.currentClosureNode;
+		effectiveDecl = context.makeDeclarationNode(
+		    in_data, line, tempNameId, context.lexerString[tempNameId], nullptr,
+		    true, isGlobal, sourceExpr->isNullable(), !isGlobal, true);
 	}
 
-	for (size_t k = 0; k < targets.size(); ++k) {
-		auto *target = targets[k];
-		if (!target) {
-			continue;
+	if (!isVarSource && effectiveDecl) {
+		effectiveDecl->classId = srcClassId;
+		effectiveDecl->nullable = sourceExpr->isNullable();
+		effectiveDecl->classDeclaration = sourceExpr->classDeclaration;
+
+		auto *setTemp = context.setValuePool.push(
+		    line, context.varPool.push(line, effectiveDecl, true, true), sourceExpr, false);
+		innerBlock.nodes.push_back(setTemp);
+	}
+
+	bool isArray = (srcClassId == DefaultClass::arrayClassId ||
+	                clazz->genericBaseClassId == DefaultClass::arrayClassId);
+
+	if (isArray) {
+		for (size_t k = 0; k < targets.size(); ++k) {
+			auto *target = targets[k];
+			if (!target) {
+				continue;
+			}
+			auto *varTemp = context.varPool.push(line, effectiveDecl, false, false);
+			auto *constIndex = context.constValuePool.push(line, (int64_t)k);
+			auto *callGet = context.callNodePool.push(
+			    line, 0, context.currentClassId, varTemp,
+			    lexerIdLRBRACKET, std::vector<HasClassIdNode *>{constIndex},
+			    false, false, false);
+			auto *optimizedProp = static_cast<HasClassIdNode *>(callGet->optimize(in_data));
+
+			target->classId = optimizedProp->classId;
+			target->nullable = optimizedProp->isNullable();
+			target->classDeclaration = optimizedProp->classDeclaration;
+
+			auto *setTarget = context.setValuePool.push(
+			    line, context.varPool.push(line, target, true, true), optimizedProp, false);
+			innerBlock.nodes.push_back(setTarget);
 		}
-		LexerStringId propId = propNames[k];
-		auto *varTemp = context.varPool.push(line, tempDecl, false, false);
-		auto *getProp = context.getPropPool.push(
-		    line, nullptr, context.currentClassId, varTemp, propId, false, false, false);
-		auto *optimizedProp = static_cast<HasClassIdNode *>(getProp->optimize(in_data));
+	} else {
+		std::vector<LexerStringId> propNames;
+		for (auto *memberDecl : classInfo->member) {
+			if (memberDecl) {
+				propNames.push_back(memberDecl->baseName);
+			}
+		}
+		std::string className = clazz->getName(compile);
 
-		target->classId = optimizedProp->classId;
-		target->nullable = optimizedProp->isNullable();
-		target->classDeclaration = optimizedProp->classDeclaration;
+		if (targets.size() > propNames.size()) {
+			throwError("Destructuring declaration has " + std::to_string(targets.size()) +
+			           " variables, but type '" + std::string(className) +
+			           "' only has " + std::to_string(propNames.size()) +
+			           " properties\nHint: Check number of destructured variables");
+		}
 
-		auto *setTarget = context.setValuePool.push(
-		    line, context.varPool.push(line, target, true, true), optimizedProp, false);
-		innerBlock.nodes.push_back(setTarget);
+		for (size_t k = 0; k < targets.size(); ++k) {
+			auto *target = targets[k];
+			if (!target) {
+				continue;
+			}
+			LexerStringId propId = propNames[k];
+			auto *varTemp = context.varPool.push(line, effectiveDecl, false, false);
+			auto *getProp = context.getPropPool.push(
+			    line, nullptr, context.currentClassId, varTemp, propId, false, false, false);
+			auto *optimizedProp = static_cast<HasClassIdNode *>(getProp->optimize(in_data));
+
+			target->classId = optimizedProp->classId;
+			target->nullable = optimizedProp->isNullable();
+			target->classDeclaration = optimizedProp->classDeclaration;
+
+			auto *setTarget = context.setValuePool.push(
+			    line, context.varPool.push(line, target, true, true), optimizedProp, false);
+			innerBlock.nodes.push_back(setTarget);
+		}
 	}
 
 	isResolved = true;
@@ -92,8 +128,22 @@ void DestructureNode::rewrite(in_func, uint8_t *bytecodes) {
 }
 
 ExprNode *DestructureNode::copy(in_func) {
+	auto funcInfo = context.getCurrentFunctionInfo(in_data);
+	SmallVector<DeclarationNode *, 8> newTargets;
+	newTargets.reserve(targets.size());
+	for (auto *t : targets) {
+		if (t && funcInfo && funcInfo->reflectDeclarationMap.count(t)) {
+			newTargets.push_back(funcInfo->reflectDeclarationMap[t]);
+		} else {
+			newTargets.push_back(t);
+		}
+	}
+	DeclarationNode *newTempDecl = tempDecl;
+	if (tempDecl && funcInfo && funcInfo->reflectDeclarationMap.count(tempDecl)) {
+		newTempDecl = funcInfo->reflectDeclarationMap[tempDecl];
+	}
 	auto *newNode = context.destructurePool.push(
-	    line, static_cast<HasClassIdNode *>(sourceExpr->copy(in_data)), targets);
+	    line, static_cast<HasClassIdNode *>(sourceExpr->copy(in_data)), newTargets, newTempDecl);
 	return newNode;
 }
 

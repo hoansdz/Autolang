@@ -2,8 +2,8 @@ fun main() {
     // 1. Int.MIN_VALUE and Int.MAX_VALUE
     val minVal = Int.MIN_VALUE
     val maxVal = Int.MAX_VALUE
-    assert(minVal == -2147483648, "Int.MIN_VALUE failed")
-    assert(maxVal == 2147483647, "Int.MAX_VALUE failed")
+    assert(minVal == -9223372036854775808, "Int.MIN_VALUE failed")
+    assert(maxVal == 9223372036854775807, "Int.MAX_VALUE failed")
 
     // 2. step in for loop
     val arr = [10, 20, 30, 40, 50]
@@ -41,5 +41,295 @@ fun main() {
     val joined = modifiedFruits.joinToString("|")
     assert(joined == "FRUIT|banana|FRUIT|cherry|FRUIT", "modifiedFruits failed: " + joined)
 
+    // 5. Array.reverse in-place
+    val odd = mutableListOf<Int>()
+    odd.add(20)
+    odd.add(40)
+    odd.reverse()
+    val revStr = odd.joinToString("-")
+    assert(revStr == "40-20", "reverse in-place failed")
+
+    // 6. joinToString with transform lambda
+    val filters = listOf("status=active", "page=2")
+    val filterString = filters.joinToString("&") { it }
+    assert(filterString == "status=active&page=2", "joinToString transform failed")
+
+    // 7. String.split with multiple delimiters
+    val isoDate = "2023-11-25T14:30:00Z"
+    val parts = isoDate.split("T", ":")
+    val hour = parts[1].toInt()
+    assert(hour == 14, "split multiple delimiters failed")
+
+    // 8. StringBuilder isEmpty and isNotEmpty
+    val sb = StringBuilder()
+    assert(sb.isEmpty() == true, "StringBuilder isEmpty failed")
+    assert(sb.isNotEmpty() == false, "StringBuilder isNotEmpty failed")
+    if (sb.isNotEmpty()) sb.append(',')
+    sb.append("hello")
+    assert(sb.isNotEmpty() == true, "StringBuilder isNotEmpty 2 failed")
+    assert(sb.isEmpty() == false, "StringBuilder isEmpty 2 failed")
+
+    // 9. Map.map
+    val map = (1..9).groupBy { it }
+    val mappedEntries = map.map { "$it:${it.value.size()}" }
+    assert(mappedEntries.size() == 9, "Map.map failed")
+
+    // 10. Relaxed float to int cast (*= and direct assignment)
+    var totalFee = 50
+    if (totalFee > 100) totalFee *= 0.9
+    assert(totalFee == 50, "fee 1 failed")
+    var fee2 = 100
+    fee2 *= 0.9
+    assert(fee2 == 90, "fee2 *= 0.9 failed")
+    var fee3 = 100
+    fee3 = fee3 * 0.9
+    assert(fee3 == 90, "fee3 = fee3 * 0.9 failed")
+
+    // 11. StringBuilder full Kotlin API test
+    val sbTest = StringBuilder("Hello")
+    assert(sbTest.length() == 5, "sb length failed")
+    assert(sbTest.lastIndex() == 4, "sb lastIndex failed")
+    assert(sbTest[0] == 'H', "sb get failed")
+    sbTest[0] = 'h'
+    assert(sbTest.toString() == "hello", "sb set failed")
+    sbTest.setCharAt(4, 'O')
+    assert(sbTest.toString() == "hellO", "sb setCharAt failed")
+
+    sbTest.appendRange(" World!", 0, 6)
+    assert(sbTest.toString() == "hellO World", "sb appendRange failed")
+
+    sbTest.insert(5, ",")
+    assert(sbTest.toString() == "hellO, World", "sb insert failed")
+
+    sbTest.delete(5, 6)
+    assert(sbTest.toString() == "hellO World", "sb delete failed")
+
+    sbTest.deleteAt(4)
+    assert(sbTest.toString() == "hell World", "sb deleteAt failed")
+
+    sbTest.replace(0, 4, "HELL")
+    assert(sbTest.toString() == "HELL World", "sb replace failed")
+
+    assert(sbTest.contains("World"), "sb contains str failed")
+    assert(sbTest.contains('W'), "sb contains char failed")
+    assert(sbTest.startsWith("HELL"), "sb startsWith failed")
+    assert(sbTest.endsWith("World"), "sb endsWith failed")
+
+    assert(sbTest.indexOf("World") == 5, "sb indexOf str failed")
+    assert(sbTest.indexOf('W') == 5, "sb indexOf char failed")
+    assert(sbTest.lastIndexOf("L") == 3, "sb lastIndexOf str failed")
+
+    val sub1 = sbTest.substring(5)
+    assert(sub1 == "World", "sb substring 1 failed")
+    val sub2 = sbTest.substring(5, 7)
+    assert(sub2 == "Wo", "sb substring 2 failed")
+
+    sbTest.reverse()
+    assert(sbTest.toString() == "dlroW LLEH", "sb reverse failed")
+
+    sbTest.setLength(5)
+    assert(sbTest.toString() == "dlroW", "sb setLength failed")
+
+    // 12. Constant pool isolation on val reassignment / mutation
+    val countVal = 0
+    for (i in 1..20) {
+        if (i % 3 == 0 && i % 4 == 0) countVal++
+    }
+    assert(countVal == 1, "val countVal reassignment must equal 1, got: $countVal")
+
+    // 13. For loop syntax flexibility (no parens and var/val keywords)
+    var sumNoParen = 0
+    for i in 1..5 {
+        sumNoParen += i
+    }
+    assert(sumNoParen == 15, "for without parens failed: $sumNoParen")
+
+    var sumWithVar = 0
+    for var i in 1..5 {
+        sumWithVar += i
+    }
+    assert(sumWithVar == 15, "for var i failed: $sumWithVar")
+
+    var sumWithVal = 0
+    for (val i in 1..5) {
+        sumWithVal += i
+    }
+    // 14. Condition statement & loop flexibility without parentheses
+    // 14.1 if with not / NOT / ! operators
+    val flag = false
+    val trueFlag = true
+    var ifNotPassed = false
+    if not flag {
+        ifNotPassed = true
+    }
+    assert(ifNotPassed, "if not flag failed")
+
+    var ifUpperNotPassed = false
+    if NOT flag {
+        ifUpperNotPassed = true
+    }
+    assert(ifUpperNotPassed, "if NOT flag failed")
+
+    var ifExmarkPassed = false
+    if !flag {
+        ifExmarkPassed = true
+    }
+    assert(ifExmarkPassed, "if !flag failed")
+
+    var ifDoubleNotPassed = false
+    if not (not trueFlag) {
+        ifDoubleNotPassed = true
+    }
+    assert(ifDoubleNotPassed, "if not (not trueFlag) failed")
+
+    // 14.2 if with and / or / logical combination
+    var ifAndNotPassed = false
+    if trueFlag and not flag {
+        ifAndNotPassed = true
+    }
+    assert(ifAndNotPassed, "if trueFlag and not flag failed")
+
+    var ifOrPassed = false
+    if flag or not flag {
+        ifOrPassed = true
+    }
+    assert(ifOrPassed, "if flag or not flag failed")
+
+    // 14.3 if with type check (is / !is) and containment (in / !in)
+    val testAny: Any = "autolang"
+    var ifTypePassed = false
+    if testAny is String and not flag {
+        ifTypePassed = true
+    }
+    assert(ifTypePassed, "if testAny is String and not flag failed")
+
+    var ifNotTypePassed = false
+    if testAny !is Int {
+        ifNotTypePassed = true
+    }
+    assert(ifNotTypePassed, "if testAny !is Int failed")
+
+    val sampleList = [10, 20, 30]
+    var ifInPassed = false
+    if 20 in sampleList and not (10 !in sampleList) {
+        ifInPassed = true
+    }
+    assert(ifInPassed, "if 20 in sampleList failed")
+
+    // 14.4 while with not / and
+    var whileNotCount = 0
+    var stopLoop = false
+    while not stopLoop and whileNotCount < 4 {
+        whileNotCount++
+        if whileNotCount >= 3 {
+            stopLoop = true
+        }
+    }
+    assert(whileNotCount == 3, "while not stopLoop failed: $whileNotCount")
+
+    var whileRemain = 3
+    while not (whileRemain == 0) {
+        whileRemain--
+    }
+    assert(whileRemain == 0, "while not (whileRemain == 0) failed")
+
+    // 14.5 when without parentheses (exact match, range, type check, expression)
+    val whenVal = 2
+    var whenResult = ""
+    when whenVal {
+        1 -> whenResult = "one"
+        2 -> whenResult = "two"
+        else -> whenResult = "other"
+    }
+    assert(whenResult == "two", "when without parens failed: $whenResult")
+
+    val whenRangeResult = when whenVal {
+        in 1..5 -> "in_range"
+        else -> "out_range"
+    }
+    assert(whenRangeResult == "in_range", "when expr in range failed: $whenRangeResult")
+
+    val whenNotInResult = when whenVal {
+        !in 10..20 -> "not_in_range"
+        else -> "in_range"
+    }
+    assert(whenNotInResult == "not_in_range", "when expr !in range failed: $whenNotInResult")
+
+    val whenTypeResult = when testAny {
+        is String -> "is_string"
+        else -> "not_string"
+    }
+    assert(whenTypeResult == "is_string", "when expr is String failed: $whenTypeResult")
+
+    // 14.6 for loops without outer parentheses (step, downTo, until, destructuring)
+    var stepSum = 0
+    for i in 1..5 step 2 {
+        stepSum += i
+    }
+    assert(stepSum == 9, "for i in 1..5 step 2 failed: $stepSum")
+
+    var downToSum = 0
+    for i in 5 downTo 1 {
+        downToSum += i
+    }
+    assert(downToSum == 15, "for i in 5 downTo 1 failed: $downToSum")
+
+    var untilSum = 0
+    for i in 0 until 4 {
+        untilSum += i
+    }
+    assert(untilSum == 6, "for i in 0 until 4 failed: $untilSum")
+
+    val pairMap = mapOf("k1" to 10, "k2" to 20)
+    var mapValSum1 = 0
+    for (k, v) in pairMap {
+        mapValSum1 += v
+    }
+    assert(mapValSum1 == 30, "for (k, v) in pairMap failed: $mapValSum1")
+
+    var mapValSum2 = 0
+    for k, v in pairMap {
+        mapValSum2 += v
+    }
+    assert(mapValSum2 == 30, "for k, v in pairMap failed: $mapValSum2")
+
+    // 15. Sequence conversion (asSequence and asIterable)
+    val seqArr = [1, 2, 3].asSequence()
+    assert(seqArr.size() == 3, "Array.asSequence failed")
+
+    // C72 benchmark pipeline test
+    val c72PipelineResult = (1..5).asSequence()
+        .filter { it > 0 }
+        .mapIndexed<Int>({ idx, v -> if (idx % 2 == 0) v * 2 else v })
+        .sum()
+    assert(c72PipelineResult == 24, "C72 pipeline with asSequence failed: $c72PipelineResult")
+
+    val iterArr = [4, 5, 6].asIterable()
+    assert(iterArr.size() == 3, "Array.asIterable failed")
+
+    val seqSet = setOf(10, 20).asSequence()
+    assert(seqSet.size() == 2, "Set.asSequence failed")
+    val iterSet = setOf(10, 20).asIterable()
+    assert(iterSet.size() == 2, "Set.asIterable failed")
+
+    val seqMap = mapOf("a" to 1, "b" to 2).asSequence()
+    assert(seqMap.size() == 2, "Map.asSequence failed")
+    val iterMap = mapOf("a" to 1, "b" to 2).asIterable()
+    assert(iterMap.size() == 2, "Map.asIterable failed")
+
+    val seqStr = "abc".asSequence()
+    assert(seqStr.size() == 3, "String.asSequence failed")
+    val iterStr = "abc".asIterable()
+    assert(iterStr.size() == 3, "String.asIterable failed")
+
+    // Type + String fallback to toString() + String
+    val intConcat = 42 + " items"
+    assert(intConcat == "42 items", "Int + String failed")
+    val constIntConcat = 1 + "world"
+    assert(constIntConcat == "1world", "1 + world failed")
+    val boolConcat = true + " flag"
+    assert(boolConcat == "true flag", "Bool + String failed")
+
     println("ALL_TESTS_PASSED")
 }
+

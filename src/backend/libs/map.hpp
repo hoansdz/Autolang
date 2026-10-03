@@ -66,6 +66,7 @@ AObject *filter_keys(NativeFuncInData);
 AObject *filter_values(NativeFuncInData);
 AObject *map_values(NativeFuncInData);
 AObject *map_keys(NativeFuncInData);
+AObject *map(NativeFuncInData);
 AObject *plus_pair(NativeFuncInData);
 AObject *entries(NativeFuncInData);
 AObject *put_all(NativeFuncInData);

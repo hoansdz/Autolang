@@ -98,6 +98,7 @@ ExprNode *loadFor(in_func, size_t &i) {
 	bool hasOuterParen = false;
 	if (expect(token, Lexer::TokenType::LPAREN)) {
 		int depth = 0;
+		bool isCStyleFor = false;
 		for (size_t s = i; s < context.tokens.size(); ++s) {
 			if (context.tokens[s].type == Lexer::TokenType::LPAREN) {
 				depth++;
@@ -113,8 +114,75 @@ ExprNode *loadFor(in_func, size_t &i) {
 					}
 					break;
 				}
+			} else if (depth == 1 && context.tokens[s].type == Lexer::TokenType::SEMI_COLON) {
+				isCStyleFor = true;
 			}
 		}
+
+		if (isCStyleFor) {
+			context.getCurrentFunctionInfo(in_data)->scopes.emplace_back();
+			ExprNode *initNode = nullptr;
+			if (nextToken(&token, context.tokens, i)) {
+				if (!expect(token, Lexer::TokenType::SEMI_COLON)) {
+					if (expect(token, Lexer::TokenType::VAR) || expect(token, Lexer::TokenType::VAL)) {
+						initNode = loadDeclaration(in_data, i);
+					} else {
+						initNode = loadExpression(in_data, 0, i);
+					}
+					if (!nextToken(&token, context.tokens, i) || !expect(token, Lexer::TokenType::SEMI_COLON)) {
+						--i;
+						throw ParserError(context.tokens[i].line, "Expected ';' after for loop initialization");
+					}
+				}
+			}
+
+			HasClassIdNode *condition = nullptr;
+			if (nextToken(&token, context.tokens, i)) {
+				if (!expect(token, Lexer::TokenType::SEMI_COLON)) {
+					condition = loadExpression(in_data, 0, i);
+					if (!nextToken(&token, context.tokens, i) || !expect(token, Lexer::TokenType::SEMI_COLON)) {
+						--i;
+						throw ParserError(context.tokens[i].line, "Expected ';' after for loop condition");
+					}
+				} else {
+					condition = context.constValuePool.push(firstLine, true);
+				}
+			}
+
+			ExprNode *step = nullptr;
+			if (nextToken(&token, context.tokens, i)) {
+				if (!expect(token, Lexer::TokenType::RPAREN)) {
+					step = loadExpression(in_data, 0, i);
+					if (!nextToken(&token, context.tokens, i) || !expect(token, Lexer::TokenType::RPAREN)) {
+						--i;
+						throw ParserError(context.tokens[i].line, "Expected ')' after for loop step");
+					}
+				}
+			}
+
+			WhileNode *whileNode = context.whilePool.push(firstLine);
+			whileNode->condition = condition;
+
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(context.tokens[i].line, "Expected body after for statement");
+			}
+
+			loadBody<false>(in_data, whileNode->body.nodes, i);
+			if (step) {
+				whileNode->body.nodes.push_back(step);
+			}
+
+			context.getCurrentFunctionInfo(in_data)->popBackScope();
+
+			auto blockNode = context.blockNodePool.push(firstLine);
+			if (initNode) {
+				blockNode->nodes.push_back(initNode);
+			}
+			blockNode->nodes.push_back(whileNode);
+			return blockNode;
+		}
+
 		if (hasOuterParen) {
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 				--i;
@@ -124,6 +192,10 @@ ExprNode *loadFor(in_func, size_t &i) {
 				    "variable after 'for (', e.g. for (i in ...)");
 			}
 		}
+	} else if (context.strictMode) {
+		throw ParserError(
+		    firstLine,
+		    "For loop expression must be enclosed in parentheses 'for (...) ' in strict mode\nHint: Add parentheses around the for loop condition, e.g. for (i in 1..5)");
 	}
 	bool isDestructuring = false;
 	if (expect(token, Lexer::TokenType::LPAREN)) {
@@ -203,6 +275,15 @@ ExprNode *loadFor(in_func, size_t &i) {
 		elementDecl->classId = Autolang::DefaultClass::nullClassId;
 		declaration = context.varPool.push(firstLine, elementDecl, false, false);
 	} else {
+		if (expect(token, Lexer::TokenType::VAR) ||
+		    expect(token, Lexer::TokenType::VAL)) {
+			if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
+				--i;
+				throw ParserError(
+				    firstLine,
+				    "Expected identifier after 'var'/'val' in for statement");
+			}
+		}
 		if (!expect(token, Lexer::TokenType::IDENTIFIER) &&
 		    !expect(token, Lexer::TokenType::TO)) {
 			--i;

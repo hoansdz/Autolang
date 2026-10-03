@@ -112,6 +112,20 @@ fun testForLoop() {
 	}
 	assert(emptySetLoopCount == 0)
 
+	// For loop without parentheses
+	val listItems = [10, 20, 30]
+	var listSum = 0
+	for item in listItems {
+		listSum += item
+	}
+	assert(listSum == 60, "for item in listItems without parens failed")
+
+	var rangeSumNoParen = 0
+	for i in 1..4 {
+		rangeSumNoParen += i
+	}
+	assert(rangeSumNoParen == 10, "for i in 1..4 without parens failed")
+
 	println("Passed ${__FUNC__}")
 }
 

@@ -131,6 +131,17 @@ initial:;
 		case Lexer::TokenType::CHAR:
 		case Lexer::TokenType::COLON_COLON:
 		case Lexer::TokenType::IDENTIFIER: {
+			if (token->indexData == lexerIdlet) {
+				size_t peek = i;
+				Lexer::Token *nextToken = nullptr;
+				if (nextTokenSameLine(&nextToken, context.tokens, peek, token->line) &&
+				    (nextToken->type == Lexer::TokenType::IDENTIFIER ||
+				     nextToken->type == Lexer::TokenType::LPAREN)) {
+					token->type = Lexer::TokenType::VAL;
+					auto node = loadDeclaration(in_data, i);
+					return node;
+				}
+			}
 			if (token->indexData == lexerIddata) {
 				size_t peek = i;
 				Lexer::Token *nextToken = nullptr;
@@ -676,7 +687,8 @@ bool hasItIdentifierAtCurrentBraceLevel(const ParserContext &context,
 	}
 	size_t depthParen = 0;
 	size_t depthBracket = 0;
-	size_t depthBrace = 0;
+	size_t closureDepth = 0;
+	std::vector<bool> braceStack;
 	for (size_t k = start; k < tokens.size(); ++k) {
 		switch (tokens[k].type) {
 			case Lexer::TokenType::LPAREN:
@@ -693,17 +705,66 @@ bool hasItIdentifierAtCurrentBraceLevel(const ParserContext &context,
 				if (depthBracket > 0)
 					depthBracket--;
 				break;
-			case Lexer::TokenType::LBRACE:
-				depthBrace++;
+			case Lexer::TokenType::LBRACE: {
+				bool controlBlock = false;
+				if (k > 0) {
+					switch (tokens[k - 1].type) {
+						case Lexer::TokenType::ELSE:
+						case Lexer::TokenType::TRY:
+						case Lexer::TokenType::FINALLY:
+						case Lexer::TokenType::WHEN:
+							controlBlock = true;
+							break;
+						case Lexer::TokenType::RPAREN: {
+							int pDepth = 0;
+							size_t p = k - 1;
+							while (p > 0) {
+								if (tokens[p].type == Lexer::TokenType::RPAREN) {
+									pDepth++;
+								} else if (tokens[p].type == Lexer::TokenType::LPAREN) {
+									pDepth--;
+									if (pDepth == 0) {
+										switch (tokens[p - 1].type) {
+											case Lexer::TokenType::IF:
+											case Lexer::TokenType::WHILE:
+											case Lexer::TokenType::FOR:
+											case Lexer::TokenType::CATCH:
+											case Lexer::TokenType::WHEN:
+												controlBlock = true;
+												break;
+											default:
+												break;
+										}
+										break;
+									}
+								}
+								p--;
+							}
+							break;
+						}
+						default:
+							break;
+					}
+				}
+				braceStack.push_back(controlBlock);
+				if (!controlBlock) {
+					closureDepth++;
+				}
 				break;
+			}
 			case Lexer::TokenType::RBRACE:
-				if (depthBrace == 0 && depthParen == 0 && depthBracket == 0)
+				if (braceStack.empty() && depthParen == 0 && depthBracket == 0)
 					return false;
-				if (depthBrace > 0)
-					depthBrace--;
+				if (!braceStack.empty()) {
+					if (!braceStack.back()) {
+						if (closureDepth > 0)
+							closureDepth--;
+					}
+					braceStack.pop_back();
+				}
 				break;
 			case Lexer::TokenType::IDENTIFIER:
-				if (depthBrace == 0) {
+				if (closureDepth == 0) {
 					if (k > 0 && (tokens[k - 1].type == Lexer::TokenType::DOT ||
 					              tokens[k - 1].type == Lexer::TokenType::QMARK_DOT)) {
 						break;

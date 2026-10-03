@@ -1,0 +1,358 @@
+fun testAdvancedDeferredInitialization() {
+    // 1. Multi-tier nested if-else with multiple deferred variables of different types
+    val score = 87
+    val isVip = true
+    val rank: String
+    val multiplier: Double
+    val bonusPoints: Int
+    val badgeUnlocked: Bool
+
+    if (score >= 90) {
+        if (isVip) {
+            rank = "PLATINUM"
+            multiplier = 2.0
+            bonusPoints = 500
+            badgeUnlocked = true
+        } else {
+            rank = "GOLD"
+            multiplier = 1.5
+            bonusPoints = 250
+            badgeUnlocked = true
+        }
+    } else if (score >= 80) {
+        if (isVip) {
+            rank = "GOLD_PLUS"
+            multiplier = 1.6
+            bonusPoints = 300
+            badgeUnlocked = true
+        } else {
+            rank = "SILVER"
+            multiplier = 1.2
+            bonusPoints = 150
+            badgeUnlocked = false
+        }
+    } else {
+        rank = "BRONZE"
+        multiplier = 1.0
+        bonusPoints = 0
+        badgeUnlocked = false
+    }
+
+    assert(rank == "GOLD_PLUS")
+    assert(multiplier == 1.6)
+    assert(bonusPoints == 300)
+    assert(badgeUnlocked == true)
+
+    // 2. Deferred initialization inside 'when' expression / statement
+    val categoryCode = 2
+    val categoryName: String
+    val maxLimit: Int
+
+    when (categoryCode) {
+        1 -> {
+            categoryName = "ELECTRONICS"
+            maxLimit = 5000
+        }
+        2 -> {
+            categoryName = "BOOKS"
+            maxLimit = 1000
+        }
+        3 -> {
+            categoryName = "GROCERY"
+            maxLimit = 500
+        }
+        else -> {
+            categoryName = "GENERAL"
+            maxLimit = 100
+        }
+    }
+
+    assert(categoryName == "BOOKS")
+    assert(maxLimit == 1000)
+
+    // 3. Deferred initialization in try / catch blocks
+    val parseResult: Int
+    val errorReported: Bool
+
+    try {
+        val shouldFail = true
+        if (shouldFail) {
+            throw Exception("Failed to process data")
+        }
+        parseResult = 100
+        errorReported = false
+    } catch (e) {
+        parseResult = -1
+        errorReported = true
+    }
+
+    assert(parseResult == -1)
+    assert(errorReported == true)
+
+    // 4. Deferred initialization inside loops and closures
+    var accumulatedTotal = 0
+    val stepMultiplier = 3
+
+    for (step in 1..5) {
+        val calculatedStep: Int
+        if (step % 2 == 0) {
+            calculatedStep = step * stepMultiplier
+        } else {
+            calculatedStep = step * 1
+        }
+
+        // Capture in closure
+        val getStep = { -> calculatedStep }
+        accumulatedTotal += getStep()
+    }
+    // step 1: 1
+    // step 2: 6
+    // step 3: 3
+    // step 4: 12
+    // step 5: 5
+    // total = 1 + 6 + 3 + 12 + 5 = 27
+    assert(accumulatedTotal == 27)
+
+    // 5. Deferred initialization with complex container types
+    val mode = "full"
+    val dataContainer: Array<String>
+    val configMap: Map<String, Int>
+
+    if (mode == "full") {
+        dataContainer = ["alpha", "beta", "gamma"]
+        configMap = mapOf("timeout" to 30, "retries" to 3)
+    } else {
+        dataContainer = []
+        configMap = mapOf()
+    }
+
+    assert(dataContainer.size == 3)
+    assert(dataContainer[1] == "beta")
+    assert(configMap["timeout"] == 30)
+    assert(configMap["retries"] == 3)
+
+    // 6. Chained dependent deferred initializations
+    val initialSeed = 42
+    val derivedA: Int
+    val derivedB: Int
+    val derivedC: Int
+
+    if (initialSeed > 40) {
+        derivedA = initialSeed * 2 // 84
+    } else {
+        derivedA = initialSeed
+    }
+
+    if (derivedA > 80) {
+        derivedB = derivedA - 14 // 70
+    } else {
+        derivedB = derivedA
+    }
+
+    if (derivedB == 70) {
+        derivedC = derivedA + derivedB // 154
+    } else {
+        derivedC = 0
+    }
+
+    assert(derivedA == 84)
+    assert(derivedB == 70)
+    assert(derivedC == 154)
+
+    println("Passed testAdvancedDeferredInitialization")
+}
+
+fun testAdvancedDestructuringAndPipelines() {
+    // 1. Array destructuring with multiple wildcard skips
+    val sampleList = [100, 200, 300, 400, 500, 600]
+    val (firstVal, _, thirdVal, _, fifthVal, _) = sampleList
+    assert(firstVal == 100)
+    assert(thirdVal == 300)
+    assert(fifthVal == 500)
+
+    // 2. Destructuring array when elements are fewer than variables throws index out of range
+    var outOfRangeCaught = false
+    try {
+        val shortArray = ["A", "B"]
+        val (itemA, itemB, itemC) = shortArray
+    } catch (e) {
+        outOfRangeCaught = true
+    }
+    assert(outOfRangeCaught == true)
+
+    // 3. Destructuring empty array throws index out of range
+    var emptyOutOfRangeCaught = false
+    try {
+        val emptyArray: Array<String> = []
+        val (none1, none2) = emptyArray
+    } catch (e) {
+        emptyOutOfRangeCaught = true
+    }
+    assert(emptyOutOfRangeCaught == true)
+
+    // 4. Destructuring in nested collections with range() and zip-like transformations
+    val matrix = [
+        ["ROW1", "10", "20"],
+        ["ROW2", "30", "40"],
+        ["ROW3", "50", "60"]
+    ]
+
+    var sumFirstCol = 0
+    var sumSecondCol = 0
+    var rowHeaderConcat = ""
+
+    for ((rowName, val1, val2) in matrix) {
+        rowHeaderConcat += rowName + ";"
+        sumFirstCol += val1.toInt()
+        sumSecondCol += val2.toInt()
+    }
+
+    assert(rowHeaderConcat == "ROW1;ROW2;ROW3;")
+    assert(sumFirstCol == 90)
+    assert(sumSecondCol == 120)
+
+    // 5. Complex e-commerce pipeline with range, nested destructuring, mapValues, and sumOf
+    val inventory = mapOf(
+        "LAPTOP" to (1200 to 0.15),
+        "MOUSE" to (25 to 0.05),
+        "KEYBOARD" to (75 to 0.10),
+        "MONITOR" to (300 to 0.08)
+    )
+
+    // Calculate base total
+    val baseTotal = inventory.values.sumOf { (price, _) -> price }
+    // 1200 + 25 + 75 + 300 = 1600
+    assert(baseTotal == 1600)
+
+    // Calculate item discounts via mapValues with nested tuple destructuring
+    val discounts = inventory.mapValues { (_, (price, rate)) -> (price * rate).toInt() }
+    val totalDiscount = discounts.values.sum()
+    assert(totalDiscount == 213)
+
+    val netPayable = baseTotal - totalDiscount
+    assert(netPayable == 1387)
+
+    // 6. Range-based stepping combined with deferred initialization
+    val steps = range(0, 10, 2) // [0, 2, 4, 6, 8]
+    assert(steps.size == 5)
+
+    var aggregatedResult = 0
+    for (idx in steps) {
+        val currentComputation: Int
+        if (idx < 4) {
+            currentComputation = idx * 10
+        } else {
+            currentComputation = idx * 5
+        }
+        aggregatedResult += currentComputation
+    }
+    // idx 0 -> 0
+    // idx 2 -> 20
+    // idx 4 -> 20
+    // idx 6 -> 30
+    // idx 8 -> 40
+    // sum = 0 + 20 + 20 + 30 + 40 = 110
+    assert(aggregatedResult == 110)
+
+    println("Passed testAdvancedDestructuringAndPipelines")
+}
+
+// 1. Recursive computation helper with deferred val
+fun computeCollatzSteps(n: Int, currentSteps: Int): Int {
+    if (n <= 1) {
+        return currentSteps
+    }
+    val nextNumber: Int
+    if (n % 2 == 0) {
+        nextNumber = n / 2
+    } else {
+        nextNumber = 3 * n + 1
+    }
+    return computeCollatzSteps(nextNumber, currentSteps + 1)
+}
+
+// 2. Complex loan amortization bracket simulation helper with deferred variables
+fun calculateMonthlyPayment(principal: Int, creditScore: Int, termYears: Int): Int {
+    val annualRate: Double
+    val processingFee: Int
+    val isApproved: Bool
+
+    if (creditScore >= 750) {
+        annualRate = 0.05
+        processingFee = 100
+        isApproved = true
+    } else if (creditScore >= 650) {
+        annualRate = 0.08
+        processingFee = 250
+        isApproved = true
+    } else {
+        annualRate = 0.15
+        processingFee = 500
+        isApproved = false
+    }
+
+    if (!isApproved) {
+        return -1
+    }
+
+    val totalInterest: Double
+    if (termYears <= 5) {
+        totalInterest = (principal * annualRate) * termYears
+    } else {
+        // Surcharge for longer term
+        totalInterest = (principal * (annualRate + 0.01)) * termYears
+    }
+
+    val totalPayable: Int
+    totalPayable = principal + totalInterest.toInt() + processingFee
+    return totalPayable / (termYears * 12)
+}
+
+fun testRecursiveAndComplexAlgorithms() {
+    // Collatz steps for 6: 6 -> 3 -> 10 -> 5 -> 16 -> 8 -> 4 -> 2 -> 1 (8 steps)
+    val stepsFor6 = computeCollatzSteps(6, 0)
+    assert(stepsFor6 == 8)
+
+    val payment1 = calculateMonthlyPayment(12000, 780, 5)
+    // principal = 12000, rate = 0.05, term = 5, fee = 100
+    // totalInterest = 12000 * 0.05 * 5 = 3000
+    // totalPayable = 12000 + 3000 + 100 = 15100
+    // monthly = 15100 / 60 = 251
+    assert(payment1 == 251)
+
+    val rejectedPayment = calculateMonthlyPayment(10000, 550, 3)
+    assert(rejectedPayment == -1)
+
+    // 3. Multi-level destructuring in arrays of tuples
+    val studentRecords = [
+        "Alice" to (95 to 88),
+        "Bob" to (72 to 65),
+        "Charlie" to (88 to 91)
+    ]
+
+    var highAchievers = 0
+    for ((name, scores) in studentRecords) {
+        val (midterm, finalExam) = scores
+        val averageScore: Double
+        val passedWithHonors: Bool
+
+        averageScore = (midterm + finalExam) / 2.0
+        if (averageScore >= 85.0) {
+            passedWithHonors = true
+            highAchievers += 1
+        } else {
+            passedWithHonors = false
+        }
+    }
+    // Alice: (95 + 88) / 2 = 91.5 (Honors)
+    // Bob: (72 + 65) / 2 = 68.5 (No)
+    // Charlie: (88 + 91) / 2 = 89.5 (Honors)
+    assert(highAchievers == 2)
+
+    println("Passed testRecursiveAndComplexAlgorithms")
+}
+
+testAdvancedDeferredInitialization()
+testAdvancedDestructuringAndPipelines()
+testRecursiveAndComplexAlgorithms()
+

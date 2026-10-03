@@ -59,6 +59,24 @@ class String {
 	@native("str_to_float")
 	fun toDouble(): Float
 
+	@native("str_to_bool")
+	fun toBool(): Bool
+
+	@native("str_to_bool")
+	fun toBoolean(): Bool
+
+	@native("str_to_bool_or_null")
+	fun toBoolOrNull(): Bool?
+
+	@native("str_to_bool_or_null")
+	fun toBooleanOrNull(): Bool?
+
+	@native("str_to_char")
+	fun toChar(): Char
+
+	@native("str_to_char_or_null")
+	fun toCharOrNull(): Char?
+
 
 
 	@native("str_get")
@@ -152,6 +170,30 @@ class String {
 
 	@native("str_split")
 	fun split(delimiter: Char, ignoreCase: Bool = false, limit: Int = 0): Array<String>
+
+	@native("str_split")
+	fun split(d1: String, d2: String): Array<String>
+
+	@native("str_split")
+	fun split(d1: String, d2: String, d3: String): Array<String>
+
+	@native("str_split")
+	fun split(d1: String, d2: String, d3: String, d4: String): Array<String>
+
+	@native("str_split")
+	fun split(d1: String, d2: String, d3: String, d4: String, d5: String): Array<String>
+
+	@native("str_split")
+	fun split(d1: Char, d2: Char): Array<String>
+
+	@native("str_split")
+	fun split(d1: Char, d2: Char, d3: Char): Array<String>
+
+	@native("str_split")
+	fun split(d1: Char, d2: Char, d3: Char, d4: Char): Array<String>
+
+	@native("str_split")
+	fun split(delimiters: Array<String>): Array<String>
 
 	@native("str_replace")
 	fun replace(old: String, new: String, ignoreCase: Bool = false): String
@@ -468,6 +510,12 @@ class String {
 	@native("str_to_list")
 	fun toCharArray(): Array<Char>
 
+	@native("str_to_list")
+	fun asSequence(): Array<Char>
+
+	@native("str_to_list")
+	fun asIterable(): Array<Char>
+
 	@native("str_trim_start_fn")
 	fun trimStart(predicate: (Char) -> Bool): String
 
@@ -497,6 +545,48 @@ class String {
 
 	@native("str_step")
 	fun step(step: Int): String
+
+	@native("str_join")
+	fun <T> join(elements: Array<T>): String
+
+	@native("str_join")
+	fun join(elements: Array<Any?>): String
+
+	@native("str_count_str")
+	fun count(sub: String): Int
+
+	@native("str_capitalize")
+	fun capitalize(): String
+
+	@native("str_starts_with")
+	fun startswith(prefix: String, startIndex: Int = 0, ignoreCase: Bool = false): Bool
+
+	@native("str_starts_with")
+	fun startswith(prefix: Char, startIndex: Int = 0, ignoreCase: Bool = false): Bool
+
+	@native("str_ends_with")
+	fun endswith(suffix: String, ignoreCase: Bool = false): Bool
+
+	@native("str_ends_with")
+	fun endswith(suffix: Char, ignoreCase: Bool = false): Bool
+
+	@native("str_trim_start")
+	fun lstrip(): String
+
+	@native("str_trim_end")
+	fun rstrip(): String
+
+	@native("str_is_digit")
+	fun isdigit(): Bool
+
+	@native("str_is_letter")
+	fun isalpha(): Bool
+
+	@native("str_is_letter_or_digit")
+	fun isalnum(): Bool
+
+	@native("str_is_whitespace")
+	fun isspace(): Bool
 }
 )###";
 

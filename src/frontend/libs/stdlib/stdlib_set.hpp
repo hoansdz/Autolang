@@ -72,6 +72,12 @@ class Set<T> {
     @native("set_to_array")
     fun toMutableList(): Array<T>
 
+    @native("set_to_array")
+    fun asSequence(): Array<T>
+
+    @native("set_to_array")
+    fun asIterable(): Array<T>
+
 	@native("set_union")
     fun union(other: Set<T>): Set<T>
 
@@ -96,13 +102,13 @@ class Set<T> {
 	fun isNotEmpty(): Bool
 
 	@native("set_plus_element")
-	fun plus(element: T): Set<T>
+	operator fun plus(element: T): Set<T>
 
 	@native("set_plus_element")
 	fun plusElement(element: T): Set<T>
 
 	@native("set_minus_element")
-	fun minus(element: T): Set<T>
+	operator fun minus(element: T): Set<T>
 
 	@native("set_minus_element")
 	fun minusElement(element: T): Set<T>
@@ -170,6 +176,18 @@ class Set<T> {
 	@native("set_join_to_string")
 	fun joinToString(separator: String = ", ", prefix: String = "", postfix: String = "", limit: Int = -1, truncated: String = "..."): String
 
+	@native("set_join_to_string")
+	fun joinToString(transform: (T) -> Any?): String
+
+	@native("set_join_to_string")
+	fun joinToString(separator: String, transform: (T) -> Any?): String
+
+	@native("set_join_to_string")
+	fun joinToString(separator: String, prefix: String, postfix: String, transform: (T) -> Any?): String
+
+	@native("set_join_to_string")
+	fun joinToString(separator: String, prefix: String, postfix: String, limit: Int, truncated: String, transform: (T) -> Any?): String
+
 	@native("set_contains_all")
 	fun containsAll(elements: Set<T>): Bool
 
@@ -229,5 +247,8 @@ class Set<T> {
 
 	@native("set_associate_by")
 	fun <K> associateBy(keySelector: (T) -> K): Map<K, T>
+
+	@native("set_contains_all")
+	fun issuperset(other: Set<T>): Bool
 }
 )###";

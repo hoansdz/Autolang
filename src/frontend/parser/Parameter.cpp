@@ -31,6 +31,27 @@ Parameter *Parameter::copy(in_func) {
 		}
 		context.defaultValueParameter.push_back(newParameter);
 	}
+	if (!destructurePatterns.empty()) {
+		newParameter->destructurePatterns.reserve(destructurePatterns.size());
+		auto funcInfo = context.getCurrentFunctionInfo(in_data);
+		for (const auto &item : destructurePatterns) {
+			DestructurePatternItem newItem;
+			if (item.source && funcInfo && funcInfo->reflectDeclarationMap.count(item.source)) {
+				newItem.source = funcInfo->reflectDeclarationMap[item.source];
+			} else {
+				newItem.source = item.source;
+			}
+			newItem.targets.reserve(item.targets.size());
+			for (auto *t : item.targets) {
+				if (t && funcInfo && funcInfo->reflectDeclarationMap.count(t)) {
+					newItem.targets.push_back(funcInfo->reflectDeclarationMap[t]);
+				} else {
+					newItem.targets.push_back(t);
+				}
+			}
+			newParameter->destructurePatterns.push_back(std::move(newItem));
+		}
+	}
 	newParameter->defaultValuePos = defaultValuePos;
 	return newParameter;
 }

@@ -13,6 +13,40 @@
 
 namespace Autolang {
 
+static ClassDeclaration *buildClassDeclarationFromClassId(in_func, ClassId classId, uint32_t line);
+
+static ClassDeclaration *substituteClassDeclaration(in_func, ClassDeclaration *decl,
+                                                    const HashMap<LexerStringId, ClassDeclaration *> &bindings) {
+	if (!decl) return nullptr;
+	auto it = bindings.find(decl->baseClassLexerStringId);
+	if (it != bindings.end()) {
+		auto *sub = it->second;
+		if (decl->nullable && !sub->nullable) {
+			auto *clone = context.classDeclarationAllocator.push();
+			*clone = *sub;
+			clone->nullable = true;
+			return clone;
+		}
+		return sub;
+	}
+	if (decl->inputClassId.empty()) {
+		return decl;
+	}
+	bool changed = false;
+	std::vector<ClassDeclaration *> newArgs;
+	newArgs.reserve(decl->inputClassId.size());
+	for (auto *arg : decl->inputClassId) {
+		auto *newArg = substituteClassDeclaration(in_data, arg, bindings);
+		if (newArg != arg) changed = true;
+		newArgs.push_back(newArg);
+	}
+	if (!changed) return decl;
+	auto *newDecl = context.classDeclarationAllocator.push();
+	*newDecl = *decl;
+	newDecl->inputClassId = std::move(newArgs);
+	return newDecl;
+}
+
 static bool matchAndBindType(in_func, ClassDeclaration *paramDecl, HasClassIdNode *argNode,
                              ClassDeclaration *argDecl,
                              HashMap<LexerStringId, ClassDeclaration *> &bindings,
@@ -27,15 +61,16 @@ static bool matchAndBindType(in_func, ClassDeclaration *paramDecl, HasClassIdNod
 		if (!concreteDecl && argNode) {
 			if (argNode->classDeclaration) {
 				concreteDecl = argNode->classDeclaration;
-			} else {
-				concreteDecl = context.classDeclarationAllocator.push();
-				concreteDecl->classId = argNode->classId;
-				concreteDecl->nullable = argNode->isNullable();
-				concreteDecl->baseClassLexerStringId =
-				    context.createLexerStringIfNotExists(compile.classes[argNode->classId]->getName(compile));
+			} else if (argNode->classId != DefaultClass::nullClassId) {
+				concreteDecl = buildClassDeclarationFromClassId(in_data, argNode->classId, argNode->line);
 			}
 		}
-		if (!concreteDecl) return false;
+		if (!concreteDecl) {
+			if (argNode && argNode->classId == DefaultClass::nullClassId && paramDecl->nullable) {
+				return true;
+			}
+			return false;
+		}
 
 		if (genericData) {
 			auto genDecl = genericData->findDeclaration(paramDecl->baseClassLexerStringId);
@@ -83,9 +118,13 @@ static bool matchAndBindType(in_func, ClassDeclaration *paramDecl, HasClassIdNod
 	}
 
 	if (!paramDecl->inputClassId.empty()) {
+		ClassDeclaration *effectiveParamDecl = paramDecl;
+		if (!bindings.empty()) {
+			effectiveParamDecl = substituteClassDeclaration(in_data, paramDecl, bindings);
+		}
 		if (argNode && argNode->kind == NodeType::CREATE_CLOSURE) {
 			auto *closure = static_cast<CreateClosureNode *>(argNode);
-			closure->tryInferReturnType(in_data, paramDecl);
+			closure->tryInferReturnType(in_data, effectiveParamDecl);
 		}
 
 		const std::vector<ClassDeclaration *> *argArgs = nullptr;
@@ -106,17 +145,17 @@ static bool matchAndBindType(in_func, ClassDeclaration *paramDecl, HasClassIdNod
 			}
 		}
 
-		if (argArgs && argArgs->size() == paramDecl->inputClassId.size()) {
-			for (size_t k = 0; k < paramDecl->inputClassId.size(); ++k) {
-				if (!matchAndBindType(in_data, paramDecl->inputClassId[k], nullptr, (*argArgs)[k], bindings, genericData)) {
+		if (argArgs && argArgs->size() == effectiveParamDecl->inputClassId.size()) {
+			for (size_t k = 0; k < effectiveParamDecl->inputClassId.size(); ++k) {
+				if (!matchAndBindType(in_data, effectiveParamDecl->inputClassId[k], nullptr, (*argArgs)[k], bindings, genericData)) {
 					return false;
 				}
 			}
 			return true;
-		} else if (argNode && argNode->kind == NodeType::CREATE_CLOSURE && paramDecl->inputClassId.size() == 2) {
+		} else if (argNode && argNode->kind == NodeType::CREATE_CLOSURE && effectiveParamDecl->inputClassId.size() == 2) {
 			auto closure = static_cast<CreateClosureNode *>(argNode);
 			if (closure->canImplicitIt && closure->parameter->parameters.empty() && argArgs && argArgs->size() == 1) {
-				if (matchAndBindType(in_data, paramDecl->inputClassId[0], nullptr, (*argArgs)[0], bindings, genericData)) {
+				if (matchAndBindType(in_data, effectiveParamDecl->inputClassId[0], nullptr, (*argArgs)[0], bindings, genericData)) {
 					return true;
 				}
 			}
@@ -1001,6 +1040,12 @@ ExprNode *CallNode::optimize(in_func) {
 						}
 					}
 					if (shouldInfer) {
+						for (auto &arg : arguments) {
+							if (arg && arg->kind != NodeType::CREATE_CLOSURE &&
+							    arg->classId == DefaultClass::nullClassId) {
+								arg = static_cast<HasClassIdNode *>(arg->optimize(in_data));
+							}
+						}
 						for (auto *candidateNode : *candidates) {
 							auto candidateInfo = context.functionInfo[candidateNode->id];
 							if (candidateInfo->genericData) {
@@ -1239,6 +1284,12 @@ ExprNode *CallNode::optimize(in_func) {
 					}
 				}
 				if (shouldInfer) {
+					for (auto &arg : arguments) {
+						if (arg && arg->kind != NodeType::CREATE_CLOSURE &&
+						    arg->classId == DefaultClass::nullClassId) {
+							arg = static_cast<HasClassIdNode *>(arg->optimize(in_data));
+						}
+					}
 					for (auto *candidateNode : git->second) {
 						auto candidateInfo = context.functionInfo[candidateNode->id];
 						if (candidateInfo->genericData) {
@@ -2178,6 +2229,17 @@ bool CallNode::match(in_func, MatchOverload &match,
 											break;
 										}
 										goto finished;
+									}
+									auto createArr = static_cast<CreateArrayNode *>(argument);
+									if (!createArr->values.empty() && createArr->values[0]) {
+										ClassId firstElemClassId = createArr->values[0]->classId;
+										auto expClass = compile.classes[funcExpectClassId];
+										if (expClass && expClass->genericType.size > 0) {
+											ClassId expectElemClassId = compile.allGenericType[expClass->genericType.offset];
+											if (firstElemClassId == expectElemClassId) {
+												match.score += 2;
+											}
+										}
 									}
 									break;
 								}

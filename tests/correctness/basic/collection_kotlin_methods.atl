@@ -23,7 +23,7 @@ fun testArrayKotlinMethods() {
     assert(strMapped[0] == "item_1" && strMapped[2] == "item_3", "map<String> failed")
 
     // 4. mapIndexed<R>()
-    val indexedMapped = numbers.mapIndexed<String>({|idx: Int, x: Int| x + ":" + idx })
+    val indexedMapped = numbers.mapIndexed<String>({|idx: Int, x: Int| "" + x + ":" + idx })
     assert(indexedMapped[0] == "1:0" && indexedMapped[1] == "2:1", "mapIndexed failed")
 
     // 5. first() & firstOrNull() & last() & lastOrNull()
@@ -322,6 +322,11 @@ fun testCollectionOperators() {
 
     val m2 = m1 - "a"
     assert(m2.size() == 1 && !m2.contains("a"), "Map - Key failed")
+
+    // 6. Array concatenation with string elements
+    val baseItems = ["SKU-01", "SKU-02"]
+    val combined = baseItems + "SKU-03" + ["SKU-04", "SKU-05"]
+    assert(combined.size() == 5 && combined[2] == "SKU-03" && combined[4] == "SKU-05", "Array + element + Array failed")
 }
 
 fun testKotlinCollectionConstructors() {
@@ -582,6 +587,14 @@ fun testNewKotlinArrayMethods() {
     // 5. foldIndexed
     val fi = [1, 2, 3].foldIndexed(0, {|idx: Int, acc: Int, x: Int| acc + idx + x })
     assert(fi == 9, "foldIndexed failed")
+    val fiTrailing = [1, 2, 2, 3, 3, 3, 1, 1, 2].foldIndexed("") { index, acc, value ->
+        if (index == 0 || value != acc.last().toInt()) {
+            "${value}:${index - acc.length / 2}${if (acc.isNotEmpty()) "," else ""}$acc"
+        } else {
+            "${acc.takeLast(acc.length / 2).first()}${acc.length / 2 + 1}${if (acc.isNotEmpty()) "," else ""}$acc"
+        }
+    }
+    assert(fiTrailing == "2:-10,1:-9,1:-7,3:-6,3:-4,3:-3,2:-1,2:0,1:0", "foldIndexed trailing closure inference failed")
 
     // 6. reduceIndexed
     val ri = [10, 20, 30].reduceIndexed({|idx: Int, acc: Int, x: Int| acc + x * idx })
@@ -644,6 +657,45 @@ fun testNewKotlinArrayMethods() {
     println("Passed testNewKotlinArrayMethods")
 }
 
+fun testSequenceAndIterableMethods() {
+    // 1. Array.asSequence and asIterable
+    val numbers = [10, 20, 30]
+    val seq = numbers.asSequence()
+    assert(seq.size() == 3 && seq[0] == 10 && seq[2] == 30, "Array.asSequence failed")
+    val iter = numbers.asIterable()
+    assert(iter.size() == 3 && iter[1] == 20, "Array.asIterable failed")
+
+    // 2. Chained sequence pipeline (C72 benchmark pattern)
+    val pipelineResult = (1..5).asSequence()
+        .filter { it > 0 }
+        .mapIndexed<Int>({ idx, v -> if (idx % 2 == 0) v * 2 else v })
+        .sum()
+    assert(pipelineResult == 24, "C72 pipeline with asSequence failed: $pipelineResult")
+
+    // 3. Set.asSequence and asIterable
+    val s = setOf(1, 2, 3)
+    val sSeq = s.asSequence()
+    assert(sSeq.size() == 3, "Set.asSequence failed")
+    val sIter = s.asIterable()
+    assert(sIter.size() == 3, "Set.asIterable failed")
+
+    // 4. Map.asSequence and asIterable
+    val m = mapOf("x" to 100, "y" to 200)
+    val mSeq = m.asSequence()
+    assert(mSeq.size() == 2, "Map.asSequence failed")
+    val mIter = m.asIterable()
+    assert(mIter.size() == 2, "Map.asIterable failed")
+
+    // 5. String.asSequence and asIterable
+    val str = "AutoLang"
+    val strSeq = str.asSequence()
+    assert(strSeq.size() == 8, "String.asSequence failed")
+    val strIter = str.asIterable()
+    assert(strIter.size() == 8, "String.asIterable failed")
+
+    println("Passed testSequenceAndIterableMethods")
+}
+
 testArrayKotlinMethods()
 testMapKotlinMethods()
 testSetKotlinMethods()
@@ -653,5 +705,6 @@ testListOfNotNullAndNumericSuffixes()
 testNewKotlinStdlibMethods()
 testCollectionEdgeCases()
 testNewKotlinArrayMethods()
+testSequenceAndIterableMethods()
 println("All Kotlin collection methods passed successfully!")
 

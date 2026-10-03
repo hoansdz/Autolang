@@ -135,10 +135,13 @@ class Map<K, V> {
 	fun filterValues(predicate: (V) -> Bool): Map<K, V>
 
 	@native("map_map_values")
-	fun <R> mapValues(transform: (V) -> R): Map<K, R>
+	fun <R> mapValues(transform: (MapEntry<K, V>) -> R): Map<K, R>
 
 	@native("map_map_keys")
-	fun <R> mapKeys(transform: (K) -> R): Map<R, V>
+	fun <R> mapKeys(transform: (MapEntry<K, V>) -> R): Map<R, V>
+
+	@native("map_map")
+	fun <R> map(transform: (MapEntry<K, V>) -> R): Array<R>
 
 	@native("map_plus_pair")
 	fun plus(pair: Pair<K, V>): Map<K, V>
@@ -148,6 +151,12 @@ class Map<K, V> {
 
 	@native("map_to_list")
 	fun toList(): Array<Pair<K, V>>
+
+	@native("map_to_list")
+	fun asSequence(): Array<Pair<K, V>>
+
+	@native("map_to_list")
+	fun asIterable(): Array<Pair<K, V>>
 
 	@native("map_put_all")
 	fun putAll(from: Map<K, V>)
@@ -166,6 +175,15 @@ class Map<K, V> {
 
 	@native("map_filter_not")
 	fun filterNot(predicate: (K, V) -> Bool): Map<K, V>
+
+	@native("map_entries")
+	fun items(): Array<MapEntry<K, V>>
+
+	@native("map_get_or_default")
+	fun get(key: K, defaultValue: V): V
+
+	@native("map_put_all")
+	fun update(from: Map<K, V>)
 }
 
 class MapEntry<K, V>(val key: K, val value: V) {

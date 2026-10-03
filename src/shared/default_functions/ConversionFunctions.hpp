@@ -7,6 +7,7 @@
 #include "backend/vm/ANotifier.hpp"
 #include "shared/AString.hpp"
 #include "shared/DefaultClass.hpp"
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <limits>
@@ -265,11 +266,12 @@ inline AObject *float_sign(NativeFuncInData) {
 }
 
 inline AObject *float_sqrt(NativeFuncInData) {
-	return notifier.createFloat(std::sqrt(args[0]->f));
+	double val = (args[0]->type == DefaultClass::intClassId) ? static_cast<double>(args[0]->i) : args[0]->f;
+	return notifier.createFloat(std::sqrt(val));
 }
 
 inline AObject *float_pow(NativeFuncInData) {
-	double base = args[0]->f;
+	double base = (args[0]->type == DefaultClass::intClassId) ? static_cast<double>(args[0]->i) : args[0]->f;
 	double exp = (args[1]->type == DefaultClass::intClassId) ? static_cast<double>(args[1]->i) : args[1]->f;
 	return notifier.createFloat(std::pow(base, exp));
 }
@@ -329,6 +331,24 @@ inline AObject *int_xor(NativeFuncInData) {
 
 inline AObject *int_inv(NativeFuncInData) {
 	return notifier.createInt(~args[0]->i);
+}
+
+inline AObject *int_to_binary_string(NativeFuncInData) {
+	if (argSize == 0 || !args[0] || args[0]->type != DefaultClass::intClassId) {
+		notifier.throwException("Expected Int argument for toBinaryString");
+		return nullptr;
+	}
+	uint64_t val = static_cast<uint64_t>(args[0]->i);
+	if (val == 0) {
+		return notifier.createString("0");
+	}
+	std::string s;
+	while (val > 0) {
+		s.push_back((val & 1) ? '1' : '0');
+		val >>= 1;
+	}
+	std::reverse(s.begin(), s.end());
+	return notifier.createString(std::move(s));
 }
 
 inline AObject *float_cbrt(NativeFuncInData) {

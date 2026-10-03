@@ -24,8 +24,7 @@ AObject *plus(NativeFuncInData) {
 				case Autolang::DefaultClass::boolClassId:
 					return notifier.createInt((obj1->i) + (obj2->b));
 				case Autolang::DefaultClass::stringClassId:
-					return notifier.createString(
-					    AString::plus((obj1->i), (obj2->str)));
+					return notifier.createString(AString::plus(obj1->i, obj2->str));
 				default:
 					break;
 			}
@@ -57,8 +56,7 @@ AObject *plus(NativeFuncInData) {
 				case Autolang::DefaultClass::boolClassId:
 					return notifier.createFloat((obj1->f) + (obj2->b));
 				case Autolang::DefaultClass::stringClassId:
-					return notifier.createString(
-					    AString::plus((obj1->f), (obj2->str)));
+					return notifier.createString(AString::plus(obj1->f, obj2->str));
 				default:
 					break;
 			}
@@ -73,8 +71,7 @@ AObject *plus(NativeFuncInData) {
 				case Autolang::DefaultClass::boolClassId:
 					return notifier.createInt((obj1->b) + (obj2->b));
 				case Autolang::DefaultClass::stringClassId:
-					return notifier.createString(AString::plus(
-					    (obj1->b ? "true" : "false"), (obj2->str)));
+					return notifier.createString(AString::plus(obj1->b ? "true" : "false", obj2->str));
 				default:
 					break;
 			}

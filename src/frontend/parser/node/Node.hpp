@@ -275,14 +275,18 @@ struct NullCoalescingNode : JumpIfNullNode {
 	NullCoalescingNode(uint32_t line, HasClassIdNode *left,
 	                   HasClassIdNode *right)
 	    : JumpIfNullNode(NodeType::NULL_COALESCING, line), left(left),
-	      right(right) {}
+	      right(right) {
+		returnNullIfNull = false;
+	}
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;
 	bool putBytecodesIfMustBeCalled(in_func,
 	                                std::vector<uint8_t> &bytecodes) override {
-		bool l = left ? left->putBytecodesIfMustBeCalled(in_data, bytecodes) : false;
-		bool r = right ? right->putBytecodesIfMustBeCalled(in_data, bytecodes) : false;
-		return l || r;
+		putBytecodes(in_data, bytecodes);
+		if (classId != DefaultClass::voidClassId) {
+			bytecodes.emplace_back(Opcode::POP);
+		}
+		return true;
 	}
 	void putBytecodes(in_func, std::vector<uint8_t> &bytecodes) override;
 	void rewrite(in_func, uint8_t *bytecodes) override;
@@ -1085,13 +1089,15 @@ struct WhenNode : NullableNode {
 struct DestructureNode : HasClassIdNode {
 	HasClassIdNode *sourceExpr;
 	SmallVector<DeclarationNode *, 8> targets;
+	DeclarationNode *tempDecl = nullptr;
 	BlockNode innerBlock;
 	bool isResolved = false;
 
 	DestructureNode(uint32_t line, HasClassIdNode *sourceExpr,
-	                SmallVector<DeclarationNode *, 8> targets)
+	                SmallVector<DeclarationNode *, 8> targets,
+	                DeclarationNode *tempDecl = nullptr)
 	    : HasClassIdNode(NodeType::DESTRUCTURE, DefaultClass::voidClassId, line),
-	      sourceExpr(sourceExpr), targets(std::move(targets)), innerBlock(line) {}
+	      sourceExpr(sourceExpr), targets(std::move(targets)), tempDecl(tempDecl), innerBlock(line) {}
 
 	ExprNode *resolve(in_func) override;
 	ExprNode *optimize(in_func) override;

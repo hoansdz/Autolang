@@ -179,6 +179,16 @@ void extractSmartCasts(in_func, HasClassIdNode *cond,
 			}
 			return;
 		}
+		if (binary->op == Lexer::TokenType::IN_ && binary->right->kind == NodeType::RANGE) {
+			auto decl = extractDeclaration(in_data, binary->left);
+			if (decl) {
+				auto outDecl = context.classDeclarationAllocator.push();
+				outDecl->line = binary->line;
+				outDecl->classId = DefaultClass::intClassId;
+				addSmartCast(trueCasts, decl, false, true, DefaultClass::intClassId, outDecl);
+			}
+			return;
+		}
 		break;
 	}
 	case NodeType::UNARY: {

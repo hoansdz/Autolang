@@ -114,9 +114,22 @@ void CreateArrayNode::optimizeAndInferenceType(in_func) {
 	if (values.empty()) {
 		if (canSkipFindType)
 			return;
-		throwError(
-		    "Cannot infer element type for Array initialization\nHint: Provide "
-		    "an explicit type annotation or add typed elements to the Array.");
+		auto valueClassDeclaration = context.classDeclarationAllocator.push();
+		valueClassDeclaration->line = line;
+		valueClassDeclaration->isGeneric = false;
+		valueClassDeclaration->classId = DefaultClass::anyClassId;
+		valueClassDeclaration->nullable = false;
+		valueClassDeclaration->baseClassLexerStringId =
+		    context.createLexerStringIfNotExists(
+		        compile.classes[DefaultClass::anyClassId]->getName(compile));
+
+		classDeclaration = context.classDeclarationAllocator.push();
+		classDeclaration->baseClassLexerStringId = lexerIdArray;
+		classDeclaration->inputClassId = std::vector{valueClassDeclaration};
+		classDeclaration->line = line;
+		classDeclaration->isGeneric = false;
+		classDeclaration->template load<true, false, true>(in_data);
+		classId = *classDeclaration->classId;
 		return;
 	}
 	std::optional<ClassId> valueMustBeClassId;

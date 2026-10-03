@@ -26,6 +26,7 @@ struct DeclarationNode : HasClassIdNode {
 	bool loaded = false;
 	bool isLateInit = false;
 	bool isCapturedByClosure = false;
+	bool hasInitialValue = true;
 	uint32_t tokenIndex = 0;
 	DeclarationNode(uint32_t line, std::optional<ClassId> contextCallClassId,
 	                LexerStringId baseName, std::string_view name,
@@ -35,7 +36,8 @@ struct DeclarationNode : HasClassIdNode {
 	      contextCallClassId(contextCallClassId), baseName(baseName),
 	      name(name), isGlobal(isGlobal), isVal(isVal),
 	      nullable(nullable),
-	      declaredNullable(nullable || (classDeclaration && classDeclaration->nullable)) {}
+	      declaredNullable(nullable || (classDeclaration && classDeclaration->nullable)),
+	      hasInitialValue(true) {}
 	ExprNode *optimize(in_func) override;
 	ExprNode *copy(in_func) override;
 	std::string toString(in_func, bool isStatic = false);

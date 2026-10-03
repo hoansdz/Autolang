@@ -63,7 +63,7 @@ IfNode *loadIf(in_func, size_t &i, bool mustReturnValue) {
 			}
 		}
 		if (hasOuterParen) {
-			if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
+			if (!nextToken(&token, context.tokens, i)) {
 				--i;
 				throw ParserError(firstLine,
 				                  "Expected an expression after 'if (' but not found\nHint: Provide a boolean condition inside 'if (...)'");

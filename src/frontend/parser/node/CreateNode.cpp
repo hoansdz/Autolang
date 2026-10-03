@@ -188,6 +188,7 @@ ExprNode *DeclarationNode::copy(in_func) {
 	    isGlobal, nullable);
 	newNode->mustInferenceNullable = mustInferenceNullable;
 	newNode->declaredNullable = declaredNullable;
+	newNode->hasInitialValue = hasInitialValue;
 	if (isGlobal && context.newPositionOfStaticDeclaration) {
 		auto it = context.newPositionOfStaticDeclaration->find(id);
 		if (it != context.newPositionOfStaticDeclaration->end()) {

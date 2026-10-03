@@ -51,6 +51,39 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 			--i;
 			return left;
 		}
+		if (token->type == Lexer::TokenType::IF && token->line == firstLine && minPrecedence == 0) {
+			HasClassIdNode *cond = nullptr;
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(context.tokens[i].line, "Expected condition after 'if'");
+			}
+			if (expect(token, Lexer::TokenType::LPAREN)) {
+				nextTokenSameLine(&token, context.tokens, i, firstLine);
+				cond = loadExpression(in_data, 0, i);
+				if (!nextToken(&token, context.tokens, i) || !expect(token, Lexer::TokenType::RPAREN)) {
+					--i;
+					throw ParserError(context.tokens[i].line, "Expected ')' after condition");
+				}
+			} else {
+				cond = loadExpression(in_data, 2, i);
+			}
+			if (!nextToken(&token, context.tokens, i) || !expect(token, Lexer::TokenType::ELSE)) {
+				--i;
+				throw ParserError(context.tokens[i].line, "Expected 'else' in conditional expression");
+			}
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(context.tokens[i].line, "Expected expression after 'else'");
+			}
+			HasClassIdNode *exprFalse = loadExpression(in_data, 0, i);
+			IfNode *ifNode = context.ifPool.push(firstLine, true);
+			ifNode->condition = cond;
+			ifNode->ifTrue.nodes.push_back(left);
+			ifNode->ifFalse = context.blockNodePool.push(firstLine);
+			ifNode->ifFalse->nodes.push_back(exprFalse);
+			left = ifNode;
+			continue;
+		}
 		bool isCustomInfix = false;
 		LexerStringId infixMethodId = 0;
 		int precedence = -1;
@@ -85,7 +118,15 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 			    "Expected expression after operator but not found\nHint: "
 			    "Provide a valid right operand expression after operator");
 		}
-		HasClassIdNode *right = loadExpression(in_data, precedence + 1, i);
+		HasClassIdNode *right = nullptr;
+		if (op == Lexer::TokenType::QMARK_QMARK && token->type == Lexer::TokenType::LBRACE &&
+		    !hasArrowAtCurrentBraceLevel(context.tokens, i)) {
+			auto blockNode = context.blockNodePool.push(token->line);
+			loadBody<false>(in_data, blockNode->nodes, i, true);
+			right = blockNode;
+		} else {
+			right = loadExpression(in_data, precedence + 1, i);
+		}
 		if (isCustomInfix) {
 			left = context.callNodePool.push(
 			    firstLine, tokenIndex, left->classId, left, infixMethodId,
@@ -406,10 +447,26 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 				    token->type == Lexer::TokenType::QMARK_DOT;
 				if (!addOptionalNode && accessNullable)
 					addOptionalNode = true;
-				if (!nextToken(&token, context.tokens, i) ||
-				    (!expect(token, Lexer::TokenType::IDENTIFIER) &&
-				     !expect(token, Lexer::TokenType::TO) &&
-				     !expect(token, Lexer::TokenType::NOT))) {
+				if (!nextToken(&token, context.tokens, i)) {
+					--i;
+					throw ParserError(
+					    context.tokens[i].line,
+					    "Expected identifier after '.' but not found");
+				}
+				switch (token->type) {
+					case Lexer::TokenType::VAL:
+						if (token->indexData != 0) {
+							token->type = Lexer::TokenType::IDENTIFIER;
+						}
+						break;
+					case Lexer::TokenType::TO:
+					case Lexer::TokenType::NOT:
+						token->type = Lexer::TokenType::IDENTIFIER;
+						break;
+					default:
+						break;
+				}
+				if (!expect(token, Lexer::TokenType::IDENTIFIER)) {
 					--i;
 					throw ParserError(
 					    context.tokens[i].line,
@@ -504,7 +561,14 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 						auto varNode = static_cast<AccessNode *>(node);
 						if (varNode->declaration) {
 							if (varNode->declaration->isVal) {
-								if (!context.strictMode) {
+								if (!varNode->declaration->hasInitialValue) {
+									varNode->declaration->hasInitialValue = true;
+									varNode->declaration->isVal = false;
+									varNode->isVal = false;
+									if (context.currentClosureNode && !varNode->declaration->isGlobal) {
+										varNode->declaration->isCapturedByClosure = true;
+									}
+								} else if (!context.strictMode) {
 									varNode->declaration->isVal = false;
 									varNode->isVal = false;
 									if (context.currentClosureNode && !varNode->declaration->isGlobal) {

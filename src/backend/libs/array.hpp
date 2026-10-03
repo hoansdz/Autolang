@@ -16,7 +16,9 @@ AObject *for_each(NativeFuncInData);
 AObject *for_each_with_index(NativeFuncInData);
 AObject *for_each_indexed(NativeFuncInData);
 AObject *slice(NativeFuncInData);
+AObject *slice_indices(NativeFuncInData);
 AObject *reversed(NativeFuncInData);
+AObject *reverse(NativeFuncInData);
 AObject *filter(NativeFuncInData);
 AObject *sort(NativeFuncInData);
 AObject *sort_default(NativeFuncInData);
@@ -140,6 +142,9 @@ AObject *binary_search(NativeFuncInData);
 AObject *arr_intersect(NativeFuncInData);
 AObject *arr_union(NativeFuncInData);
 AObject *arr_subtract(NativeFuncInData);
+AObject *shift(NativeFuncInData);
+AObject *unshift(NativeFuncInData);
+AObject *count_element(NativeFuncInData);
 std::string to_string(ANotifier &notifier, AObject *obj);
 } // namespace array
 } // namespace Libs

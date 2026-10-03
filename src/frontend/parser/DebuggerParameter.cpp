@@ -7,6 +7,74 @@
 
 namespace Autolang {
 
+static void parseLambdaDestructurePattern(
+    in_func, size_t &i, DeclarationNode *sourceNode,
+    std::vector<DestructurePatternItem> &destructurePatterns) {
+	size_t myIndex = destructurePatterns.size();
+	destructurePatterns.push_back(DestructurePatternItem{sourceNode, {}});
+
+	SmallVector<DeclarationNode *, 8> targets;
+	Lexer::Token *token = nullptr;
+	while (true) {
+		if (!nextToken(&token, context.tokens, i)) {
+			--i;
+			throw ParserError(context.tokens[i].line,
+			                  "Expected parameter name or ')' in destructuring parameter");
+		}
+		if (expect(token, Lexer::TokenType::RPAREN)) {
+			break;
+		}
+		if (expect(token, Lexer::TokenType::LPAREN)) {
+			std::string subName = "__destruct_sub_" + std::to_string(token->line) + "_" + std::to_string(i);
+			LexerStringId subNameId = context.createLexerStringIfNotExists(subName);
+			auto *subTemp = context.makeDeclarationNode(
+			    in_data, token->line, subNameId, context.lexerString[subNameId],
+			    nullptr, true, false, true, false, false);
+			subTemp->tokenIndex = i;
+			subTemp->classId = DefaultClass::nullClassId;
+			subTemp->mustInferenceNullable = true;
+			targets.push_back(subTemp);
+			parseLambdaDestructurePattern(in_data, i, subTemp, destructurePatterns);
+		} else if (expect(token, Lexer::TokenType::IDENTIFIER) || expect(token, Lexer::TokenType::TO)) {
+			if (token->indexData == lexerIdunderscore) {
+				targets.push_back(nullptr);
+			} else {
+				std::string message = context.checkValidDeclarationName(token->indexData);
+				if (!message.empty()) {
+					throw ParserError(token->line, message);
+				}
+				auto *targetNode = context.makeDeclarationNode(
+				    in_data, token->line, token->indexData, context.lexerString[token->indexData],
+				    nullptr, true, false, true, false, false);
+				targetNode->tokenIndex = i;
+				targetNode->classId = DefaultClass::nullClassId;
+				targetNode->mustInferenceNullable = true;
+				targets.push_back(targetNode);
+			}
+		} else {
+			--i;
+			throw ParserError(context.tokens[i].line,
+			                  "Expected parameter name or '_' in destructuring parameter\nHint: Provide a parameter name or '_' to ignore");
+		}
+
+		if (!nextToken(&token, context.tokens, i)) {
+			--i;
+			throw ParserError(context.tokens[i].line,
+			                  "Expected ',' or ')' in destructuring parameter");
+		}
+		if (expect(token, Lexer::TokenType::RPAREN)) {
+			break;
+		}
+		if (!expect(token, Lexer::TokenType::COMMA)) {
+			--i;
+			throw ParserError(context.tokens[i].line,
+			                  "Expected ',' or ')' in destructuring parameter");
+		}
+	}
+
+	destructurePatterns[myIndex].targets = std::move(targets);
+}
+
 template <Lexer::TokenType closeBracket, bool mustHaveColon,
           bool allowDefaultValue>
 Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
@@ -37,6 +105,13 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 			--i;
 			break;
 		}
+		case Lexer::TokenType::LPAREN: {
+			if constexpr (closeBracket == Lexer::TokenType::MINUS_GT) {
+				--i;
+				break;
+			}
+			[[fallthrough]];
+		}
 		default:
 			throw ParserError(
 			    token->line,
@@ -45,6 +120,44 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 	}
 	bool addedDefaultValue = false;
 	while (nextToken(&token, context.tokens, i)) {
+		if constexpr (closeBracket == Lexer::TokenType::MINUS_GT) {
+			if (expect(token, Lexer::TokenType::LPAREN)) {
+				std::string paramName = "__param_destruct_" + std::to_string(token->line) + "_" + std::to_string(parameter->parameters.size());
+				LexerStringId paramNameId = context.createLexerStringIfNotExists(paramName);
+				auto *paramNode = context.makeDeclarationNode(
+				    in_data, token->line, paramNameId, context.lexerString[paramNameId],
+				    nullptr, true, false, false, false, false);
+				paramNode->tokenIndex = i;
+				paramNode->classId = DefaultClass::nullClassId;
+				paramNode->mustInferenceNullable = true;
+				parameter->parameters.push_back(paramNode);
+
+				parseLambdaDestructurePattern(in_data, i, paramNode, parameter->destructurePatterns);
+
+				if (!nextToken(&token, context.tokens, i)) {
+					--i;
+					break;
+				}
+				switch (token->type) {
+					using namespace Lexer;
+					case closeBracket: {
+						if (!addedDefaultValue) {
+							parameter->defaultValuePos = parameter->parameters.size();
+						}
+						return parameter;
+					}
+					case TokenType::COMMA: {
+						continue;
+					}
+					default: {
+						throw ParserError(
+						    token->line,
+						    "Unexpected token '" + token->toString(context) +
+						        "'\nHint: Expected ',' or '->' after destructuring parameter");
+					}
+				}
+			}
+		}
 		bool isVal = true;
 		if (allowVar) {
 			if (!expect(token, Lexer::TokenType::VAR) &&

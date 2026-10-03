@@ -268,7 +268,8 @@ ExprNode *BinaryNode::optimize(in_func) {
 		}
 		case Lexer::TokenType::IN_:
 		case Lexer::TokenType::NOT_IN: {
-			if (left->isNullable() || right->isNullable()) {
+			if (right->isNullable() ||
+			    (left->isNullable() && right->kind != NodeType::RANGE)) {
 				throwError(
 				    "Cannot use operator '" +
 				    Lexer::Token(0, op).toString(context) +
@@ -280,7 +281,8 @@ ExprNode *BinaryNode::optimize(in_func) {
 				    Lexer::Token(0, op).toString(context) + "'.");
 			}
 			if (right->kind == NodeType::RANGE &&
-			    left->classId != DefaultClass::intClassId) {
+			    left->classId != DefaultClass::intClassId &&
+			    left->classId != DefaultClass::anyClassId) {
 				throwError("Type mismatch: expected 'Int' but '" +
 				           left->getClassName(in_data) +
 				           "' found\nHint: Range membership checks require an "
@@ -301,8 +303,10 @@ ExprNode *BinaryNode::optimize(in_func) {
 
 			switch (left->classId) {
 				case Autolang::DefaultClass::boolClassId: {
-					left = context.castPool.push(
-					    left, Autolang::DefaultClass::intClassId);
+					if (right->classId != Autolang::DefaultClass::stringClassId) {
+						left = context.castPool.push(
+						    left, Autolang::DefaultClass::intClassId);
+					}
 					break;
 				}
 				case Autolang::DefaultClass::stringClassId: {
@@ -367,31 +371,32 @@ ExprNode *BinaryNode::optimize(in_func) {
 						}
 						default: {
 							auto classInfo = context.classInfo[left->classId];
-							auto it =
-							    classInfo->allFunction.find(lexerIdtoString);
-							if (it == classInfo->allFunction.end()) {
-								break;
-							}
-							auto &vec = it->second;
-							for (auto funcId : vec) {
-								auto func = compile.functions[funcId];
-								if (func->argSize !=
-								        (!(func->functionFlags &
-								           FunctionFlags::FUNC_IS_STATIC)) ||
-								    func->returnId !=
-								        DefaultClass::stringClassId ||
-								    !(func->functionFlags &
-								      FunctionFlags::FUNC_PUBLIC))
-									continue;
-								auto callNode = context.callNodePool.push(
-								    left->line, tokenIndex, std::nullopt, left,
-								    lexerIdtoString,
-								    std::vector<HasClassIdNode *>{}, false,
-								    left->isNullable(), false);
-								left = callNode;
-								callNode->funcId = funcId;
-								callNode->classId = DefaultClass::stringClassId;
-								break;
+							if (classInfo && classInfo->allFunction.find(lexerIdplus) == classInfo->allFunction.end()) {
+								auto it =
+								    classInfo->allFunction.find(lexerIdtoString);
+								if (it != classInfo->allFunction.end()) {
+									auto &vec = it->second;
+									for (auto funcId : vec) {
+										auto func = compile.functions[funcId];
+										if (func->argSize !=
+										        (!(func->functionFlags &
+										           FunctionFlags::FUNC_IS_STATIC)) ||
+										    func->returnId !=
+										        DefaultClass::stringClassId ||
+										    !(func->functionFlags &
+										      FunctionFlags::FUNC_PUBLIC))
+											continue;
+										auto callNode = context.callNodePool.push(
+										    left->line, tokenIndex, std::nullopt, left,
+										    lexerIdtoString,
+										    std::vector<HasClassIdNode *>{}, false,
+										    left->isNullable(), false);
+										left = callNode;
+										callNode->funcId = funcId;
+										callNode->classId = DefaultClass::stringClassId;
+										break;
+									}
+								}
 							}
 							break;
 						}
@@ -536,13 +541,6 @@ ExprNode *BinaryNode::optimize(in_func) {
 	                          static_cast<uint8_t>(op), classId))
 		return this;
 
-	if (op == Lexer::TokenType::PLUS &&
-	    (left->classId == DefaultClass::stringClassId ||
-	     right->classId == DefaultClass::stringClassId)) {
-		classId = DefaultClass::stringClassId;
-		return this;
-	}
-
 	LexerStringId opMethodId = 0;
 	bool isComparisonOp = false;
 	switch (op) {
@@ -572,7 +570,7 @@ ExprNode *BinaryNode::optimize(in_func) {
 			break;
 	}
 
-	if (opMethodId != 0) {
+	if (opMethodId != 0 && left->classId != DefaultClass::stringClassId) {
 		auto callerClassInfo = context.classInfo[left->classId];
 		bool hasOpMethod = false;
 		if (callerClassInfo) {
@@ -610,6 +608,53 @@ ExprNode *BinaryNode::optimize(in_func) {
 			    line, tokenIndex, context.currentClassId, op, optimizedCall, zeroConst);
 			cmpNode->resolve(in_data);
 			return cmpNode->optimize(in_data);
+		}
+	}
+
+	if (op == Lexer::TokenType::PLUS &&
+	    (left->classId == DefaultClass::stringClassId ||
+	     right->classId == DefaultClass::stringClassId)) {
+		classId = DefaultClass::stringClassId;
+		return this;
+	}
+
+	if (left->classId == DefaultClass::anyClassId ||
+	    right->classId == DefaultClass::anyClassId) {
+		switch (op) {
+			case Lexer::TokenType::PLUS:
+			case Lexer::TokenType::MINUS:
+			case Lexer::TokenType::STAR:
+			case Lexer::TokenType::SLASH:
+			case Lexer::TokenType::PERCENT: {
+				if (left->classId == DefaultClass::stringClassId ||
+				    right->classId == DefaultClass::stringClassId) {
+					classId = DefaultClass::stringClassId;
+				} else if (left->classId == DefaultClass::floatClassId ||
+				           right->classId == DefaultClass::floatClassId) {
+					classId = DefaultClass::floatClassId;
+				} else {
+					classId = DefaultClass::anyClassId;
+				}
+				return this;
+			}
+			case Lexer::TokenType::LT:
+			case Lexer::TokenType::LTE:
+			case Lexer::TokenType::GT:
+			case Lexer::TokenType::GTE:
+			case Lexer::TokenType::EQEQ:
+			case Lexer::TokenType::NOTEQ:
+			case Lexer::TokenType::EQEQEQ:
+			case Lexer::TokenType::NOTEQEQ: {
+				classId = DefaultClass::boolClassId;
+				return this;
+			}
+			case Lexer::TokenType::AND_AND:
+			case Lexer::TokenType::OR_OR: {
+				classId = DefaultClass::boolClassId;
+				return this;
+			}
+			default:
+				break;
 		}
 	}
 

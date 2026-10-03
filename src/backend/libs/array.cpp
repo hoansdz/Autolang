@@ -695,6 +695,62 @@ AObject *slice(NativeFuncInData) {
 	return newArr;
 }
 
+AObject *slice_indices(NativeFuncInData) {
+	auto arr = args[0];
+	auto array = arr->array;
+	int64_t len = array->size;
+
+	auto indicesObj = args[1];
+	auto indicesArr = indicesObj->array;
+	int64_t numIndices = indicesArr->size;
+
+	auto newArr = notifier.createArray(arr->type, array->key);
+	if (numIndices == 0) {
+		return newArr;
+	}
+
+	for (int64_t idx = 0; idx < numIndices; ++idx) {
+		int64_t i = 0;
+		switch (indicesArr->key) {
+			case DefaultClass::intClassId:
+				i = indicesArr->intData[idx];
+				break;
+			case DefaultClass::floatClassId:
+				i = static_cast<int64_t>(indicesArr->floatData[idx]);
+				break;
+			default:
+				if (indicesArr->objData[idx]) {
+					i = indicesArr->objData[idx]->i;
+				}
+				break;
+		}
+
+		if (i < 0) {
+			i += len;
+		}
+		if (i >= 0 && i < len) {
+			switch (array->key) {
+				case DefaultClass::intClassId: {
+					auto intObj = notifier.createInt(array->intData[i]);
+					notifier.arrayAdd(newArr, intObj);
+					break;
+				}
+				case DefaultClass::floatClassId: {
+					auto floatObj = notifier.createFloat(array->floatData[i]);
+					notifier.arrayAdd(newArr, floatObj);
+					break;
+				}
+				default: {
+					notifier.arrayAdd(newArr, array->objData[i]);
+					break;
+				}
+			}
+		}
+	}
+
+	return newArr;
+}
+
 AObject *reversed(NativeFuncInData) {
 	auto arr = args[0];
 	auto array = arr->array;
@@ -729,6 +785,33 @@ AObject *reversed(NativeFuncInData) {
 	}
 
 	return newArr;
+}
+
+AObject *reverse(NativeFuncInData) {
+	auto arr = args[0];
+	auto array = arr->array;
+	int64_t len = array->size;
+
+	if (len <= 1) {
+		return arr;
+	}
+
+	switch (array->key) {
+		case DefaultClass::intClassId: {
+			std::reverse(array->intData, array->intData + len);
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			std::reverse(array->floatData, array->floatData + len);
+			break;
+		}
+		default: {
+			std::reverse(array->objData, array->objData + len);
+			break;
+		}
+	}
+
+	return arr;
 }
 
 AObject *contains(NativeFuncInData) {
@@ -891,7 +974,10 @@ AObject *set(NativeFuncInData) {
 
 	switch (array->key) {
 		case DefaultClass::intClassId: {
-			array->intData[index] = args[2]->i;
+			array->intData[index] =
+			    (args[2]->type == DefaultClass::floatClassId)
+			        ? static_cast<int64_t>(args[2]->f)
+			        : args[2]->i;
 			break;
 		}
 		case DefaultClass::floatClassId: {
@@ -1018,22 +1104,29 @@ AObject *join_to_string(NativeFuncInData) {
 	std::string truncated = "...";
 	AObject *transform = nullptr;
 
-	if (argSize >= 2 && args[1]->type == DefaultClass::stringClassId) {
+	int64_t normalArgSize = argSize;
+	if (argSize >= 2 && args[argSize - 1] &&
+	    args[argSize - 1]->type == DefaultClass::functionClassId) {
+		transform = args[argSize - 1];
+		normalArgSize = argSize - 1;
+	}
+
+	if (normalArgSize >= 2 && args[1]->type == DefaultClass::stringClassId) {
 		separator = std::string(args[1]->str->data, args[1]->str->size);
 	}
-	if (argSize >= 3 && args[2]->type == DefaultClass::stringClassId) {
+	if (normalArgSize >= 3 && args[2]->type == DefaultClass::stringClassId) {
 		prefix = std::string(args[2]->str->data, args[2]->str->size);
 	}
-	if (argSize >= 4 && args[3]->type == DefaultClass::stringClassId) {
+	if (normalArgSize >= 4 && args[3]->type == DefaultClass::stringClassId) {
 		postfix = std::string(args[3]->str->data, args[3]->str->size);
 	}
-	if (argSize >= 5 && args[4]->type == DefaultClass::intClassId) {
+	if (normalArgSize >= 5 && args[4]->type == DefaultClass::intClassId) {
 		limit = args[4]->i;
 	}
-	if (argSize >= 6 && args[5]->type == DefaultClass::stringClassId) {
+	if (normalArgSize >= 6 && args[5]->type == DefaultClass::stringClassId) {
 		truncated = std::string(args[5]->str->data, args[5]->str->size);
 	}
-	if (argSize >= 7 && args[6] && args[6]->type != DefaultClass::nullClassId) {
+	if (normalArgSize >= 7 && args[6] && args[6]->type != DefaultClass::nullClassId && !transform) {
 		transform = args[6];
 	}
 
@@ -3063,6 +3156,47 @@ AObject *shuffled(NativeFuncInData) {
 	return cloneArr;
 }
 
+static inline void appendArrayElements(ANotifier &notifier, AObject *destArr, AArray *srcArray) {
+	if (!srcArray || srcArray->size == 0) return;
+	auto destArray = destArr->array;
+
+	if (srcArray->key == DefaultClass::intClassId) {
+		for (size_t j = 0; j < srcArray->size; ++j) {
+			if (destArray->key == DefaultClass::intClassId) {
+				if (destArray->size == destArray->maxSize) {
+					size_t newMax = (destArray->maxSize == 0) ? 1 : destArray->maxSize * 2;
+					destArray->reallocate(newMax);
+				}
+				destArray->intData[destArray->size++] = srcArray->intData[j];
+			} else {
+				auto intObj = notifier.createInt(srcArray->intData[j]);
+				notifier.arrayAdd(destArr, intObj);
+				notifier.release(intObj);
+			}
+		}
+	} else if (srcArray->key == DefaultClass::floatClassId) {
+		for (size_t j = 0; j < srcArray->size; ++j) {
+			if (destArray->key == DefaultClass::floatClassId) {
+				if (destArray->size == destArray->maxSize) {
+					size_t newMax = (destArray->maxSize == 0) ? 1 : destArray->maxSize * 2;
+					destArray->reallocate(newMax);
+				}
+				destArray->floatData[destArray->size++] = srcArray->floatData[j];
+			} else {
+				auto floatObj = notifier.createFloat(srcArray->floatData[j]);
+				notifier.arrayAdd(destArr, floatObj);
+				notifier.release(floatObj);
+			}
+		}
+	} else {
+		for (size_t j = 0; j < srcArray->size; ++j) {
+			auto obj = srcArray->objData[j];
+			if (!obj) obj = notifier.getNullObject();
+			notifier.arrayAdd(destArr, obj);
+		}
+	}
+}
+
 AObject *flatten(NativeFuncInData) {
 	auto arr = args[0];
 	auto array = arr->array;
@@ -3072,16 +3206,13 @@ AObject *flatten(NativeFuncInData) {
 	for (size_t i = 0; i < array->size; ++i) {
 		auto item = getItem(notifier, array, i);
 		if (item && (item->flags & AObject::Flags::OBJ_IS_ARRAY)) {
-			auto innerArray = item->array;
-			for (size_t j = 0; j < innerArray->size; ++j) {
-				auto innerItem = getItem(notifier, innerArray, j);
-				notifier.arrayAdd(newArr, innerItem);
-				notifier.release(innerItem);
-			}
+			appendArrayElements(notifier, newArr, item->array);
 		} else {
 			notifier.arrayAdd(newArr, item);
 		}
-		notifier.release(item);
+		if (array->key == DefaultClass::intClassId || array->key == DefaultClass::floatClassId) {
+			notifier.release(item);
+		}
 	}
 	return newArr;
 }
@@ -3384,12 +3515,7 @@ AObject *flat_map(NativeFuncInData) {
 		notifier.release(item);
 		if (notifier.hasException()) return nullptr;
 		if (res && (res->flags & AObject::Flags::OBJ_IS_ARRAY)) {
-			auto innerArray = res->array;
-			for (size_t j = 0; j < innerArray->size; ++j) {
-				auto innerItem = getItem(notifier, innerArray, j);
-				notifier.arrayAdd(newArr, innerItem);
-				notifier.release(innerItem);
-			}
+			appendArrayElements(notifier, newArr, res->array);
 		}
 		notifier.release(res);
 	}
@@ -4125,12 +4251,7 @@ AObject *flat_map_indexed(NativeFuncInData) {
 		notifier.release(item);
 		if (notifier.hasException()) return nullptr;
 		if (innerList && (innerList->flags & AObject::Flags::OBJ_IS_ARRAY)) {
-			auto innerArray = innerList->array;
-			for (size_t j = 0; j < innerArray->size; ++j) {
-				auto innerItem = getItem(notifier, innerArray, j);
-				notifier.arrayAdd(newArr, innerItem);
-				notifier.release(innerItem);
-			}
+			appendArrayElements(notifier, newArr, innerList->array);
 		}
 		notifier.release(innerList);
 	}
@@ -4403,6 +4524,74 @@ AObject *arr_subtract(NativeFuncInData) {
 	notifier.release(s1);
 	notifier.release(s2);
 	return res;
+}
+
+AObject *shift(NativeFuncInData) {
+	auto obj = args[0];
+	auto array = obj->array;
+	if (array->size == 0) {
+		return notifier.getNullObject();
+	}
+	AObject *zero = notifier.createInt(0);
+	AObject *shiftArgs[2] = {obj, zero};
+	auto res = remove_at(notifier, shiftArgs, 2);
+	notifier.release(zero);
+	return res;
+}
+
+AObject *unshift(NativeFuncInData) {
+	auto obj = args[0];
+	AObject *value = args[1];
+	AObject *zero = notifier.createInt(0);
+	AObject *unshiftArgs[3] = {obj, zero, value};
+	auto res = insert(notifier, unshiftArgs, 3);
+	notifier.release(zero);
+	return res;
+}
+
+AObject *count_element(NativeFuncInData) {
+	auto arr = args[0];
+	auto obj = args[1];
+	auto array = arr->array;
+
+	if (array->size == 0) {
+		return notifier.createInt(0);
+	}
+
+	int64_t count = 0;
+	switch (array->key) {
+		case DefaultClass::intClassId: {
+			if (obj->type == DefaultClass::intClassId) {
+				int64_t target = obj->i;
+				for (size_t i = 0; i < array->size; ++i) {
+					if (array->intData[i] == target) {
+						++count;
+					}
+				}
+			}
+			break;
+		}
+		case DefaultClass::floatClassId: {
+			double target = (obj->type == DefaultClass::intClassId)
+			                    ? static_cast<double>(obj->i)
+			                    : obj->f;
+			for (size_t i = 0; i < array->size; ++i) {
+				if (array->floatData[i] == target) {
+					++count;
+				}
+			}
+			break;
+		}
+		default: {
+			for (size_t i = 0; i < array->size; ++i) {
+				if (DefaultFunction::op_eqeq(array->objData[i], obj)) {
+					++count;
+				}
+			}
+			break;
+		}
+	}
+	return notifier.createInt(count);
 }
 
 } // namespace array
