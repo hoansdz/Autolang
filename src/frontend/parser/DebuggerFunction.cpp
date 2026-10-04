@@ -937,7 +937,8 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 	bool loadedLBrace = true;
 	bool canImplicitIt = false;
 	if constexpr (hasParams) {
-		if (token->type == Lexer::TokenType::OR) {
+		switch (token->type) {
+		case Lexer::TokenType::OR: {
 			parameter = loadListDeclaration<Autolang::Lexer::OR, false, false>(
 			    in_data, i, false);
 			classDeclaration->inputClassId.reserve(
@@ -965,13 +966,16 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 				                  "Expected body but not found\nHint: Provide "
 				                  "closure body inside '{ ... }'");
 			}
-		} else if (token->type == Lexer::TokenType::MINUS_GT) {
+			break;
+		}
+		case Lexer::TokenType::MINUS_GT: {
 			parameter = context.parameterPool.push();
 			classDeclaration->inputClassId.push_back(nullptr);
 			classDeclaration->line = firstLine;
 			loadedLBrace = true;
 			goto createClosure;
-		} else if (token->type == Lexer::TokenType::OR_OR) {
+		}
+		case Lexer::TokenType::OR_OR: {
 			parameter = context.parameterPool.push();
 			classDeclaration->inputClassId.push_back(nullptr);
 			classDeclaration->line = firstLine;
@@ -993,33 +997,38 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 				                  "Expected body but not found\nHint: Provide "
 				                  "closure body inside '{ ... }'");
 			}
-		} else if (hasArrowAtCurrentBraceLevel(context.tokens, i)) {
-			--i;
-			parameter = loadListDeclaration<Lexer::TokenType::MINUS_GT, false, false>(
-			    in_data, i, false);
-			classDeclaration->inputClassId.reserve(
-			    parameter->parameters.size() + 1);
-			classDeclaration->inputClassId.push_back(nullptr);
-			classDeclaration->line = firstLine;
-			loadedLBrace = true;
-			goto createClosure;
-		} else {
-			--i;
-			parameter = context.parameterPool.push();
-			classDeclaration->inputClassId.push_back(nullptr);
-			if (hasItIdentifierAtCurrentBraceLevel(context, context.tokens, i)) {
-				LexerStringId itNameId = context.createLexerStringIfNotExists("it");
-				const auto &itName = context.lexerString[itNameId];
-				auto itDeclaration = context.makeDeclarationNode(
-				    in_data, firstLine, itNameId, itName, nullptr, true,
-				    false, false, false, false);
-				parameter->parameters.push_back(itDeclaration);
+			break;
+		}
+		default: {
+			if (hasArrowAtCurrentBraceLevel(context.tokens, i)) {
+				--i;
+				parameter = loadListDeclaration<Lexer::TokenType::MINUS_GT, false, false>(
+				    in_data, i, false);
+				classDeclaration->inputClassId.reserve(
+				    parameter->parameters.size() + 1);
+				classDeclaration->inputClassId.push_back(nullptr);
+				classDeclaration->line = firstLine;
+				loadedLBrace = true;
+				goto createClosure;
 			} else {
-				canImplicitIt = true;
+				--i;
+				parameter = context.parameterPool.push();
+				classDeclaration->inputClassId.push_back(nullptr);
+				if (hasItIdentifierAtCurrentBraceLevel(context, context.tokens, i)) {
+					LexerStringId itNameId = context.createLexerStringIfNotExists("it");
+					const auto &itName = context.lexerString[itNameId];
+					auto itDeclaration = context.makeDeclarationNode(
+					    in_data, firstLine, itNameId, itName, nullptr, true,
+					    false, false, false, false);
+					parameter->parameters.push_back(itDeclaration);
+				} else {
+					canImplicitIt = true;
+				}
+				classDeclaration->line = firstLine;
+				loadedLBrace = true;
+				goto createClosure;
 			}
-			classDeclaration->line = firstLine;
-			loadedLBrace = true;
-			goto createClosure;
+		}
 		}
 	} else {
 		parameter = context.parameterPool.push();

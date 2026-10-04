@@ -3160,40 +3160,44 @@ static inline void appendArrayElements(ANotifier &notifier, AObject *destArr, AA
 	if (!srcArray || srcArray->size == 0) return;
 	auto destArray = destArr->array;
 
-	if (srcArray->key == DefaultClass::intClassId) {
-		for (size_t j = 0; j < srcArray->size; ++j) {
-			if (destArray->key == DefaultClass::intClassId) {
-				if (destArray->size == destArray->maxSize) {
-					size_t newMax = (destArray->maxSize == 0) ? 1 : destArray->maxSize * 2;
-					destArray->reallocate(newMax);
+	switch (srcArray->key) {
+		case DefaultClass::intClassId:
+			for (size_t j = 0; j < srcArray->size; ++j) {
+				if (destArray->key == DefaultClass::intClassId) {
+					if (destArray->size == destArray->maxSize) {
+						size_t newMax = (destArray->maxSize == 0) ? 1 : destArray->maxSize * 2;
+						destArray->reallocate(newMax);
+					}
+					destArray->intData[destArray->size++] = srcArray->intData[j];
+				} else {
+					auto intObj = notifier.createInt(srcArray->intData[j]);
+					notifier.arrayAdd(destArr, intObj);
+					notifier.release(intObj);
 				}
-				destArray->intData[destArray->size++] = srcArray->intData[j];
-			} else {
-				auto intObj = notifier.createInt(srcArray->intData[j]);
-				notifier.arrayAdd(destArr, intObj);
-				notifier.release(intObj);
 			}
-		}
-	} else if (srcArray->key == DefaultClass::floatClassId) {
-		for (size_t j = 0; j < srcArray->size; ++j) {
-			if (destArray->key == DefaultClass::floatClassId) {
-				if (destArray->size == destArray->maxSize) {
-					size_t newMax = (destArray->maxSize == 0) ? 1 : destArray->maxSize * 2;
-					destArray->reallocate(newMax);
+			break;
+		case DefaultClass::floatClassId:
+			for (size_t j = 0; j < srcArray->size; ++j) {
+				if (destArray->key == DefaultClass::floatClassId) {
+					if (destArray->size == destArray->maxSize) {
+						size_t newMax = (destArray->maxSize == 0) ? 1 : destArray->maxSize * 2;
+						destArray->reallocate(newMax);
+					}
+					destArray->floatData[destArray->size++] = srcArray->floatData[j];
+				} else {
+					auto floatObj = notifier.createFloat(srcArray->floatData[j]);
+					notifier.arrayAdd(destArr, floatObj);
+					notifier.release(floatObj);
 				}
-				destArray->floatData[destArray->size++] = srcArray->floatData[j];
-			} else {
-				auto floatObj = notifier.createFloat(srcArray->floatData[j]);
-				notifier.arrayAdd(destArr, floatObj);
-				notifier.release(floatObj);
 			}
-		}
-	} else {
-		for (size_t j = 0; j < srcArray->size; ++j) {
-			auto obj = srcArray->objData[j];
-			if (!obj) obj = notifier.getNullObject();
-			notifier.arrayAdd(destArr, obj);
-		}
+			break;
+		default:
+			for (size_t j = 0; j < srcArray->size; ++j) {
+				auto obj = srcArray->objData[j];
+				if (!obj) obj = notifier.getNullObject();
+				notifier.arrayAdd(destArr, obj);
+			}
+			break;
 	}
 }
 

@@ -249,12 +249,16 @@ ExprNode *DeclarationNode::copy(in_func) {
 
 std::string DeclarationNode::toString(in_func, bool isStaticMember) {
 	std::string result = "  ";
-	if (accessModifier == Lexer::TokenType::PRIVATE) {
-		result += "private ";
-	} else if (accessModifier == Lexer::TokenType::PROTECTED) {
-		result += "protected ";
-	} else {
-		result += "public ";
+	switch (accessModifier) {
+		case Lexer::TokenType::PRIVATE:
+			result += "private ";
+			break;
+		case Lexer::TokenType::PROTECTED:
+			result += "protected ";
+			break;
+		default:
+			result += "public ";
+			break;
 	}
 	if (isStaticMember || (isGlobal && contextCallClassId.has_value())) {
 		result += "static ";

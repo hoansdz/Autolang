@@ -129,19 +129,23 @@ void extractSmartCasts(in_func, HasClassIdNode *cond,
 	switch (cond->kind) {
 	case NodeType::BINARY: {
 		auto binary = static_cast<BinaryNode *>(cond);
-		if (binary->op == Lexer::TokenType::AND_AND || binary->op == Lexer::TokenType::AND) {
+		switch (binary->op) {
+		case Lexer::TokenType::AND_AND:
+		case Lexer::TokenType::AND: {
 			SmallVector<SmartCastInfo, 2> dummy1, dummy2;
 			extractSmartCasts(in_data, binary->left, trueCasts, dummy1);
 			extractSmartCasts(in_data, binary->right, trueCasts, dummy2);
 			return;
 		}
-		if (binary->op == Lexer::TokenType::OR_OR || binary->op == Lexer::TokenType::OR) {
+		case Lexer::TokenType::OR_OR:
+		case Lexer::TokenType::OR: {
 			SmallVector<SmartCastInfo, 2> dummy1, dummy2;
 			extractSmartCasts(in_data, binary->left, dummy1, falseCasts);
 			extractSmartCasts(in_data, binary->right, dummy2, falseCasts);
 			return;
 		}
-		if (binary->op == Lexer::TokenType::NOTEQ || binary->op == Lexer::TokenType::NOTEQEQ) {
+		case Lexer::TokenType::NOTEQ:
+		case Lexer::TokenType::NOTEQEQ: {
 			if (isNullNode(in_data, binary->right)) {
 				auto decl = extractDeclaration(in_data, binary->left);
 				if (decl) addSmartCast(trueCasts, decl, false);
@@ -151,7 +155,8 @@ void extractSmartCasts(in_func, HasClassIdNode *cond,
 			}
 			return;
 		}
-		if (binary->op == Lexer::TokenType::EQEQ || binary->op == Lexer::TokenType::EQEQEQ) {
+		case Lexer::TokenType::EQEQ:
+		case Lexer::TokenType::EQEQEQ: {
 			if (isNullNode(in_data, binary->right)) {
 				auto decl = extractDeclaration(in_data, binary->left);
 				if (decl) addSmartCast(falseCasts, decl, false);
@@ -161,33 +166,38 @@ void extractSmartCasts(in_func, HasClassIdNode *cond,
 			}
 			return;
 		}
-		if (binary->op == Lexer::TokenType::IS) {
+		case Lexer::TokenType::IS: {
 			auto decl = extractDeclaration(in_data, binary->left);
 			ClassId cid = 0;
-			ClassDeclaration *cdecl = nullptr;
-			if (decl && extractTargetClass(in_data, binary->right, cid, cdecl)) {
-				addSmartCast(trueCasts, decl, false, true, cid, cdecl);
+			ClassDeclaration *targetClassDecl = nullptr;
+			if (decl && extractTargetClass(in_data, binary->right, cid, targetClassDecl)) {
+				addSmartCast(trueCasts, decl, false, true, cid, targetClassDecl);
 			}
 			return;
 		}
-		if (binary->op == Lexer::TokenType::NOT_IS) {
+		case Lexer::TokenType::NOT_IS: {
 			auto decl = extractDeclaration(in_data, binary->left);
 			ClassId cid = 0;
-			ClassDeclaration *cdecl = nullptr;
-			if (decl && extractTargetClass(in_data, binary->right, cid, cdecl)) {
-				addSmartCast(falseCasts, decl, false, true, cid, cdecl);
+			ClassDeclaration *targetClassDecl = nullptr;
+			if (decl && extractTargetClass(in_data, binary->right, cid, targetClassDecl)) {
+				addSmartCast(falseCasts, decl, false, true, cid, targetClassDecl);
 			}
 			return;
 		}
-		if (binary->op == Lexer::TokenType::IN_ && binary->right->kind == NodeType::RANGE) {
-			auto decl = extractDeclaration(in_data, binary->left);
-			if (decl) {
-				auto outDecl = context.classDeclarationAllocator.push();
-				outDecl->line = binary->line;
-				outDecl->classId = DefaultClass::intClassId;
-				addSmartCast(trueCasts, decl, false, true, DefaultClass::intClassId, outDecl);
+		case Lexer::TokenType::IN_: {
+			if (binary->right->kind == NodeType::RANGE) {
+				auto decl = extractDeclaration(in_data, binary->left);
+				if (decl) {
+					auto outDecl = context.classDeclarationAllocator.push();
+					outDecl->line = binary->line;
+					outDecl->classId = DefaultClass::intClassId;
+					addSmartCast(trueCasts, decl, false, true, DefaultClass::intClassId, outDecl);
+				}
 			}
 			return;
+		}
+		default:
+			break;
 		}
 		break;
 	}

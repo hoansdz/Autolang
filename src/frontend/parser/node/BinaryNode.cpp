@@ -52,21 +52,27 @@ ExprNode *BinaryNode::leftOpRight(in_func, ConstValueNode *l,
 			const bool result = op == Lexer::TokenType::EQEQEQ;
 			switch (l->classId) {
 				case Autolang::DefaultClass::boolClassId: {
-					if (r->classId == Autolang::DefaultClass::boolClassId) {
-						const bool equal = (l->obj->b == r->obj->b);
-						return context.constValuePool.push(
-						    line, result ? equal : !equal);
-					} else if (r->classId ==
-					           Autolang::DefaultClass::nullClassId) {
-						return context.constValuePool.push(line, !result);
+					switch (r->classId) {
+						case Autolang::DefaultClass::boolClassId: {
+							const bool equal = (l->obj->b == r->obj->b);
+							return context.constValuePool.push(
+							    line, result ? equal : !equal);
+						}
+						case Autolang::DefaultClass::nullClassId:
+							return context.constValuePool.push(line, !result);
+						default:
+							break;
 					}
+					break;
 				}
 				case Autolang::DefaultClass::nullClassId: {
-					if (r->classId == Autolang::DefaultClass::nullClassId) {
-						return context.constValuePool.push(line, result);
-					} else if (r->classId ==
-					           Autolang::DefaultClass::boolClassId) {
-						return context.constValuePool.push(line, !result);
+					switch (r->classId) {
+						case Autolang::DefaultClass::nullClassId:
+							return context.constValuePool.push(line, result);
+						case Autolang::DefaultClass::boolClassId:
+							return context.constValuePool.push(line, !result);
+						default:
+							break;
 					}
 					break;
 				}
@@ -98,20 +104,28 @@ ExprNode *BinaryNode::leftOpRight(in_func, ConstValueNode *l,
 
 ExprNode *BinaryNode::resolve(in_func) {
 	left = static_cast<HasClassIdNode *>(left->resolve(in_data));
-	if (op == Lexer::TokenType::AND_AND || op == Lexer::TokenType::AND) {
-		SmallVector<SmartCastInfo, 2> trueCasts, dummy;
-		extractSmartCasts(in_data, left, trueCasts, dummy);
-		for (auto &cast : trueCasts) cast.apply();
-		right = static_cast<HasClassIdNode *>(right->resolve(in_data));
-		for (auto &cast : trueCasts) cast.restore();
-	} else if (op == Lexer::TokenType::OR_OR || op == Lexer::TokenType::OR) {
-		SmallVector<SmartCastInfo, 2> dummy, falseCasts;
-		extractSmartCasts(in_data, left, dummy, falseCasts);
-		for (auto &cast : falseCasts) cast.apply();
-		right = static_cast<HasClassIdNode *>(right->resolve(in_data));
-		for (auto &cast : falseCasts) cast.restore();
-	} else {
-		right = static_cast<HasClassIdNode *>(right->resolve(in_data));
+	switch (op) {
+		case Lexer::TokenType::AND_AND:
+		case Lexer::TokenType::AND: {
+			SmallVector<SmartCastInfo, 2> trueCasts, dummy;
+			extractSmartCasts(in_data, left, trueCasts, dummy);
+			for (auto &cast : trueCasts) cast.apply();
+			right = static_cast<HasClassIdNode *>(right->resolve(in_data));
+			for (auto &cast : trueCasts) cast.restore();
+			break;
+		}
+		case Lexer::TokenType::OR_OR:
+		case Lexer::TokenType::OR: {
+			SmallVector<SmartCastInfo, 2> dummy, falseCasts;
+			extractSmartCasts(in_data, left, dummy, falseCasts);
+			for (auto &cast : falseCasts) cast.apply();
+			right = static_cast<HasClassIdNode *>(right->resolve(in_data));
+			for (auto &cast : falseCasts) cast.restore();
+			break;
+		}
+		default:
+			right = static_cast<HasClassIdNode *>(right->resolve(in_data));
+			break;
 	}
 	switch (op) {
 		case Lexer::TokenType::IN_:
@@ -207,20 +221,28 @@ ExprNode *BinaryNode::resolve(in_func) {
 
 ExprNode *BinaryNode::optimize(in_func) {
 	left = static_cast<HasClassIdNode *>(left->optimize(in_data));
-	if (op == Lexer::TokenType::AND_AND || op == Lexer::TokenType::AND) {
-		SmallVector<SmartCastInfo, 2> trueCasts, dummy;
-		extractSmartCasts(in_data, left, trueCasts, dummy);
-		for (auto &cast : trueCasts) cast.apply();
-		right = static_cast<HasClassIdNode *>(right->optimize(in_data));
-		for (auto &cast : trueCasts) cast.restore();
-	} else if (op == Lexer::TokenType::OR_OR || op == Lexer::TokenType::OR) {
-		SmallVector<SmartCastInfo, 2> dummy, falseCasts;
-		extractSmartCasts(in_data, left, dummy, falseCasts);
-		for (auto &cast : falseCasts) cast.apply();
-		right = static_cast<HasClassIdNode *>(right->optimize(in_data));
-		for (auto &cast : falseCasts) cast.restore();
-	} else {
-		right = static_cast<HasClassIdNode *>(right->optimize(in_data));
+	switch (op) {
+		case Lexer::TokenType::AND_AND:
+		case Lexer::TokenType::AND: {
+			SmallVector<SmartCastInfo, 2> trueCasts, dummy;
+			extractSmartCasts(in_data, left, trueCasts, dummy);
+			for (auto &cast : trueCasts) cast.apply();
+			right = static_cast<HasClassIdNode *>(right->optimize(in_data));
+			for (auto &cast : trueCasts) cast.restore();
+			break;
+		}
+		case Lexer::TokenType::OR_OR:
+		case Lexer::TokenType::OR: {
+			SmallVector<SmartCastInfo, 2> dummy, falseCasts;
+			extractSmartCasts(in_data, left, dummy, falseCasts);
+			for (auto &cast : falseCasts) cast.apply();
+			right = static_cast<HasClassIdNode *>(right->optimize(in_data));
+			for (auto &cast : falseCasts) cast.restore();
+			break;
+		}
+		default:
+			right = static_cast<HasClassIdNode *>(right->optimize(in_data));
+			break;
 	}
 	switch (left->kind) {
 		case NodeType::CONST_VAL:
@@ -671,17 +693,19 @@ ExprNode *BinaryNode::optimize(in_func) {
 bool BinaryNode::putOptimizedBytecode(in_func, std::vector<uint8_t> &bytecodes,
                                       Lexer::TokenType op, HasClassIdNode *left,
                                       HasClassIdNode *right) {
-	if (op == Lexer::TokenType::IS) {
-		left->putBytecodes(in_data, bytecodes);
-		bytecodes.emplace_back(Opcode::IS);
-		put_opcode_u32(bytecodes, right->classId);
-		return true;
-	}
-	if (op == Lexer::TokenType::NOT_IS) {
-		left->putBytecodes(in_data, bytecodes);
-		bytecodes.emplace_back(Opcode::NOT_IS);
-		put_opcode_u32(bytecodes, right->classId);
-		return true;
+	switch (op) {
+		case Lexer::TokenType::IS:
+			left->putBytecodes(in_data, bytecodes);
+			bytecodes.emplace_back(Opcode::IS);
+			put_opcode_u32(bytecodes, right->classId);
+			return true;
+		case Lexer::TokenType::NOT_IS:
+			left->putBytecodes(in_data, bytecodes);
+			bytecodes.emplace_back(Opcode::NOT_IS);
+			put_opcode_u32(bytecodes, right->classId);
+			return true;
+		default:
+			break;
 	}
 	auto it = context.operatorTable.find(op);
 	if (it == context.operatorTable.end())

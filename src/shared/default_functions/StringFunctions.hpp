@@ -371,15 +371,27 @@ inline AObject *str_split(NativeFuncInData) {
 
 	if (args[1]->flags & AObject::Flags::OBJ_IS_ARRAY) {
 		auto arr = args[1]->array;
-		for (size_t i = 0; i < arr->size; ++i) {
-			if (arr->key == DefaultClass::intClassId) {
-				delims.push_back(AString::codePointToUtf8(static_cast<uint32_t>(arr->intData[i])));
-			} else if (arr->key == DefaultClass::floatClassId) {
-				delims.push_back(AString::codePointToUtf8(static_cast<uint32_t>(arr->floatData[i])));
-			} else if (arr->objData && arr->objData[i]) {
-				std::string buf;
-				delims.emplace_back(str_arg_view(arr->objData[i], buf));
-			}
+		switch (arr->key) {
+			case DefaultClass::intClassId:
+				for (size_t i = 0; i < arr->size; ++i) {
+					delims.push_back(AString::codePointToUtf8(static_cast<uint32_t>(arr->intData[i])));
+				}
+				break;
+			case DefaultClass::floatClassId:
+				for (size_t i = 0; i < arr->size; ++i) {
+					delims.push_back(AString::codePointToUtf8(static_cast<uint32_t>(arr->floatData[i])));
+				}
+				break;
+			default:
+				if (arr->objData) {
+					for (size_t i = 0; i < arr->size; ++i) {
+						if (arr->objData[i]) {
+							std::string buf;
+							delims.emplace_back(str_arg_view(arr->objData[i], buf));
+						}
+					}
+				}
+				break;
 		}
 		if (argSize >= 3 && args[2]->type == DefaultClass::boolClassId) {
 			ignoreCase = args[2]->b;
@@ -2243,14 +2255,20 @@ inline AObject *string_builder_set(NativeFuncInData) {
 		return nullptr;
 	}
 	std::string s(curContent->str->data, curContent->str->size);
-	if (args[2]->type == DefaultClass::charClassId) {
-		std::string chStr = AString::codePointToUtf8(static_cast<uint32_t>(args[2]->chr));
-		s.replace(pos, 1, chStr);
-	} else if (args[2]->type == DefaultClass::stringClassId) {
-		s.replace(pos, 1, std::string_view(args[2]->str->data, args[2]->str->size));
-	} else {
-		std::string chStr = to_string(notifier, args[2]);
-		s.replace(pos, 1, chStr);
+	switch (args[2]->type) {
+		case DefaultClass::charClassId: {
+			std::string chStr = AString::codePointToUtf8(static_cast<uint32_t>(args[2]->chr));
+			s.replace(pos, 1, chStr);
+			break;
+		}
+		case DefaultClass::stringClassId:
+			s.replace(pos, 1, std::string_view(args[2]->str->data, args[2]->str->size));
+			break;
+		default: {
+			std::string chStr = to_string(notifier, args[2]);
+			s.replace(pos, 1, chStr);
+			break;
+		}
 	}
 	string_builder_set_content(notifier, self, s);
 	return self;

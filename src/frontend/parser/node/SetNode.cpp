@@ -963,32 +963,34 @@ void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	if (detach->kind == NodeType::VAR) {
 		auto varNode = static_cast<VarNode *>(detach);
 		if (varNode->declaration->isCapturedByClosure && !varNode->declaration->isGlobal) {
-			if (op == Lexer::TokenType::PLUS_EQUAL || op == Lexer::TokenType::MINUS_EQUAL ||
-			    op == Lexer::TokenType::STAR_EQUAL || op == Lexer::TokenType::SLASH_EQUAL ||
-			    op == Lexer::TokenType::PERCENT_EQUAL) {
+			Opcode binOp;
+			bool isCompound = true;
+			switch (op) {
+				case Lexer::TokenType::PLUS_EQUAL:
+					binOp = Opcode::PLUS;
+					break;
+				case Lexer::TokenType::MINUS_EQUAL:
+					binOp = Opcode::MINUS;
+					break;
+				case Lexer::TokenType::STAR_EQUAL:
+					binOp = Opcode::MUL;
+					break;
+				case Lexer::TokenType::SLASH_EQUAL:
+					binOp = Opcode::DIVIDE;
+					break;
+				case Lexer::TokenType::PERCENT_EQUAL:
+					binOp = Opcode::MOD;
+					break;
+				default:
+					isCompound = false;
+					break;
+			}
+			if (isCompound) {
 				varNode->isStore = false;
 				varNode->isGetPointer = false;
 				varNode->putBytecodes(in_data, bytecodes);
 				value->putBytecodes(in_data, bytecodes);
-				switch (op) {
-					case Lexer::TokenType::PLUS_EQUAL:
-						bytecodes.emplace_back(Opcode::PLUS);
-						break;
-					case Lexer::TokenType::MINUS_EQUAL:
-						bytecodes.emplace_back(Opcode::MINUS);
-						break;
-					case Lexer::TokenType::STAR_EQUAL:
-						bytecodes.emplace_back(Opcode::MUL);
-						break;
-					case Lexer::TokenType::SLASH_EQUAL:
-						bytecodes.emplace_back(Opcode::DIVIDE);
-						break;
-					case Lexer::TokenType::PERCENT_EQUAL:
-						bytecodes.emplace_back(Opcode::MOD);
-						break;
-					default:
-						break;
-				}
+				bytecodes.emplace_back(binOp);
 				if (varNode->classId == Autolang::DefaultClass::intClassId &&
 				    value->classId == Autolang::DefaultClass::floatClassId) {
 					bytecodes.emplace_back(Opcode::FLOAT_TO_INT);
