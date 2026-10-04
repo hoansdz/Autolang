@@ -40,10 +40,13 @@ __pycache__/
 # Node.js
 node_modules/
 
-# Temporary test files
+# Temporary test files and helper scripts
+tests/scripts/
+tests/stress_*.txt
 tests/b.atl
 tests/tmp*.atl
-test_*.atl
+/test_*.atl
+scratch/
 
 # Logs and temporary files
 *.log

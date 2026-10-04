@@ -1,0 +1,467 @@
+fun testAllNewFeatures() {
+    // 1. Math Functions & Math Class
+    assert(min(3, 5) == 3, "min(Int, Int)")
+    assert(min(3.5, 2.1) == 2.1, "min(Float, Float)")
+    assert(min(3, 2.5) == 2.5, "min(Int, Float)")
+    assert(min(4.5, 6) == 4.5, "min(Float, Int)")
+
+    assert(max(3, 5) == 5, "max(Int, Int)")
+    assert(max(3.5, 2.1) == 3.5, "max(Float, Float)")
+    assert(max(3, 4.5) == 4.5, "max(Int, Float)")
+    assert(max(5.5, 4) == 5.5, "max(Float, Int)")
+
+    assert(abs(-10) == 10, "abs(Int)")
+    assert(abs(-3.5) == 3.5, "abs(Float)")
+
+    assert(sqrt(16.0) == 4.0, "sqrt(Float)")
+    assert(sqrt(25) == 5.0, "sqrt(Int)")
+
+    assert(pow(2, 3) == 8, "pow(Int, Int)")
+    assert(pow(2.0, 3.0) == 8.0, "pow(Float, Float)")
+    assert(pow(2, 3.0) == 8.0, "pow(Int, Float)")
+    assert(pow(2.0, 3) == 8.0, "pow(Float, Int)")
+
+    assert(floor(3.7) == 3.0, "floor(Float)")
+    assert(floor(5) == 5, "floor(Int)")
+    assert(ceil(3.2) == 4.0, "ceil(Float)")
+    assert(ceil(5) == 5, "ceil(Int)")
+    assert(round(3.6) == 4, "round(Float)")
+    assert(round(5) == 5, "round(Int)")
+
+    assert(PI > 3.14 && PI < 3.15, "PI")
+    assert(E > 2.71 && E < 2.72, "E")
+
+    assert(Math.PI > 3.14 && Math.PI < 3.15, "Math.PI")
+    assert(Math.E > 2.71 && Math.E < 2.72, "Math.E")
+    assert(Math.min(10, 20) == 10, "Math.min")
+    assert(Math.max(10, 20) == 20, "Math.max")
+    assert(Math.abs(-7) == 7, "Math.abs")
+    assert(Math.floor(2.9) == 2.0, "Math.floor")
+    assert(Math.ceil(2.1) == 3.0, "Math.ceil")
+    assert(Math.round(2.6) == 3, "Math.round")
+    assert(Math.sqrt(9.0) == 3.0, "Math.sqrt")
+    assert(Math.pow(2, 4) == 16, "Math.pow")
+    assert(Math.sign(-50) == -1, "Math.sign(Int)")
+    assert(Math.sign(50.0) == 1.0, "Math.sign(Float)")
+
+    // 2. Global Type Conversions & Utilities
+    assert(int("123") == 123, "int(String)")
+    assert(int(45.6) == 45, "int(Float)")
+    assert(float("3.14") > 3.13 && float("3.14") < 3.15, "float(String)")
+    assert(float(10) == 10.0, "float(Int)")
+    assert(str(12345) == "12345", "str(Any)")
+    assert(chr(65) == "A", "chr(Int)")
+    assert(ord('A') == 65, "ord(Char)")
+    assert(ord("Hello") == 72, "ord(String)")
+
+    assert(len([1, 2, 3, 4]) == 4, "len(Array)")
+    assert(len("Hello World") == 11, "len(String)")
+    val myMap = Map<String, Int>()
+    myMap.put("a", 1)
+    myMap.put("b", 2)
+    assert(len(myMap) == 2, "len(Map)")
+    val mySet = [1, 2, 3].toSet()
+    assert(len(mySet) == 3, "len(Set)")
+
+    assert(sum([1, 2, 3, 4]) == 10, "sum(Array<Int>)")
+    assert(sum([1.5, 2.5, 3.0]) == 7.0, "sum(Array<Float>)")
+
+    val rawSorted = [3, 1, 4, 2]
+    val sortedArr = sorted(rawSorted)
+    assert(sortedArr.size() == 4, "sorted size")
+    assert(sortedArr[0] == 1 && sortedArr[1] == 2 && sortedArr[2] == 3 && sortedArr[3] == 4, "sorted contents")
+
+    val toEnum = ["a", "b", "c"]
+    val enumArr = enumerate(toEnum)
+    assert(enumArr.size() == 3, "enumerate size")
+    assert(enumArr[0].index == 0 && enumArr[0].value == "a", "enumerate[0]")
+    assert(enumArr[1].index == 1 && enumArr[1].value == "b", "enumerate[1]")
+    assert(enumArr[2].index == 2 && enumArr[2].value == "c", "enumerate[2]")
+
+    val z1 = [1, 2, 3]
+    val z2 = ["x", "y", "z"]
+    val zipped = zip(z1, z2)
+    assert(zipped.size() == 3, "zip size")
+    assert(zipped[0].first == 1 && zipped[0].second == "x", "zip[0]")
+    assert(zipped[2].first == 3 && zipped[2].second == "z", "zip[2]")
+
+    // 3. Array Extension Methods
+    val q = [10, 20, 30]
+    val firstElem = q.shift()
+    assert(firstElem == 10, "shift() return value")
+    assert(q.size() == 2, "shift() size")
+    assert(q[0] == 20 && q[1] == 30, "shift() remaining")
+
+    q.unshift(5)
+    assert(q.size() == 3, "unshift() size")
+    assert(q[0] == 5 && q[1] == 20 && q[2] == 30, "unshift() contents")
+
+    val concatenated = q.concat([40, 50])
+    assert(concatenated.size() == 5, "concat(Array)")
+    assert(concatenated[3] == 40 && concatenated[4] == 50, "concat(Array) values")
+
+    val concatElem = q.concat(99)
+    assert(concatElem.size() == 4, "concat(element)")
+    assert(concatElem[3] == 99, "concat(element) value")
+
+    val hasEven = [1, 3, 4, 5].some({ x: Int -> x % 2 == 0 })
+    assert(hasEven == true, "some() true")
+    val hasNegative = [1, 3, 5].some({ x: Int -> x < 0 })
+    assert(hasNegative == false, "some() false")
+
+    val allPositive = [1, 2, 3].every({ x: Int -> x > 0 })
+    assert(allPositive == true, "every() true")
+    val allEven = [2, 4, 5].every({ x: Int -> x % 2 == 0 })
+    assert(allEven == false, "every() false")
+
+    val idx = [10, 20, 30, 40].findIndex({ x: Int -> x > 25 })
+    assert(idx == 2, "findIndex()")
+
+    val nested = [[1, 2], [3, 4]]
+    val flattened = nested.flat()
+    assert(flattened.size() == 4, "flat() size")
+    assert(flattened[0] == 1 && flattened[3] == 4, "flat() contents")
+
+    val extList = [1, 2]
+    extList.extend([3, 4])
+    assert(extList.size() == 4, "extend() size")
+    assert(extList[2] == 3 && extList[3] == 4, "extend() contents")
+
+    val countArr = [1, 2, 2, 3, 2, 4]
+    assert(countArr.count(2) == 3, "count(element)")
+    assert(countArr.count(99) == 0, "count(element) not found")
+
+    // 4. String Extension Methods
+    val joinedStr = ", ".join(["apple", "banana", "orange"])
+    assert(joinedStr == "apple, banana, orange", "separator.join()")
+
+    val word = "abracadabra"
+    assert(word.count("a") == 5, "String.count(sub)")
+    assert(word.count("abra") == 2, "String.count(sub multi)")
+
+    assert("hello".capitalize() == "Hello", "String.capitalize()")
+    assert("".capitalize() == "", "String.capitalize() empty")
+
+    assert("hello world".startswith("hello") == true, "String.startswith(String)")
+    assert("hello world".startswith("world") == false, "String.startswith(String) false")
+    assert("hello world".endswith("world") == true, "String.endswith(String)")
+    assert("hello world".endswith("hello") == false, "String.endswith(String) false")
+
+    assert("   hello   ".lstrip() == "hello   ", "String.lstrip()")
+    assert("   hello   ".rstrip() == "   hello", "String.rstrip()")
+
+    assert("12345".isdigit() == true, "String.isdigit() true")
+    assert("123a".isdigit() == false, "String.isdigit() false")
+    assert("hello".isalpha() == true, "String.isalpha() true")
+    assert("hello1".isalpha() == false, "String.isalpha() false")
+    assert("abc123".isalnum() == true, "String.isalnum() true")
+    assert("abc 123".isalnum() == false, "String.isalnum() false")
+    assert("   \t\n".isspace() == true, "String.isspace() true")
+    assert("  a ".isspace() == false, "String.isspace() false")
+
+    // 5. Map Extension Methods
+    val mapObj = Map<String, Int>()
+    mapObj.put("a", 10)
+    mapObj.put("b", 20)
+    val entries = mapObj.items()
+    assert(entries.size() == 2, "Map.items() size")
+    assert(mapObj.get("a", 999) == 10, "Map.get(key, default) found")
+    assert(mapObj.get("z", 999) == 999, "Map.get(key, default) default")
+
+    val updateMap = Map<String, Int>()
+    updateMap.put("b", 25)
+    updateMap.put("c", 30)
+    mapObj.update(updateMap)
+    assert(mapObj.get("b", 0) == 25, "Map.update() existing")
+    assert(mapObj.get("c", 0) == 30, "Map.update() new")
+
+    // 6. Set Extension Methods
+    val setA = [1, 2, 3, 4].toSet()
+    val setB = [2, 3].toSet()
+    assert(setA.issuperset(setB) == true, "Set.issuperset() true")
+    assert(setB.issuperset(setA) == false, "Set.issuperset() false")
+
+    println("All new stdlib basic features passed successfully!")
+}
+
+fun testEdgeCasesAndStress() {
+    // 1. Math Edge Cases
+    assert(sqrt(0.0) == 0.0, "sqrt(0.0)")
+    assert(sqrt(0) == 0.0, "sqrt(0)")
+    assert(pow(0, 0) == 1, "pow(0, 0)")
+    assert(pow(0, 5) == 0, "pow(0, 5)")
+    assert(pow(-2, 3) == -8, "pow(-2, 3)")
+    assert(pow(-2, 4) == 16, "pow(-2, 4)")
+    assert(pow(4.0, 0.5) == 2.0, "pow(4.0, 0.5)")
+    assert(pow(2.0, -1.0) == 0.5, "pow(2.0, -1.0)")
+
+    assert(floor(-3.2) == -4.0, "floor(-3.2)")
+    assert(floor(-3.0) == -3.0, "floor(-3.0)")
+    assert(ceil(-3.7) == -3.0, "ceil(-3.7)")
+    assert(ceil(-3.0) == -3.0, "ceil(-3.0)")
+    assert(round(-3.6) == -4.0, "round(-3.6)")
+    assert(round(-3.2) == -3.0, "round(-3.2)")
+
+    assert(min(-10, -20) == -20, "min(-10, -20)")
+    assert(min(-5.5, -2.1) == -5.5, "min(-5.5, -2.1)")
+    assert(max(-10, -20) == -10, "max(-10, -20)")
+    assert(max(-5.5, -2.1) == -2.1, "max(-5.5, -2.1)")
+
+    assert(Math.sign(0) == 0, "Math.sign(0)")
+    assert(Math.sign(-999) == -1, "Math.sign(-999)")
+    assert(Math.sign(999) == 1, "Math.sign(999)")
+    assert(Math.sign(0.0) == 0.0, "Math.sign(0.0)")
+    assert(Math.sign(-0.5) == -1.0, "Math.sign(-0.5)")
+
+    // 2. Array Edge Cases
+    val emptyIntArr: Array<Int> = []
+    assert(emptyIntArr.shift() == null, "empty array shift() returns null")
+    assert(emptyIntArr.size() == 0, "empty array size after shift")
+
+    emptyIntArr.unshift(100)
+    assert(emptyIntArr.size() == 1, "size after unshift on empty")
+    assert(emptyIntArr[0] == 100, "element after unshift on empty")
+
+    // FIFO Stress
+    val fifo = [1, 2, 3]
+    fifo.unshift(0)
+    assert(fifo.shift() == 0, "fifo shift 0")
+    assert(fifo.shift() == 1, "fifo shift 1")
+    assert(fifo.shift() == 2, "fifo shift 2")
+    assert(fifo.shift() == 3, "fifo shift 3")
+    assert(fifo.shift() == null, "fifo shift exhausted")
+    assert(fifo.size() == 0, "fifo size empty")
+
+    // Logic Vacuous Truth on Empty Array
+    val vacuousArr: Array<Int> = []
+    assert(vacuousArr.some({ x: Int -> x > 0 }) == false, "[].some() == false")
+    assert(vacuousArr.every({ x: Int -> x > 0 }) == true, "[].every() == true")
+
+    // findIndex not found
+    assert([10, 20, 30].findIndex({ x: Int -> x == 999 }) == -1, "findIndex not found")
+
+    // flat nested edge cases
+    val nestedEmpty: Array<Array<Int>> = [[], [1], [], [2, 3]]
+    val flatRes = nestedEmpty.flat()
+    assert(flatRes.size() == 3, "flat with empty subarrays size")
+    assert(flatRes[0] == 1 && flatRes[1] == 2 && flatRes[2] == 3, "flat with empty subarrays elements")
+
+    // count on empty / duplicates
+    val noCount: Array<Int> = []
+    assert(noCount.count(5) == 0, "[].count()")
+    assert([1, 1, 1, 1].count(1) == 4, "[1,1,1,1].count(1)")
+
+    // concat with empty
+    val cEmpty: Array<Int> = []
+    assert(cEmpty.concat([1, 2]).size() == 2, "[].concat([1,2])")
+    assert(cEmpty.concat([]).size() == 0, "[].concat([])")
+
+    // 3. String Edge Cases
+    val emptyStrings: Array<String> = []
+    assert(", ".join(emptyStrings) == "", "join empty array")
+    assert("".join(["x", "y", "z"]) == "xyz", "join with empty separator")
+    assert("-".join(["single"]) == "single", "join with 1 element")
+    assert("-".join([1, 2, 3]) == "1-2-3", "join with int elements")
+
+    assert("hello".count("z") == 0, "count not found")
+    assert("hello".count("hello world") == 0, "count longer needle")
+    assert("aaaa".count("aa") == 2, "count overlapping behavior")
+
+    assert("".capitalize() == "", "capitalize empty")
+    assert("a".capitalize() == "A", "capitalize single lowercase")
+    assert("Z".capitalize() == "Z", "capitalize single uppercase")
+    assert("!hello".capitalize() == "!hello", "capitalize symbol start")
+    assert("123abc".capitalize() == "123abc", "capitalize number start")
+
+    assert("test".startswith("") == true, "startswith empty needle")
+    assert("test".endswith("") == true, "endswith empty needle")
+    assert("".startswith("") == true, "empty string startswith empty")
+    assert("".endswith("") == true, "empty string endswith empty")
+
+    assert("   ".lstrip() == "", "lstrip all spaces")
+    assert("   ".rstrip() == "", "rstrip all spaces")
+    assert("abc".lstrip() == "abc", "lstrip no spaces")
+    assert("abc".rstrip() == "abc", "rstrip no spaces")
+
+    assert("".isdigit() == false, "empty isdigit")
+    assert("".isalpha() == false, "empty isalpha")
+    assert("".isalnum() == false, "empty isalnum")
+    assert("".isspace() == false, "empty isspace")
+
+    // 4. Utilities & Conversions Edge Cases
+    val lenArr: Array<Int> = []
+    assert(len(lenArr) == 0, "len([])")
+    assert(len("") == 0, "len('')")
+    val lenMap = Map<String, Int>()
+    assert(len(lenMap) == 0, "len(empty Map)")
+    val lenSet = Set<Int>()
+    assert(len(lenSet) == 0, "len(empty Set)")
+
+    val emptyInts: Array<Int> = []
+    val emptyFloats: Array<Float> = []
+    assert(sum(emptyInts) == 0, "sum([]: Int)")
+    assert(sum(emptyFloats) == 0.0, "sum([]: Float)")
+
+    val sEmpty: Array<Int> = []
+    assert(sorted(sEmpty).size() == 0, "sorted([])")
+    val sSingle = [42]
+    assert(sorted(sSingle).size() == 1, "sorted([42])")
+    val rawDup = [3, 1, 3, 2, 1]
+    val sDup = sorted(rawDup)
+    assert(sDup[0] == 1 && sDup[1] == 1 && sDup[2] == 2 && sDup[3] == 3 && sDup[4] == 3, "sorted with duplicates")
+
+    val zShortA = [1, 2, 3, 4, 5]
+    val zShortB = ["a", "b"]
+    val zShort = zip(zShortA, zShortB)
+    assert(zShort.size() == 2, "zip mismatched length size")
+    assert(zShort[0].first == 1 && zShort[0].second == "a", "zip mismatched first")
+    assert(zShort[1].first == 2 && zShort[1].second == "b", "zip mismatched second")
+
+    assert(int("-456") == -456, "int('-456')")
+    assert(float("-12.5") == -12.5, "float('-12.5')")
+
+    // 5. Map & Set Edge Cases
+    val mZero = Map<String, Int>()
+    mZero.put("zero", 0)
+    assert(mZero.get("zero", 999) == 0, "Map.get key with value 0")
+    assert(mZero.get("not_found", 999) == 999, "Map.get missing key")
+
+    val setEmpty1 = Set<Int>()
+    val setEmpty2 = Set<Int>()
+    assert(setEmpty1.issuperset(setEmpty2) == true, "empty.issuperset(empty)")
+    val setX = [1, 2].toSet()
+    assert(setX.issuperset(setX) == true, "set.issuperset(self)")
+    assert(setX.issuperset(setEmpty1) == true, "set.issuperset(empty)")
+    assert(setEmpty1.issuperset(setX) == false, "empty.issuperset(non-empty)")
+
+    // 6. Complex Pipeline Combinations
+    val pArr1 = [4, 2, 5, 1, 3]
+    val pArr2 = ["a", "b", "c", "d", "e"]
+    val pipelineResult = zip(sorted(pArr1), pArr2)
+    assert(pipelineResult.size() == 5, "pipeline zip(sorted)")
+    assert(pipelineResult[0].first == 1 && pipelineResult[4].first == 5, "pipeline sorted order")
+
+    val toPipelineSort = [3, 1, 2]
+    val mappedList = sorted(toPipelineSort).map({ x: Int -> str(x * 10) })
+    val numStr = ", ".join(mappedList)
+    assert(numStr == "10, 20, 30", "pipeline sorted + map + join")
+
+    println("All edge cases and stress tests passed successfully!")
+}
+
+fun testPrimitiveParsingAndHardPipelines() {
+    // 0. 64-bit Integer limits
+    assert(Int.MAX_VALUE == 9223372036854775807, "Int.MAX_VALUE 64-bit")
+    assert(Int.MIN_VALUE == -9223372036854775808, "Int.MIN_VALUE 64-bit")
+    assert(Long.MAX_VALUE == 9223372036854775807, "Long.MAX_VALUE 64-bit")
+    assert(Long.MIN_VALUE == -9223372036854775808, "Long.MIN_VALUE 64-bit")
+    assert(Integer.MAX_VALUE == 9223372036854775807, "Integer.MAX_VALUE 64-bit")
+
+    // 1. Full Primitive Static Parsing (Int, Integer, Long, Float, Double, Bool, Boolean, Char)
+    assert(Int.parseInt("123") == 123, "Int.parseInt")
+    assert(Int.parseInt("-456") == -456, "Int.parseInt negative")
+    assert(Int.parseLong("999999") == 999999, "Int.parseLong")
+    assert(Int.parseByte("12") == 12, "Int.parseByte")
+    assert(Int.parseShort("34") == 34, "Int.parseShort")
+    assert(Int.parse("789") == 789, "Int.parse")
+    assert(Int.parseIntOrNull("123") == 123, "Int.parseIntOrNull valid")
+    assert(Int.parseIntOrNull("abc") == null, "Int.parseIntOrNull invalid")
+    assert(Int.parseOrNull("xyz") == null, "Int.parseOrNull invalid")
+
+    assert(Integer.parseInt("99") == 99, "Integer.parseInt")
+    assert(Long.parseLong("8888") == 8888, "Long.parseLong")
+
+    assert(Float.parseFloat("3.14") > 3.13 && Float.parseFloat("3.14") < 3.15, "Float.parseFloat")
+    assert(Float.parseDouble("2.718") > 2.71 && Float.parseDouble("2.718") < 2.72, "Float.parseDouble")
+    assert(Float.parse("-0.5") == -0.5, "Float.parse")
+    assert(Float.parseFloatOrNull("3.14") != null, "Float.parseFloatOrNull valid")
+    assert(Float.parseFloatOrNull("invalid") == null, "Float.parseFloatOrNull invalid")
+    assert(Double.parseDouble("1.25") == 1.25, "Double.parseDouble")
+
+    assert(Bool.parseBool("true") == true, "Bool.parseBool true")
+    assert(Bool.parseBool("false") == false, "Bool.parseBool false")
+    assert(Bool.parseBool("TRUE") == true, "Bool.parseBool uppercase")
+    assert(Bool.parseBool("FALSE") == false, "Bool.parseBool uppercase false")
+    assert(Bool.parseBool("1") == true, "Bool.parseBool 1")
+    assert(Bool.parseBool("0") == false, "Bool.parseBool 0")
+    assert(Bool.parseBoolean("true") == true, "Bool.parseBoolean")
+    assert(Bool.parse("false") == false, "Bool.parse")
+    assert(Bool.parseBoolOrNull("true") == true, "Bool.parseBoolOrNull valid")
+    assert(Bool.parseBoolOrNull("not_bool") == null, "Bool.parseBoolOrNull invalid")
+    assert(Boolean.parseBoolean("true") == true, "Boolean.parseBoolean")
+
+    assert("true".toBool() == true, "String.toBool")
+    assert("false".toBoolean() == false, "String.toBoolean")
+    assert("TRUE".toBool() == true, "String.toBool uppercase")
+    assert("1".toBool() == true, "String.toBool 1")
+    assert("0".toBoolean() == false, "String.toBoolean 0")
+    assert("abc".toBoolOrNull() == null, "String.toBoolOrNull invalid")
+
+    assert(Char.parse("A") == 'A', "Char.parse")
+    assert(Char.parseOrNull("Z") == 'Z', "Char.parseOrNull valid")
+    assert(Char.parseOrNull("") == null, "Char.parseOrNull empty")
+    assert("X".toChar() == 'X', "String.toChar")
+    assert("".toCharOrNull() == null, "String.toCharOrNull empty")
+
+    // Global parsing functions
+    assert(parseInt("100") == 100, "global parseInt")
+    assert(parseIntOrNull("bad") == null, "global parseIntOrNull")
+    assert(parseFloat("2.5") == 2.5, "global parseFloat")
+    assert(parseFloatOrNull("bad") == null, "global parseFloatOrNull")
+    assert(parseBool("true") == true, "global parseBool")
+    assert(parseBoolean("false") == false, "global parseBoolean")
+    assert(parseBoolOrNull("bad") == null, "global parseBoolOrNull")
+
+    // 2. Hard generic closure inference and pipeline tests
+    // A. Nested pipelines with fold without explicit type annotations
+    val nested1 = [1, 2, 3, 4, 5].fold(0) { acc, x ->
+        acc + [x, x * 2].filter { v -> v % 2 == 0 }.fold(0) { a, b -> a + b }
+    }
+    assert(nested1 == 36, "nested fold pipeline failed")
+
+    // B. fold with non-primitive accumulator (Array<String>)
+    val foldedArray = [1, 2, 3].fold(["start"]) { acc, x ->
+        acc + ["item_${x}"]
+    }
+    assert(foldedArray.size == 4, "foldedArray size")
+    assert(foldedArray[0] == "start", "foldedArray[0]")
+    assert(foldedArray[3] == "item_3", "foldedArray[3]")
+
+    // C. foldIndexed with String accumulator and string manipulation
+    val fiResult = [1, 2, 2, 3, 3, 3, 1, 1, 2].foldIndexed("") { index, acc, value ->
+        if (index == 0 || value != acc.last().toInt()) {
+            "${value}:${index - acc.length / 2}${if (acc.isNotEmpty()) "," else ""}$acc"
+        } else {
+            "${acc.takeLast(acc.length / 2).first()}${acc.length / 2 + 1}${if (acc.isNotEmpty()) "," else ""}$acc"
+        }
+    }
+    assert(fiResult == "2:-10,1:-9,1:-7,3:-6,3:-4,3:-3,2:-1,2:0,1:0", "foldIndexed hard pipeline failed")
+
+    // D. runningFold and runningFoldIndexed
+    val rf = [1, 2, 3].runningFold(10) { acc, x -> acc + x }
+    assert(rf.size == 4 && rf[0] == 10 && rf[1] == 11 && rf[2] == 13 && rf[3] == 16, "runningFold failed")
+
+    val rfi = [10, 20].runningFoldIndexed("0") { idx, acc, x -> "${acc}_${idx}_${x}" }
+    assert(rfi.size == 3 && rfi[0] == "0" && rfi[1] == "0_0_10" && rfi[2] == "0_0_10_1_20", "runningFoldIndexed failed")
+
+    // E. scan
+    val sc = [1, 2, 3].scan(100) { acc, x -> acc + x }
+    assert(sc.size == 4 && sc[3] == 106, "scan failed")
+
+    // F. flatMap and flatMapIndexed
+    val fm = ["a,b", "c,d"].flatMap { s -> s.split(",") }
+    assert(fm.size == 4 && fm[0] == "a" && fm[1] == "b" && fm[2] == "c" && fm[3] == "d", "flatMap failed")
+
+    val fmi = ["x", "y"].flatMapIndexed { idx, s -> [s, "${idx}"] }
+    assert(fmi.size == 4 && fmi[0] == "x" && fmi[1] == "0" && fmi[2] == "y" && fmi[3] == "1", "flatMapIndexed failed")
+
+    // G. windowed with trailing closure
+    val win = [1, 2, 3, 4].windowed(2, 1, false) { w -> w.fold(0) { a, b -> a + b } }
+    assert(win.size == 3 && win[0] == 3 && win[1] == 5 && win[2] == 7, "windowed failed")
+
+    println("All primitive parsing and hard pipeline tests passed successfully!")
+}
+
+testAllNewFeatures()
+testEdgeCasesAndStress()
+testPrimitiveParsingAndHardPipelines()

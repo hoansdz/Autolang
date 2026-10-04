@@ -146,7 +146,7 @@ void printMemoryUsage(const MemoryInfo &base, const MemoryInfo &current) {
 bool runCorrectnessTest(Autolang::ACompiler &compiler, const char *scriptPath) {
 	const char *targetScript = (scriptPath != nullptr && scriptPath[0] != '\0')
 	    ? scriptPath
-	    : "./tests/testCorrectness.atl";
+	    : "./tests/correctness/main.atl";
 	try {
 #ifdef _WIN32
 		MemoryInfo baseMem = getMemoryUsage();
@@ -329,7 +329,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (isBenchmark) {
-		runBenchmarkReport(processStart, "./tests/testCorrectness.atl");
+		runBenchmarkReport(processStart, "./tests/correctness/main.atl");
 		return 0;
 	}
 

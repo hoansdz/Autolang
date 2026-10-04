@@ -164,7 +164,7 @@ Run the test suite to verify the local build:
 
 ```bash
 # Run the complete test suite
-./build/autolang tests/testCorrectness.atl
+./build/autolang tests/correctness/main.atl
 
 # Run an individual test file
 ./build/autolang tests/correctness/basic/generics.atl

@@ -77,7 +77,7 @@ target_link_libraries(autolang_lib PUBLIC rapidfuzz)
 # 3. TARGETS
 # -------------------------------------------------------------------
 if(EMSCRIPTEN)
-  add_executable(autolang_wasm "tests/wasm/main.cpp")
+  add_executable(autolang_wasm "release/wasm/main.cpp")
   target_link_libraries(autolang_wasm PRIVATE autolang_lib)
 
   set_target_properties(autolang_wasm PROPERTIES
@@ -103,6 +103,10 @@ else()
   add_executable(autolang "tests/main.cpp")
   target_compile_definitions(autolang PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
   target_link_libraries(autolang PRIVATE autolang_lib)
+
+  add_executable(autolang_cli "release/cli/main.cpp")
+  target_compile_definitions(autolang_cli PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
+  target_link_libraries(autolang_cli PRIVATE autolang_lib)
 
   # "cmake --build build --target run" to build and run immediately
   add_custom_target(run

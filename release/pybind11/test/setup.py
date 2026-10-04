@@ -31,7 +31,7 @@ class build_ext_mingw_fix(build_ext):
 
         super().build_extensions()
 
-main_cpp = os.path.join(BASE_DIR, "tests/pybind11/main.cpp").replace("\\", "/")
+main_cpp = os.path.join(BASE_DIR, "release/pybind11/main.cpp").replace("\\", "/")
 src_dir = os.path.join(BASE_DIR, "src").replace("\\", "/")
 
 source_files = [main_cpp]

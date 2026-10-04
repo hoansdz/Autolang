@@ -1,6 +1,9 @@
+#include <chrono>
 #include <functional>
 #include <iostream>
-#include "../Autolang.hpp"
+#include <string>
+#include <Autolang.hpp>
+#include "backend/vm/ANotifier.hpp"
 
 #ifdef _WIN32
 
@@ -18,8 +21,6 @@ void printMemoryUsage() {
 }
 
 #endif
-
-#include <string>
 
 bool isAbsolute(const std::string &path) {
 #ifdef _WIN32
@@ -52,18 +53,12 @@ int main(int argc, char *argv[]) {
 				return 0;
 			}
 			std::string file = normalizePath(argv[1]);
-			AutoLang::ACompiler compiler;
-			compiler.loadMainSource(
-			    file.c_str(),
-			    {{"hi", [](NativeFuncInput) -> AutoLang::AObject * {
-				      std::cerr << "Duoc roi ne!!!\n";
-				      return nullptr;
-			      }}});
-			if (compiler.getState() == AutoLang::CompilerState::CT_ERROR) {
-				return 0;
-			}
-			compiler.generateBytecodes();
-			if (compiler.getState() == AutoLang::CompilerState::CT_ERROR) {
+			Autolang::ACompiler compiler;
+			compiler.registerFunction("hi", ANativeFunction([](NativeFuncInput) -> Autolang::AObject * {
+				std::cerr << "Duoc roi ne!!!\n";
+				return nullptr;
+			}));
+			if (!compiler.compile(file.c_str())) {
 				return 0;
 			}
 			compiler.run();
