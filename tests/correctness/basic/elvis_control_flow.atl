@@ -86,9 +86,38 @@ fun testElvisComplexExpressions() {
     assert(resChained == 84)
 }
 
+fun reserveStorageHelper(name: String): String? {
+    if (name == "PRIMARY") {
+        return "p_id"
+    }
+    return null
+}
+
+fun testNestedElvisInClosure() {
+    var backupStatus = ""
+    var primaryStatus = ""
+
+    reserveStorageHelper("PRIMARY")?.let { it: String ->
+        val primaryId = it
+        reserveStorageHelper("BACKUP")?.let { it: String ->
+            backupStatus = "BACKUP_OK"
+        } ?: run {
+            primaryStatus = "RELEASED_" + primaryId
+            backupStatus = "BACKUP_FULL"
+        }
+    } ?: run {
+        backupStatus = "PRIMARY_FULL"
+    }
+
+    assert(primaryStatus == "RELEASED_p_id")
+    assert(backupStatus == "BACKUP_FULL")
+}
+
 testElvisBreak()
 testElvisReturn()
 testElvisThrow()
 testElvisContinue()
 testElvisComplexExpressions()
+testNestedElvisInClosure()
 println("Passed testElvisControlFlow")
+

@@ -381,11 +381,11 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			case Lexer::TokenType::IDENTIFIER: {
 				classNameId = nameId;
 				nameId = (token->type == Lexer::TokenType::NOT) ? lexerIdnot : token->indexData;
-				functionFlags |= FunctionFlags::FUNC_UNUSABLE;
 				if (isNullableReceiver) {
 					functionFlags |= FunctionFlags::FUNC_NULLABLE_RECEIVER;
 				}
 				if (!hasStaticFlag) {
+					functionFlags |= FunctionFlags::FUNC_UNUSABLE;
 					functionFlags &= ~FunctionFlags::FUNC_IS_STATIC;
 				}
 				if (context.currentClassId) {

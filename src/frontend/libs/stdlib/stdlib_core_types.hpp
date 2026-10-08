@@ -31,7 +31,8 @@ class Void {
 @no_extends
 @no_constructor
 class Function {
-
+	@native("to_string")
+	fun toString(): String
 }
 
 

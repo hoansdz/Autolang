@@ -52,14 +52,18 @@ inline bool canImplicitConvert(in_func, ClassId targetClassId, HasClassIdNode *v
 			continue;
 		}
 
+		bool isStatic = (func->functionFlags & FunctionFlags::FUNC_IS_STATIC) != 0;
+		size_t paramOffset = isStatic ? 0 : 1;
+		size_t minArgSize = isStatic ? 1 : 2;
+
 		// 1-arg match
-		if (func->argSize >= 2) {
-			size_t requiredUserParams = (funcInfo->parameter->defaultValuePos > 1)
-			                                ? (funcInfo->parameter->defaultValuePos - 1)
+		if (func->argSize >= minArgSize) {
+			size_t requiredUserParams = (funcInfo->parameter->defaultValuePos > paramOffset)
+			                                ? (funcInfo->parameter->defaultValuePos - paramOffset)
 			                                : 0;
-			if (requiredUserParams <= 1) {
-				ClassId expectedClassId = func->args[1];
-				auto paramDecl = funcInfo->parameter->parameters[1];
+			if (requiredUserParams <= 1 && funcInfo->parameter->parameters.size() > paramOffset) {
+				ClassId expectedClassId = func->args[paramOffset];
+				auto paramDecl = funcInfo->parameter->parameters[paramOffset];
 				if (value->isNullable() && !paramDecl->nullable) {
 					continue;
 				}
@@ -104,7 +108,8 @@ inline bool canImplicitConvert(in_func, ClassId targetClassId, HasClassIdNode *v
 		}
 
 		// 0-arg match
-		if (func->argSize == 1) {
+		size_t zeroArgCount = isStatic ? 0 : 1;
+		if (func->argSize == zeroArgCount) {
 			if (value->kind == NodeType::CREATE_SET &&
 			    static_cast<CreateSetNode *>(value)->values.empty()) {
 				return true;
@@ -172,14 +177,18 @@ inline HasClassIdNode *tryImplicitConversion(in_func, ClassId targetClassId,
 			continue;
 		}
 
+		bool isStatic = (func->functionFlags & FunctionFlags::FUNC_IS_STATIC) != 0;
+		size_t paramOffset = isStatic ? 0 : 1;
+		size_t minArgSize = isStatic ? 1 : 2;
+
 		// 1-arg match
-		if (func->argSize >= 2) {
-			size_t requiredUserParams = (funcInfo->parameter->defaultValuePos > 1)
-			                                ? (funcInfo->parameter->defaultValuePos - 1)
+		if (func->argSize >= minArgSize) {
+			size_t requiredUserParams = (funcInfo->parameter->defaultValuePos > paramOffset)
+			                                ? (funcInfo->parameter->defaultValuePos - paramOffset)
 			                                : 0;
-			if (requiredUserParams <= 1) {
-				ClassId expectedClassId = func->args[1];
-				auto paramDecl = funcInfo->parameter->parameters[1];
+			if (requiredUserParams <= 1 && funcInfo->parameter->parameters.size() > paramOffset) {
+				ClassId expectedClassId = func->args[paramOffset];
+				auto paramDecl = funcInfo->parameter->parameters[paramOffset];
 				if (value->isNullable() && !paramDecl->nullable) {
 					continue;
 				}
@@ -229,7 +238,8 @@ inline HasClassIdNode *tryImplicitConversion(in_func, ClassId targetClassId,
 		}
 
 		// 0-arg match
-		if (func->argSize == 1 && bestFuncId == UINT32_MAX) {
+		size_t zeroArgCount = isStatic ? 0 : 1;
+		if (func->argSize == zeroArgCount && bestFuncId == UINT32_MAX) {
 			bool isEmptyColl = false;
 			switch (value->kind) {
 			case NodeType::CREATE_SET:

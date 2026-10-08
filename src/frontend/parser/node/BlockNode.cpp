@@ -1256,6 +1256,11 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					case NodeType::RUNTIME_CAST:
 					case NodeType::OPTIONAL_ACCESS:
 					case NodeType::UNARY: {
+						if (static_cast<HasClassIdNode *>(node)->classId ==
+						    DefaultClass::voidClassId) {
+							node->putBytecodes(in_data, bytecodes);
+							break;
+						}
 						if (autoCastToFloat) {
 							ReturnNode::putOptimizedBytecodes(
 							    in_data,
@@ -1272,7 +1277,7 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					}
 					case NodeType::WHEN: {
 						auto *n = static_cast<WhenNode *>(node)->ifNode;
-						if (!n->mustReturnValue) {
+						if (!n->mustReturnValue || n->classId == DefaultClass::voidClassId) {
 							if (autoCastToFloat) {
 								n->ifTrue.autoCastToFloat = true;
 
@@ -1300,7 +1305,7 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					}
 					case NodeType::IF: {
 						auto *n = static_cast<IfNode *>(node);
-						if (!n->mustReturnValue) {
+						if (!n->mustReturnValue || n->classId == DefaultClass::voidClassId) {
 							if (autoCastToFloat) {
 								n->ifTrue.autoCastToFloat = true;
 

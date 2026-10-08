@@ -52,6 +52,16 @@ fun <T, R> testFunctional() {
 	assert(e.value == 8)
 	assert(h.get() == "OK")
 
+	// Function toString tests
+	val lambda1: (Int) -> Int = { x: Int -> x * 2 }
+	assert(lambda1.toString() == "(Int) -> Int")
+	assert("$lambda1" == "(Int) -> Int")
+
+	val fnStr = a.toString()
+	assert(fnStr.contains("testFunctionalSquare"))
+	assert(fnStr.contains("Float"))
+	assert(fnStr.contains("Int"))
+
 	println("Passed ${__FUNC__}")
 }
 

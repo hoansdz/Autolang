@@ -9,6 +9,7 @@
 #include <cstring>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 
 namespace Autolang {
 namespace DefaultFunction {
@@ -70,7 +71,7 @@ inline AObject *str_get(NativeFuncInData) {
 	AString *str = args[0]->str;
 	int64_t pos = args[1]->i;
 
-	int64_t len = str->size;
+	int64_t len = static_cast<int64_t>(str->charCount());
 
 	if (len == 0) {
 		notifier.throwException("Empty string");
@@ -85,7 +86,7 @@ inline AObject *str_get(NativeFuncInData) {
 		return nullptr;
 	}
 
-	return notifier.createChar(static_cast<uint8_t>(str->data[pos]));
+	return notifier.createChar(str->codePointAt(static_cast<size_t>(pos)));
 }
 
 inline bool char_equals_ignore_case(char a, char b) {
@@ -288,25 +289,7 @@ inline AObject *str_replace(NativeFuncInData) {
 }
 
 inline AObject *str_char_at(NativeFuncInData) {
-	AString *str = args[0]->str;
-	int64_t pos = args[1]->i;
-
-	int64_t len = str->size;
-
-	if (len == 0) {
-		notifier.throwException("Empty string");
-		return nullptr;
-	}
-
-	if (pos < 0)
-		pos += len;
-
-	if (pos < 0 || pos >= len) {
-		notifier.throwException("Index out of range");
-		return nullptr;
-	}
-
-	return notifier.createChar(static_cast<uint8_t>(str->data[pos]));
+	return str_get(notifier, args, argSize);
 }
 
 inline AObject *str_contains(NativeFuncInData) {
@@ -481,7 +464,7 @@ inline AObject *str_split(NativeFuncInData) {
 
 inline AObject *str_substr(NativeFuncInData) {
 	AString *str = args[0]->str;
-	int64_t len = str->size;
+	int64_t len = static_cast<int64_t>(str->charCount());
 
 	if (argSize < 2 || argSize > 3) {
 		notifier.throwException("substr expects 1 or 2 arguments");
@@ -500,13 +483,8 @@ inline AObject *str_substr(NativeFuncInData) {
 
 	// substr(from)
 	if (argSize == 2) {
-		int64_t newLen = len - from;
-
-		char *newStr = new char[newLen + 1];
-		memcpy(newStr, str->data + from, newLen);
-		newStr[newLen] = '\0';
-
-		return notifier.createString(new AString(newStr, newLen));
+		size_t byteStart = str->byteOffsetOf(static_cast<size_t>(from));
+		return notifier.createString(std::string(str->data + byteStart, str->size - byteStart));
 	}
 
 	// substr(from, length)
@@ -520,14 +498,16 @@ inline AObject *str_substr(NativeFuncInData) {
 	if (from + length > len)
 		length = len - from;
 
-	char *newStr = new char[length + 1];
-	memcpy(newStr, str->data + from, length);
-	newStr[length] = '\0';
-
-	return notifier.createString(new AString(newStr, length));
+	size_t byteStart = str->byteOffsetOf(static_cast<size_t>(from));
+	size_t byteEnd = str->byteOffsetOf(static_cast<size_t>(from + length));
+	return notifier.createString(std::string(str->data + byteStart, byteEnd - byteStart));
 }
 
 inline AObject *get_string_size(NativeFuncInData) {
+	return notifier.createInt(static_cast<int64_t>(args[0]->str->charCount()));
+}
+
+inline AObject *str_byte_size(NativeFuncInData) {
 	return notifier.createInt(static_cast<int64_t>(args[0]->str->size));
 }
 
@@ -586,17 +566,15 @@ inline AObject *str_is_null_or_blank(NativeFuncInData) {
 
 inline AObject *str_substring_range(NativeFuncInData) {
 	AString *str = args[0]->str;
-	int64_t len = static_cast<int64_t>(str->size);
+	int64_t len = static_cast<int64_t>(str->charCount());
 	int64_t start = args[1]->i;
 	int64_t end = args[2]->i;
 	if (start < 0) start = 0;
 	if (end > len) end = len;
 	if (start >= end) return notifier.createString("");
-	int64_t subLen = end - start;
-	char *newStr = new char[subLen + 1];
-	std::memcpy(newStr, str->data + start, subLen);
-	newStr[subLen] = '\0';
-	return notifier.createString(new AString(newStr, subLen));
+	size_t byteStart = str->byteOffsetOf(static_cast<size_t>(start));
+	size_t byteEnd = str->byteOffsetOf(static_cast<size_t>(end));
+	return notifier.createString(std::string(str->data + byteStart, byteEnd - byteStart));
 }
 
 inline AObject *str_lines(NativeFuncInData) {
@@ -631,17 +609,21 @@ inline AObject *str_pad_start(NativeFuncInData) {
 	std::string buf;
 	std::string_view padChar = (argSize >= 3 && args[2]) ? str_arg_view(args[2], buf) : " ";
 	if (padChar.empty()) padChar = " ";
-	if (static_cast<int64_t>(str->size) >= targetLen) {
+	int64_t curLen = static_cast<int64_t>(str->charCount());
+	if (curLen >= targetLen) {
 		return notifier.createString(AString::copy(str));
 	}
-	size_t padLen = targetLen - str->size;
+	size_t padCount = static_cast<size_t>(targetLen - curLen);
 	std::string padding;
-	padding.reserve(padLen);
-	while (padding.size() < padLen) {
-		padding.append(padChar);
-	}
-	if (padding.size() > padLen) {
-		padding.resize(padLen);
+	size_t added = 0;
+	while (added < padCount) {
+		size_t idx = 0;
+		while (idx < padChar.size() && added < padCount) {
+			size_t prev = idx;
+			AString::utf8ToCodePoint(padChar, idx);
+			padding += padChar.substr(prev, idx - prev);
+			added++;
+		}
 	}
 	std::string result = padding + std::string(str->data, str->size);
 	return notifier.createString(result);
@@ -653,17 +635,21 @@ inline AObject *str_pad_end(NativeFuncInData) {
 	std::string buf;
 	std::string_view padChar = (argSize >= 3 && args[2]) ? str_arg_view(args[2], buf) : " ";
 	if (padChar.empty()) padChar = " ";
-	if (static_cast<int64_t>(str->size) >= targetLen) {
+	int64_t curLen = static_cast<int64_t>(str->charCount());
+	if (curLen >= targetLen) {
 		return notifier.createString(AString::copy(str));
 	}
-	size_t padLen = targetLen - str->size;
+	size_t padCount = static_cast<size_t>(targetLen - curLen);
 	std::string padding;
-	padding.reserve(padLen);
-	while (padding.size() < padLen) {
-		padding.append(padChar);
-	}
-	if (padding.size() > padLen) {
-		padding.resize(padLen);
+	size_t added = 0;
+	while (added < padCount) {
+		size_t idx = 0;
+		while (idx < padChar.size() && added < padCount) {
+			size_t prev = idx;
+			AString::utf8ToCodePoint(padChar, idx);
+			padding += padChar.substr(prev, idx - prev);
+			added++;
+		}
 	}
 	std::string result = std::string(str->data, str->size) + padding;
 	return notifier.createString(result);
@@ -672,8 +658,13 @@ inline AObject *str_pad_end(NativeFuncInData) {
 inline AObject *str_to_int_or_null(NativeFuncInData) {
 	AString *str = args[0]->str;
 	if (str->size == 0) return DefaultClass::nullObject;
+	int radix = 10;
+	if (argSize >= 2 && args[1] && args[1]->type == DefaultClass::intClassId) {
+		radix = static_cast<int>(args[1]->i);
+	}
+	if (radix < 2 || radix > 36) return DefaultClass::nullObject;
 	char *end = nullptr;
-	int64_t val = std::strtoll(str->data, &end, 10);
+	int64_t val = std::strtoll(str->data, &end, radix);
 	if (end == str->data || *end != '\0') {
 		return DefaultClass::nullObject;
 	}
@@ -763,35 +754,40 @@ inline AObject *str_take(NativeFuncInData) {
 	AString *str = args[0]->str;
 	int64_t n = args[1]->i;
 	if (n <= 0) return notifier.createString("");
-	if (n >= static_cast<int64_t>(str->size)) return notifier.createString(AString::copy(str));
-	return notifier.createString(std::string(str->data, static_cast<size_t>(n)));
+	int64_t charLen = static_cast<int64_t>(str->charCount());
+	if (n >= charLen) return notifier.createString(AString::copy(str));
+	size_t byteEnd = str->byteOffsetOf(static_cast<size_t>(n));
+	return notifier.createString(std::string(str->data, byteEnd));
 }
 
 inline AObject *str_take_last(NativeFuncInData) {
 	AString *str = args[0]->str;
 	int64_t n = args[1]->i;
 	if (n <= 0) return notifier.createString("");
-	int64_t len = static_cast<int64_t>(str->size);
-	if (n >= len) return notifier.createString(AString::copy(str));
-	return notifier.createString(std::string(str->data + (len - n), static_cast<size_t>(n)));
+	int64_t charLen = static_cast<int64_t>(str->charCount());
+	if (n >= charLen) return notifier.createString(AString::copy(str));
+	size_t byteStart = str->byteOffsetOf(static_cast<size_t>(charLen - n));
+	return notifier.createString(std::string(str->data + byteStart, str->size - byteStart));
 }
 
 inline AObject *str_drop(NativeFuncInData) {
 	AString *str = args[0]->str;
 	int64_t n = args[1]->i;
 	if (n <= 0) return notifier.createString(AString::copy(str));
-	int64_t len = static_cast<int64_t>(str->size);
-	if (n >= len) return notifier.createString("");
-	return notifier.createString(std::string(str->data + n, static_cast<size_t>(len - n)));
+	int64_t charLen = static_cast<int64_t>(str->charCount());
+	if (n >= charLen) return notifier.createString("");
+	size_t byteStart = str->byteOffsetOf(static_cast<size_t>(n));
+	return notifier.createString(std::string(str->data + byteStart, str->size - byteStart));
 }
 
 inline AObject *str_drop_last(NativeFuncInData) {
 	AString *str = args[0]->str;
 	int64_t n = args[1]->i;
 	if (n <= 0) return notifier.createString(AString::copy(str));
-	int64_t len = static_cast<int64_t>(str->size);
-	if (n >= len) return notifier.createString("");
-	return notifier.createString(std::string(str->data, static_cast<size_t>(len - n)));
+	int64_t charLen = static_cast<int64_t>(str->charCount());
+	if (n >= charLen) return notifier.createString("");
+	size_t byteEnd = str->byteOffsetOf(static_cast<size_t>(charLen - n));
+	return notifier.createString(std::string(str->data, byteEnd));
 }
 
 inline AObject *str_remove_prefix(NativeFuncInData) {
@@ -816,13 +812,17 @@ inline AObject *str_remove_suffix(NativeFuncInData) {
 
 inline AObject *str_reversed(NativeFuncInData) {
 	AString *str = args[0]->str;
-	size_t len = str->size;
-	char *newStr = new char[len + 1];
-	for (size_t i = 0; i < len; ++i) {
-		newStr[i] = str->data[len - 1 - i];
+	std::vector<uint32_t> codePoints;
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		codePoints.push_back(cp);
+		return true;
+	});
+	std::string res;
+	res.reserve(str->size);
+	for (auto it = codePoints.rbegin(); it != codePoints.rend(); ++it) {
+		res += AString::codePointToUtf8(*it);
 	}
-	newStr[len] = '\0';
-	return notifier.createString(new AString(newStr, len));
+	return notifier.createString(res);
 }
 
 inline AObject *str_replace_first(NativeFuncInData) {
@@ -1156,63 +1156,73 @@ inline AObject *str_trim_margin(NativeFuncInData) {
 inline AObject *str_replace_first_char(NativeFuncInData) {
 	AString *str = args[0]->str;
 	if (str->size == 0) return notifier.createString(AString::copy(str));
-	AObject *firstChar = notifier.createChar(static_cast<uint8_t>(str->data[0]));
+	size_t idx = 0;
+	uint32_t firstCp = AString::utf8ToCodePoint(std::string_view(str->data, str->size), idx);
+	AObject *firstChar = notifier.createChar(firstCp);
 	firstChar->retain();
 	AObject *res = notifier.callFunctionObject(args[1], firstChar);
 	notifier.release(firstChar);
 	if (notifier.hasException()) return nullptr;
 	std::string newPrefix = DefaultFunction::to_string(notifier, res);
-	std::string remainder(str->data + 1, str->size - 1);
+	std::string remainder(str->data + idx, str->size - idx);
 	return notifier.createString(newPrefix + remainder);
 }
 
 inline AObject *str_take_while(NativeFuncInData) {
 	AString *str = args[0]->str;
-	size_t count = 0;
-	for (size_t i = 0; i < str->size; ++i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	size_t byteEnd = 0;
+	std::string_view sv(str->data, str->size);
+	size_t idx = 0;
+	while (idx < sv.size()) {
+		uint32_t cp = AString::utf8ToCodePoint(sv, idx);
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		AObject *res = notifier.callFunctionObject(args[1], ch);
 		notifier.release(ch);
 		if (notifier.hasException()) return nullptr;
 		if (!res || res->type != DefaultClass::boolClassId || !res->b) break;
-		++count;
+		byteEnd = idx;
 	}
-	return notifier.createString(std::string(str->data, count));
+	return notifier.createString(std::string(str->data, byteEnd));
 }
 
 inline AObject *str_drop_while(NativeFuncInData) {
 	AString *str = args[0]->str;
-	size_t start = 0;
-	for (size_t i = 0; i < str->size; ++i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	size_t byteStart = str->size;
+	std::string_view sv(str->data, str->size);
+	size_t idx = 0;
+	while (idx < sv.size()) {
+		size_t prev = idx;
+		uint32_t cp = AString::utf8ToCodePoint(sv, idx);
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		AObject *res = notifier.callFunctionObject(args[1], ch);
 		notifier.release(ch);
 		if (notifier.hasException()) return nullptr;
 		if (!res || res->type != DefaultClass::boolClassId || !res->b) {
-			start = i;
+			byteStart = prev;
 			break;
 		}
-		if (i + 1 == str->size) start = str->size;
 	}
-	return notifier.createString(std::string(str->data + start, str->size - start));
+	return notifier.createString(std::string(str->data + byteStart, str->size - byteStart));
 }
 
 inline AObject *str_filter(NativeFuncInData) {
 	AString *str = args[0]->str;
 	std::string result;
 	result.reserve(str->size);
-	for (size_t i = 0; i < str->size; ++i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		AObject *res = notifier.callFunctionObject(args[1], ch);
 		notifier.release(ch);
-		if (notifier.hasException()) return nullptr;
+		if (notifier.hasException()) return false;
 		if (res && res->type == DefaultClass::boolClassId && res->b) {
-			result.push_back(str->data[i]);
+			result += AString::codePointToUtf8(cp);
 		}
-	}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
 	return notifier.createString(result);
 }
 
@@ -1220,16 +1230,18 @@ inline AObject *str_filter_not(NativeFuncInData) {
 	AString *str = args[0]->str;
 	std::string result;
 	result.reserve(str->size);
-	for (size_t i = 0; i < str->size; ++i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		AObject *res = notifier.callFunctionObject(args[1], ch);
 		notifier.release(ch);
-		if (notifier.hasException()) return nullptr;
+		if (notifier.hasException()) return false;
 		if (res && res->type == DefaultClass::boolClassId && !res->b) {
-			result.push_back(str->data[i]);
+			result += AString::codePointToUtf8(cp);
 		}
-	}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
 	return notifier.createString(result);
 }
 
@@ -1239,12 +1251,12 @@ inline AObject *str_chunked(NativeFuncInData) {
 	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
 	AObject *newArr = notifier.createArray(returnId, DefaultClass::stringClassId);
 	if (size <= 0) return newArr;
-	int64_t len = static_cast<int64_t>(str->size);
-	for (int64_t i = 0; i < len; i += size) {
-		int64_t subLen = (i + size > len) ? (len - i) : size;
-		std::string sub(str->data + i, subLen);
-		AObject *subStr = notifier.createString(sub);
-		notifier.arrayAdd(newArr, subStr);
+	int64_t charLen = static_cast<int64_t>(str->charCount());
+	for (int64_t i = 0; i < charLen; i += size) {
+		int64_t curSize = std::min(size, charLen - i);
+		size_t byteStart = str->byteOffsetOf(static_cast<size_t>(i));
+		size_t byteEnd = str->byteOffsetOf(static_cast<size_t>(i + curSize));
+		notifier.arrayAdd(newArr, notifier.createString(std::string(str->data + byteStart, byteEnd - byteStart)));
 	}
 	return newArr;
 }
@@ -1255,12 +1267,16 @@ inline AObject *str_zip_with_next(NativeFuncInData) {
 	    ? static_cast<ClassId>(args[1]->i)
 	    : DefaultClass::anyClassId;
 	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
-	AObject *newArr = notifier.createArray(returnId, pairClassId);
-	int64_t len = static_cast<int64_t>(str->size);
-	if (len < 2) return newArr;
-	for (int64_t i = 0; i < len - 1; ++i) {
-		AObject *s1 = notifier.createChar(static_cast<uint8_t>(str->data[i]));
-		AObject *s2 = notifier.createChar(static_cast<uint8_t>(str->data[i + 1]));
+	auto newArr = notifier.createArray(returnId, pairClassId);
+	std::vector<uint32_t> codePoints;
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		codePoints.push_back(cp);
+		return true;
+	});
+	if (codePoints.size() < 2) return newArr;
+	for (size_t i = 0; i < codePoints.size() - 1; ++i) {
+		AObject *s1 = notifier.createChar(codePoints[i]);
+		AObject *s2 = notifier.createChar(codePoints[i + 1]);
 		AObject *pairObj = notifier.createMemberObject(pairClassId, 2);
 		s1->retain();
 		pairObj->member->data[0] = s1;
@@ -1276,11 +1292,15 @@ inline AObject *str_zip_with_next_transform(NativeFuncInData) {
 	AObject *func = args[1];
 	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
 	AObject *newArr = notifier.createArray(returnId, DefaultClass::anyClassId);
-	int64_t len = static_cast<int64_t>(str->size);
-	if (len < 2) return newArr;
-	for (int64_t i = 0; i < len - 1; ++i) {
-		AObject *s1 = notifier.createChar(static_cast<uint8_t>(str->data[i]));
-		AObject *s2 = notifier.createChar(static_cast<uint8_t>(str->data[i + 1]));
+	std::vector<uint32_t> codePoints;
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		codePoints.push_back(cp);
+		return true;
+	});
+	if (codePoints.size() < 2) return newArr;
+	for (size_t i = 0; i < codePoints.size() - 1; ++i) {
+		AObject *s1 = notifier.createChar(codePoints[i]);
+		AObject *s2 = notifier.createChar(codePoints[i + 1]);
 		s1->retain();
 		s2->retain();
 		AObject *res = notifier.callFunctionObject(func, s1, s2);
@@ -1385,15 +1405,16 @@ inline AObject *str_map(NativeFuncInData) {
 	AObject *func = args[1];
 	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
 	AObject *newArr = notifier.createArray(returnId, DefaultClass::anyClassId);
-	int64_t len = static_cast<int64_t>(str->size);
-	for (int64_t i = 0; i < len; ++i) {
-		AObject *s = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		AObject *s = notifier.createChar(cp);
 		s->retain();
 		AObject *res = notifier.callFunctionObject(func, s);
 		notifier.release(s);
-		if (notifier.hasException()) return nullptr;
+		if (notifier.hasException()) return false;
 		if (res) notifier.arrayAdd(newArr, res);
-	}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
 	return newArr;
 }
 
@@ -1402,18 +1423,19 @@ inline AObject *str_map_indexed(NativeFuncInData) {
 	AObject *func = args[1];
 	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
 	AObject *newArr = notifier.createArray(returnId, DefaultClass::anyClassId);
-	int64_t len = static_cast<int64_t>(str->size);
-	for (int64_t i = 0; i < len; ++i) {
-		AObject *idxObj = notifier.createInt(i);
-		AObject *s = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	str->forEachCodePoint([&](uint32_t cp, int64_t charIdx) {
+		AObject *idxObj = notifier.createInt(charIdx);
+		AObject *s = notifier.createChar(cp);
 		idxObj->retain();
 		s->retain();
 		AObject *res = notifier.callFunctionObject(func, idxObj, s);
 		notifier.release(idxObj);
 		notifier.release(s);
-		if (notifier.hasException()) return nullptr;
+		if (notifier.hasException()) return false;
 		if (res) notifier.arrayAdd(newArr, res);
-	}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
 	return newArr;
 }
 
@@ -1423,18 +1445,17 @@ inline AObject *str_fold(NativeFuncInData) {
 	AObject *func = args[2];
 	AObject *acc = accumulator;
 	acc->retain();
-	int64_t len = static_cast<int64_t>(str->size);
-	for (int64_t i = 0; i < len; ++i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		AObject *nextAcc = notifier.callFunctionObject(func, acc, ch);
 		notifier.release(ch);
 		notifier.release(acc);
-		if (notifier.hasException()) {
-			return nullptr;
-		}
+		if (notifier.hasException()) return false;
 		acc = nextAcc;
-	}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
 	if (acc && !(acc->flags & AObject::Flags::OBJ_IS_CONST)) {
 		--acc->refCount;
 	}
@@ -1443,25 +1464,30 @@ inline AObject *str_fold(NativeFuncInData) {
 
 inline AObject *str_reduce(NativeFuncInData) {
 	AString *str = args[0]->str;
-	int64_t len = static_cast<int64_t>(str->size);
-	if (len == 0) {
+	if (str->size == 0) {
 		notifier.throwException("UnsupportedOperationException: Empty string cannot be reduced.");
 		return nullptr;
 	}
 	AObject *func = args[1];
-	AObject *acc = notifier.createString(std::string(1, str->data[0]));
-	acc->retain();
-	for (int64_t i = 1; i < len; ++i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	AObject *acc = nullptr;
+	bool isFirst = true;
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		if (isFirst) {
+			acc = notifier.createString(AString::codePointToUtf8(cp));
+			acc->retain();
+			isFirst = false;
+			return true;
+		}
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		AObject *nextAcc = notifier.callFunctionObject(func, acc, ch);
 		notifier.release(ch);
 		notifier.release(acc);
-		if (notifier.hasException()) {
-			return nullptr;
-		}
+		if (notifier.hasException()) return false;
 		acc = nextAcc;
-	}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
 	if (acc && !(acc->flags & AObject::Flags::OBJ_IS_CONST)) {
 		--acc->refCount;
 	}
@@ -1478,50 +1504,54 @@ inline AObject *str_running_fold(NativeFuncInData) {
 	notifier.arrayAdd(newArr, initial);
 	AObject *acc = initial;
 	acc->retain();
-	int64_t len = static_cast<int64_t>(str->size);
-	for (int64_t i = 0; i < len; ++i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		AObject *nextAcc = notifier.callFunctionObject(func, acc, ch);
 		notifier.release(acc);
 		notifier.release(ch);
-		if (notifier.hasException()) {
-			return nullptr;
-		}
+		if (notifier.hasException()) return false;
 		notifier.arrayAdd(newArr, nextAcc);
 		acc = nextAcc;
 		acc->retain();
-	}
+		return true;
+	});
 	notifier.release(acc);
+	if (notifier.hasException()) return nullptr;
 	return newArr;
 }
 
 inline AObject *str_running_reduce(NativeFuncInData) {
 	AString *str = args[0]->str;
-	int64_t len = static_cast<int64_t>(str->size);
 	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
 	ClassId elemClassId = DefaultClass::stringClassId;
 	auto newArr = notifier.createArray(returnId, elemClassId);
-	if (len == 0) return newArr;
+	if (str->size == 0) return newArr;
 	AObject *func = args[1];
-	AObject *first = notifier.createString(std::string(1, str->data[0]));
-	notifier.arrayAdd(newArr, first);
-	AObject *acc = first;
-	acc->retain();
-	for (int64_t i = 1; i < len; ++i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	AObject *acc = nullptr;
+	bool isFirst = true;
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		if (isFirst) {
+			AObject *first = notifier.createString(AString::codePointToUtf8(cp));
+			notifier.arrayAdd(newArr, first);
+			acc = first;
+			acc->retain();
+			isFirst = false;
+			return true;
+		}
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		AObject *nextAcc = notifier.callFunctionObject(func, acc, ch);
-		notifier.release(acc);
 		notifier.release(ch);
-		if (notifier.hasException()) {
-			return nullptr;
-		}
+		notifier.release(acc);
+		if (notifier.hasException()) return false;
 		notifier.arrayAdd(newArr, nextAcc);
 		acc = nextAcc;
 		acc->retain();
-	}
-	notifier.release(acc);
+		return true;
+	});
+	if (acc) notifier.release(acc);
+	if (notifier.hasException()) return nullptr;
 	return newArr;
 }
 
@@ -1531,7 +1561,7 @@ inline AObject *str_first(NativeFuncInData) {
 		notifier.throwException("NoSuchElementException: Char sequence is empty.");
 		return nullptr;
 	}
-	return notifier.createChar(static_cast<uint8_t>(str->data[0]));
+	return notifier.createChar(str->codePointAt(0));
 }
 
 inline AObject *str_last(NativeFuncInData) {
@@ -1540,7 +1570,8 @@ inline AObject *str_last(NativeFuncInData) {
 		notifier.throwException("NoSuchElementException: Char sequence is empty.");
 		return nullptr;
 	}
-	return notifier.createChar(static_cast<uint8_t>(str->data[str->size - 1]));
+	size_t charLen = str->charCount();
+	return notifier.createChar(str->codePointAt(charLen - 1));
 }
 
 inline AObject *str_first_or_null(NativeFuncInData) {
@@ -1548,7 +1579,7 @@ inline AObject *str_first_or_null(NativeFuncInData) {
 	if (str->size == 0) {
 		return DefaultClass::nullObject;
 	}
-	return notifier.createChar(static_cast<uint8_t>(str->data[0]));
+	return notifier.createChar(str->codePointAt(0));
 }
 
 inline AObject *str_last_or_null(NativeFuncInData) {
@@ -1556,11 +1587,12 @@ inline AObject *str_last_or_null(NativeFuncInData) {
 	if (str->size == 0) {
 		return DefaultClass::nullObject;
 	}
-	return notifier.createChar(static_cast<uint8_t>(str->data[str->size - 1]));
+	size_t charLen = str->charCount();
+	return notifier.createChar(str->codePointAt(charLen - 1));
 }
 
 inline AObject *str_last_index(NativeFuncInData) {
-	return notifier.createInt(static_cast<int64_t>(args[0]->str->size) - 1);
+	return notifier.createInt(static_cast<int64_t>(args[0]->str->charCount()) - 1);
 }
 
 inline AObject *str_is_digit(NativeFuncInData) {
@@ -1671,27 +1703,33 @@ inline AObject *str_remove_surrounding_char_single(NativeFuncInData) {
 }
 
 inline AObject *str_remove_range(NativeFuncInData) {
-	const std::string &s = args[0]->str->data;
+	AString *str = args[0]->str;
 	int64_t start = args[1]->i;
 	int64_t end = args[2]->i;
-	if (start < 0 || end < start || static_cast<size_t>(end) > s.size()) {
+	int64_t charLen = static_cast<int64_t>(str->charCount());
+	if (start < 0 || end < start || end > charLen) {
 		notifier.throwException("Index out of range");
 		return nullptr;
 	}
-	std::string res = s.substr(0, start) + s.substr(end);
+	size_t byteStart = str->byteOffsetOf(static_cast<size_t>(start));
+	size_t byteEnd = str->byteOffsetOf(static_cast<size_t>(end));
+	std::string res = std::string(str->data, byteStart) + std::string(str->data + byteEnd, str->size - byteEnd);
 	return notifier.createString(res);
 }
 
 inline AObject *str_replace_range(NativeFuncInData) {
-	const std::string &s = args[0]->str->data;
+	AString *str = args[0]->str;
 	int64_t start = args[1]->i;
 	int64_t end = args[2]->i;
 	const std::string &repl = args[3]->str->data;
-	if (start < 0 || end < start || static_cast<size_t>(end) > s.size()) {
+	int64_t charLen = static_cast<int64_t>(str->charCount());
+	if (start < 0 || end < start || end > charLen) {
 		notifier.throwException("Index out of range");
 		return nullptr;
 	}
-	std::string res = s.substr(0, start) + repl + s.substr(end);
+	size_t byteStart = str->byteOffsetOf(static_cast<size_t>(start));
+	size_t byteEnd = str->byteOffsetOf(static_cast<size_t>(end));
+	std::string res = std::string(str->data, byteStart) + repl + std::string(str->data + byteEnd, str->size - byteEnd);
 	return notifier.createString(res);
 }
 
@@ -1699,7 +1737,7 @@ inline AObject *str_indices(NativeFuncInData) {
 	AString *str = args[0]->str;
 	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
 	auto arr = notifier.createArray(returnId, DefaultClass::intClassId);
-	int64_t len = static_cast<int64_t>(str->size);
+	int64_t len = static_cast<int64_t>(str->charCount());
 	for (int64_t i = 0; i < len; ++i) {
 		notifier.arrayAdd(arr, notifier.createInt(i));
 	}
@@ -1709,113 +1747,140 @@ inline AObject *str_indices(NativeFuncInData) {
 inline AObject *str_any_fn(NativeFuncInData) {
 	AString *str = args[0]->str;
 	AObject *predicate = args[1];
-	int64_t len = static_cast<int64_t>(str->size);
-	for (int64_t i = 0; i < len; ++i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	bool found = false;
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		auto res = notifier.callFunctionObject(predicate, ch);
 		notifier.release(ch);
-		if (notifier.hasException()) return nullptr;
-		if (res == DefaultClass::trueObject) return DefaultClass::trueObject;
-	}
-	return DefaultClass::falseObject;
+		if (notifier.hasException()) return false;
+		if (res == DefaultClass::trueObject) {
+			found = true;
+			return false;
+		}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
+	return found ? DefaultClass::trueObject : DefaultClass::falseObject;
 }
 
 inline AObject *str_all_fn(NativeFuncInData) {
 	AString *str = args[0]->str;
 	AObject *predicate = args[1];
-	int64_t len = static_cast<int64_t>(str->size);
-	for (int64_t i = 0; i < len; ++i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	bool allMatch = true;
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		auto res = notifier.callFunctionObject(predicate, ch);
 		notifier.release(ch);
-		if (notifier.hasException()) return nullptr;
-		if (res != DefaultClass::trueObject) return DefaultClass::falseObject;
-	}
-	return DefaultClass::trueObject;
+		if (notifier.hasException()) return false;
+		if (res != DefaultClass::trueObject) {
+			allMatch = false;
+			return false;
+		}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
+	return allMatch ? DefaultClass::trueObject : DefaultClass::falseObject;
 }
 
 inline AObject *str_none_fn(NativeFuncInData) {
 	AString *str = args[0]->str;
 	AObject *predicate = args[1];
-	int64_t len = static_cast<int64_t>(str->size);
-	for (int64_t i = 0; i < len; ++i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	bool noneMatch = true;
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		auto res = notifier.callFunctionObject(predicate, ch);
 		notifier.release(ch);
-		if (notifier.hasException()) return nullptr;
-		if (res == DefaultClass::trueObject) return DefaultClass::falseObject;
-	}
-	return DefaultClass::trueObject;
+		if (notifier.hasException()) return false;
+		if (res == DefaultClass::trueObject) {
+			noneMatch = false;
+			return false;
+		}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
+	return noneMatch ? DefaultClass::trueObject : DefaultClass::falseObject;
 }
 
 inline AObject *str_count_fn(NativeFuncInData) {
 	AString *str = args[0]->str;
 	AObject *predicate = args[1];
-	int64_t len = static_cast<int64_t>(str->size);
 	int64_t count = 0;
-	for (int64_t i = 0; i < len; ++i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		auto res = notifier.callFunctionObject(predicate, ch);
 		notifier.release(ch);
-		if (notifier.hasException()) return nullptr;
+		if (notifier.hasException()) return false;
 		if (res == DefaultClass::trueObject) ++count;
-	}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
 	return notifier.createInt(count);
 }
 
 inline AObject *str_index_of_first(NativeFuncInData) {
 	AString *str = args[0]->str;
 	AObject *predicate = args[1];
-	int64_t len = static_cast<int64_t>(str->size);
-	for (int64_t i = 0; i < len; ++i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	int64_t foundIdx = -1;
+	str->forEachCodePoint([&](uint32_t cp, int64_t charIdx) {
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		auto res = notifier.callFunctionObject(predicate, ch);
 		notifier.release(ch);
-		if (notifier.hasException()) return nullptr;
-		if (res == DefaultClass::trueObject) return notifier.createInt(i);
-	}
-	return notifier.createInt(-1);
+		if (notifier.hasException()) return false;
+		if (res == DefaultClass::trueObject) {
+			foundIdx = charIdx;
+			return false;
+		}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
+	return notifier.createInt(foundIdx);
 }
 
 inline AObject *str_index_of_last(NativeFuncInData) {
 	AString *str = args[0]->str;
 	AObject *predicate = args[1];
-	int64_t len = static_cast<int64_t>(str->size);
-	for (int64_t i = len - 1; i >= 0; --i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	int64_t foundIdx = -1;
+	str->forEachCodePoint([&](uint32_t cp, int64_t charIdx) {
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		auto res = notifier.callFunctionObject(predicate, ch);
 		notifier.release(ch);
-		if (notifier.hasException()) return nullptr;
-		if (res == DefaultClass::trueObject) return notifier.createInt(i);
-	}
-	return notifier.createInt(-1);
+		if (notifier.hasException()) return false;
+		if (res == DefaultClass::trueObject) {
+			foundIdx = charIdx;
+		}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
+	return notifier.createInt(foundIdx);
 }
 
 inline AObject *str_first_fn(NativeFuncInData) {
 	AString *str = args[0]->str;
 	AObject *predicate = args[1];
-	int64_t len = static_cast<int64_t>(str->size);
-	for (int64_t i = 0; i < len; ++i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	uint32_t matchedCp = 0;
+	bool found = false;
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		auto res = notifier.callFunctionObject(predicate, ch);
-		if (notifier.hasException()) {
-			notifier.release(ch);
-			if (res) notifier.release(res);
-			return nullptr;
-		}
-		bool matched = (res == DefaultClass::trueObject);
-		if (res) notifier.release(res);
 		notifier.release(ch);
-		if (matched) {
-			return notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		if (notifier.hasException()) return false;
+		if (res == DefaultClass::trueObject) {
+			matchedCp = cp;
+			found = true;
+			return false;
 		}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
+	if (found) {
+		return notifier.createChar(matchedCp);
 	}
 	notifier.throwException("NoSuchElementException: String contains no character matching the predicate.");
 	return nullptr;
@@ -1824,22 +1889,23 @@ inline AObject *str_first_fn(NativeFuncInData) {
 inline AObject *str_last_fn(NativeFuncInData) {
 	AString *str = args[0]->str;
 	AObject *predicate = args[1];
-	int64_t len = static_cast<int64_t>(str->size);
-	for (int64_t i = len - 1; i >= 0; --i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	uint32_t matchedCp = 0;
+	bool found = false;
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		auto res = notifier.callFunctionObject(predicate, ch);
-		if (notifier.hasException()) {
-			notifier.release(ch);
-			if (res) notifier.release(res);
-			return nullptr;
-		}
-		bool matched = (res == DefaultClass::trueObject);
-		if (res) notifier.release(res);
 		notifier.release(ch);
-		if (matched) {
-			return notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		if (notifier.hasException()) return false;
+		if (res == DefaultClass::trueObject) {
+			matchedCp = cp;
+			found = true;
 		}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
+	if (found) {
+		return notifier.createChar(matchedCp);
 	}
 	notifier.throwException("NoSuchElementException: String contains no character matching the predicate.");
 	return nullptr;
@@ -1848,79 +1914,80 @@ inline AObject *str_last_fn(NativeFuncInData) {
 inline AObject *str_first_or_null_fn(NativeFuncInData) {
 	AString *str = args[0]->str;
 	AObject *predicate = args[1];
-	int64_t len = static_cast<int64_t>(str->size);
-	for (int64_t i = 0; i < len; ++i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	uint32_t matchedCp = 0;
+	bool found = false;
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		auto res = notifier.callFunctionObject(predicate, ch);
-		if (notifier.hasException()) {
-			notifier.release(ch);
-			if (res) notifier.release(res);
-			return nullptr;
-		}
-		bool matched = (res == DefaultClass::trueObject);
-		if (res) notifier.release(res);
 		notifier.release(ch);
-		if (matched) {
-			return notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		if (notifier.hasException()) return false;
+		if (res == DefaultClass::trueObject) {
+			matchedCp = cp;
+			found = true;
+			return false;
 		}
-	}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
+	if (found) return notifier.createChar(matchedCp);
 	return DefaultClass::nullObject;
 }
 
 inline AObject *str_last_or_null_fn(NativeFuncInData) {
 	AString *str = args[0]->str;
 	AObject *predicate = args[1];
-	int64_t len = static_cast<int64_t>(str->size);
-	for (int64_t i = len - 1; i >= 0; --i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	uint32_t matchedCp = 0;
+	bool found = false;
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		auto res = notifier.callFunctionObject(predicate, ch);
-		if (notifier.hasException()) {
-			notifier.release(ch);
-			if (res) notifier.release(res);
-			return nullptr;
-		}
-		bool matched = (res == DefaultClass::trueObject);
-		if (res) notifier.release(res);
 		notifier.release(ch);
-		if (matched) {
-			return notifier.createChar(static_cast<uint8_t>(str->data[i]));
+		if (notifier.hasException()) return false;
+		if (res == DefaultClass::trueObject) {
+			matchedCp = cp;
+			found = true;
 		}
-	}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
+	if (found) return notifier.createChar(matchedCp);
 	return DefaultClass::nullObject;
 }
 
 inline AObject *str_for_each(NativeFuncInData) {
 	AString *str = args[0]->str;
 	AObject *action = args[1];
-	int64_t len = static_cast<int64_t>(str->size);
-	for (int64_t i = 0; i < len; ++i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		auto ret = notifier.callFunctionObject(action, ch);
 		if (ret) notifier.release(ret);
 		notifier.release(ch);
-		if (notifier.hasException()) return nullptr;
-	}
+		if (notifier.hasException()) return false;
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
 	return nullptr;
 }
 
 inline AObject *str_for_each_indexed(NativeFuncInData) {
 	AString *str = args[0]->str;
 	AObject *action = args[1];
-	int64_t len = static_cast<int64_t>(str->size);
-	for (int64_t i = 0; i < len; ++i) {
-		AObject *idx = notifier.createInt(i);
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	str->forEachCodePoint([&](uint32_t cp, int64_t charIdx) {
+		AObject *idx = notifier.createInt(charIdx);
+		AObject *ch = notifier.createChar(cp);
 		idx->retain();
 		ch->retain();
 		auto ret = notifier.callFunctionObject(action, idx, ch);
 		if (ret) notifier.release(ret);
 		notifier.release(idx);
 		notifier.release(ch);
-		if (notifier.hasException()) return nullptr;
-	}
+		if (notifier.hasException()) return false;
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
 	return nullptr;
 }
 
@@ -1939,73 +2006,95 @@ inline AObject *str_on_each_indexed(NativeFuncInData) {
 inline AObject *str_filter_indexed(NativeFuncInData) {
 	AString *str = args[0]->str;
 	AObject *predicate = args[1];
-	int64_t len = static_cast<int64_t>(str->size);
 	std::string res;
-	for (int64_t i = 0; i < len; ++i) {
-		AObject *idx = notifier.createInt(i);
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(str->data[i]));
+	str->forEachCodePoint([&](uint32_t cp, int64_t charIdx) {
+		AObject *idx = notifier.createInt(charIdx);
+		AObject *ch = notifier.createChar(cp);
 		idx->retain();
 		ch->retain();
 		auto match = notifier.callFunctionObject(predicate, idx, ch);
 		notifier.release(idx);
 		notifier.release(ch);
-		if (notifier.hasException()) return nullptr;
+		if (notifier.hasException()) return false;
 		if (match == DefaultClass::trueObject) {
-			res += str->data[i];
+			res += AString::codePointToUtf8(cp);
 		}
-	}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
 	return notifier.createString(res);
 }
 
 inline AObject *str_take_last_while(NativeFuncInData) {
-	const std::string &s = args[0]->str->data;
+	AString *str = args[0]->str;
 	AObject *predicate = args[1];
-	int64_t len = static_cast<int64_t>(s.size());
-	for (int64_t i = len - 1; i >= 0; --i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(s[i]));
+	std::vector<std::pair<uint32_t, size_t>> cps;
+	size_t idx = 0;
+	std::string_view sv(str->data, str->size);
+	while (idx < sv.size()) {
+		size_t prev = idx;
+		uint32_t cp = AString::utf8ToCodePoint(sv, idx);
+		cps.push_back({cp, prev});
+	}
+	size_t byteStart = str->size;
+	for (int64_t i = static_cast<int64_t>(cps.size()) - 1; i >= 0; --i) {
+		AObject *ch = notifier.createChar(cps[i].first);
 		ch->retain();
 		auto match = notifier.callFunctionObject(predicate, ch);
 		notifier.release(ch);
 		if (notifier.hasException()) return nullptr;
 		if (match != DefaultClass::trueObject) {
-			return notifier.createString(s.substr(i + 1));
+			break;
 		}
+		byteStart = cps[i].second;
 	}
-	return notifier.createString(AString::copy(args[0]->str));
+	return notifier.createString(std::string(str->data + byteStart, str->size - byteStart));
 }
 
 inline AObject *str_drop_last_while(NativeFuncInData) {
-	const std::string &s = args[0]->str->data;
+	AString *str = args[0]->str;
 	AObject *predicate = args[1];
-	int64_t len = static_cast<int64_t>(s.size());
-	for (int64_t i = len - 1; i >= 0; --i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(s[i]));
+	std::vector<std::pair<uint32_t, size_t>> cps;
+	size_t idx = 0;
+	std::string_view sv(str->data, str->size);
+	while (idx < sv.size()) {
+		size_t prev = idx;
+		uint32_t cp = AString::utf8ToCodePoint(sv, idx);
+		cps.push_back({cp, prev});
+	}
+	size_t byteEnd = str->size;
+	for (int64_t i = static_cast<int64_t>(cps.size()) - 1; i >= 0; --i) {
+		AObject *ch = notifier.createChar(cps[i].first);
 		ch->retain();
 		auto match = notifier.callFunctionObject(predicate, ch);
 		notifier.release(ch);
 		if (notifier.hasException()) return nullptr;
 		if (match != DefaultClass::trueObject) {
-			return notifier.createString(s.substr(0, i + 1));
+			break;
 		}
+		byteEnd = cps[i].second;
 	}
-	return notifier.createString("");
+	return notifier.createString(std::string(str->data, byteEnd));
 }
 
 inline AObject *str_windowed(NativeFuncInData) {
-	const std::string &s = args[0]->str->data;
+	AString *str = args[0]->str;
 	int64_t size = args[1]->i;
 	int64_t step = argSize > 2 ? args[2]->i : 1;
 	bool partial = argSize > 3 ? (args[3] == DefaultClass::trueObject) : false;
 	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
 	auto arr = notifier.createArray(returnId, DefaultClass::stringClassId);
-	int64_t len = static_cast<int64_t>(s.size());
+	int64_t charLen = static_cast<int64_t>(str->charCount());
 	if (size <= 0 || step <= 0) return arr;
-	for (int64_t i = 0; i < len; i += step) {
+	for (int64_t i = 0; i < charLen; i += step) {
 		int64_t end = i + size;
-		if (end <= len) {
-			notifier.arrayAdd(arr, notifier.createString(s.substr(i, size)));
+		if (end <= charLen) {
+			size_t byteStart = str->byteOffsetOf(static_cast<size_t>(i));
+			size_t byteEnd = str->byteOffsetOf(static_cast<size_t>(end));
+			notifier.arrayAdd(arr, notifier.createString(std::string(str->data + byteStart, byteEnd - byteStart)));
 		} else if (partial) {
-			notifier.arrayAdd(arr, notifier.createString(s.substr(i)));
+			size_t byteStart = str->byteOffsetOf(static_cast<size_t>(i));
+			notifier.arrayAdd(arr, notifier.createString(std::string(str->data + byteStart, str->size - byteStart)));
 		} else {
 			break;
 		}
@@ -2017,10 +2106,10 @@ inline AObject *str_to_list(NativeFuncInData) {
 	AString *str = args[0]->str;
 	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
 	auto arr = notifier.createArray(returnId, DefaultClass::charClassId);
-	int64_t len = static_cast<int64_t>(str->size);
-	for (int64_t i = 0; i < len; ++i) {
-		notifier.arrayAdd(arr, notifier.createChar(static_cast<uint8_t>(str->data[i])));
-	}
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		notifier.arrayAdd(arr, notifier.createChar(cp));
+		return true;
+	});
 	return arr;
 }
 
@@ -2478,23 +2567,24 @@ inline AObject *build_string(NativeFuncInData) {
 }
 
 inline AObject *str_partition(NativeFuncInData) {
-	const std::string &s = args[0]->str->data;
+	AString *str = args[0]->str;
 	AObject *predicate = args[1];
-	int64_t len = static_cast<int64_t>(s.size());
 	std::string first;
 	std::string second;
-	for (int64_t i = 0; i < len; ++i) {
-		AObject *ch = notifier.createChar(static_cast<uint8_t>(s[i]));
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		AObject *ch = notifier.createChar(cp);
 		ch->retain();
 		auto match = notifier.callFunctionObject(predicate, ch);
 		notifier.release(ch);
-		if (notifier.hasException()) return nullptr;
+		if (notifier.hasException()) return false;
 		if (match == DefaultClass::trueObject) {
-			first += s[i];
+			first += AString::codePointToUtf8(cp);
 		} else {
-			second += s[i];
+			second += AString::codePointToUtf8(cp);
 		}
-	}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
 	ClassId pairId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : 0;
 	if (pairId < DefaultClass::builtInObjectSize || pairId >= notifier.vm->data.classes.size() || notifier.vm->data.classes[pairId]->memberMap.empty()) {
 		auto it = notifier.vm->data.classMap.find("Pair");
@@ -2511,9 +2601,8 @@ inline AObject *str_partition(NativeFuncInData) {
 }
 
 inline AObject *str_zip(NativeFuncInData) {
-	const std::string &s1 = args[0]->str->data;
-	const std::string &s2 = args[1]->str->data;
-	size_t minLen = std::min(s1.size(), s2.size());
+	AString *s1 = args[0]->str;
+	AString *s2 = args[1]->str;
 	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
 	ClassId pairId = 0;
 	if (returnId < notifier.vm->data.classes.size()) {
@@ -2527,10 +2616,14 @@ inline AObject *str_zip(NativeFuncInData) {
 		if (it != notifier.vm->data.classMap.end()) pairId = it->second;
 	}
 	auto arr = notifier.createArray(returnId, pairId);
+	std::vector<uint32_t> cp1, cp2;
+	s1->forEachCodePoint([&](uint32_t cp, int64_t) { cp1.push_back(cp); return true; });
+	s2->forEachCodePoint([&](uint32_t cp, int64_t) { cp2.push_back(cp); return true; });
+	size_t minLen = std::min(cp1.size(), cp2.size());
 	for (size_t i = 0; i < minLen; ++i) {
 		auto pairObj = notifier.createMemberObject(pairId, 2);
-		auto c1 = notifier.createChar(static_cast<uint8_t>(s1[i]));
-		auto c2 = notifier.createChar(static_cast<uint8_t>(s2[i]));
+		auto c1 = notifier.createChar(cp1[i]);
+		auto c2 = notifier.createChar(cp2[i]);
 		pairObj->member->data[0] = c1;
 		pairObj->member->data[1] = c2;
 		c1->retain();
@@ -2541,10 +2634,9 @@ inline AObject *str_zip(NativeFuncInData) {
 }
 
 inline AObject *str_zip_transform(NativeFuncInData) {
-	const std::string &s1 = args[0]->str->data;
-	const std::string &s2 = args[1]->str->data;
+	AString *s1 = args[0]->str;
+	AString *s2 = args[1]->str;
 	AObject *transform = args[2];
-	size_t minLen = std::min(s1.size(), s2.size());
 	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
 	ClassId elemKey = DefaultClass::anyClassId;
 	if (returnId < notifier.vm->data.classes.size()) {
@@ -2554,9 +2646,13 @@ inline AObject *str_zip_transform(NativeFuncInData) {
 		}
 	}
 	auto arr = notifier.createArray(returnId, elemKey);
+	std::vector<uint32_t> cp1, cp2;
+	s1->forEachCodePoint([&](uint32_t cp, int64_t) { cp1.push_back(cp); return true; });
+	s2->forEachCodePoint([&](uint32_t cp, int64_t) { cp2.push_back(cp); return true; });
+	size_t minLen = std::min(cp1.size(), cp2.size());
 	for (size_t i = 0; i < minLen; ++i) {
-		auto c1 = notifier.createChar(static_cast<uint8_t>(s1[i]));
-		auto c2 = notifier.createChar(static_cast<uint8_t>(s2[i]));
+		auto c1 = notifier.createChar(cp1[i]);
+		auto c2 = notifier.createChar(cp2[i]);
 		c1->retain();
 		c2->retain();
 		auto res = notifier.callFunctionObject(transform, c1, c2);
@@ -2569,7 +2665,7 @@ inline AObject *str_zip_transform(NativeFuncInData) {
 }
 
 inline AObject *str_associate(NativeFuncInData) {
-	const std::string &s = args[0]->str->data;
+	AString *str = args[0]->str;
 	AObject *transform = args[1];
 	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::mapClassId;
 	ClassId keyKey = DefaultClass::anyClassId;
@@ -2581,23 +2677,24 @@ inline AObject *str_associate(NativeFuncInData) {
 	}
 	auto map = Libs::map::constructor(notifier, returnId, keyKey);
 	map->flags |= AObject::Flags::OBJ_IS_MAP;
-	int64_t len = static_cast<int64_t>(s.size());
-	for (int64_t i = 0; i < len; ++i) {
-		auto ch = notifier.createChar(static_cast<uint8_t>(s[i]));
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		auto ch = notifier.createChar(cp);
 		ch->retain();
 		auto pair = notifier.callFunctionObject(transform, ch);
 		notifier.release(ch);
-		if (notifier.hasException()) return nullptr;
+		if (notifier.hasException()) return false;
 		if (pair && (pair->flags & AObject::Flags::OBJ_HAS_MEMBER_DATA) && pair->member && pair->member->size >= 2) {
 			AObject *setArgs[3] = {map, pair->member->data[0], pair->member->data[1]};
 			Libs::map::set(notifier, setArgs, 3);
 		}
-	}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
 	return map;
 }
 
 inline AObject *str_associate_by(NativeFuncInData) {
-	const std::string &s = args[0]->str->data;
+	AString *str = args[0]->str;
 	AObject *keySelector = args[1];
 	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::mapClassId;
 	ClassId keyKey = DefaultClass::anyClassId;
@@ -2609,24 +2706,25 @@ inline AObject *str_associate_by(NativeFuncInData) {
 	}
 	auto map = Libs::map::constructor(notifier, returnId, keyKey);
 	map->flags |= AObject::Flags::OBJ_IS_MAP;
-	int64_t len = static_cast<int64_t>(s.size());
-	for (int64_t i = 0; i < len; ++i) {
-		auto ch = notifier.createChar(static_cast<uint8_t>(s[i]));
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		auto ch = notifier.createChar(cp);
 		ch->retain();
 		auto key = notifier.callFunctionObject(keySelector, ch);
 		if (notifier.hasException()) {
 			notifier.release(ch);
-			return nullptr;
+			return false;
 		}
 		AObject *setArgs[3] = {map, key, ch};
 		Libs::map::set(notifier, setArgs, 3);
 		notifier.release(ch);
-	}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
 	return map;
 }
 
 inline AObject *str_associate_with(NativeFuncInData) {
-	const std::string &s = args[0]->str->data;
+	AString *str = args[0]->str;
 	AObject *valueSelector = args[1];
 	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::mapClassId;
 	ClassId keyKey = DefaultClass::charClassId;
@@ -2638,24 +2736,25 @@ inline AObject *str_associate_with(NativeFuncInData) {
 	}
 	auto map = Libs::map::constructor(notifier, returnId, keyKey);
 	map->flags |= AObject::Flags::OBJ_IS_MAP;
-	int64_t len = static_cast<int64_t>(s.size());
-	for (int64_t i = 0; i < len; ++i) {
-		auto ch = notifier.createChar(static_cast<uint8_t>(s[i]));
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		auto ch = notifier.createChar(cp);
 		ch->retain();
 		auto val = notifier.callFunctionObject(valueSelector, ch);
 		if (notifier.hasException()) {
 			notifier.release(ch);
-			return nullptr;
+			return false;
 		}
 		AObject *setArgs[3] = {map, ch, val};
 		Libs::map::set(notifier, setArgs, 3);
 		notifier.release(ch);
-	}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
 	return map;
 }
 
 inline AObject *str_group_by(NativeFuncInData) {
-	const std::string &s = args[0]->str->data;
+	AString *str = args[0]->str;
 	AObject *keySelector = args[1];
 	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::mapClassId;
 	ClassId keyKey = DefaultClass::anyClassId;
@@ -2667,14 +2766,13 @@ inline AObject *str_group_by(NativeFuncInData) {
 	}
 	auto map = Libs::map::constructor(notifier, returnId, keyKey);
 	map->flags |= AObject::Flags::OBJ_IS_MAP;
-	int64_t len = static_cast<int64_t>(s.size());
-	for (int64_t i = 0; i < len; ++i) {
-		auto ch = notifier.createChar(static_cast<uint8_t>(s[i]));
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		auto ch = notifier.createChar(cp);
 		ch->retain();
 		auto key = notifier.callFunctionObject(keySelector, ch);
 		if (notifier.hasException()) {
 			notifier.release(ch);
-			return nullptr;
+			return false;
 		}
 		AObject *getArgs[2] = {map, key};
 		auto existingArr = Libs::map::get(notifier, getArgs, 2);
@@ -2687,7 +2785,9 @@ inline AObject *str_group_by(NativeFuncInData) {
 			notifier.arrayAdd(existingArr, ch);
 		}
 		notifier.release(ch);
-	}
+		return true;
+	});
+	if (notifier.hasException()) return nullptr;
 	return map;
 }
 
@@ -2708,7 +2808,7 @@ inline AObject *str_count_str(NativeFuncInData) {
 	const std::string &s = args[0]->str->data;
 	const std::string &sub = args[1]->str->data;
 	if (sub.empty()) {
-		return notifier.createInt(static_cast<int64_t>(s.size() + 1));
+		return notifier.createInt(static_cast<int64_t>(args[0]->str->charCount() + 1));
 	}
 	int64_t count = 0;
 	size_t pos = 0;
@@ -2720,22 +2820,123 @@ inline AObject *str_count_str(NativeFuncInData) {
 }
 
 inline AObject *str_capitalize(NativeFuncInData) {
-	const std::string &s = args[0]->str->data;
-	if (s.empty()) {
+	AString *str = args[0]->str;
+	if (str->size == 0) {
 		return notifier.createString("");
 	}
-	std::string res = s;
-	res[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(res[0])));
+	std::string_view sv(str->data, str->size);
+	size_t idx = 0;
+	uint32_t cp = AString::utf8ToCodePoint(sv, idx);
+	uint32_t upperCp = static_cast<uint32_t>(std::toupper(static_cast<int>(cp)));
+	std::string res = AString::codePointToUtf8(upperCp);
+	res.append(str->data + idx, str->size - idx);
 	return notifier.createString(res);
 }
 
 inline AObject *str_char_code(NativeFuncInData) {
-	const std::string &s = args[0]->str->data;
-	if (s.empty()) {
+	AString *str = args[0]->str;
+	if (str->size == 0) {
 		notifier.throwException("ord: empty string");
 		return nullptr;
 	}
-	return notifier.createInt(static_cast<uint8_t>(s[0]));
+	size_t idx = 0;
+	uint32_t cp = AString::utf8ToCodePoint(std::string_view(str->data, str->size), idx);
+	return notifier.createInt(static_cast<int64_t>(cp));
+}
+
+inline AObject *str_to_byte_array(NativeFuncInData) {
+	AString *str = args[0]->str;
+	ClassId returnId = (notifier.callFrame && notifier.callFrame->func) ? notifier.callFrame->func->returnId : DefaultClass::arrayClassId;
+	auto arr = notifier.createArray(returnId, DefaultClass::intClassId);
+	for (size_t i = 0; i < str->size; ++i) {
+		notifier.arrayAdd(arr, notifier.createInt(static_cast<uint8_t>(str->data[i])));
+	}
+	return arr;
+}
+
+inline AObject *str_to_binary_string(NativeFuncInData) {
+	AString *str = args[0]->str;
+	if (str->size == 0) return notifier.createString("");
+	char *end = nullptr;
+	int64_t num = std::strtoll(str->data, &end, 10);
+	if (end != str->data && *end == '\0') {
+		uint64_t val = static_cast<uint64_t>(num);
+		if (val == 0) return notifier.createString("0");
+		std::string s;
+		while (val > 0) {
+			s.push_back((val & 1) ? '1' : '0');
+			val >>= 1;
+		}
+		std::reverse(s.begin(), s.end());
+		return notifier.createString(std::move(s));
+	}
+	std::string sep = (argSize >= 2 && args[1] && args[1]->type == DefaultClass::stringClassId)
+	    ? std::string(args[1]->str->data, args[1]->str->size)
+	    : "";
+	std::string s;
+	for (size_t i = 0; i < str->size; ++i) {
+		if (i > 0 && !sep.empty()) s += sep;
+		uint8_t b = static_cast<uint8_t>(str->data[i]);
+		for (int bit = 7; bit >= 0; --bit) {
+			s.push_back((b & (1 << bit)) ? '1' : '0');
+		}
+	}
+	return notifier.createString(std::move(s));
+}
+
+inline AObject *str_distinct(NativeFuncInData) {
+	AString *str = args[0]->str;
+	std::unordered_set<uint32_t> seen;
+	std::string res;
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		if (seen.insert(cp).second) {
+			res += AString::codePointToUtf8(cp);
+		}
+		return true;
+	});
+	return notifier.createString(res);
+}
+
+inline AObject *str_max_or_null(NativeFuncInData) {
+	AString *str = args[0]->str;
+	if (str->size == 0) return DefaultClass::nullObject;
+	uint32_t maxCp = 0;
+	bool first = true;
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		if (first || cp > maxCp) {
+			maxCp = cp;
+			first = false;
+		}
+		return true;
+	});
+	return notifier.createChar(maxCp);
+}
+
+inline AObject *str_min_or_null(NativeFuncInData) {
+	AString *str = args[0]->str;
+	if (str->size == 0) return DefaultClass::nullObject;
+	uint32_t minCp = 0;
+	bool first = true;
+	str->forEachCodePoint([&](uint32_t cp, int64_t) {
+		if (first || cp < minCp) {
+			minCp = cp;
+			first = false;
+		}
+		return true;
+	});
+	return notifier.createChar(minCp);
+}
+
+inline AObject *str_decapitalize(NativeFuncInData) {
+	AString *str = args[0]->str;
+	if (str->size == 0) return notifier.createString(AString::copy(str));
+	std::string_view sv(str->data, str->size);
+	size_t idx = 0;
+	uint32_t firstCp = AString::utf8ToCodePoint(sv, idx);
+	uint32_t lowerCp = static_cast<uint32_t>(std::tolower(static_cast<int>(firstCp)));
+	std::string res = AString::codePointToUtf8(lowerCp);
+	res.append(str->data + idx, str->size - idx);
+	return notifier.createString(res);
 }
 
 } // namespace DefaultFunction

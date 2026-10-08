@@ -178,6 +178,49 @@ fun testStringFeatures() {
     assert("hello".removePrefix('h') == "ello")
     assert("hello".removeSuffix('o') == "hell")
 
+    // 16. Unicode character counting, indexing, and Kotlin string methods
+    val unicodeStr = "Xin chào"
+    assert(unicodeStr.length() == 8)
+    assert(unicodeStr.size() == 8)
+    assert(unicodeStr[4] == 'c')
+    assert(unicodeStr[5] == 'h')
+    assert(unicodeStr[6] == 'à')
+    assert(unicodeStr[7] == 'o')
+    assert(unicodeStr.substr(4) == "chào")
+    assert(unicodeStr.reversed() == "oàhc niX")
+
+    val vnChar = "á"
+    assert(vnChar.length() == 1)
+    assert(vnChar.byteLength() == 2)
+    assert(vnChar[0] == 'á')
+
+    // toBinaryString
+    val binHello = "A".toBinaryString()
+    assert(binHello == "01000001")
+    val binTwo = "AB".toBinaryString(" ")
+    assert(binTwo == "01000001 01000010")
+
+    // toByteArray
+    val bytesArr = "AB".toByteArray()
+    assert(bytesArr.size() == 2)
+    assert(bytesArr[0] == 65)
+    assert(bytesArr[1] == 66)
+
+    // toInt with radix
+    assert("1010".toInt(2) == 10)
+    assert("ff".toInt(16) == 255)
+    assert("FF".toInt(16) == 255)
+    assert("77".toInt(8) == 63)
+    assert("1010".toIntOrNull(2) == 10)
+    assert("invalid".toIntOrNull(2) == null)
+
+    // distinct, maxOrNull, minOrNull, decapitalize
+    assert("banana".distinct() == "ban")
+    assert("dcba".maxOrNull() == 'd')
+    assert("dcba".minOrNull() == 'a')
+    assert("".maxOrNull() == null)
+    assert("Kotlin".decapitalize() == "kotlin")
+
     println("Passed ${__FUNC__}")
 }
 

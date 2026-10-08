@@ -167,7 +167,7 @@ typealias IntArray = Array<Int>
 typealias FloatArray = Array<Float>
 typealias DoubleArray = Array<Float>
 typealias BooleanArray = Array<Bool>
-typealias ByteArray = Array<Int>
+typealias ByteArray = Bytes
 typealias CharArray = Array<Char>
 typealias LongArray = Array<Int>
 

@@ -45,6 +45,84 @@ fun testBytesFeaturesExhaustive() {
     val strBytes = "AutoLang".encodeToByteArray()
     assert(strBytes.decodeToString() == "AutoLang")
 
+    // Bytes index operators
+    val ba: Bytes = strBytes
+    assert(ba[0] == 65) // 'A'
+    ba[0] = 97          // 'a'
+    assert(ba[0] == 97)
+    assert(ba.decodeToString() == "autoLang")
+
+    // Implicit constructor range validation (-128..255)
+    val validBytes: ByteArray = [-128, 0, 255]
+    assert(validBytes.size() == 3)
+    assert(validBytes[0] == 128)
+    assert(validBytes[1] == 0)
+    assert(validBytes[2] == 255)
+
+    var outOfRangeCaught = false
+    try {
+        val invalidBytes: ByteArray = [1, 2555]
+    } catch (e: Exception) {
+        outOfRangeCaught = e.message.contains("Byte value out of range: 2555")
+    }
+    assert(outOfRangeCaught)
+
+    // copyOf and copyOfRange
+    val copied = ba.copyOf()
+    assert(copied.size() == ba.size())
+    assert(copied.contentEquals(ba))
+    val expanded = ba.copyOf(10)
+    assert(expanded.size() == 10)
+    assert(expanded[8] == 0 && expanded[9] == 0)
+    val ranged = ba.copyOfRange(0, 4)
+    assert(ranged.decodeToString() == "auto")
+
+    // reversed and reverse
+    val rev = ranged.reversed()
+    assert(rev.decodeToString() == "otua")
+    ranged.reverse()
+    assert(ranged.decodeToString() == "otua")
+
+    // contains, lastIndexOf, lastIndex, indices
+    val sample = Bytes.fromString("banana")
+    assert(sample.contains(97)) // 'a'
+    assert(sample.contains(122) == false) // 'z'
+    assert(sample.indexOf(97) == 1)
+    assert(sample.lastIndexOf(97) == 5)
+    assert(sample.lastIndex() == 5)
+    val sampleIndices = sample.indices()
+    assert(sampleIndices.size() == 6 && sampleIndices[5] == 5)
+
+    // forEach and toList
+    var sum = 0
+    val numBytes = Bytes(3)
+    numBytes[0] = 10
+    numBytes[1] = 20
+    numBytes[2] = 30
+    numBytes.forEach { sum = sum + it }
+    assert(sum == 60)
+    val listBytes = numBytes.toList()
+    assert(listBytes.size() == 3 && listBytes[1] == 20)
+
+    // Endianness I/O: 16-bit, 32-bit, 64-bit, Float
+    val ioBuf = Bytes(16)
+    ioBuf.writeInt16LE(0, 0x1234)
+    assert(ioBuf.readInt16LE(0) == 0x1234)
+    ioBuf.writeInt16BE(2, 0x1234)
+    assert(ioBuf.readInt16BE(2) == 0x1234)
+
+    ioBuf.writeInt32LE(4, 0x12345678)
+    assert(ioBuf.readInt32LE(4) == 0x12345678)
+
+    ioBuf.writeInt64BE(8, 0x0102030405060708)
+    assert(ioBuf.readInt64BE(8) == 0x0102030405060708)
+
+    val floatBuf = Bytes(16)
+    floatBuf.writeFloatLE(0, 3.14159)
+    assert(abs(floatBuf.readFloatLE(0) - 3.14159) < 0.0001)
+    floatBuf.writeFloatBE(8, 2.71828)
+    assert(abs(floatBuf.readFloatBE(8) - 2.71828) < 0.0001)
+
     println("Passed testBytesFeaturesExhaustive")
 }
 

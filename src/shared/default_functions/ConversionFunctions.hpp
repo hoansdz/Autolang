@@ -35,6 +35,36 @@ inline std::string to_string(ANotifier &notifier, AObject *obj, std::string spac
 			return "null";
 		case DefaultClass::boolClassId:
 			return (obj == DefaultClass::trueObject ? "true" : "false");
+		case Autolang::DefaultClass::functionClassId: {
+			if (!obj->function || !obj->function->function) {
+				return "Function";
+			}
+			auto func = obj->function->function;
+			auto &data = notifier.vm->data;
+			std::string name = func->getName(data);
+			std::string params = "(";
+			for (uint32_t i = 0; i < func->argSize; ++i) {
+				if (i > 0) params += ", ";
+				ClassId paramClassId = (func->args && i < func->argSize) ? func->args[i] : 0;
+				if (paramClassId < data.classes.size() && data.classes[paramClassId]) {
+					params += data.classes[paramClassId]->getName(data);
+				} else {
+					params += "Any";
+				}
+			}
+			params += ")";
+			std::string returnType = "Void";
+			if (func->returnId < data.classes.size() && data.classes[func->returnId]) {
+				returnType = data.classes[func->returnId]->getName(data);
+			}
+			if (func->functionFlags & FunctionFlags::FUNC_RETURN_NULLABLE) {
+				returnType += "?";
+			}
+			if (name.rfind("Closure@", 0) == 0 || name.empty()) {
+				return params + " -> " + returnType;
+			}
+			return "fun " + name + params + ": " + returnType;
+		}
 		default:
 			if (obj->flags & AObject::Flags::OBJ_IS_ARRAY) {
 				return Libs::array::to_string(notifier, obj);
@@ -106,8 +136,25 @@ inline AObject *to_int(NativeFuncInData) {
 		case Autolang::DefaultClass::boolClassId:
 			return notifier.createInt(static_cast<int64_t>(obj->b));
 		case Autolang::DefaultClass::stringClassId: {
-			char *end;
-			return notifier.createInt(std::strtoll(obj->str->data, &end, 10));
+			int radix = 10;
+			if (argSize >= 2 && args[1] && args[1]->type == DefaultClass::intClassId) {
+				radix = static_cast<int>(args[1]->i);
+			}
+			if (radix < 2 || radix > 36) {
+				notifier.throwException("Invalid radix: " + std::to_string(radix));
+				return nullptr;
+			}
+			if (obj->str->size == 0) {
+				notifier.throwException("NumberFormatException: For input string: \"\"");
+				return nullptr;
+			}
+			char *end = nullptr;
+			int64_t val = std::strtoll(obj->str->data, &end, radix);
+			if (end == obj->str->data || *end != '\0') {
+				notifier.throwException("NumberFormatException: For input string: \"" + std::string(obj->str->data) + "\"");
+				return nullptr;
+			}
+			return notifier.createInt(val);
 		}
 		default:
 			break;
@@ -173,6 +220,10 @@ inline AObject *to_string(NativeFuncInData) {
 			return notifier.createString(AString::copy(obj->str));
 		case Autolang::DefaultClass::boolClassId:
 			return notifier.createString(obj == Autolang::DefaultClass::trueObject ? "true" : "false");
+		case Autolang::DefaultClass::functionClassId: {
+			std::string s = to_string(notifier, obj);
+			return notifier.createString(AString::from(s));
+		}
 		default: {
 			if (obj == Autolang::DefaultClass::nullObject) {
 				return notifier.createString("null");

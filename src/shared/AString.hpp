@@ -102,6 +102,56 @@ public:
 		return c;
 	}
 
+	inline size_t charCount() const {
+		size_t count = 0;
+		for (size_t i = 0; i < size;) {
+			unsigned char c = static_cast<unsigned char>(data[i]);
+			if (c < 0x80) i += 1;
+			else if ((c >> 5) == 0x06) i += 2;
+			else if ((c >> 4) == 0x0E) i += 3;
+			else if ((c >> 3) == 0x1E) i += 4;
+			else i += 1;
+			count++;
+		}
+		return count;
+	}
+
+	inline size_t byteOffsetOf(size_t charIndex) const {
+		size_t count = 0;
+		for (size_t i = 0; i < size;) {
+			if (count == charIndex) return i;
+			unsigned char c = static_cast<unsigned char>(data[i]);
+			if (c < 0x80) i += 1;
+			else if ((c >> 5) == 0x06) i += 2;
+			else if ((c >> 4) == 0x0E) i += 3;
+			else if ((c >> 3) == 0x1E) i += 4;
+			else i += 1;
+			count++;
+		}
+		return (count == charIndex) ? size : std::string::npos;
+	}
+
+	inline uint32_t codePointAt(size_t charIndex) const {
+		size_t count = 0;
+		for (size_t i = 0; i < size;) {
+			uint32_t cp = utf8ToCodePoint(std::string_view(data, size), i);
+			if (count == charIndex) return cp;
+			count++;
+		}
+		return 0;
+	}
+
+	template <typename F>
+	inline void forEachCodePoint(F &&func) const {
+		std::string_view sv(data, size);
+		size_t idx = 0;
+		int64_t charIdx = 0;
+		while (idx < sv.size()) {
+			uint32_t cp = utf8ToCodePoint(sv, idx);
+			if (!func(cp, charIdx++)) break;
+		}
+	}
+
 	inline static AString *copy(AString *other) {
 		char *newStr = new char[other->size + 1];
 		memcpy(newStr, other->data, other->size + 1);

@@ -492,11 +492,316 @@ AObject *xor_with(NativeFuncInData) {
 	return nullptr;
 }
 
+AObject *copy_of(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	int64_t newSize = (argSize >= 2 && args[1]->type == DefaultClass::intClassId) ? args[1]->i : b->size;
+	if (newSize < 0) {
+		notifier.throwException("Negative size for copyOf");
+		return nullptr;
+	}
+	AObject *newObj = notifier.createBytes(newSize);
+	ABytes *newB = newObj->bytes;
+	int64_t copyLen = std::min(static_cast<int64_t>(b->size), newSize);
+	if (copyLen > 0) {
+		std::memcpy(newB->data, b->data, copyLen);
+	}
+	if (newSize > copyLen) {
+		std::memset(newB->data + copyLen, 0, newSize - copyLen);
+	}
+	return newObj;
+}
+
+AObject *copy_of_range(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	int64_t from = args[1]->i;
+	int64_t to = args[2]->i;
+	if (from < 0 || from > to || to > b->size) {
+		notifier.throwException("Index out of bounds in copyOfRange");
+		return nullptr;
+	}
+	int64_t newSize = to - from;
+	AObject *newObj = notifier.createBytes(newSize);
+	if (newSize > 0) {
+		std::memcpy(newObj->bytes->data, b->data + from, newSize);
+	}
+	return newObj;
+}
+
+AObject *reversed(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	AObject *newObj = notifier.createBytes(b->size);
+	for (int64_t i = 0; i < b->size; ++i) {
+		newObj->bytes->data[i] = b->data[b->size - 1 - i];
+	}
+	return newObj;
+}
+
+AObject *reverse(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	for (int64_t i = 0, j = b->size - 1; i < j; ++i, --j) {
+		std::swap(b->data[i], b->data[j]);
+	}
+	return args[0];
+}
+
+AObject *contains(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	uint8_t value = static_cast<uint8_t>(args[1]->i);
+	for (int64_t i = 0; i < b->size; ++i) {
+		if (b->data[i] == value) return DefaultClass::trueObject;
+	}
+	return DefaultClass::falseObject;
+}
+
+AObject *last_index_of(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	uint8_t value = static_cast<uint8_t>(args[1]->i);
+	int64_t startIndex = (argSize >= 3 && args[2]->type == DefaultClass::intClassId && args[2]->i >= 0)
+	    ? args[2]->i
+	    : (b->size - 1);
+	if (startIndex >= b->size) startIndex = b->size - 1;
+	for (int64_t i = startIndex; i >= 0; --i) {
+		if (b->data[i] == value) return notifier.createInt(i);
+	}
+	return notifier.createInt(-1);
+}
+
+AObject *last_index(NativeFuncInData) {
+	return notifier.createInt(args[0]->bytes->size - 1);
+}
+
+AObject *indices(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	ClassId arrayClassId = notifier.callFrame && notifier.callFrame->func ? notifier.callFrame->func->returnId : 0;
+	AObject *arr = notifier.createArray(arrayClassId);
+	for (int64_t i = 0; i < b->size; ++i) {
+		notifier.arrayAdd(arr, notifier.createInt(i));
+	}
+	return arr;
+}
+
+AObject *for_each(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	AObject *action = args[1];
+	for (int64_t i = 0; i < b->size; ++i) {
+		AObject *byteVal = notifier.createInt(b->data[i]);
+		byteVal->retain();
+		[[maybe_unused]] auto res = notifier.callFunctionObject(action, byteVal);
+		notifier.release(byteVal);
+		if (notifier.hasException()) return nullptr;
+	}
+	return nullptr;
+}
+
+AObject *for_each_indexed(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	AObject *action = args[1];
+	for (int64_t i = 0; i < b->size; ++i) {
+		AObject *idx = notifier.createInt(i);
+		AObject *byteVal = notifier.createInt(b->data[i]);
+		idx->retain();
+		byteVal->retain();
+		[[maybe_unused]] auto res = notifier.callFunctionObject(action, idx, byteVal);
+		notifier.release(idx);
+		notifier.release(byteVal);
+		if (notifier.hasException()) return nullptr;
+	}
+	return nullptr;
+}
+
+AObject *read_int16_le(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	int64_t offset = args[1]->i;
+	if (offset < 0 || offset + 2 > b->size) {
+		notifier.throwException("Read out of bounds");
+		return nullptr;
+	}
+	int16_t result = static_cast<int16_t>(b->data[offset] | (b->data[offset + 1] << 8));
+	return notifier.createInt(result);
+}
+
+AObject *write_int16_le(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	int64_t offset = args[1]->i;
+	int64_t value = args[2]->i;
+	if (offset < 0 || offset + 2 > b->size) {
+		notifier.throwException("Write out of bounds");
+		return nullptr;
+	}
+	b->data[offset] = value & 0xFF;
+	b->data[offset + 1] = (value >> 8) & 0xFF;
+	return nullptr;
+}
+
+AObject *read_int16_be(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	int64_t offset = args[1]->i;
+	if (offset < 0 || offset + 2 > b->size) {
+		notifier.throwException("Read out of bounds");
+		return nullptr;
+	}
+	int16_t result = static_cast<int16_t>((b->data[offset] << 8) | b->data[offset + 1]);
+	return notifier.createInt(result);
+}
+
+AObject *write_int16_be(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	int64_t offset = args[1]->i;
+	int64_t value = args[2]->i;
+	if (offset < 0 || offset + 2 > b->size) {
+		notifier.throwException("Write out of bounds");
+		return nullptr;
+	}
+	b->data[offset] = (value >> 8) & 0xFF;
+	b->data[offset + 1] = value & 0xFF;
+	return nullptr;
+}
+
+AObject *read_int32_le(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	int64_t offset = args[1]->i;
+	if (offset < 0 || offset + 4 > b->size) {
+		notifier.throwException("Read out of bounds");
+		return nullptr;
+	}
+	int32_t result = static_cast<int32_t>(b->data[offset] | (b->data[offset + 1] << 8) |
+	                                      (b->data[offset + 2] << 16) | (b->data[offset + 3] << 24));
+	return notifier.createInt(result);
+}
+
+AObject *write_int32_le(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	int64_t offset = args[1]->i;
+	int64_t value = args[2]->i;
+	if (offset < 0 || offset + 4 > b->size) {
+		notifier.throwException("Write out of bounds");
+		return nullptr;
+	}
+	b->data[offset] = value & 0xFF;
+	b->data[offset + 1] = (value >> 8) & 0xFF;
+	b->data[offset + 2] = (value >> 16) & 0xFF;
+	b->data[offset + 3] = (value >> 24) & 0xFF;
+	return nullptr;
+}
+
+AObject *read_int64_be(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	int64_t offset = args[1]->i;
+	if (offset < 0 || offset + 8 > b->size) {
+		notifier.throwException("Read out of bounds");
+		return nullptr;
+	}
+	int64_t result = 0;
+	for (int i = 0; i < 8; ++i) {
+		result = (result << 8) | static_cast<int64_t>(b->data[offset + i]);
+	}
+	return notifier.createInt(result);
+}
+
+AObject *write_int64_be(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	int64_t offset = args[1]->i;
+	int64_t value = args[2]->i;
+	if (offset < 0 || offset + 8 > b->size) {
+		notifier.throwException("Write out of bounds");
+		return nullptr;
+	}
+	for (int i = 0; i < 8; ++i) {
+		b->data[offset + i] = static_cast<uint8_t>((value >> ((7 - i) * 8)) & 0xFF);
+	}
+	return nullptr;
+}
+
+AObject *read_float_be(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	int64_t offset = args[1]->i;
+	if (offset < 0 || offset + 8 > b->size) {
+		notifier.throwException("Read out of bounds");
+		return nullptr;
+	}
+	uint64_t rawValue = 0;
+	for (int i = 0; i < 8; ++i) {
+		rawValue = (rawValue << 8) | static_cast<uint64_t>(b->data[offset + i]);
+	}
+	double result;
+	std::memcpy(&result, &rawValue, 8);
+	return notifier.createFloat(result);
+}
+
+AObject *write_float_le(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	int64_t offset = args[1]->i;
+	double val = (args[2]->type == DefaultClass::floatClassId) ? args[2]->f : static_cast<double>(args[2]->i);
+	if (offset < 0 || offset + 8 > b->size) {
+		notifier.throwException("Write out of bounds");
+		return nullptr;
+	}
+	uint64_t rawValue;
+	std::memcpy(&rawValue, &val, 8);
+	for (int i = 0; i < 8; ++i) {
+		b->data[offset + i] = static_cast<uint8_t>((rawValue >> (i * 8)) & 0xFF);
+	}
+	return nullptr;
+}
+
+AObject *write_float_be(NativeFuncInData) {
+	ABytes *b = args[0]->bytes;
+	int64_t offset = args[1]->i;
+	double val = (args[2]->type == DefaultClass::floatClassId) ? args[2]->f : static_cast<double>(args[2]->i);
+	if (offset < 0 || offset + 8 > b->size) {
+		notifier.throwException("Write out of bounds");
+		return nullptr;
+	}
+	uint64_t rawValue;
+	std::memcpy(&rawValue, &val, 8);
+	for (int i = 0; i < 8; ++i) {
+		b->data[offset + i] = static_cast<uint8_t>((rawValue >> ((7 - i) * 8)) & 0xFF);
+	}
+	return nullptr;
+}
+
+AObject *from_array(NativeFuncInData) {
+	AObject *arrObj = args[0];
+	if (!arrObj || !arrObj->array) {
+		return notifier.createBytes(0);
+	}
+	AArray *arr = arrObj->array;
+	AObject *obj = notifier.createBytes(arr->size);
+	if (arr->key == DefaultClass::intClassId && arr->intData) {
+		for (size_t i = 0; i < arr->size; ++i) {
+			int64_t val = arr->intData[i];
+			if (val < -128 || val > 255) {
+				notifier.throwException("Byte value out of range: " + std::to_string(val));
+				return nullptr;
+			}
+			obj->bytes->data[i] = static_cast<uint8_t>(val);
+		}
+	} else if (arr->raw) {
+		for (size_t i = 0; i < arr->size; ++i) {
+			if (arr->objData[i]) {
+				int64_t val = arr->objData[i]->i;
+				if (val < -128 || val > 255) {
+					notifier.throwException("Byte value out of range: " + std::to_string(val));
+					return nullptr;
+				}
+				obj->bytes->data[i] = static_cast<uint8_t>(val);
+			} else {
+				obj->bytes->data[i] = 0;
+			}
+		}
+	}
+	return obj;
+}
+
 void init(ACompiler &compiler) {
 	compiler.registerBuiltInLibrary(
 	    "std/bytes", R"###(
 @native("bytes_constructor")
 static fun Bytes.Bytes(initialSize: Int = 0): Bytes
+
+@implicit
+@native("bytes_from_array")
+static fun Bytes.Bytes(arr: Array<Int>): Bytes
 
 @native("bytes_from_string_static")
 static fun Bytes.fromString(str: String): Bytes
@@ -522,8 +827,6 @@ fun Bytes.length(): Int
 @native("bytes_size")
 fun Bytes.len(): Int
 
-
-
 @native("bytes_is_empty")
 fun Bytes.isEmpty(): Bool
 
@@ -534,7 +837,7 @@ fun Bytes.empty(): Bool
 fun Bytes.is_empty(): Bool
 
 @native("bytes_get")
-fun Bytes.get(index: Int): Int
+operator fun Bytes.get(index: Int): Int
 
 @native("bytes_get")
 fun Bytes.at(index: Int): Int
@@ -543,7 +846,7 @@ fun Bytes.at(index: Int): Int
 fun Bytes.readByte(index: Int): Int
 
 @native("bytes_set")
-fun Bytes.set(index: Int, value: Int)
+operator fun Bytes.set(index: Int, value: Int)
 
 @native("bytes_set")
 fun Bytes.put(index: Int, value: Int)
@@ -554,21 +857,50 @@ fun Bytes.writeByte(index: Int, value: Int)
 @native("bytes_clear")
 fun Bytes.clear()
 
-
-
 @native("bytes_slice")
 fun Bytes.slice(from: Int, to: Int): Bytes
 
 @native("bytes_slice")
 fun Bytes.subArray(from: Int, to: Int): Bytes
 
-
-
 @native("bytes_copy_from")
 fun Bytes.copyFrom(src: Bytes, destOffset: Int, srcOffset: Int, lenBytes: Int)
 
+@native("bytes_copy_of")
+fun Bytes.copyOf(): Bytes
+
+@native("bytes_copy_of")
+fun Bytes.copyOf(newSize: Int): Bytes
+
+@native("bytes_copy_of_range")
+fun Bytes.copyOfRange(fromIndex: Int, toIndex: Int): Bytes
+
+@native("bytes_reversed")
+fun Bytes.reversed(): Bytes
+
+@native("bytes_reverse")
+fun Bytes.reverse(): Bytes
+
+@native("bytes_contains")
+fun Bytes.contains(byteValue: Int): Bool
+
+@native("bytes_index_of")
+fun Bytes.indexOf(byteValue: Int, fromIndex: Int = 0): Int
+
+@native("bytes_last_index_of")
+fun Bytes.lastIndexOf(byteValue: Int, startIndex: Int = -1): Int
+
+@native("bytes_last_index")
+fun Bytes.lastIndex(): Int
+
+@native("bytes_indices")
+fun Bytes.indices(): Array<Int>
+
 @native("bytes_equals")
-fun Bytes.equals(other: Bytes): Bytes
+fun Bytes.equals(other: Bytes): Bool
+
+@native("bytes_equals")
+fun Bytes.contentEquals(other: Bytes): Bool
 
 @native("bytes_to_string")
 fun Bytes.toString(): String
@@ -582,8 +914,29 @@ fun Bytes.toHex(): String
 @native("bytes_fill")
 fun Bytes.fill(value: Int)
 
-@native("bytes_index_of")
-fun Bytes.indexOf(byteValue: Int, fromIndex: Int = 0): Int
+@native("bytes_read_int16_le")
+fun Bytes.readInt16LE(offset: Int): Int
+
+@native("bytes_write_int16_le")
+fun Bytes.writeInt16LE(offset: Int, value: Int)
+
+@native("bytes_read_int16_be")
+fun Bytes.readInt16BE(offset: Int): Int
+
+@native("bytes_write_int16_be")
+fun Bytes.writeInt16BE(offset: Int, value: Int)
+
+@native("bytes_read_int32_le")
+fun Bytes.readInt32LE(offset: Int): Int
+
+@native("bytes_write_int32_le")
+fun Bytes.writeInt32LE(offset: Int, value: Int)
+
+@native("bytes_read_int32_be")
+fun Bytes.readInt32BE(offset: Int): Int
+
+@native("bytes_write_int32_be")
+fun Bytes.writeInt32BE(offset: Int, value: Int)
 
 @native("bytes_read_int64_le")
 fun Bytes.readInt64LE(offset: Int): Int
@@ -591,8 +944,23 @@ fun Bytes.readInt64LE(offset: Int): Int
 @native("bytes_write_int64_le")
 fun Bytes.writeInt64LE(offset: Int, value: Int)
 
+@native("bytes_read_int64_be")
+fun Bytes.readInt64BE(offset: Int): Int
+
+@native("bytes_write_int64_be")
+fun Bytes.writeInt64BE(offset: Int, value: Int)
+
 @native("bytes_read_float_le")
 fun Bytes.readFloatLE(offset: Int): Float
+
+@native("bytes_read_float_be")
+fun Bytes.readFloatBE(offset: Int): Float
+
+@native("bytes_write_float_le")
+fun Bytes.writeFloatLE(offset: Int, value: Float)
+
+@native("bytes_write_float_be")
+fun Bytes.writeFloatBE(offset: Int, value: Float)
 
 @native("bytes_to_base64")
 fun Bytes.toBase64(): String
@@ -608,17 +976,20 @@ static fun Bytes.fromHex(hex: String): Bytes
 @native("bytes_to_byte_array")
 fun Bytes.toByteArray(): Array<Int>
 
+@native("bytes_to_byte_array")
+fun Bytes.toList(): Array<Int>
+
 @native("bytes_decode_to_string")
 fun Bytes.decodeToString(startIndex: Int = 0, endIndex: Int = -1): String
 
-@native("bytes_read_int32_be")
-fun Bytes.readInt32BE(offset: Int): Int
-
-@native("bytes_write_int32_be")
-fun Bytes.writeInt32BE(offset: Int, value: Int)
-
 @native("bytes_xor_with")
 fun Bytes.xorWith(other: Bytes, lenBytes: Int)
+
+@native("bytes_for_each")
+fun Bytes.forEach(action: (Int) -> Void)
+
+@native("bytes_for_each_indexed")
+fun Bytes.forEachIndexed(action: (Int, Int) -> Void)
 
 @native("bytes_ext_string_to_bytes")
 fun String.toBytes(): Bytes
@@ -632,7 +1003,7 @@ static fun String.fromBytes(bytes: Bytes): String
 @native("bytes_ext_int_to_bytes")
 fun Int.toBigEndianBytes(): Bytes
         )###",
-	    LibraryConfig(),
+	    LibraryConfig(true),
 	    ANativeMap({
 	        {"bytes_constructor", &bytes::alloc_bytes},
 	        {"bytes_from_string_static", &bytes::from_string},
@@ -647,24 +1018,46 @@ fun Int.toBigEndianBytes(): Bytes
 	        {"bytes_clear", &bytes::clear},
 	        {"bytes_slice", &bytes::slice},
 	        {"bytes_copy_from", &bytes::copy_from},
+	        {"bytes_copy_of", &bytes::copy_of},
+	        {"bytes_copy_of_range", &bytes::copy_of_range},
+	        {"bytes_reversed", &bytes::reversed},
+	        {"bytes_reverse", &bytes::reverse},
+	        {"bytes_contains", &bytes::contains},
+	        {"bytes_last_index_of", &bytes::last_index_of},
+	        {"bytes_last_index", &bytes::last_index},
+	        {"bytes_indices", &bytes::indices},
 	        {"bytes_equals", &bytes::equals},
 	        {"bytes_to_string", &bytes::to_string},
 	        {"bytes_to_utf8_string", &bytes::to_utf8_string},
 	        {"bytes_to_hex", &bytes::to_hex},
 	        {"bytes_fill", &bytes::fill},
 	        {"bytes_index_of", &bytes::index_of},
-	        {"bytes_read_int64_le", &bytes::read_int64_le},
-	        {"bytes_write_int64_le", &bytes::write_int64_le},
-	        {"bytes_read_float_le", &bytes::read_float_le},
-	        {"bytes_to_base64", &bytes::to_base64},
+	        {"bytes_read_int16_le", &bytes::read_int16_le},
+	        {"bytes_write_int16_le", &bytes::write_int16_le},
+	        {"bytes_read_int16_be", &bytes::read_int16_be},
+	        {"bytes_write_int16_be", &bytes::write_int16_be},
+	        {"bytes_read_int32_le", &bytes::read_int32_le},
+	        {"bytes_write_int32_le", &bytes::write_int32_le},
 	        {"bytes_read_int32_be", &bytes::read_int32_be},
 	        {"bytes_write_int32_be", &bytes::write_int32_be},
+	        {"bytes_read_int64_le", &bytes::read_int64_le},
+	        {"bytes_write_int64_le", &bytes::write_int64_le},
+	        {"bytes_read_int64_be", &bytes::read_int64_be},
+	        {"bytes_write_int64_be", &bytes::write_int64_be},
+	        {"bytes_read_float_le", &bytes::read_float_le},
+	        {"bytes_read_float_be", &bytes::read_float_be},
+	        {"bytes_write_float_le", &bytes::write_float_le},
+	        {"bytes_write_float_be", &bytes::write_float_be},
+	        {"bytes_to_base64", &bytes::to_base64},
 	        {"bytes_xor_with", &bytes::xor_with},
+	        {"bytes_for_each", &bytes::for_each},
+	        {"bytes_for_each_indexed", &bytes::for_each_indexed},
 	        {"bytes_ext_string_to_bytes", &bytes::ext_string_to_bytes},
 	        {"bytes_ext_string_from_bytes", &bytes::ext_string_from_bytes},
 	        {"bytes_ext_int_to_bytes", &bytes::ext_int_to_bytes},
 	        {"bytes_decode_to_string", &bytes::decode_to_string},
 	        {"bytes_encode_to_byte_array", &bytes::encode_to_byte_array},
+	        {"bytes_from_array", &bytes::from_array},
 	    }));
 }
 

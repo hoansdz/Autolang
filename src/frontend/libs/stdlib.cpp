@@ -528,6 +528,13 @@ void init(ACompiler &compiler) {
 	         {"str_count_str", &DefaultFunction::str_count_str},
 	         {"str_capitalize", &DefaultFunction::str_capitalize},
 	         {"str_char_code", &DefaultFunction::str_char_code},
+	         {"str_byte_size", &DefaultFunction::str_byte_size},
+	         {"str_to_byte_array", &DefaultFunction::str_to_byte_array},
+	         {"str_to_binary_string", &DefaultFunction::str_to_binary_string},
+	         {"str_distinct", &DefaultFunction::str_distinct},
+	         {"str_max_or_null", &DefaultFunction::str_max_or_null},
+	         {"str_min_or_null", &DefaultFunction::str_min_or_null},
+	         {"str_decapitalize", &DefaultFunction::str_decapitalize},
 	         {"arr_shift", &array::shift},
 	         {"arr_unshift", &array::unshift},
 	         {"arr_count_element", &array::count_element}}));

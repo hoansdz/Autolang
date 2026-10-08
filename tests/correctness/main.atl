@@ -71,3 +71,6 @@
 @import("./stdlib/kotlin_stdlib.atl")
 @import("./stdlib/kotlin_standardization.atl")
 @import("./stdlib/stdlib_new_features.atl")
+
+val xm: Any = 1
+println(xm in 1..5)

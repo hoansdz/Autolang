@@ -363,7 +363,14 @@ fun testBuiltInAIAliases() {
 	val ba: BooleanArray = [true, false]
 	assert(ba is Array<Bool>)
 	val bya: ByteArray = [1, 2]
-	assert(bya is Array<Int>)
+	assert(bya is Bytes)
+	var caughtOutOfRange = false
+	try {
+		val invalidBya: ByteArray = [1, 2555]
+	} catch (e: Exception) {
+		caughtOutOfRange = true
+	}
+	assert(caughtOutOfRange)
 	val ca: CharArray = ['a', 'b']
 	assert(ca is Array<Char>)
 	val la: LongArray = [1, 2]

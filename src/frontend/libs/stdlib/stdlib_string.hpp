@@ -20,6 +20,12 @@ class String {
 
 	@native("string_size")
 	fun length(): Int
+
+	@native("str_byte_size")
+	fun byteSize(): Int
+
+	@native("str_byte_size")
+	fun byteLength(): Int
 	@native("to_string")
 	fun toString(): String
 
@@ -42,13 +48,13 @@ class String {
 
 
 	@native("str_to_int")
-	fun toInt(): Int
+	fun toInt(radix: Int = 10): Int
 
 	@native("str_to_int")
 	fun parseInt(): Int
 
 	@native("str_to_int")
-	fun toLong(): Int
+	fun toLong(radix: Int = 10): Int
 
 	@native("str_to_float")
 	fun toFloat(): Float
@@ -283,10 +289,10 @@ class String {
 	fun padEnd(length: Int, padChar: Char): String
 
 	@native("str_to_int_or_null")
-	fun toIntOrNull(): Int?
+	fun toIntOrNull(radix: Int = 10): Int?
 
 	@native("str_to_int_or_null")
-	fun toLongOrNull(): Int?
+	fun toLongOrNull(radix: Int = 10): Int?
 
 	@native("str_to_float_or_null")
 	fun toFloatOrNull(): Float?
@@ -587,6 +593,24 @@ class String {
 
 	@native("str_is_whitespace")
 	fun isspace(): Bool
+
+	@native("str_to_binary_string")
+	fun toBinaryString(separator: String = ""): String
+
+	@native("str_to_byte_array")
+	fun toByteArray(): Array<Int>
+
+	@native("str_distinct")
+	fun distinct(): String
+
+	@native("str_max_or_null")
+	fun maxOrNull(): Char?
+
+	@native("str_min_or_null")
+	fun minOrNull(): Char?
+
+	@native("str_decapitalize")
+	fun decapitalize(): String
 }
 )###";
 
