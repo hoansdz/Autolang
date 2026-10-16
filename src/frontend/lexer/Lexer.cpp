@@ -81,13 +81,14 @@ static const ankerl::unordered_dense::map<std::string, TokenType, TransparentStr
     {"typealias", TokenType::TYPEALIAS},
     {"operator", TokenType::OPERATOR},
     {"implicit", TokenType::IMPLICIT},
+    {"description", TokenType::DESCRIPTION},
     {"until", TokenType::DOT_DOT_LT},
 };
 
 void loadFile(ParserContext *mainContext, LibraryData *library) {
 	std::ifstream file(library->path, std::ios::binary | std::ios::ate);
 	if (!file.is_open()) {
-		throw LexerError(0, "File " + library->path + " doesn't exists\nHint: Verify file path and ensure source file exists");
+		throw LexerError(0, "File " + library->path + " doesn't exists", "Verify file path and ensure source file exists");
 	}
 	library->flags |= LibraryFlags::IS_FILE;
 	std::streamsize size = file.tellg();
@@ -95,7 +96,7 @@ void loadFile(ParserContext *mainContext, LibraryData *library) {
 	library->rawData.resize(size);
 	file.read(library->rawData.data(), size);
 	if (!file) {
-		throw LexerError(0, "An error occurred while reading the file\nHint: Check file permissions and read access");
+		throw LexerError(0, "An error occurred while reading the file", "Check file permissions and read access");
 	}
 	file.close();
 }
@@ -185,7 +186,7 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 			if (context.bracketStack.empty() ||
 			    context.bracketStack.back() != '(')
 				throw LexerError(context.linePos,
-				                 "Unexpected ')', you must use '(' before\nHint: Remove extra ')' or add matching '(' before");
+				                 "Unexpected ')', you must use '(' before", "Remove extra ')' or add matching '(' before");
 			context.bracketStack.pop_back();
 			context.tokens.emplace_back(context.linePos, TokenType::RPAREN);
 			// ++i;
@@ -195,7 +196,7 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 			if (context.bracketStack.empty() ||
 			    context.bracketStack.back() != '[')
 				throw LexerError(context.linePos,
-				                 "Unexpected ']', you must use '[' before\nHint: Remove extra ']' or add matching '[' before");
+				                 "Unexpected ']', you must use '[' before", "Remove extra ']' or add matching '[' before");
 			context.bracketStack.pop_back();
 			context.tokens.emplace_back(context.linePos, TokenType::RBRACKET);
 			// ++i;
@@ -205,7 +206,7 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 			if (context.bracketStack.empty() ||
 			    context.bracketStack.back() != '{')
 				throw LexerError(context.linePos,
-				                 "Unexpected '}', you must use '{' before\nHint: Remove extra '}' or add matching '{' before");
+				                 "Unexpected '}', you must use '{' before", "Remove extra '}' or add matching '{' before");
 			context.bracketStack.pop_back();
 			context.tokens.emplace_back(context.linePos, TokenType::RBRACE);
 			// ++i;
@@ -261,7 +262,7 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 					goto end;
 				}
 				if (!nextLine(context, context.library->rawData.data(), i)) {
-					throw LexerError(firstLine, std::string("Cannot find */\nHint: Close multi-line comment with '*/'"));
+					throw LexerError(firstLine, "Cannot find */", "Close multi-line comment with '*/'");
 				}
 				goto start;
 			end:;
@@ -277,7 +278,7 @@ bool loadNextTokenNoCloseBracket(Context &context, uint32_t &i) {
 	    context.linePos,
 	    std::string("Unknown character: '") + chr +
 	        "' - ASCII value: " + std::to_string(static_cast<int>(chr)) +
-	        "\nHint: Remove or replace invalid character");
+	        "", "Remove or replace invalid character");
 }
 
 void pushAndEnsureBracket(Context &context, uint32_t &i) {
@@ -313,7 +314,7 @@ start:;
 		}
 		throw LexerError(firstLine, std::string("Expected '") +
 		                                getCloseBracket(chr) +
-		                                "' but not found\nHint: Close bracket with '" +
+		                                "' but not found", std::string("Close bracket with '") +
 		                                getCloseBracket(chr) + "'");
 	}
 	goto start;
@@ -427,7 +428,7 @@ TokenType loadOp(Context &context, uint32_t &i) {
 			}
 			return TokenType::COLON;
 		default:
-			throw LexerError(context.linePos, std::string("Cannot find operator: ") + first + "\nHint: Check operator syntax");
+			throw LexerError(context.linePos, std::string("Cannot find operator: ") + first + "", "Check operator syntax");
 	}
 }
 
@@ -475,12 +476,22 @@ void pushIdentifier(Context &context, uint32_t &i) {
 			}
 			break;
 		}
+		case TokenType::DESCRIPTION: {
+			if (context.tokens.empty() ||
+			    context.tokens.back().type != TokenType::AT_SIGN) {
+				context.tokens.emplace_back(
+				    context.linePos, TokenType::IDENTIFIER,
+				    pushLexerString(context, identifier));
+				return;
+			}
+			break;
+		}
 		case TokenType::IMPORT: {
 			if (context.tokens.empty() ||
 			    context.tokens.back().type != TokenType::AT_SIGN) {
 				if (!context.mainContext || !context.mainContext->ignoreForeignImports) {
 					throw LexerError(context.linePos,
-					                 "import must have @ in prefix\nHint: Write '@import' instead of 'import'");
+					                 "import must have @ in prefix", "Write '@import' instead of 'import'");
 				}
 				size_t start = i;
 				while (start < context.lineSize && (context.line[start] == ' ' || context.line[start] == '\t')) {
@@ -507,7 +518,7 @@ void pushIdentifier(Context &context, uint32_t &i) {
 			// }
 			if (!context.bracketStack.empty()) {
 				throw LexerError(context.linePos,
-				                 "@import is only allowed at file scope\nHint: Move @import statement to the top of the file outside any function or class");
+				                 "@import is only allowed at file scope", "Move @import statement to the top of the file outside any function or class");
 			}
 			context.importOffset->push_back(context.tokens.size());
 			break;

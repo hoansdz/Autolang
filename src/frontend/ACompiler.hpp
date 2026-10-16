@@ -102,6 +102,7 @@ struct ACompilerConfig {
 	bool showWarnings = false;
 	bool autoCloseBracketsOnEof = true;
 	bool allowImplicitVarDeclaration = true;
+	bool outputJsonDiagnostics = false;
 };
 
 class ACompiler {
@@ -227,6 +228,9 @@ class ACompiler {
 	void setMaxManagedMemory(size_t limit);
 	size_t getMaxManagedMemory();
 	size_t getCurrentManagedMemory();
+
+	void setExecutionTimeoutMs(uint32_t executionTimeoutMs);
+	uint32_t getExecutionTimeoutMs() const;
 
 #ifndef NO_INCLUDE_LIBS_HTTP
 	void setAllowedDomainsRules(const std::vector<AllowRule> &rules);

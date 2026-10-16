@@ -1,0 +1,4 @@
+fun testStrictFloat(): Void {
+	var x: Int = 10
+	x = 3.14
+}

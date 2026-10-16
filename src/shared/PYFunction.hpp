@@ -383,7 +383,7 @@ inline AObject *pyObjectToAObject(ANotifier &notifier, const py::object &pyObj,
 
 	auto clazz = notifier.vm->data.classes[classId];
 	auto newObj = notifier.createMemberObject(classId, clazz->memberMap.size());
-	ClassId *memberId = &notifier.vm->data.getMemberRef(clazz->memberIdOffset);
+	ClassId *memberId = notifier.vm->data.getMemberRef(clazz->memberIdOffset);
 	size_t nullableOffset = clazz->memberIdOffset;
 
 	bool isDict = py::isinstance<py::dict>(pyObj);
@@ -426,9 +426,9 @@ inline AObject *pyObjectToAObject(ANotifier &notifier, const py::object &pyObj,
 			}
 
 			if (val == DefaultClass::nullObject && !isNullable) {
-				notifier.throwException("Python Object field cannot be null "
-				                        "(field is non-nullable): " +
-				                        memberName);
+				notifier.throwException(
+				    "Python Object field cannot be null (field is non-nullable): " +
+				    std::string(memberName));
 				notifier.release(newObj);
 				return nullptr;
 			}

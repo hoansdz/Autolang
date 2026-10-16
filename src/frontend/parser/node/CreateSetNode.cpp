@@ -31,7 +31,7 @@ ExprNode *CreateSetNode::optimize(in_func) {
 	auto classInfo = context.classInfo[classId];
 	if (clazz->genericBaseClassId != DefaultClass::setClassId) {
 		throwError("Type mismatch, expected Set<> but '" +
-		           compile.classes[classId]->getName(compile) + "' found\nHint: Ensure target variable type is a Set<T> instance.");
+		           compile.classes[classId]->getName(compile) + "' found", "Ensure target variable type is a Set<T> instance.");
 	}
 	auto genericType = classInfo->genericTypeId[0];
 	auto valueMustBeClassId = *genericType->classId;
@@ -96,7 +96,7 @@ ExprNode *CreateSetNode::optimize(in_func) {
 					continue;
 				}
 				// std::cerr << compile.classes[classId]->getName(compile) << "\n";
-				throwError("Elements in Set must be non-null\nHint: The Set element type is non-nullable. Use Set<T?> to allow null elements.");
+				throwError("Elements in Set must be non-null", "The Set element type is non-nullable. Use Set<T?> to allow null elements.");
 			}
 		}
 		if (valueMustBeClassId == DefaultClass::anyClassId) {
@@ -104,7 +104,7 @@ ExprNode *CreateSetNode::optimize(in_func) {
 		}
 		throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) +
 		           " to " + compile.classes[valueMustBeClassId]->getName(compile) +
-		           "\nHint: Ensure all elements in the Set match the expected element type or provide an explicit conversion.");
+		           "", "Ensure all elements in the Set match the expected element type or provide an explicit conversion.");
 	}
 	return this;
 }
@@ -114,7 +114,7 @@ void CreateSetNode::optimizeAndInferenceType(in_func) {
 		if (canSkipFindType)
 			return;
 		throwError(
-		    "Cannot infer element type for Set initialization\nHint: Provide "
+		    "Cannot infer element type for Set initialization", "Provide "
 		    "an explicit type annotation or add typed elements to the Set.");
 		return;
 	}
@@ -248,7 +248,7 @@ void CreateSetNode::optimizeAndInferenceType(in_func) {
 	}
 	if (!valueMustBeClassId) {
 		throwError(
-		    "Cannot infer element type for Set initialization\nHint: Provide "
+		    "Cannot infer element type for Set initialization", "Provide "
 		    "an explicit type annotation or add typed elements to the Set.");
 		return;
 	}
@@ -369,7 +369,7 @@ ExprNode *CreateSetNode::copy(in_func) {
 			if (!classDeclaration->classId) {
 				throwError("Bug: DeclarationNode copy: Unresolved class " +
 				           classDeclaration->getName(in_data) +
-				           "\nHint: Internal compiler error - class declaration was not resolved before copy.");
+				           "", "Internal compiler error - class declaration was not resolved before copy.");
 			}
 			newNode->classId = *classDeclaration->classId;
 			if (classDeclaration->isGeneric) {

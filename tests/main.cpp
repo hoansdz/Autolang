@@ -379,6 +379,77 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	// Verify strict mode differential rules (strictMode=true vs strictMode=false)
+	{
+		totalCount++;
+		Autolang::ACompiler strictTestCompiler;
+		strictTestCompiler.setLimitOpcodeCount(1000000);
+		strictTestCompiler.setMaxManagedMemory(1024 * 1024);
+		strictTestCompiler.setOnError([](std::string_view) {});
+
+		bool allPassed = true;
+
+		struct StrictCase {
+			const char *name;
+			const char *code;
+		};
+
+		StrictCase cases[] = {
+			{"uninit_class_member", "class StrictBox {\nval name: String\nconstructor(n: String) { this.name = n }\n}"},
+			{"val_reassign_local", "fun testLocal(): Void {\nval x = 10\nx = 20\n}"},
+			{"val_reassign_member", "class ValMember(val v: Int)\nfun testMem(m: ValMember): Void {\nm.v = 20\n}"},
+			{"float_to_int_assign", "fun testFloat(): Void {\nvar a: Int = 10\na = 3.14\n}"},
+			{"for_without_parentheses", "fun testFor(): Void {\nvar sum = 0\nfor i in 1..5 {\nsum += i\n}\n}"}
+		};
+
+		for (const auto &c : cases) {
+			// In strict mode (true): must fail compilation
+			{
+				Autolang::ACompiler strictComp;
+				strictComp.setOnError([](std::string_view) {});
+				strictComp.setStrictMode(true);
+				bool strictSuccess = strictComp.compileSource(c.code);
+				if (strictSuccess) {
+					std::cerr << "Strict mode rule failed: Expected compilation failure in strict mode for '" << c.name << "' but it succeeded.\n";
+					allPassed = false;
+				}
+			}
+
+			// In relaxed mode (false): must compile successfully
+			{
+				Autolang::ACompiler relaxedComp;
+				relaxedComp.setOnError([](std::string_view) {});
+				relaxedComp.setStrictMode(false);
+				bool relaxedSuccess = relaxedComp.compileSource(c.code);
+				if (!relaxedSuccess) {
+					std::cerr << "Strict mode rule failed: Expected success in non-strict mode for '" << c.name
+					          << "' but got error: " << relaxedComp.getLastError() << "\n";
+					allPassed = false;
+				}
+			}
+		}
+
+		if (allPassed) {
+			passedCount++;
+			std::cout << "Passed testStrictModeDualRules\n";
+		}
+	}
+
+	{
+		totalCount++;
+		Autolang::ACompiler timeoutCompiler;
+		timeoutCompiler.setExecutionTimeoutMs(50);
+		timeoutCompiler.setLimitOpcodeCount(UINT32_MAX);
+		timeoutCompiler.runSource("while (true) {}");
+		if (timeoutCompiler.hasException() && timeoutCompiler.exceptionMessage &&
+		    std::string(timeoutCompiler.exceptionMessage).find("Execution timed out") != std::string::npos) {
+			passedCount++;
+			std::cout << "Passed testExecutionTimeout\n";
+		} else {
+			std::cerr << "Failed testExecutionTimeout: Expected 'Execution timed out' exception.\n";
+		}
+	}
+
 	totalCount += AutolangTests::runAllCompileTimeRules(sharedCompiler, "tests/rule/compile_time", passedCount);
 	totalCount += AutolangTests::runAllRuntimeRules(sharedCompiler, "tests/rule/runtime", passedCount);
 

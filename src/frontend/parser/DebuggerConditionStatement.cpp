@@ -14,7 +14,7 @@ IfNode *loadIf(in_func, size_t &i, bool mustReturnValue) {
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 		--i;
 		throw ParserError(firstLine,
-		                  "Expected condition after 'if' but not found\nHint: Provide a boolean condition after 'if'");
+		                  "Expected condition after 'if' but not found", "Provide a boolean condition after 'if'");
 	}
 	bool hasOuterParen = false;
 	if (expect(token, Lexer::TokenType::LPAREN)) {
@@ -66,7 +66,7 @@ IfNode *loadIf(in_func, size_t &i, bool mustReturnValue) {
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
 				throw ParserError(firstLine,
-				                  "Expected an expression after 'if (' but not found\nHint: Provide a boolean condition inside 'if (...)'");
+				                  "Expected an expression after 'if (' but not found", "Provide a boolean condition inside 'if (...)'");
 			}
 		}
 	}
@@ -78,13 +78,13 @@ IfNode *loadIf(in_func, size_t &i, bool mustReturnValue) {
 		if (!nextToken(&token, context.tokens, i) ||
 		    !expect(token, Lexer::TokenType::RPAREN)) {
 			--i;
-			throw ParserError(context.tokens[i].line, "Expected ')' but not found\nHint: Close 'if' condition with ')'");
+			throw ParserError(context.tokens[i].line, "Expected ')' but not found", "Close 'if' condition with ')'");
 		}
 	}
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		throw ParserError(context.tokens[i].line,
-		                  "Expected a command after 'if' but not found\nHint: Provide a statement block '{ ... }' after 'if (...)'");
+		                  "Expected a command after 'if' but not found", "Provide a statement block '{ ... }' after 'if (...)'");
 	}
 
 	extractSmartCasts(in_data, node->condition, node->trueCasts, node->falseCasts);
@@ -106,14 +106,14 @@ IfNode *loadIf(in_func, size_t &i, bool mustReturnValue) {
 		if (mustReturnValue) {
 			throw ParserError(context.tokens[i].line,
 			                  "'if' expression must return a value, so it must "
-			                  "have an 'else' branch\nHint: Add an 'else' branch to single-expression 'if'");
+			                  "have an 'else' branch", "Add an 'else' branch to single-expression 'if'");
 		}
 		return node;
 	}
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		throw ParserError(token->line,
-		                  "Expected a command after 'else' but not found\nHint: Provide a statement block '{ ... }' or 'if' statement after 'else'");
+		                  "Expected a command after 'else' but not found", "Provide a statement block '{ ... }' or 'if' statement after 'else'");
 	}
 	node->ifFalse = context.blockNodePool.push(token->line);
 
@@ -133,4 +133,4 @@ IfNode *loadIf(in_func, size_t &i, bool mustReturnValue) {
 
 } // namespace Autolang
 
-#endif
+#endif

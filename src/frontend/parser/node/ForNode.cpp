@@ -124,7 +124,7 @@ ExprNode *ForNode::optimize(in_func) {
 	switch (data->kind) {
 		case NodeType::RANGE: {
 			if (detachValue != nullptr || !destructureTargets.empty()) {
-				throwError("Multiple loop variables are not supported for Range\nHint: Use 'for (i in start..end)'.");
+				throwError("Multiple loop variables are not supported for Range", "Use 'for (i in start..end)'.");
 			}
 			switch (detach->classId) {
 				case Autolang::DefaultClass::nullClassId: {
@@ -136,7 +136,7 @@ ExprNode *ForNode::optimize(in_func) {
 					break;
 				}
 				default: {
-					throwError("Loop control variable for range must be of type Int\nHint: Declare loop variable as Int (e.g., for (i: Int in 0..10)).");
+					throwError("Loop control variable for range must be of type Int", "Declare loop variable as Int (e.g., for (i: Int in 0..10)).");
 				}
 			}
 			auto rangeNode = static_cast<RangeNode *>(data);
@@ -152,7 +152,7 @@ ExprNode *ForNode::optimize(in_func) {
 					break;
 				}
 				default: {
-					throwError("Range start value must be of type Int\nHint: Ensure the starting expression of range (start..end) evaluates to an Int.");
+					throwError("Range start value must be of type Int", "Ensure the starting expression of range (start..end) evaluates to an Int.");
 				}
 			}
 			rangeNode->to = static_cast<HasClassIdNode *>(rangeNode->to->optimize(in_data));
@@ -161,7 +161,7 @@ ExprNode *ForNode::optimize(in_func) {
 					break;
 				}
 				default: {
-					throwError("Range end value must be of type Int\nHint: Ensure the ending expression of range (start..end) evaluates to an Int.");
+					throwError("Range end value must be of type Int", "Ensure the ending expression of range (start..end) evaluates to an Int.");
 				}
 			}
 			if (rangeNode->to->kind == NodeType::CONST_VAL) {
@@ -171,7 +171,7 @@ ExprNode *ForNode::optimize(in_func) {
 			break;
 		}
 		case NodeType::CLASS_ACCESS: {
-			throwError("Expected iterable value in 'for' loop\nHint: Use an iterable collection like Array, Set, Map, or Range in the for loop.");
+			throwError("Expected iterable value in 'for' loop", "Use an iterable collection like Array, Set, Map, or Range in the for loop.");
 		}
 		default: {
 			data = static_cast<HasClassIdNode *>(data->optimize(in_data));
@@ -182,10 +182,10 @@ ExprNode *ForNode::optimize(in_func) {
 			}
 			if (data->classId == DefaultClass::stringClassId) {
 				if (detachValue != nullptr) {
-					throwError("Multiple loop variables are not supported for 'String'\nHint: Use 'for (ch in str)'.");
+					throwError("Multiple loop variables are not supported for 'String'", "Use 'for (ch in str)'.");
 				}
 				if (!destructureTargets.empty()) {
-					throwError("Destructuring is not supported for 'String'\nHint: Use 'for (ch in str)'.");
+					throwError("Destructuring is not supported for 'String'", "Use 'for (ch in str)'.");
 				}
 				switch (detach->classId) {
 					case Autolang::DefaultClass::nullClassId: {
@@ -200,7 +200,7 @@ ExprNode *ForNode::optimize(in_func) {
 						throwError(
 						    "Type mismatch: expected 'String' but '" +
 						    compile.classes[detach->classId]->getName(compile) +
-						    "' found\nHint: Loop control variable for String must be of type String.");
+						    "' found", "Loop control variable for String must be of type String.");
 						break;
 					}
 				}
@@ -209,7 +209,7 @@ ExprNode *ForNode::optimize(in_func) {
 			auto classInfo = context.classInfo[data->classId];
 			if (classInfo->genericTypeId.empty()) {
 				throwError("Cannot iterate over type '" +
-				           compile.classes[data->classId]->getName(compile) + "'\nHint: Only Array, Set, Map, String, and Range types support iteration in for loops.");
+				           compile.classes[data->classId]->getName(compile) + "'", "Only Array, Set, Map, String, and Range types support iteration in for loops.");
 			}
 			auto clazz = compile.classes[data->classId];
 			auto baseClassId = clazz->genericBaseClassId;
@@ -219,7 +219,7 @@ handleCollectionArray:
 				case DefaultClass::arrayClassId: {
 					if (detachValue != nullptr) {
 						throwError("Multiple loop variables are not supported for '" + clazz->getName(compile) +
-						           "'\nHint: Use 'for (item in list)' or iterate over a Map: 'for (key, value in map)'.");
+						           "'", "Use 'for (item in list)' or iterate over a Map: 'for (key, value in map)'.");
 					}
 					auto classType = classInfo->genericTypeId[0];
 					ClassId target = *classType->classId;
@@ -237,7 +237,7 @@ handleCollectionArray:
 								if (!detach->isNullable() &&
 								    classInfo->genericTypeId[0]->nullable) {
 									throwError(
-									    "Cannot assign nullable element to non-nullable variable\nHint: Declare loop variable as nullable (T?) or ensure collection element type is non-nullable.");
+									    "Cannot assign nullable element to non-nullable variable", "Declare loop variable as nullable (T?) or ensure collection element type is non-nullable.");
 								}
 								break;
 							}
@@ -247,7 +247,7 @@ handleCollectionArray:
 							    "' but '" +
 							    compile.classes[detach->classId]->getName(
 							        compile) +
-							    "' found\nHint: Ensure the loop control variable type matches the collection element type.");
+							    "' found", "Ensure the loop control variable type matches the collection element type.");
 							break;
 						}
 					}
@@ -293,7 +293,7 @@ handleCollectionArray:
 								throwError("Destructuring declaration has " + std::to_string(destructureTargets.size()) +
 								           " variables, but type '" + elemClass->getName(compile) +
 								           "' only has " + std::to_string(propNames.size()) +
-								           " properties\nHint: Check number of destructured variables");
+								           " properties", "Check number of destructured variables");
 							}
 							size_t insertIdx = 0;
 							for (size_t k = 0; k < destructureTargets.size(); ++k) {
@@ -364,7 +364,7 @@ handleCollectionArray:
 							destructureTargets.clear();
 						} else {
 							throwError("Cannot destructure " + std::to_string(destructureTargets.size()) +
-							           " variables from Map\nHint: Map only supports 1 or 2 loop variables: for (key in map) or for ((key, value) in map)");
+							           " variables from Map", "Map only supports 1 or 2 loop variables: for (key in map) or for ((key, value) in map)");
 						}
 					} else if (detachValue == nullptr &&
 					           (checkUsesMapEntryProps(&body, detach->declaration, context) ||
@@ -395,7 +395,7 @@ handleCollectionArray:
 							    compile.classes[detach->classId]->inheritance.get(keyTarget)) {
 								if (!detach->isNullable() && keyType->nullable) {
 									throwError(
-									    "Cannot assign nullable key to non-nullable variable\nHint: Declare loop variable as nullable (K?) or ensure map key type is non-nullable.");
+									    "Cannot assign nullable key to non-nullable variable", "Declare loop variable as nullable (K?) or ensure map key type is non-nullable.");
 								}
 								break;
 							}
@@ -404,7 +404,7 @@ handleCollectionArray:
 							    compile.classes[keyTarget]->getName(compile) +
 							    "' but '" +
 							    compile.classes[detach->classId]->getName(compile) +
-							    "' found\nHint: Ensure the loop key variable type matches the map key type.");
+							    "' found", "Ensure the loop key variable type matches the map key type.");
 							break;
 						}
 					}
@@ -425,7 +425,7 @@ handleCollectionArray:
 								    compile.classes[detachValue->classId]->inheritance.get(valTarget)) {
 									if (!detachValue->isNullable() && valType->nullable) {
 										throwError(
-										    "Cannot assign nullable value to non-nullable variable\nHint: Declare loop variable as nullable (V?) or ensure map value type is non-nullable.");
+										    "Cannot assign nullable value to non-nullable variable", "Declare loop variable as nullable (V?) or ensure map value type is non-nullable.");
 									}
 									break;
 								}
@@ -434,7 +434,7 @@ handleCollectionArray:
 								    compile.classes[valTarget]->getName(compile) +
 								    "' but '" +
 								    compile.classes[detachValue->classId]->getName(compile) +
-								    "' found\nHint: Ensure the loop value variable type matches the map value type.");
+								    "' found", "Ensure the loop value variable type matches the map value type.");
 								break;
 							}
 						}
@@ -442,7 +442,7 @@ handleCollectionArray:
 					break;
 				}
 				default: {
-					throwError("Cannot iterate over type '" + clazz->getName(compile) + "'\nHint: Only Array, Set, Map, and Range types support iteration in for loops.");
+					throwError("Cannot iterate over type '" + clazz->getName(compile) + "'", "Only Array, Set, Map, and Range types support iteration in for loops.");
 				}
 			}
 			break;
@@ -684,7 +684,7 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 			auto clazz = compile.classes[data->classId];
 			auto classInfo = context.classInfo[data->classId];
 			if (classInfo->genericTypeId.empty()) {
-				throwError("Cannot iterate over type '" + clazz->getName(compile) + "'\nHint: Only Array, Set, Map, String, and Range types support iteration in for loops.");
+				throwError("Cannot iterate over type '" + clazz->getName(compile) + "'", "Only Array, Set, Map, String, and Range types support iteration in for loops.");
 			}
 			auto baseClassId = clazz->genericBaseClassId;
 			switch (baseClassId) {
@@ -786,7 +786,7 @@ void ForNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					break;
 				}
 				default: {
-					throwError("Cannot iterate over type '" + clazz->getName(compile) + "'\nHint: Only Array, Set, Map, and Range types support iteration in for loops.");
+					throwError("Cannot iterate over type '" + clazz->getName(compile) + "'", "Only Array, Set, Map, and Range types support iteration in for loops.");
 				}
 			}
 			break;

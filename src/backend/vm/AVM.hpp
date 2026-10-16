@@ -56,6 +56,10 @@ class AVM {
 	uint32_t limitOpcodeCount = UINT32_MAX;
 	uint32_t currentLimitOpcodeCount = 0;
 #endif
+	static constexpr uint32_t TIMEOUT_CHECK_INTERVAL = 1024;
+	uint32_t executionTimeoutMs = 0;
+	std::chrono::time_point<std::chrono::steady_clock> executionDeadline;
+	uint32_t timeoutCheckCounter = 0;
 #ifndef NO_INCLUDE_LIBS_HTTP
 	uint32_t maxDownloadSize = UINT32_MAX;
 	std::regex *allowedDomainsRegex = nullptr;
@@ -130,6 +134,13 @@ class AVM {
 	}
 	inline size_t getCurrentManagedMemory() {
 		return data.manager.getCurrentManagedMemory();
+	}
+
+	inline void setExecutionTimeoutMs(uint32_t ms) {
+		executionTimeoutMs = ms;
+	}
+	inline uint32_t getExecutionTimeoutMs() const {
+		return executionTimeoutMs;
 	}
 
 	~AVM();

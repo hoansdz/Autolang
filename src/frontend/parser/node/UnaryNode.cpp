@@ -82,7 +82,7 @@ ExprNode *UnaryNode::resolve(in_func) {
 					    "Cannot use pre-increment operator '++' for constant "
 					    "type '" +
 					    compile.classes[value->classId]->getName(compile) +
-					    "'\nHint: Pre-increment operator '++' can only be "
+					    "'", "Pre-increment operator '++' can only be "
 					    "applied to non-constant numeric types.");
 				}
 				case Lexer::TokenType::MINUS_MINUS: {
@@ -90,7 +90,7 @@ ExprNode *UnaryNode::resolve(in_func) {
 					    "Cannot use pre-decrement operator '--' for constant "
 					    "type '" +
 					    compile.classes[value->classId]->getName(compile) +
-					    "'\nHint: Pre-decrement operator '--' can only be "
+					    "'", "Pre-decrement operator '--' can only be "
 					    "applied to non-constant numeric types.");
 				}
 				default:
@@ -99,7 +99,7 @@ ExprNode *UnaryNode::resolve(in_func) {
 			throwError("Cannot find unary operator '" +
 			           Lexer::Token(0, op).toString(context) + "' for type '" +
 			           compile.classes[value->classId]->getName(compile) +
-			           "'\nHint: Unary operator '" +
+			           "'", "Unary operator '" +
 			           Lexer::Token(0, op).toString(context) +
 			           "' is only supported on compatible numeric or boolean "
 			           "constant types.");
@@ -153,7 +153,7 @@ ExprNode *UnaryNode::resolve(in_func) {
 			           Lexer::Token(0, op).toString(context) +
 			           "' for cast type '" +
 			           compile.classes[value->classId]->getName(compile) +
-			           "'\nHint: Ensure the expression can be evaluated with "
+			           "'", "Ensure the expression can be evaluated with "
 			           "unary operator '" +
 			           Lexer::Token(0, op).toString(context) + "'.");
 		}
@@ -174,7 +174,7 @@ ExprNode *UnaryNode::optimize(in_func) {
 		case NodeType::CLASS_ACCESS: {
 			throwError("Expected value expression for operator '" +
 			           Lexer::Token(0, op).toString(context) +
-			           "'\nHint: A class reference cannot be used as an "
+			           "'", "A class reference cannot be used as an "
 			           "operand. Provide an instance or value expression.");
 		}
 		case NodeType::VAR:
@@ -191,7 +191,7 @@ ExprNode *UnaryNode::optimize(in_func) {
 		throwError("Operator '" + Lexer::Token(0, op).toString(context) +
 		           "' cannot be applied to nullable operand of type '" +
 		           compile.classes[value->classId]->getName(compile) +
-		           "?'\nHint: Unwrap the nullable value using '!' or perform a "
+		           "?'", "Unwrap the nullable value using '!' or perform a "
 		           "null check before applying unary operator '" +
 		           Lexer::Token(0, op).toString(context) + "'.");
 	}
@@ -223,7 +223,7 @@ ExprNode *UnaryNode::optimize(in_func) {
 					throwError(
 					    "Cannot convert type '" +
 					    compile.classes[value->classId]->getName(compile) +
-					    "' to numeric type\nHint: Unary '+' operator requires "
+					    "' to numeric type", "Unary '+' operator requires "
 					    "operand of type Int, Float, or Bool, or an 'operator fun unaryPlus()' method.");
 				}
 			}
@@ -255,7 +255,7 @@ ExprNode *UnaryNode::optimize(in_func) {
 					throwError(
 					    "Cannot convert type '" +
 					    compile.classes[value->classId]->getName(compile) +
-					    "' to numeric type\nHint: Unary '-' operator requires "
+					    "' to numeric type", "Unary '-' operator requires "
 					    "operand of type Int, Float, or Bool, or an 'operator fun unaryMinus()' method.");
 				}
 			}
@@ -279,7 +279,7 @@ ExprNode *UnaryNode::optimize(in_func) {
 			}
 			throwError("Cannot convert type '" +
 			           compile.classes[value->classId]->getName(compile) +
-			           "' to Bool\nHint: Logical NOT '!' operator requires a "
+			           "' to Bool", "Logical NOT '!' operator requires a "
 			           "Bool operand, or an 'operator fun not()' method.");
 		}
 		case Lexer::TokenType::PLUS_PLUS: {
@@ -299,7 +299,7 @@ ExprNode *UnaryNode::optimize(in_func) {
 				default:
 					throwError("Operator '++' cannot be applied to type '" +
 					           value->getClassName(in_data) +
-					           "'\nHint: Pre-increment operator '++' is only "
+					           "'", "Pre-increment operator '++' is only "
 					           "supported for Int, Float, and Bool types.");
 			}
 		}
@@ -320,7 +320,7 @@ ExprNode *UnaryNode::optimize(in_func) {
 				default:
 					throwError("Operator '--' cannot be applied to type '" +
 					           value->getClassName(in_data) +
-					           "'\nHint: Pre-decrement operator '--' is only "
+					           "'", "Pre-decrement operator '--' is only "
 					           "supported for Int, Float, and Bool types.");
 			}
 		}

@@ -45,7 +45,7 @@ ExprNode *UnknowNode::resolve(in_func) {
 
 		throwError("Cannot find global variable or function '" +
 		           std::string(context.lexerString[nameId]) +
-		           "'\nHint: Check symbol spelling or verify whether it is declared in global scope.");
+		           "'", "Check symbol spelling or verify whether it is declared in global scope.");
 	}
 
 	{
@@ -210,7 +210,7 @@ ExprNode *UnknowNode::resolve(in_func) {
 		return varNode;
 	}
 	throwError("Cannot find variable or symbol '" + std::string(context.lexerString[nameId]) +
-	           "'\nHint: Check symbol spelling, ensure it is in scope or declared before usage.");
+	           "'", "Check symbol spelling, ensure it is in scope or declared before usage.");
 }
 
 ExprNode *UnknowNode::copy(in_func) {
@@ -245,7 +245,7 @@ ExprNode *UnknowNode::copy(in_func) {
 }
 
 void UnknowNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
-	throwError("Cannot generate bytecode for unresolved 'UnknownNode'\nHint: Ensure all symbols and variables are properly declared and resolved during static analysis before bytecode compilation.");
+	throwError("Cannot generate bytecode for unresolved 'UnknownNode'", "Ensure all symbols and variables are properly declared and resolved during static analysis before bytecode compilation.");
 }
 
 ExprNode *WhileNode::resolve(in_func) {
@@ -287,7 +287,7 @@ ExprNode *WhileNode::optimize(in_func) {
 	if (condition->classId != Autolang::DefaultClass::boolClassId)
 		throwError("Cannot use expression of type '" +
 		           condition->getClassName(in_data) +
-		           "' as a condition, expected 'Bool'\nHint: Ensure the loop condition evaluates to a 'Bool' value.");
+		           "' as a condition, expected 'Bool'", "Ensure the loop condition evaluates to a 'Bool' value.");
 	for (auto &cast : trueCasts) cast.apply();
 	body.optimize(in_data);
 	for (auto &cast : trueCasts) cast.restore();
@@ -344,7 +344,7 @@ ExprNode *ReturnNode::optimize(in_func) {
 	// std::cerr<<"Loading "<<func->getName(compile)<<"\n";
 	if (value) {
 		if (func->returnId == DefaultClass::voidClassId && throwErrIfVoid) {
-			throwError("Cannot return a value from function returning Void\nHint: Remove the return value or change the function return type from Void to match the returned expression.");
+			throwError("Cannot return a value from function returning Void", "Remove the return value or change the function return type from Void to match the returned expression.");
 		}
 		switch (value->kind) {
 			case NodeType::CREATE_SET: {
@@ -487,7 +487,7 @@ ExprNode *ReturnNode::optimize(in_func) {
 						throwError("Cannot infer return type for function '" +
 						           func->getName(compile) +
 						           "' "
-						           "because its body is a null literal.\nHint: Explicitly specify the return type for function or return a concrete non-null expression.");
+						           "because its body is a null literal.", "Explicitly specify the return type for function or return a concrete non-null expression.");
 					}
 					case DefaultClass::functionClassId: {
 						funcInfo->returnClass = value->classDeclaration;
@@ -505,10 +505,10 @@ ExprNode *ReturnNode::optimize(in_func) {
 		}
 		if (!(func->functionFlags & FunctionFlags::FUNC_RETURN_NULLABLE)) {
 			if (value->classId == Autolang::DefaultClass::nullClassId) {
-				throwError("Cannot return null because function return type is non-nullable\nHint: Mark the function return type as nullable (e.g. Type?) or return a valid non-null object.");
+				throwError("Cannot return null because function return type is non-nullable", "Mark the function return type as nullable (e.g. Type?) or return a valid non-null object.");
 			}
 			if (value->isNullable()) {
-				throwError("Cannot return nullable variable because function return type is non-nullable\nHint: Mark the function return type as nullable (e.g. Type?) or handle/unwrap the nullable value before returning.");
+				throwError("Cannot return nullable variable because function return type is non-nullable", "Mark the function return type as nullable (e.g. Type?) or handle/unwrap the nullable value before returning.");
 			}
 		} else if (value->classId == Autolang::DefaultClass::nullClassId) {
 			return this;
@@ -538,10 +538,10 @@ ExprNode *ReturnNode::optimize(in_func) {
 		throwError("Cannot cast " +
 		           compile.classes[value->classId]->getName(compile) + " to " +
 		           compile.classes[func->returnId]->getName(compile) +
-		           "\nHint: Ensure returned expression type matches or can be cast to the declared function return type.");
+		           "", "Ensure returned expression type matches or can be cast to the declared function return type.");
 	}
 	if (func->returnId != Autolang::DefaultClass::voidClassId) {
-		throwError("Function with non-Void return type must return a value\nHint: Ensure all execution paths return a value matching the function return type, or change return type to Void.");
+		throwError("Function with non-Void return type must return a value", "Ensure all execution paths return a value matching the function return type, or change return type to Void.");
 	}
 	return this;
 }

@@ -54,7 +54,7 @@ static void parseLambdaDestructurePattern(
 		} else {
 			--i;
 			throw ParserError(context.tokens[i].line,
-			                  "Expected parameter name or '_' in destructuring parameter\nHint: Provide a parameter name or '_' to ignore");
+			                  "Expected parameter name or '_' in destructuring parameter", "Provide a parameter name or '_' to ignore");
 		}
 
 		if (!nextToken(&token, context.tokens, i)) {
@@ -96,7 +96,7 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 				throw ParserError(
 				    token->line,
 				    token->toString(context) +
-				        " can't be allowed here\nHint: Do not use 'var' or "
+				        " can't be allowed here", "Do not use 'var' or "
 				        "'val' keywords in function parameters unless in "
 				        "constructor");
 		}
@@ -115,7 +115,7 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 		default:
 			throw ParserError(
 			    token->line,
-			    "Expected parameter name but not found\nHint: Provide a "
+			    "Expected parameter name but not found", "Provide a "
 			    "parameter name identifier");
 	}
 	bool addedDefaultValue = false;
@@ -153,7 +153,7 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 						throw ParserError(
 						    token->line,
 						    "Unexpected token '" + token->toString(context) +
-						        "'\nHint: Expected ',' or '->' after destructuring parameter");
+						        "'", "Expected ',' or '->' after destructuring parameter");
 					}
 				}
 			}
@@ -165,7 +165,7 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "Expected var or val but not found\nHint: Primary "
+				    "Expected var or val but not found", "Primary "
 				    "constructor parameters must specify 'var' or 'val'");
 			}
 			isVal = token->type == Lexer::TokenType::VAL;
@@ -173,7 +173,7 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "Expected parameter name but not found\nHint: Provide an "
+				    "Expected parameter name but not found", "Provide an "
 				    "identifier for parameter name after 'var'/'val'");
 			}
 		}
@@ -181,7 +181,7 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 		    !expect(token, Lexer::TokenType::TO)) {
 			throw ParserError(
 			    token->line,
-			    "Expected identifier but not found\nHint: Parameter name "
+			    "Expected identifier but not found", "Parameter name "
 			    "must be a valid identifier");
 		}
 		LexerStringId baseName = token->indexData;
@@ -190,7 +190,7 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 			--i;
 			throw ParserError(
 			    context.tokens[i].line,
-			    "Expected ':' after parameter name but not found\nHint: Add "
+			    "Expected ':' after parameter name but not found", "Add "
 			    "':' after parameter name to declare parameter type");
 		}
 		Autolang::ClassDeclaration *classDeclaration = nullptr;
@@ -198,7 +198,7 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 			if constexpr (mustHaveColon) {
 				throw ParserError(
 				    token->line,
-				    "Expected ':' after parameter name but not found\nHint: "
+				    "Expected ':' after parameter name but not found", ""
 				    "Parameter type annotation requires ':'");
 			}
 		} else {
@@ -226,14 +226,14 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 			if constexpr (!allowDefaultValue) {
 				throw ParserError(
 				    token->line,
-				    "Unexpected default value\nHint: Default parameter values "
+				    "Unexpected default value", "Default parameter values "
 				    "are not allowed in this declaration");
 			}
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "Expected value after '=' but not found\nHint: Provide a "
+				    "Expected value after '=' but not found", "Provide a "
 				    "default value expression after '='");
 			}
 			if (!addedDefaultValue) {
@@ -250,7 +250,7 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 			throw ParserError(
 			    token->line,
 			    "Parameter with default value cannot precede parameter "
-			    "without default value\nHint: Place all parameters with "
+			    "without default value", "Place all parameters with "
 			    "default values at the end of parameter list");
 		}
 		switch (token->type) {
@@ -268,7 +268,7 @@ Parameter *loadListDeclaration(in_func, size_t &i, bool allowVar) {
 				throw ParserError(
 				    token->line,
 				    "Unexpected token '" + token->toString(context) +
-				        "'\nHint: Expected ',' or closing bracket in parameter "
+				        "'", "Expected ',' or closing bracket in parameter "
 				        "list");
 			}
 		}

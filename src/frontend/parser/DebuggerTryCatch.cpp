@@ -17,7 +17,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i, bool mustReturnValue) {
 		--i;
 		throw ParserError(
 		    firstLine,
-		    "Expected body open with '{' after 'try' but not found\nHint: Open "
+		    "Expected body open with '{' after 'try' but not found", "Open "
 		    "the try block with '{' immediately after 'try'");
 	}
 	loadBody<false>(in_data, node->body.nodes, i, true);
@@ -25,7 +25,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i, bool mustReturnValue) {
 		--i;
 		throw ParserError(
 		    firstLine,
-		    "Expected 'catch' or 'finally' after 'try' but not found\nHint: Add "
+		    "Expected 'catch' or 'finally' after 'try' but not found", "Add "
 		    "a 'catch (e) { ... }' or 'finally { ... }' block after the try block");
 	}
 	bool hasCatchAll = false;
@@ -34,7 +34,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i, bool mustReturnValue) {
 			--i;
 			throw ParserError(
 			    token->line,
-			    "Catch clause after catch-all 'catch (e)' is unreachable\nHint: Place more specific catch clauses before the catch-all clause");
+			    "Catch clause after catch-all 'catch (e)' is unreachable", "Place more specific catch clauses before the catch-all clause");
 		}
 		node->hasCatch = true;
 		CatchClause clause(token->line);
@@ -43,7 +43,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i, bool mustReturnValue) {
 			--i;
 			throw ParserError(
 			    firstLine,
-			    "Expected '(' after 'catch' but not found\nHint: Specify exception "
+			    "Expected '(' after 'catch' but not found", "Specify exception "
 			    "variable in parentheses: catch (e) or catch (e: ExceptionType)");
 		}
 		if (!nextToken(&token, context.tokens, i) ||
@@ -51,7 +51,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i, bool mustReturnValue) {
 			--i;
 			throw ParserError(
 			    firstLine,
-			    "Expected a variable name after 'catch' but not found\nHint: "
+			    "Expected a variable name after 'catch' but not found", ""
 			    "Provide an exception variable identifier inside catch (e)");
 		}
 		LexerStringId baseName = token->indexData;
@@ -60,7 +60,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i, bool mustReturnValue) {
 			--i;
 			throw ParserError(
 			    firstLine,
-			    "Expected ':' or ')' after catch variable name but not found\nHint: "
+			    "Expected ':' or ')' after catch variable name but not found", ""
 			    "Use 'catch (e)' or 'catch (e: ExceptionType)'");
 		}
 		if (expect(token, Lexer::TokenType::COLON)) {
@@ -74,7 +74,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i, bool mustReturnValue) {
 				--i;
 				throw ParserError(
 				    firstLine,
-				    "Expected ')' after catch type specification but not found\nHint: "
+				    "Expected ')' after catch type specification but not found", ""
 				    "Close catch parameters with ')' after the exception type");
 			}
 		} else if (expect(token, Lexer::TokenType::RPAREN)) {
@@ -84,7 +84,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i, bool mustReturnValue) {
 			--i;
 			throw ParserError(
 			    firstLine,
-			    "Expected ':' or ')' after catch variable name but not found\nHint: "
+			    "Expected ':' or ')' after catch variable name but not found", ""
 			    "Use 'catch (e)' or 'catch (e: ExceptionType)'");
 		}
 		if (!nextToken(&token, context.tokens, i) ||
@@ -92,7 +92,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i, bool mustReturnValue) {
 			--i;
 			throw ParserError(
 			    firstLine,
-			    "Expected body to open with '{' after 'catch' but not found\nHint: "
+			    "Expected body to open with '{' after 'catch' but not found", ""
 			    "Open the catch block with '{' after catch (...)");
 		}
 		auto funcInfo = context.getCurrentFunctionInfo(in_data);
@@ -137,7 +137,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i, bool mustReturnValue) {
 			--i;
 			throw ParserError(
 			    firstLine,
-			    "Expected body to open with '{' after 'finally' but not found\nHint: "
+			    "Expected body to open with '{' after 'finally' but not found", ""
 			    "Open the finally block with '{' after finally");
 		}
 		loadBody<false>(in_data, node->finallyBody.nodes, i, true);
@@ -148,7 +148,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i, bool mustReturnValue) {
 	if (!node->hasCatch && !node->hasFinally) {
 		throw ParserError(
 		    firstLine,
-		    "Expected 'catch' or 'finally' after 'try' but not found\nHint: Add "
+		    "Expected 'catch' or 'finally' after 'try' but not found", "Add "
 		    "a 'catch (e) { ... }' or 'finally { ... }' block after the try block");
 	}
 
@@ -168,7 +168,7 @@ TryCatchNode *loadTryCatch(in_func, size_t &i, bool mustReturnValue) {
 	if (mustReturnValue && !node->hasCatch) {
 		throw ParserError(
 		    firstLine,
-		    "'try' expression must return a value, so it must have a 'catch' branch\nHint: Add a 'catch (e) { ... }' branch to handle exceptions when evaluated as an expression");
+		    "'try' expression must return a value, so it must have a 'catch' branch", "Add a 'catch (e) { ... }' branch to handle exceptions when evaluated as an expression");
 	}
 	return node;
 }
@@ -179,7 +179,7 @@ ThrowNode *loadThrow(in_func, size_t &i) {
 	if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
 		throw ParserError(
 		    firstLine,
-		    "Expected an expression after 'throw' but not found\nHint: Provide "
+		    "Expected an expression after 'throw' but not found", "Provide "
 		    "an Exception expression to throw: throw Exception(\"...\")");
 	}
 	return context.throwPool.push(firstLine, loadExpression(in_data, 0, i));

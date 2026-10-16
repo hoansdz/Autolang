@@ -95,7 +95,7 @@ static void checkGenericFunctionDuplicate(in_func, CreateFuncNode *node,
 			throw ParserError(
 			    line,
 			    "Redefined function: " + currentFuncInfo->toString(in_data) +
-			        "\nHint: Previously defined at " + prevPath + ":" +
+			        "", "Previously defined at " + prevPath + ":" +
 			        std::to_string(existingFuncInfo->line) +
 			        ". Ensure the function signature is unique or remove the "
 			        "duplicate definition");
@@ -182,17 +182,17 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 	uint32_t functionFlags = 0;
 	if (context.annotationFlags & AnnotationFlags::AN_NO_CONSTRUCTOR) {
 		throw ParserError(firstLine,
-		                  "@no_constructor is only supported on classes\nHint: "
+		                  "@no_constructor is only supported on classes", ""
 		                  "Remove @no_constructor from function declaration");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NATIVE_DATA) {
 		throw ParserError(firstLine,
-		                  "@native_data is only supported on classes\nHint: "
+		                  "@native_data is only supported on classes", ""
 		                  "Remove @native_data from function declaration");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_EXTENDS) {
 		throw ParserError(firstLine,
-		                  "@no_extends is only supported on classes\nHint: "
+		                  "@no_extends is only supported on classes", ""
 		                  "Remove @no_extends from function declaration");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NATIVE) {
@@ -214,8 +214,15 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_WAIT_INPUT) {
 		throw ParserError(firstLine,
-		                  "@wait_input is currently not supported\nHint: "
+		                  "@wait_input is currently not supported", ""
 		                  "Remove @wait_input annotation");
+	}
+	std::string currentDescription;
+	if (context.annotationFlags & AnnotationFlags::AN_DESCRIPTION) {
+		auto &descToken =
+		    context.annotationMetadata[AnnotationMetadataIndex::AMI_DESCRIPTION];
+		currentDescription = std::string(context.lexerString[descToken.indexData]);
+		context.annotationFlags &= ~AnnotationFlags::AN_DESCRIPTION;
 	}
 	bool hasStaticFlag = (context.modifierflags & ModifierFlags::MF_STATIC);
 	if (!context.currentClassId || hasStaticFlag) {
@@ -245,7 +252,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		--i;
 		throw ParserError(
 		    firstLine,
-		    "Expected name after 'fun' but not found\nHint: Provide a valid "
+		    "Expected name after 'fun' but not found", "Provide a valid "
 		    "identifier for function name, e.g. 'fun foo()'");
 	}
 	if (expect(token, Lexer::TokenType::LT)) {
@@ -256,7 +263,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			--i;
 			throw ParserError(
 			    firstLine,
-			    "Expected function name after generic parameters\nHint: "
+			    "Expected function name after generic parameters", ""
 			    "Provide a function name, e.g. 'fun <T> foo()'");
 		}
 	}
@@ -266,7 +273,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		--i;
 		throw ParserError(
 		    firstLine,
-		    "Expected name after 'fun' but not found\nHint: Provide a valid "
+		    "Expected name after 'fun' but not found", "Provide a valid "
 		    "identifier for function name, e.g. 'fun foo()'");
 	}
 	std::optional<ClassId> initialClassId = context.currentClassId;
@@ -276,7 +283,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		--i;
 		throw ParserError(firstLine,
 		                  "Expected '(' after function name but not "
-		                  "found\nHint: Add '(' to start parameter list");
+		                  "found", "Add '(' to start parameter list");
 	}
 	bool isNullableReceiver = false;
 	if (token->type == Lexer::TokenType::LT) {
@@ -302,7 +309,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				throw ParserError(
 				    firstLine,
 				    "Expected '.' after generic class name in extension "
-				    "declaration\nHint: Use syntax 'ClassName<...>.methodName()'");
+				    "declaration", "Use syntax 'ClassName<...>.methodName()'");
 			}
 		}
 	}
@@ -325,26 +332,26 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			if (classInfo->primaryConstructor) {
 				throw ParserError(
 				    firstLine,
-				    "Cannot declare constructor in a data class\nHint: "
+				    "Cannot declare constructor in a data class", ""
 				    "Data classes use primary constructor header 'class "
 				    "Name(...)'");
 			}
 			if (functionFlags & FunctionFlags::FUNC_OVERRIDE) {
 				throw ParserError(
 				    firstLine,
-				    "@override is only supported on functions\nHint: "
+				    "@override is only supported on functions", ""
 				    "Remove @override from constructor declaration");
 			}
 			if (functionFlags & FunctionFlags::FUNC_NO_OVERRIDE) {
 				throw ParserError(
 				    firstLine,
-				    "@no_override is only supported on functions\nHint: "
+				    "@no_override is only supported on functions", ""
 				    "Remove @no_override from constructor declaration");
 			}
 			if (functionFlags & FunctionFlags::FUNC_IS_OPERATOR) {
 				throw ParserError(
 				    firstLine,
-				    "@operator is not supported on constructors\nHint: "
+				    "@operator is not supported on constructors", ""
 				    "Remove @operator from constructor declaration");
 			}
 			if ((clazz->classFlags & ClassFlags::CLASS_NATIVE_DATA) &&
@@ -353,7 +360,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				    firstLine,
 				    "Class " + clazz->getName(compile) +
 				        " is marked @native_data, so the constructor must be "
-				        "native\nHint: Add @native(\"name\") to constructor");
+				        "native", "Add @native(\"name\") to constructor");
 			}
 			loadConstructorBody(in_data, i, firstLine, functionFlags, clazz,
 			                    classInfo);
@@ -366,14 +373,14 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			throw ParserError(
 			    firstLine, "Expected function name after class name: '" +
 			                   std::string(context.lexerString[nameId]) +
-			                   "' but not found\nHint: Specify member function "
+			                   "' but not found", "Specify member function "
 			                   "name after dot, e.g. 'Class.foo()'");
 		}
 		switch (token->type) {
 			case Lexer::TokenType::LT: {
 				throw ParserError(
 				    firstLine,
-				    "Generic class extension hasn't supported yet\nHint: "
+				    "Generic class extension hasn't supported yet", ""
 				    "Remove generic type arguments from class extension");
 			}
 			case Lexer::TokenType::NOT:
@@ -398,7 +405,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 						throw ParserError(
 						    token->line,
 						    "Error: Extension function are not "
-						    "allowed inside class\nHint: Declare extension "
+						    "allowed inside class", "Declare extension "
 						    "function at file scope outside class");
 					}
 				}
@@ -406,14 +413,14 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 					throw ParserError(
 					    token->line,
 					    "Error: Extension function are not "
-					    "allowed inside function\nHint: Declare extension "
+					    "allowed inside function", "Declare extension "
 					    "function at file scope outside function");
 				}
 				if (context.currentClosureNode) {
 					throw ParserError(
 					    token->line,
 					    "Error: Extension function are not "
-					    "allowed inside closure\nHint: Declare extension "
+					    "allowed inside closure", "Declare extension "
 					    "function at file scope outside closure");
 				}
 				auto it =
@@ -423,7 +430,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 					                  "Cannot find class name: '" +
 					                      std::string(context.lexerString[*classNameId]) +
 					                      "'. Extension must be declared after "
-					                      "class\nHint: Ensure target class is "
+					                      "class", "Ensure target class is "
 					                      "declared before creating extension");
 				}
 				context.currentClassId = it->second;
@@ -460,7 +467,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 					--i;
 					throw ParserError(
 					    firstLine,
-					    "Expected '(' after function name but not found\nHint: "
+					    "Expected '(' after function name but not found", ""
 					    "Add '(' to start parameter list");
 				}
 				break;
@@ -469,7 +476,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				throw ParserError(firstLine,
 				                  "Expected function name after class name: '" +
 				                      std::string(context.lexerString[*classNameId]) +
-				                      "' but not found\nHint: Specify member "
+				                      "' but not found", "Specify member "
 				                      "function name after dot");
 			}
 		}
@@ -479,21 +486,21 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			case Lexer::TokenType::PUBLIC: {
 				throw ParserError(
 				    token->line,
-				    "Error: 'public' can only be used for class members\nHint: "
+				    "Error: 'public' can only be used for class members", ""
 				    "Remove 'public' modifier from file-level function");
 				break;
 			}
 			case Lexer::TokenType::PRIVATE: {
 				throw ParserError(token->line,
 				                  "Error: 'private' can only be used for class "
-				                  "members\nHint: Remove 'private' modifier "
+				                  "members", "Remove 'private' modifier "
 				                  "from file-level function");
 				break;
 			}
 			case Lexer::TokenType::PROTECTED: {
 				throw ParserError(token->line,
 				                  "Error: 'protected' can only be used for "
-				                  "class members\nHint: Remove 'protected' "
+				                  "class members", "Remove 'protected' "
 				                  "modifier from file-level function");
 				break;
 			}
@@ -503,15 +510,15 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 	}
 	switch (nameId) {
 		case lexerId__FILE__: {
-			throw ParserError(firstLine, "__FILE__ is a magic const\nHint: "
+			throw ParserError(firstLine, "__FILE__ is a magic const", ""
 			                             "Choose a different function name");
 		}
 		case lexerId__LINE__: {
-			throw ParserError(firstLine, "__LINE__ is a magic const\nHint: "
+			throw ParserError(firstLine, "__LINE__ is a magic const", ""
 			                             "Choose a different function name");
 		}
 		case lexerId__FUNC__: {
-			throw ParserError(firstLine, "__FUNC__ is a magic const\nHint: "
+			throw ParserError(firstLine, "__FUNC__ is a magic const", ""
 			                             "Choose a different function name");
 		}
 		case lexerId__CLASS__: {
@@ -519,7 +526,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				throw ParserError(
 				    firstLine,
 				    "Function name cannot be empty; __CLASS__ "
-				    "must be used inside a class\nHint: Use __CLASS__ only "
+				    "must be used inside a class", "Use __CLASS__ only "
 				    "within class method declarations");
 			}
 			auto clazz = context.getCurrentClass(in_data);
@@ -533,7 +540,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			break;
 		}
 		case lexerIdsuper: {
-			throw ParserError(firstLine, "'super' is a reserved keyword\nHint: "
+			throw ParserError(firstLine, "'super' is a reserved keyword", ""
 			                             "Choose a different function name");
 		}
 		default: {
@@ -546,7 +553,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			throw ParserError(
 			    firstLine,
 			    "'" + std::string(context.lexerString[nameId]) +
-			        "' is not a supported operator function name\nHint: Supported operator "
+			        "' is not a supported operator function name", "Supported operator "
 			        "function names are 'get', 'set', 'contains', 'plus', 'minus', 'times', 'div', 'rem', 'compareTo', 'unaryMinus', 'unaryPlus', 'not'");
 		}
 	}
@@ -558,7 +565,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
 			throw ParserError(context.tokens[i].line,
-			                  "Generics function must have body\nHint: "
+			                  "Generics function must have body", ""
 			                  "Provide function body or implementation");
 		}
 	}
@@ -568,7 +575,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		throw ParserError(firstLine,
 		                  "Expected '(' but '" +
 		                      context.tokens[i].toString(context) +
-		                      "' found\nHint: Ensure function parameters are "
+		                      "' found", "Ensure function parameters are "
 		                      "enclosed in '(' and ')'");
 	}
 	auto parameter = loadListDeclaration(in_data, i);
@@ -579,7 +586,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				if (paramCount < 1) {
 					throw ParserError(
 					    firstLine,
-					    "Operator 'get' requires at least 1 parameter\nHint: "
+					    "Operator 'get' requires at least 1 parameter", ""
 					    "Define 'get' with at least 1 index parameter, e.g. '@operator fun get(index: Int)'");
 				}
 				break;
@@ -587,7 +594,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				if (paramCount < 2) {
 					throw ParserError(
 					    firstLine,
-					    "Operator 'set' requires at least 2 parameters\nHint: "
+					    "Operator 'set' requires at least 2 parameters", ""
 					    "Define 'set' with index and value parameters, e.g. '@operator fun set(index: Int, value: T)'");
 				}
 				break;
@@ -597,7 +604,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				if (paramCount != 0) {
 					throw ParserError(
 					    firstLine,
-					    "Operator '" + std::string(context.lexerString[nameId]) + "' requires 0 parameters\nHint: "
+					    "Operator '" + std::string(context.lexerString[nameId]) + "' requires 0 parameters", ""
 					    "Define '" + std::string(context.lexerString[nameId]) + "' without parameters, e.g. '@operator fun " +
 					    std::string(context.lexerString[nameId]) + "(): T'");
 				}
@@ -606,7 +613,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				if (isSingleParamOperator(nameId) && paramCount != 1) {
 					throw ParserError(
 					    firstLine,
-					    "Operator '" + std::string(context.lexerString[nameId]) + "' requires exactly 1 parameter\nHint: "
+					    "Operator '" + std::string(context.lexerString[nameId]) + "' requires exactly 1 parameter", ""
 					    "Define '" + std::string(context.lexerString[nameId]) + "' with 1 parameter, e.g. '@operator fun " +
 					    std::string(context.lexerString[nameId]) + "(other: T)'");
 				}
@@ -617,7 +624,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		if (parameter->defaultValuePos > 1) {
 			throw ParserError(
 			    firstLine,
-			    "Implicit function must have at most 1 required parameter\nHint: "
+			    "Implicit function must have at most 1 required parameter", ""
 			    "Provide default values for additional parameters or declare function with at most 1 parameter");
 		}
 	}
@@ -639,7 +646,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		if (functionFlags & FunctionFlags::FUNC_IS_NATIVE)
 			goto createFunc;
 		throw ParserError(firstLine,
-		                  "Expected body but not found\nHint: Provide function "
+		                  "Expected body but not found", "Provide function "
 		                  "body '{ ... }' or '@native' annotation");
 	}
 	if (token->type == Lexer::TokenType::COLON) {
@@ -655,7 +662,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			if (functionFlags & FunctionFlags::FUNC_IS_NATIVE)
 				goto createFunc;
 			throw ParserError(firstLine,
-			                  "Expected body but not found\nHint: Provide "
+			                  "Expected body but not found", "Provide "
 			                  "function body '{ ... }' or '=' expression");
 		}
 	}
@@ -666,7 +673,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    firstLine,
-				    "@native function must not have a body\nHint: End native "
+				    "@native function must not have a body", "End native "
 				    "function header without '{ ... }' body");
 			}
 			break;
@@ -676,12 +683,12 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    firstLine,
-				    "@native function must not have a body\nHint: End native "
+				    "@native function must not have a body", "End native "
 				    "function header without '=' expression");
 			}
 			if (!nextToken(&token, context.tokens, i)) {
 				throw ParserError(
-				    firstLine, "Expected value after '=' but not found\nHint: "
+				    firstLine, "Expected value after '=' but not found", ""
 				               "Provide an expression after '='");
 			}
 			if (!(functionFlags & FunctionFlags::FUNC_IS_STATIC) &&
@@ -751,7 +758,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 			--i;
 			if (!(functionFlags & FunctionFlags::FUNC_IS_NATIVE)) {
 				throw ParserError(firstLine,
-				                  "Expected body but not found\nHint: Provide "
+				                  "Expected body but not found", "Provide "
 				                  "function body '{ ... }' or '=' expression");
 			}
 			break;
@@ -771,6 +778,7 @@ createFunc:;
 	CreateFuncNode *node = context.newFunctions.push(
 	    firstLine, tokenIndex, context.currentClassId, nameId, classDeclaration,
 	    parameter, functionFlags);
+	node->description = std::move(currentDescription);
 	if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 		auto &token =
 		    context.annotationMetadata[AnnotationMetadataIndex::AMI_NATIVE];
@@ -779,7 +787,7 @@ createFunc:;
 		if (it == context.mode->nativeFuncMap.end()) {
 			throw ParserError(firstLine,
 			                  std::string("Native function name '") + std::string(name) +
-			                      "' could not be found\nHint: Register native "
+			                      "' could not be found", "Register native "
 			                      "function binding in host environment");
 		}
 		node->pushNativeFunction(in_data, &it->second);
@@ -894,7 +902,7 @@ createFunc:;
 			if (!hasReturn) {
 				throw ParserError(firstLine,
 				                  "Function " + func->getName(compile) +
-				                      " is missing a return statement\nHint: "
+				                      " is missing a return statement", ""
 				                      "Return a value of type '" +
 				                      classDeclaration->getName(in_data) + "'");
 			}
@@ -926,7 +934,7 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 	uint32_t firstLine = token->line;
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
-		throw ParserError(firstLine, "Expected body but not found\nHint: "
+		throw ParserError(firstLine, "Expected body but not found", ""
 		                             "Provide closure body inside '{ ... }'");
 	}
 	Autolang::Parameter *parameter;
@@ -951,7 +959,7 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
 				throw ParserError(firstLine,
-				                  "Expected body but not found\nHint: Provide "
+				                  "Expected body but not found", "Provide "
 				                  "closure body inside '{ ... }'");
 			}
 			if (!expect(token, Lexer::TokenType::MINUS_GT)) {
@@ -963,7 +971,7 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 			    !expect(token, Lexer::TokenType::LBRACE)) {
 				--i;
 				throw ParserError(firstLine,
-				                  "Expected body but not found\nHint: Provide "
+				                  "Expected body but not found", "Provide "
 				                  "closure body inside '{ ... }'");
 			}
 			break;
@@ -982,7 +990,7 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
 				throw ParserError(firstLine,
-				                  "Expected body but not found\nHint: Provide "
+				                  "Expected body but not found", "Provide "
 				                  "closure body inside '{ ... }'");
 			}
 			if (!expect(token, Lexer::TokenType::MINUS_GT)) {
@@ -994,7 +1002,7 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 			    !expect(token, Lexer::TokenType::LBRACE)) {
 				--i;
 				throw ParserError(firstLine,
-				                  "Expected body but not found\nHint: Provide "
+				                  "Expected body but not found", "Provide "
 				                  "closure body inside '{ ... }'");
 			}
 			break;
@@ -1037,7 +1045,7 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
 			throw ParserError(firstLine,
-			                  "Expected body but not found\nHint: Provide "
+			                  "Expected body but not found", "Provide "
 			                  "closure body inside '{ ... }'");
 		}
 		if (!expect(token, Lexer::TokenType::MINUS_GT)) {
@@ -1049,7 +1057,7 @@ template <bool hasParams> CreateClosureNode *loadClosure(in_func, size_t &i) {
 		    !expect(token, Lexer::TokenType::LBRACE)) {
 			--i;
 			throw ParserError(firstLine,
-			                  "Expected body but not found\nHint: Provide "
+			                  "Expected body but not found", "Provide "
 			                  "closure body inside '{ ... }'");
 		}
 	}
@@ -1130,7 +1138,7 @@ ReturnNode *loadReturn(in_func, size_t &i) {
 	    !context.currentClosureNode) {
 		throw ParserError(
 		    firstLine,
-		    "'return' cannot be used directly in class body\nHint: Place "
+		    "'return' cannot be used directly in class body", "Place "
 		    "'return' inside a method body");
 	}
 
@@ -1154,13 +1162,13 @@ ReturnNode *loadReturn(in_func, size_t &i) {
 	}
 	if (func->functionFlags & FunctionFlags::FUNC_IS_CONSTRUCTOR)
 		throw ParserError(token->line,
-		                  "Cannot return value in constructor\nHint: Use empty "
+		                  "Cannot return value in constructor", "Use empty "
 		                  "'return' without a return value in constructor");
 	if (!context.currentClosureNode &&
 	    context.currentFunctionId == context.mainFunctionId) {
 		throw ParserError(
 		    token->line,
-		    "Cannot return value from top-level script\nHint: Use empty "
+		    "Cannot return value from top-level script", "Use empty "
 		    "'return' without a return value");
 	}
 	return context.returnPool.push(firstLine, context.currentFunctionId,

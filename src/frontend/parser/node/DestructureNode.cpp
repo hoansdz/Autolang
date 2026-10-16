@@ -90,7 +90,7 @@ ExprNode *DestructureNode::optimize(in_func) {
 			throwError("Destructuring declaration has " + std::to_string(targets.size()) +
 			           " variables, but type '" + std::string(className) +
 			           "' only has " + std::to_string(propNames.size()) +
-			           " properties\nHint: Check number of destructured variables");
+			           " properties", "Check number of destructured variables");
 		}
 
 		for (size_t k = 0; k < targets.size(); ++k) {

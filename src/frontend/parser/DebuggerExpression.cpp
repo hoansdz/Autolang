@@ -115,7 +115,7 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 			--i;
 			throw ParserError(
 			    context.tokens[i].line,
-			    "Expected expression after operator but not found\nHint: "
+			    "Expected expression after operator but not found", ""
 			    "Provide a valid right operand expression after operator");
 		}
 		HasClassIdNode *right = nullptr;
@@ -341,7 +341,7 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 				throw ParserError(
 				    token->line,
 				    "'" + Lexer::Token(0, token->type).toString(context) +
-				        "' only allowed inside a loop\nHint: Move 'break' or "
+				        "' only allowed inside a loop", "Move 'break' or "
 				        "'continue' inside a 'for' or 'while' loop");
 			node = context.skipNodePool.push(token->type, token->line);
 			break;

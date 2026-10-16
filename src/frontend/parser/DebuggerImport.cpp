@@ -24,14 +24,14 @@ LibraryData *loadImport(in_func, LibraryData* currentLibrary, std::vector<Lexer:
 		--i;
 		throw ParserError(
 		    firstLine,
-		    "@import expects an opening '(' bracket\nHint: Use "
+		    "@import expects an opening '(' bracket", "Use "
 		    "'@import(\"file_path\")' format with '(' after @import");
 	}
 	if (!nextTokenSameLine(&token, tokens, i, firstLine) ||
 	    !expect(token, Lexer::TokenType::STRING)) {
 		throw ParserError(
 		    firstLine,
-		    "@import expects a string value\nHint: Provide a string literal inside "
+		    "@import expects a string value", "Provide a string literal inside "
 		    "parentheses, e.g. @import(\"path/to/file\")");
 	}
 	std::string path(context.lexerString[token->indexData]);
@@ -40,13 +40,13 @@ LibraryData *loadImport(in_func, LibraryData* currentLibrary, std::vector<Lexer:
 		--i;
 		throw ParserError(
 		    firstLine,
-		    "@import expects a constant string value, not an expression\nHint: "
+		    "@import expects a constant string value, not an expression", ""
 		    "Close the import statement with ')' right after the string literal");
 	}
 	if (path.empty()) {
 		throw ParserError(
 		    firstLine,
-		    "Import path is empty\nHint: Provide a non-empty file path string inside "
+		    "Import path is empty", "Provide a non-empty file path string inside "
 		    "@import(...)");
 	}
 	// {
@@ -60,7 +60,7 @@ LibraryData *loadImport(in_func, LibraryData* currentLibrary, std::vector<Lexer:
 		throw ParserError(
 		    firstLine,
 		    "Cannot find library '" + path +
-		        "'\nHint: Verify that the imported file path exists and is "
+		        "'", "Verify that the imported file path exists and is "
 		        "accessible");
 	}
 	// context.importMap[path] = library;

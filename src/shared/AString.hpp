@@ -188,6 +188,22 @@ public:
 		return new AString(newStr, newSize);
 	}
 
+	inline AString *repeat(int64_t count) const {
+		if (count <= 0 || size == 0) {
+			char *newStr = new char[1];
+			newStr[0] = '\0';
+			return new AString(newStr, 0);
+		}
+		uint64_t totalSize = static_cast<uint64_t>(size) * static_cast<uint64_t>(count);
+		uint32_t newSize = static_cast<uint32_t>(totalSize);
+		char *newStr = new char[newSize + 1];
+		for (int64_t i = 0; i < count; ++i) {
+			memcpy(newStr + i * size, data, size);
+		}
+		newStr[newSize] = '\0';
+		return new AString(newStr, newSize);
+	}
+
 	inline bool operator==(const AString *other) const {
 		return size == other->size && memcmp(data, other->data, size) == 0;
 	}

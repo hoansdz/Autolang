@@ -325,6 +325,15 @@ resumeCallFrame:;
 				goto resumeCallFrame;
 			}
 #endif
+			if (executionTimeoutMs > 0 && --timeoutCheckCounter == 0) {
+				timeoutCheckCounter = TIMEOUT_CHECK_INTERVAL;
+				if (std::chrono::steady_clock::now() >= executionDeadline) {
+					notifier->throwFatalException("Execution timed out (" +
+					                              std::to_string(executionTimeoutMs) +
+					                              "ms)");
+					goto resumeCallFrame;
+				}
+			}
 			if (data.manager.areaAllocator.changedMemory) {
 				if (data.manager.getCurrentManagedMemory() >
 				    data.manager.getMaxManagedMemory()) {

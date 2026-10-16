@@ -18,7 +18,7 @@ HasClassIdNode *loadWhenExpression(in_func, size_t &i, HasClassIdNode *value) {
 			if (!value) {
 				throw ParserError(
 				    firstLine,
-				    "Cannot use 'is', '!is', 'in', '!in' because 'when' has no value\nHint: Provide "
+				    "Cannot use 'is', '!is', 'in', '!in' because 'when' has no value", "Provide "
 				    "a target expression in when header: when (x) { ... }");
 			}
 			auto op = token->type;
@@ -26,7 +26,7 @@ HasClassIdNode *loadWhenExpression(in_func, size_t &i, HasClassIdNode *value) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "Bug: Lexer did not ensure a closing bracket\nHint: Ensure the "
+				    "Bug: Lexer did not ensure a closing bracket", "Ensure the "
 				    "when block is properly closed with '}'");
 			}
 			auto right = loadExpression(in_data, 0, i);
@@ -57,7 +57,7 @@ HasClassIdNode *loadWhenCondition(in_func, size_t &i, HasClassIdNode *value) {
 					--i;
 					throw ParserError(
 					    context.tokens[i].line,
-					    "Bug: Lexer did not ensure a closing bracket\nHint: "
+					    "Bug: Lexer did not ensure a closing bracket", ""
 					    "Provide a condition after ',' in when branch");
 				}
 				auto right = loadWhenExpression(in_data, i, value);
@@ -74,7 +74,7 @@ HasClassIdNode *loadWhenCondition(in_func, size_t &i, HasClassIdNode *value) {
 				throw ParserError(
 				    token->line,
 				    "Expected 'when' condition but '" + token->toString(context) +
-				        "' found\nHint: Specify a valid branch condition followed by "
+				        "' found", "Specify a valid branch condition followed by "
 				        "'->'");
 			}
 		}
@@ -82,7 +82,7 @@ HasClassIdNode *loadWhenCondition(in_func, size_t &i, HasClassIdNode *value) {
 	--i;
 	throw ParserError(
 	    context.tokens[i].line,
-	    "Bug: Lexer did not ensure a closing bracket\nHint: Ensure the when "
+	    "Bug: Lexer did not ensure a closing bracket", "Ensure the when "
 	    "expression block is closed with '}'");
 }
 
@@ -93,7 +93,7 @@ HasClassIdNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 		--i;
 		throw ParserError(
 		    firstLine,
-		    "Expected '(' after when but not found\nHint: Open the when "
+		    "Expected '(' after when but not found", "Open the when "
 		    "expression or block with '(' or '{'");
 	}
 	HasClassIdNode *value = nullptr;
@@ -102,7 +102,7 @@ HasClassIdNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 			--i;
 			throw ParserError(
 			    firstLine,
-			    "Expected expression after 'when' but not found\nHint: Provide "
+			    "Expected expression after 'when' but not found", "Provide "
 			    "a value expression inside when (...)");
 		}
 		value = loadExpression(in_data, 0, i);
@@ -111,14 +111,14 @@ HasClassIdNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 			--i;
 			throw ParserError(
 			    firstLine,
-			    "Expected ')' after 'when' but not found\nHint: Close the when "
+			    "Expected ')' after 'when' but not found", "Close the when "
 			    "expression header with ')'");
 		}
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
 			throw ParserError(
 			    firstLine,
-			    "Expected body to open with '{' after 'when' but not found\nHint: "
+			    "Expected body to open with '{' after 'when' but not found", ""
 			    "Open the when body with '{' after when (...)");
 		}
 	} else if (!expect(token, Lexer::TokenType::LBRACE)) {
@@ -130,7 +130,7 @@ HasClassIdNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 			--i;
 			throw ParserError(
 			    firstLine,
-			    "Expected body to open with '{' after 'when' but not found\nHint: "
+			    "Expected body to open with '{' after 'when' but not found", ""
 			    "Open the when body with '{' after when expression");
 		}
 	}
@@ -138,7 +138,7 @@ HasClassIdNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 		--i;
 		throw ParserError(
 		    firstLine,
-		    "Expected body to open with '{' after 'when' but not found\nHint: "
+		    "Expected body to open with '{' after 'when' but not found", ""
 		    "Open the when body with '{'");
 	}
 	IfNode *mainIfNode = nullptr;
@@ -149,7 +149,7 @@ HasClassIdNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 			--i;
 			throw ParserError(
 			    firstLine,
-			    "Bug: Lexer did not ensure a closing bracket\nHint: Ensure the "
+			    "Bug: Lexer did not ensure a closing bracket", "Ensure the "
 			    "when body is properly closed with '}'");
 		}
 		switch (token->type) {
@@ -158,7 +158,7 @@ HasClassIdNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 					throw ParserError(
 					    firstLine,
 					    "When expression requires an else branch to produce a "
-					    "value\nHint: Add an 'else -> ...' branch to handle "
+					    "value", "Add an 'else -> ...' branch to handle "
 					    "unmatched cases when evaluated as an expression");
 				}
 				return context.whenNodePool.push(firstLine, value, mainIfNode);
@@ -167,21 +167,21 @@ HasClassIdNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 				if (loadedElse) {
 					throw ParserError(
 					    token->line,
-					    "Duplicate 'else' branch\nHint: 'when' statement can "
+					    "Duplicate 'else' branch", "'when' statement can "
 					    "only have one 'else ->' branch");
 				}
 				if (!nextToken(&token, context.tokens, i)) {
 					--i;
 					throw ParserError(
 					    context.tokens[i].line,
-					    "Expected '->' after condition but not found\nHint: "
+					    "Expected '->' after condition but not found", ""
 					    "Separate branch condition and action with '->'");
 				}
 				if (!nextToken(&token, context.tokens, i)) {
 					--i;
 					throw ParserError(
 					    context.tokens[i].line,
-					    "Expected body but not found\nHint: Provide an action "
+					    "Expected body but not found", "Provide an action "
 					    "expression or block after '->'");
 				}
 				loadedElse = true;
@@ -204,7 +204,7 @@ HasClassIdNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 				if (loadedElse) {
 					throw ParserError(
 					    token->line,
-					    "'else' must be the last branch in 'when'\nHint: Move "
+					    "'else' must be the last branch in 'when'", "Move "
 					    "'else ->' branch to the very end of the when block");
 				}
 				auto condition = loadWhenCondition(in_data, i, value);
@@ -212,7 +212,7 @@ HasClassIdNode *loadWhen(in_func, size_t &i, bool mustReturnValue) {
 					--i;
 					throw ParserError(
 					    context.tokens[i].line,
-					    "Expected body but not found\nHint: Provide an action "
+					    "Expected body but not found", "Provide an action "
 					    "expression or block after '->' in when branch");
 				}
 				token = &context.tokens[i];

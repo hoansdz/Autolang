@@ -215,13 +215,13 @@ ExprNode *SetNode::optimize(in_func) {
 								// initializer. "
 								//            "Autolang requires explicit type "
 								//            "parameters for collection "
-								//            "sugar.\nHint: Declare explicitly,
+								//            "sugar.", "Declare explicitly,
 								//            " "for example: `<Type>[]`.");
 								break;
 							}
 							throwError("Type mismatch: Expected Array<> but '" +
 							           detach->getClassName(in_data) +
-							           "' found\nHint: Target assignment "
+							           "' found", "Target assignment "
 							           "variable must be of type Array<T>.");
 						}
 						createArrayNode->classId = detach->classId;
@@ -258,7 +258,7 @@ ExprNode *SetNode::optimize(in_func) {
 								throwError(
 								    "Type mismatch: Expected " +
 								    detach->getClassName(in_data) +
-								    " but Set<> found\nHint: Ensure assignment "
+								    " but Set<> found", "Ensure assignment "
 								    "target matches Set<T> type.");
 							}
 						} else {
@@ -285,7 +285,7 @@ ExprNode *SetNode::optimize(in_func) {
 							}
 							throwError("Type mismatch: Expected Map<> but '" +
 							           detach->getClassName(in_data) +
-							           "' found\nHint: Target assignment "
+							           "' found", "Target assignment "
 							           "variable must be of type Map<K, V>.");
 						}
 						createMapNode->classId = detach->classId;
@@ -339,12 +339,12 @@ ExprNode *SetNode::optimize(in_func) {
 	value = static_cast<HasClassIdNode *>(value->optimize(in_data));
 
 	if (justDetachStatic && !value->isStaticValue()) {
-		throwError("Assigned value must be a static value\nHint: Static "
+		throwError("Assigned value must be a static value", "Static "
 		           "property assignment requires a static value expression.");
 	}
 
 	if (value->classId == DefaultClass::voidClassId) {
-		throwError("Cannot assign expression of type 'Void'\nHint: Expressions "
+		throwError("Cannot assign expression of type 'Void'", "Expressions "
 		           "returning Void do not produce a value and cannot be "
 		           "assigned to variables.");
 	}
@@ -354,7 +354,7 @@ ExprNode *SetNode::optimize(in_func) {
 		      op == Lexer::TokenType::PLUS_EQUAL)) {
 			throwError("Cannot use operator '" +
 			           Lexer::Token(0, op).toString(context) +
-			           "' with nullable variables\nHint: Compound assignment "
+			           "' with nullable variables", "Compound assignment "
 			           "operators cannot be used on nullable values. Unwrap the "
 			           "value with '!' or perform a null check.");
 		}
@@ -403,7 +403,7 @@ ExprNode *SetNode::optimize(in_func) {
 					    compile.classes[detachNode->caller->classId]->getName(
 					        compile) +
 					    "." + std::string(context.lexerString[detachNode->nameId]) +
-					    " because it's val\nHint: Properties declared with 'val' "
+					    " because it's val", "Properties declared with 'val' "
 					    "are immutable and cannot be reassigned.");
 				}
 			}
@@ -424,7 +424,7 @@ ExprNode *SetNode::optimize(in_func) {
 						    Autolang::DefaultClass::nullClassId) {
 							throwError(
 							    "Ambiguous type inference for member "
-							    "variable\nHint: Provide an explicit type "
+							    "variable", "Provide an explicit type "
 							    "annotation when declaring member variable "
 							    "initialized with null.");
 						}
@@ -474,7 +474,7 @@ ExprNode *SetNode::optimize(in_func) {
 					    " cannot detach null value, you must declare " +
 					    compile.classes[detachNode->declaration->classId]
 					        ->getName(compile) +
-					    "? to can detach null\nHint: Declare member variable "
+					    "? to can detach null", "Declare member variable "
 					    "as nullable type (" +
 					    compile.classes[detachNode->declaration->classId]
 					        ->getName(compile) +
@@ -484,7 +484,7 @@ ExprNode *SetNode::optimize(in_func) {
 					throwError(std::string(detachNode->declaration->name) +
 					           " cannot use operator " +
 					           Lexer::Token(0, op).toString(context) +
-					           " with null value\nHint: Compound assignment "
+					           " with null value", "Compound assignment "
 					           "cannot be used when assigned value is null.");
 				}
 				detachNode->declaration->nullable = true;
@@ -519,7 +519,7 @@ ExprNode *SetNode::optimize(in_func) {
 						throwError(
 						    std::string("Ambiguous type inference for variable '") +
 						    std::string(node->declaration->name) +
-						    "'\nHint: Provide an explicit type annotation when "
+						    "'", "Provide an explicit type annotation when "
 						    "declaring variable initialized with null.");
 					}
 					node->declaration->classId = value->classId;
@@ -573,7 +573,7 @@ ExprNode *SetNode::optimize(in_func) {
 					    " cannot detach null value, you must declare " +
 					    compile.classes[node->declaration->classId]->getName(
 					        compile) +
-					    "? to can detach null\nHint: Declare variable as "
+					    "? to can detach null", "Declare variable as "
 					    "nullable type (" +
 					    compile.classes[node->declaration->classId]->getName(
 					        compile) +
@@ -583,7 +583,7 @@ ExprNode *SetNode::optimize(in_func) {
 					throwError(std::string(node->declaration->name) +
 					           " cannot use operator " +
 					           Lexer::Token(0, op).toString(context) +
-					           " with null value\nHint: Compound assignment "
+					           " with null value", "Compound assignment "
 					           "cannot be used when assigned value is null.");
 				}
 				node->declaration->nullable = true;
@@ -594,7 +594,7 @@ ExprNode *SetNode::optimize(in_func) {
 			break;
 		}
 		default: {
-			throwError("Invalid assignment target\nHint: Assignment target "
+			throwError("Invalid assignment target", "Assignment target "
 			           "must be a variable, property, or index expression.");
 		}
 	}
@@ -636,7 +636,7 @@ ExprNode *SetNode::optimize(in_func) {
 						throwError(std::string("Cannot assign nullable variable '") +
 						           std::string(node->declaration->name) +
 						           "' to non-null variable '" + detachName +
-						           "'\nHint: Use non-null assertion ('!') or check "
+						           "'", "Use non-null assertion ('!') or check "
 						           "nullability before assignment.");
 					}
 				}
@@ -658,7 +658,7 @@ ExprNode *SetNode::optimize(in_func) {
 						    std::string(context.lexerString[static_cast<CallNode *>(value)
 						                            ->nameId]) +
 						    "' to non-null variable '" + detachName +
-						    "'\nHint: Function return type is nullable. Unwrap "
+						    "'", "Function return type is nullable. Unwrap "
 						    "return value with '!' or declare variable as "
 						    "nullable.");
 					}
@@ -675,7 +675,7 @@ ExprNode *SetNode::optimize(in_func) {
 			throwError(
 			    "Cannot use operator '" +
 			    Lexer::Token(0, op).toString(context) +
-			    "' with nullable value\nHint: Cannot use compound assignment "
+			    "' with nullable value", "Cannot use compound assignment "
 			    "operators on nullable target without prior null check.");
 		}
 	} else if (value->isNullable()) {
@@ -685,7 +685,7 @@ ExprNode *SetNode::optimize(in_func) {
 			           compile.classes[value->classId]->getName(compile) +
 			           "?' to non-null variable of type '" +
 			           compile.classes[detach->classId]->getName(compile) +
-			           "'\nHint: Target variable is non-nullable. Unwrap assigned "
+			           "'", "Target variable is non-nullable. Unwrap assigned "
 			           "value using '!' or declare target as nullable.");
 		}
 	}
@@ -723,7 +723,7 @@ ExprNode *SetNode::optimize(in_func) {
 			    " operator with " +
 			    compile.classes[detach->classId]->getName(compile) + " and " +
 			    compile.classes[value->classId]->getName(compile) +
-			    "\nHint: Operator '" + Lexer::Token(0, op).toString(context) +
+			    "", "Operator '" + Lexer::Token(0, op).toString(context) +
 			    "' is not supported for these operand types.");
 		} else {
 			if (detach->classId == DefaultClass::functionClassId &&
@@ -739,7 +739,7 @@ ExprNode *SetNode::optimize(in_func) {
 							    detach->classDeclaration->getName(in_data) +
 							    "' but found '" +
 							    value->classDeclaration->getName(in_data) +
-							    "'\nHint: Function signatures do not match "
+							    "'", "Function signatures do not match "
 							    "parameter types.");
 						}
 					}
@@ -749,7 +749,7 @@ ExprNode *SetNode::optimize(in_func) {
 					           detach->classDeclaration->getName(in_data) +
 					           "' but found '" +
 					           value->classDeclaration->getName(in_data) +
-					           "'\nHint: Function signature argument count or "
+					           "'", "Function signature argument count or "
 					           "return type mismatch.");
 				}
 			}
@@ -784,7 +784,7 @@ ExprNode *SetNode::optimize(in_func) {
 						}
 					}
 					throwError(
-					    "Cannot cast 'Float' to 'Int'\nHint: Implicit "
+					    "Cannot cast 'Float' to 'Int'", "Implicit "
 					    "truncation from "
 					    "Float to Int is disallowed. Convert explicitly.");
 					break;
@@ -833,7 +833,8 @@ ExprNode *SetNode::optimize(in_func) {
 			break;
 	}
 	if (detach->classId == Autolang::DefaultClass::stringClassId &&
-	    op == Lexer::TokenType::PLUS_EQUAL) {
+	    (op == Lexer::TokenType::PLUS_EQUAL ||
+	     (op == Lexer::TokenType::STAR_EQUAL && value->classId == Autolang::DefaultClass::intClassId))) {
 		return this;
 	}
 	bool isDetachArray =
@@ -879,7 +880,7 @@ ExprNode *SetNode::optimize(in_func) {
 			throwError("Type mismatch: expected '" +
 			           compile.classes[elemClassId]->getName(compile) +
 			           "' but found '" + value->getClassName(in_data) +
-			           "'\nHint: Cannot append element of different type to Array.");
+			           "'", "Cannot append element of different type to Array.");
 		}
 		return this;
 	}
@@ -906,7 +907,7 @@ ExprNode *SetNode::optimize(in_func) {
 			           detach->getClassName(in_data) + "' but found '" +
 			           value->getClassName(in_data) +
 			           (value->isNullable() ? "?" : "") +
-			           "'\nHint: Assigned expression type does not match "
+			           "'", "Assigned expression type does not match "
 			           "target variable/property type.");
 	}
 	return this;
@@ -942,7 +943,8 @@ void SetNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 	      compile.classes[detach->classId]->genericBaseClassId ==
 	          DefaultClass::arrayClassId));
 	if ((op == Lexer::TokenType::PLUS_EQUAL ||
-	     op == Lexer::TokenType::MINUS_EQUAL) &&
+	     op == Lexer::TokenType::MINUS_EQUAL ||
+	     op == Lexer::TokenType::STAR_EQUAL) &&
 	    (detach->classId == DefaultClass::stringClassId || isDetachArray)) {
 		switch (detach->kind) {
 			case NodeType::GET_PROP: {

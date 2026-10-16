@@ -26,6 +26,11 @@ void AVM::run() {
 #ifdef AUTOLANG_LIMIT_OPCODE
 	currentLimitOpcodeCount = limitOpcodeCount;
 #endif
+	if (executionTimeoutMs > 0) {
+		executionDeadline = std::chrono::steady_clock::now() +
+		                    std::chrono::milliseconds(executionTimeoutMs);
+		timeoutCheckCounter = TIMEOUT_CHECK_INTERVAL;
+	}
 	resume();
 	switch (state) {
 		case VMState::ERR: {

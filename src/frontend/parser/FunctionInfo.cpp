@@ -16,7 +16,7 @@ AccessNode *Scopes::findDeclaration(in_func, uint32_t line,
 			continue;
 		if (isStatic && i != 0 && !it->second->isGlobal)
 			throw ParserError(line, std::string(it->second->name) +
-			                            " is not static\nHint: Non-static "
+			                            " is not static", "Non-static "
 			                            "local variables cannot be "
 			                            "accessed in a static context");
 		return context.varPool.push(line, it->second, false,
@@ -86,6 +86,9 @@ std::string FunctionInfo::toString(in_func) {
 		result += compile.classes[func->returnId]->getName(compile);
 	} else {
 		result += "Void";
+	}
+	if (!description.empty()) {
+		result += " - " + description;
 	}
 	return result;
 }

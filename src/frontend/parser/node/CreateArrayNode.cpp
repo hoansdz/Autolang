@@ -24,8 +24,7 @@ ExprNode *CreateArrayNode::optimize(in_func) {
 		classId = *classDeclaration->classId;
 	}
 	if (classId == DefaultClass::nullClassId) {
-		// throwError("Cannot infer element type for Array initialization\nHint:
-		// Provide an explicit type annotation or add typed elements to the
+		// throwError("Cannot infer element type for Array initialization", "		// Provide an explicit type annotation or add typed elements to the
 		// Array.");
 		optimizeAndInferenceType(in_data);
 		return this;
@@ -35,7 +34,7 @@ ExprNode *CreateArrayNode::optimize(in_func) {
 	if (clazz->genericBaseClassId != DefaultClass::arrayClassId) {
 		throwError("Type mismatch, expected Array<> but '" +
 		           compile.classes[classId]->getName(compile) +
-		           "' found\nHint: Ensure target variable type is an Array<T> "
+		           "' found", "Ensure target variable type is an Array<T> "
 		           "instance.");
 	}
 	auto genericType = classInfo->genericTypeId[0];
@@ -92,7 +91,7 @@ ExprNode *CreateArrayNode::optimize(in_func) {
 				if (genericType->nullable) {
 					continue;
 				}
-				throwError("Elements in Array must be non-null\nHint: The "
+				throwError("Elements in Array must be non-null", "The "
 				           "Array element type is non-nullable. Use Array<T?> "
 				           "to allow null elements.");
 			}
@@ -104,7 +103,7 @@ ExprNode *CreateArrayNode::optimize(in_func) {
 		throwError("Cannot cast " +
 		           compile.classes[value->classId]->getName(compile) + " to " +
 		           compile.classes[valueMustBeClassId]->getName(compile) +
-		           "\nHint: Ensure all elements in the Array match the "
+		           "", "Ensure all elements in the Array match the "
 		           "expected element type or provide an explicit conversion.");
 	}
 	return this;
@@ -257,7 +256,7 @@ void CreateArrayNode::optimizeAndInferenceType(in_func) {
 	}
 	if (!valueMustBeClassId) {
 		throwError(
-		    "Cannot infer element type for Array initialization\nHint: Provide "
+		    "Cannot infer element type for Array initialization", "Provide "
 		    "an explicit type annotation or add typed elements to the Array.");
 		return;
 	}
@@ -382,7 +381,7 @@ ExprNode *CreateArrayNode::copy(in_func) {
 			if (!classDeclaration->classId) {
 				throwError("Bug: DeclarationNode copy: Unresolved class " +
 				           classDeclaration->getName(in_data) +
-				           "\nHint: Internal compiler error - class "
+				           "", "Internal compiler error - class "
 				           "declaration was not resolved before copy.");
 			}
 			newNode->classId = *classDeclaration->classId;

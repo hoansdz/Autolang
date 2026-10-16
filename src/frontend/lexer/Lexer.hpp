@@ -142,6 +142,7 @@ enum TokenType : uint8_t {
 	TYPEALIAS,
 	OPERATOR,
 	IMPLICIT,
+	DESCRIPTION,
 	TO,
 
 	// ===== Special =====
@@ -166,8 +167,9 @@ class LexerError : public std::exception {
   public:
 	uint32_t line;
 	std::string message;
-	LexerError(uint32_t line, std::string msg)
-	    : line(line), message(std::move(msg)) {}
+	std::string hint;
+	LexerError(uint32_t line, std::string msg, std::string hint = "")
+	    : line(line), message(std::move(msg)), hint(std::move(hint)) {}
 	const char *what() const noexcept override { return message.c_str(); }
 };
 

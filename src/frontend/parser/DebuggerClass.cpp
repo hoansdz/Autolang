@@ -17,22 +17,22 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 	uint32_t classFlags = 0;
 	if (context.annotationFlags & AnnotationFlags::AN_NATIVE) {
 		throw ParserError(firstLine,
-		                  "@native is only supported on functions\nHint: "
+		                  "@native is only supported on functions", ""
 		                  "Remove @native from class declaration");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_OVERRIDE) {
 		throw ParserError(firstLine,
-		                  "@override is only supported on functions\nHint: "
+		                  "@override is only supported on functions", ""
 		                  "Remove @override from class declaration");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_OVERRIDE) {
 		throw ParserError(firstLine,
-		                  "@no_override is only supported on functions\nHint: "
+		                  "@no_override is only supported on functions", ""
 		                  "Remove @no_override from class declaration");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_OPERATOR) {
 		throw ParserError(firstLine,
-		                  "@operator is only supported on functions\nHint: "
+		                  "@operator is only supported on functions", ""
 		                  "Remove @operator from class declaration");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_CONSTRUCTOR) {
@@ -55,13 +55,20 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 		classFlags |= ClassFlags::CLASS_NO_CONSTRUCTOR;
 	}
 #endif
+	std::string currentDescription;
+	if (context.annotationFlags & AnnotationFlags::AN_DESCRIPTION) {
+		auto &descToken =
+		    context.annotationMetadata[AnnotationMetadataIndex::AMI_DESCRIPTION];
+		currentDescription = std::string(context.lexerString[descToken.indexData]);
+		context.annotationFlags &= ~AnnotationFlags::AN_DESCRIPTION;
+	}
 
 	// Name
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 	    !expect(token, Lexer::TokenType::IDENTIFIER)) {
 		--i;
 		throw ParserError(firstLine,
-		                  "Expected name but not found\nHint: Provide a valid "
+		                  "Expected name but not found", "Provide a valid "
 		                  "class name, e.g. 'class MyClass'");
 	}
 	LexerStringId nameId = token->indexData;
@@ -80,7 +87,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 				}
 			}
 			throw ParserError(firstLine, "Class " + std::string(name) +
-			                                 " already exists\nHint: " + hint);
+			                                 " already exists", hint);
 		}
 	}
 	{
@@ -98,13 +105,14 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 			throw ParserError(
 			    firstLine,
 			    "Cannot declare class with the same name as typealias: '" +
-			        std::string(name) + "'\nHint: " + hint);
+			        std::string(name) + "'", hint);
 		}
 	}
 
 	auto node = context.newClasses.push(firstLine, nameId,
 	                                    classFlags); // NewClasses managed
 	node->pushClass(in_data);
+	context.classInfo[node->classId]->description = std::move(currentDescription);
 	auto lastClass = context.getCurrentClass(in_data);
 	auto clazz = compile.classes[node->classId];
 	context.gotoClass(clazz);
@@ -144,7 +152,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
 				throw ParserError(context.tokens[i].line,
-				                  "Generics class must have body\nHint: "
+				                  "Generics class must have body", ""
 				                  "Provide class body '{ ... }'");
 			}
 		} else {
@@ -178,7 +186,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "Extended class must have constructor\nHint: Add "
+				    "Extended class must have constructor", "Add "
 				    "constructor or primary constructor parameter list");
 			}
 		}
@@ -191,20 +199,20 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 				    context.tokens[i].line,
 				    "Extended classes don't support a primary (data class) "
 				    "constructor; you must declare a constructor and call "
-				    "super\nHint: Remove primary constructor parameters from "
+				    "super", "Remove primary constructor parameters from "
 				    "class header and declare 'constructor(...)' inside body");
 			}
 			if (classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR) {
 				throw ParserError(
 				    context.tokens[i].line,
 				    "@no_constructor is already applied, cannot use "
-				    "primary constructor\nHint: Remove @no_constructor "
+				    "primary constructor", "Remove @no_constructor "
 				    "annotation if class needs constructor");
 			}
 			if (classFlags & ClassFlags::CLASS_NATIVE_DATA) {
 				throw ParserError(
 				    context.tokens[i].line,
-				    "@native_data is already applied\nHint: Remove primary "
+				    "@native_data is already applied", "Remove primary "
 				    "constructor or @native_data annotation");
 			}
 			auto parameters = loadListDeclaration(in_data, i, true);
@@ -246,7 +254,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 				if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
 					throw ParserError(firstLine,
 					                  "Extended class must declare a "
-					                  "constructor\nHint: Declare an explicit "
+					                  "constructor", "Declare an explicit "
 					                  "'constructor(...)' inside class body");
 				}
 				auto parameter = context.parameterPool.push();
@@ -269,7 +277,7 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 				if (classFlags & ClassFlags::CLASS_HAS_PARENT) {
 					throw ParserError(firstLine,
 					                  "Extended class must declare a "
-					                  "constructor\nHint: Declare an explicit "
+					                  "constructor", "Declare an explicit "
 					                  "'constructor(...)' inside class body");
 				}
 
@@ -306,13 +314,13 @@ void loadConstructor(in_func, size_t &i) {
 	if (clazz->classFlags & ClassFlags::CLASS_NO_CONSTRUCTOR) {
 		throw ParserError(
 		    firstLine,
-		    "@no_constructor is already applied\nHint: Remove @no_constructor "
+		    "@no_constructor is already applied", "Remove @no_constructor "
 		    "annotation to allow constructor declaration");
 	}
 	if (classInfo->primaryConstructor)
 		throw ParserError(
 		    firstLine,
-		    "Cannot declare constructor in a data class\nHint: Data classes "
+		    "Cannot declare constructor in a data class", "Data classes "
 		    "use primary constructor header 'class Name(...)'");
 	uint32_t functionFlags = 0;
 	Lexer::TokenType accessModifier = getAndEnsureOneAccessModifier(in_data, i);
@@ -334,50 +342,53 @@ void loadConstructor(in_func, size_t &i) {
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_CONSTRUCTOR) {
 		throw ParserError(
-		    firstLine, "@no_constructor is only supported on classes\nHint: "
+		    firstLine, "@no_constructor is only supported on classes", ""
 		               "Remove @no_constructor from constructor declaration");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NATIVE_DATA) {
 		throw ParserError(firstLine,
-		                  "@native_data is only supported on classes\nHint: "
+		                  "@native_data is only supported on classes", ""
 		                  "Remove @native_data from constructor declaration");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_EXTENDS) {
 		throw ParserError(firstLine,
-		                  "@no_extends is only supported on classes\nHint: "
+		                  "@no_extends is only supported on classes", ""
 		                  "Remove @no_extends from constructor declaration");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NATIVE) {
 		throw ParserError(firstLine,
-		                  "@native is only supported on functions\nHint: "
+		                  "@native is only supported on functions", ""
 		                  "Remove @native from constructor declaration");
 	} else if (clazz->classFlags & ClassFlags::CLASS_NATIVE_DATA) {
 		throw ParserError(
 		    firstLine,
 		    "Class " + clazz->getName(compile) +
 		        " is marked @native_data, so the constructor must be "
-		        "native\nHint: Add @native(\"name\") to constructor");
+		        "native", "Add @native(\"name\") to constructor");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_OVERRIDE) {
 		throw ParserError(firstLine,
-		                  "@override is only supported on functions\nHint: "
+		                  "@override is only supported on functions", ""
 		                  "Remove @override from constructor declaration");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_NO_OVERRIDE) {
 		throw ParserError(firstLine,
-		                  "@no_override is only supported on functions\nHint: "
+		                  "@no_override is only supported on functions", ""
 		                  "Remove @no_override from constructor declaration");
 	}
 	if (context.annotationFlags & AnnotationFlags::AN_IMPLICIT) {
 		functionFlags |= FunctionFlags::FUNC_IS_IMPLICIT;
 		context.annotationFlags &= ~AnnotationFlags::AN_IMPLICIT;
 	}
+	if (context.annotationFlags & AnnotationFlags::AN_DESCRIPTION) {
+		context.annotationFlags &= ~AnnotationFlags::AN_DESCRIPTION;
+	}
 
 	// Arguments
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		throw ParserError(context.tokens[i].line,
-		                  "Expected '(' but not found\nHint: Add '(' to start "
+		                  "Expected '(' but not found", "Add '(' to start "
 		                  "constructor parameter list");
 	}
 	loadConstructorBody(in_data, i, firstLine, functionFlags, clazz, classInfo);
@@ -391,7 +402,7 @@ void loadConstructorBody(in_func, size_t &i, uint32_t firstLine,
 	if (expect(token, Lexer::TokenType::LPAREN)) {
 		if (firstLine != token->line) {
 			throw ParserError(firstLine,
-			                  "Expected '(' but not found\nHint: Add '(' to "
+			                  "Expected '(' but not found", "Add '(' to "
 			                  "start constructor parameter list");
 		}
 		parameter = loadListDeclaration(in_data, i);
@@ -402,7 +413,7 @@ void loadConstructorBody(in_func, size_t &i, uint32_t firstLine,
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
 			throw ParserError(context.tokens[i].line,
-			                  "Expected body but not found\nHint: Provide "
+			                  "Expected body but not found", "Provide "
 			                  "constructor body block '{ ... }'");
 		}
 	} else {
@@ -418,7 +429,7 @@ void loadConstructorBody(in_func, size_t &i, uint32_t firstLine,
 		}
 		if (classDeclaration->nullable) {
 			throw ParserError(firstLine,
-			                  "Constructor return type cannot be nullable\nHint: "
+			                  "Constructor return type cannot be nullable", ""
 			                  "Remove '?' from constructor return type");
 		}
 		if (context.lexerString[classDeclaration->baseClassLexerStringId] !=
@@ -426,14 +437,14 @@ void loadConstructorBody(in_func, size_t &i, uint32_t firstLine,
 			throw ParserError(firstLine,
 			                  "Constructor return type must be '" +
 			                      clazz->getName(compile) +
-			                      "' or omitted\nHint: Remove return type or "
+			                      "' or omitted", "Remove return type or "
 			                      "change to '" +
 			                      clazz->getName(compile) + "'");
 		}
 		if (!nextToken(&token, context.tokens, i)) {
 			--i;
 			throw ParserError(firstLine,
-			                  "Expected body but not found\nHint: Provide "
+			                  "Expected body but not found", "Provide "
 			                  "constructor body block '{ ... }'");
 		}
 	}
@@ -445,14 +456,14 @@ void loadConstructorBody(in_func, size_t &i, uint32_t firstLine,
 		if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 			--i;
 			throw ParserError(firstLine,
-			                  "@native function must not have a body\nHint: "
+			                  "@native function must not have a body", ""
 			                  "Remove '{ ... }' body from native constructor");
 		}
 	} else {
 		--i;
 		if (!(functionFlags & FunctionFlags::FUNC_IS_NATIVE)) {
 			throw ParserError(context.tokens[i].line,
-			                  "Expected body but not found\nHint: Provide "
+			                  "Expected body but not found", "Provide "
 			                  "constructor body block '{ ... }'");
 		}
 	}
@@ -460,7 +471,7 @@ void loadConstructorBody(in_func, size_t &i, uint32_t firstLine,
 		if (parameter->defaultValuePos > 1) {
 			throw ParserError(
 			    firstLine,
-			    "Implicit constructor must have at most 1 required parameter\nHint: "
+			    "Implicit constructor must have at most 1 required parameter", ""
 			    "Provide default values for additional parameters or declare constructor with at most 1 parameter");
 		}
 	}
@@ -492,7 +503,7 @@ void loadConstructorBody(in_func, size_t &i, uint32_t firstLine,
 		if (it == context.mode->nativeFuncMap.end()) {
 			throw ParserError(firstLine,
 			                  "Native function name '" + std::string(name) +
-			                      "' could not be found\nHint: Register native "
+			                      "' could not be found", "Register native "
 			                      "function binding in host environment");
 		}
 		// for (size_t j = 1; j < constructor->parameter->parameters.size();

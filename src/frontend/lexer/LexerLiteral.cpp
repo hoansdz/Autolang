@@ -67,7 +67,7 @@ std::string loadNumber(Context &context, uint32_t &i) {
 						    std::string("Unexpected character '") + context.line[i] +
 						        "' after numeric literal: " +
 						        std::string(context.line + context.pos, i - context.pos) +
-						        context.line[i] + "\nHint: Separate number from identifier with space or operator");
+						        context.line[i] + "", "Separate number from identifier with space or operator");
 					}
 				}
 				goto ended;
@@ -124,7 +124,7 @@ std::string loadNumber(Context &context, uint32_t &i) {
 						    std::string("Unexpected character '") + context.line[i] +
 						        "' after numeric literal: " +
 						        std::string(context.line + context.pos, i - context.pos) +
-						        context.line[i] + "\nHint: Separate number from identifier with space or operator");
+						        context.line[i] + "", "Separate number from identifier with space or operator");
 					}
 				}
 				goto ended;
@@ -181,7 +181,7 @@ std::string loadNumber(Context &context, uint32_t &i) {
 						    std::string("Unexpected character '") + context.line[i] +
 						        "' after numeric literal: " +
 						        std::string(context.line + context.pos, i - context.pos) +
-						        context.line[i] + "\nHint: Separate number from identifier with space or operator");
+						        context.line[i] + "", "Separate number from identifier with space or operator");
 					}
 				}
 				goto ended;
@@ -211,7 +211,7 @@ std::string loadNumber(Context &context, uint32_t &i) {
 					                 "Unknown value: " +
  					                     std::string(context.line + context.pos,
  					                                 i - context.pos) +
-					                     "\nHint: Format scientific notation as '1e10' or '1.5e-3'");
+					                     "", "Format scientific notation as '1e10' or '1.5e-3'");
 				scientific = true;
 				if (isEndOfLine(context, ++i)) {
 					--i;
@@ -233,7 +233,7 @@ std::string loadNumber(Context &context, uint32_t &i) {
 						throw LexerError(context.linePos,
 						                 std::string("Expected digit after ") +
 						                     num + " but '" + chr +
-						                     "' was found\nHint: Provide a digit after exponent sign");
+						                     "' was found", "Provide a digit after exponent sign");
 					}
 					continue;
 				}
@@ -243,7 +243,7 @@ std::string loadNumber(Context &context, uint32_t &i) {
 				    context.linePos,
 				    std::string("Expected digit after exponent '") + num +
 				        "' but '" + chr + "' was found, did you mean " + num +
-				        "0 ?\nHint: Add a digit after exponent 'e' or 'E'");
+				        "0 ?", "Add a digit after exponent 'e' or 'E'");
 			}
 			case '_': {
 				hasUnderscore = true;
@@ -258,7 +258,7 @@ std::string loadNumber(Context &context, uint32_t &i) {
 					throw LexerError(
 					    context.linePos,
 					    std::string("Expected digit after ") + num + "_ but '" +
-					        chr + "' was found, did you mean " + num + " ?\nHint: Do not end numeric separator '_' without trailing digits");
+					        chr + "' was found, did you mean " + num + " ?", "Do not end numeric separator '_' without trailing digits");
 				}
 				continue;
 			}
@@ -268,7 +268,7 @@ std::string loadNumber(Context &context, uint32_t &i) {
 					                              i - context.pos);
 					throw LexerError(context.linePos,
  					                 "Expected integer exponent after " + num +
- 					                     ", but '.' was found\nHint: Scientific exponent must be an integer");
+ 					                     ", but '.' was found", "Scientific exponent must be an integer");
 				}
 				if (hasDot) {
 					if (isEndOfLine(context, i + 1) ||
@@ -281,7 +281,7 @@ std::string loadNumber(Context &context, uint32_t &i) {
 					throw LexerError(context.linePos,
 					                 "Expected digit after " + num +
 					                     " but '.' was found, did you mean " +
-					                     num + "0 ?\nHint: Remove extra decimal point '.'");
+					                     num + "0 ?", "Remove extra decimal point '.'");
 				}
 				if (isEndOfLine(context, ++i) ||
 				    !std::isdigit(static_cast<unsigned char>(context.line[i]))) {
@@ -303,7 +303,7 @@ std::string loadNumber(Context &context, uint32_t &i) {
 					    std::string("Unexpected character '") + context.line[i] +
 					        "' after numeric literal: " +
 					        std::string(context.line + context.pos, i - context.pos) +
-					        context.line[i] + "\nHint: Separate number from identifier with space or operator");
+					        context.line[i] + "", "Separate number from identifier with space or operator");
 				}
 				goto ended;
 			}
@@ -342,7 +342,7 @@ std::string loadNumber(Context &context, uint32_t &i) {
 					    std::string("Unexpected character '") + context.line[i] +
 					        "' after numeric literal: " +
 					        std::string(context.line + context.pos, i - context.pos) +
-					        context.line[i] + "\nHint: Separate number from identifier with space or operator");
+					        context.line[i] + "", "Separate number from identifier with space or operator");
 				}
 				goto ended;
 			}
@@ -353,7 +353,7 @@ std::string loadNumber(Context &context, uint32_t &i) {
 					    std::string("Unexpected character '") + chr +
 					        "' after numeric literal: " +
 					        std::string(context.line + context.pos, i - context.pos) +
-					        chr + "\nHint: Separate number from identifier with space or operator");
+					        chr + "", "Separate number from identifier with space or operator");
 				}
 				goto ended;
 			}
@@ -404,12 +404,12 @@ back:;
 						}
 						throw LexerError(context.linePos,
 						                 std::string("Expected '") + quote +
-						                     "' but not found\nHint: Close string literal with '" + quote + "'");
+						                     "' but not found", std::string("Close string literal with '") + quote + "'");
 					}
 					if constexpr (isChar) {
 						throw LexerError(context.linePos,
 						                 "Invalid char literal: interpolation "
- 						                 "is not allowed\nHint: Char literal '...' cannot contain '${...}' string interpolation");
+ 						                 "is not allowed", "Char literal '...' cannot contain '${...}' string interpolation");
 						return;
 					}
 					auto linePos = context.linePos;
@@ -477,7 +477,7 @@ back:;
 						if (isEndOfLine(context, i)) {
 							throw LexerError(linePos,
 							                 std::string("Expected '") + quote +
-							                     "' but not found\nHint: Close string literal with '" + quote + "'");
+							                     "' but not found", std::string("Close string literal with '") + quote + "'");
 						}
 						if (context.line[i] == quote) {
 							++i;
@@ -514,7 +514,7 @@ back:;
 				++i;
 				if constexpr (isChar) {
 					if (newStr.empty()) {
-						throw LexerError(context.linePos, "Empty character literal ''\nHint: Char literal must contain exactly one character");
+						throw LexerError(context.linePos, "Empty character literal ''", "Char literal must contain exactly one character");
 					}
 					size_t idx = 0;
 					AString::utf8ToCodePoint(newStr, idx);
@@ -523,7 +523,7 @@ back:;
 						    context.linePos,
 						    "Invalid char literal: expected "
 						    "exactly 1 Unicode code point, got " +
-						        std::to_string(newStr.size()) + "\nHint: Char literal must contain exactly one character, use \"...\" for strings");
+						        std::to_string(newStr.size()) + "", "Char literal must contain exactly one character, use \"...\" for strings");
 					}
 					context.tokens.emplace_back(
 					    context.linePos, TokenType::CHAR,
@@ -578,20 +578,20 @@ back:;
 			default:
 				throw LexerError(context.linePos,
 				                 std::string("Unknown escape sequence '\\") +
-				                     chr + "'\nHint: Use valid escape sequence such as \\n, \\t, \\\\, \\', \\\", \\r, \\0");
+				                     chr + "'", "Use valid escape sequence such as \\n, \\t, \\\\, \\', \\\", \\r, \\0");
 		}
 		isSpecialCase = false;
 	}
 	if constexpr (isRawString) {
 		if (!nextLine(context, ParserContext::mode->rawData.data(), i)) {
 			throw LexerError(context.linePos,
-			                 std::string("Expected '\"\"\"' but not found\nHint: Close multiline raw string with '\"\"\"'"));
+			                 "Expected '\"\"\"' but not found", "Close multiline raw string with '\"\"\"'");
 		}
 		newStr += '\n';
 		goto back;
 	}
 	throw LexerError(context.linePos,
-	                 std::string("Expected '") + quote + "' but not found\nHint: Close string literal with '" + quote + "'");
+	                 std::string("Expected '") + quote + "' but not found", std::string("Close string literal with '") + quote + "'");
 }
 
 template void loadQuote<true, false, true>(Context &context, uint32_t &i);

@@ -13,9 +13,9 @@ namespace Autolang {
 
 ClassDeclaration::ClassDeclaration() { mode = ParserContext::mode; }
 
-void ClassDeclaration::throwError(std::string message) {
+void ClassDeclaration::throwError(std::string message, std::string hint) {
 	ParserContext::mode = mode;
-	throw ParserError(line, message);
+	throw ParserError(line, std::move(message), std::move(hint));
 }
 
 bool hasUnresolvedGenericDecl(ClassDeclaration *cd, int depth) {
@@ -84,7 +84,7 @@ ClassDeclaration *ClassDeclaration::copy(in_func, bool eagerLoad, int depth) {
 	if (!classId && !isUnresolvedGeneric && !isGeneric && eagerLoad) {
 		std::cerr << getName(in_data) << "\n";
 		throwError(
-		    "Cannot copy class declaration because class not exists\nHint: "
+		    "Cannot copy class declaration because class not exists", ""
 		    "Ensure target class is declared before copying its declaration");
 	}
 	if (!isGeneric && !isUnresolvedGeneric) {
@@ -121,7 +121,7 @@ void ClassDeclaration::onLoadTypealias(in_func, TypealiasData *typealias) {
 			    std::to_string(
 			        typealias->genericData->genericDeclarations.size()) +
 			    " type argument but " + std::to_string(inputClassId.size()) +
-			    " were given\nHint: Check number of type "
+			    " were given", "Check number of type "
 			    "arguments "
 			    "passed to the generic typealias");
 		}
@@ -131,7 +131,7 @@ void ClassDeclaration::onLoadTypealias(in_func, TypealiasData *typealias) {
 			           std::string(context.lexerString[baseClassLexerStringId]) +
 			           " expects no type argument but " +
 			           std::to_string(inputClassId.size()) +
-			           " were given\nHint: "
+			           " were given", ""
 			           "Remove type arguments from typealias");
 		}
 	}
@@ -180,7 +180,7 @@ void ClassDeclaration::onLoadTypealias(in_func, TypealiasData *typealias) {
 								    "Unresolved " +
 								    condition.classDeclaration->getName(
 								        in_data) +
-								    "\nHint: Ensure type constraint class "
+								    "", "Ensure type constraint class "
 								    "is defined or imported");
 							}
 						} else if (condition.classDeclaration->classId ==
@@ -305,7 +305,7 @@ void ClassDeclaration::load(in_func) {
 					    "' expects " +
 					    std::to_string(
 					        funcInfo->genericData->genericDeclarations.size()) +
-					    " type argument but 0 were given\nHint: Provide "
+					    " type argument but 0 were given", "Provide "
 					    "required generic type arguments '<...>' for the "
 					    "function");
 				}
@@ -318,7 +318,7 @@ void ClassDeclaration::load(in_func) {
 					    std::to_string(funcInfo->genericTypeId.size()) +
 					    " type argument but " +
 					    std::to_string(inputClassId.size()) +
-					    " were given\nHint: Check number of type arguments "
+					    " were given", "Check number of type arguments "
 					    "passed to the generic function");
 				}
 				isFunction = true;
@@ -400,7 +400,7 @@ void ClassDeclaration::load(in_func) {
 				    "' expects " +
 				    std::to_string(
 				        classInfo->genericData->genericDeclarations.size()) +
-				    " type argument but 0 were given\nHint: Provide "
+				    " type argument but 0 were given", "Provide "
 				    "required "
 				    "generic type arguments '<...>' for the class");
 			}
@@ -410,7 +410,7 @@ void ClassDeclaration::load(in_func) {
 				           std::to_string(classInfo->genericTypeId.size()) +
 				           " type argument but " +
 				           std::to_string(inputClassId.size()) +
-				           " were given\nHint: Check number of type arguments "
+				           " were given", "Check number of type arguments "
 				           "passed to the generic class");
 			}
 			return;
@@ -421,7 +421,7 @@ void ClassDeclaration::load(in_func) {
 			throwError(
 			    "Type parameter '" +
 			    std::string(context.lexerString[baseClassLexerStringId]) +
-			    "' cannot have type arguments\nHint: Generic type "
+			    "' cannot have type arguments", "Generic type "
 			    "parameters "
 			    "(like T, U) cannot accept further type arguments '<...>'");
 		}
@@ -452,7 +452,7 @@ void ClassDeclaration::load(in_func) {
 							throwError(
 							    "Unresolved class " +
 							    classDeclaration->getName(in_data) +
-							    "\nHint: Ensure type parameter or class is "
+							    "", "Ensure type parameter or class is "
 							    "defined or imported");
 						}
 					} else if (classDeclaration->classId ==
@@ -485,14 +485,14 @@ void ClassDeclaration::load(in_func) {
 					        funcInfo->genericData->genericDeclarations.size()) +
 					    " type argument but " +
 					    std::to_string(inputClassId.size()) +
-					    " were given\nHint: Match number of type arguments "
+					    " were given", "Match number of type arguments "
 					    "with "
 					    "function generic parameters");
 				}
 			} else if constexpr (mustBeFunction) {
 				throwError(
 				    "'" + std::string(context.lexerString[baseClassLexerStringId]) +
-				    "' isn't generic function\nHint: Do not pass type "
+				    "' isn't generic function", "Do not pass type "
 				    "arguments '<...>' to a non-generic function");
 			}
 		} else if constexpr (mustBeFunction) {
@@ -560,7 +560,7 @@ void ClassDeclaration::load(in_func) {
 				errorMsg += "\nDid you mean: '" + bestSuggestion + "'?";
 			}
 			errorMsg +=
-			    "\nHint: Ensure target class name is defined or imported.";
+			    "", "Ensure target class name is defined or imported.";
 			throwError(errorMsg);
 		}
 	}
@@ -650,7 +650,7 @@ void ClassDeclaration::load(in_func) {
 		    "'" + std::string(context.lexerString[baseClassLexerStringId]) + "' expects " +
 		    std::to_string(classInfo->genericTypeId.size()) +
 		    " type argument but " + std::to_string(inputClassId.size()) +
-		    " were given\nHint: Match number of type arguments with class "
+		    " were given", "Match number of type arguments with class "
 		    "generic parameters");
 	}
 }

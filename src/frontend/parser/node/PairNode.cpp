@@ -54,7 +54,7 @@ ExprNode *PairNode::optimize(in_func) {
 		throwError("Cannot resolve Pair class for types (" +
 		           compile.classes[first->classId]->getName(compile) + ", " +
 		           compile.classes[second->classId]->getName(compile) +
-		           ")\nHint: Ensure Pair<A, B> is available.");
+		           ")", "Ensure Pair<A, B> is available.");
 	}
 	classId = *classDeclaration->classId;
 	auto classInfo = context.classInfo[classId];

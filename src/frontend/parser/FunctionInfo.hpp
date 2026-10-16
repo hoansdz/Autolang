@@ -28,6 +28,7 @@ struct FunctionInfo {
 	uint32_t tokenIndex;
 	uint32_t line;
 	int64_t hash;
+	std::string description;
 	FunctionInfo() : body(0), declaration(0) {}
 	int64_t loadHash(Function *func);
 	inline void popBackScope() {

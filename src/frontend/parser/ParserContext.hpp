@@ -44,6 +44,7 @@ struct TypealiasData {
 
 enum AnnotationMetadataIndex : uint8_t {
 	AMI_NATIVE = 0,
+	AMI_DESCRIPTION,
 	AMI_COUNT
 };
 
@@ -62,6 +63,7 @@ enum AnnotationFlags : uint32_t {
 #endif
 	AN_OPERATOR = 1u << 8,
 	AN_IMPLICIT = 1u << 9,
+	AN_DESCRIPTION = 1u << 10,
 };
 
 struct LibraryData;
@@ -251,6 +253,7 @@ struct ParserContext {
 	bool showWarnings = false;
 	bool autoCloseBracketsOnEof = true;
 	bool allowImplicitVarDeclaration = true;
+	bool outputJsonDiagnostics = false;
 	// Be used when it is static keywords, example static val a = ...
 	bool justFindStatic = false;
 	bool justFindStaticMember = false;
@@ -334,7 +337,7 @@ struct ParserContext {
 	// Constant value, example "null", "true", "false"
 	HashMap<LexerStringId, ConstValueNode *> constValue;
 	void init(CompiledProgram &compiler);
-	void logError(uint32_t line, const std::string &message);
+	void logError(uint32_t line, const std::string &message, const std::string &hint = "");
 	void warning(uint32_t line, const std::string &message);
 	void refresh(CompiledProgram &compile);
 	inline static std::tuple<ClassId, ClassId, uint8_t>

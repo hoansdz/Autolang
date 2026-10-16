@@ -349,7 +349,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 				n->throwError(
 				    "Cannot cast 'Function' to '" +
 				    compile.classes[*currentClassId]->getName(compile) + "'" +
-				    "\nHint: A closure expression cannot be assigned or returned as a non-Function type.");
+				    "", "A closure expression cannot be assigned or returned as a non-Function type.");
 			}
 			if (newClassDeclaration) {
 				// if (n->mustInfer) {
@@ -362,7 +362,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 					              newClassDeclaration->getName(in_data) +
 					              "' to '" +
 					              n->classDeclaration->getName(in_data) + "'" +
-					              "\nHint: Ensure closure parameter and return signatures match the expected Function declaration.");
+					              "", "Ensure closure parameter and return signatures match the expected Function declaration.");
 				}
 			} else {
 				node = node->optimize(in_data);
@@ -579,7 +579,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 						        .classes[**context.currentClosureCurrentClassId]
 						        ->getName(compile) +
 						    "' to 'Void'" +
-						    "\nHint: Function with 'Void' return type cannot return a value.");
+						    "", "Function with 'Void' return type cannot return a value.");
 					}
 				} else {
 					*context.currentClosureCurrentClassId =
@@ -601,7 +601,7 @@ void BlockNode::loadClassNode(in_func, ExprNode *&node,
 						    "Cannot cast '" +
 						    compile.classes[*currentClassId]->getName(compile) +
 						    "' to 'Void'" +
-						    "\nHint: Function with 'Void' return type cannot return a value.");
+						    "", "Function with 'Void' return type cannot return a value.");
 					}
 				} else {
 					currentClassId = DefaultClass::voidClassId;
@@ -717,10 +717,10 @@ void BlockNode::loadClassAndOptimize(in_func) {
 				if (!n->mustReturnValue || nullable || branchEndsEarly) {
 					return;
 				}
-				throwError("Expression branch must return a value\nHint: All branches of an 'if' expression must evaluate to a value of a compatible type.");
+				throwError("Expression branch must return a value", "All branches of an 'if' expression must evaluate to a value of a compatible type.");
 			}
 			if (!this->hasValue() && n->mustReturnValue && !branchEndsEarly) {
-				throwError("Expression branch must return a value\nHint: All branches of an 'if' expression must evaluate to a value of a compatible type.");
+				throwError("Expression branch must return a value", "All branches of an 'if' expression must evaluate to a value of a compatible type.");
 			}
 			if (newClassDeclaration) {
 				n->classDeclaration = newClassDeclaration;
@@ -749,10 +749,10 @@ void BlockNode::loadClassAndOptimize(in_func) {
 				if (!n->mustReturnValue || nullable || branchEndsEarly) {
 					return;
 				}
-				throwError("Expression branch must return a value\nHint: All branches of a 'try' expression must evaluate to a value of a compatible type.");
+				throwError("Expression branch must return a value", "All branches of a 'try' expression must evaluate to a value of a compatible type.");
 			}
 			if (!this->hasValue() && n->mustReturnValue && !branchEndsEarly) {
-				throwError("Expression branch must return a value\nHint: All branches of a 'try' expression must evaluate to a value of a compatible type.");
+				throwError("Expression branch must return a value", "All branches of a 'try' expression must evaluate to a value of a compatible type.");
 			}
 			if (newClassDeclaration) {
 				n->classDeclaration = newClassDeclaration;
@@ -778,7 +778,7 @@ void BlockNode::loadClassAndOptimize(in_func) {
 			    currentClassId == DefaultClass::voidClassId) {
 				if (nullable) {
 					throwError("Cannot infer return type for closure because "
-					           "its body is a null literal\nHint: Specify an explicit return type or return a typed expression instead of raw 'null'.");
+					           "its body is a null literal", "Specify an explicit return type or return a typed expression instead of raw 'null'.");
 				}
 				auto classDeclaration =
 				    context.classDeclarationAllocator.push();
@@ -790,7 +790,7 @@ void BlockNode::loadClassAndOptimize(in_func) {
 			}
 
 			if (!this->hasValue()) {
-				throwError("Expression branch must return a value\nHint: Closure body must return a value matching the declared function return type.");
+				throwError("Expression branch must return a value", "Closure body must return a value matching the declared function return type.");
 			}
 
 			// Because it return function
@@ -803,7 +803,7 @@ void BlockNode::loadClassAndOptimize(in_func) {
 					throwError("Cannot cast '" +
 					           newClassDeclaration->getName<true>(in_data) +
 					           "' to '" + returnClass->getName<true>(in_data) +
-					           "'\nHint: Closure return type must match or inherit from the target Function signature.");
+					           "'", "Closure return type must match or inherit from the target Function signature.");
 				}
 				n->classDeclaration->inputClassId[0] = newClassDeclaration;
 				return;
@@ -823,7 +823,7 @@ void BlockNode::loadClassAndOptimize(in_func) {
 				throwError("Cannot cast '" +
 				           classDeclaration->getName<true>(in_data) + "' to '" +
 				           returnClass->getName<true>(in_data) +
-				           "'\nHint: Closure return type must match or inherit from the expected return type.");
+				           "'", "Closure return type must match or inherit from the expected return type.");
 			}
 			n->classDeclaration->inputClassId[0] = classDeclaration;
 			return;
@@ -927,7 +927,7 @@ void BlockNode::addJumpPosition(in_func, BytecodePos pos) {
 		}
 		default:
 			throwError(
-			    "Cannot add jump position to non-branching node in BlockNode\nHint: Internal compiler error - jump targets are only supported on conditional or closure nodes.");
+			    "Cannot add jump position to non-branching node in BlockNode", "Internal compiler error - jump targets are only supported on conditional or closure nodes.");
 	}
 }
 
@@ -1127,7 +1127,7 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					}
 					default: {
 						throwError("Unsupported expression node type for block "
-						           "return value\nHint: Expression node inside block cannot be evaluated to a return value.");
+						           "return value", "Expression node inside block cannot be evaluated to a return value.");
 					}
 				}
 			} else if (context.mustReturnValueNode->kind == NodeType::TRY_CATCH) {
@@ -1212,7 +1212,7 @@ void BlockNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 					}
 					default: {
 						throwError("Unsupported expression node type for block "
-						           "return value\nHint: Expression node inside block cannot be evaluated to a return value.");
+						           "return value", "Expression node inside block cannot be evaluated to a return value.");
 					}
 				}
 			} else {

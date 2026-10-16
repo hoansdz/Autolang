@@ -55,7 +55,7 @@ ExprNode *CreateClosureNode::optimize(in_func) {
 			           std::string(currentParameter->name) +
 			           "'\nNote: Inference failed because the closure lacks an "
 			           "explicit "
-			           "type and no expected context was found.\nHint: Annotate parameter types explicitly (e.g. (x: Int) => ...) or pass/assign the closure to a typed target.");
+			           "type and no expected context was found.", "Annotate parameter types explicitly (e.g. (x: Int) => ...) or pass/assign the closure to a typed target.");
 		}
 	}
 	if (declarationThis) {
@@ -198,7 +198,7 @@ void CreateClosureNode::rewrite(in_func, uint8_t *bytecodes) {
 void CreateClosureNode::inferFrom(in_func, ClassDeclaration *from) {
 	if (from->classId != DefaultClass::functionClassId) {
 		throwError("Cannot cast Function to '" + from->getName(in_data) +
-		           "'\nHint: Closures can only be assigned or cast to Function or compatible signature types.");
+		           "'", "Closures can only be assigned or cast to Function or compatible signature types.");
 	}
 	if (canImplicitIt && parameter->parameters.empty() &&
 	    classDeclaration->inputClassId.size() == 1 && from->inputClassId.size() == 2) {
@@ -226,7 +226,7 @@ void CreateClosureNode::inferFrom(in_func, ClassDeclaration *from) {
 		           std::to_string(classDeclaration->inputClassId.size() - 1) +
 		           " parameter(s) but " +
 		           std::to_string(from->inputClassId.size() - 1) +
-		           " were given\nHint: Ensure the closure parameter count matches the target function signature.");
+		           " were given", "Ensure the closure parameter count matches the target function signature.");
 	}
 	for (int i = 0; i < classDeclaration->inputClassId.size(); ++i) {
 		auto fromClass = classDeclaration->inputClassId[i];
@@ -249,7 +249,7 @@ void CreateClosureNode::inferFrom(in_func, ClassDeclaration *from) {
 					}
 					throwError("Cannot cast '" + fromClass->getName(in_data) +
 					           "' to '" + toClass->getName(in_data) +
-					           "'\nHint: The closure return type must be assignable or castable to the expected return type.");
+					           "'", "The closure return type must be assignable or castable to the expected return type.");
 				}
 				auto currentParameter =
 				    parameter
@@ -258,7 +258,7 @@ void CreateClosureNode::inferFrom(in_func, ClassDeclaration *from) {
 				throwError(std::string("Parameter '") + std::string(currentParameter->name) +
 				           "' expected type '" + toClass->getName(in_data) +
 				           "' but '" + fromClass->getName(in_data) +
-				           "' found\nHint: Align the parameter type in the closure with the expected parameter type of the target signature.");
+				           "' found", "Align the parameter type in the closure with the expected parameter type of the target signature.");
 			}
 			continue;
 		}
@@ -292,7 +292,7 @@ ExprNode *CreateClosureNode::copy(in_func) {
 		if (!classDeclaration->classId) {
 			throwError("Bug: Unresolved class " +
 			           classDeclaration->getName(in_data) +
-			           "\nHint: Internal compiler error - class declaration was not resolved before node duplication.");
+			           "", "Internal compiler error - class declaration was not resolved before node duplication.");
 		}
 	}
 	newNode->objects = std::move(newObjects);

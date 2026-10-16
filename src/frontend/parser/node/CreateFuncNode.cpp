@@ -37,6 +37,10 @@ template <bool addToGlobalScope> void CreateFuncNode::pushFunction(in_func) {
 	funcInfo->declaration = parameter->parameters.size();
 	funcInfo->parameter = parameter;
 	funcInfo->tokenIndex = tokenIndex;
+	funcInfo->description = description;
+	if (!description.empty()) {
+		func->descriptionStringOffset = compile.stringArena.push_back(description);
+	}
 	if (classDeclaration) {
 		funcInfo->returnClass = classDeclaration;
 	}
@@ -73,6 +77,10 @@ void CreateFuncNode::pushNativeFunction(in_func, ANativeFunctionData *native) {
 	funcInfo->declaration = parameter->parameters.size();
 	funcInfo->parameter = parameter;
 	funcInfo->tokenIndex = tokenIndex;
+	funcInfo->description = description;
+	if (!description.empty()) {
+		func->descriptionStringOffset = compile.stringArena.push_back(description);
+	}
 	if (classDeclaration) {
 		funcInfo->returnClass = classDeclaration;
 	}
@@ -93,6 +101,7 @@ ExprNode *CreateFuncNode::copy(in_func) {
 	auto newCreateFuncNode = context.newFunctions.push(
 	    line, tokenIndex, context.currentClassId, newNameId, nullptr,
 	    parameter->copy(in_data), functionFlags);
+	newCreateFuncNode->description = description;
 	if (functionFlags & FunctionFlags::FUNC_IS_NATIVE) {
 		newCreateFuncNode->pushNativeFunction(in_data,
 		                                      compile.functions[id]->native);
@@ -145,7 +154,7 @@ ExprNode *CreateFuncNode::optimize(in_func) {
 				std::string prevPath = previousFunc->path ? previousFunc->path : "unknown";
 				throwError("Redefined function: " +
 				           funcInfo->toString(in_data) +
-				           "\nHint: Previously defined at " + prevPath + ":" + std::to_string(previousFuncInfo->line) + 
+				           "", "Previously defined at " + prevPath + ":" + std::to_string(previousFuncInfo->line) + 
 				           ". Ensure the function signature is unique or remove the duplicate definition");
 			}
 			hash[funcInfo->hash] = func->id;
@@ -159,7 +168,7 @@ ExprNode *CreateFuncNode::optimize(in_func) {
 				std::string prevPath = previousFunc->path ? previousFunc->path : "unknown";
 				throwError("Redefined function: " +
 				           funcInfo->toString(in_data) +
-				           "\nHint: Previously defined at " + prevPath + ":" + std::to_string(previousFuncInfo->line) + 
+				           "", "Previously defined at " + prevPath + ":" + std::to_string(previousFuncInfo->line) + 
 				           ". Ensure the function signature is unique or remove the duplicate definition");
 			}
 			// std::cerr<<"Created "<<name<<" hash "<<funcInfo->hash<<"\n";

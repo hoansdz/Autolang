@@ -19,6 +19,7 @@ struct CreateFuncNode : ExprNode {
 	uint32_t functionFlags;
 	ClassDeclaration *classDeclaration;
 	Parameter *parameter;
+	std::string description;
 	bool optimized;
 	CreateFuncNode(uint32_t line, uint32_t tokenIndex,
 	               std::optional<ClassId> contextCallClassId,

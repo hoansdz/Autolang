@@ -52,11 +52,20 @@ std::string Function::toString(CompiledProgram &data) {
 	result += data.classes[returnId]->getName(data);
 	if (functionFlags & FunctionFlags::FUNC_RETURN_NULLABLE)
 		result += "?";
+	if (descriptionStringOffset != 0) {
+		result += " - " + getDescription(data);
+	}
 	return result;
 }
 
 std::string Function::getName(CompiledProgram &data) {
 	return data.stringArena.get(nameStringOffset);
+}
+
+std::string Function::getDescription(CompiledProgram &data) {
+	if (descriptionStringOffset == 0)
+		return "";
+	return data.stringArena.get(descriptionStringOffset);
 }
 
 std::string AClass::getName(CompiledProgram &data) {

@@ -35,18 +35,25 @@ main_cpp = os.path.join(BASE_DIR, "release/pybind11/main.cpp").replace("\\", "/"
 src_dir = os.path.join(BASE_DIR, "src").replace("\\", "/")
 
 source_files = [main_cpp]
+for root, _, files in os.walk(src_dir):
+    for f in files:
+        if f.endswith(".cpp") and not f.startswith("AVM_run_"):
+            source_files.append(os.path.join(root, f).replace("\\", "/"))
 
 include_dirs = [
     src_dir,
     os.path.join(src_dir, "third_party/curl/include").replace("\\", "/"),
     os.path.join(src_dir, "third_party").replace("\\", "/"),
+    os.path.join(BASE_DIR, "build/_deps/rapidfuzz-src").replace("\\", "/"),
 ]
 
 extra_compile_args = [
     "-std=c++17",
     "-O2",
     "-DNOMINMAX",
-    "-DNO_INCLUDE_LIBS_HTTP",   # Disable HTTP library, curl/libcurl not needed
+    "-DCURL_STATICLIB",
+    "-D__PYBIND11__=1",
+    "-DAUTOLANG_LIMIT_OPCODE",
     "-Wno-unused-parameter",
     "-Wno-unused-variable",
     "-Wno-switch",
@@ -55,7 +62,10 @@ extra_compile_args = [
     "-Wa,-mbig-obj",            # Windows only (g++), filtered out on Linux/macOS
 ]
 
-extra_objects = []
+libcurl_d = os.path.join(BASE_DIR, "build/_deps/curl-build/lib/libcurl-d.a").replace("\\", "/")
+libcurl = os.path.join(BASE_DIR, "build/_deps/curl-build/lib/libcurl.a").replace("\\", "/")
+curl_lib = libcurl_d if os.path.exists(libcurl_d) else libcurl
+extra_objects = [curl_lib] if os.path.exists(curl_lib) else []
 libraries = []
 
 if sys.platform == "win32":

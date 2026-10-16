@@ -16,7 +16,7 @@ inline void loadEnumBody(in_func, size_t &i, CreateClassNode *node,
 		if (!nextToken(&token, context.tokens, i)) {
 			throw ParserError(
 			    firstLine,
-			    "Bug: Lexer did not ensure a closing bracket\nHint: "
+			    "Bug: Lexer did not ensure a closing bracket", ""
 			    "Ensure the enum body is properly enclosed with '}'");
 		}
 	initial:;
@@ -44,7 +44,7 @@ inline void loadEnumBody(in_func, size_t &i, CreateClassNode *node,
 					throw ParserError(
 					    token->line,
 					    "Duplicate value " + std::string(context.lexerString[token->indexData]) +
-					        "\nHint: Ensure each enum member name is unique");
+					        "", "Ensure each enum member name is unique");
 				}
 				Offset id = compile.registerEnumConstPool(node->classId);
 				classInfo->constValue[token->indexData] =
@@ -53,7 +53,7 @@ inline void loadEnumBody(in_func, size_t &i, CreateClassNode *node,
 				if (!nextToken(&token, context.tokens, i)) {
 					throw ParserError(
 					    firstLine,
-					    "Bug: Lexer did not ensure a closing bracket\nHint: "
+					    "Bug: Lexer did not ensure a closing bracket", ""
 					    "Ensure the enum body is properly enclosed with '}'");
 				}
 				switch (token->type) {
@@ -62,7 +62,7 @@ inline void loadEnumBody(in_func, size_t &i, CreateClassNode *node,
 						    !expect(token, Lexer::TokenType::IDENTIFIER)) {
 							throw ParserError(
 							    firstLine,
-							    "Expected value name but not found\nHint: Provide "
+							    "Expected value name but not found", "Provide "
 							    "an identifier for the enum member after ','");
 						}
 						goto loadValue;
@@ -78,7 +78,7 @@ inline void loadEnumBody(in_func, size_t &i, CreateClassNode *node,
 						throw ParserError(
 						    token->line,
 						    "Expected value but '" + token->toString(context) +
-						        "' found\nHint: Provide an enum member name or "
+						        "' found", "Provide an enum member name or "
 						        "closing bracket '}'");
 					}
 				}
@@ -92,7 +92,7 @@ inline void loadEnumBody(in_func, size_t &i, CreateClassNode *node,
 				throw ParserError(
 				    token->line,
 				    "Expected value but '" + token->toString(context) +
-				        "' found\nHint: Provide an enum member name or "
+				        "' found", "Provide an enum member name or "
 				        "closing bracket '}'");
 			}
 		}
@@ -115,7 +115,7 @@ void loadEnum(in_func, size_t &i) {
 		--i;
 		throw ParserError(
 		    firstLine,
-		    "Expected name but not found\nHint: Provide an identifier for the "
+		    "Expected name but not found", "Provide an identifier for the "
 		    "enum name after 'enum'");
 	}
 	LexerStringId nameId = token->indexData;
@@ -133,7 +133,7 @@ void loadEnum(in_func, size_t &i) {
 		}
 		throw ParserError(
 		    firstLine,
-		    "Class " + std::string(name) + " already exists\nHint: " + hint);
+		    "Class " + std::string(name) + " already exists", hint);
 	}
 
 	auto node = context.newClasses.push(firstLine, nameId,
@@ -160,7 +160,7 @@ void loadEnum(in_func, size_t &i) {
 	if (expect(token, Lexer::TokenType::LT)) {
 		throw ParserError(
 		    firstLine,
-		    "Enum doesn't support generics\nHint: Remove type parameter "
+		    "Enum doesn't support generics", "Remove type parameter "
 		    "declaration '<...>' from enum");
 	} else {
 		context.newDefaultClassesMap[node->classId] = node;
@@ -169,7 +169,7 @@ void loadEnum(in_func, size_t &i) {
 	if (expect(token, Lexer::TokenType::EXTENDS)) {
 		throw ParserError(
 		    firstLine,
-		    "Enum doesn't support extends\nHint: Enums cannot inherit from "
+		    "Enum doesn't support extends", "Enums cannot inherit from "
 		    "other classes; remove 'extends'");
 	}
 	// std::cerr<<"Clazz: "<<clazz->getName(compile)<<" "<<declarationThis->id<<"\n";
@@ -178,7 +178,7 @@ void loadEnum(in_func, size_t &i) {
 	if (expect(token, Lexer::TokenType::LPAREN)) {
 		throw ParserError(
 		    firstLine,
-		    "Enum doesn't support primary constructor\nHint: Remove constructor "
+		    "Enum doesn't support primary constructor", "Remove constructor "
 		    "parameters '(...)' from enum definition");
 	}
 

@@ -363,6 +363,12 @@ void ParserContext::init(CompiledProgram &compile) {
 		    {makeTuple(stringClassId, stringClassId, (uint8_t)TT::PLUS),
 		     stringClassId},
 
+		    // string * int, int * string
+		    {makeTuple(stringClassId, intClassId, (uint8_t)TT::STAR),
+		     stringClassId},
+		    {makeTuple(intClassId, stringClassId, (uint8_t)TT::STAR),
+		     stringClassId},
+
 		    {makeTuple(stringClassId, stringClassId, (uint8_t)TT::EQEQ),
 		     boolClassId},
 		    {makeTuple(stringClassId, stringClassId, (uint8_t)TT::NOTEQ),
@@ -533,7 +539,43 @@ void ParserContext::refresh(CompiledProgram &compile) {
 	lexerStringMap = stdLexerStringMap;
 }
 
-void ParserContext::logError(uint32_t line, const std::string &message) {
+static std::string escapeJsonString(const std::string& str) {
+	std::string result;
+	for (char c : str) {
+		if (c == '"') result += "\\\"";
+		else if (c == '\\') result += "\\\\";
+		else if (c == '\n') result += "\\n";
+		else if (c == '\r') result += "\\r";
+		else if (c == '\t') result += "\\t";
+		else result += c;
+	}
+	return result;
+}
+
+void ParserContext::logError(uint32_t line, const std::string &message, const std::string &providedHint) {
+	std::string msg = message;
+	std::string hint = providedHint;
+	if (hint.empty()) {
+		size_t hintPos = msg.find("\nHint: ");
+		if (hintPos != std::string::npos) {
+			hint = msg.substr(hintPos + 7);
+			msg = msg.substr(0, hintPos);
+		}
+	}
+
+	if (outputJsonDiagnostics) {
+		std::cout << "{\n";
+		std::cout << "  \"status\": \"failed\",\n";
+		std::cout << "  \"error\": {\n";
+		std::cout << "    \"type\": \"ParserError\",\n";
+		std::cout << "    \"file\": \"" << escapeJsonString(mode ? mode->path : "") << "\",\n";
+		std::cout << "    \"line\": " << line << ",\n";
+		std::cout << "    \"message\": \"" << escapeJsonString(msg) << "\",\n";
+		std::cout << "    \"hint\": \"" << escapeJsonString(hint) << "\"\n";
+		std::cout << "  }\n";
+		std::cout << "}\n";
+	}
+
 	std::string mes =
 	    (mode ? mode->path : "") + ":" + std::to_string(line) + ": " + message;
 	lastErrorMessage = mes;
@@ -541,7 +583,9 @@ void ParserContext::logError(uint32_t line, const std::string &message) {
 		(*onError)(mes);
 		return;
 	}
-	std::cerr << mes << std::endl;
+	if (!outputJsonDiagnostics) {
+		std::cerr << mes << std::endl;
+	}
 }
 
 void ParserContext::warning(uint32_t line, const std::string &message) {
@@ -639,7 +683,7 @@ isNotStatic:;
 	throw ParserError(
 	    line,
 	    std::string(name) +
-	        " is not static\nHint: Non-static members require an instance to "
+	        " is not static", "Non-static members require an instance to "
 	        "be accessed");
 }
 
@@ -658,7 +702,7 @@ DeclarationNode *ParserContext::makeDeclarationNode(
 			throw ParserError(
 			    line,
 			    "Error: Static declarations are not allowed inside "
-			    "closures\nNote: Move the declaration to an outer scope\nHint: "
+			    "closures\nNote: Move the declaration to an outer scope", ""
 			    "Move static/global declarations out of closure body");
 		}
 		if (addToScope) {
@@ -671,7 +715,7 @@ DeclarationNode *ParserContext::makeDeclarationNode(
 				        "'. Previous definition here: " +
 				        it->second->mode->path + ":" +
 				        std::to_string(it->second->line) +
-				        "\nHint: Use a different variable name or remove "
+				        "", "Use a different variable name or remove "
 				        "duplicate declaration");
 			}
 		}
@@ -710,7 +754,7 @@ DeclarationNode *ParserContext::makeDeclarationNode(
 			    std::string("Redefinition of variable '") + std::string(context.lexerString[baseName]) +
 			        "'. Previous definition here: " + it->second->mode->path +
 			        ":" + std::to_string(it->second->line) +
-			        "\nHint: Use a different variable name or remove duplicate "
+			        "", "Use a different variable name or remove duplicate "
 			        "declaration");
 		}
 	}

@@ -16,7 +16,7 @@ void loadAnnotations(in_func, size_t &i) {
 		          << token->line << "\n";
 		--i;
 		throw ParserError(
-		    firstLine, "Expected annotation name after '@'\nHint: Write a "
+		    firstLine, "Expected annotation name after '@'", "Write a "
 		               "valid annotation such as @override, @native(\"name\"), "
 		               "@no_constructor, @no_extends, or @native_data.");
 	}
@@ -27,7 +27,7 @@ void loadAnnotations(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "@override must be followed by a function\nHint: Correct "
+				    "@override must be followed by a function", "Correct "
 				    "syntax is '@override fun foo() { }'");
 			}
 			--i;
@@ -39,7 +39,7 @@ void loadAnnotations(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "@no_override must be followed by a function\nHint: "
+				    "@no_override must be followed by a function", ""
 				    "Correct syntax is '@no_override fun foo() { }'");
 			}
 			--i;
@@ -47,7 +47,7 @@ void loadAnnotations(in_func, size_t &i) {
 		}
 		case Lexer::TokenType::WAIT_INPUT: {
 			throw ParserError(firstLine,
-			                  "@wait_input is currently not supported\nHint: "
+			                  "@wait_input is currently not supported", ""
 			                  "Remove @wait_input annotation");
 		}
 		case Lexer::TokenType::NATIVE: {
@@ -57,14 +57,14 @@ void loadAnnotations(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    firstLine,
-				    "@native expects a string value in parentheses\nHint: "
+				    "@native expects a string value in parentheses", ""
 				    "Write @native(\"native_name\") before the function");
 			}
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 			    !expect(token, Lexer::TokenType::STRING)) {
 				throw ParserError(
 				    firstLine,
-				    "@native expects a string value\nHint: Provide a string "
+				    "@native expects a string value", "Provide a string "
 				    "literal inside parentheses, e.g. @native(\"name\")");
 			}
 			context.annotationMetadata[AnnotationMetadataIndex::AMI_NATIVE] =
@@ -74,14 +74,14 @@ void loadAnnotations(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    firstLine, "@native expects a constant string value, not "
-				               "an expression\nHint: Write @native(\"name\") "
+				               "an expression", "Write @native(\"name\") "
 				               "instead of @native(variable)");
 			}
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "@native must be followed by a function\nHint: Correct "
+				    "@native must be followed by a function", "Correct "
 				    "syntax is '@native(\"name\") fun foo() { }'");
 			}
 			--i;
@@ -93,7 +93,7 @@ void loadAnnotations(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "@no_constructor must be followed by a class\nHint: "
+				    "@no_constructor must be followed by a class", ""
 				    "Correct syntax is '@no_constructor class A { }'");
 			}
 			--i;
@@ -105,7 +105,7 @@ void loadAnnotations(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "@no_extends must be followed by a class\nHint: Correct "
+				    "@no_extends must be followed by a class", "Correct "
 				    "syntax is '@no_extends class A { }'");
 			}
 			--i;
@@ -117,7 +117,7 @@ void loadAnnotations(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "@native_data must be followed by a class\nHint: Correct "
+				    "@native_data must be followed by a class", "Correct "
 				    "syntax is '@native_data class A { }'");
 			}
 			--i;
@@ -130,7 +130,7 @@ void loadAnnotations(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "@js_object must be followed by a class\nHint: Correct "
+				    "@js_object must be followed by a class", "Correct "
 				    "syntax is '@js_object class A { }'");
 			}
 			--i;
@@ -143,7 +143,7 @@ void loadAnnotations(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "@py_object must be followed by a class\nHint: Correct "
+				    "@py_object must be followed by a class", "Correct "
 				    "syntax is '@py_object class A { }'");
 			}
 			--i;
@@ -156,13 +156,13 @@ void loadAnnotations(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    firstLine,
-				    "@import is missing opening '(' bracket\nHint: Correct "
+				    "@import is missing opening '(' bracket", "Correct "
 				    "syntax is '@import(\"path/to/file.atl\")'");
 			}
 			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
 			    !expect(token, Lexer::TokenType::STRING)) {
 				throw ParserError(
-				    firstLine, "@import is missing a string argument\nHint: "
+				    firstLine, "@import is missing a string argument", ""
 				               "Provide file path string inside parentheses, "
 				               "e.g. @import(\"path/to/file.atl\")");
 			}
@@ -186,7 +186,7 @@ void loadAnnotations(in_func, size_t &i) {
 			    !expect(token, Lexer::TokenType::RPAREN)) {
 				--i;
 				throw ParserError(
-				    firstLine, "@import is missing closing ')' bracket\nHint: "
+				    firstLine, "@import is missing closing ')' bracket", ""
 				               "Close @import argument with ')'");
 			}
 			if (!mustAppend)
@@ -198,7 +198,7 @@ void loadAnnotations(in_func, size_t &i) {
 				    firstLine,
 				    "Library '" + context.mainLexerContext->library->path +
 				        "' is missing dependency '" + path +
-				        "'\nHint: Verify specified import file path exists");
+				        "'", "Verify specified import file path exists");
 			}
 			auto library = it->second;
 			context.mode = library;
@@ -219,7 +219,7 @@ void loadAnnotations(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "@operator must be followed by a function\nHint: "
+				    "@operator must be followed by a function", ""
 				    "Correct syntax is '@operator fun get(index: Int)'");
 			}
 			--i;
@@ -231,8 +231,45 @@ void loadAnnotations(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "@implicit must be followed by a constructor or function\nHint: "
+				    "@implicit must be followed by a constructor or function", ""
 				    "Correct syntax is '@implicit constructor(m: Map)'");
+			}
+			--i;
+			break;
+		}
+		case Lexer::TokenType::DESCRIPTION: {
+			context.annotationFlags |= AnnotationFlags::AN_DESCRIPTION;
+			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
+			    !expect(token, Lexer::TokenType::LPAREN)) {
+				--i;
+				throw ParserError(
+				    firstLine,
+				    "@description expects a string value in parentheses",
+				    "Write @description(\"description text\") before the function or class");
+			}
+			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
+			    !expect(token, Lexer::TokenType::STRING)) {
+				throw ParserError(
+				    firstLine,
+				    "@description expects a string value",
+				    "Provide a string literal inside parentheses, e.g. @description(\"description text\")");
+			}
+			context.annotationMetadata[AnnotationMetadataIndex::AMI_DESCRIPTION] =
+			    *token;
+			if (!nextTokenSameLine(&token, context.tokens, i, firstLine) ||
+			    !expect(token, Lexer::TokenType::RPAREN)) {
+				--i;
+				throw ParserError(
+				    firstLine,
+				    "@description expects a constant string value, not an expression",
+				    "Write @description(\"text\") instead of @description(variable)");
+			}
+			if (!nextToken(&token, context.tokens, i)) {
+				--i;
+				throw ParserError(
+				    context.tokens[i].line,
+				    "@description must be followed by a declaration",
+				    "Correct syntax is '@description(\"text\") fun foo() { }'");
 			}
 			--i;
 			break;
@@ -241,7 +278,7 @@ void loadAnnotations(in_func, size_t &i) {
 			throw ParserError(
 			    firstLine,
 			    "Unknown annotation '@" + token->toString(context) +
-			        "'\nHint: Check annotation name or remove unsupported '@" +
+			        "'", "Check annotation name or remove unsupported '@" +
 			        token->toString(context) + "'");
 		}
 	}

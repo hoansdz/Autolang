@@ -26,7 +26,7 @@ AccessNode *ClassInfo::findDeclaration(in_func, uint32_t line,
 			throw ParserError(
 			    line,
 			    std::string(context.lexerString[nameId]) +
-			        " is non static member\nHint: Non-static members require an "
+			        " is non static member", "Non-static members require an "
 			        "object instance to be accessed");
 		return context.getPropPool.push(
 		    line, node, declarationThis->classId,
@@ -56,7 +56,7 @@ DeclarationNode *ClassInfo::findAllMember(in_func, uint32_t line,
 			throw ParserError(
 			    line,
 			    std::string(context.lexerString[nameId]) +
-			        " is not static\nHint: Non-static members require an "
+			        " is not static", "Non-static members require an "
 			        "object instance to be accessed");
 		return member[it->second];
 	}

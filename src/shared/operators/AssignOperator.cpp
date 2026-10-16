@@ -421,6 +421,18 @@ AObject *mul_eq(NativeFuncInData) {
 				}
 				break;
 			}
+			case Autolang::DefaultClass::stringClassId: {
+				if (obj2->type == Autolang::DefaultClass::intClassId) {
+					AString *resStr = obj1->str->repeat(obj2->i);
+					auto oldObj = obj1;
+					auto newStrObj = notifier.createString(resStr);
+					newStrObj->retain();
+					(*static_cast<AObject **>(ptr)) = newStrObj;
+					notifier.release(oldObj);
+					return nullptr;
+				}
+				break;
+			}
 			default:
 				break;
 		}
@@ -456,6 +468,20 @@ AObject *mul_eq(NativeFuncInData) {
 					return nullptr;
 				default:
 					break;
+			}
+			break;
+		}
+		case Autolang::DefaultClass::stringClassId: {
+			if (obj2->type == Autolang::DefaultClass::intClassId) {
+				AString *resStr = obj1->str->repeat(obj2->i);
+				auto oldObj = obj1;
+				auto newStrObj = notifier.createString(resStr);
+				newStrObj->retain();
+				if (ptr) {
+					(*static_cast<AObject **>(ptr)) = newStrObj;
+				}
+				notifier.release(oldObj);
+				return nullptr;
 			}
 			break;
 		}

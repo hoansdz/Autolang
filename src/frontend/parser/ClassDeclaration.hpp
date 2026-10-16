@@ -59,7 +59,7 @@ struct ClassDeclaration {
 	bool isSame(ClassDeclaration *classDeclaration);
 	bool isMatch(ClassDeclaration *classDeclaration);
 	ClassDeclaration();
-	[[noreturn]] void throwError(std::string message);
+	[[noreturn]] void throwError(std::string message, std::string hint = "");
 };
 
 bool hasUnresolvedGenericDecl(ClassDeclaration *cd, int depth = 0);

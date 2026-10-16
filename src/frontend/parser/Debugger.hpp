@@ -18,8 +18,8 @@ struct ParserContext;
 struct ClassInfo;
 
 struct ParserError : Autolang::Lexer::LexerError {
-	ParserError(uint32_t line, std::string msg)
-	    : Autolang::Lexer::LexerError(line, msg) {}
+	ParserError(uint32_t line, std::string msg, std::string hint = "")
+	    : Autolang::Lexer::LexerError(line, msg, std::move(hint)) {}
 };
 
 inline void lexerData(in_func, ACompiler &compiler, LibraryData *library,

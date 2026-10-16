@@ -17,7 +17,7 @@ loadListArgument(in_func, size_t &i,
 		throw ParserError(
 		    token->line,
 		    "Unexpected token " + token->toString(context) +
-		        "\nHint: Ensure arguments list opens with a valid bracket '('");
+		        "", "Ensure arguments list opens with a valid bracket '('");
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		if (context.autoCloseBracketsOnEof && !context.hasError) {
@@ -130,7 +130,7 @@ loadListArgument(in_func, size_t &i,
 				--i;
 				throw ParserError(token->line,
 				                  "Unknown token " + token->toString(context) +
-				                      "\nHint: Provide a valid argument "
+				                      "", "Provide a valid argument "
 				                      "expression or closing "
 				                      "bracket");
 			}
@@ -189,7 +189,7 @@ HasClassIdNode *loadMapEntries(
 				    !expect(token, Lexer::TokenType::COLON)) {
 					--i;
 					throw ParserError(context.tokens[i].line,
-					                  "Expected ':' or 'to'\nHint: Use ':' or 'to' to separate "
+					                  "Expected ':' or 'to'", "Use ':' or 'to' to separate "
 					                  "key and value in map entry");
 				}
 				if (!nextToken(&token, context.tokens, i)) {
@@ -206,7 +206,7 @@ HasClassIdNode *loadMapEntries(
 				throw ParserError(
 				    token->line,
 				    "Unknown token " + token->toString(context) +
-				        "\nHint: Expected map entry 'key: value', 'key to value', or closing "
+				        "", "Expected map entry 'key: value', 'key to value', or closing "
 				        "bracket '}'");
 			}
 		}
@@ -263,7 +263,7 @@ HasClassIdNode *loadSet(in_func, size_t &i, HasClassIdNode *firstExpression) {
 				throw ParserError(
 				    token->line,
 				    "Unknown token " + token->toString(context) +
-				        "\nHint: Expected element expression or ',' inside set "
+				        "", "Expected element expression or ',' inside set "
 				        "literal");
 			}
 		}
@@ -310,13 +310,13 @@ HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
 				case NodeType::CREATE_SET: {
 					throw ParserError(
 					    token->line,
-					    "Expected Set<> but closure found\nHint: Do not pass "
+					    "Expected Set<> but closure found", "Do not pass "
 					    "closure parameters inside Set literal");
 				}
 				case NodeType::CREATE_MAP: {
 					throw ParserError(
 					    token->line,
-					    "Expected Map<> but closure found\nHint: Do not pass "
+					    "Expected Map<> but closure found", "Do not pass "
 					    "closure parameters inside Map literal");
 				}
 				default:
@@ -330,13 +330,13 @@ HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
 				case NodeType::CREATE_SET: {
 					throw ParserError(
 					    token->line,
-					    "Expected Set<> but closure found\nHint: Do not pass "
+					    "Expected Set<> but closure found", "Do not pass "
 					    "closure parameters inside Set literal");
 				}
 				case NodeType::CREATE_MAP: {
 					throw ParserError(
 					    token->line,
-					    "Expected Map<> but closure found\nHint: Do not pass "
+					    "Expected Map<> but closure found", "Do not pass "
 					    "closure parameters inside Map literal");
 				}
 				default:
@@ -350,13 +350,13 @@ HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
 				case NodeType::CREATE_SET: {
 					throw ParserError(
 					    token->line,
-					    "Expected Set<> but closure found\nHint: Do not pass "
+					    "Expected Set<> but closure found", "Do not pass "
 					    "closure parameters inside Set literal");
 				}
 				case NodeType::CREATE_MAP: {
 					throw ParserError(
 					    token->line,
-					    "Expected Map<> but closure found\nHint: Do not pass "
+					    "Expected Map<> but closure found", "Do not pass "
 					    "closure parameters inside Map literal");
 				}
 				default:
@@ -371,13 +371,13 @@ HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
 					case NodeType::CREATE_SET: {
 						throw ParserError(
 						    token->line,
-						    "Expected Set<> but closure found\nHint: Do not pass "
+						    "Expected Set<> but closure found", "Do not pass "
 						    "closure parameters inside Set literal");
 					}
 					case NodeType::CREATE_MAP: {
 						throw ParserError(
 						    token->line,
-						    "Expected Map<> but closure found\nHint: Do not pass "
+						    "Expected Map<> but closure found", "Do not pass "
 						    "closure parameters inside Map literal");
 					}
 					default:
@@ -415,7 +415,7 @@ HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
 					if (canBeNodeType == NodeType::CREATE_MAP) {
 						throw ParserError(
 						    token->line,
-						    "Expected Map<> but Set<> found\nHint: Map "
+						    "Expected Map<> but Set<> found", "Map "
 						    "elements must use 'key: value' pairs");
 					}
 					return loadSet(in_data, i, firstExpression);
@@ -424,7 +424,7 @@ HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
 					if (canBeNodeType == NodeType::CREATE_SET) {
 						throw ParserError(
 						    token->line,
-						    "Expected Set<> but Map<> found\nHint: Set "
+						    "Expected Set<> but Map<> found", "Set "
 						    "elements must be single values without ':'");
 					}
 					return loadMap(in_data, i, firstExpression);
@@ -444,7 +444,7 @@ HasClassIdNode *inferenceNodeFromLBrace(in_func, size_t &i,
 			throw ParserError(
 			    token->line,
 			    "Unexpected token " + token->toString(context) +
-			        "\nHint: Expected ',' or ':' inside literal structure");
+			        "", "Expected ',' or ':' inside literal structure");
 		}
 	}
 }

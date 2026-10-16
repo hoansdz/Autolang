@@ -210,48 +210,18 @@ ExprNode *GetPropNode::optimize(in_func) {
 					return callNode->optimize(in_data);
 				}
 			}
-			std::string foundMembers;
-			bool hasMember = false;
-			for (auto *decl : classInfo->member) {
-				if (decl) {
-					if (hasMember) {
-						foundMembers += "\n";
-					}
-					foundMembers += decl->toString(in_data, false);
-					hasMember = true;
-				}
-			}
-			for (const auto [nameId, declarationNode] :
-			     classInfo->staticMember) {
-				if (declarationNode) {
-					if (hasMember) {
-						foundMembers += "\n";
-					}
-					foundMembers += declarationNode->toString(in_data, true);
-					hasMember = true;
-				}
-			}
-			std::string foundFunctions;
-			bool hasFunction = false;
-			for (const auto &[_, funcVec] : classInfo->allFunction) {
-				for (FunctionId funcId : funcVec) {
-					auto funcInfo = context.functionInfo[funcId];
-					if (hasFunction) {
-						foundFunctions += "\n";
-					}
-					foundFunctions += funcInfo->toString(in_data);
-					hasFunction = true;
-				}
-			}
 			std::string bestSuggestion;
+			std::string bestSuggestionDesc;
 			bool isFunctionSuggestion = false;
 			double bestScore = 0.0;
 			auto checkSuggestion = [&](std::string_view candidate,
-			                           bool isFunc = false) {
+			                           bool isFunc = false,
+			                           const std::string &desc = "") {
 				double score = rapidfuzz::fuzz::ratio(name, candidate);
 				if (score > bestScore && score >= 60.0) {
 					bestScore = score;
 					bestSuggestion = candidate;
+					bestSuggestionDesc = desc;
 					isFunctionSuggestion = isFunc;
 				}
 			};
@@ -266,16 +236,28 @@ ExprNode *GetPropNode::optimize(in_func) {
 					checkSuggestion(declarationNode->name, false);
 				}
 			}
-			for (const auto &[funcNameId, _] : classInfo->allFunction) {
-				checkSuggestion(context.lexerString[funcNameId], true);
+			for (const auto &[funcNameId, funcVec] : classInfo->allFunction) {
+				std::string desc;
+				if (!funcVec.empty()) {
+					auto funcInfo = context.functionInfo[funcVec[0]];
+					if (funcInfo)
+						desc = funcInfo->description;
+				}
+				checkSuggestion(context.lexerString[funcNameId], true, desc);
 			}
 
 			std::string errorMsg = "Cannot find member name '" + std::string(name) +
 			                       "' in class '" + clazz->getName(compile) +
 			                       "'";
-			if (classInfo->allFunction.find(nameId) !=
-			    classInfo->allFunction.end()) {
+			auto itExactFunc = classInfo->allFunction.find(nameId);
+			if (itExactFunc != classInfo->allFunction.end()) {
 				errorMsg += "\nDid you mean function: '" + std::string(name) + "()' ?";
+				if (!itExactFunc->second.empty()) {
+					auto fInfo = context.functionInfo[itExactFunc->second[0]];
+					if (fInfo && !fInfo->description.empty()) {
+						errorMsg += " (" + fInfo->description + ")";
+					}
+				}
 			} else if (!bestSuggestion.empty() && bestSuggestion != name) {
 				if (isFunctionSuggestion) {
 					errorMsg += "\nDid you mean function: '" + bestSuggestion +
@@ -283,17 +265,9 @@ ExprNode *GetPropNode::optimize(in_func) {
 				} else {
 					errorMsg += "\nDid you mean: '" + bestSuggestion + "'?";
 				}
-			}
-			if (hasMember) {
-				errorMsg += "\nAvailable members in '" +
-				            clazz->getName(compile) + "':\n" + foundMembers;
-			} else {
-				errorMsg += "\n(No members declared in class '" +
-				            clazz->getName(compile) + "')";
-			}
-			if (hasFunction) {
-				errorMsg += "\nAvailable functions in '" +
-				            clazz->getName(compile) + "':\n" + foundFunctions;
+				if (!bestSuggestionDesc.empty()) {
+					errorMsg += " (" + bestSuggestionDesc + ")";
+				}
 			}
 			errorMsg += "\nHint: Check member name spelling or verify whether "
 			            "it is declared in class '" +

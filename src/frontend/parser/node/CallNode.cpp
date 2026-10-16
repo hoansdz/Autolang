@@ -273,7 +273,7 @@ ExprNode *CallNode::resolve(in_func) {
 					throwError(
 					    "Invalid call: run expects 1 argument (closure), but " +
 					    std::to_string(arguments.size()) +
-					    " were provided\nHint: Use run { ... }");
+					    " were provided", "Use run { ... }");
 				}
 				funcObject = arguments[0];
 				arguments.clear();
@@ -285,7 +285,7 @@ ExprNode *CallNode::resolve(in_func) {
 					throwError(
 					    "Invalid call: with expects 2 arguments (receiver, closure), but " +
 					    std::to_string(arguments.size()) +
-					    " were provided\nHint: Use with(receiver) { ... }");
+					    " were provided", "Use with(receiver) { ... }");
 				}
 				caller = static_cast<HasClassIdNode *>(arguments[0]);
 				nameId = lexerIdlet;
@@ -300,7 +300,7 @@ ExprNode *CallNode::resolve(in_func) {
 					    "Invalid call: Int expects 1 "
 					    "argument, but " +
 					    std::to_string(arguments.size()) +
-					    " were provided\nHint: Pass exactly one argument to "
+					    " were provided", "Pass exactly one argument to "
 					    "convert to Int (e.g., Int(value)).");
 				}
 				auto result = context.castPool.push(arguments[0],
@@ -314,7 +314,7 @@ ExprNode *CallNode::resolve(in_func) {
 					    "Invalid call: Char expects 1 "
 					    "argument, but " +
 					    std::to_string(arguments.size()) +
-					    " were provided\nHint: Pass exactly one argument to "
+					    " were provided", "Pass exactly one argument to "
 					    "convert to Char (e.g., Char(value)).");
 				}
 				auto result = context.castPool.push(arguments[0],
@@ -328,7 +328,7 @@ ExprNode *CallNode::resolve(in_func) {
 					    "Invalid call: Float expects 1 "
 					    "argument, but " +
 					    std::to_string(arguments.size()) +
-					    " were provided\nHint: Pass exactly one argument to "
+					    " were provided", "Pass exactly one argument to "
 					    "convert to Float (e.g., Float(value)).");
 				}
 				auto result = context.castPool.push(arguments[0],
@@ -342,7 +342,7 @@ ExprNode *CallNode::resolve(in_func) {
 					    "Invalid call: Bool expects 1 "
 					    "argument, but " +
 					    std::to_string(arguments.size()) +
-					    " were provided\nHint: Pass exactly one argument to "
+					    " were provided", "Pass exactly one argument to "
 					    "convert to Bool (e.g., Bool(value)).");
 				}
 				auto result = context.castPool.push(arguments[0],
@@ -355,7 +355,7 @@ ExprNode *CallNode::resolve(in_func) {
 					throwError("Invalid call: getClassId() expects 1 "
 					           "argument, but " +
 					           std::to_string(arguments.size()) +
-					           " were provided\nHint: Pass an object "
+					           " were provided", "Pass an object "
 					           "expression to getClassId(obj).");
 				}
 				auto result = context.constValuePool.push(
@@ -393,8 +393,7 @@ ExprNode *CallNode::resolve(in_func) {
 					throwError("Invalid call: " + std::string(context.lexerString[nameId]) +
 					           " expects 0 arguments, but " +
 					           std::to_string(arguments.size()) +
-					           " were provided\nHint: " +
-					           std::string(context.lexerString[nameId]) +
+					           " were provided", 					           std::string(context.lexerString[nameId]) +
 					           "() takes no arguments.");
 				}
 				std::vector<HasClassIdNode *> vals;
@@ -445,8 +444,7 @@ ExprNode *CallNode::resolve(in_func) {
 					throwError("Invalid call: " + std::string(context.lexerString[nameId]) +
 					           " expects 0 arguments, but " +
 					           std::to_string(arguments.size()) +
-					           " were provided\nHint: " +
-					           std::string(context.lexerString[nameId]) +
+					           " were provided", 					           std::string(context.lexerString[nameId]) +
 					           "() takes no arguments.");
 				}
 				auto arrayNode = context.createArrayPool.push(
@@ -464,7 +462,7 @@ ExprNode *CallNode::resolve(in_func) {
 					throwError(
 					    "Invalid call: emptySet expects 0 arguments, but " +
 					    std::to_string(arguments.size()) +
-					    " were provided\nHint: emptySet() takes no arguments.");
+					    " were provided", "emptySet() takes no arguments.");
 				}
 				std::vector<HasClassIdNode *> vals;
 				vals.reserve(arguments.size());
@@ -483,7 +481,7 @@ ExprNode *CallNode::resolve(in_func) {
 					throwError(
 					    "Invalid call: emptySet expects 0 arguments, but " +
 					    std::to_string(arguments.size()) +
-					    " were provided\nHint: emptySet() takes no arguments.");
+					    " were provided", "emptySet() takes no arguments.");
 				}
 				auto setNode = context.createSetPool.push(
 				    line, inputGenericArguments, std::vector<HasClassIdNode *>());
@@ -496,7 +494,7 @@ ExprNode *CallNode::resolve(in_func) {
 					throwError(
 					    "Invalid call: emptyMap expects 0 arguments, but " +
 					    std::to_string(arguments.size()) +
-					    " were provided\nHint: emptyMap() takes no arguments.");
+					    " were provided", "emptyMap() takes no arguments.");
 				}
 				auto mapNode = context.createMapPool.push(
 				    line, inputGenericArguments,
@@ -511,7 +509,7 @@ ExprNode *CallNode::resolve(in_func) {
 					throwError(
 					    "Invalid call: pairOf expects 2 arguments (first, second), but " +
 					    std::to_string(arguments.size()) +
-					    " were provided\nHint: Use pairOf(first, second) or 'first to second'.");
+					    " were provided", "Use pairOf(first, second) or 'first to second'.");
 				}
 				auto pairNode = context.pairPool.push(line, arguments[0], arguments[1]);
 				arguments.clear();
@@ -528,7 +526,7 @@ ExprNode *CallNode::resolve(in_func) {
 					throwError(
 					    "Invalid call: emptyMap expects 0 arguments, but " +
 					    std::to_string(arguments.size()) +
-					    " were provided\nHint: emptyMap() takes no arguments.");
+					    " were provided", "emptyMap() takes no arguments.");
 				}
 				if (arguments.empty()) {
 					auto mapNode = context.createMapPool.push(
@@ -575,7 +573,7 @@ ExprNode *CallNode::resolve(in_func) {
 				}
 				throwError(
 				    "Invalid call: mapOf expects key-value pairs (using 'to' or pairOf), or an even number of arguments (key, value, ...), but " +
-				    std::to_string(arguments.size()) + " arguments were provided\nHint: Use mapOf(k1 to v1, k2 to v2) or mapOf(k1, v1, k2, v2).");
+				    std::to_string(arguments.size()) + " arguments were provided", "Use mapOf(k1 to v1, k2 to v2) or mapOf(k1, v1, k2, v2).");
 			}
 		}
 	}
@@ -624,8 +622,7 @@ ExprNode *CallNode::optimize(in_func) {
 					throwError("Invalid call: " + std::string(context.lexerString[nameId]) +
 					           " expects 0 arguments, but " +
 					           std::to_string(arguments.size()) +
-					           " were provided\nHint: " +
-					           std::string(context.lexerString[nameId]) +
+					           " were provided", 					           std::string(context.lexerString[nameId]) +
 					           "() takes no arguments.");
 				}
 				std::vector<HasClassIdNode *> vals;
@@ -673,8 +670,7 @@ ExprNode *CallNode::optimize(in_func) {
 					throwError("Invalid call: " + std::string(context.lexerString[nameId]) +
 					           " expects 0 arguments, but " +
 					           std::to_string(arguments.size()) +
-					           " were provided\nHint: " +
-					           std::string(context.lexerString[nameId]) +
+					           " were provided", 					           std::string(context.lexerString[nameId]) +
 					           "() takes no arguments.");
 				}
 				auto arrayNode = context.createArrayPool.push(
@@ -690,7 +686,7 @@ ExprNode *CallNode::optimize(in_func) {
 					throwError(
 					    "Invalid call: emptySet expects 0 arguments, but " +
 					    std::to_string(arguments.size()) +
-					    " were provided\nHint: emptySet() takes no arguments.");
+					    " were provided", "emptySet() takes no arguments.");
 				}
 				std::vector<HasClassIdNode *> vals;
 				vals.reserve(arguments.size());
@@ -707,7 +703,7 @@ ExprNode *CallNode::optimize(in_func) {
 					throwError(
 					    "Invalid call: emptySet expects 0 arguments, but " +
 					    std::to_string(arguments.size()) +
-					    " were provided\nHint: emptySet() takes no arguments.");
+					    " were provided", "emptySet() takes no arguments.");
 				}
 				auto setNode = context.createSetPool.push(
 				    line, inputGenericArguments, std::vector<HasClassIdNode *>());
@@ -718,7 +714,7 @@ ExprNode *CallNode::optimize(in_func) {
 					throwError(
 					    "Invalid call: emptyMap expects 0 arguments, but " +
 					    std::to_string(arguments.size()) +
-					    " were provided\nHint: emptyMap() takes no arguments.");
+					    " were provided", "emptyMap() takes no arguments.");
 				}
 				auto mapNode = context.createMapPool.push(
 				    line, inputGenericArguments,
@@ -735,7 +731,7 @@ ExprNode *CallNode::optimize(in_func) {
 					throwError(
 					    "Invalid call: emptyMap expects 0 arguments, but " +
 					    std::to_string(arguments.size()) +
-					    " were provided\nHint: emptyMap() takes no arguments.");
+					    " were provided", "emptyMap() takes no arguments.");
 				}
 				if (arguments.empty()) {
 					auto mapNode = context.createMapPool.push(
@@ -786,7 +782,7 @@ ExprNode *CallNode::optimize(in_func) {
 				    " expects Pair arguments (e.g., key to value), an even number of arguments (key, value pairs), or "
 				    "a single Map, but " +
 				    std::to_string(arguments.size()) +
-				    " arguments were provided\nHint: Pass Pair arguments "
+				    " arguments were provided", "Pass Pair arguments "
 				    "(e.g., " +
 				    std::string(context.lexerString[nameId]) +
 				    "(k1 to v1, k2 to v2)), key-value pairs (" +
@@ -806,7 +802,7 @@ ExprNode *CallNode::optimize(in_func) {
 			case NodeType::CLASS_ACCESS: {
 				throwError("Cannot input class at parameter " +
 				           std::to_string(i + 1) +
-				           "\nHint: Parameter expects an instance value, not a "
+				           "", "Parameter expects an instance value, not a "
 				           "class type.");
 			}
 			case NodeType::CALL: {
@@ -824,7 +820,7 @@ ExprNode *CallNode::optimize(in_func) {
 				if (argument->classId == Autolang::DefaultClass::voidClassId) {
 					throwError("Cannot input Void value at parameter " +
 					           std::to_string(i + 1) +
-					           "\nHint: Parameter expects a value-returning "
+					           "", "Parameter expects a value-returning "
 					           "expression, not a function that returns Void.");
 				}
 				break;
@@ -928,7 +924,7 @@ ExprNode *CallNode::optimize(in_func) {
 			if (arguments.size() != 1) {
 				throwError("Invalid call: " + std::string(context.lexerString[nameId]) +
 				           " expects 1 argument (closure), but " +
-				           std::to_string(arguments.size()) + " were provided\nHint: Use obj." +
+				           std::to_string(arguments.size()) + " were provided", "Use obj." +
 				           std::string(context.lexerString[nameId]) + " { ... }");
 			}
 			auto arg = arguments[0];
@@ -1433,20 +1429,29 @@ ExprNode *CallNode::optimize(in_func) {
 
 		std::string targetName(context.lexerString[nameId]);
 		std::string bestSuggestion;
+		std::string bestSuggestionDesc;
 		double bestScore = 0.0;
-		auto checkSuggestion = [&](std::string_view candidate) {
+		auto checkSuggestion = [&](std::string_view candidate,
+		                           const std::string &desc = "") {
 			double score = rapidfuzz::fuzz::ratio(targetName, candidate);
 			if (score > bestScore && score >= 60.0) {
 				bestScore = score;
 				bestSuggestion = candidate;
+				bestSuggestionDesc = desc;
 			}
 		};
 
 		if (caller) {
 			auto callerClassInfo = context.classInfo[caller->classId];
 			if (callerClassInfo) {
-				for (const auto &[fNameId, _] : callerClassInfo->allFunction) {
-					checkSuggestion(context.lexerString[fNameId]);
+				for (const auto &[fNameId, fIds] : callerClassInfo->allFunction) {
+					std::string desc;
+					if (!fIds.empty()) {
+						auto fInfo = context.functionInfo[fIds[0]];
+						if (fInfo)
+							desc = fInfo->description;
+					}
+					checkSuggestion(context.lexerString[fNameId], desc);
 				}
 				for (auto *decl : callerClassInfo->member) {
 					if (decl)
@@ -1460,14 +1465,26 @@ ExprNode *CallNode::optimize(in_func) {
 			}
 		} else {
 			for (const auto &pair : compile.funcMap) {
-				checkSuggestion(pair.first);
+				std::string desc;
+				if (!pair.second.empty()) {
+					auto fInfo = context.functionInfo[pair.second[0]];
+					if (fInfo)
+						desc = fInfo->description;
+				}
+				checkSuggestion(pair.first, desc);
 			}
 			if (contextCallClassId) {
 				auto callerClassInfo = context.classInfo[*contextCallClassId];
 				if (callerClassInfo) {
-					for (const auto &[fNameId, _] :
+					for (const auto &[fNameId, fIds] :
 					     callerClassInfo->allFunction) {
-						checkSuggestion(context.lexerString[fNameId]);
+						std::string desc;
+						if (!fIds.empty()) {
+							auto fInfo = context.functionInfo[fIds[0]];
+							if (fInfo)
+								desc = fInfo->description;
+						}
+						checkSuggestion(context.lexerString[fNameId], desc);
 					}
 					for (auto *decl : callerClassInfo->member) {
 						if (decl)
@@ -1503,6 +1520,9 @@ ExprNode *CallNode::optimize(in_func) {
 
 		if (!bestSuggestion.empty() && bestSuggestion != targetName) {
 			errorMsg += "\nDid you mean: '" + bestSuggestion + "'?";
+			if (!bestSuggestionDesc.empty()) {
+				errorMsg += " (" + bestSuggestionDesc + ")";
+			}
 		}
 
 		if (!found.empty()) {
@@ -1510,32 +1530,6 @@ ExprNode *CallNode::optimize(in_func) {
 			errorMsg += "\nHint: Verify argument types and count match one of "
 			            "the available function overloads.";
 		} else if (caller) {
-			auto callerClassInfo = context.classInfo[caller->classId];
-			std::string availFuncs;
-			bool hasAvail = false;
-			if (callerClassInfo) {
-				for (const auto &[fNameId, fIds] :
-				     callerClassInfo->allFunction) {
-					for (auto fId : fIds) {
-						auto fInfo = context.functionInfo[fId];
-						if (fInfo) {
-							if (hasAvail)
-								availFuncs += "\n";
-							availFuncs += fInfo->toString(in_data);
-							hasAvail = true;
-						}
-					}
-				}
-			}
-			if (hasAvail) {
-				errorMsg += "\nAvailable functions in '" +
-				            compile.classes[caller->classId]->getName(compile) +
-				            "':\n" + availFuncs;
-			} else {
-				errorMsg += "\n(No functions declared in class '" +
-				            compile.classes[caller->classId]->getName(compile) +
-				            "')";
-			}
 			errorMsg += "\nHint: Check function name spelling or verify "
 			            "whether it is declared in class '" +
 			            compile.classes[caller->classId]->getName(compile) +
@@ -1547,7 +1541,7 @@ ExprNode *CallNode::optimize(in_func) {
 
 		if (mustCheckNullableDot) {
 			throwError("You can't use '.' with nullable value, you must "
-			           "use '?.'\nHint: Use safe navigation operator '?.' "
+			           "use '?.'", "Use safe navigation operator '?.' "
 			           "when accessing members of a nullable object.");
 		}
 		throwError(errorMsg);
@@ -1567,7 +1561,7 @@ ExprNode *CallNode::optimize(in_func) {
 		}
 
 		throwError(message +
-		           "\nHint: Provide explicit type casts for arguments to "
+		           "", "Provide explicit type casts for arguments to "
 		           "disambiguate the function overload.");
 	}
 	funcId = first.id;
@@ -1576,7 +1570,7 @@ ExprNode *CallNode::optimize(in_func) {
 	if (mustCheckNullableDot) {
 		if (!(func->functionFlags & FunctionFlags::FUNC_NULLABLE_RECEIVER)) {
 			throwError("You can't use '.' with nullable value, you must "
-			           "use '?.'\nHint: Use safe navigation operator '?.' "
+			           "use '?.'", "Use safe navigation operator '?.' "
 			           "when accessing members of a nullable object.");
 		}
 	}
@@ -1675,13 +1669,13 @@ ExprNode *CallNode::optimize(in_func) {
 					    std::to_string(i) +
 					    ": "
 					    "expected non-null, but argument could be null"
-					    "\nHint: Use '!' to assert or '??' to fallback.");
+					    "", "Use '!' to assert or '??' to fallback.");
 				}
 				throwError("Error: Nullability mismatch at parameter " +
 				           std::to_string(i) +
 				           ": "
 				           "expected non-null, but argument could be null"
-				           "\nHint: Use '?\?' to provide a fallback value.");
+				           "", "Use '?\?' to provide a fallback value.");
 			}
 			switch (argument->classId) {
 				case DefaultClass::intClassId: {
@@ -1815,7 +1809,7 @@ ExprNode *CallNode::optimize(in_func) {
 		throwError(
 		    "Function " + funcName + " expects " +
 		    std::to_string(funcInfo->genericData->genericDeclarations.size()) +
-		    " type argument but 0 were given\nHint: Provide type arguments "
+		    " type argument but 0 were given", "Provide type arguments "
 		    "explicitly (e.g., func<Type>(...)).");
 	}
 
@@ -1833,13 +1827,13 @@ ExprNode *CallNode::optimize(in_func) {
 	if (first.errorNonNullIfMatchCount) {
 		throwError("Cannot pass null to non-null parameter in function '" +
 		           funcName +
-		           "'\nHint: Provide a non-null argument or use '?\?' fallback "
+		           "'", "Provide a non-null argument or use '?\?' fallback "
 		           "operator.");
 	}
 	if (!(func->functionFlags & FunctionFlags::FUNC_PUBLIC) &&
 	    (!contextCallClassId || *contextCallClassId != funcInfo->clazz->id))
 		throwError("Cannot access private function name '" + funcName +
-		           "'\nHint: Mark function as 'public' or call it within its "
+		           "'", "Mark function as 'public' or call it within its "
 		           "defining class.");
 	// Add this
 	if (!caller && !(func->functionFlags & FunctionFlags::FUNC_IS_STATIC)) {
@@ -1878,7 +1872,7 @@ ExprNode *CallNode::optimize(in_func) {
 	    !(func->functionFlags & FunctionFlags::FUNC_IS_STATIC) &&
 	    !(func->functionFlags & FunctionFlags::FUNC_IS_CONSTRUCTOR))
 		throwError("Function '" + func->getName(compile) +
-		           "' is not a static function\nHint: Call this function on an "
+		           "' is not a static function", "Call this function on an "
 		           "instance of the class, or mark the function as 'static'.");
 	return this;
 }
@@ -1901,7 +1895,7 @@ void CallNode::matchFunction(in_func, ClassDeclaration *detach,
 				throwError("Type mismatch: expected '" +
 				           detach->getName(in_data) + "' but found '" +
 				           value->getName(in_data) +
-				           "'\nHint: Ensure closure parameters and return "
+				           "'", "Ensure closure parameters and return "
 				           "types match the target signature.");
 			}
 		}
@@ -1909,7 +1903,7 @@ void CallNode::matchFunction(in_func, ClassDeclaration *detach,
 	} else {
 		throwError("Type mismatch: expected '" + detach->getName(in_data) +
 		           "' but found '" + value->getName(in_data) +
-		           "'\nHint: Ensure closure parameter count matches the target "
+		           "'", "Ensure closure parameter count matches the target "
 		           "function signature.");
 	}
 }
@@ -1919,18 +1913,18 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 
 	if (funcObject->classId != DefaultClass::functionClassId) {
 		throwError(
-		    "Cannot call non-function object\nHint: Only instances of Function "
+		    "Cannot call non-function object", "Only instances of Function "
 		    "type or callable objects can be called as functions.");
 	}
 
 	if (!funcObject->classDeclaration) {
-		throwError("Bug: Class not ensure is Function\nHint: Internal compiler "
+		throwError("Bug: Class not ensure is Function", "Internal compiler "
 		           "error - function object lacks Function class declaration.");
 	}
 
 	if (funcObject->isNullable()) {
 		throwError(
-		    "Cannot call nullable function object\nHint: Perform a null check "
+		    "Cannot call nullable function object", "Perform a null check "
 		    "or use safe navigation '?.' before calling a nullable function.");
 	}
 
@@ -1947,11 +1941,11 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 		           funcObject->classDeclaration->getName(in_data) +
 		           " expects " + std::to_string(inputClass.size() - 1) +
 		           " argument but " + std::to_string(arguments.size()) +
-		           " were given\nHint: Check the number of arguments passed to "
+		           " were given", "Check the number of arguments passed to "
 		           "the function object.");
 	}
 	if (justFindStatic) {
-		throwError("Cannot call non-static function from static context\nHint: "
+		throwError("Cannot call non-static function from static context", ""
 		           "Instantiate the class first or make the function static.");
 	}
 	int j = 0;
@@ -1966,13 +1960,13 @@ void CallNode::matchFunction(in_func, bool mustInferenceGenericType) {
 				           std::to_string(j + 1) +
 				           ": "
 				           "expected non-null, but argument could be null"
-				           "\nHint: Use '!' to assert or '?\?' to fallback.");
+				           "", "Use '!' to assert or '?\?' to fallback.");
 			}
 			throwError("Error: Nullability mismatch at parameter " +
 			           std::to_string(j + 1) +
 			           ": "
 			           "expected non-null, but argument could be null"
-			           "\nHint: Use '?\?' to provide a fallback value.");
+			           "", "Use '?\?' to provide a fallback value.");
 		}
 		if (funcExpectClassId == inputClassId) {
 			if (funcExpectClassId == DefaultClass::functionClassId) {
@@ -2127,7 +2121,7 @@ err:;
 	           std::to_string(j) + " expected " +
 	           compile.classes[*inputClass[j + 1]->classId]->getName(compile) +
 	           " but " + compile.classes[argumentClassId]->getName(compile) +
-	           " found\nHint: Ensure argument type matches the expected "
+	           " found", "Ensure argument type matches the expected "
 	           "parameter type.");
 }
 

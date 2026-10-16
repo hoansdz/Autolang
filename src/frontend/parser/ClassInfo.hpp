@@ -30,6 +30,7 @@ struct ClassInfo {
 	SmallVector<CreateFuncNode *, 8> createFunctionNodes;
 	HashMap<LexerStringId, std::vector<CreateFuncNode *>> genericFunctionMap;
 	DeclarationNode *declarationThis = nullptr;
+	std::string description;
 
 	AccessNode *findDeclaration(in_func, uint32_t line, LexerStringId nameId,
 	                            bool isStatic = false);

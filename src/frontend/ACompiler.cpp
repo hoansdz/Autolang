@@ -136,7 +136,7 @@ void ACompiler::loadSource(LibraryData *library) {
 		}
 		state = CompilerState::CT_ANALYZED;
 	} catch (const ParserError &err) {
-		context.logError(err.line, err.message);
+		context.logError(err.line, err.message, err.hint);
 		state = CompilerState::CT_ERROR;
 	}
 }
@@ -317,7 +317,7 @@ void ACompiler::loadMainSource(LibraryData *library) {
 			library->dependencies[lib->path] = lib;
 		}
 	} catch (const ParserError &err) {
-		context.logError(err.line, err.message);
+		context.logError(err.line, err.message, err.hint);
 		state = CompilerState::CT_ERROR;
 		context.currentClassId = std::nullopt;
 		context.currentFunctionId = context.mainFunctionId;
@@ -470,7 +470,7 @@ void ACompiler::generateBytecodes() {
 			std::cerr << "Unexpected exception: " << err.what() << '\n';
 		} catch (const ParserError &err) {
 			context.hasError = true;
-			context.logError(err.line, err.message);
+			context.logError(err.line, err.message, err.hint);
 			if (i >= context.tokens.size())
 				break;
 			uint32_t line = context.tokens[i].line;
@@ -636,7 +636,7 @@ void ACompiler::generateBytecodes() {
 					        "' does not extend required base class '" +
 					        compile.classes[conditionClassId]->getName(
 					            compile) +
-					        "'\nHint: Generic argument type must implement or "
+					        "'", "Generic argument type must implement or "
 					        "inherit the constraint type.");
 				}
 			}
@@ -708,6 +708,8 @@ void ACompiler::generateBytecodes() {
 
 					func->bytecodes.size =
 					    compile.allBytecodes.size() - func->bytecodes.offset;
+					func->opcodeLineCount =
+					    compile.allOpcodeLines.size() - func->opcodeIndex;
 				} else {
 					for (auto &constructor : classInfo->secondaryConstructor) {
 						auto func = compile.functions[constructor->funcId];
@@ -739,6 +741,8 @@ void ACompiler::generateBytecodes() {
 
 						func->bytecodes.size =
 						    compile.allBytecodes.size() - func->bytecodes.offset;
+						func->opcodeLineCount =
+						    compile.allOpcodeLines.size() - func->opcodeIndex;
 					}
 				}
 				context.currentClassId = std::nullopt;
@@ -815,7 +819,7 @@ void ACompiler::generateBytecodes() {
 				    "Function " +
 				        context.functionInfo[node->id]->toString(in_data) +
 				        " is marked @override but no virtual function was "
-				        "found in superclass\nHint: Check method name and "
+				        "found in superclass", "Check method name and "
 				        "signature, and ensure base class method is marked "
 				        "virtual.");
 			}
@@ -844,6 +848,8 @@ void ACompiler::generateBytecodes() {
 			                                    context.currentBytecodePos);
 			func->bytecodes.size =
 			    compile.allBytecodes.size() - func->bytecodes.offset;
+			func->opcodeLineCount =
+			    compile.allOpcodeLines.size() - func->opcodeIndex;
 			context.currentClassId = std::nullopt;
 		}
 
@@ -865,6 +871,8 @@ void ACompiler::generateBytecodes() {
 		                                        context.currentBytecodePos);
 		mainFunc->bytecodes.size =
 		    compile.allBytecodes.size() - mainFunc->bytecodes.offset;
+		mainFunc->opcodeLineCount =
+		    compile.allOpcodeLines.size() - mainFunc->opcodeIndex;
 
 		printDebug("Start put closure's bytecode on vector allBytecodes");
 		for (auto closure : context.allClosureNode) {
@@ -878,6 +886,7 @@ void ACompiler::generateBytecodes() {
 			compile.allOpcodeLines.insert(compile.allOpcodeLines.end(),
 			                              closure->currentOpcodeLine.begin(),
 			                              closure->currentOpcodeLine.end());
+			func->opcodeLineCount = closure->currentOpcodeLine.size();
 		}
 
 		printDebug("Put member data to classes");
@@ -922,7 +931,7 @@ void ACompiler::generateBytecodes() {
 		// printDebug("TOTAL FUNC IN MAP: " + std::to_string(total));
 	} catch (const ParserError &err) {
 		context.hasError = true;
-		context.logError(err.line, err.message);
+		context.logError(err.line, err.message, err.hint);
 	} catch (const std::exception &err) {
 		context.hasError = true;
 		std::cerr << "Unexpected exception: " << err.what() << '\n';
@@ -1106,6 +1115,7 @@ ACompiler::ACompiler(ACompilerConfig config) {
 	parserContext.showWarnings = config.showWarnings;
 	parserContext.autoCloseBracketsOnEof = config.autoCloseBracketsOnEof;
 	parserContext.allowImplicitVarDeclaration = config.allowImplicitVarDeclaration;
+	parserContext.outputJsonDiagnostics = config.outputJsonDiagnostics;
 
 	Autolang::Libs::stdlib::init(*this);
 	Autolang::DefaultClass::init(*this);
@@ -1189,6 +1199,14 @@ size_t ACompiler::getMaxManagedMemory() { return vm.getMaxManagedMemory(); }
 
 size_t ACompiler::getCurrentManagedMemory() {
 	return vm.getCurrentManagedMemory();
+}
+
+void ACompiler::setExecutionTimeoutMs(uint32_t executionTimeoutMs) {
+	vm.setExecutionTimeoutMs(executionTimeoutMs);
+}
+
+uint32_t ACompiler::getExecutionTimeoutMs() const {
+	return vm.getExecutionTimeoutMs();
 }
 
 } // namespace Autolang

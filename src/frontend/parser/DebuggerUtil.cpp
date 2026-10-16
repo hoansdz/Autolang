@@ -12,7 +12,7 @@ void ensureNoKeyword(in_func, size_t &i) {
 		return;
 	throw ParserError(
 	    context.tokens[i].line,
-	    "Command doesn't support any keyword\nHint: Remove modifiers (public, "
+	    "Command doesn't support any keyword", "Remove modifiers (public, "
 	    "private, static, etc.) from this command");
 }
 
@@ -20,7 +20,7 @@ void ensureNoAnnotations(in_func, size_t &i) {
 	if (!context.annotationFlags)
 		return;
 	throw ParserError(context.tokens[i].line,
-	                  "Command doesn't support any annotations\nHint: Remove "
+	                  "Command doesn't support any annotations", "Remove "
 	                  "'@' annotations from this command");
 }
 
@@ -31,12 +31,12 @@ Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t &i) {
 	if (context.modifierflags & ModifierFlags::MF_STATIC)
 		throw ParserError(
 		    context.tokens[i].line,
-		    "Command doesn't support 'static' keyword\nHint: Remove 'static' "
+		    "Command doesn't support 'static' keyword", "Remove 'static' "
 		    "keyword");
 	if (context.modifierflags & ModifierFlags::MF_LATEINIT)
 		throw ParserError(
 		    context.tokens[i].line,
-		    "Command doesn't support 'lateinit' keyword\nHint: Remove "
+		    "Command doesn't support 'lateinit' keyword", "Remove "
 		    "'lateinit' keyword");
 	switch (context.modifierflags) {
 		case ModifierFlags::MF_PUBLIC:
@@ -47,7 +47,7 @@ Lexer::TokenType getAndEnsureOneAccessModifier(in_func, size_t &i) {
 			return Lexer::TokenType::PROTECTED;
 		default:
 			throw ParserError(
-			    0, "Bug: Parser did not ensure exactly one modifier\nHint: Use "
+			    0, "Bug: Parser did not ensure exactly one modifier", "Use "
 			       "only "
 			       "one access modifier (public, private, or protected)");
 	}

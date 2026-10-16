@@ -15,7 +15,7 @@ WhileNode *loadWhile(in_func, size_t &i) {
 		--i;
 		throw ParserError(
 		    firstLine,
-		    "Expected condition expression in while statement\nHint: Provide a "
+		    "Expected condition expression in while statement", "Provide a "
 		    "boolean condition expression after while");
 	}
 	bool hasOuterParen = false;
@@ -50,7 +50,7 @@ WhileNode *loadWhile(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    firstLine,
-				    "Expected condition expression in while statement\nHint: Provide a "
+				    "Expected condition expression in while statement", "Provide a "
 				    "boolean condition expression inside while (...)");
 			}
 		}
@@ -65,7 +65,7 @@ WhileNode *loadWhile(in_func, size_t &i) {
 			--i;
 			throw ParserError(
 			    context.tokens[i].line,
-			    "Expected closing ')' after while condition\nHint: Close the while "
+			    "Expected closing ')' after while condition", "Close the while "
 			    "condition with ')'");
 		}
 	}
@@ -73,7 +73,7 @@ WhileNode *loadWhile(in_func, size_t &i) {
 		--i;
 		throw ParserError(
 		    context.tokens[i].line,
-		    "Expected body after while statement\nHint: Provide a loop body "
+		    "Expected body after while statement", "Provide a loop body "
 		    "enclosed in '{ ... }' after while (...)");
 	}
 	SmallVector<SmartCastInfo, 2> dummy;
@@ -92,7 +92,7 @@ ExprNode *loadFor(in_func, size_t &i) {
 		--i;
 		throw ParserError(
 		    firstLine,
-		    "Expected loop variable in for statement\nHint: Declare a loop "
+		    "Expected loop variable in for statement", "Declare a loop "
 		    "variable after 'for', e.g. for (item in list) or for item in list");
 	}
 	bool hasOuterParen = false;
@@ -188,14 +188,14 @@ ExprNode *loadFor(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    firstLine,
-				    "Expected loop variable name in for statement\nHint: Declare a loop "
+				    "Expected loop variable name in for statement", "Declare a loop "
 				    "variable after 'for (', e.g. for (i in ...)");
 			}
 		}
 	} else if (context.strictMode) {
 		throw ParserError(
 		    firstLine,
-		    "For loop expression must be enclosed in parentheses 'for (...) ' in strict mode\nHint: Add parentheses around the for loop condition, e.g. for (i in 1..5)");
+		    "For loop expression must be enclosed in parentheses 'for (...) ' in strict mode", "Add parentheses around the for loop condition, e.g. for (i in 1..5)");
 	}
 	bool isDestructuring = false;
 	if (expect(token, Lexer::TokenType::LPAREN)) {
@@ -204,7 +204,7 @@ ExprNode *loadFor(in_func, size_t &i) {
 			--i;
 			throw ParserError(
 			    token->line,
-			    "Expected loop variable name in for statement\nHint: Declare a loop "
+			    "Expected loop variable name in for statement", "Declare a loop "
 			    "variable after 'for ((', e.g. for ((k, v) in ...)");
 		}
 	}
@@ -235,7 +235,7 @@ ExprNode *loadFor(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "Expected variable name or '_' in destructuring loop variables\nHint: "
+				    "Expected variable name or '_' in destructuring loop variables", ""
 				    "Provide variable names or '_' to ignore, e.g. for ((a, b, c) in ...)");
 			}
 
@@ -243,7 +243,7 @@ ExprNode *loadFor(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    token->line,
-				    "Expected ',' or ')' in destructuring loop variables\nHint: "
+				    "Expected ',' or ')' in destructuring loop variables", ""
 				    "Separate variables with comma and close with ')'");
 			}
 
@@ -254,7 +254,7 @@ ExprNode *loadFor(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    context.tokens[i].line,
-				    "Expected ',' or ')' after destructuring loop variable\nHint: "
+				    "Expected ',' or ')' after destructuring loop variable", ""
 				    "Separate variables with comma: for ((a, b, c) in ...)");
 			}
 			if (!nextTokenSameLine(&token, context.tokens, i, token->line)) {
@@ -289,7 +289,7 @@ ExprNode *loadFor(in_func, size_t &i) {
 			--i;
 			throw ParserError(
 			    context.tokens[i].line,
-			    "Expected identifier as loop variable in for statement\nHint: Loop "
+			    "Expected identifier as loop variable in for statement", "Loop "
 			    "variable name must be a valid identifier");
 		}
 		auto baseName = token->indexData;
@@ -311,7 +311,7 @@ ExprNode *loadFor(in_func, size_t &i) {
 					--i;
 					throw ParserError(
 					    context.tokens[i].line,
-					    "Expected identifier as second loop variable in for statement\nHint: "
+					    "Expected identifier as second loop variable in for statement", ""
 					    "Provide a value variable name after comma: for (key, value in map)");
 				}
 				auto baseNameVal = token->indexData;
@@ -334,14 +334,14 @@ ExprNode *loadFor(in_func, size_t &i) {
 		--i;
 		throw ParserError(
 		    context.tokens[i].line,
-		    "Expected 'in' after loop variable in for statement\nHint: Use the "
+		    "Expected 'in' after loop variable in for statement", "Use the "
 		    "'in' keyword between loop variable and iterable: for (x in items)");
 	}
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		throw ParserError(
 		    context.tokens[i].line,
-		    "Expected iterable expression after 'in' in for statement\nHint: "
+		    "Expected iterable expression after 'in' in for statement", ""
 		    "Provide an array, range, or iterable object after 'in'");
 	}
 	bool prevAllowTrailingClosure = context.allowTrailingClosure;
@@ -397,7 +397,7 @@ ExprNode *loadFor(in_func, size_t &i) {
 			--i;
 			throw ParserError(
 			    context.tokens[i].line,
-			    "Expected closing ')' after for condition\nHint: Close the for "
+			    "Expected closing ')' after for condition", "Close the for "
 			    "header with ')' after the iterable expression");
 		}
 	}
@@ -405,7 +405,7 @@ ExprNode *loadFor(in_func, size_t &i) {
 		--i;
 		throw ParserError(
 		    context.tokens[i].line,
-		    "Expected body after for statement\nHint: Provide a loop body "
+		    "Expected body after for statement", "Provide a loop body "
 		    "enclosed in '{ ... }' after for (...)");
 	}
 	auto node =

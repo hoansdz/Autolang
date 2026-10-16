@@ -31,7 +31,7 @@ ExprNode *TryCatchNode::optimize(in_func) {
 			      excClass->inheritance.get(DefaultClass::exceptionClassId))) {
 				throwError("Catch parameter type must inherit from Exception (got '" +
 				           excClass->getName(compile) +
-				           "')\nHint: Ensure the caught exception class inherits from Exception.");
+				           "')", "Ensure the caught exception class inherits from Exception.");
 			}
 			if (clause.exceptionDeclaration) {
 				clause.exceptionDeclaration->classId = clause.exceptionClassId;

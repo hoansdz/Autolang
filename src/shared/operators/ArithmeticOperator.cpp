@@ -199,6 +199,8 @@ AObject *mul(NativeFuncInData) {
 					return notifier.createFloat((obj1->i) * (obj2->f));
 				case Autolang::DefaultClass::boolClassId:
 					return notifier.createInt((obj1->i) * (obj2->b));
+				case Autolang::DefaultClass::stringClassId:
+					return notifier.createString(obj2->str->repeat(obj1->i));
 				default:
 					break;
 			}
@@ -227,6 +229,12 @@ AObject *mul(NativeFuncInData) {
 					return notifier.createInt((obj1->b) * (obj2->b));
 				default:
 					break;
+			}
+			break;
+		}
+		case Autolang::DefaultClass::stringClassId: {
+			if (obj2->type == Autolang::DefaultClass::intClassId) {
+				return notifier.createString(obj1->str->repeat(obj2->i));
 			}
 			break;
 		}

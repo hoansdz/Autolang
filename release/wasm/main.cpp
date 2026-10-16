@@ -126,6 +126,7 @@ class CompilerWrapper {
 		// 1. Resource Limits (Defaults: 32MB RAM, 1,000,000 opcodes)
 		uint32_t maxOpcodeCount = 1000000;
 		size_t maxMemoryBytes = 32 * 1024 * 1024; // 32MB
+		uint32_t executionTimeoutMs = 0;
 		if (j.contains("limits") && j["limits"].is_object()) {
 			const auto &limits = j["limits"];
 			if (limits.contains("maxOpcodeCount") && limits["maxOpcodeCount"].is_number()) {
@@ -134,11 +135,15 @@ class CompilerWrapper {
 			if (limits.contains("maxMemoryBytes") && limits["maxMemoryBytes"].is_number()) {
 				maxMemoryBytes = limits["maxMemoryBytes"].get<size_t>();
 			}
+			if (limits.contains("executionTimeoutMs") && limits["executionTimeoutMs"].is_number()) {
+				executionTimeoutMs = limits["executionTimeoutMs"].get<uint32_t>();
+			}
 		}
 #ifdef AUTOLANG_LIMIT_OPCODE
 		compiler.setLimitOpcodeCount(maxOpcodeCount);
 #endif
 		compiler.setMaxManagedMemory(maxMemoryBytes);
+		compiler.setExecutionTimeoutMs(executionTimeoutMs);
 
 		// 2. Compatibility settings
 		bool ignoreForeignImports = true;
@@ -370,6 +375,14 @@ class CompilerWrapper {
 		return compiler.getCurrentManagedMemory();
 	}
 
+	void setExecutionTimeoutMs(uint32_t ms) {
+		compiler.setExecutionTimeoutMs(ms);
+	}
+
+	uint32_t getExecutionTimeoutMs() {
+		return compiler.getExecutionTimeoutMs();
+	}
+
 	// ---- Domain whitelist builder (avoids emscripten::val as parameter) ----
 	void clearDomainRules() {
 #ifndef NO_INCLUDE_LIBS_HTTP
@@ -449,7 +462,7 @@ class CompilerWrapper {
 			bool result = compiler.compileAndRun(
 			    path.c_str(), data.c_str(), mainSourceConfig);
 			std::cerr.rdbuf(old);
-			return result;
+			return result && !compiler.hasException();
 		} catch (const std::exception &e) {
 			std::cerr << e.what() << "\n";
 		}
@@ -481,10 +494,10 @@ class CompilerWrapper {
 	bool run() {
 		try {
 			compiler.run();
+			return !compiler.hasException();
 		} catch (const std::exception &e) {
 			return false;
 		}
-		return true;
 	}
 
 	std::string getOutput() {
@@ -508,6 +521,9 @@ class CompilerWrapper {
 	bool hasCompilerError() { return compiler.hasError(); }
 
 	bool hasException() {
+		if (compiler.hasException()) {
+			return true;
+		}
 		if (compiler.vm.callFrames.getSize() == 0) {
 			if (compiler.vm.callFrames.objects[0].exception) {
 				return true;
@@ -518,11 +534,16 @@ class CompilerWrapper {
 	}
 
 	val getException() {
+		if (compiler.hasException()) {
+			val obj = val::object();
+			obj.set("message", std::string(compiler.exceptionMessage));
+			return obj;
+		}
 		if (compiler.vm.callFrames.getSize() == 0) {
 			if (compiler.vm.callFrames.objects[0].exception) {
 				val obj = val::object();
 				auto exception = compiler.exceptionMessage;
-				obj.set("message", std::string(exception));
+				obj.set("message", std::string(exception ? exception : ""));
 				return obj;
 			}
 			return val::null();
@@ -563,6 +584,10 @@ EMSCRIPTEN_BINDINGS(autolang_module) {
 	    .function("getMaxManagedMemory", &CompilerWrapper::getMaxManagedMemory)
 	    .function("getCurrentManagedMemory",
 	              &CompilerWrapper::getCurrentManagedMemory)
+	    .function("setExecutionTimeoutMs",
+	              &CompilerWrapper::setExecutionTimeoutMs)
+	    .function("getExecutionTimeoutMs",
+	              &CompilerWrapper::getExecutionTimeoutMs)
 	    .function("clearDomainRules", &CompilerWrapper::clearDomainRules)
 	    .function("addDomainRule", &CompilerWrapper::addDomainRule)
 	    .function("applyDomainRules", &CompilerWrapper::applyDomainRules)

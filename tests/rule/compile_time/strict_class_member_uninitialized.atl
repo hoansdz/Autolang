@@ -1,0 +1,6 @@
+class StrictUninitUser {
+	val name: String
+	constructor(n: String) {
+		this.name = n
+	}
+}

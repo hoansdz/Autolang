@@ -56,7 +56,7 @@ ExprNode *FunctionAccessNode::optimize(in_func) {
 				throwError("Cannot find member function '" +
 				           std::string(context.lexerString[nameId]) + "' in class '" +
 				           className +
-				           "'\nHint: Verify member function name spelling or accessibility.");
+				           "'", "Verify member function name spelling or accessibility.");
 			}
 		} else {
 			if (context.currentClassId) {
@@ -79,7 +79,7 @@ ExprNode *FunctionAccessNode::optimize(in_func) {
 			if (count == 0) {
 				throwError("Cannot find function '" +
 				           std::string(context.lexerString[nameId]) +
-				           "'\nHint: Check function name spelling, ensure it is in scope or declared before usage.");
+				           "'", "Check function name spelling, ensure it is in scope or declared before usage.");
 			}
 		}
 	}
@@ -161,14 +161,14 @@ ExprNode *FunctionAccessNode::optimize(in_func) {
 			}
 			throwError("Ambiguous reference to: '" +
 			           std::string(context.lexerString[nameId]) + "'\nFound: " + found +
-			           "\nHint: Multiple functions match this identifier. Explicitly specify function parameter types or refine the type signature.");
+			           "", "Multiple functions match this identifier. Explicitly specify function parameter types or refine the type signature.");
 		}
 	}
 
 	if (*classDeclaration->classId != DefaultClass::functionClassId) {
 		throwError("Expected Function type, but '" +
 		           compile.classes[*classDeclaration->classId]->getName(compile) +
-		           "' found\nHint: Ensure the expression resolves to a Function type before referencing or invoking it.");
+		           "' found", "Ensure the expression resolves to a Function type before referencing or invoking it.");
 	}
 
 	{
@@ -230,7 +230,7 @@ ExprNode *FunctionAccessNode::optimize(in_func) {
 
 				if (matchFuncId) {
 					throwError("Ambiguous function call: overload conflict for '" + func->getName(compile) +
-					           "'\nHint: Multiple overloaded functions match the targeted signature. Explicitly specify types or cast arguments to resolve conflict.");
+					           "'", "Multiple overloaded functions match the targeted signature. Explicitly specify types or cast arguments to resolve conflict.");
 				}
 				matchFuncId = candidateId;
 			}
@@ -240,7 +240,7 @@ ExprNode *FunctionAccessNode::optimize(in_func) {
 			throwError(
 			    "Cannot find function '" + std::string(context.lexerString[nameId]) +
 			    "' matching signature: " + classDeclaration->getName(in_data) +
-			    "\nHint: Verify the function name spelling, argument count, parameter types, and return type against available definitions.");
+			    "", "Verify the function name spelling, argument count, parameter types, and return type against available definitions.");
 		}
 
 		funcId = *matchFuncId;

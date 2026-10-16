@@ -221,6 +221,19 @@ fun testStringFeatures() {
     assert("".maxOrNull() == null)
     assert("Kotlin".decapitalize() == "kotlin")
 
+    // string multiplication (String * Int, Int * String, String *= Int)
+    assert("abc" * 3 == "abcabcabc")
+    assert(3 * "abc" == "abcabcabc")
+    assert("abc" * 0 == "")
+    assert("abc" * -2 == "")
+    var repeated = "hi"
+    repeated *= 2
+    assert(repeated == "hihi")
+    var timesVal = 3
+    var baseStr = "xyz"
+    assert(baseStr * timesVal == "xyzxyzxyz")
+    assert(timesVal * baseStr == "xyzxyzxyz")
+
     println("Passed ${__FUNC__}")
 }
 

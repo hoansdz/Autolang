@@ -40,7 +40,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 		    context.currentFunctionId == context.mainFunctionId) {
 			throw ParserError(
 			    token->line,
-			    "Static cannot be declared in file scope\nHint: Use 'static' "
+			    "Static cannot be declared in file scope", "Use 'static' "
 			    "modifier only within class member declarations");
 		}
 		isGlobal = true;
@@ -53,7 +53,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 			throw ParserError(
 			    firstLine,
 			    "Error: Modifier 'lateinit' is not allowed on local variables. "
-			    "Initialize the variable directly instead.\nHint: Remove "
+			    "Initialize the variable directly instead.", "Remove "
 			    "'lateinit' or move variable to class/file scope");
 		}
 		context.modifierflags &= ~ModifierFlags::MF_LATEINIT;
@@ -93,7 +93,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 			} else {
 				--i;
 				throw ParserError(context.tokens[i].line,
-				                  "Expected variable name or '_' in destructuring declaration\nHint: Provide a variable name or '_' to ignore");
+				                  "Expected variable name or '_' in destructuring declaration", "Provide a variable name or '_' to ignore");
 			}
 
 			if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
@@ -107,20 +107,20 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 			if (!expect(token, Lexer::TokenType::COMMA)) {
 				--i;
 				throw ParserError(context.tokens[i].line,
-				                  "Expected ',' or ')' in destructuring declaration\nHint: Separate destructuring variables with comma: val (a, b) = ...");
+				                  "Expected ',' or ')' in destructuring declaration", "Separate destructuring variables with comma: val (a, b) = ...");
 			}
 		}
 
 		if (targets.empty()) {
 			throw ParserError(declaration->line,
-			                  "Destructuring declaration must have at least one variable\nHint: val (a, b) = ...");
+			                  "Destructuring declaration must have at least one variable", "val (a, b) = ...");
 		}
 
 		if (!nextTokenSameLine(&token, context.tokens, i, declaration->line) ||
 		    !expect(token, Lexer::TokenType::EQUAL)) {
 			--i;
 			throw ParserError(declaration->line,
-			                  "Expected '=' after destructuring declaration\nHint: val (a, b) = source");
+			                  "Expected '=' after destructuring declaration", "val (a, b) = source");
 		}
 
 		if (!nextToken(&token, context.tokens, i)) {
@@ -153,7 +153,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 	     !expect(token, Lexer::TokenType::TO))) {
 		--i;
 		throw ParserError(context.tokens[i].line,
-		                  "Expected name but not found\nHint: Provide a valid "
+		                  "Expected name but not found", "Provide a valid "
 		                  "variable name identifier");
 	}
 	{
@@ -174,7 +174,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 			throw ParserError(
 			    token->line,
 			    "@js_object class is already under automatic memory"
-			    " management, it can't have any member\nHint: Remove member "
+			    " management, it can't have any member", "Remove member "
 			    "variables from @js_object class");
 		}
 #elif __PYBIND11__
@@ -182,7 +182,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 			throw ParserError(
 			    token->line,
 			    "@py_object class is already under automatic memory"
-			    " management, it can't have any member\nHint: Remove member "
+			    " management, it can't have any member", "Remove member "
 			    "variables from @py_object class");
 		}
 #endif
@@ -191,7 +191,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 		        classInfo->staticMember.end())
 			throw ParserError(token->line,
 			                  "Declaration: Redefined variable name \"" + std::string(name) +
-			                      "\"\nHint: Choose a unique variable name");
+			                      "\"", "Choose a unique variable name");
 	}
 	// Sugar syntax val a? = 1
 	bool nullable = true;
@@ -199,7 +199,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 	if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
 		--i;
 		throw ParserError(firstLine,
-		                  "Expected class name but not found\nHint: Provide a "
+		                  "Expected class name but not found", "Provide a "
 		                  "type or variable initial value");
 	}
 	if (expect(token, Lexer::TokenType::QMARK)) {
@@ -208,7 +208,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 		if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
 			--i;
 			throw ParserError(firstLine,
-			                  "Expected class name but not found\nHint: "
+			                  "Expected class name but not found", ""
 			                  "Provide type after '?' in sugar syntax");
 		}
 	} else if (expect(token, Lexer::TokenType::EXMARK)) {
@@ -216,7 +216,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 			throw ParserError(
 			    token->line,
 			    "Non-null assertion operator '!' is disabled (enable "
-			    "'allowNonNullAssertion' option to use it)\nHint: Enable "
+			    "'allowNonNullAssertion' option to use it)", "Enable "
 			    "'allowNonNullAssertion' in compiler settings");
 		}
 		sugarSyntax = true;
@@ -225,7 +225,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 		if (!nextTokenSameLine(&token, context.tokens, i, declaration->line)) {
 			--i;
 			throw ParserError(firstLine,
-			                  "Expected class name but not found\nHint: "
+			                  "Expected class name but not found", ""
 			                  "Provide type after '!' in sugar syntax");
 		}
 	}
@@ -247,7 +247,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 			        (isVal ? "val " : "var ") + std::string(name) + ": " +
 			        classDeclaration->getName(in_data) +
 			        (nullable ? "?" : "!") +
-			        "' instead\nHint: Use either 'val a? = 1' or 'val a: Int? "
+			        "' instead", "Use either 'val a? = 1' or 'val a: Int? "
 			        "= 1'");
 		}
 		nullable = classDeclaration->nullable;
@@ -282,7 +282,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 			--i;
 			throw ParserError(
 			    context.tokens[i].line,
-			    "Expected expression after '=' but not found\nHint: Provide "
+			    "Expected expression after '=' but not found", "Provide "
 			    "initial value expression after '='");
 		}
 		bool lastJustFindStatic = context.justFindStatic;
@@ -295,7 +295,7 @@ HasClassIdNode *loadDeclaration(in_func, size_t &i) {
 			throw ParserError(
 			    token->line,
 			    "Variable '" + std::string(name) +
-			        "' must have an explicit type\nHint: Change to 'val " +
+			        "' must have an explicit type", "Change to 'val " +
 			        std::string(name) + ": Type?'");
 		}
 		autogeneratedValue = true;
@@ -350,6 +350,11 @@ createNode:;
 	node->tokenIndex = i;
 	if (isLateinit) {
 		node->isLateInit = true;
+	} else if (!context.strictMode && autogeneratedValue && !nullable &&
+	           context.currentClassId &&
+	           context.currentFunctionId == context.mainFunctionId) {
+		isLateinit = true;
+		node->isLateInit = true;
 	}
 	node->accessModifier = accessModifier;
 	node->mustInferenceNullable = !sugarSyntax && !classDeclaration;
@@ -379,7 +384,7 @@ createNode:;
 			if (it != funcInfo->scopes.back().end())
 				throw ParserError(token->line,
 				                  std::string(context.lexerString[baseName]) +
-				                      " already exists\nHint: Rename variable "
+				                      " already exists", "Rename variable "
 				                      "to avoid scope collision");
 			funcInfo->scopes.back()[baseName] = node;
 			if (funcInfo->genericData) {
@@ -450,7 +455,7 @@ std::vector<ClassDeclaration *> loadListClassDeclaration(in_func, size_t &i,
 		--i;
 		throw ParserError(
 		    context.tokens[i].line,
-		    "Expected class name but not found\nHint: Provide class type name");
+		    "Expected class name but not found", "Provide class type name");
 	}
 	std::vector<ClassDeclaration *> listClassDeclaration;
 	if (expect(token, Lexer::TokenType::RPAREN)) {
@@ -475,7 +480,7 @@ std::vector<ClassDeclaration *> loadListClassDeclaration(in_func, size_t &i,
 			--i;
 			throw ParserError(
 			    context.tokens[i].line,
-			    "Expected '>' after class name but not found\nHint: Close "
+			    "Expected '>' after class name but not found", "Close "
 			    "generic type argument list with '>'");
 		}
 		switch (token->type) {
@@ -487,7 +492,7 @@ std::vector<ClassDeclaration *> loadListClassDeclaration(in_func, size_t &i,
 			}
 			default: {
 				throw ParserError(
-				    line, "Expected '>' after class name but not found\nHint: "
+				    line, "Expected '>' after class name but not found", ""
 				          "Close generic type argument list with '>'");
 			}
 		}
@@ -502,7 +507,7 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 		--i;
 		throw ParserError(
 		    context.tokens[i].line,
-		    "Expected class name but not found\nHint: Provide class type name");
+		    "Expected class name but not found", "Provide class type name");
 	}
 	ClassDeclaration *result = nullptr;
 	bool expectFunction = false;
@@ -542,20 +547,20 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 				case lexerIdFunction: {
 					throw ParserError(
 					    token->line, "Function cannot be used as a type for "
-					                 "declaration\nHint: Use explicit function "
+					                 "declaration", "Use explicit function "
 					                 "type syntax like '(Int) -> String'");
 				}
 				case lexerIdNull: {
 					throw ParserError(
 					    token->line,
-					    "Null cannot be used as a type for declaration\nHint: "
+					    "Null cannot be used as a type for declaration", ""
 					    "Use 'Type?' to declare a nullable type");
 				}
 				case lexerIdVoid: {
 					if (!allowReturnVoid) {
 						throw ParserError(token->line,
 						                  "Void cannot be used as a type for "
-						                  "declaration\nHint: 'Void' can only "
+						                  "declaration", "'Void' can only "
 						                  "be used as a function return type");
 					}
 					result->classId = DefaultClass::voidClassId;
@@ -631,7 +636,7 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 		}
 		case Lexer::TokenType::GT: {
 			throw ParserError(token->line,
-			                  "Generic must have a type argument\nHint: "
+			                  "Generic must have a type argument", ""
 			                  "Provide type arguments inside '<...>'");
 		}
 		default:
@@ -713,7 +718,7 @@ void loadListGenericDeclarationType(in_func, size_t &i, uint32_t line,
 			--i;
 			throw ParserError(
 			    context.tokens[i].line,
-			    "Expected '>' after class name but not found\nHint: Close "
+			    "Expected '>' after class name but not found", "Close "
 			    "generic parameter list with '>'");
 		}
 		switch (token->type) {
@@ -725,7 +730,7 @@ void loadListGenericDeclarationType(in_func, size_t &i, uint32_t line,
 			}
 			default: {
 				throw ParserError(
-				    line, "Expected '>' after class name but not found\nHint: "
+				    line, "Expected '>' after class name but not found", ""
 				          "Close generic parameter list with '>'");
 			}
 		}

@@ -30,9 +30,9 @@ void ExprNode::loadOpcodeLine(in_func, std::vector<uint8_t> &bytecodes) {
 	    line, bytecodes.size() - context.currentBytecodePos);
 }
 
-void ExprNode::throwError(std::string message) {
+void ExprNode::throwError(std::string message, std::string hint) {
 	ParserContext::mode = mode;
-	throw ParserError(line, message);
+	throw ParserError(line, std::move(message), std::move(hint));
 }
 
 void ExprNode::warning(in_func, std::string message) {

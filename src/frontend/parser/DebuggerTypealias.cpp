@@ -24,7 +24,7 @@ void loadTypealias(in_func, size_t &i) {
 	    !expect(token, Lexer::TokenType::IDENTIFIER)) {
 		--i;
 		throw ParserError(firstLine,
-		                  "Expected class name but not found\nHint: Use "
+		                  "Expected class name but not found", "Use "
 		                  "identfier after typealias");
 	}
 	LexerStringId className = token->indexData;
@@ -50,7 +50,7 @@ void loadTypealias(in_func, size_t &i) {
 	if (!nextToken(&token, context.tokens, i)) {
 		--i;
 		throw ParserError(firstLine,
-		                  "Expected '=' after identifier but not found\nHint: "
+		                  "Expected '=' after identifier but not found", ""
 		                  "Add '=' after the identifier");
 	}
 	try {
@@ -62,14 +62,14 @@ void loadTypealias(in_func, size_t &i) {
 				--i;
 				throw ParserError(
 				    firstLine, "Expected '=' after generic parameters but not "
-				               "found\nHint: Add '=' after the generic "
+				               "found", "Add '=' after the generic "
 				               "parameters");
 			}
 		}
 		if (!expect(token, Lexer::TokenType::EQUAL)) {
 			--i;
 			throw ParserError(
-			    firstLine, "Expected '=' after identifier but not found\nHint: "
+			    firstLine, "Expected '=' after identifier but not found", ""
 			               "Add '=' after the identifier");
 		}
 
@@ -182,7 +182,7 @@ void loadTypealias(in_func, size_t &i) {
 				}
 				throw ParserError(firstLine,
 				                  "Class " + std::string(context.lexerString[className]) +
-				                      " already exists\nHint: " + hint);
+				                      " already exists", hint);
 			}
 		}
 		{
@@ -199,7 +199,7 @@ void loadTypealias(in_func, size_t &i) {
 				throw ParserError(
 				    firstLine,
 				    "Typealias '" + std::string(context.lexerString[className]) +
-				        "' already exists\nHint: " + hint);
+				        "' already exists", hint);
 			}
 		}
 		context.typealiasMap[className] = context.typealiasPool.push(

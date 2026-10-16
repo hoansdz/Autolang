@@ -32,7 +32,7 @@ ExprNode *CreateMapNode::optimize(in_func) {
 	auto classInfo = context.classInfo[classId];
 	if (clazz->genericBaseClassId != DefaultClass::mapClassId) {
 		throwError("Type mismatch, expected Map<> but '" +
-		           compile.classes[classId]->getName(compile) + "' found\nHint: Ensure target variable type is a Map<K, V> instance.");
+		           compile.classes[classId]->getName(compile) + "' found", "Ensure target variable type is a Map<K, V> instance.");
 	}
 
 	auto keyMustBeClassId = *classInfo->genericTypeId[0]->classId;
@@ -93,7 +93,7 @@ ExprNode *CreateMapNode::optimize(in_func) {
 				if (classInfo->genericTypeId[0]->nullable) {
 					goto loadValue;
 				}
-				throwError("Keys in Map must be non-null\nHint: The Map key type is non-nullable. Use Map<K?, V> to allow null keys.");
+				throwError("Keys in Map must be non-null", "The Map key type is non-nullable. Use Map<K?, V> to allow null keys.");
 			}
 		}
 		if (keyMustBeClassId == DefaultClass::anyClassId) {
@@ -101,7 +101,7 @@ ExprNode *CreateMapNode::optimize(in_func) {
 		}
 		throwError("Cannot cast " + compile.classes[key->classId]->getName(compile) +
 		           " to " + compile.classes[keyMustBeClassId]->getName(compile) +
-		           "\nHint: Ensure Map key expression matches the expected key type or provide an explicit conversion.");
+		           "", "Ensure Map key expression matches the expected key type or provide an explicit conversion.");
 	loadValue:;
 		switch (value->kind) {
 			case NodeType::CREATE_ARRAY: {
@@ -162,7 +162,7 @@ ExprNode *CreateMapNode::optimize(in_func) {
 				if (classInfo->genericTypeId[1]->nullable) {
 					continue;
 				}
-				throwError("Values in Map must be non-null\nHint: The Map value type is non-nullable. Use Map<K, V?> to allow null values.");
+				throwError("Values in Map must be non-null", "The Map value type is non-nullable. Use Map<K, V?> to allow null values.");
 			}
 		}
 		if (valueMustBeClassId == DefaultClass::anyClassId) {
@@ -170,7 +170,7 @@ ExprNode *CreateMapNode::optimize(in_func) {
 		}
 		throwError("Cannot cast " + compile.classes[value->classId]->getName(compile) +
 		           " to " + compile.classes[valueMustBeClassId]->getName(compile) +
-		           "\nHint: Ensure Map value expression matches the expected value type or provide an explicit conversion.");
+		           "", "Ensure Map value expression matches the expected value type or provide an explicit conversion.");
 	}
 	return this;
 }
@@ -180,7 +180,7 @@ void CreateMapNode::optimizeAndInferenceType(in_func) {
 		if (canSkipFindType)
 			return;
 		throwError(
-		    "Cannot infer key/value type for Map initialization\nHint: Provide "
+		    "Cannot infer key/value type for Map initialization", "Provide "
 		    "an explicit type annotation or add typed entries to the Map.");
 		return;
 	}
@@ -407,7 +407,7 @@ void CreateMapNode::optimizeAndInferenceType(in_func) {
 
 	if (!keyMustBeClassId || !valueMustBeClassId) {
 		throwError(
-		    "Cannot infer key/value type for Map initialization\nHint: Provide "
+		    "Cannot infer key/value type for Map initialization", "Provide "
 		    "an explicit type annotation or add typed entries to the Map.");
 		return;
 	}
@@ -571,7 +571,7 @@ ExprNode *CreateMapNode::copy(in_func) {
 			if (!classDeclaration->classId) {
 				throwError("Bug: DeclarationNode copy: Unresolved class " +
 				           classDeclaration->getName(in_data) +
-				           "\nHint: Internal compiler error - class declaration was not resolved before copy.");
+				           "", "Internal compiler error - class declaration was not resolved before copy.");
 			}
 			newNode->classId = *classDeclaration->classId;
 			if (classDeclaration->isGeneric) {

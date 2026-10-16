@@ -15,8 +15,10 @@ namespace Autolang {
 struct Function {
 	const char* path;
 	StringArenaOffset nameStringOffset;
+	StringArenaOffset descriptionStringOffset = 0;
 	uint32_t argSize;
 	uint32_t opcodeIndex;
+	uint32_t opcodeLineCount = 0;
 	ClassId returnId;
 	uint32_t functionFlags;
 	uint32_t maxDeclaration;
@@ -48,6 +50,7 @@ struct Function {
 	}
 
 	std::string getName(CompiledProgram &data);
+	std::string getDescription(CompiledProgram &data);
 
 	// Support log
 	std::string toString(CompiledProgram &data);

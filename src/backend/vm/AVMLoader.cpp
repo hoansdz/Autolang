@@ -90,6 +90,7 @@ void AVM::restart() {
 	stack.index = 0;
 	callFrames.index = 0;
 	stackAllocator.restart();
+	timeoutCheckCounter = 0;
 	for (size_t i = 0; i < data.main->maxDeclaration; ++i) {
 		globalVariables[i] = nullptr;
 	}
@@ -117,13 +118,15 @@ std::pair<uint32_t, const char *> AVM::searchMainLine(Function *func,
 }
 
 uint32_t AVM::searchLine(Function *func, uint32_t opcodeIndex) {
-	// int left = func->opcodeIndex;
-	// int right = 0;
-	int i = func->opcodeIndex + 1;
-	while (i < data.allOpcodeLines.size() &&
-	       data.allOpcodeLines[i].opcodeIndex < opcodeIndex &&
-	       data.allOpcodeLines[i].opcodeIndex >=
-	           data.allOpcodeLines[i - 1].opcodeIndex) {
+	if (!func || func->opcodeLineCount == 0) {
+		return 0;
+	}
+	size_t end = func->opcodeIndex + func->opcodeLineCount;
+	if (end > data.allOpcodeLines.size()) {
+		end = data.allOpcodeLines.size();
+	}
+	size_t i = func->opcodeIndex + 1;
+	while (i < end && data.allOpcodeLines[i].opcodeIndex <= opcodeIndex) {
 		++i;
 	}
 	return data.allOpcodeLines[i - 1].line;

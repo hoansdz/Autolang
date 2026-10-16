@@ -59,6 +59,7 @@ static const HashMap<std::string, TokenType> CAST = {
     {"typealias", TokenType::TYPEALIAS},
     {"operator", TokenType::OPERATOR},
     {"implicit", TokenType::IMPLICIT},
+    {"description", TokenType::DESCRIPTION},
     {"until", TokenType::DOT_DOT_LT},
 
     {"/*", TokenType::START_COMMENT},
