@@ -330,6 +330,28 @@ class CompilerWrapper {
 		lib->flags |= Autolang::LibraryFlags::IS_PY_BRIDGE;
 	}
 
+	void registerBuiltInLibraryConfig(std::string name, std::string data,
+	                                  py::object config, py::object mapFunction) {
+		bool autoImport = true;
+		bool allowLateinit = false;
+		bool allowNonNull = false;
+		if (py::isinstance<py::dict>(config)) {
+			py::dict d = config.cast<py::dict>();
+			if (d.contains("autoImport") && py::isinstance<py::bool_>(d["autoImport"])) {
+				autoImport = d["autoImport"].cast<bool>();
+			}
+			if (d.contains("allowLateinitKeyword") && py::isinstance<py::bool_>(d["allowLateinitKeyword"])) {
+				allowLateinit = d["allowLateinitKeyword"].cast<bool>();
+			}
+			if (d.contains("allowNonNullAssertion") && py::isinstance<py::bool_>(d["allowNonNullAssertion"])) {
+				allowNonNull = d["allowNonNullAssertion"].cast<bool>();
+			}
+		} else if (py::isinstance<py::bool_>(config)) {
+			autoImport = config.cast<bool>();
+		}
+		registerBuiltInLibrary(name, data, autoImport, allowLateinit, allowNonNull, mapFunction);
+	}
+
 	void setKotlinCompat(bool enable) {
 		compiler.setKotlinCompat(enable);
 	}
@@ -632,11 +654,15 @@ PYBIND11_MODULE(autolang, m) {
 	    .def("setOutput", &CompilerWrapper::setOutput,
 	         py::arg("output"))
 	    .def("clearOutput", &CompilerWrapper::clearOutput)
+	    .def("registerBuiltInLibrary", &CompilerWrapper::registerBuiltInLibraryConfig,
+	         py::arg("name"), py::arg("data"),
+	         py::arg("config") = py::dict(),
+	         py::arg("mapFunction") = py::none())
 	    .def("registerBuiltInLibrary", &CompilerWrapper::registerBuiltInLibrary,
 	         py::arg("name"), py::arg("data"),
-	         py::arg("autoImport") = false,
-	         py::arg("allowLateinitKeyword") = false,
-	         py::arg("allowNonNullAssertion") = false,
+	         py::arg("autoImport"),
+	         py::arg("allowLateinitKeyword"),
+	         py::arg("allowNonNullAssertion"),
 	         py::arg("mapFunction") = py::none())
 	    .def("hasCompilerError", &CompilerWrapper::hasCompilerError)
 	    .def("throwException", &CompilerWrapper::throwException,
