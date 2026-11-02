@@ -16,7 +16,7 @@ struct ClassInfo {
 	LibraryData *mode;
 	uint32_t line;
 	GenericData *genericData = nullptr;
-	SmallVector<DeclarationNode *, 8> allDeclarationNode;
+	SmallVector<DeclarationNode *, 8> allDeclarationNode; // Generic type: <T, R>
 	SmallVector<DeclarationNode *, 8> member;
 	HashMap<LexerStringId, MemberOffset> memberMap;
 	HashMap<LexerStringId, DeclarationNode *> staticMember;
@@ -24,7 +24,7 @@ struct ClassInfo {
 	HashMap<LexerStringId, HashMap<HashValue, FunctionId>> func;
 	HashMap<LexerStringId, HashMap<HashValue, FunctionId>> staticFunc;
 	HashMap<LexerStringId, ConstValueNode *> constValue;
-	SmallVector<ClassDeclaration *, 2> genericTypeId;
+	SmallVector<ClassDeclaration *, 2> genericTypeId; // Generic loaded: <Int, Float>
 	CreateConstructorNode *primaryConstructor = nullptr;
 	SmallVector<CreateConstructorNode *, 2> secondaryConstructor;
 	SmallVector<CreateFuncNode *, 8> createFunctionNodes;

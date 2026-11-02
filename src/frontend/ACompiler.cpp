@@ -2,6 +2,7 @@
 #define ACOMPILER_CPP
 
 #include "ACompiler.hpp"
+#include "frontend/reflection/ReflectionEngine.hpp"
 #include "frontend/libs/bytes.hpp"
 #include "frontend/libs/math.hpp"
 #include "frontend/libs/stdlib.hpp"
@@ -9,6 +10,7 @@
 #include "frontend/libs/vm.hpp"
 #include "shared/DefaultFunction.hpp"
 #include "shared/Profiler.hpp"
+#include "shared/Utils.hpp"
 
 #ifndef NO_INCLUDE_LIBS_FILE
 #include "frontend/libs/file.hpp"
@@ -232,14 +234,7 @@ void ACompiler::loadMainSource(const char *path, LibraryConfig config,
 		    "file exists at specified relative path.");
 	}
 	parserContext.importMap[library->path] = library;
-	if (globalNativeMap.empty()) {
-		library->nativeFuncMap = nativeFuncMap;
-	} else {
-		library->nativeFuncMap = globalNativeMap;
-		for (const auto &p : nativeFuncMap) {
-			library->nativeFuncMap[p.first] = p.second;
-		}
-	}
+	library->nativeFuncMap = nativeFuncMap;
 	if (config.allowLateinitKeyword) {
 		library->flags |= LibraryFlags::ALLOW_LATEINIT_KEYWORD;
 	}
@@ -255,11 +250,7 @@ void ACompiler::loadMainSource(const char *path, const char *data,
 	if (!loadedBuiltIn) {
 		loadBuiltInFunctions();
 	}
-	ANativeMap effectiveMap = globalNativeMap;
-	for (const auto &p : nativeFuncMap) {
-		effectiveMap[p.first] = p.second;
-	}
-	auto library = std::make_unique<LibraryData>(path, 0, std::move(effectiveMap));
+	auto library = std::make_unique<LibraryData>(path, 0, nativeFuncMap);
 	LibraryData *libPtr = library.get();
 	parserContext.importMap[path] = libPtr;
 	libPtr->rawData = data;
@@ -1208,6 +1199,1015 @@ void ACompiler::setExecutionTimeoutMs(uint32_t executionTimeoutMs) {
 uint32_t ACompiler::getExecutionTimeoutMs() const {
 	return vm.getExecutionTimeoutMs();
 }
+
+bool ACompiler::isAvailableClass(const std::string &name) const {
+	if (name.empty()) {
+		return false;
+	}
+	return isMapExist(vm.data.classMap, name) || isMapExist(parserContext.classAliasMap, name);
+}
+
+bool ACompiler::isAvailableType(const std::string &name) const {
+	if (name.empty()) {
+		return false;
+	}
+
+	std::string_view typeName = name;
+	if (typeName.back() == '?') {
+		typeName.remove_suffix(1);
+	}
+	auto genPos = typeName.find('<');
+	if (genPos != std::string_view::npos) {
+		typeName = typeName.substr(0, genPos);
+	}
+	auto arrPos = typeName.find('[');
+	if (arrPos != std::string_view::npos) {
+		typeName = typeName.substr(0, arrPos);
+	}
+	if (typeName.empty()) {
+		return false;
+	}
+
+	std::string baseName(typeName);
+	if (isAvailableClass(baseName)) {
+		return true;
+	}
+
+	auto itStr = parserContext.lexerStringMap.find(typeName);
+	return itStr != parserContext.lexerStringMap.end() &&
+	       isMapExist(parserContext.typealiasMap, itStr->second);
+}
+
+bool ACompiler::isAvailableFunction(const std::string &name) const {
+	if (name.empty()) {
+		return false;
+	}
+
+	auto it = vm.data.funcMap.find(name);
+	if (it != vm.data.funcMap.end() && !it->second.empty()) {
+		return true;
+	}
+
+	auto itStr = parserContext.lexerStringMap.find(name);
+	if (itStr != parserContext.lexerStringMap.end()) {
+		LexerStringId id = itStr->second;
+		auto itG = parserContext.globalFunction.find(id);
+		if (itG != parserContext.globalFunction.end() && !itG->second.empty()) {
+			return true;
+		}
+		auto itGen = parserContext.genericFunctionMap.find(id);
+		if (itGen != parserContext.genericFunctionMap.end() && !itGen->second.empty()) {
+			return true;
+		}
+	}
+
+	for (const auto &lib : builtInLibraries) {
+		if (lib && isMapExist(lib->nativeFuncMap, name)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool ACompiler::isAvailableGlobalVariable(const std::string &name) const {
+	if (name.empty() || parserContext.mainFunctionId >= parserContext.functionInfo.size()) {
+		return false;
+	}
+
+	auto itStr = parserContext.lexerStringMap.find(name);
+	if (itStr == parserContext.lexerStringMap.end()) {
+		return false;
+	}
+
+	auto mainInfo = parserContext.functionInfo[parserContext.mainFunctionId];
+	if (!mainInfo || mainInfo->scopes.scopes.empty()) {
+		return false;
+	}
+
+	const auto &fileScope = mainInfo->scopes.scopes.front();
+	auto it = fileScope.find(itStr->second);
+	return it != fileScope.end() && it->second && it->second->isGlobal;
+}
+
+
+// =========================================================================
+// AI Reflection & Incremental Lexer API
+// =========================================================================
+
+static std::optional<ClassId> findTargetClassId(const ACompiler &compiler, const std::string &rawTypeName) {
+	if (rawTypeName.empty()) return std::nullopt;
+	std::string_view typeName = rawTypeName;
+	if (typeName.back() == '?') {
+		typeName.remove_suffix(1);
+	}
+	const auto &context = compiler.parserContext;
+	auto itExactClass = compiler.vm.data.classMap.find(std::string(typeName));
+	if (itExactClass != compiler.vm.data.classMap.end()) {
+		return itExactClass->second;
+	}
+	auto itExactString = context.lexerStringMap.find(typeName);
+	if (itExactString != context.lexerStringMap.end()) {
+		auto itExactDefault = context.defaultClassMap.find(itExactString->second);
+		if (itExactDefault != context.defaultClassMap.end()) {
+			return itExactDefault->second;
+		}
+		auto itExactAlias = context.typealiasMap.find(itExactString->second);
+		if (itExactAlias != context.typealiasMap.end() &&
+		    itExactAlias->second && itExactAlias->second->classDeclaration &&
+		    itExactAlias->second->classDeclaration->classId) {
+			return *itExactAlias->second->classDeclaration->classId;
+		}
+	}
+	auto itExactAliasMap = context.classAliasMap.find(typeName);
+	if (itExactAliasMap != context.classAliasMap.end()) {
+		return itExactAliasMap->second;
+	}
+
+	auto genPos = typeName.find('<');
+	if (genPos != std::string_view::npos) {
+		typeName = typeName.substr(0, genPos);
+	}
+	auto arrPos = typeName.find('[');
+	if (arrPos != std::string_view::npos) {
+		typeName = typeName.substr(0, arrPos);
+	}
+	if (typeName.empty()) return std::nullopt;
+
+	// Tra cứu bảng chuỗi của parserContext
+	auto itStr = context.lexerStringMap.find(typeName);
+	if (itStr != context.lexerStringMap.end()) {
+		LexerStringId id = itStr->second;
+		auto itDefault = context.defaultClassMap.find(id);
+		if (itDefault != context.defaultClassMap.end()) {
+			return itDefault->second;
+		}
+
+		auto itAlias = context.typealiasMap.find(id);
+		if (itAlias != context.typealiasMap.end() && itAlias->second && itAlias->second->classDeclaration) {
+			if (itAlias->second->classDeclaration->classId) {
+				return *(itAlias->second->classDeclaration->classId);
+			}
+		}
+	}
+
+	auto itAliasMap = context.classAliasMap.find(typeName);
+	if (itAliasMap != context.classAliasMap.end()) {
+		return itAliasMap->second;
+	}
+
+	auto it = compiler.vm.data.classMap.find(std::string(typeName));
+	if (it != compiler.vm.data.classMap.end()) {
+		return it->second;
+	}
+
+	return std::nullopt;
+}
+
+// 1. Phân giải thành viên lớp & kiểu dữ liệu
+uint32_t ACompiler::getTypeCount() const {
+	return static_cast<uint32_t>(vm.data.classes.size());
+}
+
+uint32_t ACompiler::getTypeIdAt(uint32_t index) const {
+	if (index >= vm.data.classes.size() || !vm.data.classes[index]) {
+		return UINT32_MAX;
+	}
+	return static_cast<uint32_t>(vm.data.classes[index]->id);
+}
+
+const char *ACompiler::getTypeNameById(uint32_t type_id) const {
+	if (type_id >= vm.data.classes.size() || !vm.data.classes[type_id]) {
+		return "";
+	}
+	return vm.data.stringArena.get(
+	    vm.data.classes[type_id]->nameStringOffset);
+}
+
+uint32_t ACompiler::getTypeId(const std::string &type_name) const {
+	if (type_name.empty()) {
+		return UINT32_MAX;
+	}
+	auto classIdOpt = findTargetClassId(*this, type_name);
+	if (!classIdOpt) {
+		return UINT32_MAX;
+	}
+	ClassId cid = *classIdOpt;
+	if (cid < vm.data.classes.size() && vm.data.classes[cid]) {
+		return static_cast<uint32_t>(cid);
+	}
+	return UINT32_MAX;
+}
+
+uint32_t ACompiler::getMemberIdByType(uint32_t type_id, const std::string &member_name) const {
+	if (type_id == UINT32_MAX || member_name.empty() || type_id >= vm.data.classes.size() || !vm.data.classes[type_id]) {
+		return UINT32_MAX;
+	}
+
+	auto itStr = parserContext.lexerStringMap.find(member_name);
+	if (itStr == parserContext.lexerStringMap.end()) {
+		return UINT32_MAX;
+	}
+	return getMemberIdByTypeId(type_id, itStr->second);
+}
+
+uint32_t ACompiler::getMemberIdByTypeId(uint32_t type_id,
+                                        LexerStringId name_id) const {
+	if (type_id == UINT32_MAX || type_id >= vm.data.classes.size() ||
+	    !vm.data.classes[type_id] || name_id >= parserContext.lexerString.size()) {
+		return UINT32_MAX;
+	}
+
+	ClassId traceClassId = static_cast<ClassId>(type_id);
+	while (traceClassId < vm.data.classes.size() && vm.data.classes[traceClassId]) {
+		// 1. Kiểm tra parserContext.classInfo
+		if (traceClassId < parserContext.classInfo.size() && parserContext.classInfo[traceClassId]) {
+			ClassInfo *cInfo = parserContext.classInfo[traceClassId];
+			auto itFunc = cInfo->allFunction.find(name_id);
+			if (itFunc != cInfo->allFunction.end() && !itFunc->second.empty()) {
+				return static_cast<uint32_t>((traceClassId << 16) | (name_id & 0xFFFF));
+			}
+			auto itGenFunc = cInfo->genericFunctionMap.find(name_id);
+			if (itGenFunc != cInfo->genericFunctionMap.end() && !itGenFunc->second.empty()) {
+				return static_cast<uint32_t>((traceClassId << 16) | (name_id & 0xFFFF));
+			}
+			auto itStat = cInfo->staticMember.find(name_id);
+			if (itStat != cInfo->staticMember.end() && itStat->second) {
+				return static_cast<uint32_t>((traceClassId << 16) | (name_id & 0xFFFF));
+			}
+			auto itMem = cInfo->memberMap.find(name_id);
+			if (itMem != cInfo->memberMap.end()) {
+				return static_cast<uint32_t>((traceClassId << 16) | (name_id & 0xFFFF));
+			}
+		}
+
+		// 2. Tra cứu qua cấu trúc AClass của VM
+		AClass *clazz = vm.data.classes[traceClassId];
+		auto itFunc = clazz->funcMap.find(parserContext.lexerString[name_id]);
+		if (itFunc != clazz->funcMap.end() && !itFunc->second.empty()) {
+			return static_cast<uint32_t>((traceClassId << 16) | (name_id & 0xFFFF));
+		}
+		auto itMem = clazz->memberMap.find(parserContext.lexerString[name_id]);
+		if (itMem != clazz->memberMap.end()) {
+			return static_cast<uint32_t>((traceClassId << 16) | (name_id & 0xFFFF));
+		}
+
+		if (clazz->parentId == 0 || clazz->parentId == traceClassId || clazz->parentId >= vm.data.classes.size()) {
+			break;
+		}
+		traceClassId = clazz->parentId;
+	}
+
+	return UINT32_MAX;
+}
+
+uint32_t ACompiler::getMemberIdAt(uint32_t type_id, uint32_t index) const {
+	if (type_id == UINT32_MAX || type_id >= vm.data.classes.size() ||
+	    !vm.data.classes[type_id]) {
+		return UINT32_MAX;
+	}
+
+	for (LexerStringId name_id = 0;
+	     name_id < parserContext.lexerString.size(); ++name_id) {
+		uint32_t member_id = getMemberIdByTypeId(type_id, name_id);
+		if (member_id == UINT32_MAX) {
+			continue;
+		}
+		std::string_view name = parserContext.lexerString[name_id];
+		if (!name.empty() && name.front() == '.' && isMemberMethod(member_id)) {
+			continue;
+		}
+		if (index == 0) {
+			return member_id;
+		}
+		--index;
+	}
+	return UINT32_MAX;
+}
+
+uint32_t ACompiler::getMemberId(const std::string &target_type, const std::string &member_name) const {
+	if (target_type.empty() || member_name.empty()) {
+		return UINT32_MAX;
+	}
+	uint32_t typeId = getTypeId(target_type);
+	if (typeId == UINT32_MAX) {
+		return UINT32_MAX;
+	}
+	return getMemberIdByType(typeId, member_name);
+}
+
+bool ACompiler::isAvailableMember(const std::string &target_type, const std::string &member_name) const {
+	return getMemberId(target_type, member_name) != UINT32_MAX;
+}
+
+bool ACompiler::isMemberMethod(uint32_t member_id) const {
+	if (member_id == UINT32_MAX) return false;
+	ClassId classId = static_cast<ClassId>((member_id >> 16) & 0xFFFF);
+	LexerStringId nameId = static_cast<LexerStringId>(member_id & 0xFFFF);
+
+	if (classId < parserContext.classInfo.size() && parserContext.classInfo[classId]) {
+		auto cInfo = parserContext.classInfo[classId];
+		auto it = cInfo->allFunction.find(nameId);
+		if (it != cInfo->allFunction.end() && !it->second.empty()) {
+			return true;
+		}
+		auto itGen = cInfo->genericFunctionMap.find(nameId);
+		if (itGen != cInfo->genericFunctionMap.end() && !itGen->second.empty()) {
+			return true;
+		}
+	}
+
+	if (classId < vm.data.classes.size() && vm.data.classes[classId] && nameId < parserContext.lexerString.size()) {
+		auto it = vm.data.classes[classId]->funcMap.find(parserContext.lexerString[nameId]);
+		if (it != vm.data.classes[classId]->funcMap.end() && !it->second.empty()) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool ACompiler::isMemberStatic(uint32_t member_id) const {
+	if (member_id == UINT32_MAX) return false;
+	ClassId classId = static_cast<ClassId>((member_id >> 16) & 0xFFFF);
+	LexerStringId nameId = static_cast<LexerStringId>(member_id & 0xFFFF);
+
+	if (isMemberMethod(member_id)) {
+		FunctionId fid = 0;
+		bool foundFid = false;
+		if (classId < parserContext.classInfo.size() && parserContext.classInfo[classId]) {
+			auto it = parserContext.classInfo[classId]->allFunction.find(nameId);
+			if (it != parserContext.classInfo[classId]->allFunction.end() && !it->second.empty()) {
+				fid = it->second.front();
+				foundFid = true;
+			}
+		}
+		if (!foundFid && classId < vm.data.classes.size() && vm.data.classes[classId] && nameId < parserContext.lexerString.size()) {
+			auto it = vm.data.classes[classId]->funcMap.find(parserContext.lexerString[nameId]);
+			if (it != vm.data.classes[classId]->funcMap.end() && !it->second.empty()) {
+				fid = it->second.front();
+				foundFid = true;
+			}
+		}
+		if (foundFid && fid < vm.data.functions.size() && vm.data.functions[fid]) {
+			return (vm.data.functions[fid]->functionFlags & FunctionFlags::FUNC_IS_STATIC) != 0;
+		}
+		return false;
+	}
+
+	if (classId < parserContext.classInfo.size() && parserContext.classInfo[classId]) {
+		auto it = parserContext.classInfo[classId]->staticMember.find(nameId);
+		if (it != parserContext.classInfo[classId]->staticMember.end() && it->second) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool ACompiler::isMemberTrailingClosure(uint32_t member_id) const {
+	if (member_id == UINT32_MAX || !isMemberMethod(member_id)) {
+		return false;
+	}
+	ClassId classId = static_cast<ClassId>((member_id >> 16) & 0xFFFF);
+	LexerStringId nameId = static_cast<LexerStringId>(member_id & 0xFFFF);
+
+	// 1. Kiểm tra parserContext.classInfo
+	if (classId < parserContext.classInfo.size() && parserContext.classInfo[classId]) {
+		auto cInfo = parserContext.classInfo[classId];
+		auto it = cInfo->allFunction.find(nameId);
+		if (it != cInfo->allFunction.end()) {
+			for (FunctionId fid : it->second) {
+				if (isFunctionTrailingClosure(static_cast<uint32_t>(fid))) {
+					return true;
+				}
+			}
+		}
+		auto itGen = cInfo->genericFunctionMap.find(nameId);
+		if (itGen != cInfo->genericFunctionMap.end()) {
+			for (auto node : itGen->second) {
+				if (node && node->parameter && !node->parameter->parameters.empty()) {
+					auto lastParam = node->parameter->parameters.back();
+					if (lastParam && lastParam->classDeclaration) {
+						auto cd = lastParam->classDeclaration;
+						if (cd->isFunction ||
+						    (cd->classId && *cd->classId == DefaultClass::functionClassId) ||
+						    cd->baseClassLexerStringId == lexerIdFunction) {
+							return true;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// 2. Tra cứu qua cấu trúc AClass của VM
+	if (classId < vm.data.classes.size() && vm.data.classes[classId] && nameId < parserContext.lexerString.size()) {
+		auto it = vm.data.classes[classId]->funcMap.find(parserContext.lexerString[nameId]);
+		if (it != vm.data.classes[classId]->funcMap.end()) {
+			for (FunctionId fid : it->second) {
+				if (isFunctionTrailingClosure(static_cast<uint32_t>(fid))) {
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+const char *ACompiler::getMemberReturnType(uint32_t member_id) const {
+	if (member_id == UINT32_MAX) return "";
+	ClassId classId = static_cast<ClassId>((member_id >> 16) & 0xFFFF);
+	LexerStringId nameId = static_cast<LexerStringId>(member_id & 0xFFFF);
+
+	if (isMemberMethod(member_id)) {
+		FunctionId fid = 0;
+		bool foundFid = false;
+		if (classId < parserContext.classInfo.size() && parserContext.classInfo[classId]) {
+			auto it = parserContext.classInfo[classId]->allFunction.find(nameId);
+			if (it != parserContext.classInfo[classId]->allFunction.end() && !it->second.empty()) {
+				fid = it->second.front();
+				foundFid = true;
+			}
+		}
+		if (!foundFid && classId < vm.data.classes.size() && vm.data.classes[classId] && nameId < parserContext.lexerString.size()) {
+			auto it = vm.data.classes[classId]->funcMap.find(parserContext.lexerString[nameId]);
+			if (it != vm.data.classes[classId]->funcMap.end() && !it->second.empty()) {
+				fid = it->second.front();
+				foundFid = true;
+			}
+		}
+		if (foundFid) {
+			if (fid < vm.data.functions.size() && vm.data.functions[fid]) {
+				Function *fn = vm.data.functions[fid];
+				if (fn->returnId < vm.data.classes.size() && vm.data.classes[fn->returnId]) {
+					return vm.data.stringArena.get(vm.data.classes[fn->returnId]->nameStringOffset);
+				}
+			}
+			if (fid < parserContext.functionInfo.size() && parserContext.functionInfo[fid] && parserContext.functionInfo[fid]->returnClass) {
+				auto retClass = parserContext.functionInfo[fid]->returnClass;
+				if (retClass->classId && *retClass->classId < vm.data.classes.size() &&
+				    vm.data.classes[*retClass->classId] && !retClass->nullable && retClass->inputClassId.empty()) {
+					return vm.data.stringArena.get(vm.data.classes[*retClass->classId]->nameStringOffset);
+				}
+				std::string name = retClass->getName(
+				    const_cast<CompiledProgram &>(vm.data),
+				    const_cast<ParserContext &>(parserContext));
+				return const_cast<ParserContext &>(parserContext).stringArena.allocate(name);
+			}
+			return "Void";
+		}
+		return "";
+	}
+
+	if (classId < parserContext.classInfo.size() && parserContext.classInfo[classId]) {
+		auto cInfo = parserContext.classInfo[classId];
+		auto itStat = cInfo->staticMember.find(nameId);
+		if (itStat != cInfo->staticMember.end() && itStat->second) {
+			DeclarationNode *decl = itStat->second;
+			if (decl->classDeclaration) {
+				auto declClass = decl->classDeclaration;
+				if (declClass->classId && *declClass->classId < vm.data.classes.size() &&
+				    vm.data.classes[*declClass->classId] && !declClass->nullable && declClass->inputClassId.empty()) {
+					return vm.data.stringArena.get(vm.data.classes[*declClass->classId]->nameStringOffset);
+				}
+				std::string name = declClass->getName(
+				    const_cast<CompiledProgram &>(vm.data),
+				    const_cast<ParserContext &>(parserContext));
+				return const_cast<ParserContext &>(parserContext).stringArena.allocate(name);
+			} else if (decl->classId < vm.data.classes.size() && vm.data.classes[decl->classId]) {
+				return vm.data.stringArena.get(vm.data.classes[decl->classId]->nameStringOffset);
+			}
+		}
+		auto itMem = cInfo->memberMap.find(nameId);
+		if (itMem != cInfo->memberMap.end()) {
+			MemberOffset off = itMem->second;
+			if (off < cInfo->member.size() && cInfo->member[off]) {
+				DeclarationNode *decl = cInfo->member[off];
+				if (decl->classDeclaration) {
+					auto declClass = decl->classDeclaration;
+					if (declClass->classId && *declClass->classId < vm.data.classes.size() &&
+					    vm.data.classes[*declClass->classId] && !declClass->nullable && declClass->inputClassId.empty()) {
+						return vm.data.stringArena.get(vm.data.classes[*declClass->classId]->nameStringOffset);
+					}
+					std::string name = declClass->getName(
+					    const_cast<CompiledProgram &>(vm.data),
+					    const_cast<ParserContext &>(parserContext));
+					return const_cast<ParserContext &>(parserContext).stringArena.allocate(name);
+				} else if (decl->classId < vm.data.classes.size() && vm.data.classes[decl->classId]) {
+					return vm.data.stringArena.get(vm.data.classes[decl->classId]->nameStringOffset);
+				}
+			}
+		}
+	}
+
+	if (classId < vm.data.classes.size() && vm.data.classes[classId] && nameId < parserContext.lexerString.size()) {
+		auto clazz = vm.data.classes[classId];
+		auto itMem = clazz->memberMap.find(parserContext.lexerString[nameId]);
+		if (itMem != clazz->memberMap.end()) {
+			MemberOffset off = itMem->second;
+			if (clazz->memberIdOffset + off < vm.data.allMemberId.size()) {
+				ClassId typeId = vm.data.allMemberId[clazz->memberIdOffset + off];
+				if (typeId < vm.data.classes.size() && vm.data.classes[typeId]) {
+					return vm.data.stringArena.get(vm.data.classes[typeId]->nameStringOffset);
+				}
+			}
+		}
+	}
+
+	return "";
+}
+
+const char *ACompiler::getMemberNameById(uint32_t member_id) const {
+	if (member_id == UINT32_MAX) {
+		return "";
+	}
+	LexerStringId nameId = static_cast<LexerStringId>(member_id & 0xFFFF);
+	if (nameId < parserContext.lexerString.size()) {
+		return parserContext.lexerString[nameId].data();
+	}
+	return "";
+}
+
+uint32_t ACompiler::getMemberCountByType(uint32_t type_id) const {
+	if (type_id == UINT32_MAX || type_id >= vm.data.classes.size() || !vm.data.classes[type_id]) {
+		return 0;
+	}
+
+	ankerl::unordered_dense::set<std::string_view> seen;
+	ClassId traceClassId = static_cast<ClassId>(type_id);
+	while (traceClassId < vm.data.classes.size() && vm.data.classes[traceClassId]) {
+		AClass *clazz = vm.data.classes[traceClassId];
+
+		// 1. parserContext.classInfo
+		if (traceClassId < parserContext.classInfo.size() && parserContext.classInfo[traceClassId]) {
+			ClassInfo *cInfo = parserContext.classInfo[traceClassId];
+			for (const auto &pair : cInfo->memberMap) {
+				if (pair.first < parserContext.lexerString.size()) {
+					seen.insert(parserContext.lexerString[pair.first]);
+				}
+			}
+			for (const auto &pair : cInfo->staticMember) {
+				if (pair.first < parserContext.lexerString.size()) {
+					seen.insert(parserContext.lexerString[pair.first]);
+				}
+			}
+			for (const auto &pair : cInfo->allFunction) {
+				if (pair.first < parserContext.lexerString.size()) {
+					std::string_view name = parserContext.lexerString[pair.first];
+					if (!name.empty() && name[0] != '.') {
+						seen.insert(name);
+					}
+				}
+			}
+			for (const auto &pair : cInfo->genericFunctionMap) {
+				if (pair.first < parserContext.lexerString.size()) {
+					std::string_view name = parserContext.lexerString[pair.first];
+					if (!name.empty() && name[0] != '.') {
+						seen.insert(name);
+					}
+				}
+			}
+		}
+
+		// 2. clazz của VM
+		for (const auto &pair : clazz->memberMap) {
+			seen.insert(pair.first);
+		}
+		for (const auto &pair : clazz->funcMap) {
+			std::string_view name = pair.first;
+			if (!name.empty() && name[0] != '.') {
+				seen.insert(name);
+			}
+		}
+
+		if (clazz->parentId == 0 || clazz->parentId == traceClassId || clazz->parentId >= vm.data.classes.size()) {
+			break;
+		}
+		traceClassId = clazz->parentId;
+	}
+	return static_cast<uint32_t>(seen.size());
+}
+
+int ACompiler::getMemberParamCount(uint32_t member_id) const {
+	if (member_id == UINT32_MAX || !isMemberMethod(member_id)) {
+		return -1;
+	}
+	ClassId classId = static_cast<ClassId>((member_id >> 16) & 0xFFFF);
+	LexerStringId nameId = static_cast<LexerStringId>(member_id & 0xFFFF);
+
+	FunctionId fid = 0;
+	bool foundFid = false;
+	if (classId < parserContext.classInfo.size() && parserContext.classInfo[classId]) {
+		auto it = parserContext.classInfo[classId]->allFunction.find(nameId);
+		if (it != parserContext.classInfo[classId]->allFunction.end() && !it->second.empty()) {
+			fid = it->second.front();
+			foundFid = true;
+		}
+	}
+	if (!foundFid && classId < vm.data.classes.size() && vm.data.classes[classId] && nameId < parserContext.lexerString.size()) {
+		auto it = vm.data.classes[classId]->funcMap.find(parserContext.lexerString[nameId]);
+		if (it != vm.data.classes[classId]->funcMap.end() && !it->second.empty()) {
+			fid = it->second.front();
+			foundFid = true;
+		}
+	}
+
+	if (!foundFid) {
+		return -1;
+	}
+
+	Function *fn = (fid < vm.data.functions.size()) ? vm.data.functions[fid] : nullptr;
+	FunctionInfo *fInfo = (fid < parserContext.functionInfo.size()) ? parserContext.functionInfo[fid] : nullptr;
+	bool isStatic = fn ? ((fn->functionFlags & FunctionFlags::FUNC_IS_STATIC) != 0) : false;
+
+	if (isStatic) {
+		return fn ? static_cast<int>(fn->argSize) : (fInfo && fInfo->parameter ? static_cast<int>(fInfo->parameter->parameters.size()) : 0);
+	} else {
+		return fn ? (fn->argSize > 0 ? static_cast<int>(fn->argSize - 1) : 0) : (fInfo && fInfo->parameter && !fInfo->parameter->parameters.empty() ? static_cast<int>(fInfo->parameter->parameters.size() - 1) : 0);
+	}
+}
+
+std::vector<std::string> ACompiler::getMembersForType(const std::string &target_type) const {
+	std::vector<std::string> result;
+	if (target_type.empty()) return result;
+
+	auto classIdOpt = findTargetClassId(*this, target_type);
+	if (!classIdOpt) return result;
+
+	ankerl::unordered_dense::set<std::string> seen;
+	ClassId traceClassId = *classIdOpt;
+	while (traceClassId < vm.data.classes.size() && vm.data.classes[traceClassId]) {
+		AClass *clazz = vm.data.classes[traceClassId];
+
+		// 1. parserContext.classInfo
+		if (traceClassId < parserContext.classInfo.size() && parserContext.classInfo[traceClassId]) {
+			ClassInfo *cInfo = parserContext.classInfo[traceClassId];
+			for (const auto &pair : cInfo->memberMap) {
+				if (pair.first < parserContext.lexerString.size()) {
+					std::string name(parserContext.lexerString[pair.first]);
+					if (seen.insert(name).second) {
+						result.push_back(name);
+					}
+				}
+			}
+			for (const auto &pair : cInfo->staticMember) {
+				if (pair.first < parserContext.lexerString.size()) {
+					std::string name(parserContext.lexerString[pair.first]);
+					if (seen.insert(name).second) {
+						result.push_back(name);
+					}
+				}
+			}
+			for (const auto &pair : cInfo->allFunction) {
+				if (pair.first < parserContext.lexerString.size()) {
+					std::string name(parserContext.lexerString[pair.first]);
+					if (!name.empty() && name[0] != '.' && seen.insert(name).second) {
+						result.push_back(name);
+					}
+				}
+			}
+			for (const auto &pair : cInfo->genericFunctionMap) {
+				if (pair.first < parserContext.lexerString.size()) {
+					std::string name(parserContext.lexerString[pair.first]);
+					if (!name.empty() && name[0] != '.' && seen.insert(name).second) {
+						result.push_back(name);
+					}
+				}
+			}
+		}
+
+		// 2. clazz của VM
+		for (const auto &pair : clazz->memberMap) {
+			std::string name(pair.first);
+			if (seen.insert(name).second) {
+				result.push_back(name);
+			}
+		}
+		for (const auto &pair : clazz->funcMap) {
+			std::string name(pair.first);
+			if (!name.empty() && name[0] != '.' && seen.insert(name).second) {
+				result.push_back(name);
+			}
+		}
+
+		if (clazz->parentId == 0 || clazz->parentId == traceClassId || clazz->parentId >= vm.data.classes.size()) {
+			break;
+		}
+		traceClassId = clazz->parentId;
+	}
+	return result;
+}
+
+// 2. Thuộc tính biến toàn cục & chữ ký hàm
+uint32_t ACompiler::getGlobalVariableId(const std::string &var_name) const {
+	if (var_name.empty() || parserContext.mainFunctionId >= parserContext.functionInfo.size()) {
+		return UINT32_MAX;
+	}
+
+	auto itStr = parserContext.lexerStringMap.find(var_name);
+	if (itStr == parserContext.lexerStringMap.end()) {
+		return UINT32_MAX;
+	}
+
+	auto mainInfo = parserContext.functionInfo[parserContext.mainFunctionId];
+	if (!mainInfo || mainInfo->scopes.scopes.empty()) {
+		return UINT32_MAX;
+	}
+
+	const auto &fileScope = mainInfo->scopes.scopes.front();
+	auto it = fileScope.find(itStr->second);
+	if (it == fileScope.end() || !it->second || !it->second->isGlobal) {
+		return UINT32_MAX;
+	}
+
+	return static_cast<uint32_t>(itStr->second);
+}
+
+bool ACompiler::isGlobalVariableConst(uint32_t var_id) const {
+	if (var_id == UINT32_MAX || parserContext.mainFunctionId >= parserContext.functionInfo.size()) {
+		return false;
+	}
+
+	auto mainInfo = parserContext.functionInfo[parserContext.mainFunctionId];
+	if (!mainInfo || mainInfo->scopes.scopes.empty()) {
+		return false;
+	}
+
+	const auto &fileScope = mainInfo->scopes.scopes.front();
+	auto it = fileScope.find(static_cast<LexerStringId>(var_id));
+	if (it != fileScope.end() && it->second && it->second->isGlobal) {
+		return it->second->isVal;
+	}
+	return false;
+}
+
+const char *ACompiler::getGlobalVariableType(uint32_t var_id) const {
+	if (var_id == UINT32_MAX || parserContext.mainFunctionId >= parserContext.functionInfo.size()) {
+		return "";
+	}
+
+	auto mainInfo = parserContext.functionInfo[parserContext.mainFunctionId];
+	if (!mainInfo || mainInfo->scopes.scopes.empty()) {
+		return "";
+	}
+
+	const auto &fileScope = mainInfo->scopes.scopes.front();
+	auto it = fileScope.find(static_cast<LexerStringId>(var_id));
+	if (it != fileScope.end() && it->second && it->second->isGlobal) {
+		DeclarationNode *decl = it->second;
+		if (decl->classDeclaration) {
+			auto declClass = decl->classDeclaration;
+			if (declClass->classId && *declClass->classId < vm.data.classes.size() &&
+			    vm.data.classes[*declClass->classId] && !declClass->nullable && declClass->inputClassId.empty()) {
+				return vm.data.stringArena.get(vm.data.classes[*declClass->classId]->nameStringOffset);
+			}
+			std::string name = declClass->getName(
+			    const_cast<CompiledProgram &>(vm.data),
+			    const_cast<ParserContext &>(parserContext));
+			return const_cast<ParserContext &>(parserContext).stringArena.allocate(name);
+		} else if (decl->classId < vm.data.classes.size() && vm.data.classes[decl->classId]) {
+			return vm.data.stringArena.get(vm.data.classes[decl->classId]->nameStringOffset);
+		}
+	}
+	return "";
+}
+
+uint32_t ACompiler::getFunctionId(const std::string &func_name) const {
+	if (func_name.empty()) return UINT32_MAX;
+
+	// 1. Tra cứu parserContext.globalFunction trước
+	auto itStr = parserContext.lexerStringMap.find(func_name);
+	if (itStr != parserContext.lexerStringMap.end()) {
+		LexerStringId id = itStr->second;
+		auto itG = parserContext.globalFunction.find(id);
+		if (itG != parserContext.globalFunction.end() && !itG->second.empty()) {
+			return static_cast<uint32_t>(itG->second.front());
+		}
+	}
+
+	// 2. Tra cứu vm.data.funcMap
+	auto it = vm.data.funcMap.find(func_name);
+	if (it != vm.data.funcMap.end() && !it->second.empty()) {
+		return static_cast<uint32_t>(it->second.front());
+	}
+
+	return UINT32_MAX;
+}
+
+uint32_t ACompiler::getFunctionCount() const {
+	return static_cast<uint32_t>(parserContext.globalFunction.size());
+}
+
+uint32_t ACompiler::getFunctionIdAt(uint32_t index) const {
+	if (index >= getFunctionCount()) {
+		return UINT32_MAX;
+	}
+
+	for (FunctionId fid = 0; fid < vm.data.functions.size(); ++fid) {
+		Function *func = vm.data.functions[fid];
+		if (!func) {
+			continue;
+		}
+		std::string_view name =
+		    vm.data.stringArena.get(func->nameStringOffset);
+		auto itName = parserContext.lexerStringMap.find(name);
+		if (itName == parserContext.lexerStringMap.end()) {
+			continue;
+		}
+		auto itGlobal = parserContext.globalFunction.find(itName->second);
+		if (itGlobal == parserContext.globalFunction.end() ||
+		    itGlobal->second.empty() || itGlobal->second.front() != fid) {
+			continue;
+		}
+		if (index == 0) {
+			return static_cast<uint32_t>(fid);
+		}
+		--index;
+	}
+	return UINT32_MAX;
+}
+
+const char *ACompiler::getFunctionNameById(uint32_t func_id) const {
+	if (func_id >= vm.data.functions.size() || !vm.data.functions[func_id]) {
+		return "";
+	}
+	Function *func = vm.data.functions[func_id];
+	std::string_view name = vm.data.stringArena.get(func->nameStringOffset);
+	auto itName = parserContext.lexerStringMap.find(name);
+	if (itName == parserContext.lexerStringMap.end()) {
+		return "";
+	}
+	auto itGlobal = parserContext.globalFunction.find(itName->second);
+	if (itGlobal == parserContext.globalFunction.end() ||
+	    itGlobal->second.empty() || itGlobal->second.front() != func_id) {
+		return "";
+	}
+	return parserContext.lexerString[itName->second].data();
+}
+
+int ACompiler::getFunctionParamCountById(uint32_t func_id) const {
+	if (func_id == UINT32_MAX) {
+		return -1;
+	}
+	FunctionId fid = static_cast<FunctionId>(func_id);
+	if (fid < parserContext.functionInfo.size() &&
+	    parserContext.functionInfo[fid] &&
+	    parserContext.functionInfo[fid]->parameter) {
+		return static_cast<int>(parserContext.functionInfo[fid]->parameter->parameters.size());
+	}
+	if (fid < vm.data.functions.size() && vm.data.functions[fid]) {
+		return static_cast<int>(vm.data.functions[fid]->argSize);
+	}
+	return -1;
+}
+
+int ACompiler::getFunctionParamCount(const std::string &func_name) const {
+	uint32_t fid = getFunctionId(func_name);
+	return getFunctionParamCountById(fid);
+}
+
+const char *ACompiler::getFunctionReturnTypeById(uint32_t func_id) const {
+	if (func_id == UINT32_MAX) {
+		return "";
+	}
+	FunctionId fid = static_cast<FunctionId>(func_id);
+	if (fid < parserContext.functionInfo.size() &&
+	    parserContext.functionInfo[fid] &&
+	    parserContext.functionInfo[fid]->returnClass) {
+		auto retClass = parserContext.functionInfo[fid]->returnClass;
+		if (retClass->classId && *retClass->classId < vm.data.classes.size() &&
+		    vm.data.classes[*retClass->classId] && !retClass->nullable && retClass->inputClassId.empty()) {
+			return vm.data.stringArena.get(vm.data.classes[*retClass->classId]->nameStringOffset);
+		}
+		std::string name = retClass->getName(
+		    const_cast<CompiledProgram &>(vm.data),
+		    const_cast<ParserContext &>(parserContext));
+		return const_cast<ParserContext &>(parserContext).stringArena.allocate(name);
+	}
+	if (fid < vm.data.functions.size() && vm.data.functions[fid]) {
+		Function *func = vm.data.functions[fid];
+		if (func->returnId < vm.data.classes.size() && vm.data.classes[func->returnId]) {
+			return vm.data.stringArena.get(vm.data.classes[func->returnId]->nameStringOffset);
+		}
+	}
+	return "Void";
+}
+
+std::string ACompiler::getFunctionReturnType(const std::string &func_name) const {
+	uint32_t fid = getFunctionId(func_name);
+	if (fid == UINT32_MAX) {
+		return "";
+	}
+	return getFunctionReturnTypeById(fid);
+}
+
+bool ACompiler::isFunctionTrailingClosure(uint32_t func_id) const {
+	if (func_id == UINT32_MAX) return false;
+
+	FunctionId fid = static_cast<FunctionId>(func_id);
+
+	// 1. Kiểm tra parserContext.functionInfo
+	if (fid < parserContext.functionInfo.size() && parserContext.functionInfo[fid]) {
+		auto fInfo = parserContext.functionInfo[fid];
+		if (fInfo->parameter && !fInfo->parameter->parameters.empty()) {
+			auto lastParam = fInfo->parameter->parameters.back();
+			if (lastParam && lastParam->classDeclaration) {
+				auto cd = lastParam->classDeclaration;
+				if (cd->isFunction ||
+				    (cd->classId && *cd->classId == DefaultClass::functionClassId) ||
+				    cd->baseClassLexerStringId == lexerIdFunction) {
+					return true;
+				}
+			}
+		}
+	}
+
+	// 2. Kiểm tra vm.data.functions
+	if (fid < vm.data.functions.size() && vm.data.functions[fid]) {
+		Function *func = vm.data.functions[fid];
+		if (func->argSize > 0 && func->args) {
+			if (func->args[func->argSize - 1] == DefaultClass::functionClassId) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+bool ACompiler::hasTrailingClosure(const std::string &func_name) const {
+	if (func_name.empty()) return false;
+
+	auto itStr = parserContext.lexerStringMap.find(func_name);
+	if (itStr != parserContext.lexerStringMap.end()) {
+		auto itG = parserContext.globalFunction.find(itStr->second);
+		if (itG != parserContext.globalFunction.end()) {
+			for (FunctionId fid : itG->second) {
+				if (isFunctionTrailingClosure(static_cast<uint32_t>(fid))) return true;
+			}
+		}
+	}
+	auto it = vm.data.funcMap.find(func_name);
+	if (it != vm.data.funcMap.end()) {
+		for (FunctionId fid : it->second) {
+			if (isFunctionTrailingClosure(static_cast<uint32_t>(fid))) return true;
+		}
+	}
+	return false;
+}
+
+// P7. API phản chiếu metadata đầy đủ
+std::vector<LibraryMeta> ACompiler::getLibraries() const {
+	return ReflectionEngine::getLibraries<NativeReflectionAdapter>(*this);
+}
+
+std::vector<ClassMeta> ACompiler::getClasses() const {
+	return ReflectionEngine::getClasses<NativeReflectionAdapter>(*this);
+}
+
+std::optional<ClassMeta> ACompiler::getClass(uint32_t classId) const {
+	return ReflectionEngine::getClass<NativeReflectionAdapter>(*this, classId);
+}
+
+std::vector<FunctionMeta> ACompiler::getFunctions() const {
+	return ReflectionEngine::getFunctions<NativeReflectionAdapter>(*this);
+}
+
+std::optional<FunctionMeta> ACompiler::getFunction(uint32_t funcId) const {
+	return ReflectionEngine::getFunction<NativeReflectionAdapter>(*this, funcId);
+}
+
+std::vector<AliasMeta> ACompiler::getAliases() const {
+	return ReflectionEngine::getAliases<NativeReflectionAdapter>(*this);
+}
+
+#ifdef __PYBIND11__
+py::object ACompiler::getLibrariesPy() const {
+	return ReflectionEngine::getLibraries<PyReflectionAdapter>(*this);
+}
+
+py::object ACompiler::getClassesPy() const {
+	return ReflectionEngine::getClasses<PyReflectionAdapter>(*this);
+}
+
+py::object ACompiler::getClassPy(uint32_t classId) const {
+	return ReflectionEngine::getClass<PyReflectionAdapter>(*this, classId);
+}
+
+py::object ACompiler::getFunctionsPy() const {
+	return ReflectionEngine::getFunctions<PyReflectionAdapter>(*this);
+}
+
+py::object ACompiler::getFunctionPy(uint32_t funcId) const {
+	return ReflectionEngine::getFunction<PyReflectionAdapter>(*this, funcId);
+}
+
+py::object ACompiler::getAliasesPy() const {
+	return ReflectionEngine::getAliases<PyReflectionAdapter>(*this);
+}
+#endif
 
 } // namespace Autolang
 

@@ -91,9 +91,11 @@ libcurl = os.path.join(BASE_DIR, "build/_deps/curl-build/lib/libcurl.a").replace
 curl_lib = libcurl_d if os.path.exists(libcurl_d) else libcurl
 extra_objects = [curl_lib] if os.path.exists(curl_lib) else []
 libraries = []
-
+extra_link_args = []
 if sys.platform == "win32":
     libraries.extend(["ws2_32", "wldap32", "crypt32", "advapi32", "bcrypt"])
+elif sys.platform == "darwin":
+    extra_link_args.extend(["-framework", "Security", "-framework", "CoreFoundation"])
 
 # ---------------------------------------------------------------------------
 ext_modules = [
@@ -103,6 +105,7 @@ ext_modules = [
         include_dirs=include_dirs,
         extra_compile_args=extra_compile_args,
         extra_objects=extra_objects,
+        extra_link_args=extra_link_args,
         libraries=libraries,
         cxx_std=None,
     ),

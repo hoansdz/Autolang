@@ -557,6 +557,22 @@ class CompilerWrapper {
 		}
 		compiler.vm.notifier->throwException(message);
 	}
+
+	bool isAvailableType(std::string name) {
+		return compiler.isAvailableType(name);
+	}
+
+	bool isAvailableFunction(std::string name) {
+		return compiler.isAvailableFunction(name);
+	}
+
+	bool isAvailableClass(std::string name) {
+		return compiler.isAvailableClass(name);
+	}
+
+	bool isAvailableGlobalVariable(std::string name) {
+		return compiler.isAvailableGlobalVariable(name);
+	}
 };
 
 EMSCRIPTEN_BINDINGS(autolang_module) {
@@ -609,5 +625,9 @@ EMSCRIPTEN_BINDINGS(autolang_module) {
 	    .function("hasCompilerError", &CompilerWrapper::hasCompilerError)
 	    .function("throwException", &CompilerWrapper::throwException)
 	    .function("getException", &CompilerWrapper::getException)
-	    .function("hasException", &CompilerWrapper::hasException);
+	    .function("hasException", &CompilerWrapper::hasException)
+	    .function("isAvailableType", &CompilerWrapper::isAvailableType)
+	    .function("isAvailableFunction", &CompilerWrapper::isAvailableFunction)
+	    .function("isAvailableClass", &CompilerWrapper::isAvailableClass)
+	    .function("isAvailableGlobalVariable", &CompilerWrapper::isAvailableGlobalVariable);
 }

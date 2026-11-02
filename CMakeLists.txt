@@ -33,6 +33,11 @@ if(NOT EMSCRIPTEN)
   set(CURL_DISABLE_LDAPS ON CACHE BOOL "" FORCE)
   set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE)
 
+  if(APPLE)
+    set(CURL_USE_OPENSSL   OFF CACHE BOOL "" FORCE)
+    set(CURL_USE_SECTRANSP ON  CACHE BOOL "" FORCE)
+  endif()
+
   FetchContent_Declare(curl
     GIT_REPOSITORY https://github.com/curl/curl.git
     GIT_TAG        curl-8_8_0
@@ -69,6 +74,9 @@ target_compile_definitions(autolang_lib PUBLIC
 if(NOT EMSCRIPTEN)
   target_compile_definitions(autolang_lib PUBLIC CURL_STATICLIB)
   target_link_libraries(autolang_lib PUBLIC libcurl)
+  if(APPLE)
+    target_link_libraries(autolang_lib PUBLIC "-framework Security" "-framework CoreFoundation")
+  endif()
 endif()
 
 target_link_libraries(autolang_lib PUBLIC rapidfuzz)

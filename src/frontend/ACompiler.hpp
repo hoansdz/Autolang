@@ -5,9 +5,11 @@
 #include "frontend/parser/Debugger.hpp"
 #include "frontend/parser/FunctionEvent.hpp"
 #include "frontend/parser/ParserContext.hpp"
+#include "frontend/reflection/ReflectionMeta.hpp"
 #include "shared/ANativeFunctionData.hpp"
 #include <iostream>
 #include <memory>
+#include <optional>
 
 namespace Autolang {
 
@@ -121,7 +123,6 @@ class ACompiler {
 	HashMap<std::string, LibraryData *> autoImportMap;
 	HashMap<std::string, Offset> generatedLibraryMap;
 	HashMap<std::string, Offset> builtInLibrariesMap;
-	ANativeMap globalNativeMap;
 	// Add built in library
 	void loadSource(LibraryData *library);
 	void lexerTextToToken(LibraryData *library);
@@ -162,16 +163,6 @@ class ACompiler {
 	                       LibraryConfig config = LibraryConfig(),
 	                       const ANativeMap &nativeFuncMap = EMPTY_NATIVE_MAP) {
 		return registerBuiltInLibrary(path.c_str(), data.c_str(), config, nativeFuncMap);
-	}
-
-	inline void registerFunction(const std::string &name, ANativeFunction func) {
-		globalNativeMap[name] = ANativeFunctionData(func);
-	}
-	inline void registerFunction(const std::string &name, ANativeLambdaFunction func) {
-		globalNativeMap[name] = ANativeFunctionData(std::move(func));
-	}
-	inline void clearRegisteredFunctions() {
-		globalNativeMap.clear();
 	}
 	inline bool registerLibraryFunction(const std::string &libraryPath,
 	                                    const std::string &functionName,
@@ -332,6 +323,64 @@ class ACompiler {
 	inline bool hasException() {
 		return exceptionMessage != nullptr;
 	}
+
+	bool isAvailableType(const std::string &name) const;
+	bool isAvailableFunction(const std::string &name) const;
+	bool isAvailableClass(const std::string &name) const;
+	bool isAvailableGlobalVariable(const std::string &name) const;
+
+	// 1. Phân giải thành viên lớp & kiểu dữ liệu
+	uint32_t getTypeCount() const;
+	uint32_t getTypeIdAt(uint32_t index) const;
+	const char *getTypeNameById(uint32_t type_id) const;
+	uint32_t getTypeId(const std::string &type_name) const;
+	bool isAvailableMember(const std::string &target_type, const std::string &member_name) const;
+	uint32_t getMemberId(const std::string &target_type, const std::string &member_name) const;
+	uint32_t getMemberIdByType(uint32_t type_id, const std::string &member_name) const;
+	uint32_t getMemberIdAt(uint32_t type_id, uint32_t index) const;
+	bool isMemberStatic(uint32_t member_id) const;
+	bool isMemberMethod(uint32_t member_id) const;
+	bool isMemberTrailingClosure(uint32_t member_id) const;
+	const char *getMemberReturnType(uint32_t member_id) const;
+	int getMemberParamCount(uint32_t member_id) const;
+	const char *getMemberNameById(uint32_t member_id) const;
+	uint32_t getMemberCountByType(uint32_t type_id) const;
+	std::vector<std::string> getMembersForType(const std::string &target_type) const;
+
+	// 2. Thuộc tính biến toàn cục & chữ ký hàm
+	uint32_t getGlobalVariableId(const std::string &var_name) const;
+	bool isGlobalVariableConst(uint32_t var_id) const;
+	const char *getGlobalVariableType(uint32_t var_id) const;
+	uint32_t getFunctionCount() const;
+	uint32_t getFunctionIdAt(uint32_t index) const;
+	const char *getFunctionNameById(uint32_t func_id) const;
+	uint32_t getFunctionId(const std::string &func_name) const;
+	int getFunctionParamCount(const std::string &func_name) const;
+	int getFunctionParamCountById(uint32_t func_id) const;
+	std::string getFunctionReturnType(const std::string &func_name) const;
+	const char *getFunctionReturnTypeById(uint32_t func_id) const;
+	bool hasTrailingClosure(const std::string &func_name) const;
+	bool isFunctionTrailingClosure(uint32_t func_id) const;
+
+	// P7. API phản chiếu metadata đầy đủ
+	std::vector<LibraryMeta> getLibraries() const;
+	std::vector<ClassMeta> getClasses() const;
+	std::optional<ClassMeta> getClass(uint32_t classId) const;
+	std::vector<FunctionMeta> getFunctions() const;
+	std::optional<FunctionMeta> getFunction(uint32_t funcId) const;
+	std::vector<AliasMeta> getAliases() const;
+
+#ifdef __PYBIND11__
+	py::object getLibrariesPy() const;
+	py::object getClassesPy() const;
+	py::object getClassPy(uint32_t classId) const;
+	py::object getFunctionsPy() const;
+	py::object getFunctionPy(uint32_t funcId) const;
+	py::object getAliasesPy() const;
+#endif
+
+  private:
+	uint32_t getMemberIdByTypeId(uint32_t type_id, LexerStringId name_id) const;
 };
 
 } // namespace Autolang

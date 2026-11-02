@@ -54,10 +54,6 @@ int main(int argc, char *argv[]) {
 			}
 			std::string file = normalizePath(argv[1]);
 			Autolang::ACompiler compiler;
-			compiler.registerFunction("hi", ANativeFunction([](NativeFuncInput) -> Autolang::AObject * {
-				std::cerr << "Duoc roi ne!!!\n";
-				return nullptr;
-			}));
 			if (!compiler.compile(file.c_str())) {
 				return 0;
 			}

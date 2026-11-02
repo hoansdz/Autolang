@@ -7,49 +7,52 @@ A statically typed, embeddable scripting language and VM engineered for validati
 [![Documentation](https://img.shields.io/badge/docs-online-blue)](https://autolang.vercel.app/docs)
 [![npm version](https://img.shields.io/npm/v/autolang-compiler.svg)](https://www.npmjs.com/package/autolang-compiler)
 
-[Documentation](https://autolang.vercel.app/docs) · [Getting Started](https://autolang.vercel.app/docs/introduction) · [Interactive Playground](https://autolang.vercel.app/docs/editor)
+[Documentation](https://autolang.vercel.app/docs) · [Getting Started](https://autolang.vercel.app/docs/introduction) · [Interactive Playground](https://autolang.vercel.app/docs/editor) · [Chatbot Demo](https://autolang-chatbot-demo.vercel.app/)
 
 ---
 
 ## Why Autolang?
 
-When software agents run multi-step workflows (charging accounts, updating databases, sending notifications), traditional execution strategies have critical flaws:
+In a real workflow, software agents don't just format text—they charge credit cards, update databases, and send emails. When generated code runs against a dynamic runtime, mistakes fail **late**:
 
-- **Multi-turn Tool Calling**: Slow network round-trips for every step. If step 3 fails on a hallucinated argument, steps 1 and 2 have already executed and mutated external state.
-- **Dynamic Scripting (JS / Python / Lua)**: Sequential runtime execution. If a typo or wrong argument type occurs on line 3, earlier lines have already made irreversible changes.
-- **Autolang (Compile First, Execute Second)**: The entire script is type-checked and compiled into bytecode in **< 1 ms**. Statically detectable errors reject the program before execution starts. **Zero host capabilities are invoked, and no partial mutations occur.**
+### JavaScript / Python — Fail Late
+1. `crm.getCustomers("enterprise")` runs.
+2. `payment.charge(invoice)` runs. **The money has moved.**
+3. `reporting.calculateMetrcs(...)` — misspelled. **The runtime throws a runtime error.**
 
-```kotlin
-// Example: Multi-step capability workflow
-val customer = findCustomer("cust_102")
-val invoice = createInvoice(customer.id, 250.0)
-reserveInventory(invoice.itemSku, invoice.quantity)
-sendReceipt(customer.email, invoice.id)
-```
+**Result:** Two capabilities already ran and cannot be rolled back from inside the script. The money has left, the order was never recorded, and external state is left corrupted.
+
+### Autolang — Fail Early (Compile First, Execute Second)
+1. The compiler checks types, symbols, and permissions across the entire script in **< 1 ms**.
+2. `calculateMetrcs` is misspelled. Compilation fails immediately.
+3. **No capability was invoked. Zero money moved. Zero rows written.**
+4. The structured compiler diagnostic returns `Did you mean: 'calculateMetrics'?`, allowing the model to self-correct on the next turn without replaying a broken business process.
+
+> **The Goal**: Not so AI writes better code, but so a script that is written wrong **never touches the business system at all**.
 
 ---
 
 ## 30-Second Demo: Compile-Time Diagnostics
 
-Suppose the host exposes a capability:
+The host registers typed capabilities under a strict default-deny policy:
 
 ```typescript
 compiler.registerBuiltInLibrary("analytics", `
     @native("calculateMetrics")
     fun calculateMetrics(period: String): Int
 `, { autoImport: true }, {
-    calculateMetrics(period) { return 42; }
+    calculateMetrics: (period) => 42
 });
 ```
 
-If the model produces a script with a typo (`calculateMetrcs`):
+When an LLM produces a script with a typo (`calculateMetrcs`):
 
 ```kotlin
 @import("analytics")
 val result = calculateMetrcs("quarterly")
 ```
 
-**Autolang Compiler Output:**
+**Real Autolang Compiler Output:**
 
 ```text
 workflow.atl:2: Cannot find function name 'calculateMetrcs'
@@ -57,15 +60,15 @@ Did you mean: 'calculateMetrics'?
 Hint: Verify the function name is spelled correctly and declared or imported in current scope.
 ```
 
-- **Execution**: Blocked immediately (`compileAndRun` returns `false`).
+- **Execution**: Blocked before launch (`compileAndRun` returns `false`).
 - **Side effects**: **Zero.**
-- **Self-healing**: The compiler outputs exact fuzzy suggestions (`Did you mean...?`) and type signatures so the model can auto-correct on the next turn.
+- **Self-healing**: The model receives the exact signature and fuzzy match to repair the call automatically.
 
 ---
 
 ## How Autolang Compares
 
-| Solution | Compile-Time Check | Latency | Default-Deny Sandbox | Opcode & Memory Quotas | Syntax |
+| Solution | Compile-Time Check | Check Latency | Default-Deny Sandbox | Opcode & Memory Quotas | Syntax |
 |---|---|---|---|---|---|
 | **Autolang** | **Full AST & Types** | **< 1 ms (In-process)** | **Built-in** | **Built-in** | **Kotlin-like (closures, pipelines)** |
 | **TypeScript (Go `tsc` + Isolate)** | Full Types | 30 ms – 150 ms | Requires custom hardening | Requires V8 isolate hooks | JS / TS |
@@ -73,9 +76,32 @@ Hint: Verify the function name is spelled correctly and declared or imported in 
 | **Starlark / CEL** | Partial | < 5 ms | Built-in | Limited | Restrictive (no closures/pipelines) |
 | **Multi-Turn Tool Calling** | No (Fails mid-run) | Hundreds of ms / turn | Prompt-governed | Token limit only | JSON tool calls |
 
-- **Why not TypeScript + V8 Isolate?** Even with Microsoft's Go rewrite of `tsc`, type-checking and execution remain decoupled across two heavy systems. Hardening JavaScript runtimes against prototype pollution (`Object.prototype`) is fragile. Autolang compiles and executes inside a single in-process C++ engine with built-in opcode metering.
-- **Why not Lua / QuickJS?** Dynamically typed engines cannot catch missing functions or invalid argument types before line 1 begins executing external side effects.
-- **Why not Starlark?** Starlark is designed for build configs (Bazel) and lacks modern workflow ergonomics like closures, rich collection pipelines (`filter`/`map`), and static null safety.
+- **Why not TypeScript + V8 Isolate?** Even with the Go rewrite of `tsc`, type-checking and execution remain decoupled across two heavy systems. Hardening JavaScript against prototype pollution (`Object.prototype`) is fragile. Autolang compiles and executes inside a single in-process C++ engine.
+- **Why not Lua / QuickJS?** Dynamically typed engines cannot catch missing functions or invalid argument types before line 1 executes external mutations.
+- **Why not Starlark?** Starlark is designed for build configs (Bazel) and lacks modern workflow ergonomics like closures, collection pipelines (`filter`/`map`), and static null safety.
+
+---
+
+## Is Autolang Right for You?
+
+### Use it when:
+- You want an invalid AI-generated script to fail immediately before calling capabilities, not halfway through after charging a card or mutating a database.
+- You need to connect AI to backend services without exposing raw credentials, sockets, or operating system shells.
+- You need to execute multi-step workflows (loops, conditionals, transformations) in a single deterministic turn without 10 network round-trips.
+- You want cross-language syntax tolerance so minor LLM habits (`.push()` vs `.add()`, `List` vs `Array`) don't break execution.
+
+### Skip it when:
+- You need kernel-level or hypervisor isolation for untrusted native binaries (use Docker, Firecracker, or gVisor).
+- You are building large, long-running applications that depend on vast third-party package ecosystems (npm/pip).
+
+---
+
+## Where Autolang Sits Relative to Docker
+
+Autolang provides **language-level capability control**, not operating-system isolation. It does not replace Docker or microVMs—it replaces the general-purpose runtime (Node.js/Python) that would otherwise execute *inside* them.
+
+- **Docker / microVM**: Protects the OS boundary (which files, ports, and devices the process can touch).
+- **Autolang VM**: Protects the business boundary (which internal capabilities the AI script can call, and how many instructions it may consume).
 
 ---
 
@@ -195,12 +221,11 @@ try {
 
 ---
 
-## Trade-offs & Boundaries
+## The Limit of This Guarantee
 
-- **Not an OS Sandbox**: Autolang is a language-level policy and validation layer. It does not replace containers (Docker, Firecracker, gVisor) for untrusted native binaries.
-- **Static Detection vs Runtime Failure**: Autolang catches syntax errors, missing identifiers, and type mismatches before execution. External runtime errors (downstream API 500s, network drops) can still occur; Autolang does not automatically roll back completed external side effects.
-- **Host Callback Memory**: The VM manages its own heap quota; memory allocated natively inside host callbacks remains under the host platform's runtime.
-- **Determinism**: Script logic is deterministic unless the host exposes non-deterministic capabilities (system clock, random, network).
+The compiler catches names, types, and capability signatures before execution. **It cannot verify whether the business rule itself is correct.** A script that charges the wrong amount or applies an unintended discount will compile cleanly and run cleanly. 
+
+Autolang guarantees the **blast radius** of a mistake: execution stays strictly inside the granted capabilities and resource limits. It cannot guarantee human intent.
 
 ---
 
@@ -237,8 +262,13 @@ Run local benchmarks:
 
 ## Status & Documentation
 
-- **Status**: `Beta (v0.8.x)`. Core C++ engine is mature (102/102 test suites passing with Kotlin stdlib parity). Host bindings are stabilizing toward v1.0.
-- **Documentation**: Full API reference, syntax guides, and architecture specs at [autolang.vercel.app/docs](https://autolang.vercel.app/docs).
+- **Status**: `Beta (v0.8.x)`. Core C++ engine is mature (102/102 test suites passing with Kotlin stdlib parity). Host bindings are actively stabilizing toward v1.0.
+- **Full Documentation**:
+  - [Philosophy & Core Principles](https://autolang.vercel.app/docs)
+  - [Getting Started & Setup](https://autolang.vercel.app/docs/introduction)
+  - [Security Architecture & Threat Model](https://autolang.vercel.app/docs/security-model)
+  - [Detailed Benchmarks](https://autolang.vercel.app/docs/benchmarks)
+  - [FAQ](https://autolang.vercel.app/docs/faq)
 
 ---
 

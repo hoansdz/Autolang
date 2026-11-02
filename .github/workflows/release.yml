@@ -35,7 +35,7 @@ jobs:
         run: pip install cibuildwheel==2.21
 
       - name: Build wheels
-        run: python -m cibuildwheel --output-dir wheelhouse tests/pybind11/release
+        run: python -m cibuildwheel --output-dir wheelhouse release/pybind11/release
 
       - name: Upload wheel artifacts
         uses: actions/upload-artifact@v4
@@ -61,7 +61,7 @@ jobs:
 
       - name: Build sdist
         # Fix đường dẫn ra bằng cách dùng thư mục gốc (project root) làm chuẩn, tránh đi lùi ../../../
-        run: python -m build --sdist tests/pybind11/release --outdir dist
+        run: python -m build --sdist release/pybind11/release --outdir dist
 
       - name: Upload sdist artifact
         uses: actions/upload-artifact@v4

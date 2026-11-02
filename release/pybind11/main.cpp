@@ -581,6 +581,133 @@ class CompilerWrapper {
 		}
 		compiler.vm.notifier->throwException(message);
 	}
+
+	bool isAvailableType(const std::string &name) const {
+		return compiler.isAvailableType(name);
+	}
+
+	bool isAvailableFunction(const std::string &name) const {
+		return compiler.isAvailableFunction(name);
+	}
+
+	bool isAvailableClass(const std::string &name) const {
+		return compiler.isAvailableClass(name);
+	}
+
+	bool isAvailableGlobalVariable(const std::string &name) const {
+		return compiler.isAvailableGlobalVariable(name);
+	}
+
+	// 1. Phân giải thành viên lớp & kiểu dữ liệu
+	uint32_t getTypeCount() const {
+		return compiler.getTypeCount();
+	}
+	uint32_t getTypeIdAt(uint32_t index) const {
+		return compiler.getTypeIdAt(index);
+	}
+	const char *getTypeNameById(uint32_t type_id) const {
+		return compiler.getTypeNameById(type_id);
+	}
+	uint32_t getTypeId(const std::string &type_name) const {
+		return compiler.getTypeId(type_name);
+	}
+	bool isAvailableMember(const std::string &target_type, const std::string &member_name) const {
+		return compiler.isAvailableMember(target_type, member_name);
+	}
+	uint32_t getMemberId(const std::string &target_type, const std::string &member_name) const {
+		return compiler.getMemberId(target_type, member_name);
+	}
+	uint32_t getMemberIdByType(uint32_t type_id, const std::string &member_name) const {
+		return compiler.getMemberIdByType(type_id, member_name);
+	}
+	uint32_t getMemberIdAt(uint32_t type_id, uint32_t index) const {
+		return compiler.getMemberIdAt(type_id, index);
+	}
+	bool isMemberStatic(uint32_t member_id) const {
+		return compiler.isMemberStatic(member_id);
+	}
+	bool isMemberMethod(uint32_t member_id) const {
+		return compiler.isMemberMethod(member_id);
+	}
+	bool isMemberTrailingClosure(uint32_t member_id) const {
+		return compiler.isMemberTrailingClosure(member_id);
+	}
+	const char *getMemberReturnType(uint32_t member_id) const {
+		return compiler.getMemberReturnType(member_id);
+	}
+	int getMemberParamCount(uint32_t member_id) const {
+		return compiler.getMemberParamCount(member_id);
+	}
+	const char *getMemberNameById(uint32_t member_id) const {
+		return compiler.getMemberNameById(member_id);
+	}
+	uint32_t getMemberCountByType(uint32_t type_id) const {
+		return compiler.getMemberCountByType(type_id);
+	}
+	std::vector<std::string> getMembersForType(const std::string &target_type) const {
+		return compiler.getMembersForType(target_type);
+	}
+
+	// 2. Thuộc tính biến toàn cục & chữ ký hàm
+	uint32_t getGlobalVariableId(const std::string &var_name) const {
+		return compiler.getGlobalVariableId(var_name);
+	}
+	bool isGlobalVariableConst(uint32_t var_id) const {
+		return compiler.isGlobalVariableConst(var_id);
+	}
+	const char *getGlobalVariableType(uint32_t var_id) const {
+		return compiler.getGlobalVariableType(var_id);
+	}
+	uint32_t getFunctionCount() const {
+		return compiler.getFunctionCount();
+	}
+	uint32_t getFunctionIdAt(uint32_t index) const {
+		return compiler.getFunctionIdAt(index);
+	}
+	const char *getFunctionNameById(uint32_t func_id) const {
+		return compiler.getFunctionNameById(func_id);
+	}
+	uint32_t getFunctionId(const std::string &func_name) const {
+		return compiler.getFunctionId(func_name);
+	}
+	int getFunctionParamCount(const std::string &func_name) const {
+		return compiler.getFunctionParamCount(func_name);
+	}
+	int getFunctionParamCountById(uint32_t func_id) const {
+		return compiler.getFunctionParamCountById(func_id);
+	}
+	std::string getFunctionReturnType(const std::string &func_name) const {
+		return compiler.getFunctionReturnType(func_name);
+	}
+	const char *getFunctionReturnTypeById(uint32_t func_id) const {
+		return compiler.getFunctionReturnTypeById(func_id);
+	}
+	bool hasTrailingClosure(const std::string &func_name) const {
+		return compiler.hasTrailingClosure(func_name);
+	}
+	bool isFunctionTrailingClosure(uint32_t func_id) const {
+		return compiler.isFunctionTrailingClosure(func_id);
+	}
+
+	// P7. API phản chiếu metadata đầy đủ
+	py::object getLibraries() const {
+		return compiler.getLibrariesPy();
+	}
+	py::object getClasses() const {
+		return compiler.getClassesPy();
+	}
+	py::object getClass(uint32_t class_id) const {
+		return compiler.getClassPy(class_id);
+	}
+	py::object getFunctions() const {
+		return compiler.getFunctionsPy();
+	}
+	py::object getFunction(uint32_t func_id) const {
+		return compiler.getFunctionPy(func_id);
+	}
+	py::object getAliases() const {
+		return compiler.getAliasesPy();
+	}
 };
 
 PYBIND11_MODULE(autolang, m) {
@@ -664,9 +791,82 @@ PYBIND11_MODULE(autolang, m) {
 	         py::arg("allowLateinitKeyword"),
 	         py::arg("allowNonNullAssertion"),
 	         py::arg("mapFunction") = py::none())
+	    .def("isAvailableType", &CompilerWrapper::isAvailableType,
+	         py::arg("name"))
+	    .def("isAvailableFunction", &CompilerWrapper::isAvailableFunction,
+	         py::arg("name"))
+	    .def("isAvailableClass", &CompilerWrapper::isAvailableClass,
+	         py::arg("name"))
+	    .def("isAvailableGlobalVariable", &CompilerWrapper::isAvailableGlobalVariable,
+	         py::arg("name"))
+	    // 1. Phân giải thành viên lớp & kiểu dữ liệu
+	    .def("getTypeCount", &CompilerWrapper::getTypeCount)
+	    .def("getTypeIdAt", &CompilerWrapper::getTypeIdAt,
+	         py::arg("index"))
+	    .def("getTypeNameById", &CompilerWrapper::getTypeNameById,
+	         py::arg("type_id"))
+	    .def("getTypeId", &CompilerWrapper::getTypeId,
+	         py::arg("type_name"))
+	    .def("isAvailableMember", &CompilerWrapper::isAvailableMember,
+	         py::arg("target_type"), py::arg("member_name"))
+	    .def("getMemberId", &CompilerWrapper::getMemberId,
+	         py::arg("target_type"), py::arg("member_name"))
+	    .def("getMemberIdByType", &CompilerWrapper::getMemberIdByType,
+	         py::arg("type_id"), py::arg("member_name"))
+	    .def("getMemberIdAt", &CompilerWrapper::getMemberIdAt,
+	         py::arg("type_id"), py::arg("index"))
+	    .def("isMemberStatic", &CompilerWrapper::isMemberStatic,
+	         py::arg("member_id"))
+	    .def("isMemberMethod", &CompilerWrapper::isMemberMethod,
+	         py::arg("member_id"))
+	    .def("isMemberTrailingClosure", &CompilerWrapper::isMemberTrailingClosure,
+	         py::arg("member_id"))
+	    .def("getMemberReturnType", &CompilerWrapper::getMemberReturnType,
+	         py::arg("member_id"))
+	    .def("getMemberParamCount", &CompilerWrapper::getMemberParamCount,
+	         py::arg("member_id"))
+	    .def("getMemberNameById", &CompilerWrapper::getMemberNameById,
+	         py::arg("member_id"))
+	    .def("getMemberCountByType", &CompilerWrapper::getMemberCountByType,
+	         py::arg("type_id"))
+	    .def("getMembersForType", &CompilerWrapper::getMembersForType,
+	         py::arg("target_type"))
+	    // 2. Thuộc tính biến toàn cục & chữ ký hàm
+	    .def("getGlobalVariableId", &CompilerWrapper::getGlobalVariableId,
+	         py::arg("var_name"))
+	    .def("isGlobalVariableConst", &CompilerWrapper::isGlobalVariableConst,
+	         py::arg("var_id"))
+	    .def("getGlobalVariableType", &CompilerWrapper::getGlobalVariableType,
+	         py::arg("var_id"))
+	    .def("getFunctionCount", &CompilerWrapper::getFunctionCount)
+	    .def("getFunctionIdAt", &CompilerWrapper::getFunctionIdAt,
+	         py::arg("index"))
+	    .def("getFunctionNameById", &CompilerWrapper::getFunctionNameById,
+	         py::arg("func_id"))
+	    .def("getFunctionId", &CompilerWrapper::getFunctionId,
+	         py::arg("func_name"))
+	    .def("getFunctionParamCount", &CompilerWrapper::getFunctionParamCount,
+	         py::arg("func_name"))
+	    .def("getFunctionParamCountById", &CompilerWrapper::getFunctionParamCountById,
+	         py::arg("func_id"))
+	    .def("getFunctionReturnType", &CompilerWrapper::getFunctionReturnType,
+	         py::arg("func_name"))
+	    .def("getFunctionReturnTypeById", &CompilerWrapper::getFunctionReturnTypeById,
+	         py::arg("func_id"))
+	    .def("hasTrailingClosure", &CompilerWrapper::hasTrailingClosure,
+	         py::arg("func_name"))
+	    .def("isFunctionTrailingClosure", &CompilerWrapper::isFunctionTrailingClosure,
+	         py::arg("func_id"))
 	    .def("hasCompilerError", &CompilerWrapper::hasCompilerError)
 	    .def("throwException", &CompilerWrapper::throwException,
 	         py::arg("message"))
 	    .def("getException", &CompilerWrapper::getException)
-	    .def("hasException", &CompilerWrapper::hasException);
+	    .def("hasException", &CompilerWrapper::hasException)
+	    // P7. API phản chiếu metadata đầy đủ
+	    .def("getLibraries", &CompilerWrapper::getLibraries)
+	    .def("getClasses", &CompilerWrapper::getClasses)
+	    .def("getClass", &CompilerWrapper::getClass, py::arg("class_id"))
+	    .def("getFunctions", &CompilerWrapper::getFunctions)
+	    .def("getFunction", &CompilerWrapper::getFunction, py::arg("func_id"))
+	    .def("getAliases", &CompilerWrapper::getAliases);
 }
