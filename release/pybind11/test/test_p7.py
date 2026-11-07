@@ -83,6 +83,8 @@ fun customGlobalFunc(a: Int, b: String = "default", mapParam: Map<String, Array<
     for sf in sin_funcs:
         assert sf["library"] == "std/math"
         assert sf["ownerClassId"] == math_id
+        assert sf["isInfix"] == False
+        assert sf["infixPrecedence"] == -1
 
     # Kiểm tra hàm cơ bản của Math mang library = "stdlib"
     for basic_name in ["abs", "min", "max"]:
@@ -102,6 +104,8 @@ fun customGlobalFunc(a: Int, b: String = "default", mapParam: Map<String, Array<
     println_f = func_map["println"][0]
     assert len(println_f["params"]) == 1
     assert println_f["params"][0]["hasDefault"] == True
+    assert println_f["isInfix"] == False
+    assert println_f["infixPrecedence"] == -1
 
     # customGlobalFunc(a, b = "default", mapParam: Map<String, Array<Int>>? = null)
     assert "customGlobalFunc" in func_map
@@ -150,6 +154,19 @@ fun customGlobalFunc(a: Int, b: String = "default", mapParam: Map<String, Array<
     with_index_f = arr_meta["functions"]["withIndex"][0]
     assert len(with_index_f["params"]) >= 1
     assert with_index_f["params"][0]["hasDefault"] == True
+
+    # Kiểm tra cờ isInfix và infixPrecedence
+    int_id = compiler.getTypeId("Int")
+    int_meta = compiler.getClass(int_id)
+    assert "downTo" in int_meta["functions"]
+    for dt in int_meta["functions"]["downTo"]:
+        assert dt["isInfix"] == True
+        assert dt["infixPrecedence"] == 9
+
+    assert "step" in arr_meta["functions"]
+    for st in arr_meta["functions"]["step"]:
+        assert st["isInfix"] == True
+        assert st["infixPrecedence"] == 8
 
     # 5. Kiểm tra Box generics <T extends Math, R> và thuộc tính (val, var, lateinit var)
     box_id = compiler.getTypeId("Box")
@@ -246,6 +263,80 @@ fun customGlobalFunc(a: Int, b: String = "default", mapParam: Map<String, Array<
         for exp in expected_members:
             has_member = (exp in actual_prop_names) or (exp in actual_func_names)
             assert has_member, f"Class {type_name} missing member {exp} in ClassMeta (properties or functions)"
+
+    # 10. Kiểm tra getIntrinsicFunctions
+    intrinsics = compiler.getIntrinsicFunctions()
+    assert isinstance(intrinsics, list)
+    assert len(intrinsics) == 39
+    int_map = {item["name"]: item for item in intrinsics}
+
+    # Kiểm tra cấu trúc các trường
+    for item in intrinsics:
+        for key in ["name", "returnClass", "nullable", "elementFromArguments", "minArgs", "maxArgs"]:
+            assert key in item, f"Key '{key}' missing in intrinsic entry: {item}"
+
+    # listOf -> returnClass đúng là Array
+    assert "listOf" in int_map
+    assert int_map["listOf"]["returnClass"] == "Array"
+    assert int_map["listOf"]["elementFromArguments"] == True
+    assert int_map["listOf"]["minArgs"] == 0
+    assert int_map["listOf"]["maxArgs"] == -1
+
+    # emptyList -> maxArgs 0
+    assert "emptyList" in int_map
+    assert int_map["emptyList"]["returnClass"] == "Array"
+    assert int_map["emptyList"]["elementFromArguments"] == False
+    assert int_map["emptyList"]["minArgs"] == 0
+    assert int_map["emptyList"]["maxArgs"] == 0
+
+    # mapOf
+    assert "mapOf" in int_map
+    assert int_map["mapOf"]["returnClass"] == "Map"
+    assert int_map["mapOf"]["elementFromArguments"] == True
+    assert int_map["mapOf"]["minArgs"] == 0
+    assert int_map["mapOf"]["maxArgs"] == -1
+
+    # setOf
+    assert "setOf" in int_map
+    assert int_map["setOf"]["returnClass"] == "Set"
+    assert int_map["setOf"]["elementFromArguments"] == True
+    assert int_map["setOf"]["minArgs"] == 0
+    assert int_map["setOf"]["maxArgs"] == -1
+
+    # intArrayOf
+    assert "intArrayOf" in int_map
+    assert int_map["intArrayOf"]["returnClass"] == "Array"
+    assert int_map["intArrayOf"]["elementFromArguments"] == True
+    assert int_map["intArrayOf"]["minArgs"] == 0
+    assert int_map["intArrayOf"]["maxArgs"] == -1
+
+    # pairOf
+    assert "pairOf" in int_map
+    assert int_map["pairOf"]["returnClass"] == "Pair"
+    assert int_map["pairOf"]["elementFromArguments"] == True
+    assert int_map["pairOf"]["minArgs"] == 2
+    assert int_map["pairOf"]["maxArgs"] == 2
+
+    # Đối chiếu kết quả biên dịch
+    test_code = """
+val pyListOf = listOf(1, 2)
+val pyEmptyList = emptyList<Int>()
+val pyMapOf = mapOf(1 to 2)
+val pySetOf = setOf(1, 2)
+val pyIntArrayOf = intArrayOf(1, 2)
+"""
+    assert compiler.compile("py_intrinsics.al", test_code)
+    for vname, expected_cls in [
+        ("pyListOf", int_map["listOf"]["returnClass"]),
+        ("pyEmptyList", int_map["emptyList"]["returnClass"]),
+        ("pyMapOf", int_map["mapOf"]["returnClass"]),
+        ("pySetOf", int_map["setOf"]["returnClass"]),
+        ("pyIntArrayOf", int_map["intArrayOf"]["returnClass"])
+    ]:
+        vid = compiler.getGlobalVariableId(vname)
+        assert vid != 4294967295
+        tstr = compiler.getGlobalVariableType(vid)
+        assert tstr.startswith(expected_cls), f"{vname} expected prefix {expected_cls}, got {tstr}"
 
     print("\nALL P7 PYTHON TESTS PASSED SUCCESSFULLY!")
 

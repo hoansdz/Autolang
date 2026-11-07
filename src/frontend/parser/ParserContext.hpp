@@ -438,6 +438,30 @@ struct ParserContext {
 		lexerString.push_back(arenaStr);
 		return id;
 	}
+	static constexpr bool isInfixFunctionName(LexerStringId id) noexcept {
+		return id == lexerIdstep || id == lexerIddownTo;
+	}
+	static constexpr int getInfixPrecedence(LexerStringId id) noexcept {
+		switch (id) {
+			case lexerIdstep: return 8;
+			case lexerIddownTo: return 9;
+			default: return -1;
+		}
+	}
+	inline bool isInfixFunctionName(std::string_view name) const noexcept {
+		auto it = lexerStringMap.find(name);
+		if (it != lexerStringMap.end()) {
+			return isInfixFunctionName(it->second);
+		}
+		return false;
+	}
+	inline int getInfixPrecedence(std::string_view name) const noexcept {
+		auto it = lexerStringMap.find(name);
+		if (it != lexerStringMap.end()) {
+			return getInfixPrecedence(it->second);
+		}
+		return -1;
+	}
 	~ParserContext();
 };
 

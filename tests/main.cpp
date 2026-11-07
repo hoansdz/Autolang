@@ -783,6 +783,8 @@ fun customGlobalFunc(a: Int, b: String = "default", mapParam: Map<String, Array<
 					CHECK(sinFn.library == "std/math", "Math.sin library is std/math");
 					CHECK(sinFn.ownerClassId.has_value() && *sinFn.ownerClassId == mathId,
 					      "Math.sin ownerClassId is Math");
+					CHECK(sinFn.isInfix == false, "Math.sin isInfix == false");
+					CHECK(sinFn.infixPrecedence == -1, "Math.sin infixPrecedence == -1");
 				}
 			}
 
@@ -832,6 +834,8 @@ fun customGlobalFunc(a: Int, b: String = "default", mapParam: Map<String, Array<
 					CHECK(fn.params[0].hasDefault == true, "println param 0 hasDefault == true");
 				}
 				CHECK(!fn.ownerClassId.has_value(), "println ownerClassId is nullopt");
+				CHECK(fn.isInfix == false, "println isInfix == false");
+				CHECK(fn.infixPrecedence == -1, "println infixPrecedence == -1");
 			} else if (fn.name == "customGlobalFunc") {
 				foundCustomGlobal = true;
 				CHECK(fn.params.size() == 3, "customGlobalFunc has 3 params");
@@ -897,6 +901,32 @@ fun customGlobalFunc(a: Int, b: String = "default", mapParam: Map<String, Array<
 					}
 				}
 				CHECK(foundStrIndexOf, "found StringBuilder.indexOf(str, startIndex)");
+			}
+		}
+
+		// Kiểm tra cờ isInfix và infixPrecedence cho Int.downTo và Array.step
+		uint32_t intId = p7Compiler.getTypeId("Int");
+		auto intMetaOpt = p7Compiler.getClass(intId);
+		CHECK(intMetaOpt.has_value(), "getClass(Int) found");
+		if (intMetaOpt.has_value()) {
+			auto itDownTo = intMetaOpt->functions.find("downTo");
+			CHECK(itDownTo != intMetaOpt->functions.end(), "Int has downTo");
+			if (itDownTo != intMetaOpt->functions.end() && !itDownTo->second.empty()) {
+				for (const auto &fn : itDownTo->second) {
+					CHECK(fn.isInfix == true, "Int.downTo isInfix == true");
+					CHECK(fn.infixPrecedence == 9, "Int.downTo infixPrecedence == 9");
+				}
+			}
+		}
+
+		if (arrMetaOpt.has_value()) {
+			auto itStep = arrMetaOpt->functions.find("step");
+			CHECK(itStep != arrMetaOpt->functions.end(), "Array has step");
+			if (itStep != arrMetaOpt->functions.end() && !itStep->second.empty()) {
+				for (const auto &fn : itStep->second) {
+					CHECK(fn.isInfix == true, "Array.step isInfix == true");
+					CHECK(fn.infixPrecedence == 8, "Array.step infixPrecedence == 8");
+				}
 			}
 		}
 
@@ -1045,6 +1075,107 @@ fun customGlobalFunc(a: Int, b: String = "default", mapParam: Map<String, Array<
 			std::cerr << "Failed testReflectionMetadataApisP7\n";
 		}
 		#undef CHECK
+	}
+
+	totalCount++;
+	{
+		bool ok = true;
+		#define CHECK_INT(cond, msg) \
+			if (!(cond)) { \
+				std::cerr << "FAIL [testIntrinsicFunctionsReflection]: " << (msg) << "\n"; \
+				ok = false; \
+			}
+
+		Autolang::ACompiler compiler;
+		auto intrinsics = compiler.getIntrinsicFunctions();
+		CHECK_INT(!intrinsics.empty(), "getIntrinsicFunctions is not empty");
+		CHECK_INT(intrinsics.size() == 39, "getIntrinsicFunctions contains 39 intrinsics");
+
+		ankerl::unordered_dense::map<std::string, Autolang::IntrinsicMeta> map;
+		for (const auto &item : intrinsics) {
+			map[item.name] = item;
+		}
+
+		// 1. listOf
+		CHECK_INT(map.find("listOf") != map.end(), "listOf exists");
+		if (map.find("listOf") != map.end()) {
+			CHECK_INT(map["listOf"].returnClass == "Array", "listOf returnClass is Array");
+			CHECK_INT(map["listOf"].elementFromArguments == true, "listOf elementFromArguments is true");
+			CHECK_INT(map["listOf"].minArgs == 0, "listOf minArgs is 0");
+			CHECK_INT(map["listOf"].maxArgs == -1, "listOf maxArgs is -1");
+		}
+
+		// 2. emptyList
+		CHECK_INT(map.find("emptyList") != map.end(), "emptyList exists");
+		if (map.find("emptyList") != map.end()) {
+			CHECK_INT(map["emptyList"].returnClass == "Array", "emptyList returnClass is Array");
+			CHECK_INT(map["emptyList"].elementFromArguments == false, "emptyList elementFromArguments is false");
+			CHECK_INT(map["emptyList"].minArgs == 0, "emptyList minArgs is 0");
+			CHECK_INT(map["emptyList"].maxArgs == 0, "emptyList maxArgs is 0");
+		}
+
+		// 3. mapOf
+		CHECK_INT(map.find("mapOf") != map.end(), "mapOf exists");
+		if (map.find("mapOf") != map.end()) {
+			CHECK_INT(map["mapOf"].returnClass == "Map", "mapOf returnClass is Map");
+			CHECK_INT(map["mapOf"].elementFromArguments == true, "mapOf elementFromArguments is true");
+			CHECK_INT(map["mapOf"].minArgs == 0, "mapOf minArgs is 0");
+			CHECK_INT(map["mapOf"].maxArgs == -1, "mapOf maxArgs is -1");
+		}
+
+		// 4. setOf
+		CHECK_INT(map.find("setOf") != map.end(), "setOf exists");
+		if (map.find("setOf") != map.end()) {
+			CHECK_INT(map["setOf"].returnClass == "Set", "setOf returnClass is Set");
+			CHECK_INT(map["setOf"].elementFromArguments == true, "setOf elementFromArguments is true");
+			CHECK_INT(map["setOf"].minArgs == 0, "setOf minArgs is 0");
+			CHECK_INT(map["setOf"].maxArgs == -1, "setOf maxArgs is -1");
+		}
+
+		// 5. intArrayOf
+		CHECK_INT(map.find("intArrayOf") != map.end(), "intArrayOf exists");
+		if (map.find("intArrayOf") != map.end()) {
+			CHECK_INT(map["intArrayOf"].returnClass == "Array", "intArrayOf returnClass is Array");
+			CHECK_INT(map["intArrayOf"].elementFromArguments == true, "intArrayOf elementFromArguments is true");
+			CHECK_INT(map["intArrayOf"].minArgs == 0, "intArrayOf minArgs is 0");
+			CHECK_INT(map["intArrayOf"].maxArgs == -1, "intArrayOf maxArgs is -1");
+		}
+
+		// 6. Đối chiếu với kết quả compile thực tế của compiler
+		const char *testScript = R"###(
+val resListOf = listOf(1, 2)
+val resEmptyList = emptyList<Int>()
+val resMapOf = mapOf(1 to 2)
+val resSetOf = setOf(1, 2)
+val resIntArrayOf = intArrayOf(1, 2)
+val resPairOf = pairOf(1, 2)
+val resSetOfNotNull = setOfNotNull(1, null)
+)###";
+		bool compOk = compiler.compile("test_intrinsics.al", testScript);
+		CHECK_INT(compOk, "compiler compiled testScript successfully");
+
+		auto checkVarClass = [&](const std::string &varName, const std::string &expectedClass) {
+			uint32_t vid = compiler.getGlobalVariableId(varName);
+			CHECK_INT(vid != UINT32_MAX, varName + " variable found");
+			std::string typeStr = compiler.getGlobalVariableType(vid);
+			CHECK_INT(typeStr.rfind(expectedClass, 0) == 0, varName + " resolved type begins with " + expectedClass + ", got: " + typeStr);
+		};
+
+		checkVarClass("resListOf", map["listOf"].returnClass);
+		checkVarClass("resEmptyList", map["emptyList"].returnClass);
+		checkVarClass("resMapOf", map["mapOf"].returnClass);
+		checkVarClass("resSetOf", map["setOf"].returnClass);
+		checkVarClass("resIntArrayOf", map["intArrayOf"].returnClass);
+		checkVarClass("resPairOf", map["pairOf"].returnClass);
+		checkVarClass("resSetOfNotNull", map["setOfNotNull"].returnClass);
+
+		if (ok) {
+			passedCount++;
+			std::cout << "Passed testIntrinsicFunctionsReflection\n";
+		} else {
+			std::cerr << "Failed testIntrinsicFunctionsReflection\n";
+		}
+		#undef CHECK_INT
 	}
 
 	totalCount += AutolangTests::runAllCompileTimeRules(sharedCompiler, "tests/rule/compile_time", passedCount);

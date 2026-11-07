@@ -7,6 +7,7 @@
 #include "frontend/parser/ClassInfo.hpp"
 #include "frontend/parser/FunctionInfo.hpp"
 #include "frontend/parser/GenericData.hpp"
+#include "frontend/parser/IntrinsicFunctions.hpp"
 #include "frontend/parser/Parameter.hpp"
 #include "frontend/parser/ParserContext.hpp"
 #include "shared/DefaultClass.hpp"
@@ -35,6 +36,7 @@ struct NativeReflectionAdapter {
 	using ClassResult = ClassMeta;
 	using LibraryResult = LibraryMeta;
 	using AliasResult = AliasMeta;
+	using IntrinsicResult = IntrinsicMeta;
 	using ListType = std::vector<TypeResult>;
 	using ListVar = std::vector<VarResult>;
 	using ListFunction = std::vector<FunctionResult>;
@@ -42,6 +44,7 @@ struct NativeReflectionAdapter {
 	using ListClass = std::vector<ClassResult>;
 	using ListLibrary = std::vector<LibraryResult>;
 	using ListAlias = std::vector<AliasResult>;
+	using ListIntrinsic = std::vector<IntrinsicResult>;
 	using ListString = std::vector<std::string>;
 	using MapFunction = ankerl::unordered_dense::map<std::string, std::vector<FunctionMeta>>;
 	using OptionalClass = std::optional<ClassMeta>;
@@ -84,6 +87,7 @@ struct NativeReflectionAdapter {
 	                                 const std::string &library,
 	                                 std::optional<uint32_t> ownerClassId,
 	                                 bool isStatic, bool hasTrailingClosure,
+	                                 bool isInfix, int infixPrecedence,
 	                                 ListVar &&params,
 	                                 TypeMeta &&returnType) {
 		FunctionMeta fm;
@@ -93,9 +97,21 @@ struct NativeReflectionAdapter {
 		fm.ownerClassId = ownerClassId;
 		fm.isStatic = isStatic;
 		fm.hasTrailingClosure = hasTrailingClosure;
+		fm.isInfix = isInfix;
+		fm.infixPrecedence = infixPrecedence;
 		fm.params = std::move(params);
 		fm.returnType = std::move(returnType);
 		return fm;
+	}
+
+	static FunctionMeta makeFunction(uint32_t id, const std::string &name,
+	                                 const std::string &library,
+	                                 std::optional<uint32_t> ownerClassId,
+	                                 bool isStatic, bool hasTrailingClosure,
+	                                 ListVar &&params,
+	                                 TypeMeta &&returnType) {
+		return makeFunction(id, name, library, ownerClassId, isStatic, hasTrailingClosure,
+		                    false, -1, std::move(params), std::move(returnType));
 	}
 
 	static GenericMeta makeGeneric(const std::string &name, bool mustBeExtends,
@@ -139,6 +155,22 @@ struct NativeReflectionAdapter {
 		return am;
 	}
 
+	static IntrinsicMeta makeIntrinsic(const std::string &name,
+	                                   const std::string &returnClass,
+	                                   bool nullable,
+	                                   bool elementFromArguments,
+	                                   int minArgs,
+	                                   int maxArgs) {
+		IntrinsicMeta im;
+		im.name = name;
+		im.returnClass = returnClass;
+		im.nullable = nullable;
+		im.elementFromArguments = elementFromArguments;
+		im.minArgs = minArgs;
+		im.maxArgs = maxArgs;
+		return im;
+	}
+
 	static OptionalClass makeNullClass() {
 		return std::nullopt;
 	}
@@ -157,6 +189,7 @@ struct PyReflectionAdapter {
 	using ClassResult = py::dict;
 	using LibraryResult = py::dict;
 	using AliasResult = py::dict;
+	using IntrinsicResult = py::dict;
 	using ListType = py::list;
 	using ListVar = py::list;
 	using ListFunction = py::list;
@@ -164,6 +197,7 @@ struct PyReflectionAdapter {
 	using ListClass = py::list;
 	using ListLibrary = py::list;
 	using ListAlias = py::list;
+	using ListIntrinsic = py::list;
 	using ListString = py::list;
 	using MapFunction = py::dict;
 	using OptionalClass = py::object;
@@ -213,6 +247,7 @@ struct PyReflectionAdapter {
 	                             const std::string &library,
 	                             std::optional<uint32_t> ownerClassId,
 	                             bool isStatic, bool hasTrailingClosure,
+	                             bool isInfix, int infixPrecedence,
 	                             ListVar &&params,
 	                             TypeResult &&returnType) {
 		py::dict d;
@@ -226,9 +261,21 @@ struct PyReflectionAdapter {
 		}
 		d["isStatic"] = isStatic;
 		d["hasTrailingClosure"] = hasTrailingClosure;
+		d["isInfix"] = isInfix;
+		d["infixPrecedence"] = infixPrecedence;
 		d["params"] = std::move(params);
 		d["returnType"] = std::move(returnType);
 		return d;
+	}
+
+	static py::dict makeFunction(uint32_t id, const std::string &name,
+	                             const std::string &library,
+	                             std::optional<uint32_t> ownerClassId,
+	                             bool isStatic, bool hasTrailingClosure,
+	                             ListVar &&params,
+	                             TypeResult &&returnType) {
+		return makeFunction(id, name, library, ownerClassId, isStatic, hasTrailingClosure,
+		                    false, -1, std::move(params), std::move(returnType));
 	}
 
 	static py::dict makeGeneric(const std::string &name, bool mustBeExtends,
@@ -273,6 +320,22 @@ struct PyReflectionAdapter {
 		py::dict d;
 		d["name"] = name;
 		d["target"] = target;
+		return d;
+	}
+
+	static py::dict makeIntrinsic(const std::string &name,
+	                              const std::string &returnClass,
+	                              bool nullable,
+	                              bool elementFromArguments,
+	                              int minArgs,
+	                              int maxArgs) {
+		py::dict d;
+		d["name"] = name;
+		d["returnClass"] = returnClass;
+		d["nullable"] = nullable;
+		d["elementFromArguments"] = elementFromArguments;
+		d["minArgs"] = minArgs;
+		d["maxArgs"] = maxArgs;
 		return d;
 	}
 
@@ -418,6 +481,7 @@ class ReflectionEngine {
 		bool hasTrailingClosure = compiler.isFunctionTrailingClosure(fid);
 
 		typename Adapter::ListVar params;
+		size_t paramCount = 0;
 		if (fInfo && fInfo->parameter) {
 			size_t startIndex = 0;
 			if (!isStatic && ownerClassId.has_value() && !fInfo->parameter->parameters.empty()) {
@@ -429,6 +493,7 @@ class ReflectionEngine {
 			for (size_t i = startIndex; i < fInfo->parameter->parameters.size(); ++i) {
 				DeclarationNode *pNode = fInfo->parameter->parameters[i];
 				if (!pNode) continue;
+				paramCount++;
 				std::string pName;
 				if (!pNode->name.empty()) {
 					pName = std::string(pNode->name);
@@ -442,6 +507,7 @@ class ReflectionEngine {
 		} else if (func) {
 			size_t startIndex = (!isStatic && ownerClassId.has_value() && func->argSize > 0) ? 1 : 0;
 			for (size_t i = startIndex; i < func->argSize; ++i) {
+				paramCount++;
 				ClassId argCid = func->args ? func->args[i] : DefaultClass::voidClassId;
 				std::string argName = "arg" + std::to_string(i - startIndex);
 				std::string typeName;
@@ -469,8 +535,18 @@ class ReflectionEngine {
 			returnType = Adapter::makeType(static_cast<uint32_t>(DefaultClass::voidClassId), "Void", false, false, std::move(inps));
 		}
 
+		bool isInfix = false;
+		int infixPrecedence = -1;
+		if (!isStatic && ownerClassId.has_value() && paramCount == 1) {
+			if (compiler.parserContext.isInfixFunctionName(name)) {
+				isInfix = true;
+				infixPrecedence = compiler.parserContext.getInfixPrecedence(name);
+			}
+		}
+
 		return Adapter::makeFunction(fid, name, library, ownerClassId, isStatic,
-		                             hasTrailingClosure, std::move(params), std::move(returnType));
+		                             hasTrailingClosure, isInfix, infixPrecedence,
+		                             std::move(params), std::move(returnType));
 	}
 
 	template <typename Adapter>
@@ -738,6 +814,24 @@ class ReflectionEngine {
 			}
 		}
 
+		return result;
+	}
+
+	template <typename Adapter>
+	static typename Adapter::ListIntrinsic getIntrinsicFunctions(const ACompiler &compiler) {
+		(void)compiler;
+		typename Adapter::ListIntrinsic result;
+		for (const auto &entry : INTRINSIC_FUNCTION_TABLE) {
+			Adapter::appendList(
+			    result,
+			    Adapter::makeIntrinsic(
+			        std::string(entry.name),
+			        std::string(entry.returnClass),
+			        entry.nullable,
+			        entry.elementFromArguments,
+			        entry.minArgs,
+			        entry.maxArgs));
+		}
 		return result;
 	}
 };

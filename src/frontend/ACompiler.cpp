@@ -2183,6 +2183,10 @@ std::vector<AliasMeta> ACompiler::getAliases() const {
 	return ReflectionEngine::getAliases<NativeReflectionAdapter>(*this);
 }
 
+std::vector<IntrinsicMeta> ACompiler::getIntrinsicFunctions() const {
+	return ReflectionEngine::getIntrinsicFunctions<NativeReflectionAdapter>(*this);
+}
+
 #ifdef __PYBIND11__
 py::object ACompiler::getLibrariesPy() const {
 	return ReflectionEngine::getLibraries<PyReflectionAdapter>(*this);
@@ -2206,6 +2210,10 @@ py::object ACompiler::getFunctionPy(uint32_t funcId) const {
 
 py::object ACompiler::getAliasesPy() const {
 	return ReflectionEngine::getAliases<PyReflectionAdapter>(*this);
+}
+
+py::object ACompiler::getIntrinsicFunctionsPy() const {
+	return ReflectionEngine::getIntrinsicFunctions<PyReflectionAdapter>(*this);
 }
 #endif
 

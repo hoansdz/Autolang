@@ -708,6 +708,9 @@ class CompilerWrapper {
 	py::object getAliases() const {
 		return compiler.getAliasesPy();
 	}
+	py::object getIntrinsicFunctions() const {
+		return compiler.getIntrinsicFunctionsPy();
+	}
 };
 
 PYBIND11_MODULE(autolang, m) {
@@ -868,5 +871,6 @@ PYBIND11_MODULE(autolang, m) {
 	    .def("getClass", &CompilerWrapper::getClass, py::arg("class_id"))
 	    .def("getFunctions", &CompilerWrapper::getFunctions)
 	    .def("getFunction", &CompilerWrapper::getFunction, py::arg("func_id"))
-	    .def("getAliases", &CompilerWrapper::getAliases);
+	    .def("getAliases", &CompilerWrapper::getAliases)
+	    .def("getIntrinsicFunctions", &CompilerWrapper::getIntrinsicFunctions);
 }

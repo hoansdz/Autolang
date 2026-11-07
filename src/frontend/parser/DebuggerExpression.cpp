@@ -89,14 +89,10 @@ HasClassIdNode *loadExpression(in_func, int minPrecedence, size_t &i) {
 		int precedence = -1;
 		if (token->type == Lexer::TokenType::IDENTIFIER &&
 		    firstLine == token->line) {
-			if (token->indexData == lexerIdstep) {
+			if (ParserContext::isInfixFunctionName(token->indexData)) {
 				isCustomInfix = true;
-				infixMethodId = lexerIdstep;
-				precedence = 8;
-			} else if (token->indexData == lexerIddownTo) {
-				isCustomInfix = true;
-				infixMethodId = lexerIddownTo;
-				precedence = 9;
+				infixMethodId = token->indexData;
+				precedence = ParserContext::getInfixPrecedence(token->indexData);
 			}
 		}
 		if (!isCustomInfix) {

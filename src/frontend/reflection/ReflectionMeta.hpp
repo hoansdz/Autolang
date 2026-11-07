@@ -34,6 +34,8 @@ struct FunctionMeta {
 	std::optional<uint32_t> ownerClassId;
 	bool isStatic = false;
 	bool hasTrailingClosure = false;
+	bool isInfix = false;
+	int infixPrecedence = -1;
 	std::vector<VarMeta> params;
 	TypeMeta returnType;
 };
@@ -63,6 +65,15 @@ struct LibraryMeta {
 struct AliasMeta {
 	std::string name;
 	std::string target;
+};
+
+struct IntrinsicMeta {
+	std::string name;
+	std::string returnClass;
+	bool nullable = false;
+	bool elementFromArguments = false;
+	int minArgs = 0;
+	int maxArgs = -1;
 };
 
 } // namespace Autolang
