@@ -3,6 +3,7 @@
 #include <Autolang.hpp>
 #include "backend/vm/ANotifier.hpp"
 #include "shared/Profiler.hpp"
+#include <unordered_set>
 #include <algorithm>
 #include <chrono>
 #include <filesystem>
@@ -1176,6 +1177,422 @@ val resSetOfNotNull = setOfNotNull(1, null)
 			std::cerr << "Failed testIntrinsicFunctionsReflection\n";
 		}
 		#undef CHECK_INT
+	}
+
+	{
+		totalCount++;
+		Autolang::ACompiler compiler;
+		auto scopeFuncs = compiler.getScopeFunctions();
+		bool ok = (scopeFuncs.size() == 6);
+		std::unordered_set<std::string> names;
+		for (const auto &sf : scopeFuncs) {
+			names.insert(sf.name);
+		}
+		ok = ok && names.count("let") && names.count("also") && names.count("apply") &&
+		     names.count("run") && names.count("takeIf") && names.count("takeUnless");
+		if (ok) {
+			passedCount++;
+			std::cout << "Passed testScopeFunctionsReflection\n";
+		} else {
+			std::cerr << "Failed testScopeFunctionsReflection\n";
+		}
+	}
+
+	{
+		totalCount++;
+		Autolang::ACompiler compiler;
+		bool ok = true;
+
+		// 1. Single letter class names colliding with stdlib generic parameters (Bug 2)
+		const char *classTest = R"###(
+class A(val x: Int)
+class B(val y: String)
+class C(val z: Double)
+class T(val flag: Bool)
+
+val a = A(42)
+val b = B("hello")
+val c = C(3.14)
+val t = T(true)
+
+val p = Pair(a.x, b.y)
+val tr = Triple(a.x, b.y, c.z)
+val arr: Array<T> = [t]
+
+assert(p.first == 42, "Pair with class A")
+assert(p.second == "hello", "Pair with class B")
+assert(tr.first == 42 && tr.second == "hello" && tr.third == 3.14, "Triple with A, B, C")
+assert(arr[0].flag == true, "Array with class T")
+)###";
+		bool compClass = compiler.compile("test_single_letter_classes.al", classTest);
+		if (!compClass || compiler.hasError()) {
+			ok = false;
+			std::cerr << "Compilation failed for single letter classes A, B, C, T\n";
+		} else {
+			try {
+				compiler.run();
+			} catch (const std::exception &e) {
+				ok = false;
+				std::cerr << "Execution exception for single letter classes: " << e.what() << "\n";
+			}
+		}
+
+		// 2. Scope functions with non-function arguments must fail compilation (Bug 1)
+		const std::vector<std::string> invalidScopeCodes = {
+			"val k = 5\nval m = k.let(5)",
+			"val k = 5\nval m = k.also(5)",
+			"val k = 5\nval m = k.apply(5)",
+			"val k = 5\nval m = k.takeIf(5)",
+			"val k = 5\nval m = k.takeUnless(5)",
+			"val k = 5\nval m = k.run(5)",
+			"val k = 5\nval m = with(k, 5)",
+			"val k = 5\nval m = k.takeIf { 5 }",
+		};
+
+		for (const auto &code : invalidScopeCodes) {
+			compiler.refresh();
+			bool comp = compiler.compile("test_invalid_scope.al", code.c_str());
+			if (comp && !compiler.hasError()) {
+				ok = false;
+				std::cerr << "Expected compile error for non-function scope argument but got success: " << code << "\n";
+			}
+		}
+
+		// 3. Valid scope functions should succeed
+		const char *validScopeCode = R"###(
+val k = 5
+val m1 = k.let { it * 2 }
+val m2 = k.also { it }
+val m3 = k.apply { }
+val m4 = k.run { it + 10 }
+val m5 = k.takeIf { it > 0 }
+val m6 = k.takeUnless { it < 0 }
+assert(m1 == 10 && m2 == 5 && m3 == 5 && m4 == 15 && m5 == 5 && m6 == 5, "valid scope functions")
+)###";
+		compiler.refresh();
+		bool compValid = compiler.compile("test_valid_scope.al", validScopeCode);
+		if (!compValid || compiler.hasError()) {
+			ok = false;
+			std::cerr << "Compilation failed for valid scope functions\n";
+		} else {
+			try {
+				compiler.run();
+			} catch (const std::exception &e) {
+				ok = false;
+				std::cerr << "Execution exception for valid scope functions: " << e.what() << "\n";
+			}
+		}
+
+		if (ok) {
+			passedCount++;
+			std::cout << "Passed testSingleLetterClassesAndScopeFunctionsValidation\n";
+		} else {
+			std::cerr << "Failed testSingleLetterClassesAndScopeFunctionsValidation\n";
+		}
+	}
+
+	{
+		totalCount++;
+		bool ok = true;
+
+		// 1. P8 Minimal case: when branch with less-than condition
+		{
+			Autolang::ACompiler comp;
+			const char *code = R"###(
+val a = 1
+val t = 50
+val r = when {
+    a < t -> "LT"
+    else -> "GE"
+}
+assert(r == "LT", "when branch a < t")
+)###";
+			bool res = comp.compileAndRun("test_p8_minimal.al", code);
+			if (!res || comp.hasError()) {
+				ok = false;
+				std::cerr << "P8: Failed compiling minimal when case: " << comp.getLastError() << "\n";
+			}
+		}
+
+		// 2. P8 when branch with nullable and logical OR, plus C14 benchmark scenario
+		{
+			Autolang::ACompiler comp;
+			const char *code = R"###(
+fun getProfileId(name: String): Int? {
+    if (name == "Alice") return 123
+    return null
+}
+fun getProfileScore(id: Int): Int? {
+    if (id == 123) return 40
+    return null
+}
+
+val stepIdResult = getProfileId("Alice")
+val stepScoreResult = if (stepIdResult != null) getProfileScore(stepIdResult) else null
+val thresholdScore = 50
+val finalResult = when {
+    stepIdResult == null -> "NO_PROFILE"
+    stepScoreResult == null || stepScoreResult < thresholdScore -> "FAIL"
+    else -> "PASS"
+}
+assert(finalResult == "FAIL", "C14 finalResult == FAIL")
+)###";
+			bool res = comp.compileAndRun("test_p8_c14.al", code);
+			if (!res || comp.hasError()) {
+				ok = false;
+				std::cerr << "P8: Failed compiling C14 case: " << comp.getLastError() << "\n";
+			}
+		}
+
+		// 3. P8 if (a < t), a < t && t > a, and println(a < t)
+		{
+			Autolang::ACompiler comp;
+			const char *code = R"###(
+val a = 1
+val t = 50
+val rIf = if (a < t) "YES" else "NO"
+assert(rIf == "YES", "if a < t")
+
+val rLogic = a < t && t > a
+assert(rLogic == true, "a < t && t > a")
+
+fun helperCheck(v: Bool): Bool = v
+assert(helperCheck(a < t) == true, "call with a < t")
+)###";
+			bool res = comp.compileAndRun("test_p8_casual.al", code);
+			if (!res || comp.hasError()) {
+				ok = false;
+				std::cerr << "P8: Failed compiling casual cases: " << comp.getLastError() << "\n";
+			}
+		}
+
+		// 4. P8 Existing generic constructs must remain fully functional
+		{
+			Autolang::ACompiler comp;
+			const char *code = R"###(
+typealias IntList = Array<Int>
+class Box<T, R>(val item: T, val tag: R)
+class NumBox<T extends Box<Int, String>, R>(val box: T, val extra: R)
+
+fun <T> idGeneric(x: T): T = x
+
+val arr = Array<Int>()
+arr.push(42)
+assert(arr[0] == 42, "Array<Int>()")
+
+val map = Map<String, Array<Int>>()
+map["key"] = arr
+assert(map["key"] != null && map["key"]![0] == 42, "Map<String, Array<Int>>()")
+
+val s = Set<String>()
+s.add("autolang")
+assert(s.has("autolang"), "Set<String>()")
+
+val b = Box<Int, String>(10, "tag")
+assert(b.item == 10 && b.tag == "tag", "Box<T, R>")
+
+val nb = NumBox<Box<Int, String>, Bool>(b, true)
+assert(nb.box.item == 10 && nb.extra == true, "NumBox with extends")
+
+val genericCallRes = idGeneric<Int>(99)
+assert(genericCallRes == 99, "idGeneric<Int>")
+
+val idAliased: IntList = [1, 2, 3]
+assert(idAliased.size() == 3, "typealias IntList")
+)###";
+			bool res = comp.compileAndRun("test_p8_generics.al", code);
+			if (!res || comp.hasError()) {
+				ok = false;
+				std::cerr << "P8: Failed compiling generics case: " << comp.getLastError() << "\n";
+			}
+		}
+
+		// 5. P8 Syntax error robustness: must return false with error message, no crash
+		{
+			const std::vector<std::string> syntaxErrorCodes = {
+				"val x = Array<Int>",                    // Standalone generic type without constructor
+				"val y = when {\n    a < < -> 1\n}",      // Malformed operator inside when condition
+				"val z = if (a < ) 1 else 2",             // Incomplete comparison in if condition
+				"val bad = 10 < < 20",                    // Consecutive less-than operators
+			};
+
+			for (const auto &badCode : syntaxErrorCodes) {
+				Autolang::ACompiler comp;
+				comp.setOnError([](std::string_view) {});
+				bool res = comp.compileAndRun("test_syntax_error.al", badCode.c_str());
+				if (res != false) {
+					ok = false;
+					std::cerr << "P8: Expected compileAndRun to return false for syntax error: " << badCode << "\n";
+				}
+			}
+		}
+
+		if (ok) {
+			passedCount++;
+			std::cout << "Passed testP8LessThanAmbiguityAndNoCrash\n";
+		} else {
+			std::cerr << "Failed testP8LessThanAmbiguityAndNoCrash\n";
+		}
+	}
+
+	{
+		totalCount++;
+		bool ok = true;
+
+		// 1. P9 Minimal case: if condition with safe call and elvis in parentheses
+		{
+			Autolang::ACompiler comp;
+			const char *code = R"###(
+val r = "ab"
+var m: String? = null
+if (r.length > (m?.length ?: 0)) {
+    m = r
+}
+assert(m == "ab", "P9 minimal if with parentheses")
+)###";
+			bool res = comp.compileAndRun("test_p9_minimal.al", code);
+			if (!res || comp.hasError() || comp.hasException()) {
+				ok = false;
+				std::cerr << "P9: Failed compiling/running minimal case with parens\n";
+			}
+		}
+
+		// 2. P9 Minimal case: without parentheses
+		{
+			Autolang::ACompiler comp;
+			const char *code = R"###(
+val r = "ab"
+var m: String? = null
+if (r.length > m?.length ?: 0) {
+    m = r
+}
+assert(m == "ab", "P9 minimal if without parentheses")
+)###";
+			bool res = comp.compileAndRun("test_p9_minimal_no_paren.al", code);
+			if (!res || comp.hasError() || comp.hasException()) {
+				ok = false;
+				std::cerr << "P9: Failed compiling/running minimal case without parens\n";
+			}
+		}
+
+		// 3. P9 Loop over street names to find longest
+		{
+			Autolang::ACompiler comp;
+			const char *code = R"###(
+val streets = ["Le Loi", "Hai Ba Trung", "Ba Dinh"]
+var longest: String? = null
+for (s in streets) {
+    if (longest == null || s.length > (longest?.length ?: 0)) {
+        longest = s
+    }
+}
+assert(longest == "Hai Ba Trung", "P9 longest street name")
+)###";
+			bool res = comp.compileAndRun("test_p9_street_loop.al", code);
+			if (!res || comp.hasError() || comp.hasException()) {
+				ok = false;
+				std::cerr << "P9: Failed compiling/running street loop\n";
+			}
+		}
+
+		// 4. P9 while loop with safe call
+		{
+			Autolang::ACompiler comp;
+			const char *code = R"###(
+var x: String? = "a"
+var count = 0
+while ((x?.length ?: 0) < 3) {
+    x = x + "a"
+    count = count + 1
+}
+assert(count == 2 && x == "aaa", "P9 while with safe call")
+)###";
+			bool res = comp.compileAndRun("test_p9_while_safe.al", code);
+			if (!res || comp.hasError() || comp.hasException()) {
+				ok = false;
+				std::cerr << "P9: Failed compiling/running while with safe call\n";
+			}
+		}
+
+		// 5. P9 when condition with safe call
+		{
+			Autolang::ACompiler comp;
+			const char *code = R"###(
+var s: String? = "hello"
+val res = when {
+    (s?.length ?: 0) > 3 -> "LONG"
+    else -> "SHORT"
+}
+assert(res == "LONG", "P9 when with safe call")
+)###";
+			bool res = comp.compileAndRun("test_p9_when_safe.al", code);
+			if (!res || comp.hasError() || comp.hasException()) {
+				ok = false;
+				std::cerr << "P9: Failed compiling/running when with safe call\n";
+			}
+		}
+
+		// 6. P9 Safe call chaining, ?.let, and elvis return
+		{
+			Autolang::ACompiler comp;
+			const char *code = R"###(
+class Item(val score: Int?)
+class Wrapper(val item: Item?)
+
+val w: Wrapper? = Wrapper(Item(10))
+val score = w?.item?.score ?: 0
+assert(score == 10, "P9 safe call chain")
+
+val letRes = w?.item?.let { it.score ?: 0 } ?: -1
+assert(letRes == 10, "P9 safe call let")
+
+fun testElvisReturn(arg: String?): Int {
+    val len = arg?.length ?: return -1
+    return len
+}
+assert(testElvisReturn(null) == -1, "P9 elvis return on null")
+assert(testElvisReturn("test") == 4, "P9 elvis return with value")
+)###";
+			bool res = comp.compileAndRun("test_p9_chain_and_elvis.al", code);
+			if (!res || comp.hasError() || comp.hasException()) {
+				ok = false;
+				std::cerr << "P9: Failed compiling/running chain and elvis\n";
+			}
+		}
+
+		// 7. P9 VM crash does not corrupt compiler (recovery test on same compiler instance)
+		{
+			Autolang::ACompiler comp;
+			comp.setOnError([](std::string_view) {});
+			// First run: crash via runtime division by zero
+			const char *crashCode = R"###(
+var zero = 0
+val x = 100 / zero
+)###";
+			bool crashRes = comp.compileAndRun("test_crash.al", crashCode);
+			if (crashRes != false || !comp.hasException()) {
+				ok = false;
+				std::cerr << "P9: Expected crash run to fail with hasException == true\n";
+			}
+
+			// Second run on the EXACT same compiler instance
+			const char *okCode = R"###(
+val res = 1 + 2
+assert(res == 3, "1 + 2 == 3")
+)###";
+			bool okRes = comp.compileAndRun("test_ok.al", okCode);
+			if (!okRes || comp.hasError() || comp.hasException()) {
+				ok = false;
+				std::cerr << "P9: Recovery run failed on reused compiler instance\n";
+			}
+		}
+
+		if (ok) {
+			passedCount++;
+			std::cout << "Passed testP9SafeCallInConditionAndVMRecovery\n";
+		} else {
+			std::cerr << "Failed testP9SafeCallInConditionAndVMRecovery\n";
+		}
 	}
 
 	totalCount += AutolangTests::runAllCompileTimeRules(sharedCompiler, "tests/rule/compile_time", passedCount);

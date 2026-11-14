@@ -499,6 +499,9 @@ struct BinaryNode : HasClassIdNode {
 	ExprNode *copy(in_func) override;
 	inline void rewrite(in_func, uint8_t *bytecodes) override {
 		if (optimized) {
+			if (op == Lexer::TokenType::IS || op == Lexer::TokenType::NOT_IS) {
+				left->rewrite(in_data, bytecodes);
+			}
 			return;
 		}
 		left->rewrite(in_data, bytecodes);
@@ -689,6 +692,8 @@ struct SetNode : HasClassIdNode {
 		return true;
 	}
 	void rewrite(in_func, uint8_t *bytecodes) override {
+		if (detach)
+			detach->rewrite(in_data, bytecodes);
 		value->rewrite(in_data, bytecodes);
 	}
 	bool isStaticValue() override { return false; }

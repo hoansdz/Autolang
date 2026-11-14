@@ -278,6 +278,7 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 	}
 	std::optional<ClassId> initialClassId = context.currentClassId;
 	std::optional<LexerStringId> classNameId;
+	std::optional<ClassId> specializedExtensionClassId;
 	LexerStringId nameId = (token->type == Lexer::TokenType::NOT) ? lexerIdnot : token->indexData;
 	if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
 		--i;
@@ -291,8 +292,29 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 		if (classIt != compile.classMap.end() &&
 		    context.classInfo[classIt->second]->genericData != nullptr) {
 			if (!context.preloadGenericData) {
-				context.preloadGenericData = loadGenericParameters(in_data, i);
-				context.isInGeneric = false;
+				std::vector<ClassDeclaration *> inputVecs;
+				bool isGen = false;
+				loadListGenericDeclarationType(in_data, i, firstLine, false, inputVecs, isGen);
+				if (!isGen) {
+					auto targetClassDecl = context.classDeclarationAllocator.push();
+					targetClassDecl->baseClassLexerStringId = nameId;
+					targetClassDecl->inputClassId = std::move(inputVecs);
+					targetClassDecl->line = firstLine;
+					targetClassDecl->isGeneric = false;
+					targetClassDecl->template load<true>(in_data);
+					if (targetClassDecl->classId) {
+						specializedExtensionClassId = *targetClassDecl->classId;
+					}
+				} else {
+					auto genericData = context.genericDataPool.push();
+					for (auto *cd : inputVecs) {
+						auto genDecl = context.genericDeclarationNodePool.push(
+						    firstLine, cd->baseClassLexerStringId);
+						genericData->genericDeclarations.push_back(genDecl);
+					}
+					context.preloadGenericData = genericData;
+					context.isInGeneric = false;
+				}
 			} else {
 				int ltDepth = 1;
 				while (ltDepth > 0 &&
@@ -423,44 +445,48 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 					    "allowed inside closure", "Declare extension "
 					    "function at file scope outside closure");
 				}
-				auto it =
-				    compile.classMap.find(std::string(context.lexerString[*classNameId]));
-				if (it == compile.classMap.end()) {
-					throw ParserError(firstLine,
-					                  "Cannot find class name: '" +
-					                      std::string(context.lexerString[*classNameId]) +
-					                      "'. Extension must be declared after "
-					                      "class", "Ensure target class is "
-					                      "declared before creating extension");
-				}
-				context.currentClassId = it->second;
-				auto extClassInfo = context.classInfo[it->second];
-				if (extClassInfo && extClassInfo->genericData) {
-					if (context.preloadGenericData) {
-						for (size_t g = 0;
-						     g < context.preloadGenericData->genericDeclarations.size();
-						     ++g) {
-							auto srcDecl =
-							    context.preloadGenericData->genericDeclarations[g];
-							GenericDeclarationNode *targetDecl = nullptr;
-							targetDecl = extClassInfo->findGenericDeclaration(
-							    srcDecl->nameId);
-							if (!targetDecl &&
-							    g < extClassInfo->genericData
-							            ->genericDeclarations.size()) {
-								targetDecl = extClassInfo->genericData
-								                 ->genericDeclarations[g];
-							}
-							if (targetDecl) {
-								for (auto *cd : srcDecl->allClassDeclarations) {
-									targetDecl->allClassDeclarations.push_back(cd);
+				if (specializedExtensionClassId) {
+					context.currentClassId = specializedExtensionClassId;
+				} else {
+					auto it =
+					    compile.classMap.find(std::string(context.lexerString[*classNameId]));
+					if (it == compile.classMap.end()) {
+						throw ParserError(firstLine,
+						                  "Cannot find class name: '" +
+						                      std::string(context.lexerString[*classNameId]) +
+						                      "'. Extension must be declared after "
+						                      "class", "Ensure target class is "
+						                      "declared before creating extension");
+					}
+					context.currentClassId = it->second;
+					auto extClassInfo = context.classInfo[it->second];
+					if (extClassInfo && extClassInfo->genericData) {
+						if (context.preloadGenericData) {
+							for (size_t g = 0;
+							     g < context.preloadGenericData->genericDeclarations.size();
+							     ++g) {
+								auto srcDecl =
+								    context.preloadGenericData->genericDeclarations[g];
+								GenericDeclarationNode *targetDecl = nullptr;
+								targetDecl = extClassInfo->findGenericDeclaration(
+								    srcDecl->nameId);
+								if (!targetDecl &&
+								    g < extClassInfo->genericData
+								            ->genericDeclarations.size()) {
+									targetDecl = extClassInfo->genericData
+									                 ->genericDeclarations[g];
 								}
-								for (auto *cn : srcDecl->allCallNodes) {
-									targetDecl->allCallNodes.push_back(cn);
+								if (targetDecl) {
+									for (auto *cd : srcDecl->allClassDeclarations) {
+										targetDecl->allClassDeclarations.push_back(cd);
+									}
+									for (auto *cn : srcDecl->allCallNodes) {
+										targetDecl->allCallNodes.push_back(cn);
+									}
 								}
 							}
+							context.preloadGenericData = nullptr;
 						}
-						context.preloadGenericData = nullptr;
 					}
 				}
 				if (!nextTokenSameLine(&token, context.tokens, i, firstLine)) {
@@ -746,7 +772,9 @@ CreateFuncNode *loadFunc(in_func, size_t &i) {
 				context.isInGeneric = false;
 			if (classNameId) {
 				if (!initialClassId.has_value() && context.currentClassId) {
-					registerExtensionToGenericClass(in_data, *context.currentClassId, node);
+					if (!specializedExtensionClassId) {
+						registerExtensionToGenericClass(in_data, *context.currentClassId, node);
+					}
 					context.currentClassId = std::nullopt;
 				} else {
 					context.currentClassId = initialClassId;
@@ -817,7 +845,9 @@ createFunc:;
 			context.isInGeneric = false;
 		if (classNameId) {
 			if (!initialClassId.has_value() && context.currentClassId) {
-				registerExtensionToGenericClass(in_data, *context.currentClassId, node);
+				if (!specializedExtensionClassId) {
+					registerExtensionToGenericClass(in_data, *context.currentClassId, node);
+				}
 				context.currentClassId = std::nullopt;
 			} else {
 				context.currentClassId = initialClassId;
@@ -863,7 +893,8 @@ createFunc:;
 		if (context.isInGeneric)
 			context.isInGeneric = false;
 		if (finished && classDeclaration &&
-		    classDeclaration->baseClassLexerStringId != lexerIdVoid) {
+		    classDeclaration->baseClassLexerStringId != lexerIdVoid &&
+		    classDeclaration->baseClassLexerStringId != lexerIdUnit) {
 			auto checkHasReturn = [](auto &self, ExprNode *exprNode) -> bool {
 				if (!exprNode)
 					return false;
@@ -920,7 +951,9 @@ createFunc:;
 
 	if (classNameId) {
 		if (!initialClassId.has_value() && context.currentClassId) {
-			registerExtensionToGenericClass(in_data, *context.currentClassId, node);
+			if (!specializedExtensionClassId) {
+				registerExtensionToGenericClass(in_data, *context.currentClassId, node);
+			}
 			context.currentClassId = std::nullopt;
 		} else {
 			context.currentClassId = initialClassId;

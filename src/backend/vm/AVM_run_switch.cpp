@@ -2866,10 +2866,12 @@ resumeCallFrame:;
 		stackAllocator.freeTo(currentCallFrame->fromStackAllocator);
 		goto resumeCallFrame;
 	} catch (const std::exception &err) {
-		std::cerr << "Function " << currentFunction->getName(data)
-		          << ", bytecode at position " << i << ": "
-		          << uint32_t(bytecodes[i]) << "\n";
-		log(currentFunction);
+		if (allowDebug) {
+			std::cerr << "Function " << currentFunction->getName(data)
+			          << ", bytecode at position " << i << ": "
+			          << uint32_t(bytecodes[i]) << "\n";
+			log(currentFunction);
+		}
 		throw std::runtime_error(err.what());
 	}
 }

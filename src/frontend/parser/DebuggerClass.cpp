@@ -73,6 +73,10 @@ CreateClassNode *loadClass(in_func, size_t &i) {
 	}
 	LexerStringId nameId = token->indexData;
 	const auto &name = context.lexerString[nameId];
+	if (nameId == lexerIdUnit) {
+		throw ParserError(firstLine, "Class name 'Unit' is reserved",
+		                  "'Unit' is a built-in type alias for Void and cannot be used as a class name.");
+	}
 	{
 		auto it = context.defaultClassMap.find(nameId);
 		if (it != context.defaultClassMap.end()) {

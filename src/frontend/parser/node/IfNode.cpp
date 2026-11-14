@@ -454,6 +454,8 @@ void IfNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 }
 
 void IfNode::rewrite(in_func, uint8_t *bytecodes) {
+	if (condition)
+		condition->rewrite(in_data, bytecodes);
 	ifTrue.rewrite(in_data, bytecodes);
 	if (ifFalse)
 		ifFalse->rewrite(in_data, bytecodes);

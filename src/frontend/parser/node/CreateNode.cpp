@@ -411,6 +411,9 @@ ExprNode *CreateConstructorNode::optimize(in_func) {
 void CreateClassNode::pushClass(in_func) {
 	classId = compile.registerClass(std::string(context.lexerString[nameId]), classFlags);
 	context.defaultClassMap[nameId] = classId;
+	if (nameId == lexerIdVoid) {
+		context.defaultClassMap[lexerIdUnit] = classId;
+	}
 	auto clazz = compile.classes[classId];
 	auto classInfo = context.classInfoAllocator.push();
 	context.classInfo.push_back(classInfo);
@@ -446,8 +449,7 @@ ExprNode *CreateClassNode::optimize(in_func) {
 	if (classInfo->genericData) {
 		for (auto genericDeclaration :
 		     classInfo->genericData->genericDeclarations) {
-			if (context.defaultClassMap.find(genericDeclaration->nameId) !=
-			    context.defaultClassMap.end()) {
+			if (genericDeclaration->nameId == nameId) {
 				throwError("Cannot declare generic type parameter with the "
 				           "same name as class: '" +
 				           std::string(context.lexerString[genericDeclaration->nameId]) +

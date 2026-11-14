@@ -73,7 +73,7 @@ ClassDeclaration *ClassDeclaration::copy(in_func, bool eagerLoad, int depth) {
 	if (depth > 20) {
 		return this;
 	}
-	if (baseClassLexerStringId == lexerIdVoid) {
+	if (baseClassLexerStringId == lexerIdVoid || baseClassLexerStringId == lexerIdUnit) {
 		classId = DefaultClass::voidClassId;
 		return this;
 	}
@@ -349,7 +349,7 @@ void ClassDeclaration::load(in_func) {
 			}
 		}
 		{
-			if (baseClassLexerStringId == lexerIdVoid) {
+			if (baseClassLexerStringId == lexerIdVoid || baseClassLexerStringId == lexerIdUnit) {
 				classId = DefaultClass::voidClassId;
 				return;
 			}

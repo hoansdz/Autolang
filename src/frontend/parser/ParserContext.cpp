@@ -100,6 +100,7 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerString.emplace_back("isNullOrBlank");
 	lexerString.emplace_back("isNotNullOrEmpty");
 	lexerString.emplace_back("isNotNullOrBlank");
+	lexerString.emplace_back("Unit");
 	/*
 	lexerString.emplace_back("unaryPlus");
 	lexerString.emplace_back("unaryMinus");
@@ -137,7 +138,7 @@ void ParserContext::init(CompiledProgram &compile) {
 	lexerStringMap["Bool"] = lexerIdBool;
 	lexerStringMap["Null"] = lexerIdNull;
 	lexerStringMap["Void"] = lexerIdVoid;
-	lexerStringMap["Unit"] = lexerIdVoid;
+	lexerStringMap["Unit"] = lexerIdUnit;
 	lexerStringMap["Function"] = lexerIdFunction;
 	lexerStringMap["null"] = lexerIdnull;
 	lexerStringMap["true"] = lexerIdtrue;

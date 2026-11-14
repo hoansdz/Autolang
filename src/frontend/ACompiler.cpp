@@ -349,9 +349,17 @@ bool ACompiler::compileAndRun(const char *path, LibraryConfig config,
 		if (!compile(path, config, nativeFuncMap))
 			return false;
 		run();
-		return true;
+		return !hasException();
 	} catch (const std::exception &e) {
-		std::cerr << e.what() << "\n";
+		if (exceptionMessage) {
+			delete[] exceptionMessage;
+			exceptionMessage = nullptr;
+		}
+		std::string msg = e.what();
+		char *str = new char[msg.size() + 1];
+		memcpy(str, msg.c_str(), msg.size() + 1);
+		exceptionMessage = str;
+		vm.restart();
 	}
 	return false;
 }
@@ -363,16 +371,24 @@ bool ACompiler::compileAndRun(const char *path, const char *data,
 		if (!compile(path, data, config, nativeFuncMap))
 			return false;
 		run();
-		return true;
+		return !hasException();
 	} catch (const std::exception &e) {
-		std::cerr << e.what() << "\n";
+		if (exceptionMessage) {
+			delete[] exceptionMessage;
+			exceptionMessage = nullptr;
+		}
+		std::string msg = e.what();
+		char *str = new char[msg.size() + 1];
+		memcpy(str, msg.c_str(), msg.size() + 1);
+		exceptionMessage = str;
+		vm.restart();
 	}
 	return false;
 }
 
 bool ACompiler::compile(const char *path, LibraryConfig config,
                         const ANativeMap &nativeFuncMap) {
-	if (shouldRefresh || hasError()) {
+	if (shouldRefresh || hasError() || hasException()) {
 		refresh();
 	}
 	shouldRefresh = true;
@@ -389,7 +405,7 @@ bool ACompiler::compile(const char *path, LibraryConfig config,
 
 bool ACompiler::compile(const char *path, const char *data,
                         LibraryConfig config, const ANativeMap &nativeFuncMap) {
-	if (shouldRefresh || hasError()) {
+	if (shouldRefresh || hasError() || hasException()) {
 		refresh();
 	}
 	shouldRefresh = true;
@@ -962,7 +978,21 @@ void ACompiler::run() {
 			    "Call generateBytecodes() before running.");
 	}
 	AUTOLANG_PROFILE_MARK("Runtime: VM Execution Start");
-	vm.start();
+	try {
+		vm.start();
+	} catch (const std::exception &e) {
+		if (exceptionMessage) {
+			delete[] exceptionMessage;
+			exceptionMessage = nullptr;
+		}
+		std::string msg = e.what();
+		char *str = new char[msg.size() + 1];
+		memcpy(str, msg.c_str(), msg.size() + 1);
+		exceptionMessage = str;
+		vm.restart();
+		state = CompilerState::CT_READY;
+		return;
+	}
 	if (exceptionMessage) {
 		delete[] exceptionMessage;
 	}
@@ -1096,6 +1126,11 @@ void ACompiler::refresh() {
 		delete[] vm.globalVariables;
 		vm.globalVariables = nullptr;
 	}
+	if (exceptionMessage) {
+		delete[] exceptionMessage;
+		exceptionMessage = nullptr;
+	}
+	vm.restart();
 	AUTOLANG_PROFILE_MARK("Cleanup: Refresh Finished");
 }
 
@@ -2187,6 +2222,10 @@ std::vector<IntrinsicMeta> ACompiler::getIntrinsicFunctions() const {
 	return ReflectionEngine::getIntrinsicFunctions<NativeReflectionAdapter>(*this);
 }
 
+std::vector<ScopeFunctionMeta> ACompiler::getScopeFunctions() const {
+	return ReflectionEngine::getScopeFunctions<NativeReflectionAdapter>(*this);
+}
+
 #ifdef __PYBIND11__
 py::object ACompiler::getLibrariesPy() const {
 	return ReflectionEngine::getLibraries<PyReflectionAdapter>(*this);
@@ -2214,6 +2253,10 @@ py::object ACompiler::getAliasesPy() const {
 
 py::object ACompiler::getIntrinsicFunctionsPy() const {
 	return ReflectionEngine::getIntrinsicFunctions<PyReflectionAdapter>(*this);
+}
+
+py::object ACompiler::getScopeFunctionsPy() const {
+	return ReflectionEngine::getScopeFunctions<PyReflectionAdapter>(*this);
 }
 #endif
 

@@ -89,10 +89,13 @@ void AVM::restart() {
 	state = VMState::READY;
 	stack.index = 0;
 	callFrames.index = 0;
+	callFrames.objects[0].exception = nullptr;
 	stackAllocator.restart();
 	timeoutCheckCounter = 0;
-	for (size_t i = 0; i < data.main->maxDeclaration; ++i) {
-		globalVariables[i] = nullptr;
+	if (globalVariables && data.main) {
+		for (size_t i = 0; i < data.main->maxDeclaration; ++i) {
+			globalVariables[i] = nullptr;
+		}
 	}
 	data.manager.refresh();
 	// auto end = std::chrono::high_resolution_clock::now();

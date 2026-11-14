@@ -51,6 +51,7 @@
 @import("./basic/destructure_array.atl")
 @import("./basic/destructure_lambda_and_map.atl")
 @import("./basic/advanced_deferred_and_destructuring.atl")
+@import("./basic/fixes_regression.atl")
 
 @import("./stdlib/array.atl")
 @import("./stdlib/set.atl")

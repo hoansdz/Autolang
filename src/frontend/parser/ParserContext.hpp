@@ -152,6 +152,7 @@ constexpr LexerStringId lexerIdisNullOrEmpty = 79;
 constexpr LexerStringId lexerIdisNullOrBlank = 80;
 constexpr LexerStringId lexerIdisNotNullOrEmpty = 81;
 constexpr LexerStringId lexerIdisNotNullOrBlank = 82;
+constexpr LexerStringId lexerIdUnit = 83;
 /*
 constexpr LexerStringId lexerIdunaryPlus = 24;   // +a
 constexpr LexerStringId lexerIdunaryMinus = 25;  // -a

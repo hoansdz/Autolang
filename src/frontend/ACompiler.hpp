@@ -370,6 +370,7 @@ class ACompiler {
 	std::optional<FunctionMeta> getFunction(uint32_t funcId) const;
 	std::vector<AliasMeta> getAliases() const;
 	std::vector<IntrinsicMeta> getIntrinsicFunctions() const;
+	std::vector<ScopeFunctionMeta> getScopeFunctions() const;
 
 #ifdef __PYBIND11__
 	py::object getLibrariesPy() const;
@@ -379,6 +380,7 @@ class ACompiler {
 	py::object getFunctionPy(uint32_t funcId) const;
 	py::object getAliasesPy() const;
 	py::object getIntrinsicFunctionsPy() const;
+	py::object getScopeFunctionsPy() const;
 #endif
 
   private:

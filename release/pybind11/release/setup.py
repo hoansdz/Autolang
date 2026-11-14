@@ -96,6 +96,9 @@ if sys.platform == "win32":
     libraries.extend(["ws2_32", "wldap32", "crypt32", "advapi32", "bcrypt"])
 elif sys.platform == "darwin":
     extra_link_args.extend(["-framework", "Security", "-framework", "CoreFoundation"])
+elif sys.platform.startswith("linux"):
+    if not extra_objects:
+        libraries.append("curl")
 
 # ---------------------------------------------------------------------------
 ext_modules = [

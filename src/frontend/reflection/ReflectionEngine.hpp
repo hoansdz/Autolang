@@ -28,6 +28,22 @@ namespace py = pybind11;
 
 namespace Autolang {
 
+struct ScopeFunctionEntry {
+	const char *name;
+	const char *description;
+	bool passAsArgument;
+	bool returnsSelf;
+};
+
+static constexpr ScopeFunctionEntry SCOPE_FUNCTION_TABLE[] = {
+	{"let", "Calls the specified function block with this value as its argument and returns its result.", true, false},
+	{"also", "Calls the specified function block with this value as its argument and returns this value.", true, true},
+	{"apply", "Calls the specified function block with this value as its receiver and returns this value.", false, true},
+	{"run", "Calls the specified function block with this value as its receiver and returns its result.", false, false},
+	{"takeIf", "Returns this value if it satisfies the given predicate or null if it doesn't.", true, true},
+	{"takeUnless", "Returns this value if it does not satisfy the given predicate or null if it doesn't.", true, true},
+};
+
 struct NativeReflectionAdapter {
 	using TypeResult = TypeMeta;
 	using VarResult = VarMeta;
@@ -37,6 +53,7 @@ struct NativeReflectionAdapter {
 	using LibraryResult = LibraryMeta;
 	using AliasResult = AliasMeta;
 	using IntrinsicResult = IntrinsicMeta;
+	using ScopeFunctionResult = ScopeFunctionMeta;
 	using ListType = std::vector<TypeResult>;
 	using ListVar = std::vector<VarResult>;
 	using ListFunction = std::vector<FunctionResult>;
@@ -45,6 +62,7 @@ struct NativeReflectionAdapter {
 	using ListLibrary = std::vector<LibraryResult>;
 	using ListAlias = std::vector<AliasResult>;
 	using ListIntrinsic = std::vector<IntrinsicResult>;
+	using ListScopeFunction = std::vector<ScopeFunctionResult>;
 	using ListString = std::vector<std::string>;
 	using MapFunction = ankerl::unordered_dense::map<std::string, std::vector<FunctionMeta>>;
 	using OptionalClass = std::optional<ClassMeta>;
@@ -89,7 +107,8 @@ struct NativeReflectionAdapter {
 	                                 bool isStatic, bool hasTrailingClosure,
 	                                 bool isInfix, int infixPrecedence,
 	                                 ListVar &&params,
-	                                 TypeMeta &&returnType) {
+	                                 TypeMeta &&returnType,
+	                                 const std::string &description = std::string()) {
 		FunctionMeta fm;
 		fm.id = id;
 		fm.name = name;
@@ -101,6 +120,7 @@ struct NativeReflectionAdapter {
 		fm.infixPrecedence = infixPrecedence;
 		fm.params = std::move(params);
 		fm.returnType = std::move(returnType);
+		fm.description = description;
 		return fm;
 	}
 
@@ -128,7 +148,8 @@ struct NativeReflectionAdapter {
 	                           ListGeneric &&generics,
 	                           ListVar &&properties,
 	                           MapFunction &&functions,
-	                           ListString &&enumEntries) {
+	                           ListString &&enumEntries,
+	                           const std::string &description = std::string()) {
 		ClassMeta cm;
 		cm.classId = classId;
 		cm.name = name;
@@ -137,6 +158,7 @@ struct NativeReflectionAdapter {
 		cm.properties = std::move(properties);
 		cm.functions = std::move(functions);
 		cm.enumEntries = std::move(enumEntries);
+		cm.description = description;
 		return cm;
 	}
 
@@ -171,6 +193,13 @@ struct NativeReflectionAdapter {
 		return im;
 	}
 
+	static ScopeFunctionMeta makeScopeFunction(const std::string &name,
+	                                           const std::string &description,
+	                                           bool passAsArgument,
+	                                           bool returnsSelf) {
+		return ScopeFunctionMeta{name, description, passAsArgument, returnsSelf};
+	}
+
 	static OptionalClass makeNullClass() {
 		return std::nullopt;
 	}
@@ -190,6 +219,7 @@ struct PyReflectionAdapter {
 	using LibraryResult = py::dict;
 	using AliasResult = py::dict;
 	using IntrinsicResult = py::dict;
+	using ScopeFunctionResult = py::dict;
 	using ListType = py::list;
 	using ListVar = py::list;
 	using ListFunction = py::list;
@@ -198,6 +228,7 @@ struct PyReflectionAdapter {
 	using ListLibrary = py::list;
 	using ListAlias = py::list;
 	using ListIntrinsic = py::list;
+	using ListScopeFunction = py::list;
 	using ListString = py::list;
 	using MapFunction = py::dict;
 	using OptionalClass = py::object;
@@ -249,7 +280,8 @@ struct PyReflectionAdapter {
 	                             bool isStatic, bool hasTrailingClosure,
 	                             bool isInfix, int infixPrecedence,
 	                             ListVar &&params,
-	                             TypeResult &&returnType) {
+	                             TypeResult &&returnType,
+	                             const std::string &description = std::string()) {
 		py::dict d;
 		d["id"] = id;
 		d["name"] = name;
@@ -265,6 +297,7 @@ struct PyReflectionAdapter {
 		d["infixPrecedence"] = infixPrecedence;
 		d["params"] = std::move(params);
 		d["returnType"] = std::move(returnType);
+		d["description"] = description;
 		return d;
 	}
 
@@ -296,7 +329,8 @@ struct PyReflectionAdapter {
 	                          ListGeneric &&generics,
 	                          ListVar &&properties,
 	                          MapFunction &&functions,
-	                          ListString &&enumEntries) {
+	                          ListString &&enumEntries,
+	                          const std::string &description = std::string()) {
 		py::dict d;
 		d["classId"] = classId;
 		d["name"] = name;
@@ -305,6 +339,7 @@ struct PyReflectionAdapter {
 		d["properties"] = std::move(properties);
 		d["functions"] = std::move(functions);
 		d["enumEntries"] = std::move(enumEntries);
+		d["description"] = description;
 		return d;
 	}
 
@@ -336,6 +371,18 @@ struct PyReflectionAdapter {
 		d["elementFromArguments"] = elementFromArguments;
 		d["minArgs"] = minArgs;
 		d["maxArgs"] = maxArgs;
+		return d;
+	}
+
+	static py::dict makeScopeFunction(const std::string &name,
+	                                  const std::string &description,
+	                                  bool passAsArgument,
+	                                  bool returnsSelf) {
+		py::dict d;
+		d["name"] = name;
+		d["description"] = description;
+		d["passAsArgument"] = passAsArgument;
+		d["returnsSelf"] = returnsSelf;
 		return d;
 	}
 
@@ -546,7 +593,8 @@ class ReflectionEngine {
 
 		return Adapter::makeFunction(fid, name, library, ownerClassId, isStatic,
 		                             hasTrailingClosure, isInfix, infixPrecedence,
-		                             std::move(params), std::move(returnType));
+		                             std::move(params), std::move(returnType),
+		                             fInfo ? fInfo->description : std::string());
 	}
 
 	template <typename Adapter>
@@ -667,7 +715,8 @@ class ReflectionEngine {
 		}
 
 		return Adapter::makeClass(cid, name, library, std::move(generics),
-		                          std::move(properties), std::move(functions), std::move(enumEntries));
+		                          std::move(properties), std::move(functions), std::move(enumEntries),
+		                          cInfo ? cInfo->description : std::string());
 	}
 
 	template <typename Adapter>
@@ -831,6 +880,22 @@ class ReflectionEngine {
 			        entry.elementFromArguments,
 			        entry.minArgs,
 			        entry.maxArgs));
+		}
+		return result;
+	}
+
+	template <typename Adapter>
+	static typename Adapter::ListScopeFunction getScopeFunctions(const ACompiler &compiler) {
+		(void)compiler;
+		typename Adapter::ListScopeFunction result;
+		for (const auto &entry : SCOPE_FUNCTION_TABLE) {
+			Adapter::appendList(
+			    result,
+			    Adapter::makeScopeFunction(
+			        std::string(entry.name),
+			        std::string(entry.description),
+			        entry.passAsArgument,
+			        entry.returnsSelf));
 		}
 		return result;
 	}

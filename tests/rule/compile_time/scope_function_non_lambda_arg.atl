@@ -1,0 +1,2 @@
+val k = 5
+val m = k.let(5)

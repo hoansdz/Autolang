@@ -206,6 +206,9 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 		case Lexer::TokenType::IDENTIFIER:
 		case Lexer::TokenType::TO: {
 			node = loadIdentifier(in_data, i);
+			if (!node) {
+				throw ParserError(token->line, "Unexpected identifier expression");
+			}
 			if (node->kind != NodeType::CALL ||
 			    (context.currentClassId &&
 			     context.currentFunctionId == context.mainFunctionId)) {
@@ -354,6 +357,9 @@ HasClassIdNode *parsePrimary(in_func, size_t &i) {
 			throw ParserError(firstLine, "Expected value but token '" +
 			                                 token->toString(context) +
 			                                 "' found");
+	}
+	if (!node) {
+		throw ParserError(firstLine, "Expected expression");
 	}
 	if (node->kind == NodeType::SKIP || node->kind == NodeType::RET ||
 	    node->kind == NodeType::THROW) {
@@ -631,6 +637,138 @@ bool nextTokenIfMarkNonNull(in_func, size_t &i) {
 	return false;
 }
 
+// General rule to distinguish between less-than comparison operator '<' and generic '<...>' in expression context:
+// In an expression, an identifier followed by '<' is recognized as a generic instantiation/call
+// if and only if:
+// 1. There is a matching '>' closing bracket balancing the generic nesting depth back to 0.
+// 2. All tokens inside the '< ... >' list conform strictly to valid type argument syntax:
+//    - Type names (IDENTIFIER), separators (','), nested generic brackets ('<', '>'),
+//      nullable markers ('?'), array brackets ('[', ']'), and qualified name dots ('.').
+//    - Function types '( ... ) -> ReturnType' are allowed, but '->' MUST immediately follow
+//      the closing ')' of the parameter list. Any '->' appearing immediately after an
+//      IDENTIFIER (e.g. 'a < t ->') indicates a 'when' branch or lambda arrow, NOT a type.
+//    - No binary operators (==, !=, <=, >=, &&, ||, +, -, *, /), control keywords (when, if, else, val, var...),
+//      or literal constants (number, string) are permitted inside '< ... >'.
+// 3. Immediately following the matching '>' bracket, the token in expression context must be
+//    one of the call or member access operators:
+//    - '(' : function or constructor call, e.g. Array<Int>(), func<T>()
+//    - '{' : trailing closure call, e.g. func<T> { ... }
+//    - '.' : static member access, e.g. Box<Int>.defaultVal
+//    - '::' : class or callable reference, e.g. Box<Int>::class
+// If any of these conditions fails, '<' is definitively parsed as the less-than binary comparison operator.
+static bool isGenericExpression(const std::vector<Lexer::Token> &tokens, size_t ltIndex) {
+	size_t n = tokens.size();
+	if (ltIndex >= n || tokens[ltIndex].type != Lexer::TokenType::LT) {
+		return false;
+	}
+
+	size_t k = ltIndex + 1;
+	if (k >= n) {
+		return false;
+	}
+
+	// First token after '<' must be a valid type starter: IDENTIFIER or '(' for function type
+	if (tokens[k].type != Lexer::TokenType::IDENTIFIER &&
+	    tokens[k].type != Lexer::TokenType::LPAREN) {
+		return false;
+	}
+
+	int depth = 1;
+	int parenDepth = 0;
+	bool expectArrowAfterParen = false;
+
+	for (; k < n; ++k) {
+		const auto &tok = tokens[k];
+
+		if (expectArrowAfterParen) {
+			if (tok.type != Lexer::TokenType::MINUS_GT) {
+				return false;
+			}
+			expectArrowAfterParen = false;
+			continue;
+		}
+
+		switch (tok.type) {
+			case Lexer::TokenType::LT: {
+				if (parenDepth == 0) {
+					depth++;
+				}
+				break;
+			}
+			case Lexer::TokenType::GT: {
+				if (parenDepth == 0) {
+					depth--;
+					if (depth == 0) {
+						// Found matching closing '>' for generic type arguments.
+						// In expression context, generic type/call is valid unless followed on the same line
+						// by a right-hand operand of a chained comparison: e.g. (a < b) > c or (a < b) > 10.
+						if (k + 1 < n) {
+							const auto &nextTok = tokens[k + 1];
+							if (nextTok.line == tok.line &&
+							    (nextTok.type == Lexer::TokenType::IDENTIFIER ||
+							     nextTok.type == Lexer::TokenType::NUMBER ||
+							     nextTok.type == Lexer::TokenType::STRING ||
+							     nextTok.type == Lexer::TokenType::CHAR)) {
+								return false;
+							}
+							return true;
+						}
+						return true;
+					}
+				}
+				break;
+			}
+			case Lexer::TokenType::LPAREN: {
+				parenDepth++;
+				break;
+			}
+			case Lexer::TokenType::RPAREN: {
+				parenDepth--;
+				if (parenDepth < 0) {
+					// Closing ')' belongs to outer expression context (e.g. if (a < t) or foo(a < t))
+					return false;
+				}
+				if (parenDepth == 0) {
+					// Just closed parameter list of a function type inside generic argument: (Params) -> Return
+					expectArrowAfterParen = true;
+				}
+				break;
+			}
+			case Lexer::TokenType::COMMA: {
+				break;
+			}
+			case Lexer::TokenType::QMARK:
+			case Lexer::TokenType::EXMARK:
+			case Lexer::TokenType::DOT:
+			case Lexer::TokenType::LBRACKET:
+			case Lexer::TokenType::RBRACKET: {
+				break;
+			}
+			case Lexer::TokenType::IDENTIFIER: {
+				// Fast rejection: inside generic type args, an IDENTIFIER cannot be immediately followed by:
+				// another IDENTIFIER (two types without comma), literals, or '->' (when branch condition).
+				if (k + 1 < n) {
+					auto nextType = tokens[k + 1].type;
+					if (nextType == Lexer::TokenType::IDENTIFIER ||
+					    nextType == Lexer::TokenType::NUMBER ||
+					    nextType == Lexer::TokenType::STRING ||
+					    nextType == Lexer::TokenType::CHAR ||
+					    nextType == Lexer::TokenType::MINUS_GT) {
+						return false;
+					}
+				}
+				break;
+			}
+			default: {
+				// Any comparison/arithmetic/logical operators, control keywords, or punctuation
+				// definitively disqualify this as a generic type list.
+				return false;
+			}
+		}
+	}
+	return false;
+}
+
 HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 	Lexer::Token *identifier = &context.tokens[i];
 	Lexer::Token *token;
@@ -651,32 +789,11 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 	bool nullable = true;
 	switch (token->type) {
 		case Lexer::TokenType::LT: {
-			if (!nextToken(&token, context.tokens, i) ||
-			    !expect(token, Lexer::TokenType::IDENTIFIER)) {
-				--i;
-				break;
-			}
-			if (!nextToken(&token, context.tokens, i)) {
-				i -= 2;
-				break;
-			}
-			switch (token->type) {
-				case Lexer::TokenType::LT:
-				case Lexer::TokenType::GT:
-				case Lexer::TokenType::COMMA:
-				case Lexer::TokenType::QMARK:
-				case Lexer::TokenType::LPAREN:
-				case Lexer::TokenType::MINUS_GT:
-				case Lexer::TokenType::AT_SIGN: {
-					break;
-				}
-				default: {
-					i -= 2;
-					goto doneLT;
-				}
+			if (!isGenericExpression(context.tokens, i)) {
+				goto doneLT;
 			}
 			auto firstLine = token->line;
-			i -= 4;
+			i -= 2;
 			// std::cerr << "Creating " << context.tokens[i].toString(context)
 			//           << "\n";
 			auto classDeclaration =
@@ -684,7 +801,7 @@ HasClassIdNode *loadIdentifier(in_func, size_t &i, bool allowAddThis) {
 			auto funcInfo = context.getCurrentFunctionInfo(in_data);
 			if (!nextToken(&token, context.tokens, i)) {
 				--i;
-				return nullptr;
+				throw ParserError(firstLine, "Expected expression after generic type");
 			}
 			bool isTrailingClosure = false;
 			if (expect(token, Lexer::TokenType::LBRACE)) {

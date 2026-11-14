@@ -470,8 +470,10 @@ void GetPropNode::putBytecodes(in_func, std::vector<uint8_t> &bytecodes) {
 }
 
 void GetPropNode::rewrite(in_func, uint8_t *bytecodes) {
-	if (context.jumpIfNullNode) {
+	if (caller) {
 		caller->rewrite(in_data, bytecodes);
+	}
+	if (context.jumpIfNullNode) {
 		if (!isStatic && accessNullable && !isStore) {
 			rewrite_opcode_u32(bytecodes, jumpIfNullPos,
 			                   context.jumpIfNullNode->jumpIfNullPos);

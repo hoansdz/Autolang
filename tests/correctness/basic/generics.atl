@@ -362,6 +362,18 @@ fun testGenerics() {
 	assert(cs.a == "swapped")
 	assert(cs.b == 100)
 
+	// Valid complex generic and nullable type declarations
+	val arrFloatNull: Array<Float?> = [1.0]
+	assert(arrFloatNull.size() == 1)
+	val arrIntNullNullable: Array<Int?>? = [1]
+	assert(arrIntNullNullable!.size() == 1)
+	val mapStrIntNull: Map<String, Int?> = mapOf()
+	assert(mapStrIntNull.size() == 0)
+	val arrArrInt: Array<Array<Int>> = [[1]]
+	assert(arrArrInt[0][0] == 1)
+	val intNull: Int? = 1
+	assert(intNull == 1)
+
 	println("Passed ${__FUNC__}")
 }
 

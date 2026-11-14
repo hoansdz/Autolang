@@ -121,6 +121,11 @@ void loadEnum(in_func, size_t &i) {
 	LexerStringId nameId = token->indexData;
 	std::string_view name = context.lexerString[nameId];
 
+	if (nameId == lexerIdUnit) {
+		throw ParserError(firstLine, "Enum name 'Unit' is reserved",
+		                  "'Unit' is a built-in type alias for Void and cannot be used as an enum name.");
+	}
+
 	auto it = context.defaultClassMap.find(nameId);
 	if (it != context.defaultClassMap.end()) {
 		std::string hint = "Use a unique enum/class name";

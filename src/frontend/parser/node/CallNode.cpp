@@ -955,6 +955,36 @@ ExprNode *CallNode::optimize(in_func) {
 			}
 			funcObject = static_cast<HasClassIdNode *>(arg->optimize(in_data));
 			arguments.clear();
+			if (!funcObject || funcObject->classId != DefaultClass::functionClassId) {
+				std::string actualType = (funcObject && funcObject->classId < compile.classes.size() && compile.classes[funcObject->classId])
+				                             ? compile.classes[funcObject->classId]->getName(compile)
+				                             : "non-function";
+				throwError("Invalid call: " + std::string(context.lexerString[nameId]) +
+				           " expects a function or lambda argument, but received " + actualType,
+				           "Pass a lambda or function (e.g., obj." +
+				           std::string(context.lexerString[nameId]) + " { ... })");
+			}
+			if (funcObject->isNullable()) {
+				throwError("Cannot call nullable function object in " +
+				           std::string(context.lexerString[nameId]),
+				           "Perform a null check or use safe navigation '?.' before calling");
+			}
+			if (nameId == lexerIdtakeIf || nameId == lexerIdtakeUnless) {
+				if (funcObject->classDeclaration &&
+				    !funcObject->classDeclaration->inputClassId.empty() &&
+				    funcObject->classDeclaration->inputClassId[0] &&
+				    funcObject->classDeclaration->inputClassId[0]->classId) {
+					ClassId retClassId = *funcObject->classDeclaration->inputClassId[0]->classId;
+					if (retClassId != DefaultClass::boolClassId) {
+						std::string retType = (retClassId < compile.classes.size() && compile.classes[retClassId])
+						                          ? compile.classes[retClassId]->getName(compile)
+						                          : "unknown";
+						throwError("Invalid call: " + std::string(context.lexerString[nameId]) +
+						           " predicate must return Bool, but returned " + retType,
+						           "Ensure the predicate expression evaluates to a Boolean condition");
+					}
+				}
+			}
 			if (nameId == lexerIdalso || nameId == lexerIdapply) {
 				classId = caller->classId;
 				classDeclaration = caller->classDeclaration;
@@ -2592,9 +2622,9 @@ void CallNode::rewrite(in_func, uint8_t *bytecodes) {
 	if (funcObject) {
 		funcObject->rewrite(in_data, bytecodes);
 	}
-	if (context.jumpIfNullNode && caller) {
+	if (caller) {
 		caller->rewrite(in_data, bytecodes);
-		if (accessNullable) {
+		if (context.jumpIfNullNode && accessNullable) {
 			rewrite_opcode_u32(bytecodes, jumpIfNullPos,
 			                   context.jumpIfNullNode->jumpIfNullPos);
 		}

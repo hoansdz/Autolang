@@ -38,6 +38,8 @@ struct FunctionMeta {
 	int infixPrecedence = -1;
 	std::vector<VarMeta> params;
 	TypeMeta returnType;
+	// Text of @description("...") on the function (empty if absent)
+	std::string description;
 };
 
 struct GenericMeta {
@@ -54,6 +56,8 @@ struct ClassMeta {
 	std::vector<VarMeta> properties;
 	ankerl::unordered_dense::map<std::string, std::vector<FunctionMeta>> functions;
 	std::vector<std::string> enumEntries;
+	// Text of @description("...") on the class (empty if absent)
+	std::string description;
 };
 
 struct LibraryMeta {
@@ -74,6 +78,13 @@ struct IntrinsicMeta {
 	bool elementFromArguments = false;
 	int minArgs = 0;
 	int maxArgs = -1;
+};
+
+struct ScopeFunctionMeta {
+	std::string name;
+	std::string description;
+	bool passAsArgument = false;
+	bool returnsSelf = false;
 };
 
 } // namespace Autolang

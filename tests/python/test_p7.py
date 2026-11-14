@@ -7,10 +7,14 @@ if os.path.exists(r"D:\mingw64\bin"):
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, "../.."))
 PYD_BUILD_DIR = os.path.abspath(os.path.join(PROJECT_ROOT, "build/lib.win-amd64-cpython-313"))
+PYD_P9_DIR = os.path.abspath(os.path.join(PROJECT_ROOT, "build_p9"))
 sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, PYD_BUILD_DIR)
+if os.path.exists(PYD_P9_DIR):
+    sys.path.insert(0, PYD_P9_DIR)
 
 import autolang
+print(f"Loaded autolang from: {autolang.__file__}")
 
 def test_p7_full():
     print("=== Test P7: Full Reflection API ===")
@@ -340,5 +344,38 @@ val pyIntArrayOf = intArrayOf(1, 2)
 
     print("\nALL P7 PYTHON TESTS PASSED SUCCESSFULLY!")
 
+def test_generic_parsing_cases():
+    print("\n=== Test Generic Parsing Cases ===")
+    compiler = autolang.ACompiler()
+
+    # Invalid cases should produce compiler error and not crash
+    invalid_cases = [
+        ("val a: Array<?Int> = [1]\nprintln(a)", "Array<?Int>"),
+        ("val a: Array<,Int> = [1]\nprintln(a)", "Array<,Int>"),
+        ("val a: Array<1> = [1]\nprintln(a)", "Array<1>"),
+        ("val a: Array<>Int = [1]\nprintln(a)", "Array<>Int"),
+        ("val a: Array<Int??> = [1]\nprintln(a)", "Array<Int??>"),
+    ]
+    for code, desc in invalid_cases:
+        res = compiler.compile("test.al", code)
+        assert res == False or compiler.hasCompilerError(), f"Expected compile error for {desc}"
+        compiler.refresh()
+
+    # Valid cases should compile without error
+    valid_cases = [
+        ("val a: Array<Float?> = [1.0]\nprintln(a)", "Array<Float?>"),
+        ("val a: Array<Int?>? = [1]\nprintln(a)", "Array<Int?>?"),
+        ("val a: Map<String, Int?> = mapOf()\nprintln(a)", "Map<String, Int?>"),
+        ("val a: Array<Array<Int>> = [[1]]\nprintln(a)", "Array<Array<Int>>"),
+        ("val a: Int? = 1\nprintln(a)", "Int?"),
+    ]
+    for code, desc in valid_cases:
+        res = compiler.compile("test.al", code)
+        assert res == True and not compiler.hasCompilerError(), f"Expected compile success for {desc}"
+        compiler.refresh()
+
+    print("ALL GENERIC PARSING TESTS PASSED SUCCESSFULLY!")
+
 if __name__ == "__main__":
     test_p7_full()
+    test_generic_parsing_cases()

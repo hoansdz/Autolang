@@ -492,7 +492,6 @@ class CompilerWrapper {
 			std::cerr.rdbuf(old);
 			return result && !compiler.hasException();
 		} catch (const std::exception &e) {
-			std::cerr << e.what() << "\n";
 		}
 		std::cerr.rdbuf(old);
 		return false;
@@ -548,11 +547,8 @@ class CompilerWrapper {
 		if (compiler.hasException()) {
 			return true;
 		}
-		if (compiler.vm.callFrames.getSize() == 0) {
-			if (compiler.vm.callFrames.objects[0].exception) {
-				return true;
-			}
-			return false;
+		if (compiler.vm.callFrames.objects[0].exception) {
+			return true;
 		}
 		return false;
 	}
@@ -563,14 +559,11 @@ class CompilerWrapper {
 			obj["message"] = std::string(compiler.exceptionMessage ? compiler.exceptionMessage : "");
 			return obj;
 		}
-		if (compiler.vm.callFrames.getSize() == 0) {
-			if (compiler.vm.callFrames.objects[0].exception) {
-				py::dict obj;
-				auto exception = compiler.exceptionMessage;
-				obj["message"] = std::string(exception ? exception : "");
-				return obj;
-			}
-			return py::none();
+		if (compiler.vm.callFrames.objects[0].exception) {
+			py::dict obj;
+			auto exception = compiler.exceptionMessage;
+			obj["message"] = std::string(exception ? exception : "");
+			return obj;
 		}
 		return py::none();
 	}
@@ -710,6 +703,9 @@ class CompilerWrapper {
 	}
 	py::object getIntrinsicFunctions() const {
 		return compiler.getIntrinsicFunctionsPy();
+	}
+	py::object getScopeFunctions() const {
+		return compiler.getScopeFunctionsPy();
 	}
 };
 
@@ -872,5 +868,6 @@ PYBIND11_MODULE(autolang, m) {
 	    .def("getFunctions", &CompilerWrapper::getFunctions)
 	    .def("getFunction", &CompilerWrapper::getFunction, py::arg("func_id"))
 	    .def("getAliases", &CompilerWrapper::getAliases)
-	    .def("getIntrinsicFunctions", &CompilerWrapper::getIntrinsicFunctions);
+	    .def("getIntrinsicFunctions", &CompilerWrapper::getIntrinsicFunctions)
+	    .def("getScopeFunctions", &CompilerWrapper::getScopeFunctions);
 }

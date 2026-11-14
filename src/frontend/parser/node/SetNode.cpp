@@ -1087,7 +1087,7 @@ ExprNode *SetNode::copy(in_func) {
 	auto newDetachNode = static_cast<HasClassIdNode *>(detach->copy(in_data));
 	auto newValueNode = static_cast<HasClassIdNode *>(value->copy(in_data));
 	return context.setValuePool.push(line, newDetachNode, newValueNode,
-	                                 justDetachStatic);
+	                                 justDetachStatic, op);
 }
 
 SetNode::~SetNode() {

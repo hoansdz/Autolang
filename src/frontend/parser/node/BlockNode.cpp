@@ -1350,7 +1350,7 @@ ExprNode *BlockNode::copy(in_func) {
 	newNode->mode = mode;
 	newNode->nodes.reserve(nodes.size());
 	for (auto &node : nodes) {
-		newNode->nodes.push_back(node);
+		newNode->nodes.push_back(node->copy(in_data));
 	}
 	newNode->hasValueAllCases = hasValueAllCases;
 	newNode->autoCastToFloat = autoCastToFloat;

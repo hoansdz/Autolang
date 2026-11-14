@@ -472,6 +472,10 @@ std::vector<ClassDeclaration *> loadListClassDeclaration(in_func, size_t &i,
 	while (true) {
 		auto classDeclaration =
 		    loadClassDeclaration(in_data, i, line, allowReturnVoid);
+		if (!classDeclaration) {
+			throw ParserError(line, "Expected class name but not found",
+			                  "Provide class type name");
+		}
 		if (!isGeneric && classDeclaration->isGeneric) {
 			isGeneric = true;
 		}
@@ -556,13 +560,16 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 					    "Null cannot be used as a type for declaration", ""
 					    "Use 'Type?' to declare a nullable type");
 				}
+				case lexerIdUnit:
 				case lexerIdVoid: {
 					if (!allowReturnVoid) {
+						std::string typeName = (token->indexData == lexerIdUnit) ? "Unit" : "Void";
 						throw ParserError(token->line,
-						                  "Void cannot be used as a type for "
-						                  "declaration", "'Void' can only "
+						                  typeName + " cannot be used as a type for "
+						                  "declaration", "'" + typeName + "' can only "
 						                  "be used as a function return type");
 					}
+					result->baseClassLexerStringId = lexerIdVoid;
 					result->classId = DefaultClass::voidClassId;
 					break;
 				}
@@ -639,11 +646,18 @@ ClassDeclaration *loadClassDeclaration(in_func, size_t &i, uint32_t line,
 			                  "Generic must have a type argument", ""
 			                  "Provide type arguments inside '<...>'");
 		}
-		default:
-			break;
+		default: {
+			throw ParserError(token->line,
+			                  "Expected class name but not found",
+			                  "Provide class type name");
+		}
 	}
 // auto currentFuncInfo = context.getCurrentFunctionInfo(in_data);
 loadSpecialClass:;
+	if (!result) {
+		throw ParserError(token->line, "Expected class name but not found",
+		                  "Provide class type name");
+	}
 	switch (token->type) {
 		case Lexer::TokenType::MINUS_GT: {
 			if (!allowArrow && !hadParen) {
@@ -710,6 +724,10 @@ void loadListGenericDeclarationType(in_func, size_t &i, uint32_t line,
 	while (true) {
 		auto classDeclaration =
 		    loadClassDeclaration(in_data, i, line, allowReturnVoid);
+		if (!classDeclaration) {
+			throw ParserError(line, "Expected class name but not found",
+			                  "Provide class type name");
+		}
 		if (!isGeneric && classDeclaration->isGeneric) {
 			isGeneric = true;
 		}
